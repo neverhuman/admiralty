@@ -1,4 +1,6 @@
 //! Offline invariant and process fixtures; no paid provider calls.
+pub mod fake_provider;
+
 use admiralty_core::*;
 
 pub fn task_fixture(id: &str) -> TaskContract {
