@@ -166,6 +166,21 @@ def is_anc(repo, a, b):
     rc, _, _ = run(['git', '-C', repo, 'merge-base', '--is-ancestor', a, b], timeout=15)
     return rc == 0
 
+def commit_time(repo, sha):
+    rc, out, _ = run(['git', '-C', repo, 'log', '-1', '--format=%ct', sha], timeout=10)
+    try:
+        return datetime.datetime.fromtimestamp(int(out.strip()), datetime.timezone.utc) if rc == 0 else None
+    except ValueError:
+        return None
+
+def parse_utc(v):
+    if not v: return None
+    try:
+        d = datetime.datetime.fromisoformat(str(v).replace('Z', '+00:00'))
+        return d if d.tzinfo else d.replace(tzinfo=datetime.timezone.utc)
+    except ValueError:
+        return None
+
 def rev(repo, ref):
     rc, out, _ = run(['git', '-C', repo, 'rev-parse', '--verify', '-q', ref + '^{commit}'], timeout=10)
     return out.strip() if rc == 0 else None
@@ -203,6 +218,14 @@ def audit_jopedime(sc_claims):
         for k, v in r.items():
             if 'sha256' in k.lower() and isinstance(v, str) and not re.fullmatch(r'(sha256:)?[0-9a-f]{64}', v): bad['truncated_sha256'].append(tid)
         if st != 'PASS' or mism: continue  # a PASS verified on a different checkout than it names is not genuine
+        # relabel guard: a receipt cannot have been verified on a commit that did not exist yet
+        va = parse_utc(r.get('verified_at_utc') or r.get('verified_at'))
+        ct = commit_time(repo, sha) if re.fullmatch(r'[0-9a-f]{40}', sha) else None
+        if va and ct and va < ct:
+            bad['receipt_predates_sha'].append(tid); continue
+        proof = str(r.get('completion_criterion_proof', ''))
+        if set(re.findall(r'\b[0-9a-f]{40}\b', proof)) - {sha} and sha not in proof:
+            bad['proof_names_other_sha'].append(tid); continue
         cases = r.get('case_to_test_map') or r.get('cases') or []
         cmds = r.get('commands') or []
         if any(c.get('exit_code') not in (0, None) for c in cmds + cases) or any(c.get('passed') is False for c in cases):
@@ -227,6 +250,8 @@ def audit_jopedime(sc_claims):
               'pass_doc_only_doc_criterion': ('info', 'PASS on doc text only (criterion is itself a document deliverable; spot-check)'),
               'measurement_criterion_unit_tests_only': ('amber', 'criterion needs a real measurement/run; receipt shows tests only'),
               'pass_without_cases': ('red', 'status PASS with no acceptance cases mapped'),
+              'receipt_predates_sha': ('red', 'verified_at is older than the commit the receipt names (relabeled to a newer sha, not re-run; not counted)'),
+              'proof_names_other_sha': ('red', 'proof says the tests ran at a different full sha than the receipt names (not counted)'),
               'unreadable': ('amber', 'receipt JSON unreadable')}
     for k, ids in bad.items():
         sev, txt = labels[k]
