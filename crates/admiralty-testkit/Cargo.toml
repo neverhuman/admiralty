@@ -198,3 +198,7 @@ path = "../../tests/integration/store_replay.rs"
 [[test]]
 name = "upgrade_continuity"
 path = "../../tests/integration/upgrade_continuity.rs"
+
+[[test]]
+name = "codex_p27_p24_p25_round10"
+path = "../../tests/integration/codex_p27_p24_p25_round10.rs"
