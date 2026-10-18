@@ -1019,6 +1019,199 @@ def main_ci(project):
     if bad: F('amber', project, 'MAIN_CI_RED', f'main @ {head[:9]} failing: {", ".join(bad)}')
     return {'head': head[:9], 'runs': [(r['workflowName'], r.get('conclusion') or r.get('status')) for r in same]}
 
+# ---------------- watchdog: misses that let workers idle (GB 2026-10-18 09:35 MDT, Jepson: "why wasn't this caught automatically") ----------------
+# Root causes fixed here: (1) only the 5 captain screens + LANE lines with an explicit state=running were watched, so workers super_captain
+# itself manages (jopedime_flywheel 'parked', jopedime_agy on a positional '| active |' LANE line) were invisible; (2) idle detection needed
+# the Claude-Code '? for shortcuts' footer (Claude in auto mode / Codex never show it) and was amber at 25 min; (3) ETAs/deadlines
+# super_captain wrote into its own status were never checked; (4) 're-drove X' claims were never checked against X's terminal input;
+# (5) no per-project last-push age; (6) super_captain's free-text state/workers_idle were never compared with the audit.
+# Every finding below carries must_act=True: super_captain's tick treats it as must-act-this-tick.
+IDLE_RED_MIN = 20          # managed screen idle (not busy) and unchanged this long -> red
+NO_PUSH_RED_MIN = 30       # project with open work and no push to any branch this long -> red
+ETA_GRACE_MIN = 5          # an ETA in super_captain_status.json this far in the past -> red (owed deliverable overdue)
+REDRIVE_GRACE_MIN = 15     # a 're-drove X' claim needs terminal input on X no earlier than this before the claim
+BUSY_RE = re.compile(r'esc to (cancel|interrupt)', re.I)
+SCREEN_ID_RE = re.compile(r'\b(\d{3,8})\.([A-Za-z][\w-]+)\b')
+NOT_WORKER = re.compile(r'^(sc_|disk_|captains_dash|super_captain)')
+ETA_LIVE_KEYS = ('captains', 'overall', 'summary', 'needs_jepson', 'escalations', 'issues', 'actions')
+ETA_RE = re.compile(r'\b(?:ETA|due|by)\s*`?\s*(\d{1,2}):(\d{2})\s*(Z|UTC|AM MDT|PM MDT|MDT)\b`?', re.I)
+
+def MA(sev, scope, code, text, evidence=None):
+    F(sev, scope, code, text, evidence); findings[-1]['must_act'] = True
+
+def tail_busy(text):
+    lines = [l for l in text.rstrip('\n').split('\n') if l.strip()][-12:]
+    return bool(BUSY_RE.search('\n'.join(lines)))
+
+def tail_hash(text):
+    lines = [l.rstrip() for l in text.rstrip('\n').split('\n') if l.strip()][-25:]
+    return hashlib.sha256('\n'.join(lines).encode()).hexdigest()[:16]
+
+def pty_last_input(pid):
+    """atime of the screen child's pty slave = last time the program read input (a pasted nudge + CR updates it)."""
+    for k in descendants(pid)[:1] or []:
+        try:
+            tty = os.readlink(f'/proc/{k}/fd/0')
+            if tty.startswith('/dev/pts/'): return datetime.datetime.fromtimestamp(os.stat(tty).st_atime, datetime.timezone.utc)
+        except OSError: pass
+    return None
+
+def managed_screens(scs, lanes_by_proj):
+    """screen name -> project, for every worker super_captain or a captain says it manages."""
+    out = {}
+    for proj, blk in ((scs or {}).get('captains') or {}).items():
+        for m in SCREEN_ID_RE.finditer(json.dumps(blk)): out.setdefault(m.group(2), proj)
+    for proj, lanes in (lanes_by_proj or {}).items():
+        for n in lanes: out.setdefault(n, proj)
+    for proj, name in CAPTAINS.items(): out[name] = proj
+    return {n: p for n, p in out.items() if not NOT_WORKER.match(n)}
+
+def lane_screens_any_format(project):
+    """Latest LANE line per screen in any format (key=value or positional '| active |'); drops closed/done/retired ones."""
+    txt = tail_text(LOGS[project], 600000); last = {}
+    for raw in txt.split('\n'):
+        if 'LANE' not in raw: continue
+        l = raw.replace('`', '').strip().lstrip('-* ').strip()
+        if not l.startswith('LANE'): continue
+        for m in SCREEN_ID_RE.finditer(l): last[m.group(2)] = l
+    closed = re.compile(r'(\||=|\s)(closed|done|retired|exited|killed|finished|merged)(\s|\||$)', re.I)
+    return {n: l for n, l in last.items() if not closed.search(l)}
+
+def idle_watch(scr, managed, prev, newh, now, hc=None):
+    hc = hc or hardcopy; res = {}; idle = {}
+    for n, proj in sorted(managed.items()):
+        if n not in scr: continue
+        txt = hc(n, f'/tmp/sc_watch_hc_{n}.txt')
+        if not txt: continue
+        h = tail_hash(txt); key = 'watch:' + n; p = prev.get(key, {})
+        since = p.get('since') if p.get('hash') == h else now.isoformat(timespec='seconds')
+        newh[key] = {'hash': h, 'since': since}
+        unchanged = (now - datetime.datetime.fromisoformat(since)).total_seconds() / 60
+        busy = tail_busy(txt)
+        li = pty_last_input(scr[n]) if isinstance(scr.get(n), int) else None
+        res[n] = {'project': proj, 'busy': busy, 'unchanged_min': round(unchanged),
+                  'last_input_utc': li and li.isoformat(timespec='seconds')}
+        if not busy and unchanged >= IDLE_RED_MIN:
+            idle.setdefault(proj, []).append(f'{n} {round(unchanged)}m' + (f' (last input {li.strftime("%H:%MZ")})' if li else ''))
+        elif busy and unchanged >= IDLE_RED_MIN:
+            MA('amber', proj, 'MANAGED_SCREEN_FROZEN', f'{n} shows busy but screen unchanged {round(unchanged)} min (hung tool call?)', f'/tmp/sc_watch_hc_{n}.txt')
+    for proj, lst in idle.items():
+        MA('red', proj, 'MANAGED_SCREEN_IDLE', f'{len(lst)} managed screen(s) idle (no "esc to cancel/interrupt") and unchanged >= {IDLE_RED_MIN} min: {"; ".join(lst[:12])}. '
+           'Must act this tick: give each its next concrete task (file pointer + CR + alt+m) and confirm from a fresh hardcopy that it is busy, '
+           'or close it with a LANE ... | closed line (parked is not a state for a worker you are counting on)', '/tmp/sc_watch_hc_<screen>.txt')
+    return res
+
+def eta_overdue(scs, now, grace=ETA_GRACE_MIN):
+    """ETAs/deadlines super_captain wrote into its own status that are already past = owed deliverables overdue."""
+    hits = []
+    def walk(o, path):
+        if path and (path[0] not in ETA_LIVE_KEYS or any(re.search(r'resolved|history|decision|done_log|archive', x, re.I) for x in path)): return
+        if isinstance(o, dict):
+            for k, v in o.items(): walk(v, path + [str(k)])
+        elif isinstance(o, list):
+            for i, v in enumerate(o): walk(v, path + [str(i)])
+        elif isinstance(o, str):
+            for m in ETA_RE.finditer(o):
+                hh, mm, z = int(m.group(1)), int(m.group(2)), m.group(3).upper()
+                if 'PM' in z and hh < 12: hh += 12
+                if 'AM' in z and hh == 12: hh = 0
+                if 'MDT' in z: hh = (hh + 6) % 24
+                if hh > 23 or mm > 59: continue
+                t = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
+                if t - now > datetime.timedelta(hours=12): t -= datetime.timedelta(days=1)
+                late = (now - t).total_seconds() / 60
+                if re.search(r'\b(MERGED|COMPLETED|CLOSED|CLEARED|DONE)\b', o[max(0, m.start() - 60):m.start()]): continue
+                if late >= grace and late < 18 * 60:
+                    hits.append((path[1] if len(path) > 1 and path[0] == 'captains' else path[0], round(late), o[max(0, m.start() - 140):m.end()].replace('\n', ' ')))
+    walk(scs or {}, [])
+    return hits
+
+def check_eta_overdue(scs, now):
+    by = collections.OrderedDict()
+    for scope, late, ctx in eta_overdue(scs, now):
+        sc_ = scope if scope in CAPTAINS else 'super_captain'
+        by.setdefault(sc_, {})
+        by[sc_].setdefault(ctx[-110:], late)
+    for sc_, items in by.items():
+        top = sorted(items.items(), key=lambda kv: -kv[1])
+        MA('red', sc_, 'OWED_ETA_OVERDUE', f'{len(top)} ETA(s) in super_captain_status.json are already past (up to {top[0][1]} min): '
+           + ' | '.join(f'"...{c}" ({l}m late)' for c, l in top[:3])
+           + '. Must act this tick: for each, verify the deliverable exists (file/commit/PR); if not, ask the owner screen why, re-drive it and record a NEW ETA; never carry a passed ETA forward',
+           KICK + '/super_captain_status.json')
+
+def redrive_claims(log_text, now, window_min=60):
+    """[(claim_utc, screen_name, snippet)] for 're-drove/re-driven X' claims in super_captain_LOG.md blocks newer than window_min."""
+    out = []; hdr = re.compile(r'^##\s.*?(\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d)?Z)', re.M)
+    marks = list(hdr.finditer(log_text))
+    for i, m in enumerate(marks):
+        t = parse_utc(m.group(1))
+        if not t or (now - t).total_seconds() > window_min * 60: continue
+        body = log_text[m.end(): marks[i + 1].start() if i + 1 < len(marks) else len(log_text)]
+        for line in body.split('\n'):
+            for sent in re.split(r'(?<=[.;])\s', line):
+                if not re.search(r'\bre-?(dr(o|i)ve\w*|nudged|kicked)', sent, re.I): continue
+                for s in SCREEN_ID_RE.finditer(sent): out.append((t, s.group(2), sent.strip()[:200]))
+    return out
+
+def check_redrive_delivered(log_text, scr, now, last_input=None):
+    last_input = last_input or (lambda n: pty_last_input(scr[n]) if isinstance(scr.get(n), int) else None)
+    done = set()
+    for t, n, snip in redrive_claims(log_text, now):
+        if n in done or n not in scr: continue
+        li = last_input(n)
+        if li is None: continue
+        if li < t - datetime.timedelta(minutes=REDRIVE_GRACE_MIN):
+            done.add(n)
+            MA('red', 'super_captain', 'REDRIVE_NOT_DELIVERED', f'super_captain_LOG {t.strftime("%H:%MZ")} claims it re-drove {n}, but {n} has had no terminal input since {li.strftime("%H:%MZ")} '
+               f'(pty atime): the nudge was never submitted. Claim: "{snip}". Must act this tick: paste the pointer, send CR, then alt+m, and confirm a busy hardcopy before logging "re-driven"')
+
+def last_push(project):
+    rc, out, _ = run([GH, 'api', f'repos/{GHREPO[project]}/activity?per_page=10'], timeout=30)
+    try: acts = json.loads(out)
+    except Exception: return None
+    ts = [parse_utc(a.get('timestamp')) for a in acts if a.get('activity_type') in ('push', 'force_push', 'pr_merge', 'merge_queue_merge', 'branch_creation')]
+    ts = [t for t in ts if t]
+    return max(ts) if ts else None
+
+def check_no_push(report, now, push_fn=None):
+    push_fn = push_fn or last_push
+    for proj, r in report['projects'].items():
+        done, total = r.get('done_recomputed'), r.get('total')
+        open_work = not (isinstance(done, int) and isinstance(total, int) and done >= total) or bool(r.get('open_prs'))
+        if not open_work or proj not in GHREPO: continue
+        t = push_fn(proj)
+        if t is None: continue
+        age = (now - t).total_seconds() / 60; r['last_push_utc'] = t.isoformat(timespec='seconds')
+        if age >= NO_PUSH_RED_MIN:
+            MA('red', proj, 'NO_PUSH_30M', f'{GHREPO[proj]} has open work ({done}/{total}) but nothing pushed to any branch for {round(age)} min (last {t.strftime("%H:%MZ")}). '
+               f'Must act this tick: find which worker owes a push and why it has not pushed; every worker pushes its branch every 30 min')
+
+STATE_COUNT_RE = re.compile(r'\b(\d{1,4})\s*/\s*(\d{1,4})\b(?=[^.;|]{0,30}\b(done|accepted|integrated|complete))', re.I)
+def check_sc_claims(report, scs, watch):
+    caps = (scs or {}).get('captains') or {}
+    for proj, r in report['projects'].items():
+        blk = caps.get(proj) or {}; done, total = r.get('done_recomputed'), r.get('total')
+        state = str(blk.get('state') or '')
+        if isinstance(done, int) and isinstance(total, int):
+            bad = [m.group(0) for m in STATE_COUNT_RE.finditer(state) if int(m.group(2)) == total and int(m.group(1)) > done
+                   and not (r.get('packets_accepted') is not None and int(m.group(1)) <= r['packets_accepted'])]
+            if bad: MA('red', proj, 'SC_STATE_TEXT_OVERCLAIM', f'super_captain_status.json captains.{proj}.state still says "{bad[0]} ..." while the audit gives {done}/{total}. '
+                       'The headline text must use the audit number', KICK + '/super_captain_status.json')
+        idle = sorted(n for n, w in (watch or {}).items() if w['project'] == proj and not w['busy'] and w['unchanged_min'] >= IDLE_RED_MIN)
+        if idle and blk.get('workers_idle') == 0:
+            MA('red', proj, 'SC_IDLE_CLAIM_FALSE', f'super_captain_status.json says workers_idle=0 for {proj} but {", ".join(idle)} idle >= {IDLE_RED_MIN} min. Count idle workers from this audit, not from memory',
+               KICK + '/super_captain_status.json')
+
+def watchdog(report, scr, prev, newh, now, no_gh=False):
+    scs = rj(KICK + '/super_captain_status.json') or {}
+    managed = managed_screens(scs, {p: lane_screens_any_format(p) for p in CAPTAINS})
+    watch = idle_watch(scr, managed, prev, newh, now)
+    report['watch'] = watch
+    check_eta_overdue(scs, now)
+    check_redrive_delivered(tail_text(KICK + '/super_captain_LOG.md', 300000), scr, now)
+    if not no_gh: check_no_push(report, now)
+    check_sc_claims(report, scs, watch)
+
 # ---------------- main ----------------
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--out', default=OUT_DEFAULT); ap.add_argument('--quiet', action='store_true')
@@ -1147,6 +1340,7 @@ def main():
     state['_path'] = a.out + '/state.json'
     progress_accountability(report, state, now, a.no_gh)
     state.pop('_path', None)
+    watchdog(report, scr, prev, newh, now, a.no_gh)   # must-act detectors (idle workers, overdue ETAs, undelivered re-drives, no push, false claims)
 
     # 4. super_captain's own last report vs recomputed numbers
     scs = rj(KICK + '/super_captain_status.json') or {}
@@ -1156,7 +1350,7 @@ def main():
         r['super_captain_reported_done'] = claimed
         cands = {r.get('done_recomputed'), r.get('packets_accepted')} - {None}
         if isinstance(claimed, int) and cands and claimed > max(cands):
-            F('red', proj, 'SC_REPORTED_OVERCLAIM', f'super_captain_status.json reports done={claimed} but the ledger gives {r.get("done_recomputed")}/{r.get("total")}' + (f' (packets {r.get("packets_accepted")}/{r.get("packets_total")})' if r.get('packets_total') else '') + ' - super_captain must take done counts from this audit, not from captain claims', KICK + '/super_captain_status.json')
+            MA('red', proj, 'SC_REPORTED_OVERCLAIM', f'super_captain_status.json reports done={claimed} but the ledger gives {r.get("done_recomputed")}/{r.get("total")}' + (f' (packets {r.get("packets_accepted")}/{r.get("packets_total")})' if r.get('packets_total') else '') + ' - super_captain must take done counts from this audit, not from captain claims', KICK + '/super_captain_status.json')
     try:
         upd = datetime.datetime.fromisoformat(str(scs.get('updated_utc')).replace('Z', '+00:00'))
         if (now - upd).total_seconds() > 40 * 60: F('red', 'super_captain', 'SC_STALE', f'super_captain_status.json not updated for {int((now - upd).total_seconds() / 60)} min')
@@ -1167,6 +1361,8 @@ def main():
     findings.sort(key=lambda f: (sev_rank.get(f['severity'], 3), f['scope'], f['code']))
     report['findings'] = findings
     report['summary'] = dict(collections.Counter(f['severity'] for f in findings))
+    report['must_act'] = [f for f in findings if f.get('must_act')]
+    report['summary']['must_act'] = len(report['must_act'])
     state['hashes'] = newh; state['last_utc'] = report['utc']
     json.dump(state, open(a.out + '/state.json.tmp', 'w'), indent=1); os.replace(a.out + '/state.json.tmp', a.out + '/state.json')
     json.dump(report, open(a.out + '/latest.json.tmp', 'w'), indent=1, default=str); os.replace(a.out + '/latest.json.tmp', a.out + '/latest.json')
@@ -1182,6 +1378,7 @@ def main():
     for p, i in (report.get('progress') or {}).items():
         md.append(f'| {p} | {i.get("done")} ({i.get("baseline_done")}) | {i.get("blocked")} ({i.get("baseline_blocked")}) | {i.get("merged_prs_since_baseline")} | {i.get("last_done_increase_utc")} | {i.get("baseline_utc")} |'
                   + (f' done on origin/main: {i["done_on_main"]}' if 'done_on_main' in i else ''))
+    md += ['', f'## MUST ACT THIS TICK ({len(report["must_act"])})', ''] + ([f'- **{f["severity"]}** `{f["scope"]}` {f["code"]}: {f["text"]}' for f in report['must_act']] or ['- none'])
     md += ['', f'## Findings ({report["summary"]})', '']
     md += [f'- **{f["severity"]}** `{f["scope"]}` {f["code"]}: {f["text"]}' + (f' (evidence: `{f["evidence"]}`)' if f.get('evidence') else '') for f in findings] or ['- none']
     open(a.out + '/latest.md', 'w').write('\n'.join(md) + '\n')
