@@ -220,7 +220,9 @@ fn p23_round11_item4_final_validation_gate() {
     assert!(!rebooted.tokens.contains_key("round11-rollback"));
 
     // This reducer gate does not qualify an authenticated node transport or runner.
-    const { assert!(!MANAGED_EXECUTION_QUALIFIED); }
+    const {
+        assert!(!MANAGED_EXECUTION_QUALIFIED);
+    }
 }
 
 #[test]
@@ -341,5 +343,7 @@ fn p23_round12_item5_redteam_audit_gate() {
             .capacity
             .contains_key(&NodeId::new("unregistered-round12-node").expect("node ID"))
     );
-    const { assert!(!MANAGED_EXECUTION_QUALIFIED); }
+    const {
+        assert!(!MANAGED_EXECUTION_QUALIFIED);
+    }
 }
