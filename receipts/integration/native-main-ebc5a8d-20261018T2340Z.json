@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-18T23:36:26.083Z",
+  "revision": "ebc5a8dc081185d2824f653fc3924147d66d11ed",
+  "scope": "Exact receiving-main Rust validation and P00/P01 engineering acceptance",
+  "command": "cargo test --workspace --locked",
+  "exit": 0,
+  "passed": 1061,
+  "failed": 0,
+  "ignored": 4,
+  "suites": 132,
+  "log_sha256": "739f5a6d631f52baa4b683cd49d0a72a63a832768b35e7f77511cf56b373e31a",
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "build_jobs": 2,
+    "rust_test_threads": 1,
+    "tmpdir": "canonical private directory"
+  },
+  "integration": {
+    "pr": 79,
+    "reviewed_head": "b8a4fb21c0647c7830116073ad44bfe07012c4bb",
+    "receiving_main": "ebc5a8dc081185d2824f653fc3924147d66d11ed",
+    "reviewer": "neverhumanbot",
+    "review_state": "APPROVED exact head",
+    "method": "rebase --match-head-commit"
+  },
+  "criterion_basis": {
+    "path": "receipts/integration/native-handoff-foundation-20261018T2330Z.json",
+    "sha256": "829aa8ca7f77ad7f54f3bdf99466f13d9dce2d97355797c67f6203714323c945",
+    "source_hashes_reverified": true,
+    "independent_criterion_review": "audit_product",
+    "independent_code_and_receipt_reviews": [
+      "audit_runtime",
+      "audit_evidence"
+    ]
+  },
+  "parent_acceptance": {
+    "P00": "accepted engineering foundation scope",
+    "P01": "accepted engineering foundation scope"
+  },
+  "other_packet_acceptance": false,
+  "domain_acceptance_authority": false,
+  "general_native_execution_qualified": false,
+  "successful_linux_executor_to_candidate_handoff_proven": false,
+  "limitation": "No production controller/provider/model-budget/source/check/Store chain qualification. Main CI on this revision was still queued at last observation; no success is attributed to it."
+}

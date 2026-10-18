@@ -1008,3 +1008,42 @@ owners have exact findings and disjoint scopes. PR69's owner has the minimal
 UI/CSS accessibility repair scope and must pass real axe/browser/native-backend
 checks. Neither green component CI nor Screen presence completes the other
 thirty parent packets.
+
+## Receiving-main foundation acceptance — 2026-10-18T23:40Z
+
+PR79 merged by matched-head rebase after neverhumanbot approved exact
+`b8a4fb21c0647c7830116073ad44bfe07012c4bb`; receiving main is
+`ebc5a8dc081185d2824f653fc3924147d66d11ed`. All source/artifact hashes in the
+handoff/foundation receipt were independently checked. The clean receiving
+source then passed the full workspace: 1,061 tests, zero failures and four
+intentional ignored helpers across 132 suite results. Log SHA-256:
+`739f5a6d631f52baa4b683cd49d0a72a63a832768b35e7f77511cf56b373e31a`.
+The [receiving-main receipt](../../../receipts/integration/native-main-ebc5a8d-20261018T2340Z.json)
+keeps that actual run distinct from the prior base's CI. CI for the new main was
+still queued at its last observation; no success is invented.
+
+Root recorded engineering acceptance for P00 and P01 against their complete
+foundation criteria, with independent criterion, code and receipt reviews.
+The owned rollout was updated atomically with a source-hash compare, original
+bytes archived, both packet-specific acceptance receipts hashed, and every
+other packet preserved exactly. Archive:
+`admiralty-v2-build/receipts/rollout-corrections/20261018T2340Z/`.
+Before SHA-256: `ea07efad8d6def60c1905da7a489f08708d374252875f8ec2f63ddef9bc72f21`;
+after: `cdfbd0af46fdf938976a6a0f6f73f5b63e5422ae2cdfd33541c2e4f9a7ca4b54`.
+Acceptance receipts are in `receipts/foundation-acceptance/20261018T2340Z/`
+inside the owned build area: P00 hash
+`4f878b9f3a03bd2fe8af29c24ad6728724242760fcc5d343bcd9cc27671cdffc`;
+P01 hash `d252f0fe021ee65dfcd5b2ac4adcc9b529bc8360f042fcd5711b9755a4272f81`.
+These are engineering rollout records, not domain task acceptance grants.
+
+Thirty parent packets remain open. Fresh criterion review of P02–P08 identifies
+specific unfinished requirements: public/WO1 contract coverage; observation and
+artifact availability transactions; durable subscriptions/questions/delivery
+states; four missing capsule compilers and persisted render baselines; actual
+control-service restart through the independent session host; and a real
+qualified provider tuple/task receipt. Existing passing components do not erase
+these requirements. Three disjoint local agents now implement observed-start
+writer composition, deterministic role capsules and existing-type public schema
+exports. Grok's three repair lanes keep their original exclusive scopes. The
+Commodore remains the sole deployment writer; native general execution stays
+explicitly unqualified until the complete actual chain passes.
