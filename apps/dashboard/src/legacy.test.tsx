@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { freshness, getLegacy, parseLegacy, projectDetails, hierarchyCaptains, safeHref, watchLegacy } from './legacy';
-import { LegacyFleetView } from './ui/LegacyDetailed';
+import { LegacyFleetView, ProjectDetail } from './ui/LegacyDetailed';
 
 const snapshot = () => parseLegacy({ generated_utc: '2026-10-18T12:00:00Z', host: 'arbitrary-node', order: ['alpha', 'beta', 'gamma', 'delta'],
   projects: Object.fromEntries(['alpha', 'beta', 'gamma', 'delta'].map(id => [id, { name: `Project ${id}`, total: 10,
@@ -122,6 +122,69 @@ describe('detailed project source adapters', () => {
     const html = renderToStaticMarkup(<LegacyFleetView snapshot={source} />);
     expect(html).not.toContain('<img'); expect(html).toContain('&lt;img'); expect(html).not.toContain('href="javascript:');
     expect(safeHref('https://user:secret@example.com')).toBeUndefined();
+  });
+});
+
+describe('recorded rollout evidence and compact warnings', () => {
+  const provenance = 'Integration provenance missing; displayed as verification recorded.';
+  function rolloutWith32Packets() {
+    const source = snapshot();
+    source.rollout = { ...source.rollout as object, total: 32, updated_utc: '2026-10-18T21:24:00Z',
+      counts: { verified: 32, integrated: 0 }, freshness: { state: 'stale' },
+      packets: Array.from({ length: 32 }, (_, i) => ({ id: `P${String(i).padStart(2, '0')}`, title: `Packet ${i}`, status: 'verified', warnings: [provenance] })) };
+    return source;
+  }
+  it('groups 32 provenance warnings once while retaining every affected packet and stale source time', () => {
+    const project = projectDetails(rolloutWith32Packets()).at(-1)!;
+    const evidence = project.alerts.filter(alert => alert.kind === 'evidence');
+    expect(evidence).toHaveLength(1); expect(evidence[0].count).toBe(32);
+    expect(evidence[0].taskIds).toEqual(Array.from({ length: 32 }, (_, i) => `P${String(i).padStart(2, '0')}`));
+    expect(evidence[0].sourceMessage).toBe(provenance);
+    expect(project.observed).toBe('2026-10-18T21:24:00Z');
+    expect(project.stages).toEqual({ verified: 32, integrated: 0 }); expect(project.stages.done).toBeUndefined();
+    const html = renderToStaticMarkup(<ProjectDetail project={project} />);
+    expect((html.match(/class="legacy-alert legacy-alert-evidence"/g) ?? []).length).toBe(1);
+    expect(html).toContain('32 packets'); expect(html).toContain('Affected packets and source evidence (32 records)');
+    expect(html).toContain('P31'); expect(html).toContain(provenance);
+    expect(html).toContain('Rollout evidence is stale'); expect(html).toContain('2026-10-18T21:24:00Z');
+  });
+  it('preserves separate project and rollout timestamps when their identities merge', () => {
+    const source = rolloutWith32Packets();
+    source.rollout = { ...source.rollout as object, project: { id: 'alpha', name: 'Admiralty' } };
+    const projects = projectDetails(source), project = projects.find(value => value.id === 'alpha')!;
+    expect(projects).toHaveLength(4);
+    expect(project.observed).toBe(source.generated_utc);
+    expect(project.stages).toEqual({ done: 1, in_pr: 4, in_progress: 2, blocked: 3 });
+    expect(project.sections.find(section => section.title === 'Manifest provenance')?.value).toMatchObject({ updated_utc: '2026-10-18T21:24:00Z', freshness: { state: 'stale' } });
+    expect(project.alerts.find(alert => alert.kind === 'evidence')).toMatchObject({ count: 32, taskIds: expect.arrayContaining(['P00', 'P31']) });
+    expect(project.alerts.some(alert => alert.message === 'Independent audit required')).toBe(true);
+    expect(project.alerts.some(alert => alert.kind === 'warning' && alert.message.includes('stale'))).toBe(true);
+  });
+  it('retains distinct failures and counts repeated failures without mixing them with missing integration evidence', () => {
+    const source = rolloutWith32Packets();
+    const rollout = source.rollout as { error?: string; packets: Array<{ id: string; warnings: string[] }> };
+    rollout.error = 'Manifest could not fetch review evidence';
+    rollout.packets[3].warnings.push('Rust checks failed: target mismatch');
+    rollout.packets[4].warnings.push('Rust checks failed: target mismatch');
+    rollout.packets[5].warnings.push('React assertion failed');
+    const project = projectDetails(source).at(-1)!;
+    expect(project.alerts).toHaveLength(5);
+    expect(project.alerts.find(alert => alert.message === 'Rust checks failed: target mismatch')).toMatchObject({ count: 2, taskIds: ['P03', 'P04'], kind: 'error' });
+    expect(project.alerts.find(alert => alert.message === 'React assertion failed')).toMatchObject({ count: 1, taskIds: ['P05'], kind: 'error' });
+    const html = renderToStaticMarkup(<ProjectDetail project={project} />);
+    for (const message of ['Rust checks failed: target mismatch', 'React assertion failed', 'Manifest could not fetch review evidence']) expect(html).toContain(message);
+    expect((html.match(/class="legacy-alert legacy-alert-error"/g) ?? []).length).toBe(3);
+  });
+  it('presents recorded component checks in blue evidence styling, separately from green accepted completion', () => {
+    const project = projectDetails(rolloutWith32Packets()).at(-1)!;
+    const html = renderToStaticMarkup(<ProjectDetail project={project} />);
+    expect(html).toContain('stage-evidence-recorded'); expect(html).not.toContain('stage-verified'); expect(html).not.toContain('stage-done');
+    expect(html).toContain('checks recorded'); expect(html).toContain('0</b> integration recorded');
+    expect(html).toContain('Recorded checks describe component evidence. Integration and accepted completion require separate proof.');
+    expect(html).not.toContain('32 done');
+    const original = projectDetails(snapshot())[0];
+    const originalHtml = renderToStaticMarkup(<ProjectDetail project={original} />);
+    expect(originalHtml).toContain('stage-done'); expect(originalHtml).toContain('accepted on main');
   });
 });
 
