@@ -578,3 +578,27 @@ substitute a hosted success or configured exact-head review. Evidence:
 All full parent acceptance gates remain separate; P00's prior technical artifact
 verification is retained. Next ready implementation is the authenticated bounded
 durable coordination command/delivery seam, after manager ownership reconciliation.
+
+## Work-order intake and delivery plan amendment — 18 October 2026
+
+Reviewed the supplied “Work Order → ToDo → Work Tracking” specification against
+source `c0ebc0935657c21adb254ff57c777c701ff10498`, the existing master/packet plan
+and the preceding pinned private todoq study. The attachment is descriptive
+material, not authority to operate its named installation or queues. No source
+queue, task body or private credential is published by this amendment.
+
+[WORK_ORDER_REVIEW.md](WORK_ORDER_REVIEW.md) records the value-add decisions,
+concrete current read/edit paths, six ordered subpackets, frozen interface and
+write boundaries, negative cases, commands, receipts and activation limits.
+MASTER_PLAN and P02/P13/P14/P19/P25/P29/P31 now explicitly require request origin
+and rationale, safe multi-paragraph intake, bounded all-state duplicate discovery,
+configurable timezone-aware scheduling, inert todoq observation and separate
+merge/install/running/release evidence with a Needs attention view. The initial
+master-plan header is corrected to implementation in progress; its old
+“unstarted” statement was stale.
+
+WO1–WO6 are planned refinements, not completed implementations. The existing
+P00–P31 identities and acceptance states are retained. Immediate implementation
+priority remains completing bounded pending communication and one durable task
+attempt; intake preview/contracts can proceed in disjoint scope after interface
+freeze. CI capacity and runner repair continue independently of implementation.

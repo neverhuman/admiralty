@@ -4,6 +4,8 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) first. Root: `/Users/bentaylor/Documents/C
 
 ## Execution contract
 
+The [18 October work-order review](WORK_ORDER_REVIEW.md) refines existing packets; it creates no new P00–P31 parent and closes none. Its scoped subpackets use current source paths, unlike some initial target paths below. Read it before changing intake, scheduling or delivery projections. Original private queue contents remain outside Git.
+
 Before claiming a packet, read its dependencies' integrated receipts and current local instructions, obtain the actual base SHA and verify a clean owned worktree. Receive only this packet, relevant plan sections and pinned interfaces. Do not load all source proposals into a worker's context.
 
 Each packet below supplies ordered steps, write scope, read-first references and acceptance. Unless named otherwise, workers must not edit root manifests, lockfiles, shared `mod.rs`, migrations, protocol/generated contracts or CI. Request those edits from the integration owner with exact required content. Target files may be created only within the packet's scope. Do not edit production runtime or invoke live providers/forge effects to make a test pass.
@@ -55,6 +57,8 @@ Every packet outputs an implementation commit/candidate and `receipts/<packet>/<
 2. Implement pure `reduce(state,event,time)` with explicit recorded randomness; define permitted transitions and immutable revision rules. Terminal/provider output cannot directly emit trusted acceptance.
 3. Generate one public JSON Schema/TS/runtime-validation pipeline. Encode large counters as precision-safe values; required unknown semantics fail negotiation.
 4. Add config precedence and `effective_policy()` with provenance. Node/project/provider/role identities are data; private restrictions cannot be overridden by public defaults.
+
+**Work-order amendment:** freeze versioned request/provenance/task bindings, scheduling profiles and dimensional delivery observations before dependent lanes write them; retain closed-v1 compatibility and explicit attribution trust. See WORK_ORDER_REVIEW, WO1.
 
 **Validate:** `rtk cargo test -p admiralty-core contracts`; `rtk cargo run -p admiralty-cli -- contracts check`; schema round-trip/unknown-required-field/large-integer fixtures. **Pass:** deterministic reducer hash, no production host constants, consumers agree on one versioned contract.
 
@@ -222,6 +226,8 @@ Every packet outputs an implementation commit/candidate and `receipts/<packet>/<
 3. Implement packet lint rules from MASTER_PLAN §8.1 and source/sibling-key suggestions without claiming static completeness.
 4. Build import diff/ambiguity resolution, searchable task table, optional DAG, revisions and blocker categories. Compatibility status exports are read-only views.
 
+**Work-order amendment:** implement bounded request preview with explicit record boundaries, one outcome per proposed task, source-span/provenance preservation, all-state duplicate candidates and atomic replay-safe record. Add inert, read-only todoq family import with exact repo/ref/commit/blob identity and unresolved-scope diagnostics. No paragraph splitting, imported command execution or source-queue mutation. See WORK_ORDER_REVIEW, WO1–WO3 and WO6.
+
 **Validate:** `rtk cargo test -p admiralty-testkit --test plan_import`; Playwright `workplan-import.spec.ts`. **Pass:** repeated import is idempotent, checkboxes/legacy PASS cannot become trusted acceptance, ambiguous scope is reviewable before admission.
 
 ### P14 — Atomic admission, fairness, cheap-capable routing and recovery
@@ -236,6 +242,8 @@ Every packet outputs an implementation commit/candidate and `receipts/<packet>/<
 2. Implement weighted project fairness/aging, critical-path ordering, independent inference/compute permits and conservative bootstrap WIP.
 3. Implement finishing reserves and project-scoped finish mode with hysteresis/expiring overrides; no default new-lane fanout behind a red train.
 4. Implement qualified routing and failure-specific recovery; record eligible alternatives and actual observed execution. One bounded new-hypothesis repair is a default, not endless cheap retries.
+
+**Work-order amendment:** add configured immediate/scheduled eligibility, timezone/DST-safe shift identity and explicit infrastructure-wait reasons. Immediate priority cannot bypass admission guards. Worker environment/toolchain qualification must not depend on an interactive shell. See WORK_ORDER_REVIEW, WO4.
 
 **Validate:** `rtk cargo test -p admiralty-testkit --test scheduler_admission`. **Pass:** racing admissions cannot overspend/double-claim; unknown process holds ownership; env/scope failure does not blindly escalate; project starvation and blocked-integration fixtures pass.
 
@@ -313,6 +321,8 @@ Every packet outputs an implementation commit/candidate and `receipts/<packet>/<
 2. Isolate upstream write credentials from workers/verifiers. Use durable intents and one unresolved effect slot per target.
 3. Reconcile timeout after possible remote success; delayed permits/head/base changes cannot reopen a competing mutation slot.
 4. Keep local proposals/candidates usable without remote credentials. Live qualification uses an explicitly configured disposable repository, not existing owner-only PRs.
+
+**Work-order amendment:** preserve per-repository landed/unlanded/unknown outcomes and protected candidate rescue references. Tracking trailers are search/provenance hints; acceptance still requires exact candidate/base/policy-bound evidence. Merge does not issue a release receipt. See WORK_ORDER_REVIEW, WO5.
 
 **Validate:** `rtk cargo test -p admiralty-testkit --test publication_gate`. **Pass:** wrong/dismissed reviewer, new head, pending check, stale executor and ambiguous merge produce no unauthorized/duplicate effect. **Artifact:** exact-head policy and reconciliation receipts.
 
@@ -401,6 +411,8 @@ Every packet outputs an implementation commit/candidate and `receipts/<packet>/<
 3. Implement quiesce/drain/backup/fence/handoff/reconcile/resume with independently supervised sessions; test actual service restarts and rollback.
 4. Restore artifact closure and actual watermark under a fresh external recovery generation; conclusively fence old credential-bearing executor before effects resume.
 
+**Work-order amendment:** bind source merge, built package, installed bundle and actually running session versions separately. Drain/reload idle slots without killing active independent sessions. Expose incompatible/pending activation and rollback evidence rather than inferring a live update from a merged driver change. See WORK_ORDER_REVIEW, WO5.
+
 **Validate:** `rtk cargo test -p admiralty-testkit --test upgrade_continuity`; `... --test disaster_restore`. **Pass:** long structured/PTY fixture jobs survive supported ordinary upgrades; missing blob, old publisher or incompatible matrix blocks activation/effects honestly.
 
 ## Complete product and release
@@ -460,6 +472,8 @@ Every packet outputs an implementation commit/candidate and `receipts/<packet>/<
 2. Add consistent durable-action/job states and command palette registrations through integration-owned app wiring. Preserve authorized one-step reversible actions.
 3. Complete keyboard/screen-reader/contrast/reduced-motion checks, responsive layouts, large tables and error/empty/offline flows. Graphs remain optional views.
 
+**Work-order amendment:** add Needs attention with actionable reason/owner/age/freshness and delivery drill-down through independent check/review/merge/install/release observations. Missing tools, resource pressure, stale leases and missing decisions remain distinct. Preserve ordinary project tabs, dense live data, colorful model badges and existing temporal plots. See WORK_ORDER_REVIEW, WO6.
+
 **Validate:** frontend checks; Playwright integration/quality/assets/settings specs; automated accessibility plus manual keyboard checks on named browsers. **Pass:** user can find blocker/evidence and resolve an authorized action without reading terminals.
 
 ### P30 — Distribution, brand, documentation and contributor path
@@ -489,6 +503,8 @@ Every packet outputs an implementation commit/candidate and `receipts/<packet>/<
 2. Run paired/frozen context-fidelity comparisons and a prospective complete-cost coordination trial. Target ≥90% task-level token consumption, ≤10% coordination initially/5% stretch and ≥70% less coordination context; retain inconclusive/negative results and coverage.
 3. Execute staged migration: inventory/backup, read-only shadow on separate port/data root, observed sessions, new-task canary, one project at a time, arbitrary enrolled nodes, then familiar UI endpoint. Disable exactly corresponding legacy mutation scopes before takeover.
 4. Rehearse rollback and restore; reconcile unresolved effects and active bundle pins. Produce final fleet handoff with identities, versions, roots, policies, service units, endpoint, backup watermark and limitations.
+
+**Work-order amendment:** include the request-to-delivery qualification matrix in WORK_ORDER_REVIEW §6: multi-paragraph intake, historical duplicates, lost record reply, timezone transition, failed setup, resource pressure, changed-base checks, partial multi-repo landing and merged-but-not-running source. Documentation or importer tests do not qualify the execution/release loop.
 
 **Validate:** all MASTER_PLAN §13 commands and release evidence bundle. **Pass:** full completion contract, all core capabilities evidenced, no protected live job interrupted, no unowned scope adopted. Economic target misses prevent a savings claim; invariant misses block affected rollout.
 

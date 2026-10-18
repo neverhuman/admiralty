@@ -3,7 +3,7 @@
 **Date:** 18 October 2026  
 **Planning baseline:** `neverhuman/admiralty` at `1e8ed17eff27ed3ab80dc6860fc8eda301406aee`  
 **Target:** Rust control plane and CLI; SQLite; Vite, TypeScript and React dashboard  
-**Status:** Final implementation plan. Work packets are unstarted. Existing fleet remains operational.
+**Status:** Implementation in progress; current source, checks and remaining gates are recorded in [EXECUTION.md](EXECUTION.md). Existing fleet remains operational. The 18 October work-order review adds the requirements in [WORK_ORDER_REVIEW.md](WORK_ORDER_REVIEW.md); it does not mark them implemented.
 
 Build on Admiralty's working dashboard, project knowledge and operational rules. Replace expensive conversational coordination with a durable coordination system. Most inference should solve tasks; captains should spend little context deciding what needs judgment, and the super_captain should handle cross-project exceptions. Preserve detailed evidence outside model context and retrieve only what a decision needs.
 
@@ -312,7 +312,11 @@ Use stable `FleetId`, `NodeId`, `ProjectId`, `RootId`, `PlanRevisionId`, `TaskId
 
 `TaskContract` contains objective, non-goals, immutable criteria, owned/forbidden paths, read-first references, dependency/interface revisions, base commit, environment/runner requirements, budget, deadline, responsible role and required delivery stage. Commands are argv plus cwd, environment allowlist and timeout, not interpolated shell strings. An explicitly necessary shell command declares its interpreter and trust boundary.
 
+Retain the originating request as an immutable, bounded `WorkOrderRevision`, with rationale, source artifact/digest, requester attribution and its trust level, capture identity/time, requested timing and explicit one-to-many links to task contract revisions. The request is evidence of intent, not a grant of execution, merge or release authority. Materialize essential constraints in the worker capsule; resolving the original chat must not be a prerequisite for doing the task. Version new public contracts deliberately rather than adding fields silently to the current closed v1 schema. See WORK_ORDER_REVIEW §3.
+
 Keep scheduling (`blocked/ready/claimed/running/awaiting_decision/closed`), attempt outcome (`unknown/succeeded/failed/cancelled`), delivery (`candidate/verified/queued/in_pr/on_main/accepted/reopened`) and observation freshness separate. The UI derives meaningful headline states while exposing the dimensions. “Passed in a lane” is not “accepted on main.”
+
+Preserve check and review observations independently, plus per-repository merge outcomes and per-target package/staging/install/running/release receipts. Required delivery stage is a task contract choice; a source-only task may complete before deployment, while a release task requires its configured release evidence. Never promote an imported `done`, a tracking trailer, merged PR or available package into deployed/released status. Reopening supersedes current selection without deleting historical receipts.
 
 ### 6.2 Store and migrations
 
@@ -402,6 +406,8 @@ Reserve agent conversation slots separately from build/test CPU, memory, disk/in
 
 Support typed JSON/TOML contracts plus guided Markdown import. The importer previews detected task IDs, dependencies, criteria, ownership, ambiguous rows and source locations. It cannot infer acceptance from a checkbox alone. Preserve original IDs and provenance; changing the canonical contract creates a revision. Export readable Markdown/status views for existing readers.
 
+Add a simple request → preview → explicit record boundary ahead of plan registration. A multi-paragraph request remains one work order unless the caller supplies explicit item boundaries; suggested independent outcomes are previewed with their source spans before recording. Search duplicate candidates across all task states within authorized scope, including completed/reopened work. Exact command/source replay is idempotent; similarity is advisory and cannot silently discard a request. Registration, execution admission and external publication remain separate operations. A read-only todoq family adapter may import pinned source observations without changing its queues or executing imported setup/check text. Detailed worker packets and failure cases are in WORK_ORDER_REVIEW.
+
 Plan validation checks cycles, duplicate IDs, inaccessible references, unsatisfied interfaces, conflicting ownership, missing criteria, impossible budgets and required tools. Distinguish a dependency blocker from a decision blocker and an infrastructure wait. Replan only affected subgraphs. Cross-project dependencies name explicit interface/evidence contracts and visibility grants.
 
 Add a packet linter before any model launch: command/check existence; criterion fingerprint; owned-path closure; required deliverable type; known affected-test closure; pinned interface availability; context estimate; budget/capability; conflict claims; forbidden paths; unresolved questions. Use import/registration graphs and sibling-key scans to suggest missing scope, but unknown static analysis cannot prove closure. Bug-fix tasks can require a base-failing/result-passing fixture; refactors, documentation and new capabilities use appropriate explicit criteria rather than a universal red-to-green requirement. Expensive collect/compile preflight runs in a bounded tool job and reuses qualified results, not in the admission transaction. Lint cannot guarantee a specification has no semantic defects.
@@ -409,6 +415,8 @@ Add a packet linter before any model launch: command/check existence; criterion 
 ### 8.2 Scheduling and routing
 
 Use weighted deficit fairness across projects, aging against starvation and critical-path priority within a project. Enforce project/account/node caps and integration backlog limits. Placement considers qualification, data locality, warm environment, capacity and custody. Role hierarchy is not a requirement to ask a captain before every ready-task dispatch.
+
+Scheduling profiles may declare immediate or scheduled work, an IANA timezone, admission windows, holidays/override policy and optional shift grouping. Keep priority distinct from eligibility and authority. Do not hardcode night mode, a timezone, a branch prefix or product-family names from an imported installation. Persist the resolved UTC window and local shift identity with the policy/tzdb version; test midnight, daylight-saving gaps/folds and a window crossed during restart. An immediate request never bypasses a dependency, resource permit, budget or approval rule.
 
 Reserve finishing capacity explicitly: initial configurable pools may allocate 20% of build/test capacity to verification/integration and 10% to repair, subject to actual resource constraints. Use measured accepted throughput and target lead time to tune WIP with minimum/maximum bounds and hysteresis; bootstrap conservatively when throughput is unknown. Enter project-scoped finish mode when configured red-train age or zero-acceptance/WIP thresholds are exceeded: stop new feature lanes, prioritize culprit repair, verification and conflict resolution, and keep other projects moving. Initial example triggers are 20 minutes red or 60 minutes without acceptance above minimum WIP; tune from the deployed workload. A typed expiring override is visible and costed.
 
@@ -478,6 +486,8 @@ Default landing page answers: what changed, what blocks accepted work, what deci
 | Quality/assets | Exact-tree findings, scope-specific score history, owner cleanup debt, preview and disposition receipts |
 | Incidents/improvement | Excursions, reproduction bundles, proposals, prompt versions, trials, promotion/rejection/rollback |
 | Fleet/settings | Enroll/drain nodes, capacity/policies, provider qualification, updates, backup/restore and access |
+
+Provide a saved **Needs attention** view across these pages: reason, responsible actor/role, age, freshness, next authorized action and bounded evidence links. Separate missing specification, decision, review, infrastructure pressure and uncertain effect outcomes. Sort actionable exceptions rather than treating every claimed task as active or asking the owner to reapprove routine work. A delivery drill-down shows request → task/attempt → candidate/check/review → per-repo merge → per-target installed/running/release observations, retaining unknown and stale states. Keep Admiralty an ordinary project tab and preserve the dense real-data console, model colors and temporal plots.
 
 ### 10.2 Interaction and visual system
 
