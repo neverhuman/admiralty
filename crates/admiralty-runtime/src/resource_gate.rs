@@ -194,6 +194,73 @@ pub enum ResourceGateError {
     #[error("resource gate lock was poisoned")]
     Poisoned,
 }
+
+/// Bounded diagnostic labels, never environment/argv values, paths, or raw
+/// backend error text. Diagnostics confer no launch or closure authority.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+pub struct ObservationFailure {
+    pub stage: &'static str,
+    pub kind: &'static str,
+    pub io_kind: Option<&'static str>,
+}
+
+#[derive(Clone, Debug, Default, serde::Serialize)]
+pub struct ObservationDiagnostics {
+    pub attempts: u32,
+    pub first_failure: Option<ObservationFailure>,
+    pub first_significant_failure: Option<ObservationFailure>,
+    pub last_failure: Option<ObservationFailure>,
+}
+
+impl ObservationDiagnostics {
+    fn record(&mut self, stage: &'static str, error: Option<&ResourceGateError>) {
+        self.attempts = self.attempts.saturating_add(1);
+        let Some(error) = error else { return };
+        let kind = match error {
+            ResourceGateError::UnknownOutcome => "unknown_outcome",
+            ResourceGateError::EnforcementMismatch(_) => "enforcement_mismatch",
+            ResourceGateError::Io(_) => "io",
+            ResourceGateError::CpuScope => "cpu_scope",
+            ResourceGateError::IdentityMismatch => "identity_mismatch",
+            ResourceGateError::InvalidEnvironment => "invalid_environment",
+            ResourceGateError::UnsupportedBackend(_) => "unsupported_backend",
+            ResourceGateError::Expired => "expired",
+            ResourceGateError::PermitUnavailable => "permit_unavailable",
+            ResourceGateError::CapacityUnavailable => "capacity_unavailable",
+            ResourceGateError::Session(_) => "session",
+            ResourceGateError::Poisoned => "poisoned",
+        };
+        let io_kind = match error {
+            ResourceGateError::Io(error) => Some(match error.kind() {
+                io::ErrorKind::NotFound => "not_found",
+                io::ErrorKind::PermissionDenied => "permission_denied",
+                io::ErrorKind::InvalidData => "invalid_data",
+                io::ErrorKind::TimedOut => "timed_out",
+                _ => "other",
+            }),
+            _ => None,
+        };
+        let failure = ObservationFailure {
+            stage,
+            kind,
+            io_kind,
+        };
+        self.first_failure.get_or_insert_with(|| failure.clone());
+        if !matches!(error, ResourceGateError::UnknownOutcome)
+            || matches!(
+                stage,
+                "unit_identity"
+                    | "unit_slice"
+                    | "process_start_recheck"
+                    | "systemd_identity_recheck"
+            )
+        {
+            self.first_significant_failure
+                .get_or_insert_with(|| failure.clone());
+        }
+        self.last_failure = Some(failure);
+    }
+}
 #[derive(Default)]
 struct GateState {
     active_by_permit: BTreeMap<String, u32>,
@@ -326,6 +393,23 @@ impl std::fmt::Debug for LaunchFailure {
 }
 impl std::fmt::Display for LaunchFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(handle) = &self.recovery {
+            let diagnostics = handle.observation_diagnostics();
+            if let Some(failure) = diagnostics
+                .first_significant_failure
+                .as_ref()
+                .or(diagnostics.first_failure.as_ref())
+            {
+                return write!(
+                    f,
+                    "resource observation failed: stage={} kind={} io_kind={} attempts={}",
+                    failure.stage,
+                    failure.kind,
+                    failure.io_kind.unwrap_or("none"),
+                    diagnostics.attempts,
+                );
+            }
+        }
         self.error.fmt(f)
     }
 }
@@ -375,6 +459,7 @@ impl AdmittedLaunch {
             original: self.spec,
             environment: self.environment,
             observation: None,
+            observation_diagnostics: ObservationDiagnostics::default(),
             slot: self.slot.take(),
         };
         // Set before calling SessionHost: it can fail after spawning the client.
@@ -395,6 +480,7 @@ impl AdmittedLaunch {
                 &handle.claims,
                 &handle.original,
                 &handle.environment,
+                &mut handle.observation_diagnostics,
             ) {
                 Ok(observation) => {
                     handle.recovery.invocation_id = Some(observation.invocation_id.clone());
@@ -484,9 +570,13 @@ pub struct RunningAdmission {
     original: LaunchSpec,
     environment: QualifiedEnvironment,
     observation: Option<EnforcementObservation>,
+    observation_diagnostics: ObservationDiagnostics,
     slot: Option<CapacitySlot>,
 }
 impl RunningAdmission {
+    pub fn observation_diagnostics(&self) -> &ObservationDiagnostics {
+        &self.observation_diagnostics
+    }
     /// A proof is produced only from this handle's real, owned Linux service.
     /// Unknown/missing observations and failed probes cannot mint closure.
     #[cfg(target_os = "linux")]
@@ -532,6 +622,7 @@ impl RunningAdmission {
             &self.claims,
             &self.original,
             &self.environment,
+            &mut self.observation_diagnostics,
         )?;
         if self
             .recovery
@@ -579,7 +670,7 @@ impl RunningAdmission {
             Ok(ref properties) => {
                 if field(properties, "InvocationID")? != observation.invocation_id
                     || !matches!(field(properties, "ActiveState")?, "inactive" | "failed")
-                    || field(properties, "Job")? != "0"
+                    || !no_pending_job(properties)?
                 {
                     return Err(ResourceGateError::UnknownOutcome);
                 }
@@ -877,94 +968,140 @@ impl SystemdCgroupBackend {
         claims: &ResourcePermitClaims,
         spec: &LaunchSpec,
         environment: &QualifiedEnvironment,
+        diagnostics: &mut ObservationDiagnostics,
     ) -> Result<EnforcementObservation, ResourceGateError> {
-        let first = self.show(unit)?;
-        if field(&first, "Id")? != unit
-            || field(&first, "LoadState")? != "loaded"
-            || field(&first, "ActiveState")? != "active"
-            || field(&first, "Slice")? != self.config.delegated_slice
-        {
-            return Err(ResourceGateError::UnknownOutcome);
-        }
-        let invocation = field(&first, "InvocationID")?;
-        if invocation.len() != 32
-            || !invocation.bytes().all(|b| b.is_ascii_hexdigit())
-            || invocation.bytes().all(|b| b == b'0')
-        {
-            return Err(ResourceGateError::UnknownOutcome);
-        }
-        let pid = field(&first, "MainPID")?
-            .parse::<u32>()
-            .ok()
-            .filter(|p| *p > 0)
-            .ok_or(ResourceGateError::UnknownOutcome)?;
-        let proc = PathBuf::from(format!("/proc/{pid}"));
-        let start = process_start(&read_text(&proc.join("stat"))?)?;
-        let executable = fs::read_link(proc.join("exe"))?;
-        let cwd = fs::read_link(proc.join("cwd"))?;
-        let actual_argv = read_bounded(&proc.join("cmdline"), OUTPUT_LIMIT)?;
-        let actual_environment =
-            parse_environment(&read_bounded(&proc.join("environ"), OUTPUT_LIMIT)?)?;
-        if actual_environment != environment.0 {
-            return Err(ResourceGateError::EnforcementMismatch(
-                "actual worker environment differs from qualified environment",
-            ));
-        }
-        let expected_executable = fs::canonicalize(&spec.program)?;
-        if executable != expected_executable || cwd != spec.cwd || actual_argv != argv_bytes(spec)?
-        {
-            return Err(ResourceGateError::EnforcementMismatch(
-                "actual executable/cwd/argv differs from qualified launch",
-            ));
-        }
-        let group = self.service_cgroup(field(&first, "ControlGroup")?)?;
-        let membership = read_text(&proc.join("cgroup"))?;
-        let member = membership
-            .lines()
-            .find_map(|l| l.strip_prefix("0::"))
-            .ok_or(ResourceGateError::UnknownOutcome)?;
-        if canonical_cgroup(member)? != group {
-            return Err(ResourceGateError::EnforcementMismatch(
-                "MainPID outside owned service cgroup",
-            ));
-        }
-        let cpus = parse_cpu_set(&read_text(&group.join("cpuset.cpus.effective"))?)?;
-        let memory = parse_limit(&read_text(&group.join("memory.max"))?)?;
-        let tasks = parse_limit(&read_text(&group.join("pids.max"))?)?;
-        let process_ids = parse_pids(&read_text(&group.join("cgroup.procs"))?)?;
-        if cpus != claims.cpu_set
-            || memory == 0
-            || memory > claims.memory_max_bytes
-            || tasks == 0
-            || tasks > u64::from(claims.max_tasks)
-            || !process_ids.contains(&pid)
-            || parse_limit(&read_text(&group.join("pids.current"))?)? > tasks
-        {
-            return Err(ResourceGateError::EnforcementMismatch(
-                "effective cgroup limits differ from permit",
-            ));
-        }
-        if process_start(&read_text(&proc.join("stat"))?)? != start || self.show(unit)? != first {
-            return Err(ResourceGateError::UnknownOutcome);
-        }
-        Ok(EnforcementObservation {
-            unit: unit.into(),
-            invocation_id: invocation.into(),
-            main_pid: pid,
-            process_start: start,
-            process_ids,
-            cpu_set: cpus,
-            memory_max_bytes: memory,
-            tasks_max: u32::try_from(tasks).map_err(|_| ResourceGateError::UnknownOutcome)?,
-            actual_executable: executable,
-            actual_cwd: cwd,
-            actual_argv_digest: content_digest(&actual_argv)
-                .map_err(|_| ResourceGateError::IdentityMismatch)?,
-            actual_environment_digest: content_digest(&actual_environment)
-                .map_err(|_| ResourceGateError::IdentityMismatch)?,
-            cgroup_path: group,
-        })
+        let mut stage = "systemd_initial_show";
+        let result = (|| {
+            let first = self.show(unit)?;
+            stage = "unit_identity";
+            if field(&first, "Id")? != unit {
+                return Err(ResourceGateError::UnknownOutcome);
+            }
+            stage = "unit_load_state";
+            if field(&first, "LoadState")? != "loaded" {
+                return Err(ResourceGateError::UnknownOutcome);
+            }
+            stage = "unit_active_state";
+            if field(&first, "ActiveState")? != "active" {
+                return Err(ResourceGateError::UnknownOutcome);
+            }
+            stage = "unit_slice";
+            if field(&first, "Slice")? != self.config.delegated_slice {
+                return Err(ResourceGateError::UnknownOutcome);
+            }
+            stage = "invocation_identity";
+            let invocation = field(&first, "InvocationID")?;
+            if invocation.len() != 32
+                || !invocation.bytes().all(|b| b.is_ascii_hexdigit())
+                || invocation.bytes().all(|b| b == b'0')
+            {
+                return Err(ResourceGateError::UnknownOutcome);
+            }
+            stage = "main_pid";
+            let pid = field(&first, "MainPID")?
+                .parse::<u32>()
+                .ok()
+                .filter(|p| *p > 0)
+                .ok_or(ResourceGateError::UnknownOutcome)?;
+            let proc = PathBuf::from(format!("/proc/{pid}"));
+            stage = "process_start_initial";
+            let start = process_start(&read_text(&proc.join("stat"))?)?;
+            stage = "process_executable";
+            let executable = fs::read_link(proc.join("exe"))?;
+            stage = "process_working_directory";
+            let cwd = fs::read_link(proc.join("cwd"))?;
+            stage = "process_argv";
+            let actual_argv = read_bounded(&proc.join("cmdline"), OUTPUT_LIMIT)?;
+            stage = "process_environment_read";
+            let actual_environment =
+                parse_environment(&read_bounded(&proc.join("environ"), OUTPUT_LIMIT)?)?;
+            stage = "process_environment_match";
+            if actual_environment != environment.0 {
+                return Err(ResourceGateError::EnforcementMismatch(
+                    "actual worker environment differs from qualified environment",
+                ));
+            }
+            stage = "qualified_executable";
+            let expected_executable = fs::canonicalize(&spec.program)?;
+            stage = "process_launch_match";
+            if executable != expected_executable
+                || cwd != spec.cwd
+                || actual_argv != argv_bytes(spec)?
+            {
+                return Err(ResourceGateError::EnforcementMismatch(
+                    "actual executable/cwd/argv differs from qualified launch",
+                ));
+            }
+            stage = "service_cgroup";
+            let group = self.service_cgroup(field(&first, "ControlGroup")?)?;
+            stage = "process_cgroup_membership";
+            let membership = read_text(&proc.join("cgroup"))?;
+            let member = membership
+                .lines()
+                .find_map(|l| l.strip_prefix("0::"))
+                .ok_or(ResourceGateError::UnknownOutcome)?;
+            if canonical_cgroup(member)? != group {
+                return Err(ResourceGateError::EnforcementMismatch(
+                    "MainPID outside owned service cgroup",
+                ));
+            }
+            stage = "effective_cpu_set";
+            let cpus = parse_cpu_set(&read_text(&group.join("cpuset.cpus.effective"))?)?;
+            stage = "effective_memory_limit";
+            let memory = parse_limit(&read_text(&group.join("memory.max"))?)?;
+            stage = "effective_task_limit";
+            let tasks = parse_limit(&read_text(&group.join("pids.max"))?)?;
+            stage = "cgroup_processes";
+            let process_ids = parse_pids(&read_text(&group.join("cgroup.procs"))?)?;
+            stage = "cgroup_limits_match";
+            if cpus != claims.cpu_set
+                || memory == 0
+                || memory > claims.memory_max_bytes
+                || tasks == 0
+                || tasks > u64::from(claims.max_tasks)
+                || !process_ids.contains(&pid)
+                || parse_limit(&read_text(&group.join("pids.current"))?)? > tasks
+            {
+                return Err(ResourceGateError::EnforcementMismatch(
+                    "effective cgroup limits differ from permit",
+                ));
+            }
+            stage = "process_start_recheck";
+            if process_start(&read_text(&proc.join("stat"))?)? != start {
+                return Err(ResourceGateError::UnknownOutcome);
+            }
+            stage = "systemd_identity_recheck";
+            if self.show(unit)? != first {
+                return Err(ResourceGateError::UnknownOutcome);
+            }
+            Ok(EnforcementObservation {
+                unit: unit.into(),
+                invocation_id: invocation.into(),
+                main_pid: pid,
+                process_start: start,
+                process_ids,
+                cpu_set: cpus,
+                memory_max_bytes: memory,
+                tasks_max: u32::try_from(tasks).map_err(|_| ResourceGateError::UnknownOutcome)?,
+                actual_executable: executable,
+                actual_cwd: cwd,
+                actual_argv_digest: content_digest(&actual_argv)
+                    .map_err(|_| ResourceGateError::IdentityMismatch)?,
+                actual_environment_digest: content_digest(&actual_environment)
+                    .map_err(|_| ResourceGateError::IdentityMismatch)?,
+                cgroup_path: group,
+            })
+        })();
+        diagnostics.record(stage, result.as_ref().err());
+        result
     }
+}
+
+fn no_pending_job(properties: &BTreeMap<String, String>) -> Result<bool, ResourceGateError> {
+    // systemctl renders a missing job as an explicit empty value on the
+    // qualified host; some versions render zero. Missing/malformed fields or
+    // any actual job identity remain uncertain and never prove closure.
+    Ok(matches!(field(properties, "Job")?, "" | "0"))
 }
 
 fn portable_absolute(path: &Path) -> bool {
@@ -1323,6 +1460,84 @@ fn bounded_output(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn actual_systemctl_empty_job_format_means_no_pending_job_only_when_present() {
+        let properties = parse_properties(b"Id=admiralty-native-probe.slice\nJob=\n")
+            .expect("observed systemctl property format");
+        assert!(no_pending_job(&properties).expect("explicit empty Job"));
+        for value in ["0", "7", "0 ", "[0 /]", "(0, /)"] {
+            let properties = BTreeMap::from([("Job".into(), value.into())]);
+            assert_eq!(
+                no_pending_job(&properties).expect("explicit Job property"),
+                value == "0"
+            );
+        }
+        assert!(no_pending_job(&BTreeMap::new()).is_err());
+    }
+
+    #[test]
+    fn observation_trace_retains_first_significant_error_and_never_error_contents() {
+        let mut diagnostics = ObservationDiagnostics::default();
+        diagnostics.record(
+            "systemd_initial_show",
+            Some(&ResourceGateError::UnknownOutcome),
+        );
+        diagnostics.record(
+            "process_environment_match",
+            Some(&ResourceGateError::EnforcementMismatch(
+                "private-environment-value",
+            )),
+        );
+        for _ in 0..1000 {
+            diagnostics.record(
+                "process_environment_read",
+                Some(&ResourceGateError::Io(io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    "private-token-path-and-value",
+                ))),
+            );
+        }
+        let encoded = serde_json::to_string(&diagnostics).expect("safe bounded diagnostic labels");
+        assert!(encoded.contains("permission_denied"));
+        assert!(!encoded.contains("private-environment-value"));
+        assert!(!encoded.contains("private-token-path-and-value"));
+        diagnostics.record(
+            "systemd_identity_recheck",
+            Some(&ResourceGateError::UnknownOutcome),
+        );
+        assert_eq!(diagnostics.attempts, 1003);
+        assert_eq!(
+            diagnostics
+                .first_failure
+                .as_ref()
+                .expect("first error")
+                .stage,
+            "systemd_initial_show"
+        );
+        assert_eq!(
+            diagnostics
+                .first_significant_failure
+                .as_ref()
+                .expect("significant error")
+                .stage,
+            "process_environment_match"
+        );
+        assert_eq!(
+            diagnostics
+                .last_failure
+                .as_ref()
+                .expect("latest error")
+                .stage,
+            "systemd_identity_recheck"
+        );
+        assert!(
+            serde_json::to_vec(&diagnostics)
+                .expect("bounded trace")
+                .len()
+                < 1024
+        );
+    }
     fn environment() -> QualifiedEnvironment {
         QualifiedEnvironment::new(BTreeMap::from([
             ("PATH".into(), "/usr/bin:/bin".into()),

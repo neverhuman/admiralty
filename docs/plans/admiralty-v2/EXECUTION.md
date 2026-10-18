@@ -722,3 +722,72 @@ P04, P07, P18, P21, P24, P25 and P26 remain candidate evidence only; no main mer
 Created `codex/batch-item4-round10-12` from requested `origin/main` `24937f669495043abbfdd1f10bbb40c7db950ac0`. Integrated the Round 10–12 worker audit harnesses from the 15 `origin/codex/accept-*` lanes and kept the batch linear. Two duplicate source patches were empty after earlier lane content was applied and were skipped. Exact worker refs and final workspace evidence are recorded in `/home/ubuntu/admiralty-v2-build/receipts/MAIN-ACCEPTANCE/24937f669495043abbfdd1f10bbb40c7db950ac0.json`.
 
 Final tested code head `302f3bc99d410ac519c431374b6ec7060b39c91b` passes `cargo fmt --all -- --check`, strict workspace Clippy, `pnpm contracts:check`, and the full workspace test suite (800 passed, 0 failed, 2 ignored across 85 suites; serialized test threads used while worker lanes shared the target directory). Build logs are under `/home/ubuntu/admiralty-v2-build/targets/main-acceptance/item4-24937/`. This is candidate qualification evidence; it does not change packet acceptance or claim a main merge. `origin/main` advanced to `a68643b5eb087b56325248bb0a76df418c0d9da7` during qualification; this batch remains based on the explicitly requested `24937f...` head for the scheduled window.
+
+## Native lifecycle integration and primary web switch — 2026-10-18T21:24Z
+
+I1 is merged in PR66 (reviewed head `dd419ae`, receiving main
+`f7ae3c1c86b46911051931dcbad0178ca4075d81`): explicit v2 task lifecycle,
+full-view CAS and serialized current authority checks. PR70 integrates the
+controller/outbox, bounded process adapters, actual check executor, resource
+permit boundary, protected server startup/agent scope, operator intake and
+pending cancel/revise, CLI recovery/intake/staging and terminal task UI.
+PR70 reviewed head `4b4e0e5df8d09769236c3d40cef3d794f7e95851` was approved
+by neverhumanbot and merged with exact-head rebase at 21:13:54 UTC, receiving
+main `f6f5ea57b79a1cafcf7987ff0bb8196b04b7b8d5`.
+
+The source-attributed implementation receipt is
+[4b4e0e5](../../../receipts/integration/4b4e0e5df8d09769236c3d40cef3d794f7e95851.json).
+At parent `533e9afa175a727cdb9aab2e8c02347b689ce986`, 987 Rust tests pass
+(three ignored, 129 suites), plus 93 frontend tests, production bundle,
+contract/schema, retained legacy/audit/fixture and packaging checks. The sole
+final code delta restores the default listener announcement used by the actual
+smoke harness; the 31 affected server tests, strict Clippy, formatting and
+rebuilt 15-check actual isolated binary smoke pass at final reviewed head.
+Initial failures and their log hashes remain in the receipt; these are not
+relabeled as passing runs.
+
+The user's hard-switch order supersedes the earlier staged deployment wait.
+The Commodore is the sole deployment writer. Root independently observed the
+actual running Rust binary at receiving main `f6f5ea57...`, SHA-256
+`e82361aa05ce6048bf7882b08d1276f492f3566073f1ee8d948ce9678eab49b6`,
+serving React on the primary port at 21:20:57 UTC. The alternate port uses the
+same Rust binary's HTTP 307 redirect. Health, fresh producer data and retained
+detailed HTML respond 200; unauthenticated native fleet responds 401. The
+Commodore's private receipt also records real operator submit/cancel and exact
+lost-response replay, scoped agent context, unchanged collector and backup.
+This verifies the primary web switch, not general native worker execution.
+
+Parallel ownership is explicit: Grok S1 owns command journey UI/tests, S2 owns
+browser/a11y harness/workflow and S3 owns model-selection accounting. Root owns
+backend integration, server/module and App wiring after review. The Commodore
+owns deploys. P09 owns workspace repair; strong review owns the executor's
+recovery repairs and the resource gate's bounded diagnostics. The shared fleet
+claim records these scopes; no task waits for user sign-off.
+
+Remaining native execution work is concrete. A newly configured owned Linux
+slice was exercised once under a protected, exact one-run authorization; the
+child started but the adapter could not authenticate its observation before
+exit. That consumed authorization is not retried, and resource closure remains
+unknown. Read-only diagnosis also found systemd represents no pending Job as
+an empty value; repair accepts only explicit empty/zero, retaining all identity
+and enforcement checks. Bounded diagnostics preserve the original observation
+failure. A separate deterministic computation probe will require fresh exact
+authorization and prove actual closure, checks, immutable custody, acceptance
+and replay; no successful proof is yet claimed here.
+
+Workspace candidate `9113020` failed the registered macOS compile (platform
+`st_dev` type mismatch). Independent review also found surviving detached pipe
+workers, directory inode admission undercount and SHA256 format handling gaps.
+It is preserved but not merged. Concrete executor candidate `48faff6` requires
+non-Linux denial, observed identity persistence, observation recovery, opaque
+closure handoff and per-run session lifetime repairs before registration can
+qualify execution. Grok model routing still needs authenticated cumulative
+settlement and receipt independence fixes; command UI needs live writes and
+mounting; browser tests need real pinned axe, v2 scenarios and qualified browser
+execution. These repairs proceed in disjoint scopes while receiving-main CI
+runs.
+
+Every full P00–P31 packet remains subject to its original acceptance criteria.
+Component counts, idle Screens, mocks, passing unit tests and deployment do not
+by themselves complete those packets. General native execution is explicitly
+reported false until the real admission/provider/check/recovery path is proven.
