@@ -1393,6 +1393,45 @@ def check_sc_claims(report, scs, watch):
             MA('red', proj, 'SC_IDLE_CLAIM_FALSE', f'super_captain_status.json says workers_idle=0 for {proj} but {", ".join(idle)} idle >= {IDLE_RED_MIN} min. Count idle workers from this audit, not from memory',
                KICK + '/super_captain_status.json')
 
+# ---------------- P1 GPU usage (Jepson 6:24 AM MDT Oct 18: JopeDime GPU testing on xbabe1/2/3) ----------------
+GPU_HOSTS = ('xbabe1', 'xbabe2', 'xbabe3')   # never xbabe0
+GPU_IDLE_RED_MIN = 15      # every reachable P1 GPU idle this long -> red must-act
+GPU_BUSY_UTIL_PCT = 5
+GPU_BUSY_MEM_MIB = 1024
+
+def gpu_sample(host):
+    if host == 'xbabe0': return None  # never
+    q = 'nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits'
+    args = q.split() if host == 'xbabe2' else ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', 'ubuntu@' + host, q]
+    rc, out, _ = run(args, timeout=25)
+    if rc != 0: return None
+    rows = []
+    for l in out.strip().splitlines():
+        try:
+            u, m = [int(float(x)) for x in l.split(',')[:2]]; rows.append((u, m))
+        except Exception: continue
+    return rows or None
+
+def check_gpu_idle(report, prev, newh, now, sample_fn=None):
+    sample_fn = sample_fn or gpu_sample
+    samples = {h: sample_fn(h) for h in GPU_HOSTS}
+    report['gpus'] = {h: (r and [{'util_pct': u, 'mem_mib': m} for u, m in r]) for h, r in samples.items()}
+    reached = {h: r for h, r in samples.items() if r}
+    if not reached:
+        F('amber', 'jopedime', 'GPU_UNREACHABLE', f'could not read nvidia-smi on any of {", ".join(GPU_HOSTS)}; P1 GPU usage unverified'); return
+    if any(u >= GPU_BUSY_UTIL_PCT or m >= GPU_BUSY_MEM_MIB for r in reached.values() for u, m in r):
+        return   # busy: idle streak resets (no state carried forward)
+    key = 'gpu:p1_all_idle'; since = prev.get(key, {}).get('since') or now.isoformat(timespec='seconds')
+    newh[key] = {'hash': 'idle', 'since': since}
+    age = (now - datetime.datetime.fromisoformat(since)).total_seconds() / 60
+    report['gpus_idle_min'] = round(age)
+    if age >= GPU_IDLE_RED_MIN:
+        detail = '; '.join(f'{h} ' + ','.join(f'{u}%/{m}MiB' for u, m in r) for h, r in reached.items())
+        MA('red', 'jopedime', 'P1_GPU_IDLE', f'every reachable P1 GPU ({", ".join(reached)}) has been idle (<{GPU_BUSY_UTIL_PCT}% util and <{GPU_BUSY_MEM_MIB} MiB) for {round(age)} min: {detail}. '
+           'Jepson P1 is JopeDime GPU testing on xbabe1/2/3. Must act this tick: start an S3-backed JopeDime GPU test or benchmark on at least one host now '
+           '(do not wait for a later queue item or ETA), confirm load in a fresh nvidia-smi, and record it in super_captain_status.json gpu_status. '
+           'An ETA alone does not clear this', 'nvidia-smi on ' + ', '.join(reached))
+
 def watchdog(report, scr, prev, newh, now, no_gh=False):
     scs = rj(KICK + '/super_captain_status.json') or {}
     managed = managed_screens(scs, {p: lane_screens_any_format(p) for p in CAPTAINS})
@@ -1402,6 +1441,7 @@ def watchdog(report, scr, prev, newh, now, no_gh=False):
     check_redrive_delivered(tail_text(KICK + '/super_captain_LOG.md', 300000), scr, now)
     if not no_gh: check_no_push(report, now)
     check_sc_claims(report, scs, watch)
+    if not no_gh: check_gpu_idle(report, prev, newh, now)
 
 # ---------------- main ----------------
 def main():
