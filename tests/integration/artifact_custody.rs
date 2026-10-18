@@ -223,4 +223,45 @@ fn stale_revision_cannot_acquire_a_custody_pin() {
         .query_row("SELECT count(*) FROM custody_pins", [], |row| row.get(0))
         .expect("inspect pin projection after rejected compare-and-swap");
     assert_eq!(pin_count, 0, "stale request must not create a live pin");
+    let stored_revision: i64 = connection
+        .query_row(
+            "SELECT revision FROM custody_assets WHERE asset_id=?1",
+            [&asset.asset_id],
+            |row| row.get(0),
+        )
+        .expect("inspect custody revision after rejected compare-and-swap");
+    assert_eq!(
+        stored_revision, 1,
+        "rejected stale request must not advance the asset"
+    );
+}
+
+#[test]
+fn publication_rejects_object_one_byte_over_configured_limit() {
+    let fixture = TempDir::new().expect("create disposable fixture root");
+    let artifact_root = fixture.path().join("objects");
+    fs::create_dir(&artifact_root).expect("create artifact root");
+    fs::set_permissions(&artifact_root, fs::Permissions::from_mode(0o700))
+        .expect("make artifact root owner-only");
+    let artifacts = ArtifactStore::open(&artifact_root, 1).expect("open one-byte artifact store");
+
+    let at_limit = artifacts
+        .publish_bytes(&[0xA5])
+        .expect("one byte at configured limit is accepted");
+    assert_eq!(at_limit.size_bytes, 1);
+    assert!(artifacts.publish_bytes(&[0xA5, 0x5A]).is_err());
+    assert_eq!(
+        artifacts
+            .publish_bytes(&[0xA5])
+            .expect("exact replay after rejected oversize write remains valid"),
+        at_limit,
+        "replayed publication must preserve the original content address"
+    );
+    assert_eq!(
+        fs::read_dir(&artifact_root)
+            .expect("inspect object directory after oversize rejection")
+            .count(),
+        1,
+        "oversize publication must not leave an object or temporary file"
+    );
 }

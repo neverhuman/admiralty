@@ -261,6 +261,25 @@ fn daemon_client_reconnect_keeps_child_and_output_offsets_continuous() {
     .expect("deliver one input frame after reconnect");
     assert_eq!(input["result"]["input_epoch"], "1");
 
+    let overflow_epoch = exchange(
+        &socket,
+        &json!({
+            "command":"input",
+            "run_id":"continuous",
+            "expected_epoch":"18446744073709551616",
+            "bytes":[121,10]
+        }),
+    )
+    .expect("overflowing input epoch response");
+    assert_eq!(overflow_epoch["result"]["kind"], "error");
+    assert_eq!(overflow_epoch["result"]["code"], "invalid_request");
+    assert_eq!(
+        exchange(&socket, &json!({"command":"status","run_id":"continuous"}))
+            .expect("status after rejected overflow epoch")["result"]["status"]["input_epoch"],
+        "1",
+        "overflowing epoch must not advance session input state"
+    );
+
     let continued = await_offset(&socket, "continuous", "2");
     assert_eq!(continued["result"]["status"]["pid"], initial_pid);
     assert_eq!(

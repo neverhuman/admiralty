@@ -32,6 +32,10 @@ fn registered_workspace_validation_is_scoped_read_only_and_fail_closed() {
     assert_eq!(validated.git_metadata, GitMetadata::Directory);
     assert!(validated.owns(std::path::Path::new("src/lib.rs")));
     assert!(!validated.owns(std::path::Path::new(".git/hooks/pre-commit")));
+    assert!(
+        !validated.owns(std::path::Path::new(".GIT/hooks/pre-commit")),
+        "forbidden Git metadata remains denied through case aliases"
+    );
     assert!(!validated.owns(std::path::Path::new("../sibling/secret.key")));
 
     #[cfg(unix)]
@@ -56,9 +60,9 @@ fn registered_workspace_validation_is_scoped_read_only_and_fail_closed() {
         "registry validation must not rewrite sibling/private data"
     );
     assert_eq!(
-        spec.validate().expect("repeat observation").custody,
-        Custody::RegisteredOnly,
-        "validation does not grant runner or cleanup authority"
+        spec.validate().expect("repeat observation"),
+        validated,
+        "repeated validation is deterministic and grants no new authority"
     );
 
     let mut invalid = spec;
@@ -89,5 +93,27 @@ fn reserved_device_alias_is_rejected_as_owned_scope() {
             .validate()
             .expect_err("reserved device alias must fail closed"),
         WorkspaceError::InvalidRelativePath
+    );
+}
+
+#[test]
+fn workspace_scope_path_limit_is_enforced_at_boundary() {
+    use admiralty_runtime::workspace::registry::MAX_SCOPE_PATHS;
+
+    let temp = tempfile::tempdir().expect("temporary workspace fixture");
+    let workspace = fs::canonicalize(temp.path()).expect("canonical fixture root");
+    let spec = WorkspaceSpec {
+        node_id: NodeRef::new("node-limit").expect("node ID"),
+        root_id: RootId::new("root-limit").expect("root ID"),
+        project_id: ProjectId::new("project-limit").expect("project ID"),
+        workspace,
+        owned_paths: vec![PathBuf::from("src"); MAX_SCOPE_PATHS + 1],
+        forbidden_paths: Vec::new(),
+    };
+
+    assert_eq!(
+        spec.validate()
+            .expect_err("scope larger than configured bound must fail closed"),
+        WorkspaceError::InputTooLarge
     );
 }

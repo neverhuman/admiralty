@@ -328,3 +328,64 @@ fn tampered_independent_receipt_cannot_authorize_even_a_review_proposal() {
         } if reasons.iter().any(|reason| reason == "analysis receipt does not bind evidence")
     ));
 }
+
+#[test]
+fn rollback_cannot_reference_an_unregistered_trial_bundle() {
+    let mut evidence = complete_evidence();
+    attach_analysis(
+        &mut evidence,
+        AnalysisRecommendation::RecommendIndependentReview,
+    );
+
+    assert!(
+        propose_trial_decision(&evidence, vec![digest('9')]).is_err(),
+        "rollback must identify one of the trial's immutable bundles"
+    );
+}
+
+#[test]
+fn planned_look_budget_accepts_limit_and_rejects_limit_plus_one() {
+    let mut evidence = complete_evidence();
+    evidence.trial.planned_looks = DecimalU64::new(16);
+    evidence.assignments = assign_trial(&evidence.trial, &evidence.trial.fixed_cohort, 1, 2)
+        .expect("maximum look budget remains a valid trial specification");
+    assert!(
+        validate_trial(&evidence).is_ok(),
+        "the maximum preregistered look budget is valid"
+    );
+
+    evidence.trial.planned_looks = DecimalU64::new(17);
+    assert_eq!(
+        validate_trial(&evidence)
+            .expect_err("a look budget above the contract limit must be rejected")
+            .to_string(),
+        "invalid trial input: invalid fixed cohort, revision or preregistered budget"
+    );
+}
+
+#[test]
+fn decision_proposal_is_idempotent_for_identical_evidence() {
+    let mut evidence = complete_evidence();
+    attach_analysis(
+        &mut evidence,
+        AnalysisRecommendation::RecommendIndependentReview,
+    );
+    let champion = vec![digest('a')];
+
+    let first =
+        propose_trial_decision(&evidence, champion.clone()).expect("first deterministic proposal");
+    let replay =
+        propose_trial_decision(&evidence, champion).expect("replayed deterministic proposal");
+
+    assert_eq!(
+        first, replay,
+        "replaying evidence must not alter its proposal"
+    );
+    assert!(matches!(
+        first,
+        TrialDecision::PromotableProposal {
+            promotion_authorized: false,
+            ..
+        }
+    ));
+}

@@ -173,6 +173,35 @@ fn stale_digest_cannot_authorize_mutated_admission_evidence() {
 }
 
 #[test]
+fn owner_only_publication_rejects_a_non_owner_caller() {
+    let (scope, mut snapshot, generation) = fixtures();
+    snapshot.owner_only = true;
+    snapshot.caller_is_owner = false;
+
+    blocked_with(
+        &scope,
+        &snapshot,
+        "non-owner-caller",
+        &generation,
+        PublicationBlock::OwnerOnly,
+    );
+}
+
+#[test]
+fn malformed_target_ref_is_rejected_at_admission_boundary() {
+    let (mut scope, snapshot, generation) = fixtures();
+    scope.target_ref = "refs/heads/p19..candidate".into();
+
+    blocked_with(
+        &scope,
+        &snapshot,
+        "malformed-target-ref",
+        &generation,
+        PublicationBlock::InvalidEvidence,
+    );
+}
+
+#[test]
 fn ambiguous_effect_slot_requires_matching_reconciliation_and_replays_once() {
     let (scope, snapshot, generation) = fixtures();
     let proposed = proposal(&scope, &snapshot, "intent-one", &generation);
@@ -216,5 +245,12 @@ fn ambiguous_effect_slot_requires_matching_reconciliation_and_replays_once() {
         reduce_publication_intent(Some(&completed), &completed, Some(&receipt))
             .expect("receipt replay is idempotent"),
         completed
+    );
+
+    let mut conflicting_receipt = receipt.clone();
+    conflicting_receipt.provenance_ref = "fixture:reconciliation:alternate".into();
+    assert_eq!(
+        reduce_publication_intent(Some(&completed), &completed, Some(&conflicting_receipt)),
+        Err(PublicationError::ReceiptCollision)
     );
 }

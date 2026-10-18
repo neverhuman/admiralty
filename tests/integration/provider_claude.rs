@@ -390,6 +390,22 @@ fn line_stream_event_and_metadata_limits_fail_closed() {
         parse_stream(huge.as_bytes(), None),
         Err(ClaudeError::Bounds)
     );
+    let mut source = events();
+    let mut boundary_event = json!({"type":"unknown","body":""});
+    let encoded_empty = serde_json::to_vec(&boundary_event).expect("empty boundary event");
+    let padding = MAX_EVENT_BYTES - encoded_empty.len();
+    boundary_event["body"] = json!("x".repeat(padding));
+    source.insert(1, boundary_event);
+    let boundary_stream = wire(&source);
+    assert_eq!(
+        boundary_stream
+            .split(|byte| *byte == b'\n')
+            .nth(1)
+            .unwrap()
+            .len(),
+        MAX_EVENT_BYTES
+    );
+    assert!(parse_stream(&boundary_stream, None).is_ok());
     assert_eq!(
         parse_stream(&b"{}\n".repeat(MAX_EVENTS + 1), None),
         Err(ClaudeError::Bounds)
@@ -568,4 +584,14 @@ fn lexical_launch_bounds_and_untrusted_flags_never_grant_admission() {
 fn oversized_claude_capture_is_rejected_before_parsing() {
     let oversized = vec![b' '; MAX_STREAM_BYTES + 1];
     assert_eq!(parse_stream(&oversized, None), Err(ClaudeError::Bounds));
+    assert!(ClaudeLaunch::input_frame("embedded\0nul").is_err());
+}
+
+#[test]
+fn replaying_a_complete_claude_capture_preserves_events_and_usage() {
+    let first = parse_stream(TURN, Some("fixture-session")).expect("complete fixture turn");
+    let replay = parse_stream(TURN, Some("fixture-session")).expect("replayed fixture turn");
+    assert_eq!(replay.events, first.events);
+    assert_eq!(replay.usage, first.usage);
+    assert!(!replay.trusted_acceptance());
 }

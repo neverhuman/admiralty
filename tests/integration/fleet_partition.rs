@@ -163,5 +163,45 @@ fn disconnected_continuation_with_spool_below_reserve_is_rejected() {
     assert!(!proposal.execution_granted);
     assert!(!proposal.publication_granted);
     assert!(!proposal.authority_granted);
-    assert!(proposal.rejected[0].reason.contains("spool"));
+    assert_eq!(proposal.rejected.len(), 1);
+    assert_eq!(proposal.rejected[0].reason, "spool reserve insufficient");
+}
+
+#[test]
+fn disconnected_continuation_expiring_at_decision_time_is_rejected() {
+    let request = request();
+    let mut node = offer();
+    node.controller_connected = false;
+    node.existing_active_roots = vec![ActiveRoot {
+        root: request.root.clone(),
+        ordinary: true,
+    }];
+    node.continuation_permit = Some(IsolatedPermit {
+        permit_id: "permit-expiring-now".into(),
+        root: request.root.clone(),
+        project: request.project.clone(),
+        task: request.task.clone(),
+        node_id: node.node_id.clone(),
+        authority_ref: request.authority_ref.clone(),
+        expires_at: d(10),
+        immutable_digest: request.contract_digest.clone(),
+        authority_generation: d(1),
+        reboot_id: node.boot_id.clone(),
+        remaining_budget: d(5),
+        spool_reserve: d(3),
+        minimum_spool_reserve: d(2),
+    });
+
+    let proposal =
+        propose_placement(&request, &[node.clone()], &policy(), 10).expect("safe rejection");
+    assert!(proposal.candidates.is_empty());
+    assert!(!proposal.execution_granted);
+    assert!(!proposal.publication_granted);
+    assert!(!proposal.authority_granted);
+    assert_eq!(proposal.rejected.len(), 1);
+    assert_eq!(proposal.rejected[0].reason, "continuation permit expired");
+    assert_eq!(
+        proposal,
+        propose_placement(&request, &[node], &policy(), 10).expect("deterministic replay")
+    );
 }

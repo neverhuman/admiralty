@@ -170,6 +170,69 @@ fn clock_rollback_cannot_replay_an_unexpired_enrollment_token() {
 }
 
 #[test]
+fn clock_rollback_cannot_issue_a_new_enrollment_token() {
+    let start = issued_token("clock-anchor", 30, 5);
+    let rollback = EnrollmentEvent::TokenIssued {
+        event_id: "issue-after-rollback".into(),
+        token: token("rollback-issued", 20),
+    };
+
+    assert!(matches!(
+        apply(&start, &rollback, Some(4)),
+        Err(NodeError::Invalid("clock rollback"))
+    ));
+    assert!(!start.tokens.contains_key("rollback-issued"));
+}
+
+#[test]
+fn replaying_an_event_id_at_a_different_tick_fails_closed() {
+    let start = issued_token("tick-replay", 20, 1);
+    let enrollment = EnrollmentEvent::Enrolled {
+        event_id: "enroll-tick-replay".into(),
+        token_id: "tick-replay".into(),
+        scope: scope(),
+        identity: identity("node-tick-replay", "boot-1", 1, 'c'),
+    };
+    let accepted = apply(&start, &enrollment, Some(2)).expect("initial enrollment");
+
+    assert_eq!(
+        apply(&accepted, &enrollment, Some(3)),
+        Err(NodeError::Collision)
+    );
+    assert!(
+        accepted
+            .nodes
+            .contains_key(&NodeId::new("node-tick-replay").expect("node ID fixture"))
+    );
+}
+
+#[test]
+fn token_issue_replay_is_idempotent_and_mutated_payload_collides() {
+    let event = EnrollmentEvent::TokenIssued {
+        event_id: "issue-idempotent-token".into(),
+        token: token("idempotent-token", 20),
+    };
+    let accepted = apply(&NodeRegistry::default(), &event, Some(1)).expect("token issue");
+
+    assert_eq!(
+        apply(&accepted, &event, Some(1)).expect("exact issue replay"),
+        accepted
+    );
+    let changed_payload = EnrollmentEvent::TokenIssued {
+        event_id: "issue-idempotent-token".into(),
+        token: token("idempotent-token", 21),
+    };
+    assert_eq!(
+        apply(&accepted, &changed_payload, Some(1)),
+        Err(NodeError::Collision)
+    );
+    assert_eq!(
+        accepted.tokens["idempotent-token"].expires_tick,
+        DecimalU64::new(20)
+    );
+}
+
+#[test]
 fn reboot_rotation_revocation_and_capacity_require_current_generation() {
     let start = issued_token("boot-a-token", 30, 1);
     let enrollment = EnrollmentEvent::Enrolled {

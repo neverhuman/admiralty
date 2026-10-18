@@ -169,17 +169,46 @@ fn durable_active_pin_blocks_retirement_claim_until_release() {
         },
     )
     .expect("register fixture asset");
-    custody::acquire_pin(
-        &mut connection,
-        AcquirePinRequest {
-            command_id: "acquire-1".into(),
-            binding: binding.clone(),
-            pin_id: "pin-1".into(),
-            expected_revision: "1".into(),
-            observation: observation(&binding, true, 11),
-        },
-    )
-    .expect("record active pin");
+    assert!(matches!(
+        custody::acquire_pin(
+            &mut connection,
+            AcquirePinRequest {
+                command_id: "acquire-oversized-pin".into(),
+                binding: binding.clone(),
+                pin_id: "p".repeat(custody::MAX_ID_BYTES + 1),
+                expected_revision: "1".into(),
+                observation: observation(&binding, true, 11),
+            }
+        ),
+        Err(CustodyError::Invalid("identifier bounds"))
+    ));
+
+    let acquire_request = AcquirePinRequest {
+        command_id: "acquire-1".into(),
+        binding: binding.clone(),
+        pin_id: "pin-1".into(),
+        expected_revision: "1".into(),
+        observation: observation(&binding, true, 11),
+    };
+    let acquired =
+        custody::acquire_pin(&mut connection, acquire_request.clone()).expect("record active pin");
+    let replayed = custody::acquire_pin(&mut connection, acquire_request)
+        .expect("exact replay returns recorded receipt");
+    assert_eq!(replayed, acquired);
+
+    assert!(matches!(
+        custody::release_pin(
+            &mut connection,
+            ReleasePinRequest {
+                command_id: "release-missing".into(),
+                binding: binding.clone(),
+                pin_id: "missing-pin".into(),
+                expected_revision: "2".into(),
+                observation: observation(&binding, true, 12),
+            }
+        ),
+        Err(CustodyError::InvalidPin)
+    ));
 
     assert!(matches!(
         custody::claim_retirement(

@@ -329,6 +329,15 @@ fn pending_assignment_and_ack_survive_store_restart_with_scoped_validation() {
             .projection,
         after_restart.projection
     );
+    let before_ack_replay = reopened.snapshot().expect("before durable ACK replay");
+    let ack_replay = append(&reopened, "coordinator", "inc-1", 4, correct_ack);
+    assert!(
+        ack_replay.duplicate,
+        "durable ACK replay remains idempotent after reopen"
+    );
+    let after_ack_replay = reopened.snapshot().expect("after durable ACK replay");
+    assert_eq!(after_ack_replay.cursor, before_ack_replay.cursor);
+    assert_eq!(after_ack_replay.projection, before_ack_replay.projection);
 }
 
 #[test]
@@ -816,6 +825,18 @@ fn scoped_envelope_rejects_foreign_project_before_delivery() {
     let message = assignment(&task, "foreign-project-message");
     let foreign_project = ProjectId::new("attacker-project").expect("valid fixture project");
     let worker = PrincipalId::new("worker").expect("valid fixture principal");
+    let intruder = PrincipalId::new("intruder").expect("valid adversarial principal");
 
     assert!(validate_scoped_envelope(&message, &foreign_project, Some(&worker)).is_err());
+    assert!(validate_scoped_envelope(&message, &task.project_id, Some(&intruder)).is_err());
+}
+
+#[test]
+fn mailbox_capacity_accepts_limit_and_rejects_first_value_over_it() {
+    use admiralty_core::coordination::mailbox::{BoundedMailbox, MAX_MAILBOX_ENTRIES};
+
+    let project = ProjectId::new("capacity-project").expect("valid fixture project");
+    let worker = PrincipalId::new("capacity-worker").expect("valid fixture principal");
+    assert!(BoundedMailbox::new(project.clone(), worker.clone(), MAX_MAILBOX_ENTRIES).is_ok());
+    assert!(BoundedMailbox::new(project, worker, MAX_MAILBOX_ENTRIES + 1).is_err());
 }

@@ -1,6 +1,6 @@
 use admiralty_core::excursions::{
-    EvidenceRef, ExcursionScope, IncidentEvent, ReproductionContract, ScopedIncident,
-    build_local_proposal, reduce_excursions,
+    EvidenceRef, ExcursionScope, IncidentEvent, MAX_CAUSAL_DEPTH, ReproductionContract,
+    ScopedIncident, build_local_proposal, reduce_excursions,
 };
 use admiralty_core::{ProjectId, RootId, TaskId};
 use std::collections::BTreeMap;
@@ -52,10 +52,18 @@ fn exact_replay_is_idempotent_and_correlated_failure_escalation_is_one_episode()
         &scope,
         event("escalation-1", Some("failure-1"), "escalation"),
     );
-    let correlated = reduce_excursions(&Some(first), &scope, &[escalation])
+    let correlated = reduce_excursions(&Some(first), &scope, std::slice::from_ref(&escalation))
         .expect("explicit causal parent joins escalation to failure");
     assert_eq!(correlated.episodes.len(), 1);
     assert_eq!(correlated.episodes[0].events.len(), 2);
+
+    let replayed_escalation = reduce_excursions(
+        &Some(correlated.clone()),
+        &scope,
+        std::slice::from_ref(&escalation),
+    )
+    .expect("replaying an already-recorded escalation is idempotent");
+    assert_eq!(replayed_escalation, correlated);
 }
 
 #[test]
@@ -63,6 +71,11 @@ fn independent_recurrence_remains_separate_and_foreign_or_cyclic_causes_fail() {
     let task_scope = scope("task-recurrence");
     let initial = input(&task_scope, event("failure-1", None, "failure"));
     let first = reduce_excursions(&None, &task_scope, &[initial]).expect("initial failure");
+    let changed_replay = input(&task_scope, event("failure-1", None, "recovered"));
+    let error = reduce_excursions(&Some(first.clone()), &task_scope, &[changed_replay])
+        .expect_err("an event ID cannot be replayed with changed bytes");
+    assert_eq!(error.0, "event ID reused with different bytes");
+
     let recurrence = input(&task_scope, event("failure-2", None, "failure"));
     let recurrent = reduce_excursions(&Some(first), &task_scope, &[recurrence])
         .expect("independent recurrence is retained");
@@ -90,6 +103,34 @@ fn independent_recurrence_remains_separate_and_foreign_or_cyclic_causes_fail() {
         event("foreign-1", None, "failure"),
     );
     assert!(reduce_excursions(&None, &task_scope, &[foreign_scope]).is_err());
+}
+
+#[test]
+fn causal_depth_accepts_the_limit_and_rejects_one_more_link() {
+    let scope = scope("task-causal-depth");
+    let mut chain = Vec::new();
+    for depth in 0..=MAX_CAUSAL_DEPTH {
+        let id = format!("incident-{depth}");
+        let parent = (depth > 0).then(|| format!("incident-{}", depth - 1));
+        chain.push(input(&scope, event(&id, parent.as_deref(), "failure")));
+    }
+
+    let at_limit = reduce_excursions(&None, &scope, &chain)
+        .expect("a causal chain at the configured depth limit is accepted");
+    assert_eq!(at_limit.episodes.len(), 1);
+    assert_eq!(at_limit.episodes[0].events.len(), MAX_CAUSAL_DEPTH + 1);
+
+    let over_limit = input(
+        &scope,
+        event(
+            &format!("incident-{}", MAX_CAUSAL_DEPTH + 1),
+            Some(&format!("incident-{MAX_CAUSAL_DEPTH}")),
+            "failure",
+        ),
+    );
+    let error = reduce_excursions(&Some(at_limit), &scope, &[over_limit])
+        .expect_err("a causal chain beyond the configured depth is rejected");
+    assert_eq!(error.0, "causal graph depth bound exceeded");
 }
 
 #[test]

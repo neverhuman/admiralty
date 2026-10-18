@@ -164,6 +164,7 @@ fn missing_artifact_or_stale_external_fence_blocks_restore_proposal() {
             .iter()
             .any(|b| matches!(b, Blocker::MissingArtifact(_)))
     );
+    assert!(!missing.resume_proposed, "missing artifacts block resume");
     assert!(!missing.restore_authorized());
     assert!(!missing.effects_authorized());
 
@@ -232,6 +233,20 @@ fn offline_child_output_cap_fails_with_retained_bounded_diagnostic() {
         !error.contains(&"x".repeat(129)),
         "oversized suffix is omitted"
     );
+}
+
+#[test]
+fn offline_child_output_at_exact_limit_is_retained_without_bound_failure() {
+    let mut command = Command::new("python3");
+    command.args([
+        "-c",
+        "import sys; sys.stdout.write('x' * 128); sys.stdout.flush()",
+    ]);
+    let output = bounded_output(command, Duration::from_secs(5), 128)
+        .expect("output exactly at the configured bound is accepted");
+
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"x".repeat(128));
 }
 
 #[test]

@@ -2,9 +2,9 @@ use admiralty_core::{
     CheckSpec, MessageId, PrincipalId, ProjectId, RootId, TaskId, content_digest,
 };
 use admiralty_runtime::audits::{
-    AuditOutcome, AuditPolicy, AuditScope, CheckOutcome, CheckResult, DecimalU64, FindingSeverity,
-    NegativeAuditCheck, StagedAuditEvidence, StagedAuditIdentity, TreeSource,
-    evaluate_staged_audit,
+    AuditOutcome, AuditPolicy, AuditReplayReceipt, AuditScope, CheckOutcome, CheckResult,
+    DecimalU64, FindingSeverity, NegativeAuditCheck, StagedAuditEvidence, StagedAuditIdentity,
+    TreeSource, evaluate_staged_audit,
 };
 
 fn digest(ch: char) -> String {
@@ -176,4 +176,54 @@ fn negative_check_with_wrong_exit_code_requires_reproduction() {
     assert!(!proposal.acceptance_granted());
     assert!(!proposal.execution_granted());
     assert!(!proposal.publication_granted());
+
+    let mut false_pass = evidence(&policy);
+    false_pass
+        .check_results
+        .iter_mut()
+        .find(|result| result.check_id == "negative")
+        .expect("negative check result")
+        .exit_code = Some(0);
+    assert!(
+        evaluate_staged_audit(&scope(), &policy, &false_pass).is_err(),
+        "a passing result with the wrong negative-control exit code is rejected"
+    );
+}
+
+#[test]
+fn minimum_score_boundary_is_inclusive() {
+    let policy = policy();
+    let mut staged = evidence(&policy);
+    staged.score = Some(DecimalU64::new(80));
+
+    let proposal = evaluate_staged_audit(&scope(), &policy, &staged).expect("boundary evidence");
+    assert!(matches!(
+        proposal.outcome,
+        AuditOutcome::PassProposal { .. }
+    ));
+    assert!(!proposal.acceptance_granted());
+}
+
+#[test]
+fn exact_audit_replay_is_idempotent_and_changed_evidence_collides() {
+    let mut policy = policy();
+    let staged = evidence(&policy);
+    let first = evaluate_staged_audit(&scope(), &policy, &staged).expect("initial evaluation");
+
+    policy.prior_audit = Some(AuditReplayReceipt {
+        audit_id: first.audit_id.clone(),
+        evidence_digest: first.evidence_digest.clone(),
+        outcome: first.outcome.clone(),
+    });
+    let replay = evaluate_staged_audit(&scope(), &policy, &staged).expect("exact replay");
+    assert!(replay.replayed);
+    assert_eq!(replay.evidence_digest, first.evidence_digest);
+    assert_eq!(replay.outcome, first.outcome);
+
+    let mut changed = staged;
+    changed.score = Some(DecimalU64::new(89));
+    assert!(
+        evaluate_staged_audit(&scope(), &policy, &changed).is_err(),
+        "same audit ID cannot replay different evidence"
+    );
 }
