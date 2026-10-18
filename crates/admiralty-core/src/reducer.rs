@@ -147,10 +147,15 @@ pub fn reduce(state: &Projection, event: &DomainEvent) -> Result<Projection, Tra
                     if question.project_id != message.project_id
                         || question.sender != message.recipient
                         || question.recipient != message.sender
+                        || question.authority_ref != message.authority_ref
+                        || message
+                            .causation_id
+                            .as_ref()
+                            .is_some_and(|id| id != question_id)
                         || !matches!(question.payload, MessagePayload::Question { .. })
                     {
                         return Err(fail(
-                            "answer must match the question's project and participants",
+                            "answer must match the question's project, participants, authority and causation",
                         ));
                     }
                     None
@@ -163,6 +168,9 @@ pub fn reduce(state: &Projection, event: &DomainEvent) -> Result<Projection, Tra
                     .ok_or_else(|| fail("message references unknown task"))?;
                 if task.contract.project_id != message.project_id {
                     return Err(fail("cross-project message scope mismatch"));
+                }
+                if task.contract.authority_ref != message.authority_ref {
+                    return Err(fail("message authority does not match the task contract"));
                 }
                 if let MessagePayload::TaskAssigned {
                     revision,
@@ -198,4 +206,101 @@ pub fn reduce(state: &Projection, event: &DomainEvent) -> Result<Projection, Tra
         }
     }
     Ok(next)
+}
+
+#[cfg(test)]
+mod authority_tests {
+    use super::*;
+
+    fn fixture() -> (Projection, CoordinationMessage) {
+        let contract: TaskContract = serde_json::from_value(serde_json::json!({
+            "schema_version":1,"project_id":"authority-project","root_id":"authority-root",
+            "task_id":"AUTHORITY-TASK","revision":1,"title":"Bound message authority",
+            "objective":"Keep task messages inside the originating grant","non_goals":[],
+            "owned_paths":["src/messages.rs"],"forbidden_paths":[],"read_first":[],
+            "dependencies":[],"criteria":[{"id":"C1","text":"Grant cannot widen","check_ids":["unit"]}],
+            "checks":[{"id":"unit","program":"cargo","args":["test"],"cwd":".","timeout_secs":30}],
+            "authority_ref":"grant:task-candidate-only","max_attempts":1,"simulated":true
+        })).expect("valid bounded authority fixture contract");
+        let state = reduce(
+            &Projection::default(),
+            &DomainEvent::TaskSubmitted {
+                contract: contract.clone(),
+            },
+        )
+        .expect("submit bounded authority fixture");
+        let message = CoordinationMessage {
+            schema_version: 1,
+            message_id: MessageId::new("authority-message").expect("fixture message identity"),
+            project_id: contract.project_id,
+            sender: PrincipalId::new("worker").expect("fixture sender"),
+            recipient: PrincipalId::new("captain").expect("fixture recipient"),
+            causation_id: None,
+            context_epoch: "epoch-one".into(),
+            authority_ref: contract.authority_ref,
+            payload: MessagePayload::Question {
+                task_id: contract.task_id,
+                requirement: "C1".into(),
+                question: "Which interface applies?".into(),
+                options: vec!["v1".into(), "v2".into()],
+            },
+        };
+        (state, message)
+    }
+
+    #[test]
+    fn task_messages_cannot_substitute_a_broader_authority_reference() {
+        let (state, message) = fixture();
+        assert!(
+            reduce(
+                &state,
+                &DomainEvent::MessageQueued {
+                    message: message.clone()
+                }
+            )
+            .is_ok()
+        );
+        let mut forged = message;
+        forged.authority_ref = "grant:owner-can-publish".into();
+        let before = state.clone();
+        assert!(reduce(&state, &DomainEvent::MessageQueued { message: forged }).is_err());
+        assert_eq!(state, before);
+    }
+
+    #[test]
+    fn answers_preserve_question_authority_and_causation() {
+        let (state, question) = fixture();
+        let queued = reduce(
+            &state,
+            &DomainEvent::MessageQueued {
+                message: question.clone(),
+            },
+        )
+        .expect("queue scoped question");
+        let mut answer = question.clone();
+        answer.message_id = MessageId::new("authority-answer").expect("fixture answer identity");
+        answer.sender = question.recipient;
+        answer.recipient = question.sender;
+        answer.causation_id = Some(question.message_id.clone());
+        answer.payload = MessagePayload::Answer {
+            question_id: question.message_id,
+            answer: "v1".into(),
+            decision_ref: None,
+        };
+        assert!(
+            reduce(
+                &queued,
+                &DomainEvent::MessageQueued {
+                    message: answer.clone()
+                }
+            )
+            .is_ok()
+        );
+        let mut forged = answer.clone();
+        forged.authority_ref = "grant:unrelated".into();
+        assert!(reduce(&queued, &DomainEvent::MessageQueued { message: forged }).is_err());
+        answer.causation_id =
+            Some(MessageId::new("unrelated-question").expect("fixture unrelated identity"));
+        assert!(reduce(&queued, &DomainEvent::MessageQueued { message: answer }).is_err());
+    }
 }

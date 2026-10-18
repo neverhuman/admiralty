@@ -310,3 +310,76 @@ fn atomic_event_batches_reject_old_generations_and_preserve_pagination() {
             .is_empty()
     );
 }
+
+#[test]
+fn live_event_reads_refuse_tampered_payloads() {
+    let directory = tempfile::tempdir().expect("tempdir");
+    let path = directory.path().join("state.sqlite");
+    let store = Store::open(&path).expect("open");
+    store
+        .append(source(1), task("T1"), NOW.into())
+        .expect("append");
+    let mut cursor = store.snapshot().expect("snapshot").cursor;
+    cursor.event_seq = "0".into();
+    let database = rusqlite::Connection::open(&path).expect("fault injection");
+    database
+        .execute(
+            "UPDATE domain_events SET payload=?1 WHERE seq=1",
+            [serde_json::to_string(&task("forged")).expect("JSON")],
+        )
+        .expect("tamper");
+    assert!(matches!(
+        store.events_after(0, 10),
+        Err(StoreError::Replay { .. })
+    ));
+    assert!(matches!(
+        store.events_since(&cursor, 10),
+        Err(StoreError::Replay { .. })
+    ));
+}
+
+#[cfg(unix)]
+#[test]
+fn database_backup_and_sidecars_are_private_and_symlinks_refused() {
+    use std::os::unix::fs::{PermissionsExt, symlink};
+    let directory = tempfile::tempdir().expect("tempdir");
+    let path = directory.path().join("private/state.sqlite");
+    let store = Store::open(&path).expect("new private directory");
+    store
+        .append(source(1), task("T1"), NOW.into())
+        .expect("append");
+    let backup = directory.path().join("backup.sqlite");
+    store.backup(&backup).expect("backup");
+    assert_eq!(
+        path.parent()
+            .expect("parent")
+            .metadata()
+            .expect("mode")
+            .permissions()
+            .mode()
+            & 0o777,
+        0o700
+    );
+    for file in [
+        path.clone(),
+        path.with_file_name("state.sqlite-wal"),
+        path.with_file_name("state.sqlite-shm"),
+        path.with_file_name("state.sqlite.writer.lock"),
+        backup,
+    ] {
+        assert_eq!(
+            file.metadata().expect("file exists").permissions().mode() & 0o077,
+            0,
+            "{} must be private",
+            file.display()
+        );
+    }
+    drop(store);
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644))
+        .expect("fault permissions");
+    assert!(matches!(Store::open(&path), Err(StoreError::Invalid(_))));
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).expect("restore");
+    let alias = directory.path().join("alias.sqlite");
+    symlink(&path, &alias).expect("symlink");
+    assert!(matches!(Store::open(&alias), Err(StoreError::Invalid(_))));
+}

@@ -22,6 +22,12 @@ use std::{
 };
 use tokio::sync::Semaphore;
 
+/// Prototype stream admission bound. Idle streams wait for a store change hint;
+/// every wake re-reads durable events under its cursor and recovery generation.
+/// Configurable limits require separate qualification. Stream permits never
+/// consume snapshot read slots.
+pub const MAX_EVENT_STREAMS: usize = 16;
+
 #[derive(Clone)]
 pub struct ServerConfig {
     pub listen: SocketAddr,
@@ -35,6 +41,7 @@ struct AppState {
     store: Store,
     config: ServerConfig,
     reads: Arc<Semaphore>,
+    streams: Arc<Semaphore>,
 }
 
 #[derive(Serialize)]
@@ -195,6 +202,15 @@ async fn events(
         .unwrap_or("0")
         .parse::<u64>()
         .map_err(|_| error(StatusCode::BAD_REQUEST, "after must be a decimal sequence"))?;
+    let stream_permit = state.streams.clone().try_acquire_owned().map_err(|_| {
+        error(
+            StatusCode::TOO_MANY_REQUESTS,
+            "event stream limit reached; close another stream before retrying",
+        )
+    })?;
+    // Subscribe before the snapshot so an append between snapshot/query/wait
+    // remains visible. Watch versions are wake hints, never event authority.
+    let changes = state.store.subscribe_changes();
     let store = state.store.clone();
     let _permit = state
         .reads
@@ -231,8 +247,16 @@ async fn events(
     drop(_permit);
     let generation = snapshot.cursor.recovery_generation;
     let stream = futures_util::stream::unfold(
-        (state, after, VecDeque::new(), generation, false),
-        |(state, mut after, mut pending, generation, closed)| async move {
+        (
+            state,
+            after,
+            VecDeque::new(),
+            generation,
+            false,
+            stream_permit,
+            changes,
+        ),
+        |(state, mut after, mut pending, generation, closed, stream_permit, mut changes)| async move {
             if closed {
                 return None;
             }
@@ -249,7 +273,15 @@ async fn events(
                         });
                     return Some((
                         Ok::<_, Infallible>(event),
-                        (state, after, pending, generation, false),
+                        (
+                            state,
+                            after,
+                            pending,
+                            generation,
+                            false,
+                            stream_permit,
+                            changes,
+                        ),
                     ));
                 }
                 let permit = state.reads.clone().acquire_owned().await.ok()?;
@@ -267,7 +299,7 @@ async fn events(
                     Ok(Ok(batch)) => {
                         if state.config.simulated && batch.events.iter().any(|r|matches!(&r.event,admiralty_core::DomainEvent::TaskSubmitted{contract} if !contract.simulated)) {
                         let event=Event::default().event("snapshot_required").data("demo scope changed; private state is unavailable");
-                        return Some((Ok(event),(state,after,pending,generation,true)));
+                        return Some((Ok(event),(state,after,pending,generation,true,stream_permit,changes)));
                     }
                         pending.extend(batch.events);
                     }
@@ -275,11 +307,36 @@ async fn events(
                         let event = Event::default()
                             .event("snapshot_required")
                             .data("event replay unavailable or recovery generation changed");
-                        return Some((Ok(event), (state, after, pending, generation, true)));
+                        return Some((
+                            Ok(event),
+                            (
+                                state,
+                                after,
+                                pending,
+                                generation,
+                                true,
+                                stream_permit,
+                                changes,
+                            ),
+                        ));
                     }
                 }
-                if pending.is_empty() {
-                    tokio::time::sleep(Duration::from_millis(250)).await;
+                if pending.is_empty() && changes.changed().await.is_err() {
+                    let event = Event::default()
+                        .event("snapshot_required")
+                        .data("event notifications unavailable; fetch a fresh snapshot");
+                    return Some((
+                        Ok(event),
+                        (
+                            state,
+                            after,
+                            pending,
+                            generation,
+                            true,
+                            stream_permit,
+                            changes,
+                        ),
+                    ));
                 }
             }
         },
@@ -370,6 +427,7 @@ pub fn app(
         store,
         config,
         reads: Arc::new(Semaphore::new(8)),
+        streams: Arc::new(Semaphore::new(MAX_EVENT_STREAMS)),
     };
     Ok(Router::new()
         .route("/healthz", get(health))

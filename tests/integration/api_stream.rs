@@ -1,5 +1,5 @@
 use admiralty_core::{DomainEvent, SourceIdentity};
-use admiralty_server::{ServerConfig, app};
+use admiralty_server::{MAX_EVENT_STREAMS, ServerConfig, app};
 use admiralty_store::Store;
 use admiralty_testkit::task_fixture;
 use axum::{
@@ -307,6 +307,52 @@ async fn event_stream_replays_only_events_after_the_snapshot_cursor() {
 }
 
 #[tokio::test]
+async fn queued_append_wakes_a_pending_stream_without_routine_model_turns() {
+    let fixture = fixture(true);
+    append_task(&fixture.store, 1, "HTTP-NOTIFY-INITIAL");
+    let snapshot = fixture.store.snapshot().expect("notification snapshot");
+    let uri = format!(
+        "/v1/events?after=1&generation={}",
+        snapshot.cursor.recovery_generation
+    );
+    let response = request(&fixture.app, "GET", &uri, None).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let mut stream = response.into_body().into_data_stream();
+    let (pending_sender, pending_receiver) = tokio::sync::oneshot::channel();
+    let waiting = tokio::spawn(async move {
+        let mut pending_sender = Some(pending_sender);
+        let next = futures_util::future::poll_fn(|context| {
+            let result = stream.poll_next_unpin(context);
+            if result.is_pending()
+                && let Some(sender) = pending_sender.take()
+            {
+                let _ = sender.send(());
+            }
+            result
+        });
+        tokio::time::timeout(Duration::from_secs(2), next)
+            .await
+            .expect("durable append must wake the pending stream")
+            .expect("stream receives the appended event")
+            .expect("SSE append chunk")
+    });
+    tokio::time::timeout(Duration::from_secs(2), pending_receiver)
+        .await
+        .expect("stream reaches a pending read or change wait")
+        .expect("pending stream handshake");
+    append_task(&fixture.store, 2, "HTTP-NOTIFY-APPENDED");
+    let bytes = waiting.await.expect("pending stream task joins");
+    let frame = String::from_utf8(bytes.to_vec()).expect("UTF-8 notified event");
+    assert!(frame.contains("event: domain"));
+    assert!(frame.contains("HTTP-NOTIFY-APPENDED"));
+    assert!(frame.contains("\"seq\":\"2\""));
+    assert!(!frame.contains("HTTP-NOTIFY-INITIAL"));
+    let fleet = json(request(&fixture.app, "GET", "/v1/fleet", None).await).await;
+    assert_eq!(fleet["coordination"]["routine_model_turns"], 0);
+    assert!(fleet["coordination"]["measured_tokens"].is_null());
+}
+
+#[tokio::test]
 async fn cursor_and_stream_sequences_above_javascript_precision_remain_decimal_strings() {
     let directory = tempfile::tempdir().expect("isolated precision fixture");
     let path = directory.path().join("fleet.sqlite");
@@ -388,6 +434,109 @@ async fn active_event_stream_requests_resnapshot_after_recovery_generation_chang
         "stale stream emitted {frame}"
     );
     assert!(!frame.contains("HTTP-AFTER-RECOVERY"));
+}
+
+#[tokio::test]
+async fn concurrent_event_stream_admission_is_bounded_and_drop_releases_its_slot() {
+    let fixture = fixture(true);
+    append_task(&fixture.store, 1, "HTTP-STREAM-LIMIT");
+    let snapshot = fixture.store.snapshot().expect("stream-limit snapshot");
+    let uri = format!(
+        "/v1/events?after=1&generation={}",
+        snapshot.cursor.recovery_generation
+    );
+    let mut admitted = Vec::new();
+    for _ in 0..MAX_EVENT_STREAMS {
+        let response = tokio::time::timeout(
+            Duration::from_secs(2),
+            request(&fixture.app, "GET", &uri, None),
+        )
+        .await
+        .expect("admission must not retain a shared snapshot read permit");
+        assert_eq!(response.status(), StatusCode::OK);
+        // An unpolled response still owns a live stream body and consumes one slot.
+        admitted.push(response);
+    }
+    let saturated = request(&fixture.app, "GET", &uri, None).await;
+    assert_eq!(saturated.status(), StatusCode::TOO_MANY_REQUESTS);
+    assert!(
+        json(saturated).await["error"]
+            .as_str()
+            .expect("saturation error")
+            .contains("event stream limit")
+    );
+    let fleet = tokio::time::timeout(
+        Duration::from_secs(2),
+        request(&fixture.app, "GET", "/v1/fleet", None),
+    )
+    .await
+    .expect("full stream capacity cannot block ordinary snapshot reads");
+    assert_eq!(fleet.status(), StatusCode::OK);
+    drop(admitted.pop().expect("admitted response body"));
+    let replacement = request(&fixture.app, "GET", &uri, None).await;
+    assert_eq!(
+        replacement.status(),
+        StatusCode::OK,
+        "dropping body must immediately release stream capacity"
+    );
+    admitted.push(replacement);
+    assert_eq!(
+        request(&fixture.app, "GET", &uri, None).await.status(),
+        StatusCode::TOO_MANY_REQUESTS
+    );
+}
+
+#[tokio::test]
+async fn terminal_recovery_signal_releases_stream_capacity_without_dropping_body() {
+    let fixture = fixture(true);
+    append_task(&fixture.store, 1, "HTTP-TERMINAL-STREAM-LIMIT");
+    let snapshot = fixture.store.snapshot().expect("terminal stream snapshot");
+    let uri = format!(
+        "/v1/events?after=1&generation={}",
+        snapshot.cursor.recovery_generation
+    );
+    let response = request(&fixture.app, "GET", &uri, None).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let mut stream = response.into_body().into_data_stream();
+    let mut held = Vec::new();
+    for _ in 1..MAX_EVENT_STREAMS {
+        let response = request(&fixture.app, "GET", &uri, None).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        held.push(response);
+    }
+    assert_eq!(
+        request(&fixture.app, "GET", &uri, None).await.status(),
+        StatusCode::TOO_MANY_REQUESTS
+    );
+    let recovered = fixture
+        .store
+        .rebuild()
+        .expect("recovery invalidates active streams");
+    let bytes = tokio::time::timeout(Duration::from_secs(2), stream.next())
+        .await
+        .expect("recovery signal arrives")
+        .expect("recovery event")
+        .expect("SSE chunk");
+    assert!(String::from_utf8_lossy(&bytes).contains("event: snapshot_required"));
+    assert!(
+        tokio::time::timeout(Duration::from_secs(2), stream.next())
+            .await
+            .expect("terminal stream closes")
+            .is_none()
+    );
+    let fresh = format!(
+        "/v1/events?after=1&generation={}",
+        recovered.cursor.recovery_generation
+    );
+    assert_eq!(
+        request(&fixture.app, "GET", &fresh, None).await.status(),
+        StatusCode::OK
+    );
+    assert_eq!(
+        held.len(),
+        MAX_EVENT_STREAMS - 1,
+        "other bodies remain live during replacement admission"
+    );
 }
 
 #[tokio::test]

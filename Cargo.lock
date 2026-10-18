@@ -36,6 +36,7 @@ dependencies = [
  "admiralty-core",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
 ]
 
@@ -66,6 +67,7 @@ dependencies = [
  "sha2",
  "tempfile",
  "thiserror",
+ "tokio",
  "uuid",
 ]
 
