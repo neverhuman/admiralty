@@ -168,9 +168,9 @@ function MetricCard({ metric, first, last }: { metric: TemporalMetric; first: st
   const [expanded, setExpanded] = useState(false);
   const legend = metric.kind === 'ci' ? metric.ci?.map(row => ({ id: row.id, label: row.label, color: row.color })) : metric.series;
   return <article className={`temporal-plot${expanded ? ' temporal-plot--expanded' : ''}`} data-metric={metric.id}>
-    <button className="temporal-toggle" type="button" aria-expanded={expanded} aria-label={`${expanded ? 'Collapse' : 'Expand'} ${metric.title}`} onClick={() => setExpanded(value => !value)} title={`${metric.note}\nSource: ${metric.sourceTime || 'unknown'}\nHistory: ${first || 'unknown'} → ${last || 'unknown'}`}>
-      <span className="temporal-title">{metric.title}<span className="temporal-expand" aria-hidden="true">{expanded ? '−' : '+'}</span></span>
-      <span className="temporal-values">{metric.values.length ? metric.values.map(value => <span key={value.label} title={value.label} aria-label={`${value.label}: ${value.value}`} style={{ color: value.color }}>{value.value}</span>) : <span>unknown</span>}</span>
+    <button className="temporal-toggle" type="button" aria-expanded={expanded} onClick={() => setExpanded(value => !value)} title={`${metric.note}\nSource: ${metric.sourceTime || 'unknown'}\nHistory: ${first || 'unknown'} → ${last || 'unknown'}`}>
+      <span className="temporal-title">{metric.title}<span className="temporal-expand" data-icon={expanded ? '−' : '+'} aria-hidden="true" /></span>
+      <span className="temporal-values">{metric.values.length ? metric.values.map(value => <span key={value.label} title={value.label} style={{ color: value.color }}>{value.value}</span>) : <span>unknown</span>}</span>
       <span className="temporal-chart">{metric.kind === 'bars' ? <Bars bars={metric.bars ?? []} title={metric.title} /> : metric.kind === 'stacked' ? <Stacked series={metric.series} title={metric.title} /> : metric.kind === 'ci' ? <CiHistory rows={metric.ci ?? []} /> : <Spark series={metric.series} title={metric.title} min={metric.min} max={metric.max} />}
         {metric.secondary && <Spark series={metric.secondary} title="Luna first-pass percentage history" min={0} max={100} small />}</span>
       <span className="temporal-legend">{legend?.map(value => <span key={value.id}><i style={{ background: value.color }} />{value.label}</span>)}</span>

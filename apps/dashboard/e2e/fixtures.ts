@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 export type TaskStage = 'ready' | 'blocked' | 'claimed' | 'running' | 'awaiting_verification';
 export type NativeTaskStateV2 = TaskStage | 'accepted' | 'failed' | 'cancelled';
 
@@ -639,3 +641,133 @@ export function createLifecycleSseFrameV2(
   };
   return `event: domain\nid: ${generation}:${seq}\ndata: ${JSON.stringify(payload)}\n\n`;
 }
+
+export type TaskContractFixture = FleetFixture['tasks'][number]['contract'];
+export type NativeTaskViewFixture = NativeFleetV2Fixture['tasks'][number];
+
+export function createTaskContractFixture(
+  overrides: Partial<TaskContractFixture> = {},
+): TaskContractFixture {
+  return {
+    schema_version: 1,
+    project_id: 'proj-001',
+    root_id: 'root-proj-001',
+    task_id: 'task-native-intake-001',
+    revision: 1,
+    title: 'Qualify native operator intake command',
+    objective: 'Verify authenticated owner-scoped task intake and CAS lifecycle commands',
+    non_goals: ['No worker execution or self-acceptance'],
+    owned_paths: ['crates/admiralty-server/src/services/native_commands.rs'],
+    forbidden_paths: ['schemas/*'],
+    read_first: ['docs/plans/admiralty-v2/MASTER_PLAN.md'],
+    dependencies: [],
+    criteria: [
+      {
+        id: 'crit-native-1',
+        text: 'Task intake and pending lifecycle commands enforce CAS and idempotency',
+        check_ids: ['chk-native-1'],
+      },
+    ],
+    checks: [
+      {
+        id: 'chk-native-1',
+        program: 'cargo',
+        args: ['test', '--locked'],
+        cwd: '.',
+        timeout_secs: 60,
+      },
+    ],
+    authority_ref: 'authority:jepson-ruling-2026-10-18',
+    max_attempts: 2,
+    simulated: false,
+    ...overrides,
+  };
+}
+
+export function serializeCanonicalTaskContract(contract: TaskContractFixture): string {
+  const ordered = {
+    schema_version: contract.schema_version,
+    project_id: contract.project_id,
+    root_id: contract.root_id,
+    task_id: contract.task_id,
+    revision: contract.revision,
+    title: contract.title,
+    objective: contract.objective,
+    non_goals: [...contract.non_goals],
+    owned_paths: [...contract.owned_paths],
+    forbidden_paths: [...contract.forbidden_paths],
+    read_first: [...contract.read_first],
+    dependencies: [...contract.dependencies],
+    criteria: contract.criteria.map((c) => ({
+      id: c.id,
+      text: c.text,
+      check_ids: [...c.check_ids],
+    })),
+    checks: contract.checks.map((chk) => ({
+      id: chk.id,
+      program: chk.program,
+      args: [...chk.args],
+      cwd: chk.cwd,
+      timeout_secs: chk.timeout_secs,
+    })),
+    authority_ref: contract.authority_ref,
+    max_attempts: contract.max_attempts,
+    simulated: contract.simulated,
+  };
+  return JSON.stringify(ordered);
+}
+
+function serializeBTreeMapString(record: Record<string, string>): string {
+  const keys = Object.keys(record).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const pairs = keys.map((k) => `${JSON.stringify(k)}:${JSON.stringify(record[k])}`);
+  return `{${pairs.join(',')}}`;
+}
+
+function serializeCanonicalDecision(decision: CandidateDecisionEvidenceFixture | null): string {
+  if (decision === null) return 'null';
+  return JSON.stringify({
+    contract_digest: decision.contract_digest,
+    verification_policy_digest: decision.verification_policy_digest,
+    receipt_digest: decision.receipt_digest,
+    custody_digest: decision.custody_digest,
+    closure_digest: decision.closure_digest,
+    source_commit_sha: decision.source_commit_sha,
+    source_tree_sha: decision.source_tree_sha,
+    verifier: decision.verifier,
+  });
+}
+
+export function serializeCanonicalTaskView(task: NativeTaskViewFixture): string {
+  const fields: string[] = [
+    `"contract":${serializeCanonicalTaskContract(task.contract)}`,
+    `"state":${JSON.stringify(task.state)}`,
+    `"attempt_id":${JSON.stringify(task.attempt_id)}`,
+    `"owner":${JSON.stringify(task.owner)}`,
+    `"candidate_ref":${JSON.stringify(task.candidate_ref)}`,
+  ];
+  if (task.lifecycle !== undefined && task.lifecycle !== null) {
+    const lc = task.lifecycle;
+    const lcJson =
+      `{` +
+      `"revision":${JSON.stringify(lc.revision)},` +
+      `"attempts":${serializeBTreeMapString(lc.attempts)},` +
+      `"closure_digest":${JSON.stringify(lc.closure_digest)},` +
+      `"decision":${serializeCanonicalDecision(lc.decision)},` +
+      `"reason":${JSON.stringify(lc.reason)}` +
+      `}`;
+    fields.push(`"lifecycle":${lcJson}`);
+  }
+  return `{${fields.join(',')}}`;
+}
+
+export function computeCanonicalTaskContractDigest(contract: TaskContractFixture): string {
+  const json = serializeCanonicalTaskContract(contract);
+  return `sha256:${createHash('sha256').update(json).digest('hex')}`;
+}
+
+export function computeCanonicalTaskViewDigest(task: NativeTaskViewFixture): string {
+  const json = serializeCanonicalTaskView(task);
+  return `sha256:${createHash('sha256').update(json).digest('hex')}`;
+}
+
+

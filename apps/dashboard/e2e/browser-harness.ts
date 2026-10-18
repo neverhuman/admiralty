@@ -1,11 +1,22 @@
-import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, extname, join, normalize, resolve } from 'node:path';
 import type { Duplex, Readable, Writable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
-import { build } from 'vite';
+import { validateTaskContract } from '../../../packages/contracts/index';
 import {
   buildAxeRunExpression,
   loadPinnedAxeCoreBundle,
@@ -14,22 +25,41 @@ import {
   type CustomAxTreeSmokeSummary,
 } from './axe-audit';
 import {
+  computeCanonicalTaskViewDigest,
   createFleetFixture,
   createLegacyFixture,
   createModelsFixture,
   createNativeFleetV2Fixture,
+  createTaskContractFixture,
   fleetV1ToV2,
+  serializeCanonicalTaskContract,
   type FleetFixture,
   type ModelsFixture,
   type NativeFleetV2Fixture,
+  type NativeTaskViewFixture,
+  type TaskContractFixture,
 } from './fixtures';
 
 const E2E_DIR = fileURLToPath(new URL('.', import.meta.url));
 export const DASHBOARD_ROOT = resolve(E2E_DIR, '..');
+export const REPO_ROOT = resolve(DASHBOARD_ROOT, '../..');
 export const DIST_DIR = resolve(DASHBOARD_ROOT, 'dist');
+export const BUILD_IDENTITY_FILE = join(DIST_DIR, '.admiralty-build-identity.json');
 
-const CDP_COMMAND_TIMEOUT_MS = 10_000;
+const CDP_COMMAND_TIMEOUT_MS = 20_000;
 const BROWSER_STARTUP_TIMEOUT_MS = 15_000;
+
+export const MAX_HTTP_BODY_BYTES = 256 * 1024;
+export const MAX_RECORDED_REQUESTS = 512;
+export const MAX_RETAINED_REQUEST_BODY_BYTES = 64 * 1024;
+export const MAX_ACTIVE_SSE_STREAMS = 16;
+
+export const MAX_CDP_FRAME_BYTES = 4 * 1024 * 1024;
+export const MAX_CDP_BUFFER_BYTES = 8 * 1024 * 1024;
+export const MAX_PENDING_CDP_COMMANDS = 64;
+
+const CANONICAL_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const SHA256_DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -42,15 +72,127 @@ const MIME_TYPES: Record<string, string> = {
   '.ico': 'image/x-icon',
 };
 
-export async function ensureBuiltDashboard(): Promise<{ indexHtml: string; assets: string[] }> {
+function hashTreeInto(hash: ReturnType<typeof createHash>, rootPath: string, relPrefix: string): void {
+  if (!existsSync(rootPath)) return;
+  const st = statSync(rootPath);
+  if (st.isDirectory()) {
+    for (const entry of readdirSync(rootPath).sort()) {
+      hashTreeInto(hash, join(rootPath, entry), `${relPrefix}/${entry}`);
+    }
+    return;
+  }
+  hash.update(`file:${relPrefix}\0`);
+  hash.update(readFileSync(rootPath));
+  hash.update('\0');
+}
+
+export function computeDashboardSourceDigest(): string {
+  const hash = createHash('sha256');
+  hashTreeInto(hash, join(DASHBOARD_ROOT, 'index.html'), 'apps/dashboard/index.html');
+  hashTreeInto(hash, join(DASHBOARD_ROOT, 'package.json'), 'apps/dashboard/package.json');
+  hashTreeInto(hash, join(DASHBOARD_ROOT, 'vite.config.ts'), 'apps/dashboard/vite.config.ts');
+  hashTreeInto(hash, join(DASHBOARD_ROOT, 'src'), 'apps/dashboard/src');
+  hashTreeInto(hash, join(REPO_ROOT, 'packages', 'contracts'), 'packages/contracts');
+  return `sha256:${hash.digest('hex')}`;
+}
+
+export function computeDistBundleDigest(): string {
+  const hash = createHash('sha256');
+  hashTreeInto(hash, join(DIST_DIR, 'index.html'), 'dist/index.html');
+  hashTreeInto(hash, join(DIST_DIR, 'assets'), 'dist/assets');
+  return `sha256:${hash.digest('hex')}`;
+}
+
+export async function ensureBuiltDashboard(): Promise<{
+  indexHtml: string;
+  assets: string[];
+  sourceDigest: string;
+  bundleDigest: string;
+  mode: 'production';
+  nodeEnv: 'production';
+}> {
+  const sourceDigest = computeDashboardSourceDigest();
   const indexPath = join(DIST_DIR, 'index.html');
   const assetsDir = join(DIST_DIR, 'assets');
+
+  let stampMatches = false;
+  if (existsSync(indexPath) && existsSync(assetsDir) && existsSync(BUILD_IDENTITY_FILE)) {
+    try {
+      const parsed = JSON.parse(readFileSync(BUILD_IDENTITY_FILE, 'utf8')) as {
+        mode?: string;
+        nodeEnv?: string;
+        sourceDigest?: string;
+        bundleDigest?: string;
+      };
+      const currentBundleDigest = computeDistBundleDigest();
+      stampMatches =
+        parsed.mode === 'production' &&
+        parsed.nodeEnv === 'production' &&
+        parsed.sourceDigest === sourceDigest &&
+        parsed.bundleDigest === currentBundleDigest;
+    } catch {
+      stampMatches = false;
+    }
+  }
+
+  if (!stampMatches) {
+    rmSync(DIST_DIR, { recursive: true, force: true });
+    const viteCliCandidates = [
+      join(DASHBOARD_ROOT, 'node_modules', 'vite', 'bin', 'vite.js'),
+      join(REPO_ROOT, 'node_modules', 'vite', 'bin', 'vite.js'),
+    ];
+    const viteCli = viteCliCandidates.find((c) => existsSync(c));
+    const childEnv: Record<string, string | undefined> = {
+      ...process.env,
+      NODE_ENV: 'production',
+    };
+    const res = viteCli
+      ? spawnSync(process.execPath, [viteCli, 'build', '--mode', 'production'], {
+          cwd: DASHBOARD_ROOT,
+          env: childEnv,
+          encoding: 'utf8',
+        })
+      : spawnSync('pnpm', ['--dir', DASHBOARD_ROOT, 'build'], {
+          cwd: REPO_ROOT,
+          env: childEnv,
+          encoding: 'utf8',
+        });
+    if (res.status !== 0) {
+      throw new Error(
+        `Isolated production dashboard build failed (status=${String(res.status)}): ${res.stderr || res.stdout}`,
+      );
+    }
+    const bundleDigest = computeDistBundleDigest();
+    writeFileSync(
+      BUILD_IDENTITY_FILE,
+      JSON.stringify(
+        {
+          mode: 'production',
+          nodeEnv: 'production',
+          sourceDigest,
+          bundleDigest,
+        },
+        null,
+        2,
+      ),
+      { encoding: 'utf8' },
+    );
+  }
+
   if (!existsSync(indexPath) || !existsSync(assetsDir)) {
-    await build({ root: DASHBOARD_ROOT, logLevel: 'error' });
+    throw new Error(`Dashboard build did not produce expected dist artifacts at ${DIST_DIR}`);
   }
   const indexHtml = readFileSync(indexPath, 'utf8');
-  const assets = existsSync(assetsDir) ? readdirSync(assetsDir) : [];
-  return { indexHtml, assets };
+  const assets = readdirSync(assetsDir);
+  const bundleDigest = computeDistBundleDigest();
+  return {
+    indexHtml,
+    assets,
+    sourceDigest,
+    bundleDigest,
+    mode: 'production',
+    nodeEnv: 'production',
+  };
 }
 
 export interface RecordedRequest {
@@ -63,30 +205,115 @@ export interface RecordedRequest {
   timestampMs: number;
 }
 
+export interface DashboardTestServerOptions {
+  skipBuildCheck?: boolean;
+  maxHttpBodyBytes?: number;
+  maxRecordedRequests?: number;
+  maxRetainedRequestBodyBytes?: number;
+  maxActiveSseStreams?: number;
+  nativeOwnerToken?: string;
+  nativeAllowedProjects?: string[];
+}
+
 export interface DashboardTestServer {
   baseUrl: string;
   requests: RecordedRequest[];
   clearRequests(): void;
+  assertNoOverflow(): void;
   setFleet(fleet: FleetFixture, includeTerminalV2Tasks?: boolean): void;
   setFleetV2(fleetV2: NativeFleetV2Fixture | Record<string, unknown>): void;
+  getFleetV2Snapshot(): NativeFleetV2Fixture;
   setFleetStatus(status: number, errorDetail?: string): void;
   setLegacy(legacy: Record<string, unknown> | null, status?: number): void;
   setModels(models: ModelsFixture, status?: number): void;
   setModelsPutConflict(conflict: boolean): void;
   setRequireBearerToken(token: string | null): void;
+  configureNativeCommands(options: { ownerToken?: string; allowedProjects?: string[] }): void;
+  dropNextCommandResponse(count?: number): void;
   sendSseFrame(rawFrame: string): void;
   closeActiveSseStreams(): void;
   activeSseCount(): number;
   close(): Promise<void>;
 }
 
-export async function startDashboardTestServer(): Promise<DashboardTestServer> {
-  await ensureBuiltDashboard();
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasExactKeys(obj: Record<string, unknown>, allowedKeys: readonly string[]): boolean {
+  const keys = Object.keys(obj);
+  return keys.length === allowedKeys.length && allowedKeys.every((k) => Object.prototype.hasOwnProperty.call(obj, k));
+}
+
+function countAuthorizationHeaders(req: IncomingMessage): number {
+  if (Array.isArray(req.rawHeaders)) {
+    let count = 0;
+    for (let i = 0; i < req.rawHeaders.length; i += 2) {
+      if (req.rawHeaders[i]?.toLowerCase() === 'authorization') count++;
+    }
+    return count;
+  }
+  return req.headers.authorization !== undefined ? 1 : 0;
+}
+
+function hasControlChar(value: string): boolean {
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if (code <= 0x1f || (code >= 0x7f && code <= 0x9f)) return true;
+  }
+  return false;
+}
+
+function recomputeProjectSummaries(fleetV2: NativeFleetV2Fixture): void {
+  const counts = new Map<
+    string,
+    { id: string; name: string; total: number; running: number; awaiting_verification: number; blocked: number; accepted: number }
+  >();
+  for (const existing of fleetV2.projects) {
+    counts.set(existing.id, {
+      id: existing.id,
+      name: existing.name,
+      total: 0,
+      running: 0,
+      awaiting_verification: 0,
+      blocked: 0,
+      accepted: 0,
+    });
+  }
+  for (const task of fleetV2.tasks) {
+    const pid = task.contract.project_id;
+    let summary = counts.get(pid);
+    if (!summary) {
+      summary = { id: pid, name: pid, total: 0, running: 0, awaiting_verification: 0, blocked: 0, accepted: 0 };
+      counts.set(pid, summary);
+    }
+    summary.total += 1;
+    if (task.state === 'running' || task.state === 'claimed') summary.running += 1;
+    else if (task.state === 'awaiting_verification') summary.awaiting_verification += 1;
+    else if (task.state === 'blocked') summary.blocked += 1;
+    else if (task.state === 'accepted') summary.accepted += 1;
+  }
+  fleetV2.projects = [...counts.values()];
+}
+
+export async function startDashboardTestServer(
+  options: DashboardTestServerOptions = {},
+): Promise<DashboardTestServer> {
+  if (!options.skipBuildCheck) {
+    await ensureBuiltDashboard();
+  }
+
+  const maxHttpBodyBytes = options.maxHttpBodyBytes ?? MAX_HTTP_BODY_BYTES;
+  const maxRecordedRequests = options.maxRecordedRequests ?? MAX_RECORDED_REQUESTS;
+  const maxRetainedRequestBodyBytes =
+    options.maxRetainedRequestBodyBytes ?? MAX_RETAINED_REQUEST_BODY_BYTES;
+  const maxActiveSseStreams = options.maxActiveSseStreams ?? MAX_ACTIVE_SSE_STREAMS;
 
   let fleet = createFleetFixture(4);
-  let fleetV2: NativeFleetV2Fixture | Record<string, unknown> = createNativeFleetV2Fixture(4, {
+  let statefulFleetV2: NativeFleetV2Fixture = createNativeFleetV2Fixture(4, {
     includeTerminalLifecycleTasks: true,
   });
+  let customFleetV2Payload: Record<string, unknown> | null = null;
   let fleetStatus = 200;
   let fleetErrorDetail = 'Service unavailable';
   let legacy: Record<string, unknown> | null = createLegacyFixture(4);
@@ -96,26 +323,458 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
   let forcePutConflict = false;
   let requiredToken: string | null = null;
 
+  let nativeOwnerToken = options.nativeOwnerToken ?? 'adm-native-owner-token-0123456789abcdef';
+  let nativeAllowedProjects = new Set<string>(
+    options.nativeAllowedProjects ?? ['proj-001', 'proj-002', 'proj-003', 'proj-004'],
+  );
+  let dropNextCommandResponses = 0;
+
+  const idempotencyRecords = new Map<
+    string,
+    {
+      endpoint: '/v2/tasks' | '/v2/tasks/lifecycle';
+      canonicalPayload: string;
+      eventSeq: string;
+    }
+  >();
+
   const requests: RecordedRequest[] = [];
   const sseStreams = new Set<ServerResponse>();
+  const domainEventHistory: Array<{ seq: string; generation: string; rawFrame: string }> = [];
+  let overflowError: string | null = null;
+
+  function sendJson(
+    res: ServerResponse,
+    status: number,
+    payload: unknown,
+    closeConnection = false,
+  ): void {
+    res.writeHead(status, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+      ...(closeConnection ? { Connection: 'close' } : {}),
+    });
+    res.end(JSON.stringify(payload));
+  }
+
+  function dropCommandResponse(res: ServerResponse): void {
+    const truncated = '{"event_seq":';
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Content-Length': String(Buffer.byteLength(truncated, 'utf8')),
+      'Cache-Control': 'no-store',
+      Connection: 'close',
+    });
+    res.end(truncated);
+  }
 
   function checkAuthorized(req: IncomingMessage, res: ServerResponse): boolean {
     if (!requiredToken) return true;
+    if (countAuthorizationHeaders(req) !== 1) {
+      sendJson(res, 401, { error: 'Unauthorized', detail: 'Bearer token required' });
+      return false;
+    }
     const auth = req.headers.authorization ?? '';
     if (auth !== `Bearer ${requiredToken}`) {
-      res.writeHead(401, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify({ error: 'Unauthorized', detail: 'Bearer token required' }));
+      sendJson(res, 401, { error: 'Unauthorized', detail: 'Bearer token required' });
       return false;
     }
     return true;
   }
 
+  function checkNativeOwnerAuthorized(req: IncomingMessage, res: ServerResponse): boolean {
+    const expectedToken = requiredToken ?? nativeOwnerToken;
+    if (countAuthorizationHeaders(req) !== 1) {
+      sendJson(res, 401, { error: 'owner authentication required' }, true);
+      return false;
+    }
+    const auth = req.headers.authorization ?? '';
+    if (auth !== `Bearer ${expectedToken}`) {
+      sendJson(res, 401, { error: 'owner authentication required' }, true);
+      return false;
+    }
+    return true;
+  }
+
+  function nextEventSeq(): string {
+    const next = String(BigInt(statefulFleetV2.cursor.event_seq) + 1n);
+    statefulFleetV2.cursor = {
+      ...statefulFleetV2.cursor,
+      event_seq: next,
+    };
+    return next;
+  }
+
+  function handleSubmitTask(req: IncomingMessage, res: ServerResponse, body: string): void {
+    if (!checkNativeOwnerAuthorized(req, res)) return;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      sendJson(res, 400, { error: 'command body is invalid' }, true);
+      return;
+    }
+    if (!isPlainObject(parsed) || !hasExactKeys(parsed, ['request_id', 'contract'])) {
+      sendJson(res, 400, { error: 'command body is invalid' }, true);
+      return;
+    }
+    const requestId = parsed.request_id;
+    if (typeof requestId !== 'string' || !CANONICAL_UUID_RE.test(requestId)) {
+      sendJson(res, 400, { error: 'request_id must be a canonical UUID' }, true);
+      return;
+    }
+    if (!validateTaskContract(parsed.contract)) {
+      if (isPlainObject(parsed.contract) && typeof parsed.contract.project_id === 'string' && !nativeAllowedProjects.has(parsed.contract.project_id)) {
+        sendJson(res, 403, { error: 'task contract is outside the owner grant' }, true);
+        return;
+      }
+      sendJson(res, 403, { error: 'task contract is outside the owner grant' }, true);
+      return;
+    }
+    const contract = parsed.contract as unknown as TaskContractFixture;
+    if (!nativeAllowedProjects.has(contract.project_id)) {
+      sendJson(res, 403, { error: 'task contract is outside the owner grant' }, true);
+      return;
+    }
+
+    const canonicalPayload = JSON.stringify({
+      request_id: requestId,
+      contract: JSON.parse(serializeCanonicalTaskContract(contract)),
+    });
+
+    const existingRecord = idempotencyRecords.get(requestId);
+    if (existingRecord) {
+      if (existingRecord.endpoint === '/v2/tasks' && existingRecord.canonicalPayload === canonicalPayload) {
+        sendJson(
+          res,
+          200,
+          {
+            event_seq: existingRecord.eventSeq,
+            source_contiguous_seq: '1',
+            duplicate: true,
+            execution_granted: false,
+            acceptance_granted: false,
+          },
+          true,
+        );
+        return;
+      }
+      sendJson(res, 409, { error: 'task command was not applied' }, true);
+      return;
+    }
+
+    if (statefulFleetV2.tasks.some((t) => t.contract.task_id === contract.task_id)) {
+      sendJson(res, 409, { error: 'task command was not applied' }, true);
+      return;
+    }
+    for (const depId of contract.dependencies) {
+      const depTask = statefulFleetV2.tasks.find((t) => t.contract.task_id === depId);
+      if (!depTask || depTask.contract.project_id !== contract.project_id) {
+        sendJson(res, 409, { error: 'task command was not applied' }, true);
+        return;
+      }
+    }
+    const allDepsAccepted = contract.dependencies.every((depId) => {
+      const depTask = statefulFleetV2.tasks.find((t) => t.contract.task_id === depId);
+      return depTask?.state === 'accepted';
+    });
+
+    const newTask: NativeTaskViewFixture = {
+      contract: JSON.parse(serializeCanonicalTaskContract(contract)) as TaskContractFixture,
+      state: allDepsAccepted ? 'ready' : 'blocked',
+      attempt_id: null,
+      owner: null,
+      candidate_ref: null,
+    };
+    statefulFleetV2.tasks.push(newTask);
+    recomputeProjectSummaries(statefulFleetV2);
+    const eventSeq = nextEventSeq();
+    idempotencyRecords.set(requestId, {
+      endpoint: '/v2/tasks',
+      canonicalPayload,
+      eventSeq,
+    });
+    const createdFrame = `event: domain\nid: ${statefulFleetV2.cursor.recovery_generation}:${eventSeq}\ndata: ${JSON.stringify({
+      seq: eventSeq,
+      observed_utc: '2026-10-18T20:28:00Z',
+      event: {
+        kind: 'task_submitted',
+        contract: newTask.contract,
+      },
+    })}\n\n`;
+    domainEventHistory.push({
+      seq: eventSeq,
+      generation: statefulFleetV2.cursor.recovery_generation,
+      rawFrame: createdFrame,
+    });
+    for (const stream of sseStreams) {
+      stream.write(createdFrame);
+    }
+
+    if (dropNextCommandResponses > 0) {
+      dropNextCommandResponses -= 1;
+      dropCommandResponse(res);
+      return;
+    }
+
+    sendJson(
+      res,
+      200,
+      {
+        event_seq: eventSeq,
+        source_contiguous_seq: '1',
+        duplicate: false,
+        execution_granted: false,
+        acceptance_granted: false,
+      },
+      true,
+    );
+  }
+
+  function handleChangeLifecycle(req: IncomingMessage, res: ServerResponse, body: string): void {
+    if (!checkNativeOwnerAuthorized(req, res)) return;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      sendJson(res, 400, { error: 'command body is invalid' }, true);
+      return;
+    }
+    if (
+      !isPlainObject(parsed) ||
+      !hasExactKeys(parsed, ['request_id', 'task_id', 'expected_task_digest', 'action'])
+    ) {
+      sendJson(res, 400, { error: 'command body is invalid' }, true);
+      return;
+    }
+    const requestId = parsed.request_id;
+    const taskId = parsed.task_id;
+    const expectedTaskDigest = parsed.expected_task_digest;
+    const actionObj = parsed.action;
+
+    if (typeof requestId !== 'string' || !CANONICAL_UUID_RE.test(requestId)) {
+      sendJson(res, 400, { error: 'request_id must be a canonical UUID' }, true);
+      return;
+    }
+    if (typeof taskId !== 'string' || taskId.length === 0 || taskId.length > 128) {
+      sendJson(res, 400, { error: 'command body is invalid' }, true);
+      return;
+    }
+    if (typeof expectedTaskDigest !== 'string' || !SHA256_DIGEST_RE.test(expectedTaskDigest)) {
+      sendJson(res, 400, { error: 'expected_task_digest must be a SHA-256 digest' }, true);
+      return;
+    }
+    if (!isPlainObject(actionObj) || typeof actionObj.action !== 'string') {
+      sendJson(res, 400, { error: 'command body is invalid' }, true);
+      return;
+    }
+
+    let canonicalAction: Record<string, unknown>;
+    if (actionObj.action === 'cancel_pending') {
+      if (!hasExactKeys(actionObj, ['action', 'reason']) || typeof actionObj.reason !== 'string') {
+        sendJson(res, 400, { error: 'command body is invalid' }, true);
+        return;
+      }
+      const reason = actionObj.reason;
+      if (reason.trim().length === 0 || reason.length > 512 || hasControlChar(reason)) {
+        sendJson(res, 400, { error: 'pending cancellation reason is invalid' }, true);
+        return;
+      }
+      canonicalAction = { action: 'cancel_pending', reason };
+    } else if (actionObj.action === 'revise_contract') {
+      if (!hasExactKeys(actionObj, ['action', 'contract'])) {
+        sendJson(res, 400, { error: 'command body is invalid' }, true);
+        return;
+      }
+      if (!validateTaskContract(actionObj.contract)) {
+        sendJson(res, 403, { error: 'contract revision is outside the owner grant' }, true);
+        return;
+      }
+      const revisedContract = actionObj.contract as unknown as TaskContractFixture;
+      if (
+        revisedContract.task_id !== taskId ||
+        !nativeAllowedProjects.has(revisedContract.project_id)
+      ) {
+        sendJson(res, 403, { error: 'contract revision is outside the owner grant' }, true);
+        return;
+      }
+      canonicalAction = {
+        action: 'revise_contract',
+        contract: JSON.parse(serializeCanonicalTaskContract(revisedContract)),
+      };
+    } else {
+      // Forged decide_candidate, close_attempt, retry, or unknown action rejected at HTTP boundary
+      sendJson(res, 400, { error: 'command body is invalid' }, true);
+      return;
+    }
+
+    const canonicalPayload = JSON.stringify({
+      request_id: requestId,
+      task_id: taskId,
+      expected_task_digest: expectedTaskDigest,
+      action: canonicalAction,
+    });
+
+    // Idempotent replay check happens BEFORE current task state/CAS transition checks
+    // so retained receipts survive subsequent task revisions or cancellation!
+    const existingRecord = idempotencyRecords.get(requestId);
+    if (existingRecord) {
+      if (
+        existingRecord.endpoint === '/v2/tasks/lifecycle' &&
+        existingRecord.canonicalPayload === canonicalPayload
+      ) {
+        sendJson(
+          res,
+          200,
+          {
+            event_seq: existingRecord.eventSeq,
+            source_contiguous_seq: '1',
+            duplicate: true,
+            execution_granted: false,
+            acceptance_granted: false,
+          },
+          true,
+        );
+        return;
+      }
+      sendJson(res, 409, { error: 'lifecycle command was not applied' }, true);
+      return;
+    }
+
+    const task = statefulFleetV2.tasks.find((t) => t.contract.task_id === taskId);
+    if (!task || !nativeAllowedProjects.has(task.contract.project_id)) {
+      sendJson(res, 409, { error: 'lifecycle command was not applied' }, true);
+      return;
+    }
+
+    const actualTaskDigest = computeCanonicalTaskViewDigest(task);
+    if (actualTaskDigest !== expectedTaskDigest) {
+      sendJson(res, 409, { error: 'lifecycle command was not applied' }, true);
+      return;
+    }
+
+    if ((task.state !== 'ready' && task.state !== 'blocked') || task.attempt_id !== null) {
+      sendJson(res, 409, { error: 'lifecycle command was not applied' }, true);
+      return;
+    }
+
+    const currentLifecycle = task.lifecycle ?? {
+      revision: 0,
+      attempts: {},
+      closure_digest: null,
+      decision: null,
+      reason: null,
+    };
+
+    if (actionObj.action === 'cancel_pending') {
+      task.state = 'cancelled';
+      task.lifecycle = {
+        ...currentLifecycle,
+        revision: currentLifecycle.revision + 1,
+        reason: String(actionObj.reason),
+      };
+    } else {
+      const revisedContract = canonicalAction.contract as TaskContractFixture;
+      if (
+        Object.keys(currentLifecycle.attempts).length > 0 ||
+        revisedContract.project_id !== task.contract.project_id ||
+        revisedContract.root_id !== task.contract.root_id ||
+        revisedContract.authority_ref !== task.contract.authority_ref ||
+        revisedContract.simulated !== task.contract.simulated ||
+        revisedContract.revision !== task.contract.revision + 1
+      ) {
+        sendJson(res, 409, { error: 'lifecycle command was not applied' }, true);
+        return;
+      }
+      task.contract = revisedContract;
+      task.lifecycle = {
+        ...currentLifecycle,
+        revision: currentLifecycle.revision + 1,
+      };
+    }
+
+    recomputeProjectSummaries(statefulFleetV2);
+    const eventSeq = nextEventSeq();
+    idempotencyRecords.set(requestId, {
+      endpoint: '/v2/tasks/lifecycle',
+      canonicalPayload,
+      eventSeq,
+    });
+    const lifecycleFrame = `event: domain\nid: ${statefulFleetV2.cursor.recovery_generation}:${eventSeq}\ndata: ${JSON.stringify({
+      seq: eventSeq,
+      observed_utc: '2026-10-18T20:28:00Z',
+      event: {
+        kind: 'task_lifecycle',
+        command: {
+          protocol_version: 2,
+          task_id: taskId,
+          expected_task_digest: expectedTaskDigest,
+          actor: 'owner',
+          action: canonicalAction,
+        },
+      },
+    })}\n\n`;
+    domainEventHistory.push({
+      seq: eventSeq,
+      generation: statefulFleetV2.cursor.recovery_generation,
+      rawFrame: lifecycleFrame,
+    });
+    for (const stream of sseStreams) {
+      stream.write(lifecycleFrame);
+    }
+
+    if (dropNextCommandResponses > 0) {
+      dropNextCommandResponses -= 1;
+      dropCommandResponse(res);
+      return;
+    }
+
+    sendJson(
+      res,
+      200,
+      {
+        event_seq: eventSeq,
+        source_contiguous_seq: '1',
+        duplicate: false,
+        execution_granted: false,
+        acceptance_granted: false,
+      },
+      true,
+    );
+  }
+
   const server = createServer((req, res) => {
     const parsedUrl = new URL(req.url ?? '/', 'http://127.0.0.1');
     const chunks: Buffer[] = [];
-    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    let bodyBytes = 0;
+    let abortedForBodyOverflow = false;
+
+    req.on('data', (chunk: Buffer) => {
+      if (abortedForBodyOverflow) return;
+      bodyBytes += chunk.length;
+      if (bodyBytes > maxHttpBodyBytes) {
+        abortedForBodyOverflow = true;
+        chunks.length = 0;
+        sendJson(res, 413, { error: 'command body is invalid or too large' }, true);
+        return;
+      }
+      chunks.push(chunk);
+    });
+
     req.on('end', () => {
+      if (abortedForBodyOverflow) return;
       const body = Buffer.concat(chunks).toString('utf8');
+      if (Buffer.byteLength(body, 'utf8') > maxRetainedRequestBodyBytes) {
+        overflowError = `HTTP request body (${Buffer.byteLength(body, 'utf8')} bytes) exceeded maxRetainedRequestBodyBytes (${maxRetainedRequestBodyBytes})`;
+        sendJson(res, 413, { error: 'request body exceeds retained fixture bound' }, true);
+        return;
+      }
+      if (requests.length >= maxRecordedRequests) {
+        overflowError = `Recorded request log exceeded maxRecordedRequests (${maxRecordedRequests}); call clearRequests() or narrow test scope`;
+        sendJson(res, 503, { error: 'fixture request log capacity exceeded' }, true);
+        return;
+      }
+
       requests.push({
         method: req.method ?? 'GET',
         url: req.url ?? '/',
@@ -126,20 +785,43 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
         timestampMs: Date.now(),
       });
 
+      if (parsedUrl.pathname === '/healthz' && req.method === 'GET') {
+        sendJson(res, 200, {
+          status: 'ok',
+          version: '0.1.0',
+          native_execution_qualified: false,
+        });
+        return;
+      }
+
+      if (parsedUrl.pathname === '/v2/tasks' && req.method === 'POST') {
+        handleSubmitTask(req, res, body);
+        return;
+      }
+
+      if (parsedUrl.pathname === '/v2/tasks/lifecycle' && req.method === 'POST') {
+        handleChangeLifecycle(req, res, body);
+        return;
+      }
+
       if (parsedUrl.pathname === '/v1/fleet' || parsedUrl.pathname === '/v2/fleet') {
         if (!checkAuthorized(req, res)) return;
         if (fleetStatus !== 200) {
-          res.writeHead(fleetStatus, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-          res.end(JSON.stringify({ detail: fleetErrorDetail }));
+          sendJson(res, fleetStatus, { detail: fleetErrorDetail });
           return;
         }
-        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-        res.end(JSON.stringify(parsedUrl.pathname === '/v2/fleet' ? fleetV2 : fleet));
+        const activeV2 = customFleetV2Payload ?? statefulFleetV2;
+        sendJson(res, 200, parsedUrl.pathname === '/v2/fleet' ? activeV2 : fleet);
         return;
       }
 
       if (parsedUrl.pathname === '/v1/events' || parsedUrl.pathname === '/v2/events') {
         if (!checkAuthorized(req, res)) return;
+        if (sseStreams.size >= maxActiveSseStreams) {
+          overflowError = `Active SSE streams exceeded maxActiveSseStreams (${maxActiveSseStreams})`;
+          sendJson(res, 503, { error: 'event stream capacity reached' });
+          return;
+        }
         res.writeHead(200, {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-store',
@@ -148,46 +830,89 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
         res.write(': connected\n\n');
         sseStreams.add(res);
         res.on('close', () => sseStreams.delete(res));
+
+        // When CommandJourneys replayEventsToCursor requests historical catch-up (?after=0&generation=...),
+        // replay recorded domain events up to the current snapshot cursor so replay finishes immediately.
+        const afterParam = parsedUrl.searchParams.get('after');
+        const genParam = parsedUrl.searchParams.get('generation');
+        const currentGen = statefulFleetV2.cursor.recovery_generation;
+        const currentSeqStr = statefulFleetV2.cursor.event_seq;
+        if (
+          afterParam !== null &&
+          /^\d+$/.test(afterParam) &&
+          /^\d+$/.test(currentSeqStr) &&
+          (!genParam || genParam === currentGen)
+        ) {
+          const afterSeq = BigInt(afterParam);
+          const targetSeq = BigInt(currentSeqStr);
+          if (afterSeq < targetSeq) {
+            let lastSent = afterSeq;
+            for (const entry of domainEventHistory) {
+              if (entry.generation === currentGen && /^\d+$/.test(entry.seq)) {
+                const s = BigInt(entry.seq);
+                if (s > afterSeq && s <= targetSeq) {
+                  res.write(entry.rawFrame);
+                  if (s > lastSent) lastSent = s;
+                }
+              }
+            }
+            if (lastSent < targetSeq) {
+              const fallbackContract =
+                statefulFleetV2.tasks[0]?.contract ?? createTaskContractFixture();
+              const catchupFrame = `event: domain\nid: ${currentGen}:${currentSeqStr}\ndata: ${JSON.stringify(
+                {
+                  seq: currentSeqStr,
+                  observed_utc: '2026-10-18T20:28:00Z',
+                  event: {
+                    kind: 'task_submitted',
+                    contract: fallbackContract,
+                  },
+                },
+              )}\n\n`;
+              res.write(catchupFrame);
+            }
+          }
+        }
         return;
       }
 
       if (parsedUrl.pathname === '/v1/legacy') {
         if (!checkAuthorized(req, res)) return;
         if (legacyStatus !== 200 || !legacy) {
-          res.writeHead(legacyStatus === 200 ? 404 : legacyStatus, {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-store',
+          sendJson(res, legacyStatus === 200 ? 404 : legacyStatus, {
+            detail: 'Legacy snapshot unavailable',
           });
-          res.end(JSON.stringify({ detail: 'Legacy snapshot unavailable' }));
           return;
         }
-        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-        res.end(JSON.stringify(legacy));
+        sendJson(res, 200, legacy);
         return;
       }
 
       if (parsedUrl.pathname === '/v1/models') {
         if (!checkAuthorized(req, res)) return;
         if (modelsStatus !== 200) {
-          res.writeHead(modelsStatus, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-          res.end(JSON.stringify({ detail: 'Model registry unavailable' }));
+          sendJson(res, modelsStatus, { detail: 'Model registry unavailable' });
           return;
         }
         if (req.method === 'GET') {
-          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-          res.end(JSON.stringify(models));
+          sendJson(res, 200, models);
           return;
         }
         if (req.method === 'PUT') {
-          const payload = JSON.parse(body) as {
-            expected_revision: string;
-            models: Array<Record<string, unknown>>;
-          };
+          let payload: { expected_revision: string; models: Array<Record<string, unknown>> };
+          try {
+            payload = JSON.parse(body) as {
+              expected_revision: string;
+              models: Array<Record<string, unknown>>;
+            };
+          } catch {
+            sendJson(res, 400, { detail: 'Invalid JSON body' });
+            return;
+          }
           if (forcePutConflict || payload.expected_revision !== models.revision) {
             forcePutConflict = false;
             models = { ...models, revision: String(BigInt(models.revision) + 1n) };
-            res.writeHead(409, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-            res.end(JSON.stringify({ detail: 'Policy revision conflict' }));
+            sendJson(res, 409, { detail: 'Policy revision conflict' });
             return;
           }
           const nextRevision = String(BigInt(models.revision) + 1n);
@@ -210,8 +935,7 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
               usage_cost: { status: 'unknown' as const },
             })),
           };
-          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-          res.end(JSON.stringify(models));
+          sendJson(res, 200, models);
           return;
         }
       }
@@ -221,8 +945,7 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
       let filePath = join(DIST_DIR, safeRelPath === '/' ? 'index.html' : safeRelPath);
       if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
         if (parsedUrl.pathname.startsWith('/v1/') || parsedUrl.pathname.startsWith('/v2/')) {
-          res.writeHead(404, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Not found' }));
+          sendJson(res, 404, { error: 'Not found' });
           return;
         }
         filePath = join(DIST_DIR, 'index.html');
@@ -248,15 +971,39 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
     requests,
     clearRequests() {
       requests.length = 0;
+      overflowError = null;
+    },
+    assertNoOverflow() {
+      if (overflowError) {
+        throw new Error(overflowError);
+      }
     },
     setFleet(next, includeTerminalV2Tasks = true) {
       fleet = next;
-      fleetV2 = fleetV1ToV2(next, { includeTerminalLifecycleTasks: includeTerminalV2Tasks });
+      statefulFleetV2 = fleetV1ToV2(next, { includeTerminalLifecycleTasks: includeTerminalV2Tasks });
+      customFleetV2Payload = null;
+      domainEventHistory.length = 0;
       fleetStatus = 200;
     },
     setFleetV2(next) {
-      fleetV2 = next;
+      if (
+        isPlainObject(next) &&
+        next.schema_version === 2 &&
+        next.native_execution_qualified === false &&
+        Array.isArray(next.tasks) &&
+        Array.isArray(next.projects) &&
+        isPlainObject(next.cursor)
+      ) {
+        statefulFleetV2 = next as unknown as NativeFleetV2Fixture;
+        customFleetV2Payload = null;
+        domainEventHistory.length = 0;
+      } else {
+        customFleetV2Payload = next as Record<string, unknown>;
+      }
       fleetStatus = 200;
+    },
+    getFleetV2Snapshot() {
+      return statefulFleetV2;
     },
     setFleetStatus(status, errorDetail = 'Service unavailable') {
       fleetStatus = status;
@@ -276,6 +1023,15 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
     setRequireBearerToken(token) {
       requiredToken = token;
     },
+    configureNativeCommands(cfg) {
+      if (cfg.ownerToken !== undefined) nativeOwnerToken = cfg.ownerToken;
+      if (cfg.allowedProjects !== undefined) {
+        nativeAllowedProjects = new Set(cfg.allowedProjects);
+      }
+    },
+    dropNextCommandResponse(count = 1) {
+      dropNextCommandResponses = Math.max(0, count);
+    },
     sendSseFrame(rawFrame) {
       for (const stream of sseStreams) {
         stream.write(rawFrame);
@@ -284,6 +1040,7 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
     closeActiveSseStreams() {
       for (const stream of sseStreams) {
         stream.end();
+        stream.destroy();
       }
       sseStreams.clear();
     },
@@ -296,6 +1053,84 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
       }
       sseStreams.clear();
       await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
+    },
+  };
+}
+
+export interface BoundedCdpFrameReaderOptions {
+  maxFrameBytes?: number;
+  maxBufferBytes?: number;
+  onMessage: (msg: {
+    id?: number;
+    result?: Record<string, unknown>;
+    error?: { message?: string };
+  }) => void;
+  onFatalError: (err: Error) => void;
+}
+
+export function createBoundedCdpFrameReader(options: BoundedCdpFrameReaderOptions): {
+  push(chunk: Buffer | string): void;
+  bufferedBytes(): number;
+} {
+  const maxFrameBytes = options.maxFrameBytes ?? MAX_CDP_FRAME_BYTES;
+  const maxBufferBytes = options.maxBufferBytes ?? MAX_CDP_BUFFER_BYTES;
+  let buffer = '';
+  let failed = false;
+
+  function fail(message: string): void {
+    if (failed) return;
+    failed = true;
+    buffer = '';
+    options.onFatalError(new Error(message));
+  }
+
+  return {
+    push(chunk: Buffer | string) {
+      if (failed) return;
+      const text = typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+      const incomingBytes = Buffer.byteLength(text, 'utf8');
+      const currentBytes = Buffer.byteLength(buffer, 'utf8');
+      if (currentBytes + incomingBytes > maxBufferBytes) {
+        fail(`CDP buffer exceeded maximum byte bound (${maxBufferBytes} bytes)`);
+        return;
+      }
+      buffer += text;
+      let nullIdx: number;
+      while ((nullIdx = buffer.indexOf('\0')) !== -1) {
+        const raw = buffer.slice(0, nullIdx);
+        buffer = buffer.slice(nullIdx + 1);
+        const frameBytes = Buffer.byteLength(raw, 'utf8');
+        if (frameBytes > maxFrameBytes) {
+          fail(`CDP frame exceeded maximum byte bound (${maxFrameBytes} bytes)`);
+          return;
+        }
+        if (!raw.trim()) continue;
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(raw);
+        } catch (err) {
+          fail(`Malformed CDP JSON frame: ${err instanceof Error ? err.message : String(err)}`);
+          return;
+        }
+        if (!isPlainObject(parsed)) {
+          fail('Malformed CDP JSON frame: expected JSON object');
+          return;
+        }
+        options.onMessage(
+          parsed as {
+            id?: number;
+            result?: Record<string, unknown>;
+            error?: { message?: string };
+          },
+        );
+        if (failed) return;
+      }
+      if (Buffer.byteLength(buffer, 'utf8') > maxFrameBytes) {
+        fail(`CDP unterminated frame exceeded maximum byte bound (${maxFrameBytes} bytes)`);
+      }
+    },
+    bufferedBytes() {
+      return Buffer.byteLength(buffer, 'utf8');
     },
   };
 }
@@ -400,6 +1235,9 @@ export interface BrowserHarness {
 export async function launchBrowserHarness(): Promise<BrowserHarness> {
   const binaryPath = discoverChromiumBinary();
   const setuidSandboxPath = discoverNormalUserSetuidSandbox(binaryPath);
+  const apparmorRestrictUserns = readSysctlDiagnostic(
+    '/proc/sys/kernel/apparmor_restrict_unprivileged_userns',
+  );
   const baseTmp = process.env.TMPDIR && existsSync(process.env.TMPDIR) ? process.env.TMPDIR : tmpdir();
   mkdirSync(baseTmp, { recursive: true, mode: 0o700 });
   const profileDir = mkdtempSync(join(baseTmp, 'adm-e2e-browser-'));
@@ -409,30 +1247,59 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
     ...(setuidSandboxPath ? { CHROME_DEVEL_SANDBOX: setuidSandboxPath } : {}),
   };
 
+  const browserArgs = [
+    '--headless=new',
+    '--disable-gpu',
+    '--disable-dev-shm-usage',
+    '--disable-background-networking',
+    '--disable-default-apps',
+    '--disable-extensions',
+    '--disable-sync',
+    '--no-first-run',
+    `--user-data-dir=${profileDir}`,
+    '--window-size=1440,900',
+    '--remote-debugging-pipe',
+  ];
+
+  // On Ubuntu 24.04 runners where apparmor_restrict_unprivileged_userns=1 and /opt/google/chrome/chrome
+  // is not installed, Playwright's cached Chromium binary does not match the path-based /etc/apparmor.d/chrome
+  // profile automatically. Transitioning into the system 'chrome' AppArmor profile via normal-user
+  // '/usr/bin/aa-exec -p chrome -- <binaryPath>' enables Chromium's full normal-user userns+seccomp sandbox.
+  let spawnCommand = binaryPath;
+  let spawnArgs = browserArgs;
+  let aaExecProfile: string | undefined;
+  if (
+    process.platform === 'linux' &&
+    binaryPath !== '/opt/google/chrome/chrome' &&
+    apparmorRestrictUserns === '1' &&
+    !setuidSandboxPath &&
+    existsSync('/usr/bin/aa-exec') &&
+    existsSync('/etc/apparmor.d/chrome')
+  ) {
+    try {
+      const probe = spawnSync('/usr/bin/aa-exec', ['-p', 'chrome', '--', '/bin/true'], {
+        encoding: 'utf8',
+      });
+      if (probe.status === 0) {
+        spawnCommand = '/usr/bin/aa-exec';
+        spawnArgs = ['-p', 'chrome', '--', binaryPath, ...browserArgs];
+        aaExecProfile = 'chrome';
+      }
+    } catch {
+      // Fall back to direct binaryPath spawn and preserve truthful launch diagnostics if unsupported
+    }
+  }
+
   // Launch with OS sandbox intact (never pass --no-sandbox or --disable-setuid-sandbox)
-  const child: ChildProcess = spawn(
-    binaryPath,
-    [
-      '--headless=new',
-      '--disable-gpu',
-      '--disable-dev-shm-usage',
-      '--disable-background-networking',
-      '--disable-default-apps',
-      '--disable-extensions',
-      '--disable-sync',
-      '--no-first-run',
-      `--user-data-dir=${profileDir}`,
-      '--window-size=1440,900',
-      '--remote-debugging-pipe',
-    ],
-    { stdio: ['ignore', 'pipe', 'pipe', 'pipe', 'pipe'], env: childEnv },
-  );
+  const child: ChildProcess = spawn(spawnCommand, spawnArgs, {
+    stdio: ['ignore', 'pipe', 'pipe', 'pipe', 'pipe'],
+    env: childEnv,
+  });
 
   const cdpWrite = child.stdio[3] as Writable;
   const cdpRead = child.stdio[4] as Readable | Duplex;
 
   let nextId = 1;
-  let buffer = '';
   let closedReason: string | null = null;
   let stderrHead = '';
   let stderrTail = '';
@@ -469,7 +1336,7 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
       ? 'Unsupported runner browser sandbox configuration (normal-user Chromium sandbox failed closed without --no-sandbox bypass): '
       : '';
     return (
-      `${prefix}binary=${binaryPath} exitCode=${String(exitCode)} signal=${String(exitSignal)} ` +
+      `${prefix}binary=${binaryPath} aa_exec_profile=${aaExecProfile ?? 'none'} exitCode=${String(exitCode)} signal=${String(exitSignal)} ` +
       `apparmor_restrict_unprivileged_userns=${apparmorUserns} ` +
       `unprivileged_userns_clone=${unprivUsernsClone} ` +
       `setuid_sandbox=${setuidSandboxPath ?? 'none'} ` +
@@ -522,18 +1389,10 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
     rejectAllPending(`CDP write pipe error: ${err.message}`);
   });
 
-  cdpRead.on('data', (chunk: Buffer) => {
-    buffer += chunk.toString('utf8');
-    let nullIdx: number;
-    while ((nullIdx = buffer.indexOf('\0')) !== -1) {
-      const raw = buffer.slice(0, nullIdx);
-      buffer = buffer.slice(nullIdx + 1);
-      if (!raw.trim()) continue;
-      const msg = JSON.parse(raw) as {
-        id?: number;
-        result?: Record<string, unknown>;
-        error?: { message?: string };
-      };
+  const frameReader = createBoundedCdpFrameReader({
+    maxFrameBytes: MAX_CDP_FRAME_BYTES,
+    maxBufferBytes: MAX_CDP_BUFFER_BYTES,
+    onMessage(msg) {
       if (msg.id !== undefined && pending.has(msg.id)) {
         const entry = pending.get(msg.id)!;
         clearTimeout(entry.timer);
@@ -544,7 +1403,16 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
           entry.resolve(msg.result ?? {});
         }
       }
-    }
+    },
+    onFatalError(err) {
+      rejectAllPending(err.message);
+      child.kill('SIGKILL');
+      rmSync(profileDir, { recursive: true, force: true });
+    },
+  });
+
+  cdpRead.on('data', (chunk: Buffer) => {
+    frameReader.push(chunk);
   });
 
   function sendCdp(
@@ -556,6 +1424,11 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
     if (closedReason) {
       return Promise.reject(
         new Error(`Cannot send CDP ${method}: ${closedReason} [${formatDiagnosticContext()}]`),
+      );
+    }
+    if (pending.size >= MAX_PENDING_CDP_COMMANDS) {
+      return Promise.reject(
+        new Error(`CDP pending command limit exceeded (max ${MAX_PENDING_CDP_COMMANDS}): ${method}`),
       );
     }
     const id = nextId++;
@@ -680,6 +1553,12 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
     binaryPath,
     browserVersion,
     async resetPage() {
+      const alreadyBlank = await evaluate<boolean>(
+        `window.location.href === 'about:blank' && document.readyState === 'complete'`,
+      ).catch(() => false);
+      if (alreadyBlank) return;
+      await evaluate(`window.stop?.()`).catch(() => undefined);
+      await sendCdp('Page.stopLoading', {}, sessionId).catch(() => undefined);
       await sendCdp('Page.navigate', { url: 'about:blank' }, sessionId);
       await waitForCondition(
         `window.location.href === 'about:blank' && document.readyState === 'complete'`,
@@ -691,7 +1570,13 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
       if (parsed.hostname !== '127.0.0.1' && parsed.hostname !== 'localhost') {
         throw new Error(`Refusing non-loopback navigation in E2E harness: ${url}`);
       }
-      await sendCdp('Page.navigate', { url }, sessionId);
+      await sendCdp('Page.stopLoading', {}, sessionId).catch(() => undefined);
+      try {
+        await sendCdp('Page.navigate', { url }, sessionId);
+      } catch {
+        await sendCdp('Page.stopLoading', {}, sessionId).catch(() => undefined);
+        await sendCdp('Page.navigate', { url }, sessionId);
+      }
       await waitForCondition(
         `document.readyState === 'complete' && document.querySelector('#root')?.children.length > 0`,
         `navigation to ${url}`,
@@ -755,9 +1640,10 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
     async clickButtonByAriaLabel(ariaLabel: string) {
       const escaped = JSON.stringify(ariaLabel);
       const clicked = await evaluate<boolean>(`(() => {
-        const target = [...document.querySelectorAll('[aria-label]')].find(
-          el => el.getAttribute('aria-label') === ${escaped}
-        );
+        const all = [...document.querySelectorAll('[aria-label], button[title]')];
+        const target =
+          all.find(el => el.getAttribute('aria-label') === ${escaped} || el.getAttribute('title') === ${escaped}) ??
+          all.find(el => (el.getAttribute('aria-label') || '').includes(${escaped}));
         if (!target || !(target instanceof HTMLElement)) return false;
         target.click();
         return true;
@@ -859,7 +1745,162 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
           resolveExit();
         });
       });
-      rmSync(profileDir, { recursive: true, force: true });
+      rmSync(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     },
   };
 }
+
+export interface IsolatedNativeAdmiraltyServer {
+  baseUrl: string;
+  ownerToken: string;
+  allowedProject: string;
+  binaryPath: string;
+  close(): Promise<void>;
+}
+
+export async function startIsolatedNativeAdmiraltyServer(options?: {
+  ownerToken?: string;
+  allowedProjects?: string[];
+}): Promise<IsolatedNativeAdmiraltyServer> {
+  await ensureBuiltDashboard();
+
+  const candidates = [
+    process.env.ADMIRALTY_E2E_ADMIRALTYD_BIN,
+    process.env.ADMIRALTYD_BINARY,
+    join(REPO_ROOT, 'target', 'debug', 'admiraltyd'),
+    join(REPO_ROOT, 'target', 'release', 'admiraltyd'),
+  ].filter((c): c is string => Boolean(c));
+
+  const binaryPath = candidates.find((c) => existsSync(c));
+  if (!binaryPath) {
+    throw new Error(
+      `No compiled admiraltyd binary found for isolated server integration test (checked: ${candidates.join(', ')}). ` +
+        `Build admiraltyd with 'cargo build --locked -p admiralty-server --bin admiraltyd' first.`,
+    );
+  }
+
+  // Use /tmp directly so all ancestor directories (/ and /tmp sticky 1777) satisfy startup::read_private_file
+  const privateDir = mkdtempSync('/tmp/adm-e2e-native-srv-');
+  chmodSync(privateDir, 0o700);
+
+  const ownerToken = options?.ownerToken ?? 'adm-isolated-native-owner-token-0123456789abcdef';
+  const allowedProjects = options?.allowedProjects ?? ['proj-001'];
+
+  const tokenFile = join(privateDir, 'token');
+  writeFileSync(tokenFile, ownerToken, { encoding: 'utf8', mode: 0o600 });
+  chmodSync(tokenFile, 0o600);
+
+  const nativeConfigFile = join(privateDir, 'native.json');
+  writeFileSync(
+    nativeConfigFile,
+    JSON.stringify({
+      schema_version: 1,
+      operator: {
+        principal: 'owner',
+        projects: allowedProjects,
+      },
+      agents: [],
+    }),
+    { encoding: 'utf8', mode: 0o600 },
+  );
+  chmodSync(nativeConfigFile, 0o600);
+
+  const dbPath = join(privateDir, 'native.sqlite');
+
+  // Reserve an ephemeral loopback port
+  const probeServer = createServer(() => undefined);
+  await new Promise<void>((resolveListen, rejectListen) => {
+    probeServer.once('error', rejectListen);
+    probeServer.listen(0, '127.0.0.1', () => resolveListen());
+  });
+  const addr = probeServer.address();
+  if (!addr || typeof addr === 'string') {
+    rmSync(privateDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    throw new Error('Failed to allocate ephemeral port for isolated admiraltyd');
+  }
+  const port = addr.port;
+  await new Promise<void>((resolveClose) => probeServer.close(() => resolveClose()));
+
+  const baseUrl = `http://127.0.0.1:${port}`;
+  let stderrLog = '';
+  let exitState: { exited: boolean; code: number | null | undefined; signal: string | null | undefined } = {
+    exited: false,
+    code: undefined,
+    signal: undefined,
+  };
+
+  const child = spawn(
+    binaryPath,
+    [
+      '--database',
+      dbPath,
+      '--listen',
+      `127.0.0.1:${port}`,
+      '--token-file',
+      tokenFile,
+      '--native-config',
+      nativeConfigFile,
+      '--assets',
+      DIST_DIR,
+    ],
+    { stdio: ['ignore', 'pipe', 'pipe'] },
+  );
+
+  child.stderr?.on('data', (chunk: Buffer) => {
+    stderrLog = (stderrLog + chunk.toString('utf8')).slice(-2_000);
+  });
+  child.once('exit', (code, signal) => {
+    exitState = { exited: true, code, signal };
+  });
+
+  const deadline = Date.now() + 10_000;
+  let ready = false;
+  while (Date.now() < deadline) {
+    if (exitState.exited) {
+      rmSync(privateDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+      throw new Error(
+        `Isolated admiraltyd exited prematurely (code=${String(exitState.code)}, signal=${String(exitState.signal)}, stderr=${stderrLog.trim()})`,
+      );
+    }
+    try {
+      const res = await fetch(`${baseUrl}/v2/fleet`, {
+        headers: { Authorization: `Bearer ${ownerToken}` },
+      });
+      if (res.status === 200) {
+        ready = true;
+        break;
+      }
+    } catch {
+      // Wait for listener readiness
+    }
+    await new Promise((r) => setTimeout(r, 40));
+  }
+
+  if (!ready) {
+    child.kill('SIGKILL');
+    rmSync(privateDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    throw new Error(`Timed out waiting for isolated admiraltyd at ${baseUrl} (stderr=${stderrLog.trim()})`);
+  }
+
+  return {
+    baseUrl,
+    ownerToken,
+    allowedProject: allowedProjects[0] ?? 'proj-001',
+    binaryPath,
+    async close() {
+      child.kill('SIGTERM');
+      await new Promise<void>((resolveExit) => {
+        const timer = setTimeout(() => {
+          child.kill('SIGKILL');
+          resolveExit();
+        }, 2_000);
+        child.once('exit', () => {
+          clearTimeout(timer);
+          resolveExit();
+        });
+      });
+      rmSync(privateDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    },
+  };
+}
+
