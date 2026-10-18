@@ -165,3 +165,48 @@ fn p25_p30_round11_item4_final_validation_gate() {
         "P30 final gate must report all ten package-builder checks"
     );
 }
+
+#[test]
+fn p25_p30_round12_item5_redteam_audit_gate() {
+    use admiralty_runtime::recovery::plan_recovery;
+
+    let (manifest, observation, mut fence) = recovery_fixture::valid_recovery_evidence();
+    let valid = plan_recovery(&manifest, &observation, Some(&fence))
+        .expect("valid external receipt evidence produces a bounded proposal");
+    assert!(valid.resume_proposed);
+    assert!(!valid.restore_authorized());
+    assert!(!valid.effects_authorized());
+    assert_eq!(
+        valid.fence_receipt_digest.as_deref(),
+        Some(fence.external_receipt_digest.as_str())
+    );
+
+    // Adversarial input: malformed receipt digests must block recovery and all authority.
+    fence.external_receipt_digest = "sha256:NOT_HEX".into();
+    let malformed = plan_recovery(&manifest, &observation, Some(&fence))
+        .expect_err("malformed receipt must fail closed before a proposal exists");
+    assert!(
+        malformed
+            .to_string()
+            .contains("invalid external receipt digest")
+    );
+
+    // P30's deterministic package audit checks manifest digests and rejects tampering.
+    let workspace = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .canonicalize()
+        .expect("workspace root resolves");
+    let output = Command::new("python3")
+        .args(["scripts/release/package.py", "--self-test"])
+        .current_dir(workspace)
+        .output()
+        .expect("P30 offline receipt-integrity audit starts");
+    assert!(
+        output.status.success(),
+        "P30 receipt-integrity audit failed:\n{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let report = String::from_utf8_lossy(&output.stderr);
+    assert!(report.contains("Ran 10 tests"));
+}
