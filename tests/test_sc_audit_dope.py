@@ -200,5 +200,47 @@ class AuditDope(unittest.TestCase):
         self.assertIn('RECEIPT_GENERIC_COMMAND', {f['code'] for f in sc.findings})
 
 
+class GBRedTeam0645(unittest.TestCase):
+    """Vacuous / non-test receipts found by the GB DOPE red team on main 402954ed (2026-10-18)."""
+    def setUp(self):
+        self.p = Packet()
+
+    def tearDown(self):
+        self.p.tmp.cleanup()
+
+    def _with_log(self, tid, cmd, body):
+        rp, _ = self.p.receipt(tid)
+        r = json.load(open(rp)); c = r['commands'][0]
+        open(c['log_path'], 'a').write(body)
+        c['cmd'] = cmd; c['log_sha256'] = sha(c['log_path']); json.dump(r, open(rp, 'w'))
+        return sc.check_dope_receipt(tid, rp, None, on_main)[0]
+
+    def test_cargo_filter_matching_zero_tests_is_vacuous(self):
+        probs = self._with_log('D00', 'cargo test --locked --offline --lib prepared_view -- --nocapture',
+                               'running 0 tests\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 278 filtered out; finished in 0.00s\n')
+        self.assertIn('vacuous_zero_tests', probs)
+
+    def test_cargo_with_real_tests_ok(self):
+        probs = self._with_log('R04', 'cargo test --locked --offline --lib teacher_study -- --nocapture',
+                               'test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 273 filtered out\n')
+        self.assertEqual(probs, [])
+
+    def test_unittest_ran_zero(self):
+        self.assertIn('vacuous_zero_tests', self._with_log('X01', 'PYTHONPATH=. python3 -m unittest x -v', 'Ran 0 tests in 0.000s\n\nOK\n'))
+
+    def test_sha256sum_without_args_is_not_a_test_and_empty_hash(self):
+        probs = self._with_log('P00', 'sha256sum ', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  -\n')
+        self.assertIn('not_a_test_command', probs)
+        self.assertIn('empty_input_hash', probs)
+
+    def test_git_log_and_gh_run_list_not_tests(self):
+        self.assertIn('not_a_test_command', self._with_log('I00', 'git -C /x log -n 70 --oneline abc', ''))
+        self.assertIn('not_a_test_command', self._with_log('V03', 'gh run list --repo a/b --branch main -L 2', ''))
+
+    def test_env_prefix_and_wrappers_skipped(self):
+        self.assertEqual(sc.dope_cmd_program('PYTHONPATH=. taskset -c 1-2 nice -n 5 python3 -m unittest t'), 'python3')
+        self.assertEqual(sc.dope_cmd_program('A=1 B=2 sha256sum f'), 'sha256sum')
+
+
 if __name__ == '__main__':
     unittest.main()
