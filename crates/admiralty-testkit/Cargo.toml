@@ -175,6 +175,10 @@ name = "provider_codex"
 path = "../../tests/integration/provider_codex.rs"
 
 [[test]]
+name = "codex_p24_p29_round12_audit"
+path = "../../tests/integration/codex_p24_p29_round12_audit.rs"
+
+[[test]]
 name = "codex_accept_p09_p16"
 path = "../../tests/integration/codex_accept_p09_p16.rs"
 
