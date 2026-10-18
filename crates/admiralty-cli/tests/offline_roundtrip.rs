@@ -631,3 +631,156 @@ fn offline_task_message_and_restart_roundtrip_preserves_scope_without_activation
         "unknown command must not create a database"
     );
 }
+
+#[test]
+fn workplan_cli_preserves_preview_and_durable_revisions_without_task_submission() {
+    let fixture = private_fixture_root();
+    let root = fixture.path();
+    let database = root.join("plans.sqlite");
+    let file = root.join("plan.json");
+    let mut plan = json!({
+        "schema_version":1,"plan_id":"plan","revision":1,"project_id":"project",
+        "tasks":[{
+            "schema_version":1,"project_id":"project","root_id":"root","task_id":"task",
+            "revision":1,"title":"Immutable task","objective":"Record a plan without execution",
+            "non_goals":[],"owned_paths":["src"],"forbidden_paths":[],"read_first":[],
+            "dependencies":[],"criteria":[{"id":"c","text":"Check passes","check_ids":["unit"]}],
+            "checks":[{"id":"unit","program":"cargo","args":["test"],"cwd":".","timeout_secs":30}],
+            "authority_ref":"fixture","max_attempts":1,"simulated":true
+        }]
+    });
+    write_private(&file, &serde_json::to_vec(&plan).expect("fixture"));
+    let file_text = file.display().to_string();
+    let database_text = database.display().to_string();
+    let old_preview = invoke_json(root, string_args(&["workplan", "--file", &file_text]));
+    let new_preview = invoke_json(
+        root,
+        string_args(&["workplan", "preview", "--file", &file_text]),
+    );
+    assert_eq!(old_preview, new_preview);
+    assert_eq!(old_preview["preview_only"], true);
+    assert!(!database.exists());
+    let register = string_args(&[
+        "workplan",
+        "register",
+        "--database",
+        &database_text,
+        "--file",
+        &file_text,
+    ]);
+    for invalid_options in [
+        ["--expected-revision", "01"],
+        ["--expected-revision", "2"],
+        ["--command-id", "bad:identity"],
+    ] {
+        let mut invalid = register.clone();
+        invalid.extend(string_args(&invalid_options));
+        invoke_failure(root, invalid);
+        assert!(
+            !database.exists(),
+            "invalid metadata must not create a database"
+        );
+    }
+    let first = invoke_json(root, register.clone());
+    assert_eq!(first, invoke_json(root, register.clone()));
+    assert_eq!(first["receipt"]["recorded_only"], true);
+    assert_eq!(first["receipt"]["task_events_emitted"], false);
+    assert_eq!(first["receipt"]["native_execution_qualified"], false);
+    assert_eq!(snapshot(root, &database)["projection"]["tasks"], json!({}));
+    plan["revision"] = json!(2);
+    fs::write(&file, serde_json::to_vec(&plan).expect("revision")).expect("write revision");
+    // Stale expected revision cannot advance, and the failure cannot poison a later correct command.
+    invoke_failure(root, register.clone());
+    let mut advance = register.clone();
+    advance.extend(string_args(&["--expected-revision", "1"]));
+    let second = invoke_json(root, advance);
+    assert_eq!(second["receipt"]["revision"], "2");
+    let show = string_args(&[
+        "workplan",
+        "show",
+        "--database",
+        &database_text,
+        "--project",
+        "project",
+        "--plan",
+        "plan",
+    ]);
+    assert_eq!(invoke_json(root, show.clone())["plan"]["revision"], 2);
+    let mut historical = show;
+    historical.extend(string_args(&["--revision", "1"]));
+    assert_eq!(invoke_json(root, historical)["receipt"], first["receipt"]);
+    plan["revision"] = json!(1);
+    fs::write(&file, serde_json::to_vec(&plan).expect("original")).expect("restore fixture");
+    assert_eq!(invoke_json(root, register), first);
+    let list = string_args(&[
+        "workplan",
+        "list",
+        "--database",
+        &database_text,
+        "--project",
+        "project",
+        "--limit",
+        "1",
+    ]);
+    assert_eq!(
+        invoke_json(root, list)["entries"][0]["current_revision"],
+        "2"
+    );
+    invoke_failure(
+        root,
+        string_args(&[
+            "workplan",
+            "list",
+            "--database",
+            &database_text,
+            "--project",
+            "project",
+            "--limit",
+            "0",
+        ]),
+    );
+    invoke_failure(
+        root,
+        string_args(&[
+            "workplan", "--file", &file_text, "preview", "--file", &file_text,
+        ]),
+    );
+    // All mutation/read commands acquire the same offline store ownership.
+    let owned = admiralty_store::Store::open(&database).expect("own database");
+    let failure = invoke_failure(
+        root,
+        string_args(&[
+            "workplan",
+            "show",
+            "--database",
+            &database_text,
+            "--project",
+            "project",
+            "--plan",
+            "plan",
+        ]),
+    );
+    assert!(String::from_utf8_lossy(&failure.stderr.bytes).contains("already has an owner"));
+    drop(owned);
+}
+
+#[cfg(unix)]
+#[test]
+fn workplan_preview_rejects_fifo_without_waiting_for_a_writer() {
+    let fixture = private_fixture_root();
+    let fifo = fixture.path().join("plan.fifo");
+    assert!(
+        Command::new("/usr/bin/mkfifo")
+            .arg(&fifo)
+            .status()
+            .expect("create owned FIFO")
+            .success()
+    );
+    let started = Instant::now();
+    let failure = invoke_failure(
+        fixture.path(),
+        string_args(&["workplan", "--file", &fifo.display().to_string()]),
+    );
+    assert!(started.elapsed() < Duration::from_secs(3));
+    assert!(String::from_utf8_lossy(&failure.stderr.bytes).contains("regular file"));
+}

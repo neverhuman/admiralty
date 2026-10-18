@@ -1,5 +1,6 @@
 //! Offline domain operations and an isolated, read-only demo. No provider execution.
 mod diagnostics;
+mod workplans;
 use admiralty_core::{
     AcceptanceCriterion, AttemptId, CheckSpec, CoordinationMessage, DomainEvent, MessageId,
     MessagePayload, PrincipalId, ProjectId, RootId, SourceIdentity, TaskContract, TaskId,
@@ -12,7 +13,7 @@ use clap::{Args, Parser, Subcommand};
 use serde_json::{Value, json};
 use std::{
     error::Error,
-    fs::{self, File},
+    fs,
     io::{self, Read, Write},
     net::SocketAddr,
     path::{Path, PathBuf},
@@ -68,11 +69,8 @@ enum Command {
         #[command(subcommand)]
         command: WorkCommand,
     },
-    /// Validate a bounded JSON workplan and preview dependency order. No submission.
-    Workplan {
-        #[arg(long)]
-        file: PathBuf,
-    },
+    /// Preview or register immutable workplan revisions offline. Does not launch tasks.
+    Workplan(workplans::WorkplanArgs),
     /// Compile a protected task capsule from an existing offline database.
     Context {
         #[arg(long)]
@@ -219,10 +217,24 @@ fn invalid(message: impl Into<String>) -> Box<dyn Error + Send + Sync> {
 }
 
 fn read_bounded(path: &Path) -> CliResult<Vec<u8>> {
-    let mut data = Vec::new();
-    File::open(path)?
-        .take(MAX_JSON_BYTES + 1)
-        .read_to_end(&mut data)?;
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(
+            (rustix::fs::OFlags::NONBLOCK | rustix::fs::OFlags::CLOEXEC).bits() as i32,
+        );
+    }
+    let file = options.open(path)?;
+    let metadata = file.metadata()?;
+    if !metadata.is_file() || metadata.len() > MAX_JSON_BYTES {
+        return Err(invalid(
+            "JSON input must be a regular file of at most one MiB",
+        ));
+    }
+    let mut data = Vec::with_capacity(metadata.len() as usize);
+    file.take(MAX_JSON_BYTES + 1).read_to_end(&mut data)?;
     if data.len() as u64 > MAX_JSON_BYTES {
         return Err(invalid(
             "JSON input exceeds one MiB; use bounded artifact references",
@@ -271,7 +283,7 @@ fn explain_file(path: &Path) -> CliResult<diagnostics::OperatorDiagnostic> {
 fn open_existing(path: &Path) -> CliResult<Store> {
     if !path.is_file() {
         return Err(invalid(format!(
-            "database does not exist: {}; submit a contract to a new owned database first",
+            "database does not exist: {}; submit a contract or register a workplan in a new owned database first",
             path.display()
         )));
     }
@@ -525,6 +537,7 @@ async fn run(cli: Cli) -> CliResult<()> {
                     "isolated_offline_demo": true, "durable_single_owner_event_store": true,
                     "task_contract_validation": true, "offline_mailboxes": true,
                     "workplan_import_preview": true,
+                    "offline_workplan_revision_registry": true,
                     "protected_capsule_compiler": true, "read_only_http_snapshot_and_replay": true,
                     "sqlite_online_backup": true, "json_schema_export_and_drift_check": true
                 },
@@ -552,16 +565,7 @@ async fn run(cli: Cli) -> CliResult<()> {
         Command::Snapshot { database } => {
             print_json(serde_json::to_value(open_existing(&database)?.snapshot()?)?)?;
         }
-        Command::Workplan { file } => {
-            let preview = admiralty_core::workplans::preview_workplan(&read_bounded(&file)?)?;
-            print_json(json!({
-                "preview_only": true, "execution_started": false,
-                "plan_id": preview.plan_id, "revision": preview.revision,
-                "project_id": preview.project_id, "source_digest": preview.source_digest,
-                "task_order": preview.task_order,
-                "task_digests": preview.task_digests,
-            }))?;
-        }
+        Command::Workplan(args) => workplans::run(args)?,
         Command::Work { command } => match command {
             WorkCommand::Validate { file } => {
                 let contract = read_contract(&file)?;
