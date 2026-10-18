@@ -332,6 +332,26 @@ fn reboot_rotation_revocation_and_capacity_require_current_generation() {
         3
     );
 
+    let stale_enrollment = EnrollmentEvent::Enrolled {
+        event_id: "replay-revoked-enrollment".into(),
+        token_id: "boot-a-token".into(),
+        scope: scope(),
+        identity: identity("node-a", "boot-a", 1, 'c'),
+    };
+    assert_eq!(
+        apply(&revoked, &stale_enrollment, Some(7)),
+        Err(NodeError::Consumed)
+    );
+    assert!(
+        !revoked
+            .nodes
+            .contains_key(&NodeId::new("node-a").expect("node ID fixture"))
+    );
+    assert_eq!(
+        revoked.revoked_generations[&NodeId::new("node-a").expect("node ID fixture")],
+        DecimalU64::new(3)
+    );
+
     let reissued = apply(
         &revoked,
         &EnrollmentEvent::TokenIssued {

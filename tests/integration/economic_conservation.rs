@@ -279,20 +279,23 @@ fn reservations_replay_hold_unknown_liability_settle_and_correct_exact_minor_uni
     assert_eq!(final_state.unresolved_liabilities[&scope].get(), 0);
     assert_eq!(final_state.settled[&scope].get(), 1);
 
-    let corrected = reservations::reduce_reservation(
-        &final_state,
-        ReservationEvent::CorrectSettlement {
-            event_id: "late-correction-1".into(),
-            reservation_id: "reservation-1".into(),
-            binding: final_state.reservations["reservation-1"].binding(),
-            corrected_total: MinorUnits::new(2),
-            evidence_ref: "provider-late-correction".into(),
-        },
-    )
-    .expect("append late settlement correction");
+    let correction_event = ReservationEvent::CorrectSettlement {
+        event_id: "late-correction-1".into(),
+        reservation_id: "reservation-1".into(),
+        binding: final_state.reservations["reservation-1"].binding(),
+        corrected_total: MinorUnits::new(2),
+        evidence_ref: "provider-late-correction".into(),
+    };
+    let corrected = reservations::reduce_reservation(&final_state, correction_event.clone())
+        .expect("append late settlement correction");
     assert_eq!(corrected.settled[&scope].get(), 2);
     assert_eq!(corrected.unresolved_liabilities[&scope].get(), 0);
     assert_eq!(corrected.revision, final_state.revision + 1);
+    assert_eq!(
+        reservations::reduce_reservation(&corrected, correction_event)
+            .expect("replaying a settlement correction preserves its applied state"),
+        corrected
+    );
 }
 
 #[test]

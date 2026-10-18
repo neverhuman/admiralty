@@ -1,4 +1,6 @@
-use admiralty_runtime::recovery::{Blocker, DecimalU64, RecoveryError, plan_recovery};
+use admiralty_runtime::recovery::{
+    Blocker, DecimalU64, Reconciliation, RecoveryError, SessionCustody, plan_recovery,
+};
 use std::{
     io::{self, Read},
     path::PathBuf,
@@ -188,6 +190,25 @@ fn corrupted_artifact_closure_identifier_is_rejected() {
         error,
         RecoveryError::Invalid("artifact closure ID does not match immutable content".into())
     );
+}
+
+#[test]
+fn unresolved_effects_and_unknown_session_custody_jointly_block_resume() {
+    let (manifest, mut observation, fence) = recovery_fixture::valid_recovery_evidence();
+    observation.unresolved_effects = Reconciliation::Unresolved;
+    observation.session_custody = SessionCustody::Unknown;
+
+    let proposal = plan_recovery(&manifest, &observation, Some(&fence))
+        .expect("independent unsafe recovery states remain explicit blockers");
+    assert!(
+        proposal
+            .blockers
+            .contains(&Blocker::UnresolvedRemoteMutation)
+    );
+    assert!(proposal.blockers.contains(&Blocker::UnknownSessionCustody));
+    assert!(!proposal.resume_proposed);
+    assert!(!proposal.restore_authorized());
+    assert!(!proposal.effects_authorized());
 }
 
 #[test]

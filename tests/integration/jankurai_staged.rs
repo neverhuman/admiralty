@@ -219,6 +219,9 @@ fn exact_audit_replay_is_idempotent_and_changed_evidence_collides() {
     assert!(replay.replayed);
     assert_eq!(replay.evidence_digest, first.evidence_digest);
     assert_eq!(replay.outcome, first.outcome);
+    assert!(!replay.acceptance_granted());
+    assert!(!replay.execution_granted());
+    assert!(!replay.publication_granted());
 
     let mut changed = staged;
     changed.score = Some(DecimalU64::new(89));

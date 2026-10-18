@@ -165,3 +165,20 @@ fn invalid_utf8_in_a_fragmented_codex_event_is_rejected_without_observation() {
     ));
     assert!(parser.observations().is_empty());
 }
+
+#[test]
+fn completed_provider_turn_stays_unknown_without_complete_capture() {
+    let mut parser = CodexNdjsonStream::new("selected-model", CodexEffort::Low)
+        .expect("explicit model accepted");
+    parser
+        .push_chunk(&OutputChunk {
+            offset: 0,
+            stream: OutputStream::Stdout,
+            bytes: TURN.to_vec(),
+        })
+        .expect("provider turn parses");
+    let summary = parser.finish(Some(0), false);
+    assert_eq!(summary.termination, CodexTermination::Unknown);
+    assert!(!summary.capture_complete);
+    assert!(!summary.trusted_acceptance());
+}

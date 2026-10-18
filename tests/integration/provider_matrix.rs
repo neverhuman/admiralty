@@ -414,6 +414,15 @@ fn semantic_errors_and_partial_frames_stay_failed_after_provisional_events() {
         g.push(b"}\n"),
         Err(grok::GrokError::Stream(ObservationError::Framing))
     ));
+    let mut closed_grok = grok::StreamDecoder::new();
+    closed_grok
+        .push(b"{\"jsonrpc\":\"2.0\",\"method\":\"session/update\"}\n")
+        .expect("complete provider observation");
+    closed_grok.finish().expect("complete stream closure");
+    assert!(matches!(
+        closed_grok.push(b"\n"),
+        Err(grok::GrokError::Stream(ObservationError::Closed))
+    ));
     let mut a = agy::StreamDecoder::new();
     a.push(b"{\"type\":\"result\"}\n").expect("object");
     a.finish().expect("close");

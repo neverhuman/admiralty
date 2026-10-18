@@ -124,6 +124,23 @@ fn disconnected_node_can_only_propose_its_existing_permitted_continuation() {
         proposal.candidates[0].continuation_permit_id.as_deref(),
         Some("permit-1")
     );
+    assert_eq!(
+        (
+            &proposal.project,
+            &proposal.root,
+            &proposal.task,
+            &proposal.contract_digest,
+            &proposal.authority_ref,
+        ),
+        (
+            &request.project,
+            &request.root,
+            &request.task,
+            &request.contract_digest,
+            &request.authority_ref,
+        ),
+        "placement must preserve the exact task and authority identity",
+    );
     assert!(!proposal.execution_granted);
     assert!(!proposal.publication_granted);
     assert!(!proposal.authority_granted);

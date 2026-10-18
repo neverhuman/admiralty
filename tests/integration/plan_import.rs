@@ -67,6 +67,7 @@ fn repeated_preview_is_idempotent_and_dependency_ordered() {
         .expect("identical replay remains previewable");
 
     assert_eq!(first, replay);
+    assert_eq!(first.task_order.len(), first.task_digests.len());
     assert_eq!(
         first.task_order,
         ["parent", "child"].map(|id| TaskId::new(id).expect("task ID"))

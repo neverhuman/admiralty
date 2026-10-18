@@ -402,3 +402,21 @@ fn truncated_feature_digest_is_rejected_at_the_sha256_boundary() {
         "invalid trial input: full lowercase SHA-256 digest required"
     );
 }
+
+#[test]
+fn outcome_clock_must_advance_past_trial_assignment() {
+    let mut evidence = complete_evidence();
+    evidence.outcomes[0].observed_tick = DecimalU64::new(51);
+    assert!(
+        validate_trial(&evidence).is_ok(),
+        "an outcome observed after assignment is valid"
+    );
+
+    evidence.outcomes[0].observed_tick = evidence.trial.decision_tick.clone();
+    assert_eq!(
+        validate_trial(&evidence)
+            .expect_err("outcomes cannot be observed at the assignment transition")
+            .to_string(),
+        "invalid trial input: outcome outside recorded assignment/analysis clock interval"
+    );
+}

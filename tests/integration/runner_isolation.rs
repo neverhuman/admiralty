@@ -139,3 +139,24 @@ fn workspace_scope_path_byte_limit_rejects_overflow() {
         WorkspaceError::InvalidRelativePath
     );
 }
+
+#[test]
+fn forbidden_scope_overrides_broader_owned_scope() {
+    let temp = tempfile::tempdir().expect("temporary workspace fixture");
+    let workspace = fs::canonicalize(temp.path()).expect("canonical fixture root");
+    let spec = WorkspaceSpec {
+        node_id: NodeRef::new("node-overlap").expect("node ID"),
+        root_id: RootId::new("root-overlap").expect("root ID"),
+        project_id: ProjectId::new("project-overlap").expect("project ID"),
+        workspace,
+        owned_paths: vec![PathBuf::from("src")],
+        forbidden_paths: vec![PathBuf::from("src/private")],
+    };
+    let validated = spec.validate().expect("overlapping scope validates");
+
+    assert!(validated.owns(std::path::Path::new("src/public.rs")));
+    assert!(
+        !validated.owns(std::path::Path::new("src/private/token")),
+        "forbidden child scope overrides an owned parent"
+    );
+}
