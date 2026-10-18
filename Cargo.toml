@@ -13,6 +13,7 @@ admiralty-runtime.workspace = true
 rusqlite.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
+tempfile.workspace = true
 
 [[test]]
 name = "codex_round16_p05_p15"
