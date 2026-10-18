@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use admiralty_core::{
     AttemptId, PrincipalId, ProjectId, RootId, TaskId, content_digest,
     economics::{

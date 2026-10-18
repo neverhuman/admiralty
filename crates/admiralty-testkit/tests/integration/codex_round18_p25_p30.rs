@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use super::recovery_fixture;
 use admiralty_runtime::recovery::{Blocker, plan_recovery};
 use sha2::{Digest, Sha256};

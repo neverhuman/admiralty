@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use admiralty_core::coordination::questions::{QuestionEvent, QuestionScope, QuestionStatus};
 use admiralty_core::verification::{
     CheckResult, ReceiptProducer, RequiredNegativeCheck, VerificationInputs, VerificationPolicy,

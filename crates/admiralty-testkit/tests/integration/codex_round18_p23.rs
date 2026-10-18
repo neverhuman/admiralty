@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! Release bundle and schema parity qualification for P23 node state.
 
 use admiralty_core::nodes::{
