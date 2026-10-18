@@ -195,7 +195,12 @@ fn codex_round21_p24_p29_hermetic_cross_packet_release_qualification() {
         },
         21,
     );
-    let placed = propose_placement(&placement_request(), &[fresh_offer.clone()], &policy(), 212)
+    let placed = propose_placement(
+        &placement_request(),
+        std::slice::from_ref(&fresh_offer),
+        &policy(),
+        212,
+    )
         .expect("fresh placement evidence yields a candidate");
     let replay = propose_placement(&placement_request(), &[fresh_offer], &policy(), 212)
         .expect("hermetic replay is deterministic");
