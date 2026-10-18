@@ -1,5 +1,6 @@
 //! Fleet projection, durable replay and explicitly configured native command services.
 pub mod legacy;
+pub mod model_selection;
 pub mod models;
 pub mod services;
 pub mod startup;

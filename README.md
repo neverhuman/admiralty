@@ -1,122 +1,151 @@
+<p align="center">
+  <img src="docs/brand/admiralty-source.png" width="180" alt="Admiralty mascot" />
+</p>
+
 # Admiralty
 
-Coordinate complex engineering work across projects, coding agents and a fleet.
-The v2 implementation uses Rust for durable coordination and a React/Vite dashboard
-for visibility. Compact typed task capsules preserve scope, checks and authority;
-agent reports do not grant acceptance or publication authority.
+**Fleet coordination for complex engineering work.**
 
-The existing captain dashboard remains operational during migration. Its private
-deployment history and standing orders are retained below. Runtime data,
-credentials, transcripts and databases stay outside Git.
+Admiralty brings projects, task contracts, coding agents, model policy and delivery evidence into one control plane. Rust owns durable state and the HTTP service; React, TypeScript and Vite provide a dense, real-data console.
 
-## Run the current preview
+The operating model is **Owner → Admiral → Commodores → task workers**. The Admiral coordinates the fleet; each Commodore manages a project. Small, scoped context capsules and durable messages keep routine coordination compact, leaving implementation context with the workers doing the work. Requested models, observed processes, successful checks and accepted tasks retain distinct meanings.
 
-Requires Rust 1.95.0, Node 24+ and pnpm 11.15.1. This is a source-built development
-preview; install bundles and native fleet execution are still being implemented.
+[Quickstart](#quickstart) · [Live console](docs/operators/live-console.md) · [Native startup](docs/operators/native-startup.md) · [Model policy](docs/operators/models.md) · [Execution ledger](docs/plans/admiralty-v2/EXECUTION.md)
+
+## What is here
+
+- **A detailed fleet console.** Black backgrounds, bright model badges, ordinary project tabs, task stages, worker and Commodore observations, PR/CI/review evidence, logs, hierarchy and resource accounting. Admiralty itself is another project tab.
+- **Thirteen temporal plots.** Cost index versus all-Luna, first-pass failures, task burn-up, in-progress work by project, model tiers, escalation, CPU load, disk, integration CI, hygiene, tokens, token yield and quota. Source periods, freshness, missing samples and accounting notes stay visible.
+- **Durable coordination.** SQLite-backed events, exact retry identities, scoped inboxes, application acknowledgments, versioned contracts, full-task compare-and-swap and replayable task projections.
+- **Compact worker context.** Task capsules carry the objective, scope, dependencies and named checks. Scoped agent reads can omit an unchanged capsule by its known contract digest; token budgets are estimates rather than claimed provider measurements.
+- **Configurable fleet and models.** Node identities and model policies are configuration. Local providers can precede Luna, with explicit concurrency, capability, retry and escalation policy. A routing result is a proposal until execution capacity and authority are actually acquired.
+- **Evidence-aware lifecycle and recovery.** Acceptance requires trusted verification and custody. Unknown launch outcomes remain held for reconciliation. Offline backup, verification, restore rehearsal and release staging preserve their inputs instead of overwriting live state.
+
+These capabilities have different qualification levels. The native web service and component implementations are available; general autonomous native coding execution is still being completed. See [current release status](#current-release-status) before enabling a deployment.
+
+## Quickstart
+
+Use Rust **1.95.0** with rustfmt/Clippy, Node **24+**, pnpm **11.15.1**, Bash and a native C build toolchain. The repository pins its Rust and pnpm versions. Python 3 is used by the retained collector, packaging utility and compatibility checks; it is not the Rust HTTP server or React runtime.
 
 ```sh
+git clone https://github.com/neverhuman/admiralty.git
+cd admiralty
 pnpm install --frozen-lockfile --ignore-scripts
-pnpm live --status /absolute/path/status.json --index /absolute/path/index.html
+pnpm demo
 ```
 
-Open http://127.0.0.1:18891/ for real observations from your existing collector.
-The launcher creates private preview state and a dashboard access token, whose
-file path is printed without displaying its value. The dense fleet page opens
-first. Add `--models /absolute/private/models.json` for model settings; use the
-token through Session access to edit them. Stop with Ctrl-C.
+Open **http://127.0.0.1:18892/** and choose **Demo overview** or **Workplans**. This is an isolated synthetic fleet: no accounts, providers, machine enrollment or real projects are used. The detailed producer view needs an existing real feed. Stop with Ctrl-C.
 
-For an isolated synthetic demo, run `pnpm demo` and open
-http://127.0.0.1:18892/. Demo and real observation use separate default ports.
-Neither launcher makes provider calls or enrolls machines. The launcher builds the UI
-and keeps its Rust target directory in this checkout; `ADMIRALTY_TARGET_DIR`
-overrides it. The preview uses one SSE connection and snapshots on changes,
-without idle model turns or repeated idle snapshot requests.
+The launcher builds React and Rust locally. `ADMIRALTY_TARGET_DIR` selects an alternative Cargo build directory; `ADMIRALTY_DEMO_LISTEN` selects another loopback listener. There is no supported one-command installer or published, qualified binary bundle yet.
 
-## Detailed fleet view and own models
-
-The React dashboard includes the dense fleet view: project tabs, task stages,
-blockers, captain and worker details, PR/CI/review, coordination logs, hierarchy,
-usage, resources and history. Admiralty's build is an ordinary project tab.
-An exact original dashboard remains available under `/legacy/` when configured.
-See the [live console guide](docs/operators/live-console.md) for the complete
-chart strip, hierarchy, source accounting and view controls.
-
-Models settings lets an operator add providers, native model IDs, tier order,
-capacity, capabilities, attempt caps and escalation links. A self-hosted model can
-run before Luna. Setup and permission blocks wait for repair; genuine failed
-checks can escalate under the configured budget. See [model setup](docs/operators/models.md)
-and [OpenCode SSH integration](docs/operators/opencode-ssh.md).
-
-## Admiralty v2 implementation
-
-The fleet is building the Rust control plane and React dashboard through reviewed implementation PRs. The [execution ledger](docs/plans/admiralty-v2/EXECUTION.md) records exact source revisions, validation evidence and remaining gates; historical PR [#9](https://github.com/neverhuman/admiralty/pull/9) began that integration. Admiralty appears as an ordinary project in the detailed React view, with its worker lanes and work packets. Packet claims, candidate review, verification and integration are distinct; worker reports do not create accepted work.
-
-The current Rust foundation provides durable scoped task/message state, context capsules, crash replay, backups, generated schemas/TypeScript and a read-only API/SSE demo. Native execution and fleet enrollment remain disabled pending their qualification gates.
+To inspect the CLI without starting a server:
 
 ```sh
-cargo run -p admiralty-cli -- demo --snapshot-only
-cargo run -p admiralty-cli -- demo --listen 127.0.0.1:18892
+CARGO_TARGET_DIR="$PWD/target" cargo run -p admiralty-cli --locked -- doctor
+CARGO_TARGET_DIR="$PWD/target" cargo run -p admiralty-cli --locked -- demo --snapshot-only
+CARGO_TARGET_DIR="$PWD/target" cargo run -p admiralty-cli --locked -- --help
 ```
 
-See [prototype operations](docs/operators/bootstrap.md), [implementation plan](docs/plans/admiralty-v2/MASTER_PLAN.md), [work packets](docs/plans/admiralty-v2/WORK_PACKETS.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [bootstrap guide](docs/operators/bootstrap.md), and [live rollout bridge](docs/operators/rollout-dashboard.md). `scripts/check/all.sh` runs contributor checks without making paid provider calls.
+## Connect real fleet observations
 
-Workplans can be previewed and recorded as immutable revisions in a separate,
-exclusively owned offline database. Registration preserves dependency order and
-task identity; it does not submit or launch tasks. See the
-[durable workplan guide](docs/architecture/durable-workplans.md).
+Point the source launcher at **existing** collector files:
 
 ```sh
-cargo run -p admiralty-cli -- workplan preview --file /absolute/path/plan.json
-cargo run -p admiralty-cli -- workplan register --database /absolute/private/plans.sqlite --file /absolute/path/plan.json
-cargo run -p admiralty-cli -- workplan show --database /absolute/private/plans.sqlite --project my-project --plan my-plan
+pnpm live \
+  --status /absolute/path/status.json \
+  --index /absolute/path/index.html
 ```
 
-## Hierarchy
-```
-Jepson (owner; his own typed prompts override everyone)
- └─ Grok Bot (ENG:watcher) — 4 routines, every 30 min, talk only to super_captain / captains
-     └─ super_captain  (screen `super_captain`, agy; Jepson's proxy for reversible decisions)
-         │   ticker: screen `super_captain_tick` → pastes a 30-min check when idle
-         ├─ captain_joil      (~/joil)       ─┐
-         ├─ captain_dope      (~/dope)        │ agy captains: plan, route ToDos, review, integrate
-         ├─ captain_jopedime  (~/JopeDime)    │ (agy plans; Codex Luna/Sol + Claude lanes code)
-         └─ captain_jarambit  (~/jarambit)   ─┘
-              └─ lanes / worker screens (one worktree + branch each; xbabe1/2/3 — never xbabe0)
-```
+Open **http://127.0.0.1:18891/**. This uses real producer observations, preserves their timestamps and serves the original complete page at `/legacy/`. It does not start agents, enroll machines or authorize execution. `ADMIRALTY_LIVE_LISTEN` changes the loopback listener; `ADMIRALTY_STATE_DIR` changes the private preview state directory.
 
-## Layout
-| Path | What |
-|---|---|
-| `dashboard/collector.py` | read-only collector: screens (hardcopy only), ledgers, PR/CI via gh, writes `status.json` every ~45 s |
-| `dashboard/extras.py` | super_captain activity, global resources, hierarchy, model mix / token efficiency, history snapshots, ledger stats |
-| `dashboard/globalres.py` | disk / RAM / swap / load / GPU across xbabe1, xbabe2, xbabe3 (`python3 dashboard/globalres.py` prints a table) |
-| `dashboard/token_yield.py` | tokens.db: Codex + Claude session tokens → project → commits → landed on integration / main (yield estimate) |
-| `dashboard/serve.py`, `run.sh`, `index.html`, `make_snapshot.py` | 127.0.0.1:18890 static server, launcher, page (polls every 15 s), static snapshot |
-| `captains/` | COMMON.md, MODEL_ROUTING_PLAYBOOK.md, CPU_SLICES.md, captain briefs, addenda, super_captain brief + ticker, disk-mission template, notices |
-| `tools/` | screen helpers (`bin/screen_send`, `bin/screen_snap`, `bin/kick`, `bin/status`, `classify_screen.py`), idle-only delivery scripts (`send_*.sh`), owner peek/send |
-| `runtime/` | symlinks to the live runtime dirs (git-ignored) |
-| `data/history/` | sanitized history dataset (cost index, Luna failures, in-progress per project, quota, hosts, tokens, yield) exported hourly by `tools/export_history.py`; see `data/history/README.md` |
+The launcher prints the private dashboard-token **file path**, never its value. Enter the token through **Session access** for native snapshots and model settings. This convenience launcher explicitly preserves public loopback reads of the existing detailed feed only. Native data and model configuration remain authenticated.
 
-The live paths are unchanged: files in `/home/ubuntu/xbabe2_kicker/captains-dashboard/` and `/home/ubuntu/xbabe2_kicker/captains-20261017/` are **symlinks into this repo**, so agents keep using the old paths. Runtime data stays in those directories (`CDASH_RUNTIME` overrides the dashboard runtime dir).
+The React detailed view retains project evidence, screen tails, raw records, density controls, hierarchy and the complete chart strip. Repeated provenance gaps are grouped with affected packet IDs; stale evidence stays stale. Blue **checks recorded** counts do not mean integration or accepted completion. The owner's display name and small uploaded profile image can be configured through **Your profile**; see [profile storage and limits](docs/operators/profile-photo.md).
 
-## Run the dashboard
-```
-screen -dmS captains_dash bash -c 'cd /home/ubuntu/xbabe2_kicker/captains-dashboard && ./run.sh 2>&1 | tee -a dash.log'
-```
-From a Mac: `ssh -N -p 6969 -L 18890:127.0.0.1:18890 ubuntu@162.218.217.123` then open http://localhost:18890/ .
-Restart only the collector after a code change: kill the `python3 -B collector.py` child of `run.sh` (it restarts in 10 s). The server never needs a restart for page changes.
+Native changes use one authenticated event stream. The compatibility feed refreshes every 15 seconds without routine model turns. Missing measurements remain unknown; an idle Screen is not evidence that a task finished.
 
-## super_captain
-```
-screen -dmS super_captain bash -lc 'cd /home/ubuntu/xbabe2_kicker/captains-20261017 && agy --dangerously-skip-permissions; exec bash'
-# paste captains/super_captain_kickoff.txt via readbuf/paste, then:
-FIRST_DELAY=1800 screen -dmS super_captain_tick bash -c /home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_tick.sh
+## Run the native coordinator
+
+Build the service, CLI and static dashboard:
+
+```sh
+CARGO_TARGET_DIR="$PWD/target" cargo build --release \
+  -p admiralty-server -p admiralty-cli --locked
+pnpm --dir apps/dashboard build
 ```
 
-## Add a project
-1. Write `captains/captain_<x>_BRIEF.md` (authority files, ledger, coord log, roster, rules) and start `captain_<x>` running agy in the repo.
-2. Add it to `CAPTAINS`/`NAMES`/`COLLECT` and a `collect_<x>()` ledger parser in `dashboard/collector.py`, `COORD`/`REPOS` in `extras.py`, `PROJ`/`REPO` in `token_yield.py`, and its CPU slice in `CPU_SLICES.md`.
-3. Add it to the super_captain brief's captain table.
+`target/release/admiraltyd` serves the dashboard and API directly; Vite and Node are build tools rather than production orchestration services. Configure an existing private directory, an owner token and the allowed operator/agent scopes as described in [native startup](docs/operators/native-startup.md).
 
-## Rules that never change
-Never xbabe0; never Jeryu, CI runners or other services; screens via hardcopy/readbuf/paste/stuff only (never `screen -r`); no email/messages/spending; merges only after neverhumanbot approves the exact head, then `gh pr merge --rebase --match-head-commit`; no squash/--admin/force-push; Joil PR #6 is merged only by Jepson. Changes to this repo go through PRs under the same rules (the initial commit was made directly on main).
+```sh
+target/release/admiraltyd \
+  --database /absolute/private/native.sqlite \
+  --token-file /absolute/private/owner-token \
+  --native-config /absolute/private/native.json \
+  --assets "$PWD/apps/dashboard/dist" \
+  --listen 127.0.0.1:18890
+```
+
+Configuration directories must be owned and mode `0700`; credentials and private configuration must be owned regular files, mode `0600`. Use absolute paths. The server rejects unsafe private inputs. Owner and agent credentials differ, stay outside Git and travel in authorization headers rather than URLs. The browser keeps its access token in page memory. Use an authenticated SSH tunnel for remote access; the current service binds only to loopback.
+
+An optional `--redirect-listen 127.0.0.1:18891` serves an old-port HTTP 307 redirect from the same Rust binary. To retain an existing feed, add `--legacy-status-file` and `--legacy-index-file`; reads are authenticated unless `--legacy-public-read` is explicitly selected. The collector remains a separate compatibility dependency until its replacement is qualified.
+
+The private native configuration currently enables scoped operator task intake, pending cancellation and unstarted contract revision, plus scoped agent context/inbox reads and separately granted acknowledgments. It does **not** install a general provider executor or candidate-acceptance authority. Request payloads cannot install grants. See [the lifecycle contract](docs/architecture/native-lifecycle.md) for the exact state and authority boundaries.
+
+## Configure models and project work
+
+Create your model policy from [the example registry](configs/examples/models.json), then follow [model setup](docs/operators/models.md). The example names and endpoints are examples, not fleet constants. `--models-file /absolute/private/models.json` enables authenticated model settings on `admiraltyd`; the live launcher accepts `--models` for the same purpose.
+
+The registry supports OpenAI-compatible endpoints, configured OpenCode SSH profiles and Codex CLI model definitions. Set your own model below Luna in tier order to prefer it. Capacity pressure waits by default; expensive fallback and escalation require explicit policy. Setup errors and missing input do not silently escalate. Endpoint or credential references do not establish a working provider, and self-hosted cost remains unknown until measured. See [OpenCode SSH qualification](docs/operators/opencode-ssh.md).
+
+Workplans can be previewed and registered as immutable revisions in an exclusively owned offline database:
+
+```sh
+target/release/admiralty workplan preview --file /absolute/path/plan.json
+target/release/admiralty workplan register \
+  --database /absolute/private/plans.sqlite --file /absolute/path/plan.json
+target/release/admiralty workplan show \
+  --database /absolute/private/plans.sqlite --project my-project --plan my-plan
+```
+
+Registration preserves task identity and dependency order; it does not submit or launch tasks. Do not point offline CLI operations at a database currently owned by the server. [Durable workplans](docs/architecture/durable-workplans.md), [intake](docs/operators/workplan-import.md), [context governance](docs/architecture/context-governor.md) and `admiralty --help` describe the available operations.
+
+## Architecture
+
+| Area | Responsibility |
+| --- | --- |
+| `crates/admiralty-core` | Validated identities, contracts, lifecycle reducer, coordination and policy primitives. |
+| `crates/admiralty-store` | Serialized durable writes, SQLite replay, idempotency, inbox/outbox, workplans and artifacts. |
+| `crates/admiralty-runtime` | Session ownership, pinned workspaces, resource admission, executed checks and recovery primitives. |
+| `crates/admiralty-server` | Authenticated HTTP/SSE, protected startup, native operator/agent adapters and static dashboard serving. |
+| `crates/admiralty-cli` | Offline inspection, workplans, context, diagnostics, models, backup/rehearsal and release staging. |
+| `apps/dashboard` | React/TypeScript fleet console and native projections, built with Vite. |
+| `schemas` and `packages/contracts` | Rust-derived JSON Schemas and generated TypeScript contracts. |
+| `dashboard`, `captains` and `tools` | Retained collector, compatibility data and historical fleet operations. |
+
+Admiral and Commodore are role labels, not model names or fixed machine identities. Each execution still needs an independently observed provider/model, an owned workspace, current admission and configured resource limits. Compatibility producer keys and Screen IDs keep their observed identities; changing a label does not rename a running process.
+
+## Current release status
+
+The primary web service is Rust/React. A real, isolated Linux deterministic integration exercised admission, owned service observation and closure, positive and negative checks, immutable custody, trusted Store acceptance, exact retry, revocation denial and reopen replay. Its [source-attributed receipt](receipts/integration/eb62f5f635bea46e98c76e91499b56b4c7673849.json) records exactly what ran.
+
+General coding-provider execution, production controller/issuer composition, atomic model-budget/capacity admission and full rollout acceptance remain separate gates. The compatibility collector is still retained; this release does not claim that every old-system process has been retired. Full P00–P31 acceptance is not implied by passing component checks.
+
+See [release scope and remaining gates](docs/operators/release-status.md), the [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [master plan](docs/plans/admiralty-v2/MASTER_PLAN.md) and [work packets](docs/plans/admiralty-v2/WORK_PACKETS.md). Historical deployment information remains in [the compatibility inventory](docs/operators/legacy-inventory.md).
+
+Backups and isolated restore rehearsals are available through `admiralty recover`. Restart admission remains a proposal; it cannot reactivate an unknown session. `admiralty release stage` and [the deterministic packager](docs/operators/source-package.md) stage explicit inputs without installing, signing, publishing or qualifying a release.
+
+## Develop and validate
+
+```sh
+bash scripts/check/all.sh
+python3 scripts/release/package.py --self-test
+python3 scripts/check/canary-smoke.py --self-test
+```
+
+The contributor checks cover Rust formatting, strict Clippy, workspace tests, retained compatibility fixtures, generated contracts and the dashboard's tests/typecheck/build. [CI](.github/workflows/ci.yml) additionally runs actual isolated-binary smoke checks on the shared self-hosted runner pool. Workflow selectors use pool labels rather than physical host names; actual job placement and results must be observed. See [runner operations](docs/operators/ci-runners.md).
+
+Checks do not invoke paid providers. Real provider, fleet, failure-recovery and clean-machine release qualification require explicit owned fixtures and separate receipts. Preserve failed evidence, use disjoint work scopes and review the exact source being integrated.
+
+## License
+
+Project licensing is [pending an explicit repository license](docs/operators/release-status.md#license).
