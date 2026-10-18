@@ -84,7 +84,7 @@ export function LegacyHierarchy({ snapshot }: { snapshot: LegacySnapshot }) {
   return <section className="legacy-hierarchy" aria-label="Fleet hierarchy">
     <div className="legacy-hierarchy-heading"><h2>Hierarchy</h2><span className="legacy-hierarchy-muted">Owner → watcher → Admiral → Commodores → agents</span></div>
     <div className="legacy-hierarchy-chain-scroll"><div className="legacy-hierarchy-chain">
-      <div className="legacy-hierarchy-node legacy-hierarchy-person"><ProfileAvatar name={owner} profile={profile} className="legacy-hierarchy-avatar" /><div><b>{owner}</b><div className="legacy-hierarchy-muted">owner</div></div></div>
+      <div className="legacy-hierarchy-node legacy-hierarchy-person legacy-hierarchy-owner"><ProfileAvatar name={owner} profile={profile} className="legacy-hierarchy-avatar" /><div><b>{owner}</b><div className="legacy-hierarchy-muted">owner</div></div></div>
       <span className="legacy-hierarchy-arrow" aria-hidden="true">→</span>
       <div className="legacy-hierarchy-node legacy-hierarchy-person">{isGrokbot && <img className="legacy-hierarchy-grokbot" src="/brand/grokbot.png" alt="Grokbot" width="44" height="44" />}<div><b>{watcherName}</b>{routines.length > 0 ? <details className="legacy-hierarchy-routines"><summary>{routines.length} routines</summary><ul>{routines.map((routine, index) => <li key={index}>{identity(routine) || text(data(routine).description) || 'Routine details not reported'}</li>)}</ul></details> : <div className="legacy-hierarchy-muted">watcher</div>}</div></div>
       <span className="legacy-hierarchy-arrow" aria-hidden="true">→</span>
