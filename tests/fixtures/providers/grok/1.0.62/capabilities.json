@@ -2,7 +2,7 @@
   "provider": "grok",
   "version": "1.0.62",
   "build": "1474f9cbdd91",
-  "binary": "/home/ubuntu/.local/bin/grok",
+  "binary": "grok",
   "binary_sha256": "2a46d9e4d7ebd7a9cff7f95716714b19dad5f21dd2a497822400b1fb128969aa",
   "probe": ["grok", "--version"],
   "version_exit": 0,
