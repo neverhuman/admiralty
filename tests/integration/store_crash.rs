@@ -7,6 +7,17 @@ use std::{
     time::{Duration, Instant},
 };
 
+fn store_directory() -> tempfile::TempDir {
+    let mut builder = tempfile::Builder::new();
+    builder.prefix("admiralty-store-crash-");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        builder.permissions(std::fs::Permissions::from_mode(0o700));
+    }
+    builder.tempdir().expect("private crash fixture directory")
+}
+
 fn event(id: &str) -> DomainEvent {
     serde_json::from_value(json!({"kind":"task_submitted","contract":{
         "schema_version":1,"project_id":"project","root_id":"root","task_id":id,"revision":1,
@@ -57,7 +68,7 @@ fn crash_writer_child() {
 
 #[test]
 fn abrupt_process_kill_preserves_acknowledged_events_and_rolls_back_uncommitted_write() {
-    let directory = tempfile::tempdir().expect("tempdir");
+    let directory = store_directory();
     let path = directory.path().join("state.sqlite");
     let mut child = Command::new(std::env::current_exe().expect("test executable"))
         .args(["--exact", "crash_writer_child", "--nocapture"])

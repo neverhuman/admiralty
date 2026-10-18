@@ -1071,6 +1071,17 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn private_tempdir() -> std::io::Result<tempfile::TempDir> {
+        let mut builder = tempfile::Builder::new();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            builder.permissions(fs::Permissions::from_mode(0o700));
+        }
+        builder.tempdir()
+    }
+
     #[test]
     fn no_run_is_the_default_and_unknown_arguments_fail() {
         assert!(arguments(vec![]).expect("args").is_none());
@@ -1091,7 +1102,7 @@ mod tests {
     }
     #[test]
     fn safe_oracle_rejects_source_injection_forbidden_changes_and_oracle_mutation() -> Result<()> {
-        let temp = tempfile::tempdir()?;
+        let temp = private_tempdir()?;
         let base = temp.path().canonicalize()?;
         let work = base.join("work");
         let oracle = base.join("oracle");
@@ -1132,7 +1143,7 @@ mod tests {
     #[test]
     fn executable_raw_sha256_detects_same_identity_and_timestamp_content_mutation() -> Result<()> {
         use std::os::unix::fs::PermissionsExt;
-        let temp = tempfile::tempdir()?;
+        let temp = private_tempdir()?;
         let path = temp.path().canonicalize()?.join("fake-program");
         new_file(&path, b"abc", false)?;
         fs::set_permissions(&path, fs::Permissions::from_mode(0o700))?;
@@ -1153,7 +1164,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn owned_fake_child_is_bounded_and_has_complete_eof_without_provider_inference() -> Result<()> {
-        let temp = tempfile::tempdir()?;
+        let temp = private_tempdir()?;
         let base = temp.path().canonicalize()?;
         let spool = base.join("spool");
         new_directory(&spool)?;
@@ -1220,7 +1231,7 @@ mod tests {
     #[test]
     fn full_linux_harness_uses_only_fake_provider_and_retains_false_qualification() -> Result<()> {
         use std::os::unix::fs::PermissionsExt;
-        let temp = tempfile::tempdir()?;
+        let temp = private_tempdir()?;
         let parent = temp.path().canonicalize()?;
         let program = parent.join("fake-codex");
         new_file(
