@@ -1,0 +1,1935 @@
+{
+  "additional_failure_evidence": {
+    "description": "Earlier session fixture fractional socket timeout EINVAL failures retained only in tool transcript chunks a10e11 and17aeba; no original raw file/hash exists.",
+    "raw_log_available": false
+  },
+  "changes": {
+    "fixture_fix_commit": "661bf36f0a401c79c87e2166fd75be325984e09c",
+    "fixture_fixes": [
+      {
+        "path": "tests/integration/artifact_custody.rs",
+        "sha256": "0a2aefaa00e61efe96fa14aa62391b3d0d94954e01205fa40f191794fcf1519a",
+        "source_blob": "bf3fcfeb773c381911325b3df264c5888108c692"
+      },
+      {
+        "path": "tests/integration/cleanup_custody.rs",
+        "sha256": "c8bc5908e10b2fc0009eb4114eb77b17d8df0381b9fdc4c5fd0af7d187d80382",
+        "source_blob": "3045f4730e5ca1442a388216fba5bccae1b2aa08"
+      },
+      {
+        "path": "tests/integration/disaster_restore.rs",
+        "sha256": "521135a5a4269940f38ce0859d74b6fd945840153d10da041680a2ace9e7ac82",
+        "source_blob": "2385bc0b1a8336b96a8266cae48631d52cb16bb9"
+      },
+      {
+        "path": "tests/integration/input_uncertainty.rs",
+        "sha256": "05343eb75383196cb155629cf33b191fd8b557602559451f97be8f95d3843f9d",
+        "source_blob": "90ebeef4b7b95fe849bed4dfd7034c38822cafeb"
+      },
+      {
+        "path": "tests/integration/session_continuity.rs",
+        "sha256": "f3211e65ba15c157229a3db2b1512ca558f870babb98cb6748be916cf6160515",
+        "source_blob": "06bfdaedafdb3dc7b70937269bbb4773192f316a"
+      }
+    ],
+    "later_main_excluded": "429595d196fcb6b730d5683e04d479faa1ec968c",
+    "local_merge": "bd7a7039b6da3e0c07b8ab6435b3ebf2e1d2b040",
+    "main_harness_import": "8366b5817d4b641188a3e1e8aa119c75b8f6e865",
+    "registered_integration_targets": [
+      {
+        "name": "api_stream",
+        "path": "../../tests/integration/api_stream.rs"
+      },
+      {
+        "name": "artifact_custody",
+        "path": "../../tests/integration/artifact_custody.rs"
+      },
+      {
+        "name": "cleanup_custody",
+        "path": "../../tests/integration/cleanup_custody.rs"
+      },
+      {
+        "name": "context_fidelity",
+        "path": "../../tests/integration/context_fidelity.rs"
+      },
+      {
+        "name": "coordination_delivery",
+        "path": "../../tests/integration/coordination_delivery.rs"
+      },
+      {
+        "name": "core_contracts",
+        "path": "../../tests/integration/core_contracts.rs"
+      },
+      {
+        "name": "disaster_restore",
+        "path": "../../tests/integration/disaster_restore.rs"
+      },
+      {
+        "name": "economic_conservation",
+        "path": "../../tests/integration/economic_conservation.rs"
+      },
+      {
+        "name": "exact_candidate",
+        "path": "../../tests/integration/exact_candidate.rs"
+      },
+      {
+        "name": "excursion_lineage",
+        "path": "../../tests/integration/excursion_lineage.rs"
+      },
+      {
+        "name": "experiment_validity",
+        "path": "../../tests/integration/experiment_validity.rs"
+      },
+      {
+        "name": "fleet_partition",
+        "path": "../../tests/integration/fleet_partition.rs"
+      },
+      {
+        "name": "fleet_transport",
+        "path": "../../tests/integration/fleet_transport.rs"
+      },
+      {
+        "name": "input_uncertainty",
+        "path": "../../tests/integration/input_uncertainty.rs"
+      },
+      {
+        "name": "integration_train",
+        "path": "../../tests/integration/integration_train.rs"
+      },
+      {
+        "name": "jankurai_staged",
+        "path": "../../tests/integration/jankurai_staged.rs"
+      },
+      {
+        "name": "legacy_import",
+        "path": "../../tests/integration/legacy_import.rs"
+      },
+      {
+        "name": "peer_handoff",
+        "path": "../../tests/integration/peer_handoff.rs"
+      },
+      {
+        "name": "plan_import",
+        "path": "../../tests/integration/plan_import.rs"
+      },
+      {
+        "name": "provider_claude",
+        "path": "../../tests/integration/provider_claude.rs"
+      },
+      {
+        "name": "provider_codex",
+        "path": "../../tests/integration/provider_codex.rs"
+      },
+      {
+        "name": "provider_matrix",
+        "path": "../../tests/integration/provider_matrix.rs"
+      },
+      {
+        "name": "publication_gate",
+        "path": "../../tests/integration/publication_gate.rs"
+      },
+      {
+        "name": "release_smoke",
+        "path": "../../tests/integration/release_smoke.rs"
+      },
+      {
+        "name": "runner_isolation",
+        "path": "../../tests/integration/runner_isolation.rs"
+      },
+      {
+        "name": "scheduler_admission",
+        "path": "../../tests/integration/scheduler_admission.rs"
+      },
+      {
+        "name": "session_continuity",
+        "path": "../../tests/integration/session_continuity.rs"
+      },
+      {
+        "name": "store_crash",
+        "path": "../../tests/integration/store_crash.rs"
+      },
+      {
+        "name": "store_replay",
+        "path": "../../tests/integration/store_replay.rs"
+      },
+      {
+        "name": "upgrade_continuity",
+        "path": "../../tests/integration/upgrade_continuity.rs"
+      }
+    ],
+    "shared_provider_decoder_retained": true
+  },
+  "fleet_observation": {
+    "activity_counts": {
+      "completed_reported_turn": 11,
+      "open_reported_turn": 4
+    },
+    "candidate_receipts_advanced": false,
+    "observed_manager": {
+      "bytes": 1342,
+      "capture_sha256": "d4f9548641db0ae8e3ce6215883ef840f0245a1193fd4e3ad27d6f8045aee8bd",
+      "configured_id": "2062267.agy_captain_admiralty",
+      "execution_model_attestation": "not_available",
+      "explicit_idle_marker_visible": false,
+      "screen_exists": true,
+      "trust_prompt_visible": false,
+      "visible_model_labels": [
+        "Gemini 4 Argon"
+      ],
+      "working_marker_visible": false
+    },
+    "productive_completion_not_inferred": true,
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/fleet-observations/92f97c4f82504d39bbfafdcb651880e1/snapshot-frozen.json",
+    "retained_affinity_occupancy": {
+      "104": 3,
+      "105": 3,
+      "106": 3,
+      "107": 3,
+      "108": 3,
+      "109": 3
+    },
+    "sha256": "e1600a6feaf687d90743e3b689c61486cbc7f8cd0660f573209e884eab8ab996",
+    "stale_bindings": [
+      "P21 declared provider vs actual scheduler",
+      "P22 declared matrix vs actual verifier",
+      "P04B custody vs detached UI"
+    ],
+    "window": {
+      "last_session_metadata_observed_utc": "2026-10-18T15:13:16.351Z",
+      "receipt_finalized_utc": "2026-10-18T15:13:54.270843+00:00",
+      "started_utc": "2026-10-18T15:12:04.024272+00:00"
+    },
+    "worktree_heads_advanced": false
+  },
+  "hosted_ci": {
+    "annotation": "The run was canceled by @jepsontaylor.",
+    "exact_head_review_present": false,
+    "result": "cancelled",
+    "run": 39138996888,
+    "source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+    "steps_executed": 0
+  },
+  "independent_cross_review": {
+    "limitations": "Same daemon/client reconnect with owned synthetic child; not control-service restart adoption or real provider qualification. Exceptional unreaped child is reported and transferred to eventual reaper.",
+    "result": "clear for five scoped fixture repairs",
+    "session_final_sha256": "f3211e65ba15c157229a3db2b1512ca558f870babb98cb6748be916cf6160515"
+  },
+  "kind": "combined_source_quality_checkpoint",
+  "later_main_review": {
+    "path": "receipts/reviews/429595d196fcb6b730d5683e04d479faa1ec968c-P05.json",
+    "sha256": "f24d4a4732aa6e4e69ec6000547b360cca00fb3a408e2b9538c9870fa8637d03"
+  },
+  "limitations": [
+    "All30 named integration targets now execute; target naming/one passing component does not complete whole packet acceptance.",
+    "Mac558 and clean Linux560 include doctests. One ignored session-worker helper is explicitly run by its owning continuity test.",
+    "Frozen661 source does not include later main a73fc557/429595d; no pass or review of those additions is inferred.",
+    "Unchanged React/contracts/legacy/audit/packaging/harness results are reused by exact Git object identity, not fresh runs. New legacy verifier did run on both platforms.",
+    "Hosted CI and configured neverhumanbot exact-head review remain required; no PR merge, production deployment or native cutover performed."
+  ],
+  "linux_validation": {
+    "commands": [
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/661bf36f0a401c79c87e2166fd75be325984e09c",
+        "elapsed_s": 1.202,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T15:10:09.842167Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/661bf36f0a401c79c87e2166fd75be325984e09c/8cbb18e810fe48a997d76491b17337a3-fmt.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "name": "fmt",
+        "output_tail": [],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "started_utc": "2026-10-18T15:10:08.640062Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/661bf36f0a401c79c87e2166fd75be325984e09c",
+        "elapsed_s": 41.834,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T15:10:51.729550Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/661bf36f0a401c79c87e2166fd75be325984e09c/8cbb18e810fe48a997d76491b17337a3-clippy.log",
+        "log_sha256": "1cfbf94b4b67ffda2ed244e4882a5daa60224233afea9fc49697f83da9d99c18",
+        "name": "clippy",
+        "output_tail": [
+          "    Checking admiralty-core v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/661bf36f0a401c79c87e2166fd75be325984e09c/crates/admiralty-core)",
+          "    Checking admiralty-runtime v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/661bf36f0a401c79c87e2166fd75be325984e09c/crates/admiralty-runtime)",
+          "    Checking admiralty-store v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/661bf36f0a401c79c87e2166fd75be325984e09c/crates/admiralty-store)",
+          "    Checking admiralty-server v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/661bf36f0a401c79c87e2166fd75be325984e09c/crates/admiralty-server)",
+          "    Checking admiralty-testkit v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/661bf36f0a401c79c87e2166fd75be325984e09c/crates/admiralty-testkit)",
+          "    Checking admiralty-cli v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/661bf36f0a401c79c87e2166fd75be325984e09c/crates/admiralty-cli)",
+          "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 41.69s"
+        ],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "started_utc": "2026-10-18T15:10:09.895620Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "test",
+          "--workspace",
+          "--locked"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/661bf36f0a401c79c87e2166fd75be325984e09c",
+        "elapsed_s": 164.326,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T15:13:36.056203Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/661bf36f0a401c79c87e2166fd75be325984e09c/8cbb18e810fe48a997d76491b17337a3-workspace-tests.log",
+        "log_sha256": "09381a29f852398302798b4e5a1c29bcdae420e208bf52c1f4c65f27914ff707",
+        "name": "workspace-tests",
+        "output_tail": [
+          "",
+          "   Doc-tests admiralty_runtime",
+          "",
+          "running 1 test",
+          "test crates/admiralty-runtime/src/audits.rs - audits::AuditProposal (line 197) - compile fail ... ok",
+          "",
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s",
+          "",
+          "   Doc-tests admiralty_server",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "",
+          "   Doc-tests admiralty_store",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "",
+          "   Doc-tests admiralty_testkit",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          ""
+        ],
+        "oversized_output": false,
+        "rust_test_results": [
+          {
+            "failed": 0,
+            "passed": 17,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 157,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 127,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 63,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 4,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 19,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 14,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 13,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 22,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 12,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 4,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 11,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          }
+        ],
+        "started_utc": "2026-10-18T15:10:51.730326Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "build",
+          "-p",
+          "admiralty-server",
+          "-p",
+          "admiralty-cli",
+          "--locked"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/661bf36f0a401c79c87e2166fd75be325984e09c",
+        "elapsed_s": 0.202,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T15:13:36.306635Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/661bf36f0a401c79c87e2166fd75be325984e09c/8cbb18e810fe48a997d76491b17337a3-isolated-binary-build.log",
+        "log_sha256": "a5f4c585ee974ca44916ac30a98bbc189e067a7e0a6bc6d2e8d6bc525be724af",
+        "name": "isolated-binary-build",
+        "output_tail": [
+          "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.09s"
+        ],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "started_utc": "2026-10-18T15:13:36.105095Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "python3",
+          "scripts/check/canary-smoke.py",
+          "--admiraltyd-binary",
+          "/home/ubuntu/admiralty-v2-build/targets/quality-review/debug/admiraltyd",
+          "--admiralty-binary",
+          "/home/ubuntu/admiralty-v2-build/targets/quality-review/debug/admiralty",
+          "--scratch-root",
+          "/home/ubuntu/admiralty-v2-build/quality-smoke/8cbb18e810fe48a997d76491b17337a3"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/661bf36f0a401c79c87e2166fd75be325984e09c",
+        "elapsed_s": 1.002,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T15:13:37.310168Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/661bf36f0a401c79c87e2166fd75be325984e09c/8cbb18e810fe48a997d76491b17337a3-actual-isolated-smoke.log",
+        "log_sha256": "426b8c6e410074504de1d5f8a104bf1061d8033311c83a33d9c5b3e6e370d052",
+        "name": "actual-isolated-smoke",
+        "output_tail": [
+          "{\"acceptance\":false,\"binaries\":{\"admiralty_sha256\":\"sha256:710abe6ddc7a38e2714341aacacf41351a19540b9d8b85eb99d6e61a5519b973\",\"admiraltyd_sha256\":\"sha256:df340b0059d1cc8735f8612c084cc2c337d4d62ed91304aa83280e38c1cac716\"},\"checks\":[{\"duration_ms\":264,\"name\":\"real_server_startup\",\"state\":\"pass\"},{\"duration_ms\":3,\"name\":\"real_health_native_unqualified\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"unauthorized_real_fleet_rejected\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"unauthorized_real_models_rejected\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"model_auth_precedes_body_validation\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"authorized_real_fleet\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"authorized_models_policy\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"model_selection_proposal_only\",\"state\":\"pass\"},{\"duration_ms\":362,\"name\":\"demo_startup\",\"state\":\"pass\"},{\"duration_ms\":3,\"name\":\"demo_fleet_simulated\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"demo_no_models\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"demo_no_model_policy_write\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"demo_no_legacy_policy\",\"state\":\"pass\"},{\"name\":\"doctor_read_only_capability\",\"state\":\"pass\"},{\"name\":\"demo_cli_has_no_real_policy_flags\",\"state\":\"pass\"}],\"cleanup\":{\"admiraltyd\":\"terminated\",\"demo\":\"terminated\"},\"clock\":\"UTC start timestamp plus monotonic elapsed/deadline measurements\",\"duration_ms\":679,\"fleet_rollout_closure\":false,\"randomness\":\"ephemeral token from OS CSPRNG; token value not recorded\",\"started_at_utc\":\"2026-10-18T15:13:36.388490+00:00\",\"status\":\"pass\",\"synthetic\":false}"
+        ],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "smoke_receipt": {
+          "acceptance": false,
+          "binaries": {
+            "admiralty_sha256": "sha256:710abe6ddc7a38e2714341aacacf41351a19540b9d8b85eb99d6e61a5519b973",
+            "admiraltyd_sha256": "sha256:df340b0059d1cc8735f8612c084cc2c337d4d62ed91304aa83280e38c1cac716"
+          },
+          "checks": [
+            {
+              "duration_ms": 264,
+              "name": "real_server_startup",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 3,
+              "name": "real_health_native_unqualified",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "unauthorized_real_fleet_rejected",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "unauthorized_real_models_rejected",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "model_auth_precedes_body_validation",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "authorized_real_fleet",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "authorized_models_policy",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "model_selection_proposal_only",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 362,
+              "name": "demo_startup",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 3,
+              "name": "demo_fleet_simulated",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "demo_no_models",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "demo_no_model_policy_write",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "demo_no_legacy_policy",
+              "state": "pass"
+            },
+            {
+              "name": "doctor_read_only_capability",
+              "state": "pass"
+            },
+            {
+              "name": "demo_cli_has_no_real_policy_flags",
+              "state": "pass"
+            }
+          ],
+          "cleanup": {
+            "admiraltyd": "terminated",
+            "demo": "terminated"
+          },
+          "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+          "duration_ms": 679,
+          "fleet_rollout_closure": false,
+          "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+          "started_at_utc": "2026-10-18T15:13:36.388490+00:00",
+          "status": "pass",
+          "synthetic": false
+        },
+        "started_utc": "2026-10-18T15:13:36.308108Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "run",
+          "-p",
+          "admiralty-cli",
+          "--locked",
+          "--",
+          "contracts",
+          "check"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/661bf36f0a401c79c87e2166fd75be325984e09c",
+        "elapsed_s": 0.401,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T15:13:37.712540Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/661bf36f0a401c79c87e2166fd75be325984e09c/8cbb18e810fe48a997d76491b17337a3-schemas-check.log",
+        "log_sha256": "63e91143fcaad55cd3d12fca126e39ee7b10de49db4e77ff3273396db038f16a",
+        "name": "schemas-check",
+        "output_tail": [
+          "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s",
+          "     Running `/home/ubuntu/admiralty-v2-build/targets/quality-review/debug/admiralty contracts check`",
+          "{",
+          "  \"checked\": [",
+          "    \"task-contract.schema.json\",",
+          "    \"coordination-message.schema.json\",",
+          "    \"domain-event.schema.json\"",
+          "  ],",
+          "  \"directory\": \"schemas\",",
+          "  \"drift\": false",
+          "}"
+        ],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "started_utc": "2026-10-18T15:13:37.311281Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "python3",
+          "tests/fixtures/legacy/verify.py"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/661bf36f0a401c79c87e2166fd75be325984e09c",
+        "elapsed_s": 0.402,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T15:13:38.206072Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/661bf36f0a401c79c87e2166fd75be325984e09c/8cbb18e810fe48a997d76491b17337a3-legacy-fixtures.log",
+        "log_sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12",
+        "name": "legacy-fixtures",
+        "output_tail": [
+          "{\"base_sha\": \"1e8ed17eff27ed3ab80dc6860fc8eda301406aee\", \"mirror_checks\": \"pass\", \"secret_scan\": \"pass\", \"synthetic_cases\": 11, \"verified_sources\": 37, \"working_tree_drift\": [\"README.md\", \"captains/MODEL_ROUTING_PLAYBOOK.md\", \"captains/super_captain_BRIEF.md\", \"dashboard/collector.py\", \"dashboard/extras.py\", \"dashboard/index.html\", \"data/history/ledger/model_usage.csv\", \"data/history/ledger/model_usage_2026-10-18.jsonl\", \"data/history/quota/codex_quota.csv\", \"data/history/resources/disk_used.csv\", \"data/history/resources/host_snapshots.csv\", \"data/history/snapshots/projects_2026-10-18.jsonl\", \"data/history/timeseries/history.csv\", \"data/history/timeseries/history_2026-10-18.jsonl\", \"data/history/token_yield/token_yield_2026-10-18.jsonl\", \"data/history/tokens/claude_hourly.csv\", \"data/history/tokens/codex_sessions.csv\", \"tools/sc_audit.py\"]}"
+        ],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "started_utc": "2026-10-18T15:13:37.803803Z",
+        "timed_out": false
+      }
+    ],
+    "compiler_jobs": 1,
+    "cpu_affinity": [
+      102,
+      103
+    ],
+    "finished_utc": "2026-10-18T15:13:38.255858Z",
+    "native_execution_qualified": false,
+    "overall_pass": true,
+    "paid_provider_calls": 0,
+    "parent_acceptance": false,
+    "platform": "Linux 6.8.0-146-generic #146-Ubuntu SMP PREEMPT_DYNAMIC Thu Sep  3 16:12:30 UTC 2026 x86_64 GNU/Linux",
+    "private_tmp": "/home/ubuntu/admiralty-v2-build/quality-tmp/8cbb18e810fe48a997d76491b17337a3",
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/661bf36f0a401c79c87e2166fd75be325984e09c/8cbb18e810fe48a997d76491b17337a3-provider-gate.json",
+    "receipt_sha256": "459129706df0b60d186ea17bbabba1d6e3734769b007da822f1c4fbd20102459",
+    "rust_checks_passed": 560,
+    "rustc": "rustc 1.95.0 (59807616e 2026-04-14)",
+    "source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+    "started_utc": "2026-10-18T15:10:08.472372Z",
+    "updated_utc": "2026-10-18T15:13:38.255919Z",
+    "worktree": "/home/ubuntu/admiralty-v2-build/quality-builds/661bf36f0a401c79c87e2166fd75be325984e09c",
+    "worktree_clean": true
+  },
+  "live_dashboard": {
+    "accepted_in_projection": 0,
+    "browser_observed": true,
+    "detailed_console": true,
+    "historical_samples": 181,
+    "native_execution_qualified": false,
+    "observed_manager": "2062267.agy_captain_admiralty",
+    "receipt": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/merged-checkpoint/live-observation.json",
+    "reported_whole_packet_claims": 32,
+    "sha256": "d0c73deb06bd27c1cbe505f7d86edffef9c3f618a439a969d850dceecce1b9b8",
+    "temporal_plots": 13,
+    "visible_model": "Gemini 4 Argon"
+  },
+  "mac_target_results": [
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 17,
+      "result": "ok",
+      "target": "Running unittests src/main.rs (target/debug/deps/admiralty-fbf0df417b295e4f)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 6,
+      "result": "ok",
+      "target": "Running tests/offline_roundtrip.rs (target/debug/deps/offline_roundtrip-d1ad2555b374aa39)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 157,
+      "result": "ok",
+      "target": "Running unittests src/lib.rs (target/debug/deps/admiralty_core-e93a58eab283a547)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "result": "ok",
+      "target": "Running tests/context_mailbox_fixtures.rs (target/debug/deps/context_mailbox_fixtures-a560c1787234f157)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 126,
+      "result": "ok",
+      "target": "Running unittests src/lib.rs (target/debug/deps/admiralty_runtime-c7db4d84e088538b)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 0,
+      "result": "ok",
+      "target": "Running unittests src/bin/admiralty-node.rs (target/debug/deps/admiralty_node-36084d3fc31f0e0a)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Running unittests src/bin/admiralty-session.rs (target/debug/deps/admiralty_session-b0178a90c8f88c92)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "result": "ok",
+      "target": "Running unittests examples/codex_qualification.rs (target/debug/examples/codex_qualification-c6a071acbeca9a2f)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running unittests src/lib.rs (target/debug/deps/admiralty_server-b553e2f9a28b4c41)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 0,
+      "result": "ok",
+      "target": "Running unittests src/main.rs (target/debug/deps/admiraltyd-2a5308e19fc64730)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running tests/access_projection.rs (target/debug/deps/access_projection-33ef704c30f7990a)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 63,
+      "result": "ok",
+      "target": "Running unittests src/lib.rs (target/debug/deps/admiralty_store-83b86728dc6999ca)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 3,
+      "result": "ok",
+      "target": "Running tests/backup_reopen.rs (target/debug/deps/backup_reopen-d802b2835dc34cd0)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running tests/coordination_restart.rs (target/debug/deps/coordination_restart-ec345ffda815e86b)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "result": "ok",
+      "target": "Running tests/durable_task_lifecycle.rs (target/debug/deps/durable_task_lifecycle-6ea27fcfaeeda933)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 4,
+      "result": "ok",
+      "target": "Running tests/workplan_registry.rs (target/debug/deps/workplan_registry-7b9854b723c7281f)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 3,
+      "result": "ok",
+      "target": "Running unittests src/lib.rs (target/debug/deps/admiralty_testkit-1af42e7e619e4d56)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 19,
+      "result": "ok",
+      "target": "Running ../../tests/integration/api_stream.rs (target/debug/deps/api_stream-a53c35fa09aa9e5c)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Running ../../tests/integration/artifact_custody.rs (target/debug/deps/artifact_custody-9b0aefd004814168)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/cleanup_custody.rs (target/debug/deps/cleanup_custody-3c4c08bbc38d7b93)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 6,
+      "result": "ok",
+      "target": "Running ../../tests/integration/context_fidelity.rs (target/debug/deps/context_fidelity-344f593ae0252410)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Running ../../tests/integration/coordination_delivery.rs (target/debug/deps/coordination_delivery-1a5663d137bd4e20)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 14,
+      "result": "ok",
+      "target": "Running ../../tests/integration/core_contracts.rs (target/debug/deps/core_contracts-775cd611625c1ea0)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "result": "ok",
+      "target": "Running ../../tests/integration/disaster_restore.rs (target/debug/deps/disaster_restore-f507d8f7193e5ea4)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 3,
+      "result": "ok",
+      "target": "Running ../../tests/integration/economic_conservation.rs (target/debug/deps/economic_conservation-d21748e7f5058031)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Running ../../tests/integration/exact_candidate.rs (target/debug/deps/exact_candidate-b2f828b743e2e186)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 3,
+      "result": "ok",
+      "target": "Running ../../tests/integration/excursion_lineage.rs (target/debug/deps/excursion_lineage-1644056678d9825d)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "result": "ok",
+      "target": "Running ../../tests/integration/experiment_validity.rs (target/debug/deps/experiment_validity-5e74c32c8d73755c)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/fleet_partition.rs (target/debug/deps/fleet_partition-81f38df2536790cf)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "result": "ok",
+      "target": "Running ../../tests/integration/fleet_transport.rs (target/debug/deps/fleet_transport-d7c871cb6bde27f4)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/input_uncertainty.rs (target/debug/deps/input_uncertainty-53fe43a95d925f5d)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "result": "ok",
+      "target": "Running ../../tests/integration/integration_train.rs (target/debug/deps/integration_train-632b36e4e3ff6e06)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Running ../../tests/integration/jankurai_staged.rs (target/debug/deps/jankurai_staged-120a8404479721d9)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 13,
+      "result": "ok",
+      "target": "Running ../../tests/integration/legacy_import.rs (target/debug/deps/legacy_import-4e12b7ce095a8e28)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Running ../../tests/integration/peer_handoff.rs (target/debug/deps/peer_handoff-64d96adf54cfefae)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 3,
+      "result": "ok",
+      "target": "Running ../../tests/integration/plan_import.rs (target/debug/deps/plan_import-311d06e6ee5764e8)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 22,
+      "result": "ok",
+      "target": "Running ../../tests/integration/provider_claude.rs (target/debug/deps/provider_claude-4e0577efc901b2a8)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/provider_codex.rs (target/debug/deps/provider_codex-cf54967b92faff58)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 12,
+      "result": "ok",
+      "target": "Running ../../tests/integration/provider_matrix.rs (target/debug/deps/provider_matrix-f818667675a7b401)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 4,
+      "result": "ok",
+      "target": "Running ../../tests/integration/publication_gate.rs (target/debug/deps/publication_gate-08432555096dcb44)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/release_smoke.rs (target/debug/deps/release_smoke-8f58ff52d9d4eb6e)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Running ../../tests/integration/runner_isolation.rs (target/debug/deps/runner_isolation-23be7c7ed0c50081)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 3,
+      "result": "ok",
+      "target": "Running ../../tests/integration/scheduler_admission.rs (target/debug/deps/scheduler_admission-f672767a1064e403)"
+    },
+    {
+      "failed": 0,
+      "ignored": 1,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/session_continuity.rs (target/debug/deps/session_continuity-1aa03ab6d5628b9b)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/store_crash.rs (target/debug/deps/store_crash-ba15e591cd42104a)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 11,
+      "result": "ok",
+      "target": "Running ../../tests/integration/store_replay.rs (target/debug/deps/store_replay-ec77ee7fe22a2cfc)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/upgrade_continuity.rs (target/debug/deps/upgrade_continuity-db3bb71937304bc0)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Doc-tests admiralty_core"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Doc-tests admiralty_runtime"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 0,
+      "result": "ok",
+      "target": "Doc-tests admiralty_server"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 0,
+      "result": "ok",
+      "target": "Doc-tests admiralty_store"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 0,
+      "result": "ok",
+      "target": "Doc-tests admiralty_testkit"
+    }
+  ],
+  "mac_validation": {
+    "commands": [
+      {
+        "argv": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "elapsed_s": 0.485,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/merged-checkpoint/fmt.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "name": "fmt",
+        "output_tail": [],
+        "rust_test_results": [],
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "elapsed_s": 5.158,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/merged-checkpoint/clippy.log",
+        "log_sha256": "dd8daec5e912413f24c9609eed85f8fe7f1ef3f87cc69b4532138c27354b39c8",
+        "name": "clippy",
+        "output_tail": [
+          "    Checking admiralty-testkit v0.1.0 (/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-testkit)",
+          "    Checking admiralty-cli v0.1.0 (/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-cli)",
+          "    Checking admiralty-server v0.1.0 (/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server)",
+          "    Checking admiralty-runtime v0.1.0 (/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-runtime)",
+          "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.07s"
+        ],
+        "rust_test_results": [],
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "cargo",
+          "test",
+          "--workspace",
+          "--locked"
+        ],
+        "elapsed_s": 17.245,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/merged-checkpoint/workspace-tests.log",
+        "log_sha256": "1c974719cc7eaa7b8dac090f2823781cc969ebdc9c5a435d9af5655888fa3c54",
+        "name": "workspace-tests",
+        "output_tail": [
+          "   Doc-tests admiralty_runtime",
+          "",
+          "running 1 test",
+          "test crates/admiralty-runtime/src/audits.rs - audits::AuditProposal (line 197) - compile fail ... ok",
+          "",
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s",
+          "",
+          "   Doc-tests admiralty_server",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "",
+          "   Doc-tests admiralty_store",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "",
+          "   Doc-tests admiralty_testkit",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          ""
+        ],
+        "rust_test_results": [
+          {
+            "failed": 0,
+            "passed": 17,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 157,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 126,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 63,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 4,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 19,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 14,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 13,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 22,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 12,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 4,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 11,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          }
+        ],
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "cargo",
+          "build",
+          "-p",
+          "admiralty-server",
+          "-p",
+          "admiralty-cli",
+          "--locked"
+        ],
+        "elapsed_s": 0.087,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/merged-checkpoint/isolated-binary-build.log",
+        "log_sha256": "99f71393b9903dca098310bb446022a4bdee195ea9996f351a787195555210a6",
+        "name": "isolated-binary-build",
+        "output_tail": [
+          "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s"
+        ],
+        "rust_test_results": [],
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "python3",
+          "scripts/check/canary-smoke.py",
+          "--admiraltyd-binary",
+          "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd",
+          "--admiralty-binary",
+          "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty",
+          "--scratch-root",
+          "/private/var/folders/jv/799z43hd61j1s9gjyg0dtqlm0000gn/T/am-wai7t155/smoke"
+        ],
+        "elapsed_s": 0.649,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/merged-checkpoint/actual-isolated-smoke.log",
+        "log_sha256": "2aa00f023768ba829848aacdfe0f603d0a79ca817fa3938216c5b4436a63c188",
+        "name": "actual-isolated-smoke",
+        "output_tail": [
+          "{\"acceptance\":false,\"binaries\":{\"admiralty_sha256\":\"sha256:8077b28955ee2776c97aba369cb57475c79561b0baa28a814f2ebb2706fb335b\",\"admiraltyd_sha256\":\"sha256:38c1c48bf2cf6632bef21c231c3273475060bf9a4583d839f1be686980040a15\"},\"checks\":[{\"duration_ms\":264,\"name\":\"real_server_startup\",\"state\":\"pass\"},{\"duration_ms\":4,\"name\":\"real_health_native_unqualified\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"unauthorized_real_fleet_rejected\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"unauthorized_real_models_rejected\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"model_auth_precedes_body_validation\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"authorized_real_fleet\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"authorized_models_policy\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"model_selection_proposal_only\",\"state\":\"pass\"},{\"duration_ms\":245,\"name\":\"demo_startup\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"demo_fleet_simulated\",\"state\":\"pass\"},{\"duration_ms\":0,\"name\":\"demo_no_models\",\"state\":\"pass\"},{\"duration_ms\":0,\"name\":\"demo_no_model_policy_write\",\"state\":\"pass\"},{\"duration_ms\":0,\"name\":\"demo_no_legacy_policy\",\"state\":\"pass\"},{\"name\":\"doctor_read_only_capability\",\"state\":\"pass\"},{\"name\":\"demo_cli_has_no_real_policy_flags\",\"state\":\"pass\"}],\"cleanup\":{\"admiraltyd\":\"terminated\",\"demo\":\"terminated\"},\"clock\":\"UTC start timestamp plus monotonic elapsed/deadline measurements\",\"duration_ms\":543,\"fleet_rollout_closure\":false,\"randomness\":\"ephemeral token from OS CSPRNG; token value not recorded\",\"started_at_utc\":\"2026-10-18T15:10:25.728420+00:00\",\"status\":\"pass\",\"synthetic\":false}"
+        ],
+        "rust_test_results": [],
+        "smoke_receipt": {
+          "acceptance": false,
+          "binaries": {
+            "admiralty_sha256": "sha256:8077b28955ee2776c97aba369cb57475c79561b0baa28a814f2ebb2706fb335b",
+            "admiraltyd_sha256": "sha256:38c1c48bf2cf6632bef21c231c3273475060bf9a4583d839f1be686980040a15"
+          },
+          "checks": [
+            {
+              "duration_ms": 264,
+              "name": "real_server_startup",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 4,
+              "name": "real_health_native_unqualified",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "unauthorized_real_fleet_rejected",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "unauthorized_real_models_rejected",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "model_auth_precedes_body_validation",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "authorized_real_fleet",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "authorized_models_policy",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "model_selection_proposal_only",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 245,
+              "name": "demo_startup",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "demo_fleet_simulated",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 0,
+              "name": "demo_no_models",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 0,
+              "name": "demo_no_model_policy_write",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 0,
+              "name": "demo_no_legacy_policy",
+              "state": "pass"
+            },
+            {
+              "name": "doctor_read_only_capability",
+              "state": "pass"
+            },
+            {
+              "name": "demo_cli_has_no_real_policy_flags",
+              "state": "pass"
+            }
+          ],
+          "cleanup": {
+            "admiraltyd": "terminated",
+            "demo": "terminated"
+          },
+          "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+          "duration_ms": 543,
+          "fleet_rollout_closure": false,
+          "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+          "started_at_utc": "2026-10-18T15:10:25.728420+00:00",
+          "status": "pass",
+          "synthetic": false
+        },
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "cargo",
+          "run",
+          "-p",
+          "admiralty-cli",
+          "--locked",
+          "--",
+          "contracts",
+          "check"
+        ],
+        "elapsed_s": 0.375,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/merged-checkpoint/schemas-check.log",
+        "log_sha256": "b151333532771d3d652fe0b19dee1760060f8b4460ba0d21e68ecd7df74c85fc",
+        "name": "schemas-check",
+        "output_tail": [
+          "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.04s",
+          "     Running `target/debug/admiralty contracts check`",
+          "{",
+          "  \"checked\": [",
+          "    \"task-contract.schema.json\",",
+          "    \"coordination-message.schema.json\",",
+          "    \"domain-event.schema.json\"",
+          "  ],",
+          "  \"directory\": \"schemas\",",
+          "  \"drift\": false",
+          "}"
+        ],
+        "rust_test_results": [],
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "python3",
+          "tests/fixtures/legacy/verify.py"
+        ],
+        "elapsed_s": 0.533,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/merged-checkpoint/legacy-fixtures.log",
+        "log_sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12",
+        "name": "legacy-fixtures",
+        "output_tail": [
+          "{\"base_sha\": \"1e8ed17eff27ed3ab80dc6860fc8eda301406aee\", \"mirror_checks\": \"pass\", \"secret_scan\": \"pass\", \"synthetic_cases\": 11, \"verified_sources\": 37, \"working_tree_drift\": [\"README.md\", \"captains/MODEL_ROUTING_PLAYBOOK.md\", \"captains/super_captain_BRIEF.md\", \"dashboard/collector.py\", \"dashboard/extras.py\", \"dashboard/index.html\", \"data/history/ledger/model_usage.csv\", \"data/history/ledger/model_usage_2026-10-18.jsonl\", \"data/history/quota/codex_quota.csv\", \"data/history/resources/disk_used.csv\", \"data/history/resources/host_snapshots.csv\", \"data/history/snapshots/projects_2026-10-18.jsonl\", \"data/history/timeseries/history.csv\", \"data/history/timeseries/history_2026-10-18.jsonl\", \"data/history/token_yield/token_yield_2026-10-18.jsonl\", \"data/history/tokens/claude_hourly.csv\", \"data/history/tokens/codex_sessions.csv\", \"tools/sc_audit.py\"]}"
+        ],
+        "rust_test_results": [],
+        "timed_out": false
+      }
+    ],
+    "compiler_jobs": 2,
+    "cwd": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+    "finished_utc": "2026-10-18T15:10:27.237293Z",
+    "head_unchanged": true,
+    "native_execution_qualified": false,
+    "overall_pass": true,
+    "paid_provider_calls": 0,
+    "parent_acceptance": false,
+    "private_tmp": "/private/var/folders/jv/799z43hd61j1s9gjyg0dtqlm0000gn/T/am-wai7t155",
+    "receipt": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/merged-checkpoint/mac-gate.json",
+    "receipt_sha256": "f13c8eec4b59595e6f2eaa249abda1ab929320181b8be4c6221998477b58f7b8",
+    "rust_checks_passed": 558,
+    "rustc": "rustc 1.95.0 (59807616e 2026-04-14) (Homebrew)",
+    "source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+    "started_utc": "2026-10-18T15:10:02.576202Z",
+    "umask": "0002",
+    "worktree_clean": true
+  },
+  "manager_correction_handoff": {
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/integration-handoffs/389ab80df35d4f729c8469ef25f87781/receipt.json",
+    "sha256": "50f1a362eb2df129688142cdc4304fb880b61200640854fbbd8c4db195f016ee"
+  },
+  "native_execution_qualified": false,
+  "next_actions": [
+    "Repair new main P05 collision/bounds/validation findings with negative regressions and independent review.",
+    "Reconcile stale lane pointers and retained legacy permits before reuse; do not reset or dispatch through mismatched directories.",
+    "Implement missing P01 fake-clock/fault/forge/reset tests and live coordination/task command activation as disjoint scoped packets.",
+    "Review and test combined later-main source separately before accepting that integration."
+  ],
+  "observed_utc": "2026-10-18T15:16:22.310717+00:00",
+  "paid_provider_calls": 0,
+  "parent_acceptance": false,
+  "prior_provider_checkpoint": "a9ba930e6eb3b46b76797582427cce6bacefdaab",
+  "retained_failed_evidence": [
+    {
+      "complete_raw_log": false,
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/provider-checkpoint/merged-preflight-failure-excerpt.log",
+      "result": "retained failed preflight before scoped fixture fixes",
+      "sha256": "3b4b4438cc82e1faa379f2ae53a1a476e45331349da748f0b8df7478b651341e"
+    },
+    {
+      "complete_raw_log": true,
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/provider-checkpoint/new-harness-preflight.log",
+      "result": "retained failed preflight before scoped fixture fixes",
+      "sha256": "d0e1b4488c192bc5b0b26b6bcd12d4fdb21ffaea1a0f18244de06a79fc79c463"
+    }
+  ],
+  "reused_checks": {
+    "audit_tests": 44,
+    "contract_checks": 5,
+    "legacy_linux_tests": 88,
+    "note": "Explicit object identity reuses unchanged suites; no new Node/legacy/package execution claimed.",
+    "package_checks": 10,
+    "pinned_sources": 37,
+    "react_build": "pass",
+    "react_tests": 75,
+    "reference_receipt": "receipts/integration/3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d.json",
+    "reference_receipt_sha256": "9c486c37a240b8643c0429747caf64e78e80b831736e5ebc3d31584eb2fcf737",
+    "reported_working_tree_drift_paths": 18,
+    "smoke_harness_checks": 18,
+    "synthetic_cases": 11,
+    "typecheck": "pass"
+  },
+  "source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+  "source_tree": "089fde614ae3bb97373ec82d2e9400a1e1a871f8",
+  "state": "partial_review",
+  "unchanged_source_reuse": [
+    {
+      "current_object": "3488f6bf7cd14f506bdc018657ad4908a3b672d5",
+      "identical": true,
+      "path": "apps/dashboard",
+      "prior_object": "3488f6bf7cd14f506bdc018657ad4908a3b672d5",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "c1b85bc834151b86919bda4b5c0fcbc8d3a476a1",
+      "identical": true,
+      "path": "packages/contracts",
+      "prior_object": "c1b85bc834151b86919bda4b5c0fcbc8d3a476a1",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "identical": true,
+      "path": "schemas",
+      "prior_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "11db476204136b8f180828c6ebc1a02878fb6b59",
+      "identical": true,
+      "path": "package.json",
+      "prior_object": "11db476204136b8f180828c6ebc1a02878fb6b59",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "7681223a6442bb9dd3ed8646f6fecdbbf8abc26f",
+      "identical": true,
+      "path": "pnpm-lock.yaml",
+      "prior_object": "7681223a6442bb9dd3ed8646f6fecdbbf8abc26f",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+      "identical": true,
+      "path": "pnpm-workspace.yaml",
+      "prior_object": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "ea3b037689095581c785531a76967799b3a345db",
+      "identical": true,
+      "path": "dashboard",
+      "prior_object": "ea3b037689095581c785531a76967799b3a345db",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "fd3e27bdaad73c8ab90c6366a0d24513029b6f1f",
+      "identical": true,
+      "path": "tools",
+      "prior_object": "fd3e27bdaad73c8ab90c6366a0d24513029b6f1f",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "1e8129387baaf7a43c44f5fa1be5ab461c47713d",
+      "identical": true,
+      "path": "tests/legacy",
+      "prior_object": "1e8129387baaf7a43c44f5fa1be5ab461c47713d",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "9627e43e8d8cb129d4daf38c84fc5cce39e4226e",
+      "identical": true,
+      "path": "tests/fixtures/legacy",
+      "prior_object": "9627e43e8d8cb129d4daf38c84fc5cce39e4226e",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "891e26490a36557700905e10f46a2a028efbe27b",
+      "identical": true,
+      "path": "tests/test_sc_audit_integrity.py",
+      "prior_object": "891e26490a36557700905e10f46a2a028efbe27b",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "63f664d4a5112e7e685db50245a8958e67b798eb",
+      "identical": true,
+      "path": "tests/test_sc_audit_dope.py",
+      "prior_object": "63f664d4a5112e7e685db50245a8958e67b798eb",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "60027b4bd5e565c648b7e1a54381693f49c9a255",
+      "identical": true,
+      "path": "tests/test_sc_audit_ci_queue.py",
+      "prior_object": "60027b4bd5e565c648b7e1a54381693f49c9a255",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "6825113da45e3a90ee6d4c91262a65515d1e0c8c",
+      "identical": true,
+      "path": "tests/test_sc_audit_survey.py",
+      "prior_object": "6825113da45e3a90ee6d4c91262a65515d1e0c8c",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "identical": true,
+      "path": "scripts/release/package.py",
+      "prior_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "identical": true,
+      "path": "scripts/check/canary-smoke.py",
+      "prior_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    },
+    {
+      "current_object": "3010e0a8d4ff76c213b890e7052fb4a8fc21f06d",
+      "identical": true,
+      "path": ".github/workflows/ci.yml",
+      "prior_object": "3010e0a8d4ff76c213b890e7052fb4a8fc21f06d",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d"
+    }
+  ]
+}

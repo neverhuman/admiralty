@@ -7,13 +7,13 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). In
 | Packet | State | Owner | Integrated commit or candidate | Evidence and next action |
 | --- | --- | --- | --- | --- |
 | P00 | review | evidence lane + integration review | independently checked at `a9ba930e` | 37 pinned hashes, 11 synthetic cases, distinct 449/503 baselines and unknown-explicit inventory worksheet satisfy inspected artifact criteria; hashed current execution evidence recorded, authorized engineering receipt closeout pending |
-| P01 | in_progress | integration + quality review | reviewed `9debe5d` | Six crates, pinned tools and independent Linux CI-equivalent gate pass; hosted runner jobs remain unassigned; full fault/simulator matrix pending |
+| P01 | in_progress | integration + quality review | combined source `661bf36f` | All 30 named integration targets registered; Mac 558 and clean Linux 560 Rust checks plus strict gates pass; hosted run cancelled before steps; full fault/simulator matrix pending |
 | P02 | in_progress | domain + integration review | reviewed `03772f94` | Typed contracts, pure reducers and schema/TS checks are integrated; complete authority/policy negotiation remains pending |
 | P03 | in_progress | local store agent + integration reviewer | reviewed `29acc013` | Atomic domain/outbox admission, immutable request/effect associations, replay and receive-time retry compatibility tested; durable executor admission loop pending |
 | P04 | in_progress | artifact + custody lanes + strong review | reviewed `29acc013` | Transactional asset/pin catalog with full observation binding, fixed clock policy and receipt closure; trusted filesystem observation/startup activation pending |
-| P05 | in_progress | local coordination team + strong review | reviewed `29acc013` | Durable scoped messages/ACK and question journal with canonical receipt/task-scope checks; delivery service/subscriptions pending |
+| P05 | in_progress | local coordination team + strong review | Store reviewed `29acc013`; later main `429595d` requires fixes | Durable scoped Store messages/ACK and question journal retained; new in-memory mailbox has collision/retention/validation blockers; durable delivery/subscriptions pending |
 | P06 | in_progress | local context team | PR prototype | Constraint-preserving capsules, epochs and bounded attention governor; durable governor/outbox activation and retrieval pending |
-| P07 | in_progress | remote session lane + local reviewer | reviewed `e2b540fb` | Independent private Unix-socket host, reconnect continuity, compatible launch envelope, final capture watermark and native owned-group cleanup; restart adoption and admitted fleet activation unqualified |
+| P07 | in_progress | remote session lane + local reviewer | runtime `e2b540fb`; fixture `661bf36f` | Private socket fixture now bounds framing, connect, I/O and owned-child cleanup; same-daemon client reconnect passes; control-service restart adoption and admitted fleet activation unqualified |
 | P08 | in_progress | provider + integration review | reviewed `455ee5f4` | Adds opt-in controlled exact-fixture Codex transport harness with offline CI tests and executable hashes; no real run or native qualification |
 | P09 | in_progress | remote workspace lane + local reviewer | candidate `f0d15a82`, imported `d637bfe` | Read-only custody registration; real runner/resource isolation pending |
 | P10 | in_progress | usage/reservation lanes + strong review | candidate `99f05b0`, imported `61e888b` | Segmented usage plus conservative scoped reservations reviewed; runtime reservation activation pending |
@@ -27,8 +27,8 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). In
 | P18 | in_progress | Luna conflict lane + strong review | candidate `54d57e0`, imported `03d42fe` | Bounded conservative conflict graph reviewed; merge train/runtime integration pending |
 | P19 | in_progress | Luna publication lane + strong review | candidate `c3e3289`, imported `4a7eee0` | Frozen request/receipt publication fences reviewed; credential gateway/forge qualification pending |
 | P20 | in_progress | Luna retirement lane + strong review | candidate `164aee7`, imported `94336b5` | Scope/pin/identity/replay retirement proposals reviewed; no destructive executor or permission |
-| P21 | in_progress | provider implementation + independent cross-review | PR26 `a9ba930e`, offline compiled/tested | 22 registered tests and shared strict decoder address offline counterexamples; unadmitted launch/configuration/journal/real transport and nested usage qualification remain pending |
-| P22 | in_progress | provider implementation + independent cross-review | PR26 `a9ba930e`, offline compiled/tested | 12 registered matrix tests cover portable fixtures, truthful identity hints, strict incremental framing and shared launch envelopes; native identity/journal/transport qualification remains pending |
+| P21 | in_progress | provider implementation + independent cross-review | PR26 `661bf36f`, offline compiled/tested | 22 registered tests and shared strict decoder address offline counterexamples; unadmitted launch/configuration/journal/real transport and nested usage qualification remain pending |
+| P22 | in_progress | provider implementation + independent cross-review | PR26 `661bf36f`, offline compiled/tested | 12 registered matrix tests cover portable fixtures, truthful identity hints, strict incremental framing and shared launch envelopes; native identity/journal/transport qualification remains pending |
 | P23 | in_progress | Luna enrollment lane + strong review | candidate `e3a9125`, imported `a6637a6` | Scope/clock/revocation enrollment contracts reviewed; real enrollment/replay transport pending |
 | P24 | in_progress | Luna placement lane + strong review | candidate `a791470`, imported `08c3a38` | Scoped fresh ownership/continuation placement proposals reviewed; real partition qualification pending |
 | P25 | in_progress | Luna recovery lane + strong review | candidate `fa77ebd`, imported `4494af9` | Snapshot/fence/closure recovery bindings reviewed; executor restore/cutover qualification pending |
@@ -354,3 +354,69 @@ P00/P21/P22 partial receipts at that source, and
 Hosted checks and configured exact-head review remain pending independently of
 these source checks. No merge, production deployment, native activation or
 other-project dispatch occurred.
+
+
+## Combined packet harness checkpoint and later-main review
+
+Frozen source `661bf36f` integrates main's `8366b581` registration of all 30 named
+packet harnesses with the independently hardened provider implementations. The
+three wiring conflicts were resolved without losing registered targets or
+reverting the strict shared decoder. Five newly active fixtures needed repairs:
+canonical private directories created with mode 0700; bounded response framing,
+connection and I/O deadlines; short portable Unix-socket names; and owned child
+cleanup. The package self-test child now has a 30-second deadline and 64 KiB
+output caps. An exceptional unreaped child is reported explicitly and handed to
+an eventual reaper; foreground cleanup does not claim guaranteed descendant
+termination. The session fixture exercises client reconnects to the same daemon
+and child, not a control-service restart. Independent cross-review cleared the
+five scoped repairs after identifying and correcting the last two deadline gaps.
+
+At exact source `661bf36f`, macOS passes 558 Rust checks and clean Linux passes
+560, including doctests and all 30 registered integration targets. Both pass
+formatting, strict workspace Clippy, binary build, schemas, the 37-source/11-case
+legacy fixture verifier, and 15 actual isolated HTTP/CLI smoke checks. Both smoke
+children terminate. Tests inherit umask 0002 and use canonical owned private
+scratch outside Git. The ignored session worker helper is explicitly spawned by
+its owning continuity test. Earlier failed preflight output is retained; one
+initial failure survives only as an explicitly labelled excerpt, and earlier
+session EINVAL failures have transcript references but no saved raw-file hash.
+Unchanged React, contracts, legacy/audit Python, packaging and smoke-harness
+checks are reused through exact Git-object identity. No repeat of those passing
+suites or fresh Node run is claimed.
+
+The 15:12–15:13 UTC fleet observation finds 15 retained owned workers: 11 reported
+completed turns and four open turns with recent tool calls/results. No candidate
+HEAD or receipt advanced since 14:40. No confirmed stalled worker was found.
+Three task/worktree bindings and the stale workqueue need owner reconciliation
+before reuse; idle processes do not release their retained CPU/conversation
+reservations. The configured manager remains visibly Gemini 4 Argon. Its new
+32/32 integrated claim lacks verification/integration provenance; the live
+collector correctly displays 32 claimed and zero integrated. Root sent the
+manager the contradictory evidence and remaining contract gates. This checkpoint
+reconciles all 32 parents again and issues no whole-packet or native acceptance.
+P00's technically verified artifact criteria stay distinct from engineering
+closeout; native provider qualification is not an extra P00 prerequisite.
+
+After the frozen checkpoint, another lane merged main `429595d` (P05 helpers)
+and `a73fc557` (audit changes). They are excluded from the 661 proof. Independent
+static review of exact P05 objects finds silent changed-payload ID/sequence
+collision suppression, unbounded ACKed history, sequence-zero/overflow hazards,
+missing complete-envelope validation, unbounded insufficiently authorized topic
+routing, and an unpaged global-snapshot wrapper. Existing durable Store checks
+remain intact; the new wrappers do not activate durable subscription/replay,
+delivery/expiry or authenticated commands. Repair those bounded components with
+negative regressions before accepting P05 or integrating that later source here.
+Do not infer full packet acceptance from a harness with the packet's name.
+
+GitHub PR26 run 39138996888 was cancelled by the owner account before any test
+steps. No hosted success or exact-head configured review is recorded. Root has
+not merged a PR, deployed a new binary/UI, changed other projects or enabled
+native execution. The browser still shows real data, 13 temporal plots, bright
+models, the ordinary Admiralty tab, owner profile and Admiral/Commodore hierarchy.
+
+Evidence: `receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json`,
+`receipts/reconciliation/2026-10-18T1515Z-661bf36f0a401c79c87e2166fd75be325984e09c.json`
+and `receipts/reviews/429595d196fcb6b730d5683e04d479faa1ec968c-P05.json`.
+Next ready work is the scoped P05 repair, stale lane/permit reconciliation,
+missing P01 deterministic fault/clock/forge/reset harnesses, and live command
+admission. Hosted CI and exact-head review remain separate merge gates.
