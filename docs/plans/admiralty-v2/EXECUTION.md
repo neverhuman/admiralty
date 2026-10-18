@@ -14,11 +14,11 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). In
 | P05 | in_progress | local coordination team + strong review | reviewed `318ac713` | Mailbox collision/history/envelope bounds, authorized bounded topics and scoped queue-history pages reviewed and tested; trusted service authentication and durable delivery/subscription activation pending |
 | P06 | in_progress | local context team | PR prototype | Constraint-preserving capsules, epochs and bounded attention governor; durable governor/outbox activation and retrieval pending |
 | P07 | in_progress | remote session lane + local reviewer | runtime `e2b540fb`; fixture `661bf36f` | Private socket fixture now bounds framing, connect, I/O and owned-child cleanup; same-daemon client reconnect passes; control-service restart adoption and admitted fleet activation unqualified |
-| P08 | in_progress | provider + integration review | reviewed `455ee5f4` | Adds opt-in controlled exact-fixture Codex transport harness with offline CI tests and executable hashes; no real run or native qualification |
-| P09 | in_progress | remote workspace lane + local reviewer | candidate `f0d15a82`, imported `d637bfe` | Read-only custody registration; real runner/resource isolation pending |
+| P08 | in_progress | provider + integration review | reviewed `455ee5f4`; Round 7 batch `b28a7f7` | Round 7 provider fault tests are batched on `codex/batch-item2-p08-p09-p12`; exact-main focused checks and full branch gates pass. Main merge is held for the coordinated window; packet remains unaccepted |
+| P09 | in_progress | remote workspace lane + local reviewer | candidate `f0d15a82`, imported `d637bfe`; Round 7 batch `3a71e82` | Round 7 runner-isolation fault cases are batched on `codex/batch-item2-p08-p09-p12`; workspace-registry checks and full branch gates pass. Main merge is held for the coordinated window; packet remains unaccepted |
 | P10 | in_progress | usage/reservation lanes + strong review | candidate `99f05b0`, imported `61e888b` | Segmented usage plus conservative scoped reservations reviewed; runtime reservation activation pending |
 | P11 | in_progress | API + integration review | reviewed `17c7a76d` | Authenticated bounded read API/SSE and offline CLI are tested; live command envelopes, terminal input and agent tools pending |
-| P12 | in_progress | frontend + integration review | live assets `9debe5dd` | Dense real-data console, 13 temporal metrics, observed manager selection and centered owner deployed; 75 React tests/build pass; full scale/accessibility qualification pending |
+| P12 | in_progress | frontend + integration review | live assets `9debe5dd`; Round 7 batch `a39a7ab` | Round 7 integration-generation clock-skew test is batched on `codex/batch-item2-p08-p09-p12`; dashboard and full branch gates pass. Main merge is held for the coordinated window; packet remains unaccepted |
 | P13 | in_progress | store + integration review | reviewed `455ee5f4` | Durable immutable JSON revisions, CAS/retry, reciprocal task identity, writer/CLI and backup/rebuild tests; TOML/Markdown, import UI and live admission pending |
 | P14 | in_progress | scheduler lane + strong review | candidate `4aa3abe`, imported `2ef27f4` | Pure scheduler independently hardened at `03772f94`; durable scheduling and launches remain pending |
 | P15 | in_progress | verifier lane + strong review | candidate `a4c358`, imported `1f8b32c` | Scoped evidence consistency hardened at `03772f94`; trusted independent verifier execution pending |
@@ -61,6 +61,19 @@ Save at `receipts/<packet>/<actual-commit>.json`; do not create an example file 
   "next_action": "bounded action"
 }
 ```
+
+
+
+### Queue item 2 batch (2026-10-18)
+
+P08, P09, and P12 Round 7 worker commits are staged together on
+`codex/batch-item2-p08-p09-p12`, based on `origin/main` `c513a4e`. The batch
+contains provider fault coverage (`b28a7f7`), runner-isolation fault coverage
+(`3a71e82`), and clock-skew integration-generation coverage (`a39a7ab`). Exact-main
+focused checks passed on `c513a4e`; full workspace format, clippy, tests, and
+contract checks passed on the batch code. P08/P09/P12 remain in progress and
+not packet-accepted. Main merge is held for the coordinated window; PR #38
+remains local-CI-only until its main workflow is green.
 
 The receipt is engineering evidence, not product acceptance. Integrator verifies actual resulting tree/tests and records the integrated SHA. Reconcile planning estimates after P08/P15 establish real provider/verifier throughput; preserve earlier estimates as history rather than silently changing a committed delivery promise.
 
