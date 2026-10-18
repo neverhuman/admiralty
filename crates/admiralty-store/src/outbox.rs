@@ -8,6 +8,7 @@ use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use std::io::Write;
 
 pub const MAX_PAYLOAD_BYTES: usize = 16 * 1024;
 pub const MAX_LEASE_SECONDS: u64 = 86_400;
@@ -43,6 +44,21 @@ pub struct OutboxIntent {
     pub idempotency_key: String,
     pub payload: Value,
     pub not_before: u64,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PreparedIntent {
+    pub idempotency_key: String,
+    pub payload: String,
+    pub payload_digest: String,
+    pub intent_digest: String,
+    pub not_before: i64,
+}
+
+pub(crate) enum EnqueueResult {
+    Inserted { id: i64 },
+    ExistingExact { id: i64 },
+    Collision,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -89,68 +105,165 @@ fn token_integer(value: &str) -> Result<i64> {
 fn logical_now(now: Option<u64>) -> Result<i64> {
     integer(now.ok_or(OutboxError::UnknownClock)?)
 }
-fn payload_json(value: &Value) -> Result<String> {
-    // Bound work before allocating serialized bytes, including deeply nested or
-    // huge in-memory values. Sort keys explicitly regardless of serde features.
-    let mut pending = vec![(value, 0usize)];
+struct CappedWriter {
+    bytes: Vec<u8>,
+    maximum: usize,
+    overflowed: bool,
+}
+
+impl CappedWriter {
+    fn new(maximum: usize) -> Self {
+        Self {
+            bytes: Vec::with_capacity(maximum.min(4096)),
+            maximum,
+            overflowed: false,
+        }
+    }
+}
+
+impl std::io::Write for CappedWriter {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        if self
+            .bytes
+            .len()
+            .checked_add(bytes.len())
+            .is_none_or(|size| size > self.maximum)
+        {
+            self.overflowed = true;
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::WriteZero,
+                "JSON byte limit exceeded",
+            ));
+        }
+        self.bytes.extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+fn canonical_value(value: &Value, writer: &mut CappedWriter) -> Result<()> {
+    match value {
+        Value::Array(values) => {
+            writer
+                .write_all(b"[")
+                .map_err(|error| OutboxError::Invalid(error.to_string()))?;
+            for (index, value) in values.iter().enumerate() {
+                if index > 0 {
+                    writer
+                        .write_all(b",")
+                        .map_err(|error| OutboxError::Invalid(error.to_string()))?;
+                }
+                canonical_value(value, writer)?;
+            }
+            writer
+                .write_all(b"]")
+                .map_err(|error| OutboxError::Invalid(error.to_string()))?;
+        }
+        Value::Object(values) => {
+            writer
+                .write_all(b"{")
+                .map_err(|error| OutboxError::Invalid(error.to_string()))?;
+            let mut entries: Vec<_> = values.iter().collect();
+            entries.sort_by(|left, right| left.0.cmp(right.0));
+            for (index, (key, value)) in entries.into_iter().enumerate() {
+                if index > 0 {
+                    writer
+                        .write_all(b",")
+                        .map_err(|error| OutboxError::Invalid(error.to_string()))?;
+                }
+                serde_json::to_writer(&mut *writer, key)?;
+                writer
+                    .write_all(b":")
+                    .map_err(|error| OutboxError::Invalid(error.to_string()))?;
+                canonical_value(value, writer)?;
+            }
+            writer
+                .write_all(b"}")
+                .map_err(|error| OutboxError::Invalid(error.to_string()))?;
+        }
+        scalar => serde_json::to_writer(&mut *writer, scalar)?,
+    }
+    Ok(())
+}
+
+pub(crate) fn prepare_intent(intent: &OutboxIntent) -> Result<PreparedIntent> {
+    if !bounded_text(&intent.idempotency_key, 256) {
+        return Err(OutboxError::Invalid(
+            "idempotency key requires 1..256 printable bytes".into(),
+        ));
+    }
+    let not_before = integer(intent.not_before)?;
+    let mut writer = CappedWriter::new(MAX_PAYLOAD_BYTES);
+    // Bound work before serialization, including deep and wide in-memory values.
+    let mut pending = vec![(&intent.payload, 0usize)];
     let mut nodes = 0usize;
-    let mut text_bytes = 0usize;
     while let Some((value, depth)) = pending.pop() {
-        nodes += 1;
+        nodes = nodes.checked_add(1).ok_or(OutboxError::Overflow)?;
         if nodes > MAX_PAYLOAD_BYTES || depth > MAX_PAYLOAD_DEPTH {
             return Err(OutboxError::Invalid(
                 "payload exceeds structural bounds".into(),
             ));
         }
         match value {
-            Value::String(text) => text_bytes = text_bytes.saturating_add(text.len()),
             Value::Array(items) => {
-                if pending.len().saturating_add(items.len()) > MAX_PAYLOAD_BYTES {
+                if pending
+                    .len()
+                    .checked_add(items.len())
+                    .is_none_or(|size| size > MAX_PAYLOAD_BYTES)
+                {
                     return Err(OutboxError::Invalid(
                         "payload exceeds structural bounds".into(),
                     ));
                 }
-                pending.extend(items.iter().map(|value| (value, depth + 1)));
+                pending.extend(items.iter().map(|item| (item, depth + 1)));
             }
             Value::Object(items) => {
-                if pending.len().saturating_add(items.len()) > MAX_PAYLOAD_BYTES {
+                if pending
+                    .len()
+                    .checked_add(items.len())
+                    .is_none_or(|size| size > MAX_PAYLOAD_BYTES)
+                {
                     return Err(OutboxError::Invalid(
                         "payload exceeds structural bounds".into(),
                     ));
                 }
-                for (key, value) in items {
-                    text_bytes = text_bytes.saturating_add(key.len());
-                    pending.push((value, depth + 1));
-                }
+                pending.extend(items.values().map(|item| (item, depth + 1)));
             }
             _ => {}
         }
-        if text_bytes > MAX_PAYLOAD_BYTES {
-            return Err(OutboxError::Invalid("payload exceeds 16 KiB".into()));
+    }
+    canonical_value(&intent.payload, &mut writer).map_err(|error| {
+        if writer.overflowed {
+            OutboxError::Invalid("payload exceeds 16 KiB".into())
+        } else {
+            error
         }
-    }
-    fn canonical(value: &Value) -> Value {
-        match value {
-            Value::Array(items) => Value::Array(items.iter().map(canonical).collect()),
-            Value::Object(items) => {
-                let mut entries: Vec<_> = items.iter().collect();
-                entries.sort_by(|left, right| left.0.cmp(right.0));
-                Value::Object(
-                    entries
-                        .into_iter()
-                        .map(|(key, value)| (key.clone(), canonical(value)))
-                        .collect(),
-                )
-            }
-            _ => value.clone(),
-        }
-    }
-    let payload = serde_json::to_string(&canonical(value))?;
-    if payload.len() > MAX_PAYLOAD_BYTES {
-        return Err(OutboxError::Invalid("payload exceeds 16 KiB".into()));
-    }
-    Ok(payload)
+    })?;
+    let payload =
+        String::from_utf8(writer.bytes).map_err(|error| OutboxError::Invalid(error.to_string()))?;
+    let payload_digest = format!("sha256:{:x}", Sha256::digest(payload.as_bytes()));
+    let intent_digest = prepared_intent_digest(&intent.idempotency_key, &payload, not_before);
+    Ok(PreparedIntent {
+        idempotency_key: intent.idempotency_key.clone(),
+        payload,
+        payload_digest,
+        intent_digest,
+        not_before,
+    })
 }
+
+pub(crate) fn prepared_intent_digest(key: &str, payload: &str, not_before: i64) -> String {
+    let mut identity = Sha256::new();
+    identity.update(key.as_bytes());
+    identity.update([0]);
+    identity.update(payload.as_bytes());
+    identity.update([0]);
+    identity.update(not_before.to_be_bytes());
+    format!("sha256:{:x}", identity.finalize())
+}
+
 fn observe_clock(tx: &Transaction<'_>, now: i64) -> Result<()> {
     let previous: Option<i64> = tx
         .query_row(
@@ -168,30 +281,43 @@ fn observe_clock(tx: &Transaction<'_>, now: i64) -> Result<()> {
 
 /// Duplicate identity/content/schedule returns its original decimal ID.
 pub fn enqueue(connection: &mut Connection, intent: OutboxIntent) -> Result<String> {
-    if !bounded_text(&intent.idempotency_key, 256) {
-        return Err(OutboxError::Invalid(
-            "idempotency key requires 1..256 printable bytes".into(),
-        ));
-    }
-    let not_before = integer(intent.not_before)?;
-    let payload = payload_json(&intent.payload)?;
-    let digest = format!("sha256:{:x}", Sha256::digest(payload.as_bytes()));
+    let prepared = prepare_intent(&intent)?;
     let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    let existing: Option<(i64, String, String, i64)> = tx.query_row(
-        "SELECT id,payload_digest,payload,not_before FROM outbox_intents WHERE idempotency_key=?1", [&intent.idempotency_key],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))).optional()?;
-    if let Some((id, previous_digest, previous_payload, previous_due)) = existing {
-        if previous_digest == digest && previous_payload == payload && previous_due == not_before {
-            return Ok(id.to_string());
+    let result = enqueue_prepared_in_transaction(&tx, &prepared)?;
+    let id = match result {
+        EnqueueResult::Inserted { id } | EnqueueResult::ExistingExact { id } => id,
+        EnqueueResult::Collision => {
+            tx.commit()?;
+            return Err(OutboxError::IdentityCollision);
         }
-        tx.execute("INSERT INTO outbox_integrity_incidents(idempotency_key,original_digest,conflicting_digest) VALUES(?1,?2,?3)", params![intent.idempotency_key, previous_digest, digest])?;
-        tx.commit()?;
-        return Err(OutboxError::IdentityCollision);
-    }
-    tx.execute("INSERT INTO outbox_intents(idempotency_key,payload,payload_digest,not_before) VALUES(?1,?2,?3,?4)", params![intent.idempotency_key, payload, digest, not_before])?;
-    let id = tx.last_insert_rowid();
+    };
     tx.commit()?;
     Ok(id.to_string())
+}
+
+pub(crate) fn enqueue_prepared_in_transaction(
+    tx: &Transaction<'_>,
+    intent: &PreparedIntent,
+) -> Result<EnqueueResult> {
+    let existing: Option<(i64, String, String, i64)> = tx.query_row(
+        "SELECT id,payload_digest,payload,not_before FROM outbox_intents WHERE idempotency_key=?1",
+        [&intent.idempotency_key],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+    ).optional()?;
+    if let Some((id, previous_digest, previous_payload, previous_due)) = existing {
+        if previous_digest == intent.payload_digest
+            && previous_payload == intent.payload
+            && previous_due == intent.not_before
+        {
+            return Ok(EnqueueResult::ExistingExact { id });
+        }
+        tx.execute("INSERT INTO outbox_integrity_incidents(idempotency_key,original_digest,conflicting_digest) VALUES(?1,?2,?3)", params![intent.idempotency_key, previous_digest, intent.payload_digest])?;
+        return Ok(EnqueueResult::Collision);
+    }
+    tx.execute("INSERT INTO outbox_intents(idempotency_key,payload,payload_digest,not_before) VALUES(?1,?2,?3,?4)", params![intent.idempotency_key, intent.payload, intent.payload_digest, intent.not_before])?;
+    Ok(EnqueueResult::Inserted {
+        id: tx.last_insert_rowid(),
+    })
 }
 
 /// Observe a trusted clock, fence one due pending row, and never retry uncertainty.
