@@ -1,0 +1,20 @@
+{
+  "provider": "grok",
+  "version": "1.0.62",
+  "build": "1474f9cbdd91",
+  "binary": "/home/ubuntu/.local/bin/grok",
+  "binary_sha256": "2a46d9e4d7ebd7a9cff7f95716714b19dad5f21dd2a497822400b1fb128969aa",
+  "probe": ["grok", "--version"],
+  "version_exit": 0,
+  "help_exit": 0,
+  "help_evidence": ["--output-format streaming-json", "NDJSON: one ACP session update per line, the agent's native format", "--single <PROMPT>", "--model <MODEL>", "--resume [<SESSION_ID_OR_TITLE>]"],
+  "stream_fixture_kind": "synthetic parser vector, not a captured authenticated session",
+  "capabilities": {
+    "acp_stream": "advertised by captured CLI help; end-to-end transport behavior not qualified",
+    "auth_status": "unsupported: version/help probes do not establish authentication state",
+    "usage": "unsupported: no ACP usage payload has been qualified for this version",
+    "resume": "unsupported: resume flag exists, but continuation behavior has not been qualified",
+    "permission_semantics": "unsupported: permission modes exist, but enforcement semantics have not been qualified"
+  },
+  "qualification": "CLI help/version probe only; ACP is preserved as provider protocol. No task, auth, billing, continuation, or permission behavior was exercised."
+}
