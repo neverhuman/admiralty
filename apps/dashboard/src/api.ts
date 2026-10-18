@@ -1,5 +1,5 @@
-import type { TaskContract } from '../../../packages/contracts/index';
-import { parseFleet } from './validation';
+import type { CandidateDecisionEvidence as I1CandidateDecisionEvidence, TaskContract } from '../../../packages/contracts/index';
+import { parseFleet, parseNativeFleet } from './validation';
 
 export type Cursor = { recovery_generation: string; event_seq: string };
 export class ApiError extends Error {
@@ -68,6 +68,25 @@ export type Fleet = {
   native_execution_qualified: false;
 };
 
+export type NativeTaskState = Fleet['tasks'][number]['state'] | 'accepted' | 'failed' | 'cancelled';
+export type CandidateDecisionEvidence = I1CandidateDecisionEvidence;
+export type NativeTaskLifecycle = {
+  revision: number;
+  attempts: Record<string, string>;
+  closure_digest: string | null;
+  decision: CandidateDecisionEvidence | null;
+  reason: string | null;
+};
+export type NativeTaskView = Omit<Fleet['tasks'][number], 'state'> & {
+  state: NativeTaskState;
+  /** Exact read-only lifecycle projection published by I1. */
+  lifecycle?: NativeTaskLifecycle;
+};
+export type NativeFleet = Omit<Fleet, 'schema_version' | 'tasks'> & {
+  schema_version: 2;
+  tasks: NativeTaskView[];
+};
+
 export async function getFleet(token?: string, signal?: AbortSignal, fetcher: typeof fetch = fetch): Promise<Fleet> {
   const response = await fetcher('/v1/fleet', {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -77,11 +96,20 @@ export async function getFleet(token?: string, signal?: AbortSignal, fetcher: ty
   return parseFleet(await readBoundedJson(response));
 }
 
+export async function getNativeFleet(token?: string, signal?: AbortSignal, fetcher: typeof fetch = fetch): Promise<NativeFleet> {
+  const response = await fetcher('/v2/fleet', {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    signal, cache: 'no-store',
+  });
+  if (!response.ok) throw new ApiError(`Fleet request failed (${response.status})`, response.status);
+  return parseNativeFleet(await readBoundedJson(response));
+}
+
 export function formatUnknown(value: number | string | null | undefined): string {
   return value === null || value === undefined || value === '' ? 'Unknown' : String(value);
 }
 
-export function fleetTotals(fleet: Fleet) {
+export function fleetTotals(fleet: Pick<NativeFleet, 'projects'>) {
   return fleet.projects.reduce((total, project) => ({
     projects: total.projects + 1,
     tasks: total.tasks + project.total,
@@ -92,6 +120,6 @@ export function fleetTotals(fleet: Fleet) {
   }), { projects: 0, tasks: 0, running: 0, blocked: 0, accepted: 0, verifying: 0 });
 }
 
-export function taskStateLabel(state: Fleet['tasks'][number]['state']): string {
+export function taskStateLabel(state: NativeTaskState): string {
   return state.replaceAll('_', ' ');
 }

@@ -1,5 +1,5 @@
-import { ApiError, getFleet, type Cursor, type Fleet } from './api';
-import { parseCursor, parseDomainRecord } from './validation';
+import { ApiError, getNativeFleet, type Cursor, type NativeFleet } from './api';
+import { parseCursor, parseDomainRecordV2 } from './validation';
 
 export type StreamFrame = { event: string; id?: string; data: string };
 const MAX_FRAME_CHARACTERS = 2 * 1024 * 1024;
@@ -42,7 +42,7 @@ export function cursorFromId(id: string | undefined): Cursor {
 }
 export function retryDelayMs(attempt: number): number { return Math.min(30_000, 500 * 2 ** Math.min(Math.max(attempt, 0), 6)); }
 export type ConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'paused';
-type WatchOptions = { token?: string; onFleet: (fleet: Fleet) => void; onState: (state: ConnectionState) => void;
+type WatchOptions = { token?: string; onFleet: (fleet: NativeFleet) => void; onState: (state: ConnectionState) => void;
   onError: (message: string) => void; fetcher?: typeof fetch };
 
 /** One sequential fetch stream; idle fleets trigger no additional snapshot reads. */
@@ -61,8 +61,8 @@ export function watchFleet(options: WatchOptions): () => void {
       const abort = () => snapshotRequest.abort();
       lifetime.signal.addEventListener('abort', abort, { once: true });
       const deadline = setTimeout(abort, 15_000);
-      let result: Fleet;
-      try { result = await getFleet(options.token, snapshotRequest.signal, fetcher); }
+      let result: NativeFleet;
+      try { result = await getNativeFleet(options.token, snapshotRequest.signal, fetcher); }
       finally { clearTimeout(deadline); lifetime.signal.removeEventListener('abort', abort); }
       if (lifetime.signal.aborted) return;
       if (!cursor || cursor.recovery_generation !== result.cursor.recovery_generation) {
@@ -103,7 +103,7 @@ export function watchFleet(options: WatchOptions): () => void {
         const handshake = setTimeout(() => stream?.abort(), 15_000);
         let response: Response;
         try {
-          response = await fetcher(`/v1/events?${query}`, {
+          response = await fetcher(`/v2/events?${query}`, {
             headers: { Accept: 'text/event-stream', ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}) },
             signal: stream.signal, cache: 'no-store',
           });
@@ -117,7 +117,7 @@ export function watchFleet(options: WatchOptions): () => void {
           if (frame.event === 'error') throw new Error('Event stream reported an error');
           if (frame.event !== 'domain') return;
           const incoming = cursorFromId(frame.id);
-          const record = parseDomainRecord(JSON.parse(frame.data));
+          const record = parseDomainRecordV2(JSON.parse(frame.data));
           if (incoming.event_seq !== record.seq || incoming.recovery_generation !== cursor?.recovery_generation) {
             needsSnapshot = true; throw new Error('Event stream generation changed');
           }
