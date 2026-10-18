@@ -16,6 +16,7 @@ const specifications = [
   ['task-contract', 'TaskContract'],
   ['coordination-message', 'CoordinationMessage'],
   ['domain-event', 'DomainEvent'],
+  ['domain-event-v2', 'DomainEventV2'],
 ];
 const check = process.argv.length === 3 && process.argv[2] === '--check';
 if (process.argv.length > 2 && !check) {

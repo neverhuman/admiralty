@@ -8,4 +8,6 @@ export type { MessageId, MessagePayload, PrincipalId, CoordinationMessage } from
 export type * as CoordinationMessageTypes from './generated/coordination-message.js';
 export type { DomainEvent, AttemptId } from './generated/domain-event.js';
 export type * as DomainEventTypes from './generated/domain-event.js';
-export { validateTaskContract, validateCoordinationMessage, validateDomainEvent, SUPPORTED_SCHEMA_VERSION, CONTRACT_SCHEMA_FINGERPRINTS } from './generated/validators.mjs';
+export type { DomainEventV2, LifecycleRecord, LifecycleAction, LifecycleCommand, CandidateDecisionEvidence } from './generated/domain-event-v2.js';
+export type * as DomainEventV2Types from './generated/domain-event-v2.js';
+export { validateTaskContract, validateCoordinationMessage, validateDomainEvent, validateDomainEventV2, SUPPORTED_SCHEMA_VERSION, CONTRACT_SCHEMA_FINGERPRINTS } from './generated/validators.mjs';

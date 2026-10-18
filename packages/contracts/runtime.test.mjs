@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
-import { validateTaskContract, validateCoordinationMessage, validateDomainEvent,
+import { validateTaskContract, validateCoordinationMessage, validateDomainEvent, validateDomainEventV2,
   SUPPORTED_SCHEMA_VERSION, CONTRACT_SCHEMA_FINGERPRINTS } from './generated/validators.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -25,6 +25,22 @@ const payloads = () => [
 ];
 const message = payload => ({ schema_version: 1, message_id: 'message', project_id: 'project', sender: 'worker', recipient: 'captain',
   causation_id: null, context_epoch: 'epoch-1', authority_ref: 'policy:test', payload });
+
+test('native lifecycle is explicitly v2 and cannot extend the frozen v1 union', () => {
+  const native = { kind: 'task_lifecycle', command: { protocol_version: 2, task_id: 'task',
+    expected_task_digest: `sha256:${'a'.repeat(64)}`, actor: 'owner',
+    action: { action: 'cancel_pending', reason: 'no longer needed' } } };
+  assert.equal(validateDomainEvent(native), false);
+  assert.equal(validateDomainEventV2(native), true);
+  assert.equal(validateDomainEventV2({ kind: 'task_submitted', contract: contract() }), true);
+  for (const version of [0, 1, 3, 2.5]) {
+    assert.equal(validateDomainEventV2({ ...native, command: { ...native.command, protocol_version: version } }), false);
+  }
+  assert.equal(validateDomainEventV2({ ...native, command: { ...native.command, trusted: true } }), false);
+  assert.equal(validateDomainEventV2({ ...native, command: { ...native.command,
+    action: { ...native.command.action, execution_qualified: true } } }), false);
+  // Shape checking alone still cannot authorize the action or prove CAS.
+});
 
 test('standalone package entry has no compiler dependency and exports supported version', async () => {
   const publicApi = await import('@admiralty/contracts');

@@ -118,6 +118,11 @@ fn fleet_from(
     sqlite_version: String,
     simulated: bool,
 ) -> FleetResponse {
+    let schema_version = if projection.tasks.values().any(|t| t.lifecycle.is_some()) {
+        2
+    } else {
+        1
+    };
     let mut projects = BTreeMap::<String, ProjectSummary>::new();
     for task in projection.tasks.values() {
         let id = task.contract.project_id.to_string();
@@ -135,11 +140,12 @@ fn fleet_from(
             SchedulingState::Running | SchedulingState::Claimed => project.running += 1,
             SchedulingState::AwaitingVerification => project.awaiting_verification += 1,
             SchedulingState::Blocked => project.blocked += 1,
+            SchedulingState::Accepted => project.accepted += 1,
             _ => {}
         }
     }
     FleetResponse {
-        schema_version: 1,
+        schema_version,
         simulated,
         cursor,
         projects: projects.into_values().collect(),
@@ -158,6 +164,21 @@ fn fleet_from(
 async fn fleet(
     State(state): State<AppState>,
     headers: HeaderMap,
+) -> Result<Json<FleetResponse>, ApiError> {
+    fleet_for_version(state, headers, 1).await
+}
+
+async fn fleet_v2(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<FleetResponse>, ApiError> {
+    fleet_for_version(state, headers, 2).await
+}
+
+async fn fleet_for_version(
+    state: AppState,
+    headers: HeaderMap,
+    version: u32,
 ) -> Result<Json<FleetResponse>, ApiError> {
     authorized(&state, &headers)?;
     let _permit = state
@@ -182,12 +203,20 @@ async fn fleet(
             "demo mode cannot expose private task state",
         ));
     }
-    Ok(Json(fleet_from(
+    if version == 1 && snapshot.schema_version != 1 {
+        return Err(error(
+            StatusCode::UPGRADE_REQUIRED,
+            "native lifecycle requires /v2/fleet",
+        ));
+    }
+    let mut response = fleet_from(
         snapshot.projection,
         snapshot.cursor,
         snapshot.sqlite_version,
         state.config.simulated,
-    )))
+    );
+    response.schema_version = version;
+    Ok(Json(response))
 }
 
 #[derive(Deserialize)]
@@ -200,6 +229,23 @@ async fn events(
     State(state): State<AppState>,
     headers: HeaderMap,
     Query(query): Query<EventQuery>,
+) -> Result<impl IntoResponse, ApiError> {
+    events_for_version(state, headers, query, 1).await
+}
+
+async fn events_v2(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<EventQuery>,
+) -> Result<impl IntoResponse, ApiError> {
+    events_for_version(state, headers, query, 2).await
+}
+
+async fn events_for_version(
+    state: AppState,
+    headers: HeaderMap,
+    query: EventQuery,
+    version: u32,
 ) -> Result<impl IntoResponse, ApiError> {
     authorized(&state, &headers)?;
     let after = query
@@ -250,6 +296,12 @@ async fn events(
             "snapshot_required: recovery generation or event cursor changed",
         ));
     }
+    if version == 1 && snapshot.schema_version != 1 {
+        return Err(error(
+            StatusCode::UPGRADE_REQUIRED,
+            "native lifecycle requires /v2/events",
+        ));
+    }
     drop(_permit);
     let generation = snapshot.cursor.recovery_generation;
     let stream = futures_util::stream::unfold(
@@ -262,7 +314,7 @@ async fn events(
             stream_permit,
             changes,
         ),
-        |(state, mut after, mut pending, generation, closed, stream_permit, mut changes)| async move {
+        move |(state, mut after, mut pending, generation, closed, stream_permit, mut changes)| async move {
             if closed {
                 return None;
             }
@@ -303,6 +355,30 @@ async fn events(
                 .await;
                 match batch {
                     Ok(Ok(batch)) => {
+                        if version == 1
+                            && batch.events.iter().any(|r| {
+                                matches!(
+                                    &r.event,
+                                    admiralty_core::DomainEvent::TaskLifecycle { .. }
+                                )
+                            })
+                        {
+                            let event = Event::default()
+                                .event("upgrade_required")
+                                .data("native lifecycle requires /v2/events");
+                            return Some((
+                                Ok(event),
+                                (
+                                    state,
+                                    after,
+                                    pending,
+                                    generation,
+                                    true,
+                                    stream_permit,
+                                    changes,
+                                ),
+                            ));
+                        }
                         if state.config.simulated && batch.events.iter().any(|r|matches!(&r.event,admiralty_core::DomainEvent::TaskSubmitted{contract} if !contract.simulated)) {
                         let event=Event::default().event("snapshot_required").data("demo scope changed; private state is unavailable");
                         return Some((Ok(event),(state,after,pending,generation,true,stream_permit,changes)));
@@ -560,6 +636,9 @@ pub fn app(
         .merge(model_routes)
         .route("/healthz", get(health))
         .route("/v1/fleet", get(fleet))
+        .route("/v2/fleet", get(fleet_v2))
+        .route("/v2/events", get(events_v2))
+        .route("/v2/{*path}", get(|| async { StatusCode::NOT_FOUND }))
         .route("/v1/legacy", get(legacy_snapshot))
         .route("/legacy/", get(legacy_index))
         .route("/legacy/index.html", get(legacy_index))

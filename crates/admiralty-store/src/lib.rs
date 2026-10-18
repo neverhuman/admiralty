@@ -6,8 +6,8 @@ pub mod outbox;
 pub mod questions;
 pub mod workplans;
 use admiralty_core::{
-    DomainEvent, MessageId, ProjectId, Projection, SourceIdentity, TaskId, TransitionError,
-    content_digest, reduce,
+    DomainEvent, LifecycleAction, LifecycleCommand, MessageId, ProjectId, Projection,
+    SourceIdentity, TaskId, TaskView, TransitionError, content_digest, reduce,
 };
 use fs2::FileExt;
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
@@ -26,6 +26,15 @@ const QUEUE_CAPACITY: usize = 64;
 const MAX_EVENT_BYTES: usize = 1024 * 1024;
 const MAX_QUERY_EVENTS: usize = 1000;
 pub type Result<T> = std::result::Result<T, StoreError>;
+
+fn reject_raw_lifecycle(event: &DomainEvent) -> Result<()> {
+    if matches!(event, DomainEvent::TaskLifecycle { .. }) {
+        return Err(StoreError::Invalid(
+            "native lifecycle requires the configured authority command path".into(),
+        ));
+    }
+    Ok(())
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
@@ -98,7 +107,37 @@ pub struct EventBatch {
 }
 
 type Reply<T> = mpsc::Sender<Result<T>>;
+
+/// Installed by the trusted service at Store startup, never supplied in a
+/// network command. Called inside the writer turn, including on source replay.
+/// Must be bounded/nonblocking and check current actor/scope/source grants,
+/// revocation, independent verifier execution/custody or supervised closure as
+/// appropriate, and the exact optional effect key/payload/schedule. Candidate
+/// decisions require both independent checks and separate supervised closure.
+/// A digest, provider claim or deserialized trust flag is not proof.
+pub struct LifecycleEffect<'a> {
+    pub idempotency_key: &'a str,
+    pub payload: &'a str,
+    pub payload_digest: &'a str,
+    pub intent_digest: &'a str,
+    pub not_before: i64,
+}
+
+pub trait LifecycleAuthority: Send + Sync {
+    fn authorize(
+        &self,
+        source: &SourceIdentity,
+        command: &LifecycleCommand,
+        task: &TaskView,
+        effect: Option<&LifecycleEffect<'_>>,
+    ) -> bool;
+}
+
 enum Request {
+    ExecuteLifecycle {
+        input: Box<AppendInput>,
+        reply: Reply<AppendReceipt>,
+    },
     RegisterWorkplan {
         request: Box<workplans::RegisterWorkplanRequest>,
         reply: Reply<workplans::WorkplanReceipt>,
@@ -190,7 +229,22 @@ pub struct Store {
 
 impl Store {
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
-        let path = canonical_database_path(path.as_ref())?;
+        Self::open_configured(path.as_ref(), None)
+    }
+
+    /// Trusted composition boundary. Default `open` denies native mutations.
+    pub fn open_with_lifecycle_authority(
+        path: impl AsRef<Path>,
+        authority: Arc<dyn LifecycleAuthority>,
+    ) -> Result<Self> {
+        Self::open_configured(path.as_ref(), Some(authority))
+    }
+
+    fn open_configured(
+        path: &Path,
+        authority: Option<Arc<dyn LifecycleAuthority>>,
+    ) -> Result<Self> {
+        let path = canonical_database_path(path)?;
         let mut lock_path = path.as_os_str().to_os_string();
         lock_path.push(".writer.lock");
         let lock = private_file(&PathBuf::from(lock_path), false)?;
@@ -209,6 +263,7 @@ impl Store {
             .name("admiralty-store-writer".into())
             .spawn(move || match Writer::open(&path, lock) {
                 Ok(mut writer) => {
+                    writer.lifecycle_authority = authority;
                     if ready_tx.send(Ok(())).is_ok() {
                         writer.run(receiver, writer_changes);
                     }
@@ -247,6 +302,7 @@ impl Store {
         event: DomainEvent,
         observed_utc: String,
     ) -> Result<AppendReceipt> {
+        reject_raw_lifecycle(&event)?;
         self.append_inner(source, event, observed_utc, None)
     }
 
@@ -259,8 +315,32 @@ impl Store {
         observed_utc: String,
         intent: outbox::OutboxIntent,
     ) -> Result<AppendReceipt> {
+        reject_raw_lifecycle(&event)?;
         let intent = outbox::prepare_intent(&intent)?;
         self.append_inner(source, event, observed_utc, Some(intent))
+    }
+
+    /// One authorized CAS and its optional effect intent commit atomically.
+    /// Checks are not executed here. A configured trusted runtime adapter must
+    /// authenticate their evidence; default-open Store denies every command.
+    pub fn execute_lifecycle(
+        &self,
+        source: SourceIdentity,
+        command: LifecycleCommand,
+        observed_utc: String,
+        intent: Option<outbox::OutboxIntent>,
+    ) -> Result<AppendReceipt> {
+        let intent = intent.as_ref().map(outbox::prepare_intent).transpose()?;
+        let input = Self::prepare_append(
+            source,
+            DomainEvent::TaskLifecycle { command },
+            observed_utc,
+            intent,
+        )?;
+        self.ask(|reply| Request::ExecuteLifecycle {
+            input: Box::new(input),
+            reply,
+        })
     }
 
     fn append_inner(
@@ -809,6 +889,7 @@ struct Writer {
     projection: Projection,
     pending_inbox: inbox::PendingInboxIndex,
     generation: String,
+    lifecycle_authority: Option<Arc<dyn LifecycleAuthority>>,
     _lock: File,
 }
 
@@ -877,6 +958,7 @@ impl Writer {
             projection,
             pending_inbox,
             generation,
+            lifecycle_authority: None,
             _lock: lock,
         })
     }
@@ -948,15 +1030,26 @@ impl Writer {
                     intent,
                     reply,
                 } => {
-                    let result = self.append(AppendInput {
-                        source,
-                        source_seq,
-                        event: *event,
-                        payload,
-                        digest,
-                        observed_utc,
-                        intent: intent.map(|intent| *intent),
+                    let result = reject_raw_lifecycle(&event).and_then(|()| {
+                        self.append(AppendInput {
+                            source,
+                            source_seq,
+                            event: *event,
+                            payload,
+                            digest,
+                            observed_utc,
+                            intent: intent.map(|intent| *intent),
+                        })
                     });
+                    if result.as_ref().is_ok_and(|receipt| !receipt.duplicate) {
+                        changes.send_replace(());
+                    }
+                    let _ = reply.send(result);
+                }
+                Request::ExecuteLifecycle { input, reply } => {
+                    let result = self
+                        .authorize_lifecycle(&input)
+                        .and_then(|()| self.append(*input));
                     if result.as_ref().is_ok_and(|receipt| !receipt.duplicate) {
                         changes.send_replace(());
                     }
@@ -1053,6 +1146,36 @@ impl Writer {
         Ok(())
     }
 
+    fn authorize_lifecycle(&self, input: &AppendInput) -> Result<()> {
+        let DomainEvent::TaskLifecycle { command } = &input.event else {
+            return Err(StoreError::Invalid(
+                "native lifecycle command required".into(),
+            ));
+        };
+        let effect = input.intent.as_ref().map(|intent| LifecycleEffect {
+            idempotency_key: &intent.idempotency_key,
+            payload: &intent.payload,
+            payload_digest: &intent.payload_digest,
+            intent_digest: &intent.intent_digest,
+            not_before: intent.not_before,
+        });
+        let allowed = self
+            .projection
+            .tasks
+            .get(&command.task_id)
+            .is_some_and(|task| {
+                self.lifecycle_authority.as_ref().is_some_and(|authority| {
+                    authority.authorize(&input.source, command, task, effect.as_ref())
+                })
+            });
+        if !allowed {
+            return Err(StoreError::Invalid(
+                "native lifecycle command is not authorized".into(),
+            ));
+        }
+        Ok(())
+    }
+
     fn append(&mut self, input: AppendInput) -> Result<AppendReceipt> {
         let AppendInput {
             source,
@@ -1122,6 +1245,11 @@ impl Writer {
         if let DomainEvent::TaskSubmitted { contract } = &event {
             workplans::validate_task_contract_in_transaction(&tx, contract)?;
         }
+        if let DomainEvent::TaskLifecycle { command } = &event
+            && let LifecycleAction::ReviseContract { contract } = &command.action
+        {
+            workplans::validate_task_contract_in_transaction(&tx, contract)?;
+        }
         let next_projection = reduce(&self.projection, &event)?;
         let pending_update = inbox::PendingInboxIndex::prepare_update(&next_projection, &event)?;
         let mut associated_intent = None;
@@ -1182,7 +1310,16 @@ impl Writer {
                     row.get(0)
                 })?;
         Ok(Snapshot {
-            schema_version: 1,
+            schema_version: if self
+                .projection
+                .tasks
+                .values()
+                .any(|t| t.lifecycle.is_some())
+            {
+                2
+            } else {
+                1
+            },
             cursor: Cursor {
                 recovery_generation: self.generation.clone(),
                 event_seq: seq.to_string(),

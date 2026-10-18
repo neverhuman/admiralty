@@ -2,9 +2,9 @@
 mod diagnostics;
 mod workplans;
 use admiralty_core::{
-    AcceptanceCriterion, AttemptId, CheckSpec, CoordinationMessage, DomainEvent, MessageId,
-    MessagePayload, PrincipalId, ProjectId, RootId, SourceIdentity, TaskContract, TaskId,
-    compile_task_capsule, content_digest,
+    AcceptanceCriterion, AttemptId, CheckSpec, CoordinationMessage, DomainEvent, DomainEventV2,
+    MessageId, MessagePayload, PrincipalId, ProjectId, RootId, SourceIdentity, TaskContract,
+    TaskId, compile_task_capsule, content_digest,
 };
 use admiralty_server::{ServerConfig, serve};
 use admiralty_store::Store;
@@ -22,10 +22,11 @@ use std::{
 
 type CliResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 const MAX_JSON_BYTES: u64 = 1024 * 1024;
-const SCHEMA_FILES: [&str; 3] = [
+const SCHEMA_FILES: [&str; 4] = [
     "task-contract.schema.json",
     "coordination-message.schema.json",
     "domain-event.schema.json",
+    "domain-event-v2.schema.json",
 ];
 
 #[derive(Parser)]
@@ -314,6 +315,7 @@ fn schema_documents() -> CliResult<Vec<(&'static str, Vec<u8>)>> {
         serde_json::to_value(schemars::schema_for!(TaskContract))?,
         serde_json::to_value(schemars::schema_for!(CoordinationMessage))?,
         serde_json::to_value(schemars::schema_for!(DomainEvent))?,
+        serde_json::to_value(schemars::schema_for!(DomainEventV2))?,
     ];
     SCHEMA_FILES
         .into_iter()

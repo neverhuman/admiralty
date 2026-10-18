@@ -111,7 +111,12 @@ async fn json(response: Response) -> Value {
 #[tokio::test]
 async fn private_fleet_and_event_reads_require_correct_authentication() {
     let fixture = fixture(false);
-    for uri in ["/v1/fleet", "/v1/events?after=0"] {
+    for uri in [
+        "/v1/fleet",
+        "/v1/events?after=0",
+        "/v2/fleet",
+        "/v2/events?after=0",
+    ] {
         for token in [None, Some("wrong-token")] {
             let response = request(&fixture.app, "GET", uri, token).await;
             assert_eq!(
@@ -132,6 +137,100 @@ async fn private_fleet_and_event_reads_require_correct_authentication() {
     let response = request(&fixture.app, "GET", "/v1/fleet", Some(TOKEN)).await;
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(json(response).await["simulated"], false);
+}
+
+#[tokio::test]
+async fn native_lifecycle_requires_explicit_v2_reads_and_ends_an_existing_v1_stream() {
+    use admiralty_core::{
+        LifecycleAction, LifecycleCommand, PrincipalId, TaskId, TaskView, content_digest,
+    };
+    use admiralty_store::LifecycleAuthority;
+    use std::sync::Arc;
+    struct FixtureAuthority;
+    impl LifecycleAuthority for FixtureAuthority {
+        fn authorize(
+            &self,
+            _: &SourceIdentity,
+            _: &LifecycleCommand,
+            _: &TaskView,
+            effect: Option<&admiralty_store::LifecycleEffect<'_>>,
+        ) -> bool {
+            effect.is_none()
+        }
+    }
+    let directory = store_directory();
+    let store = Store::open_with_lifecycle_authority(
+        directory.path().join("native.sqlite"),
+        Arc::new(FixtureAuthority),
+    )
+    .expect("native HTTP fixture operation");
+    append_task(&store, 1, "NATIVE");
+    let router = app(store.clone(), config(false, None)).expect("native HTTP fixture operation");
+    let mut old_stream = request(&router, "GET", "/v1/events?after=1", Some(TOKEN))
+        .await
+        .into_body()
+        .into_data_stream();
+    let task_id = TaskId::new("NATIVE").expect("native HTTP fixture operation");
+    let task = &store
+        .snapshot()
+        .expect("native HTTP fixture operation")
+        .projection
+        .tasks[&task_id];
+    store
+        .execute_lifecycle(
+            SourceIdentity {
+                producer_id: "trusted-fixture".into(),
+                incarnation: "one".into(),
+                sequence: "1".into(),
+            },
+            LifecycleCommand {
+                protocol_version: 2,
+                task_id,
+                expected_task_digest: content_digest(task).expect("native HTTP fixture operation"),
+                actor: PrincipalId::new("owner").expect("native HTTP fixture operation"),
+                action: LifecycleAction::CancelPending {
+                    reason: "cancel fixture".into(),
+                },
+            },
+            "2026-10-18T12:00:02Z".into(),
+            None,
+        )
+        .expect("native HTTP fixture operation");
+    for uri in ["/v1/fleet", "/v1/events?after=0"] {
+        assert_eq!(
+            request(&router, "GET", uri, Some(TOKEN)).await.status(),
+            StatusCode::UPGRADE_REQUIRED
+        );
+    }
+    let native = json(request(&router, "GET", "/v2/fleet", Some(TOKEN)).await).await;
+    assert_eq!(native["schema_version"], 2);
+    assert_eq!(native["tasks"][0]["state"], "cancelled");
+    assert_eq!(native["native_execution_qualified"], false);
+    let upgrade = tokio::time::timeout(Duration::from_secs(2), old_stream.next())
+        .await
+        .expect("native HTTP fixture operation")
+        .expect("native HTTP fixture operation")
+        .expect("native HTTP fixture operation");
+    let upgrade = std::str::from_utf8(&upgrade).expect("native HTTP fixture operation");
+    assert!(upgrade.contains("upgrade_required"));
+    assert!(!upgrade.contains("cancel fixture"));
+    assert!(
+        tokio::time::timeout(Duration::from_secs(2), old_stream.next())
+            .await
+            .expect("native HTTP fixture operation")
+            .is_none()
+    );
+    let mut native_stream = request(&router, "GET", "/v2/events?after=1", Some(TOKEN))
+        .await
+        .into_body()
+        .into_data_stream();
+    let record = tokio::time::timeout(Duration::from_secs(2), native_stream.next())
+        .await
+        .expect("native HTTP fixture operation")
+        .expect("native HTTP fixture operation")
+        .expect("native HTTP fixture operation");
+    let record = std::str::from_utf8(&record).expect("native HTTP fixture operation");
+    assert!(record.contains("task_lifecycle") && record.contains("protocol_version"));
 }
 
 #[tokio::test]
