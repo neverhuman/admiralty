@@ -1,6 +1,6 @@
 use admiralty_core::{
-    content_digest, AttemptId, CoordinationMessage, DomainEvent, MessageId, MessagePayload,
-    PrincipalId, ProjectId, SourceIdentity, TaskContract, TaskId,
+    AttemptId, CoordinationMessage, DomainEvent, MessageId, MessagePayload, PrincipalId, ProjectId,
+    SourceIdentity, TaskContract, TaskId, content_digest,
 };
 use admiralty_store::{Store, StoreError};
 use std::path::Path;
@@ -161,10 +161,12 @@ fn pending_assignment_and_ack_survive_store_restart_with_scoped_validation() {
         pending.projection.messages.get(&message.message_id),
         Some(&message)
     );
-    assert!(!pending
-        .projection
-        .acknowledgments
-        .contains_key(&message.message_id));
+    assert!(
+        !pending
+            .projection
+            .acknowledgments
+            .contains_key(&message.message_id)
+    );
 
     // The ACK API currently carries only message ID, recipient and epoch. Wrong
     // project/task/authority are therefore exercised at assignment validation,
@@ -240,6 +242,14 @@ fn pending_assignment_and_ack_survive_store_restart_with_scoped_validation() {
             .acknowledgments
             .get(&message.message_id),
         Some(&message.context_epoch)
+    );
+    let acknowledged_task = store.snapshot().expect("task state after application ACK");
+    assert_eq!(acknowledged_task.projection.tasks, pending.projection.tasks);
+    assert!(
+        acknowledged_task.projection.tasks[&task.task_id]
+            .candidate_ref
+            .is_none(),
+        "an application ACK does not submit or accept a candidate"
     );
 
     // The same message ID with changed bytes is rejected by the real reducer.

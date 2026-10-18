@@ -2,7 +2,10 @@ use admiralty_core::{
     AttemptId, DomainEvent, PrincipalId, ProjectId, RootId, SourceIdentity, TaskContract, TaskId,
 };
 use admiralty_store::{Cursor, Store, StoreError};
-use std::{sync::Arc, thread};
+use std::{
+    sync::{Arc, Barrier},
+    thread,
+};
 
 const OBSERVED_UTC: &str = "2026-10-18T00:00:00Z";
 
@@ -303,6 +306,7 @@ fn competing_claims_serialize_to_one_transition_and_one_rejection() {
     submit(&store, "claim-setup", 1, "race-task");
     let before = store.snapshot().expect("snapshot before claim race");
     let shared = Arc::new(store.clone());
+    let start = Arc::new(Barrier::new(2));
     let results = thread::scope(|scope| {
         let mut handles = Vec::new();
         for (producer, owner) in [
@@ -310,7 +314,9 @@ fn competing_claims_serialize_to_one_transition_and_one_rejection() {
             ("claim-source-b", "worker-b"),
         ] {
             let store = Arc::clone(&shared);
+            let start = Arc::clone(&start);
             handles.push(scope.spawn(move || {
+                start.wait();
                 store.append(
                     source(producer, 1),
                     task_claim("race-task", 1, "race-attempt", owner),

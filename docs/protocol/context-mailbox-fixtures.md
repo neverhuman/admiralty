@@ -22,6 +22,12 @@ The compiler estimates tokens as UTF-8 bytes divided by four. This is a size
 estimate only: it is not provider tokenization, observed token usage, context
 fidelity qualification, or a savings result.
 
+Acknowledgment leaves the entire task projection unchanged: the task remains
+claimed with no candidate. The ACK has no project/root/task/authority fields;
+scope checks occur on assignment queueing and contract-digest binding, not on
+fields absent from the ACK. It is an application receipt, not delivery proof or
+acceptance.
+
 ## Existing API limits and unactivated behavior
 
 `compile_task_capsule` takes only a task contract, epoch and byte-estimate

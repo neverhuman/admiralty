@@ -8,12 +8,11 @@ use std::{fs, path::Path};
 use tempfile::{Builder, TempDir};
 
 const OBSERVED_UTC: &str = "2026-10-18T00:00:00Z";
-const FIXTURE_PARENT: &str = "/home/ubuntu/admiralty-v2-build/targets/adm_pool_adm_p17a";
 
 fn private_tempdir() -> TempDir {
     let directory = Builder::new()
         .prefix("backup-reopen-")
-        .tempdir_in(FIXTURE_PARENT)
+        .tempdir()
         .expect("private test-owned fixture directory");
     #[cfg(unix)]
     {

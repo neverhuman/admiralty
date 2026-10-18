@@ -327,6 +327,9 @@ fn near_ids_and_wrong_scope_or_epoch_do_not_reuse_messages_or_acknowledgments() 
         acked.acknowledgments[&MessageId::new("assignment.current").expect("message ID")],
         "epoch.current"
     );
+    assert_eq!(acked.tasks, queued.tasks);
+    assert_eq!(acked.tasks[&value.task_id].state, SchedulingState::Claimed);
+    assert!(acked.tasks[&value.task_id].candidate_ref.is_none());
 }
 
 #[test]
