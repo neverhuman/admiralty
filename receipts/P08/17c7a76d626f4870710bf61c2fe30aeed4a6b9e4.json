@@ -1,0 +1,44 @@
+{
+  "packet": "P08",
+  "state": "partial_review",
+  "owner": "local integration and independent review team",
+  "base_sha": "b2523eb2e731a59d450a8ee11698a703651f2b08",
+  "head_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4",
+  "observed_utc": "2026-10-18T11:58:03.233885+00:00",
+  "changed_paths": [
+    "crates/admiralty-runtime/src/providers/supervision.rs"
+  ],
+  "validation": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "-q"
+      ],
+      "exit_code": 0,
+      "passed_checks": 357,
+      "compile_fail_doctests": 2
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "packet_accepted": false,
+  "native_execution_qualified": false,
+  "limitations": [
+    "Pure scoped liveness supervision reviewed; real managed Codex/provider transport, restart and controlled paid-task qualification remain pending."
+  ],
+  "next_action": "Integrate authoritative services and complete the remaining parent acceptance gates."
+}

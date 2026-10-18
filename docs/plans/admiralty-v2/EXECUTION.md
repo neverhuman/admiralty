@@ -148,3 +148,19 @@ and three implementation slices (atomic domain/outbox admission, transactional
 asset pins and durable question journal). Only observed starts belong in the
 private live lane manifest; prepared work is not described as running. The
 original projects receive no dispatch changes.
+
+At code `17c7a76d`,357 Rust checks (including two compile-fail doctests),
+strict workspace Clippy,66 React tests/typecheck/build,73 legacy Python tests
+(one platform skip), five contract runtime checks and both contract/schema drift
+checks pass. The package builder passes10 self-tests; the bounded smoke harness
+passes16 self-tests and15 actual isolated binary HTTP/CLI checks. The latter
+caught and fixed model endpoint authentication occurring after JSON extraction.
+Partial receipts for16 component packets and an aggregate integration receipt
+record remaining activation and qualification gaps. GitHub jobs were queued at
+the last observation; no hosted CI success is claimed.
+
+The exact live roster bridge is now `b2523eb2`; it validates activity timestamps
+against the observation after Screen capture rather than the earlier manifest
+read, while retaining unknown/future/rollback safeguards. React stays at
+`4a12943a` and the running Rust binary at `7277293f` until the next owned canary
+upgrade. No other project was dispatched or upgraded.
