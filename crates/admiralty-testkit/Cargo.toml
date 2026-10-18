@@ -51,8 +51,8 @@ name = "codex_round12_redteam_audit"
 path = "../../tests/integration/codex_round8_qualification.rs"
 
 [[test]]
-name = "codex_p25_p30_round8"
-path = "../../tests/integration/codex_p25_p30_round8.rs"
+name = "codex_p25_p30_round10"
+path = "../../tests/integration/codex_p25_p30_round10.rs"
 
 [[test]]
 name = "codex_round9"
