@@ -1,6 +1,7 @@
 //! Read-only fleet projection and durable event replay. Native provider control remains disabled.
 pub mod legacy;
 pub mod models;
+pub mod services;
 use admiralty_core::{Projection, SchedulingState, TaskView};
 use admiralty_store::{Cursor, Store};
 use axum::{
