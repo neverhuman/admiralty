@@ -2,9 +2,32 @@ use admiralty_core::interfaces::{
     CompatibilityEvidence, DecimalU64, InterfaceContract, InterfaceEvent, InterfaceId,
     InterfaceScope, RecipientEpoch, reduce_interface_for,
 };
+use admiralty_core::{
+    AttemptId,
+    conflicts::{CandidateChange, MAX_CANDIDATES, analyze_conflicts},
+    placement::{
+        BudgetRequirement, Capacity, DecimalU64 as PlacementDecimal, Known, NodeId, NodeOffer,
+        Observation, PlacementPolicy, PlacementRequest, propose_placement,
+    },
+};
 use admiralty_core::{MessageId, PrincipalId, ProjectId, RootId, TaskId};
-use admiralty_runtime::workspace::registry::{Custody, NodeRef, WorkspaceSpec};
+use admiralty_runtime::{
+    providers::claude,
+    recovery::{
+        self, ArtifactRecord, BackupManifest, Compatibility, DecimalU64 as RecoveryDecimal,
+        Reconciliation, RecoveryObservation, RecoveryScope, SessionCustody,
+    },
+    reservations::{
+        AccountId, CurrencyUnit, MinorUnits, ReservationError, ReservationEvent, ReservationLedger,
+        ReservationScope, ScopeLimits, reduce_reservation, reserve_budget,
+    },
+    session::{InputKind, SessionHost},
+    workspace::registry::{Custody, NodeRef, WorkspaceSpec},
+};
+use admiralty_store::artifacts::ArtifactStore;
 use sha2::{Digest, Sha256};
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::{fs, path::PathBuf};
 
 fn principal(value: &str) -> PrincipalId {
@@ -13,6 +36,10 @@ fn principal(value: &str) -> PrincipalId {
 
 fn digest(bytes: &[u8]) -> String {
     format!("sha256:{:x}", Sha256::digest(bytes))
+}
+
+fn fixture_digest(byte: char) -> String {
+    format!("sha256:{}", byte.to_string().repeat(64))
 }
 
 #[test]
@@ -152,4 +179,225 @@ fn p07_p17_round8_p09_captain_interfaces_qualification() {
         invalidated.invalidations[0].new_revision,
         DecimalU64::new(2)
     );
+}
+
+fn budget_placement_offer(budget_remaining: u64) -> NodeOffer {
+    NodeOffer {
+        node_id: NodeId::new("budget-node").expect("node ID"),
+        boot_id: "boot-budget".into(),
+        authority_generation: PlacementDecimal::new(1),
+        visible_scopes: Observation {
+            value: vec!["budget-project".into()],
+            observed_at: PlacementDecimal::new(10),
+        },
+        capabilities: Observation {
+            value: vec!["cpu".into()],
+            observed_at: PlacementDecimal::new(10),
+        },
+        account_pool: Observation {
+            value: "pool".into(),
+            observed_at: PlacementDecimal::new(10),
+        },
+        capacity: Observation {
+            value: Known::Known {
+                value: Capacity {
+                    slots: PlacementDecimal::new(1),
+                    budget_remaining: PlacementDecimal::new(budget_remaining),
+                },
+            },
+            observed_at: PlacementDecimal::new(10),
+        },
+        current_pressure: Observation {
+            value: Known::Known {
+                value: PlacementDecimal::new(0),
+            },
+            observed_at: PlacementDecimal::new(10),
+        },
+        spool_free: Observation {
+            value: Known::Known {
+                value: PlacementDecimal::new(10),
+            },
+            observed_at: PlacementDecimal::new(10),
+        },
+        existing_active_roots: Vec::new(),
+        controller_connected: true,
+        locality_refs: Vec::new(),
+        continuation_permit: None,
+        reconciliation_required: false,
+        ownership_observed_at: Some(PlacementDecimal::new(10)),
+        ownership_revision: Some(PlacementDecimal::new(1)),
+    }
+}
+
+#[test]
+fn p07_p17_round9_item3_budget_enforcer_exhaustion_qualification() {
+    // P04: artifact publication must reject a payload above its configured quota.
+    let temp = tempfile::tempdir().expect("bounded fixture root");
+    let artifact_root = temp.path().join("artifact-objects");
+    fs::create_dir(&artifact_root).expect("artifact root");
+    #[cfg(unix)]
+    fs::set_permissions(&artifact_root, fs::Permissions::from_mode(0o700))
+        .expect("private artifact root");
+    let artifacts = ArtifactStore::open(&artifact_root, 8).expect("small artifact quota");
+    assert!(
+        artifacts.publish_bytes(b"nine-byte").is_err(),
+        "oversized artifact cannot consume custody storage"
+    );
+
+    // P07 and P21: oversized terminal input and provider prompt frames fail before launch.
+    let session_host = SessionHost::new();
+    assert!(
+        session_host
+            .write_input("missing-run", InputKind::Human, &vec![b'x'; 4097])
+            .is_err()
+    );
+    assert!(claude::ClaudeLaunch::input_frame(&"x".repeat(4096)).is_err());
+
+    // P18: conflict analysis refuses the first candidate above its bounded generation.
+    let make_candidate = |n: usize| CandidateChange {
+        project_id: ProjectId::new("budget-project").expect("project ID"),
+        root_id: RootId::new("budget-root").expect("root ID"),
+        task_id: TaskId::new(format!("task-{n}")).expect("task ID"),
+        candidate_id: format!("candidate-{n}"),
+        base_sha: fixture_digest('a'),
+        head_sha: fixture_digest('b'),
+        tree_sha: fixture_digest('c'),
+        ancestry_digest: Some(fixture_digest('d')),
+        files: Vec::new(),
+        constraints: None,
+    };
+    let too_many = (0..=MAX_CANDIDATES).map(make_candidate).collect::<Vec<_>>();
+    assert!(analyze_conflicts(&too_many, "budget-policy").is_err());
+
+    // P24: a fresh node with insufficient remaining budget cannot receive a proposal.
+    let placement_request = PlacementRequest {
+        project: ProjectId::new("budget-project").expect("project ID"),
+        root: RootId::new("budget-root").expect("root ID"),
+        task: TaskId::new("budget-task").expect("task ID"),
+        contract_digest: fixture_digest('e'),
+        authority_ref: "grant:budget".into(),
+        required_capabilities: vec!["cpu".into()],
+        locality_refs: Vec::new(),
+        budget_requirement: BudgetRequirement {
+            account_pool: "pool".into(),
+            amount: PlacementDecimal::new(5),
+        },
+    };
+    let placement_policy = PlacementPolicy {
+        max_observation_age: PlacementDecimal::new(10),
+        maximum_pressure: PlacementDecimal::new(5),
+        minimum_spool_reserve: PlacementDecimal::new(1),
+        disconnected_continuation_only: true,
+        ownership_revision: Some(PlacementDecimal::new(1)),
+    };
+    let proposal = propose_placement(
+        &placement_request,
+        &[budget_placement_offer(4)],
+        &placement_policy,
+        10,
+    )
+    .expect("budget shortage is a rejected proposal");
+    assert!(proposal.candidates.is_empty());
+    assert!(!proposal.execution_granted);
+
+    // P25: unknown session custody blocks recovery resume even with matching snapshot facts.
+    let scope = RecoveryScope {
+        project_id: ProjectId::new("budget-project").expect("project ID"),
+        root_id: RootId::new("budget-root").expect("root ID"),
+        task_id: TaskId::new("budget-task").expect("task ID"),
+        store_id: "store-one".into(),
+        attempt_id: AttemptId::new("attempt-one").expect("attempt ID"),
+        owner: principal("owner"),
+        revision: 1,
+        contract_digest: fixture_digest('f'),
+        executor_incarnation: "executor-old".into(),
+    };
+    let mut manifest = BackupManifest {
+        scope: scope.clone(),
+        schema_version: 1,
+        snapshot_watermark: RecoveryDecimal::new(10),
+        snapshot_digest: fixture_digest('c'),
+        snapshot_size: RecoveryDecimal::new(8),
+        recovery_generation: RecoveryDecimal::new(2),
+        artifact_closure: Vec::<ArtifactRecord>::new(),
+        active_bundle_digests: vec![fixture_digest('d')],
+        manifest_digest: String::new(),
+    };
+    manifest.manifest_digest = recovery::manifest_digest(&manifest).expect("manifest digest");
+    let observation = RecoveryObservation {
+        scope: scope.clone(),
+        manifest_digest: manifest.manifest_digest.clone(),
+        snapshot_digest: manifest.snapshot_digest.clone(),
+        snapshot_size: manifest.snapshot_size.clone(),
+        snapshot_watermark: manifest.snapshot_watermark.clone(),
+        backup_generation: manifest.recovery_generation.clone(),
+        current_generation: RecoveryDecimal::new(3),
+        old_executor_incarnation: "executor-old".into(),
+        observed_bundle_digests: manifest.active_bundle_digests.clone(),
+        available_artifacts: Vec::new(),
+        compatibility: Compatibility::Compatible,
+        unresolved_effects: Reconciliation::Clear,
+        session_custody: SessionCustody::Unknown,
+    };
+    let recovery = recovery::plan_recovery(&manifest, &observation, None)
+        .expect("unknown custody becomes a blocker");
+    assert!(!recovery.resume_proposed);
+    assert!(
+        recovery
+            .blockers
+            .iter()
+            .any(|blocker| matches!(blocker, recovery::Blocker::UnknownSessionCustody))
+    );
+
+    // P26: reservation exhaustion keeps the account liability and rejects overspend.
+    let account = AccountId::new("acct-budget").expect("account ID");
+    let unit = CurrencyUnit::new("USD", 2).expect("currency unit");
+    let ledger = reduce_reservation(
+        &ReservationLedger::new(),
+        ReservationEvent::SetLimits {
+            event_id: "set-budget-limit".into(),
+            account_id: account.clone(),
+            limits: ScopeLimits {
+                unit: unit.clone(),
+                account: Some(MinorUnits::new(10)),
+                project: Some(MinorUnits::new(10)),
+                root: Some(MinorUnits::new(10)),
+            },
+        },
+    )
+    .expect("set scoped account budget");
+    let reservation_scope = ReservationScope {
+        project_id: ProjectId::new("budget-project").expect("project ID"),
+        root_id: RootId::new("budget-root").expect("root ID"),
+        task_id: TaskId::new("budget-task").expect("task ID"),
+        attempt_id: AttemptId::new("attempt-budget").expect("attempt ID"),
+        owner: principal("owner"),
+        incarnation: "boot-budget".into(),
+        contract_revision: 1,
+        contract_digest: fixture_digest('9'),
+        authority_ref: "grant:budget".into(),
+        resource_claims_digest: fixture_digest('0'),
+        account_id: account,
+        unit,
+    };
+    let reserved = reserve_budget(
+        &ledger,
+        "reserve-first",
+        "reservation-first",
+        reservation_scope.clone(),
+        "correlation-first",
+        MinorUnits::new(10),
+    )
+    .expect("reserve exact account limit");
+    assert!(matches!(
+        reserve_budget(
+            &reserved,
+            "reserve-second",
+            "reservation-second",
+            reservation_scope,
+            "correlation-second",
+            MinorUnits::new(1),
+        ),
+        Err(ReservationError::LimitExceeded("account"))
+    ));
 }
