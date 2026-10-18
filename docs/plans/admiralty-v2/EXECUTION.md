@@ -691,3 +691,11 @@ create-only HEAD anchors and staged/unstaged patches preserve both Git commons,
 including active dirty/unpushed work. Current lane identity observations are
 reconciled without inventing task acceptance, model identity or CPU permits;
 active/ambiguous/queue-referenced assets remain protected during retirement.
+
+## Queue Item 3 batched candidate qualification — 2026-10-18T17:12:12Z
+
+The linear batch branch `codex/batch-item3-p04-p07-p18-p21-p24-p25-p26` is based on `origin/main` `3927b3f9a824b97027fa9db46500441a96361e27` and contains the three remaining Round 8 commits, all eleven named Round 9 Item-3 commits, and seven additional scoped Item-3 worker commits. Two overlapping extra cherry-picks were empty and were skipped. No merge commits are present.
+
+Final tested source commit: `9531ba089abb44c962538d8bf1159db05a6a9a91`. Exact checks pass: `cargo fmt --all -- --check`; `cargo test --workspace --locked` (721 passed, 0 failed, 1 ignored across 66 suites); `cargo clippy --workspace --all-targets --locked -- -D warnings`; and `pnpm contracts:check` (three Rust schemas match; no generated files changed). Logs and hashes are recorded in `receipts/P04/9531ba089abb44c962538d8bf1159db05a6a9a91.json` and companion P07/P18/P21/P24/P25/P26 receipts.
+
+P04, P07, P18, P21, P24, P25 and P26 remain candidate evidence only; no main merge or acceptance transition is claimed. The batch is held for the 17:30Z-17:35Z merge window.
