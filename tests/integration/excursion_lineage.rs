@@ -3,6 +3,7 @@ use admiralty_core::excursions::{
     ScopedIncident, build_local_proposal, reduce_excursions,
 };
 use admiralty_core::{ProjectId, RootId, TaskId};
+use admiralty_testkit::clock::FakeClock;
 use std::collections::BTreeMap;
 
 fn digest(byte: char) -> String {
@@ -147,6 +148,24 @@ fn noncanonical_observation_tick_is_rejected_as_corrupted_input() {
     let error = reduce_excursions(&None, &scope, &[input(&scope, malformed)])
         .expect_err("leading zero makes the observation tick noncanonical");
     assert_eq!(error.0, "tick must be a canonical decimal u64");
+}
+
+#[test]
+fn skewed_fake_clock_cannot_record_a_causal_child_before_its_parent() {
+    let scope = scope("task-clock-skew");
+    let parent_clock = FakeClock::new(100);
+    let parent = input(&scope, event("incident-parent", None, "failure"));
+    let mut parent = parent;
+    parent.event.observed_tick = Some(parent_clock.now_ms().to_string());
+    let state = reduce_excursions(&None, &scope, &[parent])
+        .expect("parent incident is recorded at its deterministic clock time");
+
+    let skewed_clock = FakeClock::new(99);
+    let mut child_event = event("incident-child", Some("incident-parent"), "escalation");
+    child_event.observed_tick = Some(skewed_clock.now_ms().to_string());
+    let error = reduce_excursions(&Some(state), &scope, &[input(&scope, child_event)])
+        .expect_err("a skewed clock cannot place a causal child before its parent");
+    assert_eq!(error.0, "causal child predates its recorded parent");
 }
 
 #[test]
