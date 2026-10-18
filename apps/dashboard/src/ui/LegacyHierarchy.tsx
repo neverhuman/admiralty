@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { data, hierarchyCaptains, list, number, text, type Data, type LegacySnapshot } from '../legacy';
 import { ModelBadge } from './ModelBadge';
+import { useProfile } from '../profile';
+import { ProfileAvatar } from './Profile';
 import './legacy-hierarchy.css';
 
 const endedStates = new Set(['finished', 'gone', 'dead', 'exited']);
@@ -70,19 +72,21 @@ function Captain({ captain, project, status }: { captain: Data; project: Data; s
 
 /** A compact view of source observations, including ordinary manifest-backed project lanes. */
 export function LegacyHierarchy({ snapshot }: { snapshot: LegacySnapshot }) {
+  const profile = useProfile();
   const hierarchy = data(snapshot.hierarchy), captains = hierarchyCaptains(snapshot), superSource = data(snapshot.super_captain);
   const superCaptain = Object.keys(data(hierarchy.super_captain)).length ? data(hierarchy.super_captain) : data(superSource.screen);
   const owner = identity(hierarchy.owner ?? hierarchy.jepson) || 'Owner not reported';
   const watcher = data(hierarchy.watcher ?? hierarchy.grokbot), watcherName = identity(hierarchy.watcher ?? hierarchy.grokbot) || 'Watcher not reported';
+  const isGrokbot = /grok\s*bot/i.test(watcherName);
   const routines = list(watcher.routines), lastCheck = data(superSource.last_check), superStatus = data(superSource.status);
   const ticker = typeof superCaptain.ticker_alive === 'boolean' ? superCaptain.ticker_alive : data(superSource.ticker).alive;
   const rollout = data(snapshot.rollout), rolloutId = text(data(rollout.project).id), unassigned = list(hierarchy.unassigned).map(data);
   return <section className="legacy-hierarchy" aria-label="Fleet hierarchy">
     <div className="legacy-hierarchy-heading"><h2>Hierarchy</h2><span className="legacy-hierarchy-muted">Owner → watcher → super_captain → captains → workers</span></div>
     <div className="legacy-hierarchy-chain-scroll"><div className="legacy-hierarchy-chain">
-      <div className="legacy-hierarchy-node"><b>{owner}</b><div className="legacy-hierarchy-muted">owner</div></div>
+      <div className="legacy-hierarchy-node legacy-hierarchy-person"><ProfileAvatar name={owner} profile={profile} className="legacy-hierarchy-avatar" /><div><b>{owner}</b><div className="legacy-hierarchy-muted">owner</div></div></div>
       <span className="legacy-hierarchy-arrow" aria-hidden="true">→</span>
-      <div className="legacy-hierarchy-node"><b>{watcherName}</b>{routines.length > 0 ? <details className="legacy-hierarchy-routines"><summary>{routines.length} routines</summary><ul>{routines.map((routine, index) => <li key={index}>{identity(routine) || text(data(routine).description) || 'Routine details not reported'}</li>)}</ul></details> : <div className="legacy-hierarchy-muted">watcher</div>}</div>
+      <div className="legacy-hierarchy-node legacy-hierarchy-person">{isGrokbot && <img className="legacy-hierarchy-grokbot" src="/brand/grokbot.png" alt="Grokbot" width="44" height="44" />}<div><b>{watcherName}</b>{routines.length > 0 ? <details className="legacy-hierarchy-routines"><summary>{routines.length} routines</summary><ul>{routines.map((routine, index) => <li key={index}>{identity(routine) || text(data(routine).description) || 'Routine details not reported'}</li>)}</ul></details> : <div className="legacy-hierarchy-muted">watcher</div>}</div></div>
       <span className="legacy-hierarchy-arrow" aria-hidden="true">→</span>
       <div className="legacy-hierarchy-node legacy-hierarchy-super"><div><b>{text(superCaptain.name) || 'super_captain'}</b> <State state={reportedState(superCaptain)} /></div><ModelBadge model={text(superCaptain.model) || 'unknown'} effort={text(superCaptain.effort)} tier={text(superCaptain.tier)} /><div className="legacy-hierarchy-muted legacy-hierarchy-screen">{screenName(superCaptain)}</div><div className="legacy-hierarchy-muted">{ticker === true ? 'ticker ✓' : ticker === false ? 'ticker not running' : 'ticker not reported'}{text(lastCheck.no) ? ` · check #${text(lastCheck.no)}` : ''}{text(lastCheck.utc ?? superStatus.updated_utc) ? ` · ${text(lastCheck.utc ?? superStatus.updated_utc)}` : ''}</div></div>
     </div></div>
