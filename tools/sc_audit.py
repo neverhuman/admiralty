@@ -1026,9 +1026,34 @@ def stuck_queued_checks(roll, now, mins=30):
         if age >= mins: out.append((c.get('name') or c.get('context') or '?', round(age)))
     return out
 
+# ---------------- stale open PRs (GB 2026-10-18 10:30 MDT, Jepson: "why do we have pending PRs, the sub-captain should catch that") ----------------
+# open_prs() only flagged red CI (amber) and checks queued 30+ min since the *latest* push, so a PR that kept getting fix-forward
+# pushes, sat past its merge ETA, conflicted with main, or was opened from a backup/* branch never became must-act.
+STALE_PR_MIN = 45          # a non-draft PR open this long is must-act: land it, close it, or record why with a fresh ETA
+BACKUP_BRANCH_RE = re.compile(r'^(backup|bak|salvage|tmp|scratch)[/_-]', re.I)
+
+def stale_pr_problems(p, now, max_age_min=STALE_PR_MIN):
+    """Problems that make an open PR must-act this tick. p is one `gh pr list --json` row. Pure; never calls gh."""
+    if p.get('isDraft'): return []
+    probs = []
+    try: age = (now - datetime.datetime.fromisoformat(str(p.get('createdAt')).replace('Z', '+00:00'))).total_seconds() / 60
+    except Exception: age = None
+    if age is not None and age >= max_age_min: probs.append(f'open {round(age)} min')
+    if str(p.get('mergeable') or '').upper() == 'CONFLICTING': probs.append('conflicts with main')
+    roll = p.get('statusCheckRollup') or []
+    latest = {}
+    for c in roll:   # gh returns every run; judge each check by its latest attempt only
+        n = c.get('name') or c.get('context') or '?'
+        t = str(c.get('completedAt') or c.get('startedAt') or '')
+        if n not in latest or t >= latest[n][0]: latest[n] = (t, (c.get('conclusion') or c.get('state') or c.get('status') or '').upper())
+    bad = sorted(n for n, (_, k) in latest.items() if k in ('FAILURE', 'ERROR', 'TIMED_OUT', 'ACTION_REQUIRED'))
+    if bad: probs.append('failing ' + ','.join(bad))
+    if BACKUP_BRANCH_RE.search(str(p.get('headRefName') or '')): probs.append(f'opened from backup branch {p.get("headRefName")} (almost certainly not work: close it)')
+    return probs
+
 def open_prs(project):
     rc, out, _ = run([GH, 'pr', 'list', '-R', GHREPO[project], '--state', 'open', '--json',
-                      'number,headRefName,headRefOid,isDraft,reviewDecision,statusCheckRollup,updatedAt', '-L', '10'], timeout=30)
+                      'number,title,headRefName,headRefOid,isDraft,reviewDecision,statusCheckRollup,updatedAt,createdAt,mergeable', '-L', '20'], timeout=30)
     try: prs = json.loads(out)
     except Exception: return []
     res = []
@@ -1042,6 +1067,11 @@ def open_prs(project):
                     'review': p.get('reviewDecision'), 'ci': ci, 'checks': dict(concl)})
         if ci == 'red': F('amber', project, 'PR_CI_RED', f'PR #{p["number"]} @ {p["headRefOid"][:9]} has failing checks {dict(concl)}', f'gh pr checks {p["number"]} -R {GHREPO[project]}')
         stuck = stuck_queued_checks(roll, datetime.datetime.now(datetime.timezone.utc))
+        sp = stale_pr_problems(p, datetime.datetime.now(datetime.timezone.utc))
+        if sp:
+            MA('red', project, 'STALE_OPEN_PR', f'PR #{p["number"]} @ {p["headRefOid"][:9]} ({str(p.get("title") or "")[:60]}): {"; ".join(sp)}. '
+               f'Must act this tick: {CAPTAINS.get(project, project)} lands it (exact-head approval + --rebase --match-head-commit), closes it with a comment if stale/superseded, '
+               'or fixes the conflict/failure and records a NEW ETA. An open PR nobody is landing is a miss', f'gh pr view {p["number"]} -R {GHREPO[project]}')
         if stuck and not p['isDraft']:
             F('red' if project in P1_PROJECTS else 'amber', project, 'PR_CI_QUEUED_STUCK',
               f'PR #{p["number"]} @ {p["headRefOid"][:9]}: {len(stuck)} check(s) queued with no runner for {max(a for _, a in stuck)} min ({", ".join(f"{n} {a}m" for n, a in stuck[:6])}). '
