@@ -1,0 +1,27 @@
+# runtime data never goes in git (it lives in /home/ubuntu/xbabe2_kicker/... ; runtime/ holds symlinks to it)
+runtime/
+status.json
+snapshot.html
+history.jsonl
+*.db
+*.jsonl
+*.log
+*.bak*
+.hc/
+.gh_cache.json
+.git_cache.json
+.history.json
+.res_history.json
+.quota_history.json
+global_resources.json
+token_yield.json
+token_yield.err
+__pycache__/
+*_LOG.md
+*_DECISIONS.md
+*_INBOX.md
+*_status.json
+sc_nudge_*
+sc_note_*
+sc_disk_receipt_*
+sc_disk_archive_*

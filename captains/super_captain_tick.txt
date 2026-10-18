@@ -1,0 +1,1 @@
+SUPER_CAPTAIN TICK: run your 30-minute check now per /home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_BRIEF.md (all 4 captains + globalres.py; append super_captain_LOG.md, rewrite super_captain_status.json; nudge captains only if idle, else coordination-log note). Keep it short.
