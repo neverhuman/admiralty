@@ -46,42 +46,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "admiralty-root-integration"
+name = "admiralty-round16-qualification"
 version = "0.1.0"
 dependencies = [
  "admiralty-core",
- "admiralty-store",
- "rusqlite",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "admiralty-root-qualification"
-version = "0.1.0"
-dependencies = [
- "admiralty-core",
+ "admiralty-runtime",
  "admiralty-store",
  "rusqlite",
  "serde_json",
  "sha2",
  "tempfile",
-]
-
-[[package]]
-name = "admiralty-release-qualification"
-version = "0.1.0"
-dependencies = [
- "admiralty-core",
- "admiralty-runtime",
-]
-
-[[package]]
-name = "admiralty-qualification-tests"
-version = "0.1.0"
-dependencies = [
- "admiralty-core",
- "serde_json",
 ]
 
 [[package]]
