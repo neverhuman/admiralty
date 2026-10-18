@@ -1096,6 +1096,21 @@ def stall_escalation(proj, done, total, stuck_since_iso, now, plan_changes=()):
                     f'or decide the blocker); escalate to Jepson only if the blocker is reserved (xbabe0/Jeryu, outside messages, new paid spend/legal, force-push main, deleting prod data, writing /home/ubuntu/admiralty)'))
     return out
 
+# GB 2026-10-18 13:23 MDT: DOPE sat at 59/65 from 11:49Z, but super_captain overclaimed 60/65 at 18:51Z and rolled it back
+# at 19:05Z. The 59->60 blip landed in the history and reset the stall clock, so STALL_60M / STALL_REPEATED went quiet on a
+# 7.5 h stall. Only an increase that is never undone by a later snapshot (or the current count) counts as progress.
+def last_sustained_increase(h, current=None):
+    """utc of the last snapshot where done rose and never later fell below that new value (incl. current)."""
+    vals = [x.get('done') for x in h]
+    tail = [current] if isinstance(current, int) else []
+    last = None
+    for i in range(1, len(h)):
+        a, b = vals[i - 1], vals[i]
+        if not (isinstance(a, int) and isinstance(b, int) and b > a): continue
+        later = [v for v in vals[i + 1:] + tail if isinstance(v, int)]
+        if all(v >= b for v in later): last = h[i]['utc']
+    return last
+
 def progress_accountability(report, state, now, no_gh=False):
     hist = state.setdefault('progress', {})
     if not hist:   # seed done-history from audit.jsonl so the first run already has a baseline
@@ -1116,9 +1131,7 @@ def progress_accountability(report, state, now, no_gh=False):
         base = None
         for x in h:
             if x['utc'] <= (now - datetime.timedelta(minutes=WINDOW_MIN)).isoformat(timespec='seconds'): base = x
-        last_up = None   # last time done increased
-        for a, b in zip(h, h[1:]):
-            if isinstance(a.get('done'), int) and isinstance(b.get('done'), int) and b['done'] > a['done']: last_up = b['utc']
+        last_up = last_sustained_increase(h, done)   # last time done increased AND stayed up (rolled-back overclaims do not count)
         info = {'done': done, 'blocked': blocked, 'total': total, 'baseline_utc': base and base['utc'],
                 'baseline_done': base and base.get('done'), 'baseline_blocked': base and base.get('blocked'), 'last_done_increase_utc': last_up}
         if base and isinstance(done, int):
@@ -1217,6 +1230,30 @@ def open_prs(project):
               f'gh pr checks {p["number"]} -R {GHREPO[project]}')
     return res
 
+# GB 2026-10-18 13:23 MDT: Admiralty (P1) main failed on 7 straight merges from 17:43Z (~95 min) while MAIN_CI_RED stayed
+# amber and nobody acted. A P1 main that has been red across several merges or for 30+ min is a red, must-fix finding.
+MAIN_RED_ESCALATE_MIN = 30
+MAIN_RED_ESCALATE_RUNS = 3
+def main_ci_severity(project, head, bad, runs, now):
+    failed = ('failure', 'cancelled', 'timed_out')
+    shas, red_since = [], None
+    for r in runs:   # newest first; count consecutive red head commits
+        c = r.get('conclusion')
+        if c == 'success': break
+        if c in failed:
+            if r['headSha'] not in shas: shas.append(r['headSha'])
+            red_since = r.get('createdAt') or red_since
+    mins = None
+    try:
+        if red_since: mins = int((now - datetime.datetime.fromisoformat(red_since.replace('Z', '+00:00'))).total_seconds() / 60)
+    except Exception: mins = None
+    base = f'main @ {head[:9]} failing: {", ".join(bad)}'
+    if project in P1_PROJECTS and (len(shas) >= MAIN_RED_ESCALATE_RUNS or (mins or 0) >= MAIN_RED_ESCALATE_MIN):
+        return ('red', 'MAIN_CI_RED_PERSISTENT', f'{base}; main red on {len(shas)} consecutive commit(s) for >= {mins} min. P1 main must be green: '
+                f'{CAPTAINS.get(project, project)} names the failing test/job, re-runs infra failures (runner lost/cancelled), lands a fix with green exact-head CI, '
+                'and merges nothing else onto red main until it is green. super_captain verifies this tick')
+    return ('amber', 'MAIN_CI_RED', base)
+
 def main_ci(project):
     rc, out, _ = run([GH, 'run', 'list', '-R', GHREPO[project], '--branch', 'main', '-L', '6', '--json', 'headSha,conclusion,status,workflowName,createdAt'], timeout=30)
     try: runs = json.loads(out)
@@ -1225,7 +1262,9 @@ def main_ci(project):
     head = runs[0]['headSha']
     same = [r for r in runs if r['headSha'] == head]
     bad = [r['workflowName'] for r in same if r.get('conclusion') in ('failure', 'cancelled', 'timed_out')]
-    if bad: F('amber', project, 'MAIN_CI_RED', f'main @ {head[:9]} failing: {", ".join(bad)}')
+    if bad:
+        sev, code, text = main_ci_severity(project, head, bad, runs, datetime.datetime.now(datetime.timezone.utc))
+        F(sev, project, code, text)
     return {'head': head[:9], 'runs': [(r['workflowName'], r.get('conclusion') or r.get('status')) for r in same]}
 
 # ---------------- watchdog: misses that let workers idle (GB 2026-10-18 09:35 MDT, Jepson: "why wasn't this caught automatically") ----------------
