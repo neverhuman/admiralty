@@ -7,12 +7,27 @@
 use admiralty_core::{
     ProjectId, RootId, TaskId,
     conflicts::{CandidateChange, FileChange, analyze_conflicts},
+    economics::{DecimalU128, ObservedAmount},
+    placement::decode_input,
     trials::{
         ClusterAssignment, ClusterId, ClusterMember, DecimalU64, TrialId, TrialSpec, VariantId,
         assign_trial,
     },
 };
+use admiralty_runtime::{
+    providers::claude::{ClaudeError, parse_stream},
+    recovery::{Blocker, plan_recovery},
+    session::{InputKind, LaunchSpec, SessionError, SessionHost},
+};
+use admiralty_store::artifacts::ArtifactStore;
+use admiralty_testkit::clock::{ClockError, FakeClock};
 use serde_json::Value;
+use std::os::unix::fs::PermissionsExt;
+use std::{fs, path::PathBuf};
+use tempfile::tempdir;
+
+#[path = "support/recovery.rs"]
+mod recovery_fixture;
 
 const DASHBOARD_PACKAGE: &str = include_str!("../../apps/dashboard/package.json");
 const DASHBOARD_INDEX: &str = include_str!("../../apps/dashboard/index.html");
@@ -118,4 +133,111 @@ fn p28_p32_round8_p12_packaging_qualification() {
         forward.generation.candidate_ids,
         ["candidate-a", "candidate-b"]
     );
+}
+
+#[test]
+fn p28_round9_item3_golden_webhook_hitl_qualification() {
+    // P04: content-addressed delivery is verifiable and byte-limit rejection
+    // leaves the accepted object unchanged.
+    let temp = tempdir().expect("temporary fixture");
+    let artifact_root = temp.path().join("objects");
+    fs::create_dir(&artifact_root).expect("artifact root");
+    fs::set_permissions(&artifact_root, fs::Permissions::from_mode(0o700))
+        .expect("private artifact root");
+    let store = ArtifactStore::open(&artifact_root, 8).expect("artifact store");
+    let artifact = store
+        .publish_bytes(b"golden")
+        .expect("publish webhook evidence");
+    assert_eq!(
+        store.read_verified(&artifact).expect("verified evidence"),
+        b"golden"
+    );
+    assert!(store.publish_bytes(b"too many bytes").is_err());
+    assert_eq!(
+        store
+            .read_verified(&artifact)
+            .expect("evidence remains intact"),
+        b"golden"
+    );
+
+    // P07 HITL edge: a human reply advances the epoch and makes a queued
+    // webhook automation reply stale without changing the journal.
+    let spool = temp.path().join("spool");
+    fs::create_dir(&spool).expect("spool root");
+    fs::set_permissions(&spool, fs::Permissions::from_mode(0o700)).expect("private spool root");
+    let host = SessionHost::new();
+    host.launch(LaunchSpec {
+        run_id: "round9-hitl".into(),
+        program: PathBuf::from("/bin/cat"),
+        args: vec![],
+        cwd: temp.path().to_owned(),
+        spool_dir: spool.join("run"),
+    })
+    .expect("launch deterministic echo fixture");
+    let human = host
+        .write_input("round9-hitl", InputKind::Human, b"approve\n")
+        .expect("human reply");
+    assert_eq!(human.input_epoch, 1);
+    assert!(matches!(
+        host.write_input(
+            "round9-hitl",
+            InputKind::Automation { expected_epoch: 0 },
+            b"stale\n"
+        ),
+        Err(SessionError::StaleInput {
+            expected: 0,
+            current: 1
+        })
+    ));
+    host.close_input_if_epoch("round9-hitl", 1)
+        .expect("close fixture input");
+    assert!(host.wait("round9-hitl").expect("reap fixture").success());
+
+    // P18: simulated webhook timestamps cannot rewind the qualification clock.
+    let mut clock = FakeClock::new(40);
+    let deadline = clock.deadline_after_ms(5).expect("fixed webhook deadline");
+    assert_eq!(
+        clock.advance_to_ms(39),
+        Err(ClockError::Backwards {
+            now_ms: 40,
+            target_ms: 39
+        })
+    );
+    assert_eq!(clock.now_ms(), 40);
+    assert!(!deadline.is_due(clock.now_ms()));
+
+    // P21: golden provider fixture is accepted, but missing terminal error
+    // metadata remains unknown and never becomes trusted acceptance.
+    let resume = include_bytes!("../fixtures/providers/claude/turn-boundary-resume.jsonl");
+    let observed =
+        parse_stream(resume, Some("fixture-session")).expect("golden provider observation");
+    assert!(observed.is_error.is_none());
+    assert!(!observed.trusted_acceptance());
+    assert_eq!(
+        parse_stream(resume, Some("foreign")),
+        Err(ClaudeError::ResumeMismatch)
+    );
+
+    // P24: malformed webhook placement input is rejected before proposal.
+    assert!(decode_input(br#"{"schema_version":1,"unknown":true}"#).is_err());
+
+    // P25: a missing external fence blocks recovery even when the backup is
+    // otherwise complete and deterministic.
+    let (manifest, observation, _fence) = recovery_fixture::valid_recovery_evidence();
+    let recovery = plan_recovery(&manifest, &observation, None).expect("recovery proposal");
+    assert!(!recovery.resume_proposed);
+    assert!(recovery.blockers.contains(&Blocker::MissingExternalFence));
+
+    // P26: unknown provider spend is carried as unknown rather than zero.
+    let unknown_cost = ObservedAmount::Unknown {
+        reason: "webhook omitted cost".into(),
+    };
+    assert_eq!(
+        serde_json::to_value(unknown_cost).expect("serialize cost")["kind"],
+        "unknown"
+    );
+    assert!(matches!(
+        DecimalU128::parse("01"),
+        Err(admiralty_core::economics::EconomicsError::Invalid(_))
+    ));
 }
