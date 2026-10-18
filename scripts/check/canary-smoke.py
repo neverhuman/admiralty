@@ -11,6 +11,7 @@ import json
 import os
 import secrets
 import shutil
+import socket
 import stat
 import subprocess
 import sys
@@ -272,7 +273,19 @@ def bounded_http(
     remaining = request_deadline - time.monotonic()
     require(remaining > 0, "whole-smoke deadline elapsed")
     connection = http.client.HTTPConnection(address.compressed, port, timeout=remaining)
+    watchdog: threading.Timer | None = None
     try:
+        connection.connect()
+        wire_socket = connection.sock
+        require(wire_socket is not None, "HTTP socket was not created")
+        def abort_request() -> None:
+            try:
+                wire_socket.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+        watchdog = threading.Timer(max(0.001, request_deadline - time.monotonic()), abort_request)
+        watchdog.daemon = True
+        watchdog.start()
         connection.request(method, path, body=body, headers=headers or {})
         response = connection.getresponse()
         size = response.getheader("Content-Length")
@@ -295,6 +308,8 @@ def bounded_http(
     except (OSError, http.client.HTTPException, TimeoutError) as error:
         raise SmokeError("bounded loopback HTTP request failed") from error
     finally:
+        if watchdog is not None:
+            watchdog.cancel()
         connection.close()
 
 
@@ -302,7 +317,7 @@ def parse_json_body(data: bytes) -> dict[str, Any]:
     require(len(data) <= MAX_JSON_BYTES, "JSON response exceeds one MiB")
     try:
         value = json.loads(data)
-    except (ValueError, UnicodeDecodeError) as error:
+    except (ValueError, UnicodeDecodeError, RecursionError) as error:
         raise SmokeError("response is not valid JSON") from error
     require(isinstance(value, dict), "expected JSON object")
     require(json_depth(value) <= 32, "JSON response nesting exceeds bound")
@@ -470,6 +485,12 @@ def server_checks(host: str, port: int, token: str, deadline: float,
             status, _, _ = bounded_http(host, port, "GET", path, deadline=deadline)
             require_status(status, 401, f"unauthorized {path}")
         record_check(results, f"unauthorized_{name}_rejected", unauthorized)
+
+    def unauthorized_malformed_model_request() -> None:
+        status, _, _ = bounded_http(host,port,"POST","/v1/models/select",
+                                   headers={"Content-Type":"application/json"},body=b"{",deadline=deadline)
+        require_status(status,401,"unauthorized malformed model request")
+    record_check(results,"model_auth_precedes_body_validation",unauthorized_malformed_model_request)
 
     def fleet_authorized() -> None:
         status, _, body = bounded_http(host, port, "GET", "/v1/fleet",
@@ -658,7 +679,7 @@ class HarnessTests(unittest.TestCase):
         with self.assertRaises(SmokeError):
             validate_absolute_owned_file("relative/path")
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
+            root = Path(temporary).resolve()
             target = root / "target"
             target.write_text("x")
             link = root / "link"
@@ -668,7 +689,7 @@ class HarnessTests(unittest.TestCase):
 
     def test_scratch_requires_private_owned_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
+            root = Path(temporary).resolve()
             root.chmod(0o700)
             self.assertEqual(validate_scratch_root(str(root)), root)
             root.chmod(0o755)
@@ -770,6 +791,30 @@ class HarnessTests(unittest.TestCase):
             self.assertLess(time.monotonic() - before, 0.5)
         finally:
             MAX_REQUEST_SECONDS = saved_timeout
+            server.shutdown()
+            server.server_close()
+
+    def test_header_drip_cannot_extend_whole_request_deadline(self) -> None:
+        import socketserver
+        class Drip(socketserver.BaseRequestHandler):
+            def handle(self) -> None:
+                self.request.recv(4096)
+                for byte in b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}":
+                    try:
+                        self.request.sendall(bytes([byte]))
+                    except OSError:
+                        break
+                    time.sleep(0.02)
+        server = socketserver.ThreadingTCPServer(("127.0.0.1", 0),Drip)
+        server.daemon_threads=True
+        thread=threading.Thread(target=server.serve_forever,daemon=True)
+        thread.start()
+        before=time.monotonic()
+        try:
+            with self.assertRaises(SmokeError):
+                bounded_http("127.0.0.1",server.server_address[1],"GET","/",deadline=before+0.08)
+            self.assertLess(time.monotonic()-before,0.5)
+        finally:
             server.shutdown()
             server.server_close()
 

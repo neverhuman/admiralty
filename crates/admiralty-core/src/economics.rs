@@ -1,5 +1,5 @@
 //! Pure, bounded accounting primitives for fixed assignment cohorts.
-use crate::{ProjectId, RootId};
+use crate::{ProjectId, RootId, TaskId, content_digest, limits::bounded_json_size};
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 use std::collections::{BTreeMap, BTreeSet};
@@ -8,7 +8,7 @@ pub const MAX_JSON_BYTES: usize = 1024 * 1024;
 pub const MAX_RECORDS: usize = 1024;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema)]
-pub struct DecimalU64(pub u64);
+pub struct DecimalU64(#[schemars(with = "String")] pub u64);
 impl Serialize for DecimalU64 {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.0.to_string())
@@ -32,7 +32,7 @@ impl DecimalU64 {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema)]
-pub struct DecimalU128(pub u128);
+pub struct DecimalU128(#[schemars(with = "String")] pub u128);
 impl Serialize for DecimalU128 {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.0.to_string())
@@ -113,16 +113,40 @@ pub struct CohortSpec {
     pub required_delivery_stage: BoundedId,
     pub valuation_digest: String,
     pub assigned_at: DecimalU64,
+    pub bindings: Vec<RootBinding>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct RootBinding {
+    pub root_id: RootId,
+    pub task_id: TaskId,
+    pub contract_revision: u32,
+    pub contract_digest: String,
+    pub protected_oracle_digest: String,
+}
+fn digest_valid(value: &str) -> bool {
+    value.strip_prefix("sha256:").is_some_and(|hex| {
+        hex.len() == 64
+            && hex
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    })
+}
+fn bounded<T: Serialize + ?Sized>(value: &T) -> Result<(), EconomicsError> {
+    bounded_json_size(value, MAX_JSON_BYTES)
+        .map(|_| ())
+        .map_err(|_| EconomicsError::Invalid("invalid or oversized JSON".into()))
 }
 impl CohortSpec {
     pub fn validate(&self) -> Result<(), EconomicsError> {
+        bounded(self)?;
         if self.fixed_assignment_roots.is_empty() || self.fixed_assignment_roots.len() > MAX_RECORDS
         {
             return Err(EconomicsError::Invalid(
                 "cohort roots must contain 1..1024 assignments".into(),
             ));
         }
-        if self.valuation_digest.len() > 128 || self.valuation_digest.is_empty() {
+        if !digest_valid(&self.valuation_digest) {
             return Err(EconomicsError::Invalid(
                 "valuation digest must contain 1..128 characters".into(),
             ));
@@ -131,6 +155,23 @@ impl CohortSpec {
         if roots.len() != self.fixed_assignment_roots.len() {
             return Err(EconomicsError::Invalid(
                 "duplicate fixed assignment root".into(),
+            ));
+        }
+        let bound_roots: BTreeSet<_> = self
+            .bindings
+            .iter()
+            .map(|binding| &binding.root_id)
+            .collect();
+        if self.bindings.len() != roots.len()
+            || bound_roots != roots
+            || self.bindings.iter().any(|binding| {
+                binding.contract_revision == 0
+                    || !digest_valid(&binding.contract_digest)
+                    || !digest_valid(&binding.protected_oracle_digest)
+            })
+        {
+            return Err(EconomicsError::Invalid(
+                "every fixed root needs one exact contract/oracle binding".into(),
             ));
         }
         Ok(())
@@ -165,6 +206,8 @@ pub enum ParentInclusion {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct UsageRecord {
+    pub project_id: ProjectId,
+    pub binding: RootBinding,
     pub observation_id: BoundedId,
     pub revision: DecimalU64,
     pub root_scope: RootId,
@@ -210,6 +253,9 @@ pub enum RootStatus {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct RootOutcome {
+    pub project_id: ProjectId,
+    pub binding: RootBinding,
+    pub acceptance_receipt_digest: Option<String>,
     pub root_id: RootId,
     pub status: RootStatus,
     pub accepted_stage: Option<BoundedId>,
@@ -236,6 +282,7 @@ pub struct UnitTotal {
 #[serde(deny_unknown_fields)]
 pub struct CohortSummary {
     pub cohort_id: BoundedId,
+    pub cohort_digest: String,
     pub assigned_roots: DecimalU64,
     pub accepted_roots: Option<DecimalU64>,
     pub failed_roots: DecimalU64,
@@ -306,13 +353,38 @@ pub fn summarize_cohort(
             "record collection exceeds 1024".into(),
         ));
     }
+    bounded(&(cohort, records, outcomes))?;
     let roots: BTreeSet<_> = cohort.fixed_assignment_roots.iter().collect();
+    let binding_for = |root: &RootId| {
+        cohort
+            .bindings
+            .iter()
+            .find(|binding| &binding.root_id == root)
+    };
     let mut latest: BTreeMap<&str, &UsageRecord> = BTreeMap::new();
     let mut seen: BTreeMap<(&str, u64), &UsageRecord> = BTreeMap::new();
     for r in records {
         r.validate()?;
-        if !roots.contains(&r.root_scope) {
-            continue;
+        if r.project_id != cohort.project_id
+            || r.root_scope != r.binding.root_id
+            || binding_for(&r.root_scope) != Some(&r.binding)
+        {
+            return Err(EconomicsError::Invalid(
+                "usage outside exact fixed project/task contract scope".into(),
+            ));
+        }
+        if let Some(previous) = latest.get(r.observation_id.as_str()) {
+            let mut old_identity = (*previous).clone();
+            let mut new_identity = r.clone();
+            old_identity.revision = DecimalU64(1);
+            new_identity.revision = DecimalU64(1);
+            old_identity.amount = ObservedAmount::Unknown {
+                reason: "identity".into(),
+            };
+            new_identity.amount = old_identity.amount.clone();
+            if old_identity != new_identity {
+                return Err(EconomicsError::RevisionCollision);
+            }
         }
         let key = (r.observation_id.as_str(), r.revision.0);
         if let Some(old) = seen.insert(key, r) {
@@ -329,6 +401,31 @@ pub fn summarize_cohort(
             }
         }
     }
+    for record in latest.values() {
+        let mut cursor = *record;
+        let mut lineage = BTreeSet::new();
+        while let ParentInclusion::Inclusive {
+            parent_observation_id,
+        } = &cursor.parent_inclusion
+        {
+            if !lineage.insert(cursor.observation_id.as_str()) {
+                return Err(EconomicsError::Invalid("usage inclusion cycle".into()));
+            }
+            let Some(parent) = latest.get(parent_observation_id.as_str()) else {
+                break;
+            };
+            if parent.project_id != record.project_id
+                || parent.binding != record.binding
+                || parent.provider != record.provider
+                || parent.unit != record.unit
+            {
+                return Err(EconomicsError::Invalid(
+                    "usage parent scope/provider/unit mismatch".into(),
+                ));
+            }
+            cursor = parent;
+        }
+    }
     let mut by_unit: BTreeMap<&str, Vec<&UsageRecord>> = BTreeMap::new();
     for r in latest.values() {
         by_unit.entry(r.unit.as_str()).or_default().push(r);
@@ -340,22 +437,36 @@ pub fn summarize_cohort(
         let mut count = 0u64;
         let mut estimated = false;
         let mut uncertain = false;
-        let mut intervals: Vec<(u64, u64)> = Vec::new();
+        let mut intervals: Vec<(&RootBinding, &BoundedId, &BoundedId, &BoundedId, u64, u64)> =
+            Vec::new();
         let ids: BTreeSet<_> = rows.iter().map(|r| r.observation_id.as_str()).collect();
         for row in &rows {
             match &row.parent_inclusion {
                 ParentInclusion::Inclusive {
                     parent_observation_id,
-                } if ids.contains(parent_observation_id.as_str()) => {
+                } => {
                     uncertain = true;
                     limitations.push(format!(
-                        "{}: parent and child usage overlap",
+                        "{}: parent/child inclusion needs complete coverage reconciliation",
                         row.observation_id.as_str()
                     ));
+                    if !ids.contains(parent_observation_id.as_str()) {
+                        limitations.push("included parent observation is missing".into());
+                    }
                     continue;
                 }
                 ParentInclusion::Interval { start, end } => {
-                    if intervals.iter().any(|(a, b)| start.0 <= *b && *a <= end.0) {
+                    if intervals
+                        .iter()
+                        .any(|(binding, provider, role, purpose, a, b)| {
+                            *binding == &row.binding
+                                && *provider == &row.provider
+                                && *role == &row.role
+                                && *purpose == &row.purpose
+                                && start.0 <= *b
+                                && *a <= end.0
+                        })
+                    {
                         uncertain = true;
                         limitations.push(format!(
                             "{}: usage intervals overlap",
@@ -363,7 +474,14 @@ pub fn summarize_cohort(
                         ));
                         continue;
                     }
-                    intervals.push((start.0, end.0));
+                    intervals.push((
+                        &row.binding,
+                        &row.provider,
+                        &row.role,
+                        &row.purpose,
+                        start.0,
+                        end.0,
+                    ));
                 }
                 _ => {}
             }
@@ -402,6 +520,18 @@ pub fn summarize_cohort(
     }
     let mut outcome_map = BTreeMap::new();
     for outcome in outcomes {
+        if outcome.project_id != cohort.project_id
+            || outcome.root_id != outcome.binding.root_id
+            || binding_for(&outcome.root_id) != Some(&outcome.binding)
+            || outcome
+                .acceptance_receipt_digest
+                .as_ref()
+                .is_some_and(|value| !digest_valid(value))
+        {
+            return Err(EconomicsError::Invalid(
+                "outcome outside exact fixed project/task contract scope".into(),
+            ));
+        }
         if roots.contains(&outcome.root_id)
             && outcome_map.insert(&outcome.root_id, outcome).is_some()
         {
@@ -420,7 +550,11 @@ pub fn summarize_cohort(
                     && matches!(o.status, RootStatus::Succeeded)
                     && o.accepted_stage.as_ref() == Some(&cohort.required_delivery_stage) =>
             {
-                accepted += 1
+                if o.acceptance_receipt_digest.is_some() {
+                    accepted += 1;
+                } else {
+                    all_known = false;
+                }
             }
             Some(o) => {
                 if o.status == RootStatus::Failed {
@@ -454,6 +588,8 @@ pub fn summarize_cohort(
     }
     Ok(CohortSummary {
         cohort_id: cohort.cohort_id.clone(),
+        cohort_digest: content_digest(cohort)
+            .map_err(|_| EconomicsError::Invalid("cohort digest failed".into()))?,
         assigned_roots: DecimalU64(cohort.fixed_assignment_roots.len() as u64),
         accepted_roots: all_known.then_some(DecimalU64(accepted)),
         failed_roots: DecimalU64(failed),
@@ -474,6 +610,26 @@ pub fn cohort_compare(
     coordination_unit: &str,
 ) -> CohortComparison {
     let mut reasons = Vec::new();
+    for (spec, summary) in [(a, a_summary), (b, b_summary)] {
+        let expected = content_digest(spec).ok();
+        if spec.validate().is_err()
+            || bounded(summary).is_err()
+            || summary.cohort_id != spec.cohort_id
+            || expected.as_ref() != Some(&summary.cohort_digest)
+            || summary.assigned_roots.0 != spec.fixed_assignment_roots.len() as u64
+            || summary
+                .accepted_roots
+                .as_ref()
+                .is_some_and(|n| n.0 > summary.assigned_roots.0)
+            || summary.immature_roots.0 != 0
+            || summary.accepted_yield.as_ref().is_none_or(|ratio| {
+                ratio.denominator.0 != u128::from(summary.assigned_roots.0)
+                    || ratio.numerator.0 > ratio.denominator.0
+            })
+        {
+            reasons.push("summary does not bind a complete consistent original cohort".into());
+        }
+    }
     if a.project_id != b.project_id
         || a.valuation_digest != b.valuation_digest
         || a.required_delivery_stage != b.required_delivery_stage
@@ -491,8 +647,8 @@ pub fn cohort_compare(
         .units
         .iter()
         .find(|u| u.unit.as_str() == coordination_unit);
-    if !matches!(a_unit, Some(u) if u.coverage == Coverage::Complete)
-        || !matches!(b_unit, Some(u) if u.coverage == Coverage::Complete)
+    if !matches!(a_unit, Some(u) if u.coverage == Coverage::Complete && u.amount.is_some())
+        || !matches!(b_unit, Some(u) if u.coverage == Coverage::Complete && u.amount.is_some())
     {
         reasons.push("coordination usage is missing, partial, or uses incompatible units".into());
     }
@@ -519,18 +675,30 @@ mod tests {
     fn root(s: &str) -> RootId {
         RootId::new(s).expect("fixture root identifier is valid")
     }
+    fn binding(root_name: &str) -> RootBinding {
+        RootBinding {
+            root_id: root(root_name),
+            task_id: TaskId::new(format!("task-{root_name}")).expect("fixture task"),
+            contract_revision: 1,
+            contract_digest: format!("sha256:{}", "a".repeat(64)),
+            protected_oracle_digest: format!("sha256:{}", "b".repeat(64)),
+        }
+    }
     fn cohort(roots: Vec<RootId>) -> CohortSpec {
         CohortSpec {
             cohort_id: id("cohort"),
             project_id: ProjectId::new("project").expect("fixture project identifier is valid"),
+            bindings: roots.iter().map(|root| binding(root.as_str())).collect(),
             fixed_assignment_roots: roots,
             required_delivery_stage: id("release"),
-            valuation_digest: "sha256:fixture".into(),
+            valuation_digest: format!("sha256:{}", "c".repeat(64)),
             assigned_at: DecimalU64(1),
         }
     }
     fn row(oid: &str, root_name: &str, unit: &str, amount: ObservedAmount) -> UsageRecord {
         UsageRecord {
+            project_id: ProjectId::new("project").expect("fixture project"),
+            binding: binding(root_name),
             observation_id: id(oid),
             revision: DecimalU64(1),
             root_scope: root(root_name),
@@ -549,11 +717,116 @@ mod tests {
         maturity: u64,
     ) -> RootOutcome {
         RootOutcome {
+            project_id: ProjectId::new("project").expect("fixture project"),
+            binding: binding(root_id),
+            acceptance_receipt_digest: Some(format!("sha256:{}", "d".repeat(64))),
             root_id: root(root_id),
             status,
             accepted_stage: stage.map(id),
             maturity: DecimalU64(maturity),
         }
+    }
+    #[test]
+    fn scope_and_revision_corrections_cannot_reassign_usage() {
+        let c = cohort(vec![root("r")]);
+        let original = row(
+            "event",
+            "r",
+            "tokens",
+            ObservedAmount::Known {
+                amount: DecimalU128(4),
+            },
+        );
+        let mut foreign = original.clone();
+        foreign.project_id = ProjectId::new("foreign").expect("fixture project");
+        assert!(summarize_cohort(&c, &[foreign], &[], 0).is_err());
+        let mut revised = original.clone();
+        revised.revision = DecimalU64(2);
+        revised.role = id("captain");
+        assert_eq!(
+            summarize_cohort(&c, &[original.clone(), revised], &[], 0),
+            Err(EconomicsError::RevisionCollision)
+        );
+        let mut stale = original;
+        stale.binding.contract_revision = 2;
+        assert!(summarize_cohort(&c, &[stale], &[], 0).is_err());
+    }
+    #[test]
+    fn native_intervals_are_scoped_and_orphan_inclusion_is_unknown() {
+        let c = cohort(vec![root("a"), root("b")]);
+        let mut a = row(
+            "a",
+            "a",
+            "tokens",
+            ObservedAmount::Known {
+                amount: DecimalU128(3),
+            },
+        );
+        let mut b = row(
+            "b",
+            "b",
+            "tokens",
+            ObservedAmount::Known {
+                amount: DecimalU128(4),
+            },
+        );
+        a.parent_inclusion = ParentInclusion::Interval {
+            start: DecimalU64(1),
+            end: DecimalU64(2),
+        };
+        b.parent_inclusion = a.parent_inclusion.clone();
+        let summary = summarize_cohort(&c, &[a, b], &[], 0).expect("independent streams");
+        assert_eq!(summary.units[0].amount, Some(DecimalU128(7)));
+        assert_eq!(summary.units[0].coverage, Coverage::Complete);
+        let mut orphan = row(
+            "child",
+            "a",
+            "tokens",
+            ObservedAmount::Known {
+                amount: DecimalU128(2),
+            },
+        );
+        orphan.parent_inclusion = ParentInclusion::Inclusive {
+            parent_observation_id: id("absent"),
+        };
+        let summary = summarize_cohort(&c, &[orphan], &[], 0).expect("explicit unknown");
+        assert_eq!(summary.units[0].amount, None);
+        assert_eq!(summary.units[0].coverage, Coverage::Unknown);
+    }
+    #[test]
+    fn accepted_stage_needs_evidence_and_summary_binding_cannot_be_swapped() {
+        let c = cohort(vec![root("r")]);
+        let mut result = outcome("r", RootStatus::Succeeded, Some("release"), 1);
+        result.acceptance_receipt_digest = None;
+        let rows = [row(
+            "a",
+            "r",
+            "tokens",
+            ObservedAmount::Known {
+                amount: DecimalU128(1),
+            },
+        )];
+        let summary = summarize_cohort(&c, &rows, &[result], 1).expect("unconfirmed acceptance");
+        assert_eq!(summary.accepted_roots, None);
+        assert_eq!(summary.accepted_yield, None);
+        let confirmed = summarize_cohort(
+            &c,
+            &rows,
+            &[outcome("r", RootStatus::Succeeded, Some("release"), 1)],
+            1,
+        )
+        .expect("recorded receipt");
+        let mut changed = c.clone();
+        changed.cohort_id = id("other");
+        assert_eq!(
+            cohort_compare(&changed, &confirmed, &c, &confirmed, "tokens").status,
+            ComparisonStatus::InsufficientEvidence
+        );
+        let mut oversized = rows[0].clone();
+        oversized.amount = ObservedAmount::Unknown {
+            reason: "x".repeat(4096),
+        };
+        assert!(summarize_cohort(&c, &vec![oversized; MAX_RECORDS], &[], 1).is_err());
     }
     #[test]
     fn decimal_counters_roundtrip_without_precision_loss() {

@@ -1,19 +1,58 @@
 # Recovery manifest reconciliation
 
-This component validates supplied recovery metadata and produces a proposal. It does not copy or restore a database, restart a service, read keys, contact a remote system, or authorize an external effect. A complete proposal still has `restore_authorized: false` and `effects_authorized: false`; an independently qualified executor must supply that authority.
+This component checks supplied metadata and returns a pure proposal. It does
+not restore or replace a database, restart/launch a service, rotate credentials,
+change aliases, contact a remote system or authorize effects. The serialize-only
+proposal keeps private `restore_authorized` and `effects_authorized` flags false;
+getters expose that fact. A blocker-free `resume_proposed` is consistency of
+claims, not trusted recovery qualification.
+The proposal retains the exact manifest digest, snapshot watermark, proposed
+generation and external fence-receipt digest; consumers must preserve these
+pins rather than applying a proposal to a later snapshot or generation.
 
-## Supported backup requirement
+Create backups using SQLite's supported online backup API. Record the actual
+snapshot watermark, schema version, recovery generation, exact database byte
+digest and size, full immutable artifact closure and active bundle digests.
+Never infer a snapshot watermark from a later current sequence or copy only
+the live database file. Counters are canonical decimal u64 strings and preserve
+values above JavaScript precision. Keep all pins for the backup's lifetime.
 
-Create backups with SQLite's supported online backup API. The backup manifest must record the actual snapshot watermark returned by that operation, its schema version and recovery generation, the complete immutable artifact closure, and every active bundle digest. Keep those artifact pins for at least as long as the backup can be used. Never infer a watermark from the current store sequence or copy only the live database file. A decimal string preserves the exact counter even above JavaScript's safe integer limit.
+Recovery scope includes store ID, project/root/task, attempt, owner, contract
+revision/digest and backup executor incarnation. The manifest hash covers the
+complete scope, exact snapshot identity, watermark/generation, sorted artifact
+closure and sorted active bundle list. Hash helpers enforce shared streaming
+1 MiB input bounds before copying/sorting typed input. Each collection is
+limited to 1,024 records; duplicate, conflicting or malformed identities fail.
 
-Each closure record binds a SHA-256 digest, canonical decimal byte size, verified state, and a deterministic content-derived closure ID. The manifest digest binds scope, watermark, recovery generation, closure, and active bundle digests. Reordering closure records does not change that digest. A duplicate, conflicting record, changed manifest digest, missing blob, or mismatched blob is a blocker or input error.
+The observation independently repeats exact manifest/scope/snapshot/watermark
+and backup generation, records the actual current executor generation and
+incarnation, and covers the complete active bundle list. The snapshot's exact
+digest/size must exist as verified metadata in the required artifact closure;
+every active bundle must also occur in that closure and in observed bundle
+coverage. Missing/mismatched artifacts, incomplete compatibility coverage,
+unknown session custody or unresolved/unknown remote effects block a proposal.
+A `verified` metadata flag is a claim; actual blob custody remains external.
 
-## Metadata-only operator workflow
+The external fence must pin that exact manifest and scope, the observation's
+actual old generation/incarnation, and a distinct new executor incarnation.
+Its new generation must exceed both old/current and backup generations. A
+missing, unknown or false fencing assertion blocks resumption. A rolled-back
+database counter cannot establish fencing; the external receipt's provenance
+must be independently authenticated by the future executor.
 
-1. Preserve the original backup and its manifest. Gather artifact availability and exact compatibility evidence for every active bundle, without changing aliases or pins.
-2. Reconcile every node spool, session custody state, and remote mutation. Record unknown outcomes as unknown; do not translate them into clear or completed.
-3. Obtain an external recovery receipt for a fresh generation greater than both the backup generation and the prior executor generation. The receipt must establish that the old credential-bearing executor is fenced. A rolled-back database counter cannot establish this.
-4. Pass the immutable manifest, observed artifact closure, compatibility and reconciliation observations, and external fence to the pure recovery planner. Review every blocker and preserve the evidence used to resolve it.
-5. Route a blocker-free proposal to the separately qualified restore executor. Resume only after that executor validates its authority and the required compatibility and custody checks.
+Operator workflow:
 
-Unknown or false old-executor fencing, incompatible active bundles, unresolved or unknown remote mutations, and unknown session custody block a resume proposal. New-work aliases never rewrite active attempts or their pinned versions. This metadata workflow does not claim restart continuity or successful restoration.
+1. Preserve the immutable snapshot and manifest, then gather exact artifact and
+   active bundle observations without modifying aliases or pins.
+2. Reconcile node spools, sessions and remote mutations. Record unknown results
+   as unknown; never translate them to clear or completed.
+3. Obtain independently authenticated external fencing for the actual previous
+   credential-bearing executor and a fresh generation/incarnation.
+4. Review the pure planner's complete blockers and preserve the input evidence.
+5. Submit a consistent proposal to a separately qualified restore executor;
+   require its authority and custody checks before any effects or resumption.
+
+Supported backup production, signature/credential custody, authenticated fence
+receipts, actual filesystem/blob verification, snapshot restore, durable replay
+and restart continuity remain pending. Matching hashes or booleans here do not
+qualify them. These offline tests establish bounded consistency only.

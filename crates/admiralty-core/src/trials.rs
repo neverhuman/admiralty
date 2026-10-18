@@ -2,9 +2,8 @@
 //!
 //! This module never activates a bundle or changes evaluator authority. It
 //! records a fixed cohort and returns a proposal for independent review.
-use crate::{ProjectId, RootId, TaskId, content_digest};
+use crate::{PrincipalId, ProjectId, RootId, TaskId, content_digest, limits::bounded_json_size};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 
 const MAX_JSON_BYTES: usize = 1_048_576;
@@ -55,6 +54,9 @@ pub struct TrialSpec {
     pub project_id: ProjectId,
     pub scope_root_id: RootId,
     pub scope_task_id: TaskId,
+    pub contract_revision: u32,
+    pub contract_digest: String,
+    pub fixed_cohort: Vec<ClusterMember>,
     pub immutable_bundle_digests: Vec<String>,
     pub protected_oracle_digest: String,
     pub pre_registered_seed: String,
@@ -203,14 +205,23 @@ pub struct TrialEvidence {
     pub assignments: Vec<Assignment>,
     pub outcomes: Vec<Outcome>,
     pub look_count: DecimalU64,
+    pub analysis_tick: DecimalU64,
     pub independent_analysis: Option<AnalysisReceipt>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AnalysisReceipt {
     pub receipt_digest: String,
-    pub analyst: String,
+    pub analyst: PrincipalId,
     pub analyzed_evidence_digest: String,
+    pub recommendation: AnalysisRecommendation,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalysisRecommendation {
+    RecommendIndependentReview,
+    Reject,
+    InsufficientEvidence,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -269,14 +280,40 @@ fn check_text(s: &str, name: &str) -> Result<(), TrialError> {
     }
 }
 fn check_json<T: Serialize>(v: &T) -> Result<(), TrialError> {
-    let n = serde_json::to_vec(v)
-        .map_err(|e| TrialError::Invalid(e.to_string()))?
-        .len();
-    if n > MAX_JSON_BYTES {
-        Err(TrialError::TooLarge("JSON exceeds 1 MiB".into()))
-    } else {
+    bounded_json_size(v, MAX_JSON_BYTES)
+        .map(|_| ())
+        .map_err(|_| TrialError::TooLarge("invalid JSON or exceeds 1 MiB".into()))
+}
+fn check_digest(value: &str) -> Result<(), TrialError> {
+    if value.strip_prefix("sha256:").is_some_and(|hex| {
+        hex.len() == 64
+            && hex
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    }) {
         Ok(())
+    } else {
+        Err(TrialError::Invalid(
+            "full lowercase SHA-256 digest required".into(),
+        ))
     }
+}
+fn unit_id(spec: &TrialSpec, member: &ClusterMember) -> Result<String, TrialError> {
+    content_digest(&(spec, member))
+        .map(|digest| format!("trial-unit-{}", &digest[7..]))
+        .map_err(|err| TrialError::Invalid(err.to_string()))
+}
+pub fn trial_evidence_digest(e: &TrialEvidence) -> Result<String, TrialError> {
+    check_json(e)?;
+    content_digest(&(
+        &e.trial,
+        &e.assignments,
+        &e.outcomes,
+        &e.features,
+        &e.look_count,
+        &e.analysis_tick,
+    ))
+    .map_err(|err| TrialError::Invalid(err.to_string()))
 }
 
 /// Assign roots by cluster using the preregistered seed. Input order cannot
@@ -288,67 +325,80 @@ pub fn assign_trial(
     denominator: u64,
 ) -> Result<Vec<Assignment>, TrialError> {
     validate_spec(spec)?;
-    if members.len() > MAX_COHORT {
-        return Err(TrialError::TooLarge("cohort exceeds 1024".into()));
-    }
-    if denominator == 0 || numerator == 0 || numerator > denominator {
-        return Err(TrialError::Invalid(
-            "propensity must be exact and in (0,1]".into(),
+    if members.is_empty() || members.len() > MAX_COHORT {
+        return Err(TrialError::TooLarge(
+            "cohort must contain 1..1024 roots".into(),
         ));
     }
-    let clusters: BTreeMap<_, _> = spec
-        .cluster_assignments
-        .iter()
-        .map(|c| (c.cluster_id.clone(), c.variants.clone()))
-        .collect();
-    if clusters.len() != spec.cluster_assignments.len() {
-        return Err(TrialError::Collision("duplicate cluster assignment".into()));
+    check_json(&(spec, members))?;
+    let mut roots = BTreeSet::new();
+    for member in members {
+        if !roots.insert(member.root_id.clone()) {
+            return Err(TrialError::Collision("duplicate root".into()));
+        }
     }
-    let mut unique = BTreeSet::new();
+    let actual: BTreeMap<_, _> = members
+        .iter()
+        .map(|m| (&m.root_id, &m.cluster_id))
+        .collect();
+    let expected: BTreeMap<_, _> = spec
+        .fixed_cohort
+        .iter()
+        .map(|m| (&m.root_id, &m.cluster_id))
+        .collect();
+    if actual != expected {
+        return Err(TrialError::Collision(
+            "assignment members differ from preregistered fixed cohort".into(),
+        ));
+    }
+    let variants = &spec.cluster_assignments[0].variants;
+    if numerator != 1 || denominator != variants.len() as u64 {
+        return Err(TrialError::Invalid(
+            "propensity must match balanced uniform arm allocation".into(),
+        ));
+    }
+    let mut ranked = Vec::new();
+    for cluster in &spec.cluster_assignments {
+        let digest = content_digest(&(
+            &spec.pre_registered_seed,
+            &spec.project_id,
+            &spec.scope_root_id,
+            &spec.scope_task_id,
+            &spec.trial_id,
+            &cluster.cluster_id,
+        ))
+        .map_err(|err| TrialError::Invalid(err.to_string()))?;
+        ranked.push((digest, cluster.cluster_id.clone()));
+    }
+    ranked.sort();
+    let offset_digest =
+        content_digest(&(&spec.pre_registered_seed, &spec.trial_id, "balanced-offset"))
+            .map_err(|err| TrialError::Invalid(err.to_string()))?;
+    let offset = u64::from_str_radix(&offset_digest[7..23], 16)
+        .map_err(|_| TrialError::Invalid("invalid seed digest".into()))?
+        % variants.len() as u64;
+    let cluster_arms: BTreeMap<_, _> = ranked
+        .into_iter()
+        .enumerate()
+        .map(|(index, (_, cluster))| {
+            (
+                cluster,
+                variants[(index + offset as usize) % variants.len()].clone(),
+            )
+        })
+        .collect();
     let mut out = Vec::new();
     for member in members {
-        let root = &member.root_id;
-        if !unique.insert(root.clone()) {
-            return Err(TrialError::Collision(format!("duplicate root {root}")));
-        }
-        let variants = clusters.get(&member.cluster_id).ok_or_else(|| {
-            TrialError::Invalid(format!("undeclared cluster {}", member.cluster_id.as_str()))
-        })?;
-        if variants.is_empty() {
-            return Err(TrialError::Invalid("cluster has no variants".into()));
-        }
-        if numerator != 1 || denominator != variants.len() as u64 {
-            return Err(TrialError::Invalid(
-                "propensity must match the uniform preregistered variant draw".into(),
-            ));
-        }
-        let mut h = Sha256::new();
-        h.update(spec.pre_registered_seed.as_bytes());
-        h.update(member.cluster_id.as_str().as_bytes());
-        let digest = h.finalize();
-        let idx = (u64::from_be_bytes(
-            digest[..8]
-                .try_into()
-                .expect("sha256 prefix is eight bytes"),
-        ) as usize)
-            % variants.len();
-        let variant = variants[idx].clone();
-        let unit_id = format!(
-            "{}:{}:{}",
-            spec.trial_id.as_str(),
-            spec.scope_root_id.as_str(),
-            root.as_str()
-        );
-        if unit_id.len() > MAX_STR {
-            return Err(TrialError::Invalid("unit id too long".into()));
-        }
         out.push(Assignment {
-            root_id: root.clone(),
+            root_id: member.root_id.clone(),
             cluster_id: member.cluster_id.clone(),
-            variant,
+            variant: cluster_arms
+                .get(&member.cluster_id)
+                .ok_or_else(|| TrialError::Invalid("undeclared cluster".into()))?
+                .clone(),
             propensity_numerator: DecimalU64::new(numerator),
             propensity_denominator: DecimalU64::new(denominator),
-            unit_id,
+            unit_id: unit_id(spec, member)?,
         });
     }
     out.sort_by(|a, b| a.root_id.cmp(&b.root_id));
@@ -389,12 +439,13 @@ pub fn validate_trial(e: &TrialEvidence) -> Result<(), TrialError> {
         if !roots.insert(a.root_id.clone()) || !units.insert(a.unit_id.clone()) {
             return Err(TrialError::Collision("duplicate root/unit identity".into()));
         }
-        let expected = format!(
-            "{}:{}:{}",
-            e.trial.trial_id.as_str(),
-            e.trial.scope_root_id.as_str(),
-            a.root_id.as_str()
-        );
+        let expected = unit_id(
+            &e.trial,
+            &ClusterMember {
+                root_id: a.root_id.clone(),
+                cluster_id: a.cluster_id.clone(),
+            },
+        )?;
         if a.unit_id != expected {
             return Err(TrialError::Collision(
                 "unit id does not match trial scope".into(),
@@ -424,8 +475,31 @@ pub fn validate_trial(e: &TrialEvidence) -> Result<(), TrialError> {
             ));
         }
     }
+    let expected_assignments = assign_trial(
+        &e.trial,
+        &e.trial.fixed_cohort,
+        1,
+        e.trial.cluster_assignments[0].variants.len() as u64,
+    )?;
+    let mut actual_assignments = e.assignments.clone();
+    actual_assignments.sort_by(|a, b| a.root_id.cmp(&b.root_id));
+    if actual_assignments != expected_assignments {
+        return Err(TrialError::Collision(
+            "assignments differ from recorded seed/fixed cohort".into(),
+        ));
+    }
+    if e.analysis_tick.get() < e.trial.decision_tick.get() {
+        return Err(TrialError::Invalid("analysis precedes assignment".into()));
+    }
     let mut outcome_roots = BTreeSet::new();
     for o in &e.outcomes {
+        if o.observed_tick.get() <= e.trial.decision_tick.get()
+            || o.observed_tick.get() > e.analysis_tick.get()
+        {
+            return Err(TrialError::Invalid(
+                "outcome outside recorded assignment/analysis clock interval".into(),
+            ));
+        }
         if !outcome_roots.insert(o.root_id.clone()) {
             return Err(TrialError::Collision("duplicate outcome".into()));
         }
@@ -435,7 +509,7 @@ pub fn validate_trial(e: &TrialEvidence) -> Result<(), TrialError> {
     }
     let mut feature_ids = BTreeSet::new();
     for f in &e.features {
-        check_text(&f.digest, "feature digest")?;
+        check_digest(&f.digest)?;
         if !feature_ids.insert(f.feature_id.clone()) {
             return Err(TrialError::Collision("duplicate feature id".into()));
         }
@@ -457,15 +531,78 @@ pub fn validate_trial(e: &TrialEvidence) -> Result<(), TrialError> {
 }
 
 fn validate_spec(spec: &TrialSpec) -> Result<(), TrialError> {
+    check_json(spec)?;
     check_text(&spec.pre_registered_seed, "preregistered seed")?;
-    check_text(&spec.protected_oracle_digest, "protected oracle digest")?;
-    if spec.immutable_bundle_digests.is_empty() {
+    check_digest(&spec.protected_oracle_digest)?;
+    check_digest(&spec.contract_digest)?;
+    if spec.contract_revision == 0
+        || spec.fixed_cohort.is_empty()
+        || spec.fixed_cohort.len() > MAX_COHORT
+        || spec.cluster_assignments.is_empty()
+        || spec.cluster_assignments.len() > MAX_COHORT
+        || spec.planned_looks.get() == 0
+        || spec.planned_looks.get() > 16
+        || spec.required_maturity.get() == 0
+        || spec.required_maturity.get() > spec.fixed_cohort.len() as u64
+    {
+        return Err(TrialError::Invalid(
+            "invalid fixed cohort, revision or preregistered budget".into(),
+        ));
+    }
+    if spec.immutable_bundle_digests.is_empty() || spec.immutable_bundle_digests.len() > 4 {
         return Err(TrialError::Invalid(
             "at least one immutable bundle digest is required".into(),
         ));
     }
     for digest in &spec.immutable_bundle_digests {
-        check_text(digest, "bundle digest")?;
+        check_digest(digest)?;
+    }
+    if spec
+        .immutable_bundle_digests
+        .iter()
+        .collect::<BTreeSet<_>>()
+        .len()
+        != spec.immutable_bundle_digests.len()
+    {
+        return Err(TrialError::Collision("duplicate bundle".into()));
+    }
+    let common = &spec.cluster_assignments[0].variants;
+    if !(2..=4).contains(&common.len())
+        || common.iter().collect::<BTreeSet<_>>().len() != common.len()
+    {
+        return Err(TrialError::Invalid(
+            "two to four distinct common trial arms required".into(),
+        ));
+    }
+    let cluster_ids: BTreeSet<_> = spec
+        .cluster_assignments
+        .iter()
+        .map(|cluster| &cluster.cluster_id)
+        .collect();
+    if cluster_ids.len() != spec.cluster_assignments.len()
+        || spec
+            .cluster_assignments
+            .iter()
+            .any(|cluster| &cluster.variants != common)
+    {
+        return Err(TrialError::Invalid(
+            "clusters require the same preregistered arm ordering".into(),
+        ));
+    }
+    let roots: BTreeSet<_> = spec
+        .fixed_cohort
+        .iter()
+        .map(|member| &member.root_id)
+        .collect();
+    let member_clusters: BTreeSet<_> = spec
+        .fixed_cohort
+        .iter()
+        .map(|member| &member.cluster_id)
+        .collect();
+    if roots.len() != spec.fixed_cohort.len() || member_clusters != cluster_ids {
+        return Err(TrialError::Collision(
+            "fixed cohort roots/clusters are not unique and complete".into(),
+        ));
     }
     if spec.cluster_assignments.len() > MAX_COHORT {
         return Err(TrialError::TooLarge("clusters exceed 1024".into()));
@@ -509,6 +646,24 @@ pub fn propose_trial_decision(
     if e.outcomes.iter().any(|o| o.heldout_contaminated) {
         reasons.push("held-out contamination".into());
     }
+    if e.outcomes
+        .iter()
+        .any(|o| o.label == OutcomeLabel::Immature || o.analysis_value_micros.is_none())
+        || e.features
+            .iter()
+            .any(|feature| feature.extraction_cost_micros.is_none())
+    {
+        reasons.push("immature labels or unknown all-in analysis costs".into());
+    }
+    if e.assignments
+        .iter()
+        .map(|assignment| &assignment.variant)
+        .collect::<BTreeSet<_>>()
+        .len()
+        < 2
+    {
+        reasons.push("no independent control/candidate arm coverage".into());
+    }
     let maturity = e
         .outcomes
         .iter()
@@ -536,16 +691,8 @@ pub fn propose_trial_decision(
             promotion_authorized: false,
         });
     };
-    check_text(&receipt.receipt_digest, "analysis receipt digest")?;
-    check_text(&receipt.analyst, "analyst")?;
-    let digest = content_digest(&(
-        &e.trial,
-        &e.assignments,
-        &e.outcomes,
-        &e.features,
-        &e.look_count,
-    ))
-    .map_err(|err| TrialError::Invalid(err.to_string()))?;
+    check_digest(&receipt.receipt_digest)?;
+    let digest = trial_evidence_digest(e)?;
     if receipt.analyzed_evidence_digest != digest {
         return Ok(TrialDecision::InsufficientEvidence {
             reasons: vec!["analysis receipt does not bind evidence".into()],
@@ -557,6 +704,33 @@ pub fn propose_trial_decision(
             reasons,
             promotion_authorized: false,
         });
+    }
+    match receipt.recommendation {
+        AnalysisRecommendation::Reject => {
+            return Ok(TrialDecision::RejectProposal {
+                reasons: vec![
+                    "independent analysis recommends rejection; external review required".into(),
+                ],
+                promotion_authorized: false,
+            });
+        }
+        AnalysisRecommendation::InsufficientEvidence => {
+            return Ok(TrialDecision::InsufficientEvidence {
+                reasons: vec!["independent analysis reports insufficient evidence".into()],
+                promotion_authorized: false,
+            });
+        }
+        AnalysisRecommendation::RecommendIndependentReview => {}
+    }
+    if champion_bundle_digests.is_empty()
+        || champion_bundle_digests.len() > 4
+        || champion_bundle_digests.iter().any(|digest| {
+            check_digest(digest).is_err() || !e.trial.immutable_bundle_digests.contains(digest)
+        })
+    {
+        return Err(TrialError::Invalid(
+            "rollback must name a recorded immutable trial bundle".into(),
+        ));
     }
     Ok(TrialDecision::PromotableProposal {
         reasons: vec!["independent analysis supplied; external review required".into()],
@@ -577,8 +751,11 @@ mod tests {
             project_id: ProjectId::new("p").expect("valid project id"),
             scope_root_id: RootId::new("scope").expect("valid scope root"),
             scope_task_id: TaskId::new("task").expect("valid task id"),
-            immutable_bundle_digests: vec!["sha256:bundle".into()],
-            protected_oracle_digest: "sha256:oracle".into(),
+            contract_revision: 1,
+            contract_digest: format!("sha256:{}", "c".repeat(64)),
+            fixed_cohort: members(),
+            immutable_bundle_digests: vec![format!("sha256:{}", "a".repeat(64))],
+            protected_oracle_digest: format!("sha256:{}", "b".repeat(64)),
             pre_registered_seed: "seed-9".into(),
             decision_tick: DecimalU64::new(50),
             cluster_assignments: vec![
@@ -626,7 +803,7 @@ mod tests {
             .map(|a| Outcome {
                 root_id: a.root_id.clone(),
                 label: OutcomeLabel::Mature,
-                observed_tick: DecimalU64::new(49),
+                observed_tick: DecimalU64::new(55),
                 heldout_contaminated: false,
                 rework: false,
                 analysis_value_micros: Some(DecimalU64::new(1)),
@@ -640,22 +817,17 @@ mod tests {
             assignments,
             outcomes,
             look_count: DecimalU64::new(1),
+            analysis_tick: DecimalU64::new(60),
             independent_analysis: None,
         }
     }
     fn bind_receipt(e: &mut TrialEvidence) {
-        let d = content_digest(&(
-            &e.trial,
-            &e.assignments,
-            &e.outcomes,
-            &e.features,
-            &e.look_count,
-        ))
-        .expect("evidence digest");
+        let d = trial_evidence_digest(e).expect("evidence digest");
         e.independent_analysis = Some(AnalysisReceipt {
-            receipt_digest: "sha256:analysis".into(),
-            analyst: "independent-reviewer".into(),
+            receipt_digest: format!("sha256:{}", "d".repeat(64)),
+            analyst: PrincipalId::new("independent-reviewer").expect("fixture analyst"),
             analyzed_evidence_digest: d,
+            recommendation: AnalysisRecommendation::RecommendIndependentReview,
         });
     }
 
@@ -735,8 +907,8 @@ mod tests {
         e.look_count = DecimalU64::new(1);
         e.outcomes[1].label = OutcomeLabel::Mature;
         bind_receipt(&mut e);
-        let decision =
-            propose_trial_decision(&e, vec!["sha256:champion".into()]).expect("eligible proposal");
+        let decision = propose_trial_decision(&e, e.trial.immutable_bundle_digests.clone())
+            .expect("eligible proposal");
         assert!(matches!(
             decision,
             TrialDecision::PromotableProposal {
@@ -760,5 +932,83 @@ mod tests {
         let mut e = evidence();
         e.assignments[0].propensity_numerator = DecimalU64::new(0);
         assert!(validate_trial(&e).is_err());
+    }
+    #[test]
+    fn balanced_draw_and_fixed_cohort_cannot_be_reassigned_or_filtered() {
+        let mut e = evidence();
+        let arms: BTreeSet<_> = e
+            .assignments
+            .iter()
+            .map(|assignment| &assignment.variant)
+            .collect();
+        assert_eq!(arms.len(), 2, "two clusters receive balanced arms");
+        let current = e.assignments[0].variant.clone();
+        let other = e.trial.cluster_assignments[0]
+            .variants
+            .iter()
+            .find(|variant| **variant != current)
+            .expect("other arm")
+            .clone();
+        let cluster = e.assignments[0].cluster_id.clone();
+        for assignment in &mut e.assignments {
+            if assignment.cluster_id == cluster {
+                assignment.variant = other.clone();
+            }
+        }
+        assert!(
+            validate_trial(&e).is_err(),
+            "whole-cluster arm forgery must fail"
+        );
+        let mut e = evidence();
+        e.assignments.pop();
+        e.outcomes.pop();
+        assert!(
+            validate_trial(&e).is_err(),
+            "failed roots cannot be dropped"
+        );
+        let t = trial();
+        let one = assign_trial(&t, &members(), 1, 2).expect("original assignment");
+        let mut other_scope = t;
+        other_scope.project_id = ProjectId::new("foreign").expect("fixture project");
+        assert_ne!(
+            one[0].unit_id,
+            assign_trial(&other_scope, &members(), 1, 2).expect("different project proposal")[0]
+                .unit_id
+        );
+    }
+    #[test]
+    fn immature_unknown_cost_or_clock_leak_cannot_be_promotable() {
+        let mut e = evidence();
+        e.outcomes[0].label = OutcomeLabel::Immature;
+        bind_receipt(&mut e);
+        assert!(matches!(
+            propose_trial_decision(&e, vec![]).expect("insufficient"),
+            TrialDecision::InsufficientEvidence { .. }
+        ));
+        let mut e = evidence();
+        e.outcomes[0].analysis_value_micros = None;
+        bind_receipt(&mut e);
+        assert!(matches!(
+            propose_trial_decision(&e, vec![]).expect("unknown costs"),
+            TrialDecision::InsufficientEvidence { .. }
+        ));
+        let mut e = evidence();
+        e.outcomes[0].observed_tick = DecimalU64::new(49);
+        assert!(validate_trial(&e).is_err());
+        e.outcomes[0].observed_tick = DecimalU64::new(61);
+        assert!(validate_trial(&e).is_err());
+        let mut e = evidence();
+        bind_receipt(&mut e);
+        e.independent_analysis
+            .as_mut()
+            .expect("receipt")
+            .recommendation = AnalysisRecommendation::Reject;
+        assert!(matches!(
+            propose_trial_decision(&e, vec![]).expect("rejection proposal"),
+            TrialDecision::RejectProposal {
+                promotion_authorized: false,
+                ..
+            }
+        ));
     }
 }

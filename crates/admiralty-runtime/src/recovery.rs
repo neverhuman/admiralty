@@ -4,7 +4,9 @@
 //! credential holder. It reports whether supplied evidence is sufficient to
 //! propose resuming work.
 
-use admiralty_core::{ProjectId, RootId, TaskId, content_digest};
+use admiralty_core::{
+    AttemptId, PrincipalId, ProjectId, RootId, TaskId, content_digest, limits::bounded_json_size,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use thiserror::Error;
@@ -20,6 +22,12 @@ pub struct RecoveryScope {
     pub project_id: ProjectId,
     pub root_id: RootId,
     pub task_id: TaskId,
+    pub store_id: String,
+    pub attempt_id: AttemptId,
+    pub owner: PrincipalId,
+    pub revision: u32,
+    pub contract_digest: String,
+    pub executor_incarnation: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -39,6 +47,7 @@ impl TryFrom<String> for DecimalU64 {
     type Error = String;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         if value.is_empty()
+            || value.len() > 20
             || (value.len() > 1 && value.starts_with('0'))
             || !value.bytes().all(|b| b.is_ascii_digit())
         {
@@ -73,6 +82,8 @@ pub struct BackupManifest {
     pub schema_version: u32,
     /// Exact store snapshot identity captured by the supported online backup.
     pub snapshot_watermark: DecimalU64,
+    pub snapshot_digest: String,
+    pub snapshot_size: DecimalU64,
     pub recovery_generation: DecimalU64,
     pub artifact_closure: Vec<ArtifactRecord>,
     pub active_bundle_digests: Vec<String>,
@@ -82,6 +93,10 @@ pub struct BackupManifest {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct ExternalFence {
+    pub scope: RecoveryScope,
+    pub manifest_digest: String,
+    pub old_executor_incarnation: String,
+    pub new_executor_incarnation: String,
     pub old_generation: DecimalU64,
     pub new_generation: DecimalU64,
     pub external_receipt_digest: String,
@@ -114,6 +129,15 @@ pub enum SessionCustody {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct RecoveryObservation {
+    pub scope: RecoveryScope,
+    pub manifest_digest: String,
+    pub snapshot_digest: String,
+    pub snapshot_size: DecimalU64,
+    pub snapshot_watermark: DecimalU64,
+    pub backup_generation: DecimalU64,
+    pub current_generation: DecimalU64,
+    pub old_executor_incarnation: String,
+    pub observed_bundle_digests: Vec<String>,
     pub available_artifacts: Vec<ArtifactRecord>,
     pub compatibility: Compatibility,
     pub unresolved_effects: Reconciliation,
@@ -123,6 +147,10 @@ pub struct RecoveryObservation {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Blocker {
+    ObservationMismatch,
+    FenceMismatch,
+    MissingBundleClosure,
+    SnapshotMismatch,
     InvalidManifest(String),
     MissingArtifact(String),
     MismatchedArtifact(String),
@@ -136,16 +164,27 @@ pub enum Blocker {
     OldExecutorNotFenced,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct RecoveryProposal {
     pub scope: RecoveryScope,
+    pub manifest_digest: String,
+    pub snapshot_watermark: DecimalU64,
+    pub proposed_generation: Option<DecimalU64>,
+    pub fence_receipt_digest: Option<String>,
     pub blockers: Vec<Blocker>,
     pub resume_proposed: bool,
     /// Restore authority is owned by a qualified executor, never this proposal.
-    pub restore_authorized: bool,
+    restore_authorized: bool,
     /// External effects remain disabled pending executor qualification.
-    pub effects_authorized: bool,
+    effects_authorized: bool,
+}
+impl RecoveryProposal {
+    pub fn restore_authorized(&self) -> bool {
+        self.restore_authorized
+    }
+    pub fn effects_authorized(&self) -> bool {
+        self.effects_authorized
+    }
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -157,6 +196,12 @@ pub enum RecoveryError {
 }
 
 pub fn artifact_closure_id(record: &ArtifactRecord) -> Result<String, RecoveryError> {
+    serialized_size(record)?;
+    if !valid_digest(&record.digest) || record.closure_id.len() > MAX_IDENTIFIER {
+        return Err(RecoveryError::Invalid(
+            "invalid bounded artifact identity".into(),
+        ));
+    }
     #[derive(Serialize)]
     struct Content<'a> {
         digest: &'a str,
@@ -172,11 +217,19 @@ pub fn artifact_closure_id(record: &ArtifactRecord) -> Result<String, RecoveryEr
 }
 
 pub fn manifest_digest(manifest: &BackupManifest) -> Result<String, RecoveryError> {
+    serialized_size(manifest)?;
+    if manifest.artifact_closure.len() > MAX_COLLECTION
+        || manifest.active_bundle_digests.len() > MAX_COLLECTION
+    {
+        return Err(RecoveryError::InputTooLarge);
+    }
     #[derive(Serialize)]
     struct Content<'a> {
         scope: &'a RecoveryScope,
         schema_version: u32,
         snapshot_watermark: &'a DecimalU64,
+        snapshot_digest: &'a str,
+        snapshot_size: &'a DecimalU64,
         recovery_generation: &'a DecimalU64,
         artifact_closure: &'a [ArtifactRecord],
         active_bundle_digests: &'a [String],
@@ -189,6 +242,8 @@ pub fn manifest_digest(manifest: &BackupManifest) -> Result<String, RecoveryErro
         scope: &manifest.scope,
         schema_version: manifest.schema_version,
         snapshot_watermark: &manifest.snapshot_watermark,
+        snapshot_digest: &manifest.snapshot_digest,
+        snapshot_size: &manifest.snapshot_size,
         recovery_generation: &manifest.recovery_generation,
         artifact_closure: &artifacts,
         active_bundle_digests: &bundles,
@@ -197,8 +252,7 @@ pub fn manifest_digest(manifest: &BackupManifest) -> Result<String, RecoveryErro
 }
 
 fn serialized_size<T: Serialize>(value: &T) -> Result<usize, RecoveryError> {
-    let bytes = serde_json::to_vec(value).map_err(|e| RecoveryError::Invalid(e.to_string()))?;
-    Ok(bytes.len())
+    bounded_json_size(value, MAX_JSON_BYTES).map_err(|_| RecoveryError::InputTooLarge)
 }
 
 fn valid_digest(value: &str) -> bool {
@@ -273,6 +327,33 @@ pub fn plan_recovery(
         return Err(RecoveryError::InputTooLarge);
     }
     let mut blockers = Vec::new();
+    let scope = &manifest.scope;
+    if scope.revision == 0
+        || !valid_digest(&scope.contract_digest)
+        || PrincipalId::new(&scope.store_id).is_err()
+        || PrincipalId::new(&scope.executor_incarnation).is_err()
+        || PrincipalId::new(&observation.old_executor_incarnation).is_err()
+        || !valid_digest(&manifest.snapshot_digest)
+        || !valid_digest(&manifest.manifest_digest)
+        || manifest.snapshot_size.get() == 0
+    {
+        return Err(RecoveryError::Invalid(
+            "invalid scoped store/snapshot identity".into(),
+        ));
+    }
+    if observation.scope != *scope
+        || observation.manifest_digest != manifest.manifest_digest
+        || observation.snapshot_watermark != manifest.snapshot_watermark
+        || observation.backup_generation != manifest.recovery_generation
+        || observation.current_generation.get() < manifest.recovery_generation.get()
+    {
+        blockers.push(Blocker::ObservationMismatch);
+    }
+    if observation.snapshot_digest != manifest.snapshot_digest
+        || observation.snapshot_size != manifest.snapshot_size
+    {
+        blockers.push(Blocker::SnapshotMismatch);
+    }
     if manifest.schema_version != 1 {
         blockers.push(Blocker::InvalidManifest(
             "unsupported schema version".into(),
@@ -322,6 +403,33 @@ pub fn plan_recovery(
         }
     }
     let required_digests: BTreeSet<_> = required.values().map(|r| r.digest.as_str()).collect();
+    if !required.values().any(|record| {
+        record.digest == manifest.snapshot_digest
+            && record.size == manifest.snapshot_size
+            && record.verified
+    }) {
+        blockers.push(Blocker::SnapshotMismatch);
+    }
+    if manifest
+        .active_bundle_digests
+        .iter()
+        .any(|digest| !required_digests.contains(digest.as_str()))
+    {
+        blockers.push(Blocker::MissingBundleClosure);
+    }
+    if observation.observed_bundle_digests.len() > MAX_COLLECTION {
+        return Err(RecoveryError::InputTooLarge);
+    }
+    let observed_bundles: BTreeSet<_> = observation.observed_bundle_digests.iter().collect();
+    if observed_bundles.len() != observation.observed_bundle_digests.len()
+        || observation
+            .observed_bundle_digests
+            .iter()
+            .any(|digest| !valid_digest(digest))
+        || observed_bundles != manifest.active_bundle_digests.iter().collect()
+    {
+        blockers.push(Blocker::UnknownCompatibility);
+    }
     if available
         .values()
         .any(|r| !required_digests.contains(r.digest.as_str()))
@@ -346,6 +454,15 @@ pub fn plan_recovery(
     match fence {
         None => blockers.push(Blocker::MissingExternalFence),
         Some(fence) => {
+            if fence.scope != manifest.scope
+                || fence.manifest_digest != manifest.manifest_digest
+                || fence.old_generation != observation.current_generation
+                || fence.old_executor_incarnation != observation.old_executor_incarnation
+                || fence.new_executor_incarnation == fence.old_executor_incarnation
+                || PrincipalId::new(&fence.new_executor_incarnation).is_err()
+            {
+                blockers.push(Blocker::FenceMismatch);
+            }
             if !valid_digest(&fence.external_receipt_digest) {
                 return Err(RecoveryError::Invalid(
                     "invalid external receipt digest".into(),
@@ -364,6 +481,10 @@ pub fn plan_recovery(
     let resume_proposed = blockers.is_empty();
     Ok(RecoveryProposal {
         scope: manifest.scope.clone(),
+        manifest_digest: manifest.manifest_digest.clone(),
+        snapshot_watermark: manifest.snapshot_watermark.clone(),
+        proposed_generation: fence.map(|fence| fence.new_generation.clone()),
+        fence_receipt_digest: fence.map(|fence| fence.external_receipt_digest.clone()),
         blockers,
         resume_proposed,
         restore_authorized: false,
@@ -394,16 +515,24 @@ mod tests {
         ExternalFence,
         RecoveryScope,
     ) {
-        let artifacts = vec![record(digest(1), 7)];
+        let artifacts = vec![record(digest(1), 7), record(digest(2), 8)];
         let scope = RecoveryScope {
             project_id: ProjectId::new("p").expect("fixture project ID is valid"),
             root_id: RootId::new("r").expect("fixture root ID is valid"),
+            store_id: "store-one".into(),
+            attempt_id: AttemptId::new("attempt").expect("fixture attempt"),
+            owner: PrincipalId::new("owner").expect("fixture owner"),
+            revision: 1,
+            contract_digest: digest(10),
+            executor_incarnation: "backup-executor".into(),
             task_id: TaskId::new("t").expect("fixture task ID is valid"),
         };
         let mut m = BackupManifest {
             scope,
             schema_version: 1,
             snapshot_watermark: DecimalU64::new(9_007_199_254_740_993),
+            snapshot_digest: digest(1),
+            snapshot_size: DecimalU64::new(7),
             recovery_generation: DecimalU64::new(4),
             artifact_closure: artifacts.clone(),
             active_bundle_digests: vec![digest(2)],
@@ -411,12 +540,25 @@ mod tests {
         };
         m.manifest_digest = manifest_digest(&m).expect("fixture manifest hashes");
         let o = RecoveryObservation {
+            scope: m.scope.clone(),
+            manifest_digest: m.manifest_digest.clone(),
+            snapshot_digest: m.snapshot_digest.clone(),
+            snapshot_size: m.snapshot_size.clone(),
+            snapshot_watermark: m.snapshot_watermark.clone(),
+            backup_generation: m.recovery_generation.clone(),
+            current_generation: DecimalU64::new(5),
+            old_executor_incarnation: "old-executor".into(),
+            observed_bundle_digests: m.active_bundle_digests.clone(),
             available_artifacts: artifacts,
             compatibility: Compatibility::Compatible,
             unresolved_effects: Reconciliation::Clear,
             session_custody: SessionCustody::Reconciled,
         };
         let f = ExternalFence {
+            scope: m.scope.clone(),
+            manifest_digest: m.manifest_digest.clone(),
+            old_executor_incarnation: "old-executor".into(),
+            new_executor_incarnation: "new-executor".into(),
             old_generation: DecimalU64::new(5),
             new_generation: DecimalU64::new(6),
             external_receipt_digest: digest(3),
@@ -431,6 +573,10 @@ mod tests {
         let p = plan_recovery(&m, &o, Some(&f)).expect("valid fixture plans");
         assert_eq!(p.scope, s);
         assert!(p.resume_proposed);
+        assert_eq!(p.manifest_digest, m.manifest_digest);
+        assert_eq!(p.snapshot_watermark, m.snapshot_watermark);
+        assert_eq!(p.proposed_generation, Some(f.new_generation));
+        assert_eq!(p.fence_receipt_digest, Some(f.external_receipt_digest));
         assert!(!p.restore_authorized && !p.effects_authorized);
     }
     #[test]
@@ -462,10 +608,12 @@ mod tests {
     }
     #[test]
     fn input_order_is_irrelevant_but_manifest_replay_is_bound() {
-        let (mut m, mut o, f, _s) = fixture();
+        let (mut m, mut o, mut f, _s) = fixture();
         let extra = record(digest(4), 8);
         m.artifact_closure.push(extra.clone());
         m.manifest_digest = manifest_digest(&m).expect("order independent fixture hash");
+        o.manifest_digest = m.manifest_digest.clone();
+        f.manifest_digest = m.manifest_digest.clone();
         o.available_artifacts.push(extra);
         o.available_artifacts.reverse();
         assert!(
@@ -541,5 +689,95 @@ mod tests {
         assert_eq!(m.snapshot_watermark.get(), 9_007_199_254_740_993);
         assert!(!p.restore_authorized);
         assert!(!p.effects_authorized);
+    }
+    #[test]
+    fn observation_and_fence_are_bound_to_scope_snapshot_and_actual_prior_generation() {
+        let (m, o, f, _) = fixture();
+        for field in ["scope", "watermark", "snapshot", "backup-generation"] {
+            let mut changed = o.clone();
+            match field {
+                "scope" => {
+                    changed.scope.attempt_id = AttemptId::new("other").expect("fixture attempt")
+                }
+                "watermark" => changed.snapshot_watermark = DecimalU64::new(1),
+                "snapshot" => changed.snapshot_digest = digest(7),
+                _ => changed.backup_generation = DecimalU64::new(3),
+            }
+            assert!(
+                !plan_recovery(&m, &changed, Some(&f))
+                    .expect("mismatch is a blocker")
+                    .resume_proposed
+            );
+        }
+        let mut wrong = f.clone();
+        wrong.old_generation = DecimalU64::new(4);
+        assert!(
+            plan_recovery(&m, &o, Some(&wrong))
+                .expect("actual executor generation pinned")
+                .blockers
+                .contains(&Blocker::FenceMismatch)
+        );
+        wrong = f.clone();
+        wrong.new_executor_incarnation = wrong.old_executor_incarnation.clone();
+        assert!(
+            !plan_recovery(&m, &o, Some(&wrong))
+                .expect("incarnation must rotate")
+                .resume_proposed
+        );
+        wrong = f;
+        wrong.manifest_digest = digest(8);
+        assert!(
+            !plan_recovery(&m, &o, Some(&wrong))
+                .expect("fence pins backup identity")
+                .resume_proposed
+        );
+    }
+    #[test]
+    fn complete_bundle_and_snapshot_closure_is_required_even_with_compatible_claim() {
+        let (mut m, mut o, mut f, _) = fixture();
+        m.active_bundle_digests.push(digest(9));
+        m.manifest_digest = manifest_digest(&m).expect("new fixture manifest");
+        o.manifest_digest = m.manifest_digest.clone();
+        o.observed_bundle_digests = m.active_bundle_digests.clone();
+        f.manifest_digest = m.manifest_digest.clone();
+        assert!(
+            plan_recovery(&m, &o, Some(&f))
+                .expect("missing active bundle artifact")
+                .blockers
+                .contains(&Blocker::MissingBundleClosure)
+        );
+        let (m, mut o, f, _) = fixture();
+        o.observed_bundle_digests.clear();
+        assert!(
+            plan_recovery(&m, &o, Some(&f))
+                .expect("unknown compatibility coverage")
+                .blockers
+                .contains(&Blocker::UnknownCompatibility)
+        );
+        let (mut m, mut o, mut f, _) = fixture();
+        m.snapshot_size = DecimalU64::new(99);
+        m.manifest_digest = manifest_digest(&m).expect("new snapshot pin");
+        o.snapshot_size = m.snapshot_size.clone();
+        o.manifest_digest = m.manifest_digest.clone();
+        f.manifest_digest = m.manifest_digest.clone();
+        assert!(
+            plan_recovery(&m, &o, Some(&f))
+                .expect("snapshot must exist in closure")
+                .blockers
+                .contains(&Blocker::SnapshotMismatch)
+        );
+    }
+    #[test]
+    fn public_hash_helpers_bound_typed_inputs_before_copying_and_never_authorize_restore() {
+        let (mut m, o, f, _) = fixture();
+        m.scope.store_id = "x".repeat(MAX_JSON_BYTES + 1);
+        assert_eq!(manifest_digest(&m), Err(RecoveryError::InputTooLarge));
+        assert_eq!(
+            plan_recovery(&m, &o, Some(&f)),
+            Err(RecoveryError::InputTooLarge)
+        );
+        let (m, o, f, _) = fixture();
+        let proposal = plan_recovery(&m, &o, Some(&f)).expect("bounded consistency only");
+        assert!(!proposal.restore_authorized() && !proposal.effects_authorized());
     }
 }

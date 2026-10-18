@@ -8,7 +8,7 @@ clock access. It cannot quarantine or remove anything.
 
 ## Evidence and state transitions
 
-An observation carries registration status, stable device/inode identity, the
+An observation carries the exact project/root/task/asset/owner scope, registration status, stable device/inode identity, the
 registration digest and custody generation, pin revision and active pin count,
 and known/unknown preservation facts. Missing evidence stays unknown. Unknown
 registration, identity, pin state, active process state, or preservation fact
@@ -17,9 +17,13 @@ backup-held or process-held content is retained.
 
 The reducer uses an explicit generation compare-and-swap. Each command also has
 a bounded idempotency key and canonical serialized digest: replaying that exact
-key and command returns its recorded state; reusing the key with different
+key and command preserves the current projection without rewinding it; reusing the key with different
 bytes is a collision. Generation increments use checked arithmetic and the
-wire representation is a canonical decimal string.
+wire representation is a canonical decimal string. All command identities remain
+collision checked in a bounded eight-entry history; a full history refuses new
+commands rather than silently evicting identities. Legacy last-command entries
+are retained when a projection advances. Typed inputs and serialized JSON share
+a streaming 1 MiB limit; registration digests require full canonical SHA-256.
 
 The only clean path is `preview -> claimed -> quarantine_proposed ->
 delete_proposed`. Claim records the identity and pin generation. An independent

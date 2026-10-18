@@ -6,5 +6,9 @@ pub mod session;
 pub mod models;
 
 pub mod providers;
+pub mod recovery;
+pub mod reservations;
 pub mod strategies;
 pub mod workspace;
+
+pub mod audits;

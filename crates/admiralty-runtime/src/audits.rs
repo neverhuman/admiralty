@@ -2,7 +2,7 @@
 //! authenticate the auditor, invoke the quality tool, or execute reproduction checks.
 use admiralty_core::{
     CheckSpec, MessageId, PrincipalId, ProjectId, RootId, TaskId, content_digest,
-    safe_relative_path,
+    limits::bounded_json_size,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 use std::collections::{BTreeMap, BTreeSet};
@@ -10,6 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub const MAX_AUDIT_JSON_BYTES: usize = 1_048_576;
 pub const MAX_AUDIT_ITEMS: usize = 1_024;
 pub const MAX_AUDIT_STRING_BYTES: usize = 4_096;
+pub const AUDIT_POLICY_VERSION: u32 = 2;
 
 /// Precision-safe canonical decimal encoding for score counters.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -58,6 +59,8 @@ pub struct StagedAuditIdentity {
     pub policy_digest: String,
     pub oracle_digest: String,
     pub auditor: PrincipalId,
+    pub staged_content_digest: String,
+    pub custody_digest: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -101,6 +104,9 @@ pub struct CheckResult {
     /// `None` means no exit was observed; it is never treated as zero.
     pub exit_code: Option<i32>,
     pub evidence_ref: Option<String>,
+    pub executed_check: CheckSpec,
+    pub scope: AuditScope,
+    pub identity: StagedAuditIdentity,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -140,9 +146,19 @@ pub struct AuditPolicy {
     pub required_paths: Vec<String>,
     pub hard_findings: Vec<String>,
     pub required_checks: Vec<CheckSpec>,
+    pub required_affected_checks: Vec<String>,
+    pub negative_checks: Vec<NegativeAuditCheck>,
     pub minimum_score: Option<DecimalU64>,
     /// Caller supplies the persisted prior receipt projection for replay checks.
     pub prior_audit: Option<AuditReplayReceipt>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct NegativeAuditCheck {
+    pub check: CheckSpec,
+    /// The protected negative-control policy defines success, never a zero heuristic.
+    pub expected_exit_code: i32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -177,8 +193,13 @@ pub enum AuditOutcome {
     },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
+/// Action flags cannot be elevated by consumers or deserialized from worker JSON.
+/// ```compile_fail
+/// fn elevate(mut proposal: admiralty_runtime::audits::AuditProposal) {
+///     proposal.acceptance_granted = true;
+/// }
+/// ```
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct AuditProposal {
     pub audit_id: MessageId,
     pub scope: AuditScope,
@@ -187,7 +208,20 @@ pub struct AuditProposal {
     pub outcome: AuditOutcome,
     pub replayed: bool,
     /// An audit proposal is never task or candidate acceptance.
-    pub acceptance_granted: bool,
+    acceptance_granted: bool,
+    execution_granted: bool,
+    publication_granted: bool,
+}
+impl AuditProposal {
+    pub fn acceptance_granted(&self) -> bool {
+        self.acceptance_granted
+    }
+    pub fn execution_granted(&self) -> bool {
+        self.execution_granted
+    }
+    pub fn publication_granted(&self) -> bool {
+        self.publication_granted
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
@@ -200,11 +234,14 @@ fn audit_digest(
     evidence: &StagedAuditEvidence,
 ) -> Result<String, AuditError> {
     content_digest(&(
+        AUDIT_POLICY_VERSION,
         scope,
         &policy.required_identity,
         &policy.required_paths,
         &policy.hard_findings,
         &policy.required_checks,
+        &policy.required_affected_checks,
+        &policy.negative_checks,
         &policy.minimum_score,
         evidence,
     ))
@@ -213,12 +250,103 @@ fn audit_digest(
 
 fn policy_content_digest(policy: &AuditPolicy) -> Result<String, AuditError> {
     content_digest(&(
+        AUDIT_POLICY_VERSION,
         &policy.required_paths,
         &policy.hard_findings,
         &policy.required_checks,
+        &policy.required_affected_checks,
+        &policy.negative_checks,
         &policy.minimum_score,
     ))
     .map_err(|_| AuditError("cannot fingerprint bounded audit policy"))
+}
+
+/// Request admission under independently authenticated auditor/custody context.
+/// The caller must not derive these trusted arguments from the same evidence JSON.
+pub fn evaluate_staged_audit_for(
+    expected_scope: &AuditScope,
+    policy: &AuditPolicy,
+    evidence: &StagedAuditEvidence,
+    authenticated_auditor: &PrincipalId,
+    verified_custody_digest: &str,
+) -> Result<AuditProposal, AuditError> {
+    if authenticated_auditor != &policy.required_identity.auditor
+        || authenticated_auditor != &evidence.identity.auditor
+        || !digest(verified_custody_digest)
+        || verified_custody_digest != policy.required_identity.custody_digest
+    {
+        return Err(AuditError(
+            "authenticated auditor or custody context mismatch",
+        ));
+    }
+    evaluate_staged_audit(expected_scope, policy, evidence)
+}
+
+/// Bounded controller-owned collision history; no eviction and no acceptance authority.
+#[derive(Clone, Debug, Default)]
+pub struct AuditRegistry {
+    receipts: BTreeMap<MessageId, String>,
+}
+impl AuditRegistry {
+    pub fn retained_audits(&self) -> usize {
+        self.receipts.len()
+    }
+    pub fn evaluate(
+        &mut self,
+        scope: &AuditScope,
+        policy: &AuditPolicy,
+        evidence: &StagedAuditEvidence,
+    ) -> Result<AuditProposal, AuditError> {
+        let proposal = evaluate_staged_audit(scope, policy, evidence)?;
+        self.record(proposal)
+    }
+    pub fn evaluate_for(
+        &mut self,
+        scope: &AuditScope,
+        policy: &AuditPolicy,
+        evidence: &StagedAuditEvidence,
+        authenticated_auditor: &PrincipalId,
+        verified_custody_digest: &str,
+    ) -> Result<AuditProposal, AuditError> {
+        let proposal = evaluate_staged_audit_for(
+            scope,
+            policy,
+            evidence,
+            authenticated_auditor,
+            verified_custody_digest,
+        )?;
+        self.record(proposal)
+    }
+    fn record(&mut self, mut proposal: AuditProposal) -> Result<AuditProposal, AuditError> {
+        if let Some(previous) = self.receipts.get(&proposal.audit_id) {
+            if previous != &proposal.evidence_digest {
+                return Err(AuditError("retained audit ID collision"));
+            }
+            proposal.replayed = true;
+            return Ok(proposal);
+        }
+        if self.receipts.len() >= MAX_AUDIT_ITEMS {
+            return Err(AuditError("audit registry full; durable history required"));
+        }
+        self.receipts
+            .insert(proposal.audit_id.clone(), proposal.evidence_digest.clone());
+        Ok(proposal)
+    }
+}
+
+pub fn decode_evidence(bytes: &[u8]) -> Result<StagedAuditEvidence, AuditError> {
+    if bytes.len() > MAX_AUDIT_JSON_BYTES {
+        return Err(AuditError("audit JSON exceeds 1 MiB"));
+    }
+    serde_json::from_slice(bytes).map_err(|_| AuditError("invalid or unknown audit JSON fields"))
+}
+
+pub fn decode_policy(bytes: &[u8]) -> Result<AuditPolicy, AuditError> {
+    if bytes.len() > MAX_AUDIT_JSON_BYTES {
+        return Err(AuditError("audit policy JSON exceeds 1 MiB"));
+    }
+    serde_json::from_slice(bytes)
+        .map_err(|_| AuditError("invalid or unknown audit policy JSON fields"))
 }
 
 pub fn evaluate_staged_audit(
@@ -230,30 +358,32 @@ pub fn evaluate_staged_audit(
     let evidence_digest = audit_digest(expected_scope, policy, evidence)?;
     let invalidation = if evidence.identity != policy.required_identity {
         Some("base, staged tree, profile, policy, oracle or auditor identity changed")
+    } else if evidence.staged_content_digest != policy.required_identity.staged_content_digest {
+        Some("staged capsule differs from the protected expected content")
     } else if evidence.tree_source != TreeSource::StagedIndex || !evidence.index_matches_staged_tree
     {
         Some("evidence does not bind the exact materialized staged index")
     } else {
         None
     };
+    let computed = evaluate_outcome(expected_scope, policy, evidence, invalidation);
     let (outcome, replayed) = if let Some(prior) = &policy.prior_audit {
         if prior.audit_id == evidence.audit_id {
             if prior.evidence_digest == evidence_digest {
-                (prior.outcome.clone(), true)
+                if prior.outcome != computed {
+                    return Err(AuditError(
+                        "replayed audit outcome differs from recomputed evidence",
+                    ));
+                }
+                (computed, true)
             } else {
                 return Err(AuditError("audit ID reused with different evidence"));
             }
         } else {
-            (
-                evaluate_outcome(expected_scope, policy, evidence, invalidation),
-                false,
-            )
+            (computed, false)
         }
     } else {
-        (
-            evaluate_outcome(expected_scope, policy, evidence, invalidation),
-            false,
-        )
+        (computed, false)
     };
     Ok(AuditProposal {
         audit_id: evidence.audit_id.clone(),
@@ -263,6 +393,8 @@ pub fn evaluate_staged_audit(
         outcome,
         replayed,
         acceptance_granted: false,
+        execution_granted: false,
+        publication_granted: false,
     })
 }
 
@@ -319,7 +451,10 @@ fn evaluate_outcome(
         .iter()
         .map(|result| (result.check_id.as_str(), result))
         .collect();
-    let unresolved: Vec<_> = policy.required_checks.iter().filter(|check| !matches!(results.get(check.id.as_str()), Some(result) if result.outcome == CheckOutcome::Passed && result.exit_code == Some(0))).cloned().collect();
+    let unresolved: Vec<_> = policy.required_checks.iter().map(|check| (check, 0))
+        .chain(policy.negative_checks.iter().map(|negative| (&negative.check, negative.expected_exit_code)))
+        .filter(|(check, expected)| !matches!(results.get(check.id.as_str()), Some(result) if result.outcome == CheckOutcome::Passed && result.exit_code == Some(*expected)))
+        .map(|(check, _)| check.clone()).collect();
     if !unresolved.is_empty() {
         return AuditOutcome::Reproduce {
             checks: unresolved,
@@ -352,8 +487,7 @@ fn validate(
     policy: &AuditPolicy,
     evidence: &StagedAuditEvidence,
 ) -> Result<(), AuditError> {
-    let mut size = SizeLimit(MAX_AUDIT_JSON_BYTES);
-    serde_json::to_writer(&mut size, &(scope, policy, evidence))
+    bounded_json_size(&(scope, policy, evidence), MAX_AUDIT_JSON_BYTES)
         .map_err(|_| AuditError("audit input exceeds 1 MiB or cannot be serialized"))?;
     if scope.contract_digest.trim().is_empty() || !digest(&scope.contract_digest) {
         return Err(AuditError("invalid contract digest"));
@@ -369,9 +503,13 @@ fn validate(
         &policy.required_identity.profile_digest,
         &policy.required_identity.policy_digest,
         &policy.required_identity.oracle_digest,
+        &policy.required_identity.staged_content_digest,
+        &policy.required_identity.custody_digest,
         &evidence.identity.profile_digest,
         &evidence.identity.policy_digest,
         &evidence.identity.oracle_digest,
+        &evidence.identity.staged_content_digest,
+        &evidence.identity.custody_digest,
     ] {
         if !digest(value) {
             return Err(AuditError("invalid profile, policy or oracle digest"));
@@ -393,6 +531,8 @@ fn validate(
         policy.required_paths.len(),
         policy.hard_findings.len(),
         policy.required_checks.len(),
+        policy.required_affected_checks.len(),
+        policy.negative_checks.len(),
         evidence.scope_coverage.len(),
         evidence.findings.len(),
         evidence.check_results.len(),
@@ -401,6 +541,15 @@ fn validate(
         if list_len > MAX_AUDIT_ITEMS {
             return Err(AuditError("audit collection bound exceeded"));
         }
+    }
+    if policy.required_paths.is_empty()
+        || policy.required_checks.is_empty()
+        || policy.required_affected_checks.is_empty()
+        || policy.negative_checks.is_empty()
+    {
+        return Err(AuditError(
+            "audit policy requires paths, affected tests and negative controls",
+        ));
     }
     let unique = |values: Vec<&str>| values.iter().collect::<BTreeSet<_>>().len() == values.len();
     if !unique(policy.required_paths.iter().map(String::as_str).collect())
@@ -413,6 +562,20 @@ fn validate(
                 .collect(),
         )
         || !unique(evidence.scope_coverage.iter().map(String::as_str).collect())
+        || !unique(
+            policy
+                .required_affected_checks
+                .iter()
+                .map(String::as_str)
+                .collect(),
+        )
+        || !unique(
+            policy
+                .negative_checks
+                .iter()
+                .map(|negative| negative.check.id.as_str())
+                .collect(),
+        )
         || !unique(
             evidence
                 .findings
@@ -430,39 +593,62 @@ fn validate(
     {
         return Err(AuditError("duplicate path, finding or check ID"));
     }
-    let required_check_ids: BTreeSet<_> = policy
+    let positive_ids: BTreeSet<_> = policy
         .required_checks
         .iter()
         .map(|check| check.id.as_str())
         .collect();
+    if policy
+        .required_affected_checks
+        .iter()
+        .any(|id| !positive_ids.contains(id.as_str()))
+        || policy
+            .negative_checks
+            .iter()
+            .any(|negative| positive_ids.contains(negative.check.id.as_str()))
+    {
+        return Err(AuditError(
+            "affected checks must be declared and negative check IDs disjoint",
+        ));
+    }
+    let required_checks: BTreeMap<_, _> = policy
+        .required_checks
+        .iter()
+        .map(|check| (check.id.as_str(), (check, 0)))
+        .chain(policy.negative_checks.iter().map(|negative| {
+            (
+                negative.check.id.as_str(),
+                (&negative.check, negative.expected_exit_code),
+            )
+        }))
+        .collect();
     if evidence
         .check_results
         .iter()
-        .any(|result| !required_check_ids.contains(result.check_id.as_str()))
+        .any(|result| !required_checks.contains_key(result.check_id.as_str()))
     {
         return Err(AuditError("result references an undeclared check"));
     }
     if policy
         .required_paths
         .iter()
-        .any(|path| !safe_relative_path(path) || !bounded(path))
-        || policy
-            .hard_findings
-            .iter()
-            .any(|value| value.trim().is_empty() || !bounded(value))
+        .any(|path| !portable_path(path, false))
+        || policy.hard_findings.iter().any(|value| !valid_id(value))
         || evidence
             .scope_coverage
             .iter()
-            .any(|path| !safe_relative_path(path) || !bounded(path))
+            .any(|path| !portable_path(path, false))
     {
         return Err(AuditError("invalid or oversized scope path or finding ID"));
     }
     for check in &policy.required_checks {
         validate_check(check)?;
     }
+    for negative in &policy.negative_checks {
+        validate_check(&negative.check)?;
+    }
     for finding in &evidence.findings {
-        if finding.id.trim().is_empty()
-            || !bounded(&finding.id)
+        if !valid_id(&finding.id)
             || !bounded(&finding.detail)
             || finding
                 .evidence_ref
@@ -473,13 +659,19 @@ fn validate(
         }
     }
     for result in &evidence.check_results {
+        let (expected_check, expected_exit) = required_checks
+            .get(result.check_id.as_str())
+            .ok_or(AuditError("undeclared audit check result"))?;
         let coherent = match result.outcome {
-            CheckOutcome::Passed => result.exit_code == Some(0),
-            CheckOutcome::Failed => result.exit_code.is_some_and(|code| code != 0),
+            CheckOutcome::Passed => result.exit_code == Some(*expected_exit),
+            CheckOutcome::Failed => result.exit_code.is_some_and(|code| code != *expected_exit),
             CheckOutcome::Unknown => result.exit_code.is_none(),
         };
-        if result.check_id.trim().is_empty()
-            || !bounded(&result.check_id)
+        if !valid_id(&result.check_id)
+            || &result.executed_check != *expected_check
+            || result.scope != evidence.scope
+            || result.identity != evidence.identity
+            || (result.outcome != CheckOutcome::Unknown && result.evidence_ref.is_none())
             || !coherent
             || result
                 .evidence_ref
@@ -502,8 +694,7 @@ fn validate(
     Ok(())
 }
 fn validate_check(check: &CheckSpec) -> Result<(), AuditError> {
-    if check.id.trim().is_empty()
-        || !bounded(&check.id)
+    if !valid_id(&check.id)
         || check.program.trim().is_empty()
         || !bounded(&check.program)
         || check.program.contains('\0')
@@ -512,8 +703,7 @@ fn validate_check(check: &CheckSpec) -> Result<(), AuditError> {
             .args
             .iter()
             .any(|arg| !bounded(arg) || arg.contains('\0'))
-        || !safe_relative_path(&check.cwd)
-        || !bounded(&check.cwd)
+        || !portable_path(&check.cwd, true)
         || check.timeout_secs == 0
     {
         return Err(AuditError("invalid bounded reproduction check"));
@@ -524,7 +714,36 @@ fn valid_ref(value: &str) -> bool {
     bounded(value) && value.starts_with("sha256:") && digest(value)
 }
 fn bounded(value: &str) -> bool {
-    value.len() <= MAX_AUDIT_STRING_BYTES
+    value.len() <= MAX_AUDIT_STRING_BYTES && !value.chars().any(char::is_control)
+}
+fn valid_id(value: &str) -> bool {
+    value.len() <= 128 && MessageId::new(value.to_owned()).is_ok()
+}
+fn portable_path(value: &str, allow_root: bool) -> bool {
+    if value == "." {
+        return allow_root;
+    }
+    !value.is_empty()
+        && value.is_ascii()
+        && bounded(value)
+        && !value.contains(['\\', ':', '<', '>', '"', '|', '?', '*'])
+        && value.split('/').count() <= 128
+        && value.split('/').all(|part| {
+            let base = part
+                .split('.')
+                .next()
+                .unwrap_or_default()
+                .trim_end_matches(' ')
+                .to_ascii_uppercase();
+            !part.is_empty()
+                && part != "."
+                && part != ".."
+                && !part.ends_with(['.', ' '])
+                && !matches!(base.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+                && !((base.starts_with("COM") || base.starts_with("LPT"))
+                    && base.len() == 4
+                    && matches!(base.as_bytes()[3], b'1'..=b'9'))
+        })
 }
 fn digest(value: &str) -> bool {
     value.strip_prefix("sha256:").is_some_and(|hex| {
@@ -539,19 +758,6 @@ fn full_git_sha(value: &str) -> bool {
         && value
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-}
-struct SizeLimit(usize);
-impl std::io::Write for SizeLimit {
-    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-        self.0 = self
-            .0
-            .checked_sub(bytes.len())
-            .ok_or_else(|| std::io::Error::other("audit input size limit"))?;
-        Ok(bytes.len())
-    }
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -582,6 +788,8 @@ mod tests {
             policy_digest: d('c'),
             oracle_digest: d('d'),
             auditor: pid("auditor"),
+            staged_content_digest: d('e'),
+            custody_digest: d('f'),
         }
     }
     fn check() -> CheckSpec {
@@ -599,6 +807,15 @@ mod tests {
             required_paths: vec!["src/lib.rs".into()],
             hard_findings: vec!["secret".into()],
             required_checks: vec![check()],
+            required_affected_checks: vec!["unit".into()],
+            negative_checks: vec![NegativeAuditCheck {
+                check: CheckSpec {
+                    id: "negative".into(),
+                    args: vec!["test".into(), "--negative".into()],
+                    ..check()
+                },
+                expected_exit_code: 1,
+            }],
             minimum_score: Some(DecimalU64::new(80)),
             prior_audit: None,
         };
@@ -620,12 +837,26 @@ mod tests {
             index_matches_staged_tree: true,
             score: Some(DecimalU64::new(90)),
             findings: vec![],
-            check_results: vec![CheckResult {
-                check_id: "unit".into(),
-                outcome: CheckOutcome::Passed,
-                exit_code: Some(0),
-                evidence_ref: Some(d('e')),
-            }],
+            check_results: vec![
+                CheckResult {
+                    check_id: "unit".into(),
+                    outcome: CheckOutcome::Passed,
+                    exit_code: Some(0),
+                    evidence_ref: Some(d('e')),
+                    executed_check: check(),
+                    scope: scope(),
+                    identity: policy().required_identity,
+                },
+                CheckResult {
+                    check_id: "negative".into(),
+                    outcome: CheckOutcome::Passed,
+                    exit_code: Some(1),
+                    evidence_ref: Some(d('e')),
+                    executed_check: policy().negative_checks[0].check.clone(),
+                    scope: scope(),
+                    identity: policy().required_identity,
+                },
+            ],
             evidence_refs: vec![d('e')],
         }
     }
@@ -639,6 +870,9 @@ mod tests {
         assert!(!result.acceptance_granted);
         let mut wrong_scope = evidence();
         wrong_scope.scope.project_id = ProjectId::new("foreign").expect("fixture project");
+        for result in &mut wrong_scope.check_results {
+            result.scope = wrong_scope.scope.clone();
+        }
         assert!(matches!(
             evaluate(&policy(), &wrong_scope)
                 .expect("scope mismatch")
@@ -657,6 +891,9 @@ mod tests {
                 3 => e.identity.policy_digest = d('f'),
                 4 => e.identity.oracle_digest = d('f'),
                 _ => e.identity.auditor = pid("other"),
+            }
+            for result in &mut e.check_results {
+                result.identity = e.identity.clone();
             }
             assert!(matches!(
                 evaluate(&policy(), &e).expect("identity result").outcome,
@@ -721,6 +958,9 @@ mod tests {
         lowered.required_identity.policy_digest =
             policy_content_digest(&lowered).expect("lowered policy digest");
         e.identity.policy_digest = lowered.required_identity.policy_digest.clone();
+        for result in &mut e.check_results {
+            result.identity = e.identity.clone();
+        }
         assert!(matches!(
             evaluate(&lowered, &e).expect("hard finding").outcome,
             AuditOutcome::HardFindings { .. }
@@ -794,5 +1034,236 @@ mod tests {
         let mut p = policy();
         p.required_paths = vec!["../escape".into()];
         assert!(evaluate(&p, &evidence()).is_err());
+    }
+
+    fn bind_policy(policy: &mut AuditPolicy, evidence: &mut StagedAuditEvidence) {
+        policy.required_identity.policy_digest =
+            policy_content_digest(policy).expect("policy digest");
+        evidence.identity = policy.required_identity.clone();
+        for result in &mut evidence.check_results {
+            result.identity = evidence.identity.clone();
+        }
+    }
+
+    #[test]
+    fn scope_capsule_custody_and_authenticated_auditor_cannot_be_substituted() {
+        let p = policy();
+        let e = evidence();
+        assert!(evaluate_staged_audit_for(&scope(), &p, &e, &pid("stranger"), &d('f')).is_err());
+        assert!(evaluate_staged_audit_for(&scope(), &p, &e, &pid("auditor"), &d('a')).is_err());
+        let admitted = evaluate_staged_audit_for(&scope(), &p, &e, &pid("auditor"), &d('f'))
+            .expect("independently bound caller context");
+        assert!(
+            !admitted.acceptance_granted()
+                && !admitted.execution_granted()
+                && !admitted.publication_granted()
+        );
+        for change in ["root", "task", "contract", "capsule", "custody"] {
+            let mut changed = e.clone();
+            match change {
+                "root" => changed.scope.root_id = RootId::new("foreign").expect("root"),
+                "task" => changed.scope.task_id = TaskId::new("foreign").expect("task"),
+                "contract" => changed.scope.contract_digest = d('b'),
+                "capsule" => changed.staged_content_digest = d('b'),
+                _ => changed.identity.custody_digest = d('b'),
+            }
+            for result in &mut changed.check_results {
+                result.scope = changed.scope.clone();
+                result.identity = changed.identity.clone();
+            }
+            assert!(
+                matches!(
+                    evaluate(&p, &changed)
+                        .expect("substitution invalidation")
+                        .outcome,
+                    AuditOutcome::Invalidated { .. }
+                ),
+                "accepted {change}"
+            );
+        }
+        let serialized = serde_json::to_value(&admitted).expect("proposal JSON");
+        for flag in [
+            "acceptance_granted",
+            "execution_granted",
+            "publication_granted",
+        ] {
+            assert_eq!(serialized[flag], false);
+        }
+    }
+
+    #[test]
+    fn exact_check_argv_scope_identity_and_output_are_required() {
+        for change in [
+            "argv", "cwd", "timeout", "scope", "tree", "oracle", "custody", "output",
+        ] {
+            let mut e = evidence();
+            let result = &mut e.check_results[0];
+            match change {
+                "argv" => result.executed_check.args.push("--different".into()),
+                "cwd" => result.executed_check.cwd = "different".into(),
+                "timeout" => result.executed_check.timeout_secs += 1,
+                "scope" => result.scope.task_id = TaskId::new("foreign").expect("task"),
+                "tree" => result.identity.staged_tree_sha = "3".repeat(40),
+                "oracle" => result.identity.oracle_digest = d('b'),
+                "custody" => result.identity.custody_digest = d('b'),
+                _ => result.evidence_ref = None,
+            }
+            assert!(evaluate(&policy(), &e).is_err(), "accepted {change}");
+        }
+        let mut missing = evidence();
+        missing.check_results.remove(1);
+        assert!(
+            matches!(evaluate(&policy(), &missing).expect("missing negative control").outcome,
+            AuditOutcome::Reproduce { checks, .. } if checks.len() == 1 && checks[0].id == "negative")
+        );
+    }
+
+    #[test]
+    fn affected_and_negative_checks_are_mandatory_and_expected_exit_is_protected() {
+        for change in [
+            "empty_positive",
+            "empty_affected",
+            "undeclared_affected",
+            "empty_negative",
+            "overlap",
+        ] {
+            let mut p = policy();
+            let mut e = evidence();
+            match change {
+                "empty_positive" => p.required_checks.clear(),
+                "empty_affected" => p.required_affected_checks.clear(),
+                "undeclared_affected" => p.required_affected_checks = vec!["not-declared".into()],
+                "empty_negative" => p.negative_checks.clear(),
+                _ => p.negative_checks[0].check.id = p.required_checks[0].id.clone(),
+            }
+            bind_policy(&mut p, &mut e);
+            assert!(evaluate(&p, &e).is_err(), "accepted {change}");
+        }
+        let mut e = evidence();
+        e.check_results[1].exit_code = Some(0);
+        assert!(evaluate(&policy(), &e).is_err());
+        e.check_results[1].outcome = CheckOutcome::Failed;
+        assert!(matches!(
+            evaluate(&policy(), &e)
+                .expect("zero is failed negative evidence")
+                .outcome,
+            AuditOutcome::Reproduce { .. }
+        ));
+        e = evidence();
+        assert!(matches!(
+            evaluate(&policy(), &e)
+                .expect("expected negative exit one")
+                .outcome,
+            AuditOutcome::PassProposal { .. }
+        ));
+        let mut p = policy();
+        p.negative_checks[0].expected_exit_code = 0;
+        assert!(evaluate(&p, &e).is_err());
+    }
+
+    #[test]
+    fn forged_prior_pass_and_intervening_id_collisions_do_not_erase_failure() {
+        let mut e = evidence();
+        e.check_results[0].outcome = CheckOutcome::Unknown;
+        e.check_results[0].exit_code = None;
+        let mut p = policy();
+        p.prior_audit = Some(AuditReplayReceipt {
+            audit_id: e.audit_id.clone(),
+            evidence_digest: audit_digest(&scope(), &p, &e).expect("evidence digest"),
+            outcome: AuditOutcome::PassProposal {
+                score: e.score.clone(),
+            },
+        });
+        assert!(evaluate(&p, &e).is_err());
+        let mut registry = AuditRegistry::default();
+        let original = evidence();
+        let first = registry
+            .evaluate_for(&scope(), &policy(), &original, &pid("auditor"), &d('f'))
+            .expect("first audit");
+        let mut next = original.clone();
+        next.audit_id = mid("audit-2");
+        registry
+            .evaluate(&scope(), &policy(), &next)
+            .expect("intervening audit");
+        let mut changed = original.clone();
+        changed.score = Some(DecimalU64::new(92));
+        assert!(registry.evaluate(&scope(), &policy(), &changed).is_err());
+        assert_eq!(registry.retained_audits(), 2);
+        assert!(
+            registry
+                .evaluate(&scope(), &policy(), &original)
+                .expect("old exact replay")
+                .replayed
+        );
+        for index in 2..MAX_AUDIT_ITEMS {
+            registry
+                .receipts
+                .insert(mid(&format!("retained-{index}")), d('a'));
+        }
+        assert_eq!(registry.retained_audits(), MAX_AUDIT_ITEMS);
+        next.audit_id = mid("new-over-bound");
+        assert!(registry.evaluate(&scope(), &policy(), &next).is_err());
+        assert_eq!(registry.retained_audits(), MAX_AUDIT_ITEMS);
+        assert_eq!(
+            registry
+                .evaluate(&scope(), &policy(), &original)
+                .expect("retained replay at bound")
+                .evidence_digest,
+            first.evidence_digest
+        );
+    }
+
+    #[test]
+    fn parsing_typed_bounds_and_portable_paths_fail_closed_without_echoing_source() {
+        assert_eq!(
+            decode_evidence(&serde_json::to_vec(&evidence()).expect("JSON"))
+                .expect("strict evidence"),
+            evidence()
+        );
+        assert_eq!(
+            decode_policy(&serde_json::to_vec(&policy()).expect("JSON")).expect("strict policy"),
+            policy()
+        );
+        let mut extra = serde_json::to_value(evidence()).expect("value");
+        extra["acceptance_granted"] = true.into();
+        assert!(decode_evidence(&serde_json::to_vec(&extra).expect("JSON")).is_err());
+        let duplicate = serde_json::to_string(&evidence()).expect("JSON").replacen(
+            "{",
+            "{\"audit_id\":\"injected\",",
+            1,
+        );
+        assert!(decode_evidence(duplicate.as_bytes()).is_err());
+        let error = decode_evidence(br#"{"secret-candidate-key":"do-not-echo"}"#)
+            .expect_err("malformed input");
+        assert!(!error.to_string().contains("do-not-echo"));
+        assert!(decode_policy(&vec![b' '; MAX_AUDIT_JSON_BYTES + 1]).is_err());
+        let mut huge = evidence();
+        huge.findings = vec![AuditFinding {
+            id: "large".into(),
+            severity: FindingSeverity::Info,
+            detail: "x".repeat(MAX_AUDIT_JSON_BYTES),
+            evidence_ref: None,
+        }];
+        assert!(evaluate(&policy(), &huge).is_err());
+        for path in [
+            ".",
+            "./src/lib.rs",
+            "src//lib.rs",
+            "src/../lib.rs",
+            "C:src/lib.rs",
+            "src/NUL.txt",
+            "src/name.",
+            "src/é.rs",
+        ] {
+            let mut p = policy();
+            let mut e = evidence();
+            p.required_paths = vec![path.into()];
+            bind_policy(&mut p, &mut e);
+            assert_eq!(
+                evaluate(&p, &e),
+                Err(AuditError("invalid or oversized scope path or finding ID")),
+                "accepted {path:?}"
+            );
+        }
     }
 }

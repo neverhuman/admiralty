@@ -30,8 +30,18 @@ pub fn content_digest<T: serde::Serialize>(value: &T) -> Result<String, serde_js
     Ok(format!("sha256:{:x}", writer.0.finalize()))
 }
 pub mod config;
+pub mod conflicts;
 pub mod coordination;
+pub mod economics;
+pub mod excursions;
 pub mod governor;
+pub mod interfaces;
+pub mod limits;
+pub mod nodes;
+pub mod placement;
+pub mod publication;
+pub mod retirement;
 pub mod scheduler;
+pub mod trials;
 pub mod verification;
 pub mod workplans;

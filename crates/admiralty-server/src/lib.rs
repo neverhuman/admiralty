@@ -363,6 +363,18 @@ fn model_config(
         .clone()
         .ok_or_else(|| error(StatusCode::NOT_FOUND, "model registry is not configured"))
 }
+// Run before JSON extraction: unavailable/demo endpoints and private auth must
+// not depend on whether an untrusted caller supplied a valid request body.
+async fn model_access_gate(
+    State(state): State<AppState>,
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Response {
+    match model_config(&state, request.headers()) {
+        Ok(_) => next.run(request).await,
+        Err(error) => error.into_response(),
+    }
+}
 async fn model_list(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -536,12 +548,18 @@ pub fn app(
         streams: Arc::new(Semaphore::new(MAX_EVENT_STREAMS)),
         models,
     };
+    let model_routes = Router::new()
+        .route("/v1/models", get(model_list).put(model_update))
+        .route("/v1/models/select", axum::routing::post(model_select))
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            model_access_gate,
+        ));
     Ok(Router::new()
+        .merge(model_routes)
         .route("/healthz", get(health))
         .route("/v1/fleet", get(fleet))
         .route("/v1/legacy", get(legacy_snapshot))
-        .route("/v1/models", get(model_list).put(model_update))
-        .route("/v1/models/select", axum::routing::post(model_select))
         .route("/legacy/", get(legacy_index))
         .route("/legacy/index.html", get(legacy_index))
         .route("/legacy/status.json", get(legacy_snapshot))

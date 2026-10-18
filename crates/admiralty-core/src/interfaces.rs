@@ -1,6 +1,6 @@
 //! Pure, bounded interface compatibility evidence. Callers authenticate grants,
 //! durably append events and persist invalidation proposals atomically.
-use crate::{PrincipalId, ProjectId, RootId, TaskId, content_digest};
+use crate::{PrincipalId, ProjectId, RootId, TaskId, content_digest, limits::bounded_json_size};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -8,6 +8,7 @@ pub const MAX_INTERFACE_EVENT_BYTES: usize = 1_048_576;
 pub const MAX_INTERFACE_CONSUMERS: usize = 1_024;
 pub const MAX_INTERFACE_EVENTS: usize = 1_024;
 pub const MAX_INTERFACE_STRING_BYTES: usize = 4_096;
+pub const MAX_INTERFACE_STATE_BYTES: usize = 8 * 1_048_576;
 
 /// Canonical decimal string encoding for revisions that may exceed JS precision.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -137,7 +138,7 @@ pub enum InterfaceEvent {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub enum CompatibilityEvidence {
     ProvisionalAck {
         artifact_digest: String,
@@ -149,7 +150,7 @@ pub enum CompatibilityEvidence {
         reason: String,
     },
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct InterfaceState {
     pub contract: InterfaceContract,
     pub authority_owner: PrincipalId,
@@ -185,11 +186,69 @@ pub struct InterfaceReduction {
 #[error("{0}")]
 pub struct InterfaceError(pub &'static str);
 
+pub fn decode_event(bytes: &[u8]) -> Result<InterfaceEvent, InterfaceError> {
+    if bytes.len() > MAX_INTERFACE_EVENT_BYTES {
+        return Err(InterfaceError("interface JSON exceeds 1 MiB"));
+    }
+    let event = serde_json::from_slice(bytes)
+        .map_err(|_| InterfaceError("invalid or unknown interface JSON fields"))?;
+    validate_event(&event)?;
+    Ok(event)
+}
+
+/// Bind to caller-authenticated context, never to authority fields decoded from
+/// the same worker request. The lower-level reducer remains replay-only policy.
+pub fn reduce_interface_for(
+    current: &Option<InterfaceState>,
+    event: &InterfaceEvent,
+    expected_scope: &InterfaceScope,
+    authenticated_actor: &PrincipalId,
+    authority_owner: &PrincipalId,
+) -> Result<InterfaceReduction, InterfaceError> {
+    let (scope, actor) = match event {
+        InterfaceEvent::Publish {
+            contract,
+            actor,
+            authority_owner: recorded_owner,
+            ..
+        } => {
+            if recorded_owner != authority_owner {
+                return Err(InterfaceError("authenticated authority owner mismatch"));
+            }
+            (&contract.scope, actor)
+        }
+        InterfaceEvent::Acknowledge { scope, actor, .. }
+        | InterfaceEvent::Reject { scope, actor, .. } => (scope, actor),
+    };
+    if scope != expected_scope
+        || actor != authenticated_actor
+        || current
+            .as_ref()
+            .is_some_and(|state| &state.authority_owner != authority_owner)
+    {
+        return Err(InterfaceError(
+            "authenticated actor or exact interface scope mismatch",
+        ));
+    }
+    reduce_interface(current, event)
+}
+
 pub fn reduce_interface(
     current: &Option<InterfaceState>,
     event: &InterfaceEvent,
 ) -> Result<InterfaceReduction, InterfaceError> {
     validate_event(event)?;
+    if let Some(state) = current {
+        if state.contract.consumers.len() > MAX_INTERFACE_CONSUMERS
+            || state.recipient_epochs.len() > MAX_INTERFACE_CONSUMERS
+            || state.evidence.len() > MAX_INTERFACE_CONSUMERS
+            || state.applied_events.len() > MAX_INTERFACE_EVENTS
+        {
+            return Err(InterfaceError("interface state collection bound exceeded"));
+        }
+        bounded_json_size(state, MAX_INTERFACE_STATE_BYTES)
+            .map_err(|_| InterfaceError("interface state exceeds byte bound"))?;
+    }
     let digest =
         content_digest(event).map_err(|_| InterfaceError("cannot fingerprint interface event"))?;
     let id = event_id(event);
@@ -395,11 +454,10 @@ fn valid_digest(value: &str) -> bool {
         .is_some_and(|hex| hex.len() == 64 && hex.bytes().all(|b| b.is_ascii_hexdigit()))
 }
 fn bounded(value: &str) -> bool {
-    value.len() <= MAX_INTERFACE_STRING_BYTES
+    value.len() <= MAX_INTERFACE_STRING_BYTES && !value.chars().any(char::is_control)
 }
 fn validate_event(event: &InterfaceEvent) -> Result<(), InterfaceError> {
-    let mut counter = EventSize(MAX_INTERFACE_EVENT_BYTES);
-    serde_json::to_writer(&mut counter, event)
+    bounded_json_size(event, MAX_INTERFACE_EVENT_BYTES)
         .map_err(|_| InterfaceError("oversized interface event or serialization failure"))?;
     match event {
         InterfaceEvent::Publish {
@@ -495,19 +553,6 @@ fn validate_evidence(
         return Err(InterfaceError("invalid artifact or schema digest"));
     }
     Ok(())
-}
-struct EventSize(usize);
-impl std::io::Write for EventSize {
-    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-        self.0 = self
-            .0
-            .checked_sub(bytes.len())
-            .ok_or_else(|| std::io::Error::other("event size limit"))?;
-        Ok(bytes.len())
-    }
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -709,5 +754,120 @@ mod tests {
         assert!(serde_json::from_str::<DecimalU64>("\"01\"").is_err());
         let unknown = r#"{"kind":"publish","extra":true}"#;
         assert!(serde_json::from_str::<InterfaceEvent>(unknown).is_err());
+    }
+
+    #[test]
+    fn authenticated_context_cannot_be_substituted_by_worker_scope_or_actor_fields() {
+        let published = reduce_interface_for(
+            &None,
+            &publish(),
+            &scope(),
+            &principal("producer"),
+            &principal("owner"),
+        )
+        .expect("authenticated publish");
+        let before = published.state.clone();
+        assert!(
+            reduce_interface_for(
+                &Some(before.clone()),
+                &ack("a", "consumer-a"),
+                &scope(),
+                &principal("consumer-b"),
+                &principal("owner")
+            )
+            .is_err()
+        );
+        for field in ["project", "root", "task", "authority"] {
+            let mut foreign = scope();
+            match field {
+                "project" => foreign.project_id = ProjectId::new("foreign").expect("project"),
+                "root" => foreign.root_id = RootId::new("foreign").expect("root"),
+                "task" => foreign.task_id = TaskId::new("foreign").expect("task"),
+                _ => foreign.authority_ref = "foreign".into(),
+            }
+            assert!(
+                reduce_interface_for(
+                    &Some(before.clone()),
+                    &ack("a", "consumer-a"),
+                    &foreign,
+                    &principal("consumer-a"),
+                    &principal("owner")
+                )
+                .is_err()
+            );
+        }
+        assert!(
+            reduce_interface_for(
+                &Some(before.clone()),
+                &ack("a", "consumer-a"),
+                &scope(),
+                &principal("consumer-a"),
+                &principal("foreign-owner")
+            )
+            .is_err()
+        );
+        let after = reduce_interface_for(
+            &Some(before.clone()),
+            &ack("a", "consumer-a"),
+            &scope(),
+            &principal("consumer-a"),
+            &principal("owner"),
+        )
+        .expect("exact peer grant");
+        assert_eq!(published.state, before);
+        assert!(matches!(
+            after.state.evidence[&principal("consumer-a")],
+            CompatibilityEvidence::ProvisionalAck { .. }
+        ));
+    }
+
+    #[test]
+    fn strict_parser_and_typed_bounds_reject_control_context_and_oversized_events() {
+        let bytes = serde_json::to_vec(&publish()).expect("JSON");
+        assert_eq!(decode_event(&bytes).expect("bounded event"), publish());
+        let duplicate =
+            String::from_utf8(bytes)
+                .expect("UTF8")
+                .replacen("{", "{\"kind\":\"publish\",", 1);
+        assert!(decode_event(duplicate.as_bytes()).is_err());
+        assert!(decode_event(&vec![b' '; MAX_INTERFACE_EVENT_BYTES + 1]).is_err());
+        let mut oversized = publish();
+        if let InterfaceEvent::Publish { contract, .. } = &mut oversized {
+            contract.scope.authority_ref = "x".repeat(MAX_INTERFACE_EVENT_BYTES);
+        }
+        assert!(reduce_interface(&None, &oversized).is_err());
+        let mut control = publish();
+        if let InterfaceEvent::Publish {
+            recipient_epochs, ..
+        } = &mut control
+        {
+            recipient_epochs[0].epoch = "epoch\nforged".into();
+        }
+        assert!(reduce_interface(&None, &control).is_err());
+    }
+
+    #[test]
+    fn checked_state_revision_overflow_and_event_capacity_do_not_mutate_evidence() {
+        let mut state = reduce_interface(&None, &publish()).expect("publish").state;
+        state.revision = DecimalU64::new(u64::MAX);
+        let mut event = ack("overflow", "consumer-a");
+        if let InterfaceEvent::Acknowledge {
+            expected_state_revision,
+            ..
+        } = &mut event
+        {
+            *expected_state_revision = state.revision.clone();
+        }
+        let before = state.clone();
+        assert!(reduce_interface(&Some(state.clone()), &event).is_err());
+        assert_eq!(state, before);
+        state.revision = DecimalU64::new(1);
+        for index in 1..MAX_INTERFACE_EVENTS {
+            state
+                .applied_events
+                .insert(id(&format!("event-{index}")), digest('a'));
+        }
+        assert_eq!(state.applied_events.len(), MAX_INTERFACE_EVENTS);
+        assert!(reduce_interface(&Some(state), &ack("new", "consumer-a")).is_err());
     }
 }

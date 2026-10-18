@@ -1,0 +1,51 @@
+{
+  "packet": "P02",
+  "state": "partial_review",
+  "head_sha": "03772f946706ad9835f7c711d1de78a6af021e3d",
+  "observed_utc": "2026-10-18T11:22:37.556279+00:00",
+  "changed_paths": [
+    "crates/admiralty-core/src/config.rs"
+  ],
+  "validation": [
+    {
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "passed_checks": 223,
+      "includes_compile_fail_doctest": true
+    }
+  ],
+  "packet_accepted": false,
+  "native_execution_qualified": false,
+  "limitations": [
+    "Pure configuration resolution; daemon and private runtime policies are not loaded from this component yet."
+  ],
+  "next_action": "Connect authoritative runtime services and finish parent qualification gates."
+}
