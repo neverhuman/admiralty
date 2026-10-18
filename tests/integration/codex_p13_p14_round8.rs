@@ -12,6 +12,7 @@ use std::{net::SocketAddr, path::PathBuf};
 use tower::ServiceExt;
 
 const COCKPIT: &str = include_str!("../../apps/dashboard/src/ui/App.tsx");
+const TASK_INSPECTION: &str = include_str!("../../apps/dashboard/src/ui/NativeTasks.tsx");
 
 #[tokio::test]
 async fn p13_p14_round8_tui_cockpit_receipt_qualification() {
@@ -90,14 +91,22 @@ async fn p13_p14_round8_tui_cockpit_receipt_qualification() {
 
     for cockpit_contract in [
         "Fleet summary",
-        "Task stage table",
-        "Candidate",
         "native_execution_qualified",
         "Unknown is distinct from zero",
     ] {
         assert!(
             COCKPIT.contains(cockpit_contract),
             "cockpit contract: {cockpit_contract}"
+        );
+    }
+    assert!(
+        COCKPIT.contains("<NativeTasks"),
+        "task inspection is mounted in the cockpit"
+    );
+    for task_contract in ["Task stage table", "Candidate reference", "/v2/fleet"] {
+        assert!(
+            TASK_INSPECTION.contains(task_contract),
+            "task inspection contract: {task_contract}"
         );
     }
 }
