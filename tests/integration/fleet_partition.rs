@@ -131,3 +131,37 @@ fn disconnected_node_can_only_propose_its_existing_permitted_continuation() {
     let proposal = propose_placement(&request, &[node], &policy(), 10).expect("safe rejection");
     assert!(proposal.candidates.is_empty());
 }
+
+#[test]
+fn disconnected_continuation_with_spool_below_reserve_is_rejected() {
+    let request = request();
+    let mut node = offer();
+    node.controller_connected = false;
+    node.existing_active_roots = vec![ActiveRoot {
+        root: request.root.clone(),
+        ordinary: true,
+    }];
+    node.spool_free.value = Known::Known { value: d(1) };
+    node.continuation_permit = Some(IsolatedPermit {
+        permit_id: "permit-low-spool".into(),
+        root: request.root.clone(),
+        project: request.project.clone(),
+        task: request.task.clone(),
+        node_id: node.node_id.clone(),
+        authority_ref: request.authority_ref.clone(),
+        expires_at: d(20),
+        immutable_digest: request.contract_digest.clone(),
+        authority_generation: d(1),
+        reboot_id: node.boot_id.clone(),
+        remaining_budget: d(5),
+        spool_reserve: d(3),
+        minimum_spool_reserve: d(2),
+    });
+
+    let proposal = propose_placement(&request, &[node], &policy(), 10).expect("safe rejection");
+    assert!(proposal.candidates.is_empty());
+    assert!(!proposal.execution_granted);
+    assert!(!proposal.publication_granted);
+    assert!(!proposal.authority_granted);
+    assert!(proposal.rejected[0].reason.contains("spool"));
+}

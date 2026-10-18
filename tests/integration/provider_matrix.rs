@@ -469,3 +469,12 @@ fn shared_line_stream_and_event_caps_apply_to_both_providers() {
         Err(grok::GrokError::Stream(ObservationError::Bounds))
     ));
 }
+
+#[test]
+fn generic_process_rejects_an_oversized_argument_without_launching() {
+    let oversized_arg = "x".repeat(process::MAX_ARG_BYTES + 1);
+    let mut spec = envelope("/usr/bin/tool");
+    spec.args = vec![oversized_arg];
+    let rejected = process::Launch::new(spec);
+    assert!(rejected.is_err());
+}

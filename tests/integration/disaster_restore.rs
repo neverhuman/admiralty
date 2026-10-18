@@ -246,3 +246,15 @@ fn offline_nonzero_child_exit_preserves_its_diagnostic_and_status() {
     assert_eq!(output.status.code(), Some(7));
     assert_eq!(output.stderr, b"retained failure marker\n");
 }
+
+#[test]
+fn restore_without_external_fence_cannot_propose_resume_or_authorize_effects() {
+    let (manifest, observation, _fence) = recovery_fixture::valid_recovery_evidence();
+    let proposal = admiralty_runtime::recovery::plan_recovery(&manifest, &observation, None)
+        .expect("missing fencing evidence remains a blocked proposal");
+
+    assert!(proposal.blockers.contains(&Blocker::MissingExternalFence));
+    assert!(!proposal.resume_proposed);
+    assert!(!proposal.restore_authorized());
+    assert!(!proposal.effects_authorized());
+}

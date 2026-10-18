@@ -64,3 +64,19 @@ fn incompatible_active_bundle_blocks_upgrade_continuity() {
     assert!(!proposal.restore_authorized());
     assert!(!proposal.effects_authorized());
 }
+
+#[test]
+fn tampered_backup_manifest_digest_blocks_upgrade_continuity() {
+    let (mut manifest, observation, fence) = recovery_fixture::valid_recovery_evidence();
+    manifest.snapshot_watermark = admiralty_runtime::recovery::DecimalU64::new(10);
+
+    let proposal = plan_recovery(&manifest, &observation, Some(&fence))
+        .expect("tampered backup evidence is returned as a blocked proposal");
+    assert!(proposal.blockers.iter().any(|blocker| matches!(
+        blocker,
+        admiralty_runtime::recovery::Blocker::InvalidManifest(_)
+    )));
+    assert!(!proposal.resume_proposed);
+    assert!(!proposal.restore_authorized());
+    assert!(!proposal.effects_authorized());
+}

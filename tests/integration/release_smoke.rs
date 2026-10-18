@@ -32,6 +32,10 @@ fn p31_release_session_rejects_unbounded_or_relative_launch_envelopes() {
     relative_program.program = PathBuf::from("true");
     assert!(validate_launch_envelope(&relative_program).is_err());
 
+    let mut traversing_run_id = valid.clone();
+    traversing_run_id.run_id = "../escape".into();
+    assert!(validate_launch_envelope(&traversing_run_id).is_err());
+
     let mut oversized_args = valid;
     oversized_args.args = vec!["x".repeat(64 * 1024 + 1)];
     assert!(validate_launch_envelope(&oversized_args).is_err());

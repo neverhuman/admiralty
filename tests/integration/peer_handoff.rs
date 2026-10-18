@@ -74,6 +74,20 @@ fn consumer_ack_is_provisional_and_new_revision_proposes_invalidation() {
     )
     .expect("publish interface contract");
     let ack_event = acknowledge();
+    let mut foreign_scope = scope.clone();
+    foreign_scope.authority_ref = "other-grant".into();
+    assert!(
+        reduce_interface_for(
+            &Some(initial.state.clone()),
+            &ack_event,
+            &foreign_scope,
+            &consumer,
+            &owner,
+        )
+        .is_err(),
+        "an acknowledgement bound to a foreign scope must be rejected"
+    );
+
     let acknowledged =
         reduce_interface_for(&Some(initial.state), &ack_event, &scope, &consumer, &owner)
             .expect("consumer acknowledgment");

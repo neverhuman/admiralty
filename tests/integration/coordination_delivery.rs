@@ -807,3 +807,15 @@ fn recipient_queue_pages_reject_bad_scope_limits_and_revoked_access_before_read(
         cursor
     );
 }
+
+#[test]
+fn scoped_envelope_rejects_foreign_project_before_delivery() {
+    use admiralty_core::coordination::message::validate_scoped_envelope;
+
+    let task = contract();
+    let message = assignment(&task, "foreign-project-message");
+    let foreign_project = ProjectId::new("attacker-project").expect("valid fixture project");
+    let worker = PrincipalId::new("worker").expect("valid fixture principal");
+
+    assert!(validate_scoped_envelope(&message, &foreign_project, Some(&worker)).is_err());
+}

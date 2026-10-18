@@ -221,6 +221,23 @@ fn daemon_client_reconnect_keeps_child_and_output_offsets_continuous() {
     .expect("launch child");
     assert_eq!(launch["result"]["kind"], "launched");
 
+    let duplicate = exchange(
+        &socket,
+        &json!({
+            "command":"launch",
+            "spec":{
+                "run_id":"continuous",
+                "program":"/bin/true",
+                "args":[],
+                "cwd":temporary.path(),
+                "spool_dir":spool.join("continuous")
+            }
+        }),
+    )
+    .expect("duplicate launch response");
+    assert_eq!(duplicate["result"]["kind"], "error");
+    assert_eq!(duplicate["result"]["code"], "duplicate_run");
+
     let initial = await_offset(&socket, "continuous", "1");
     let initial_pid = initial["result"]["status"]["pid"].clone();
     let initial_identity = initial["result"]["status"]["start_identity"].clone();

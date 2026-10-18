@@ -107,3 +107,21 @@ fn invalid_candidate_input_is_rejected_before_analysis() {
         Err(ConflictError::InvalidPath(_))
     ));
 }
+
+#[test]
+fn denied_write_scope_rejects_a_candidate_even_when_it_claims_file_ownership() {
+    let path = "crates/admiralty-runtime/src/lib.rs";
+    let mut candidate = candidate("candidate", 'a', &[path]);
+    candidate
+        .constraints
+        .as_mut()
+        .expect("constraints are present")
+        .denied_paths
+        .push("crates/admiralty-runtime/src".to_owned());
+
+    assert!(matches!(
+        analyze_conflicts(&[candidate], "policy-1"),
+        Err(ConflictError::DeniedWrite { candidate_id, path: denied })
+            if candidate_id == "candidate" && denied == path
+    ));
+}
