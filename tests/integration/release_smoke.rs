@@ -1,5 +1,6 @@
 use admiralty_core::economics::{DecimalU128, ObservedAmount};
 use admiralty_runtime::session::{LaunchSpec, MAX_LAUNCH_ARGS, validate_launch_envelope};
+use admiralty_testkit::clock::{ClockError, FakeClock};
 use std::path::PathBuf;
 
 #[test]
@@ -52,4 +53,28 @@ fn p31_release_session_rejects_unbounded_or_relative_launch_envelopes() {
     let mut oversized_args = valid;
     oversized_args.args = vec!["x".repeat(64 * 1024 + 1)];
     assert!(validate_launch_envelope(&oversized_args).is_err());
+}
+
+#[test]
+fn p31_clock_faults_reject_skew_and_overflow_without_mutating_time() {
+    let mut clock = FakeClock::new(u64::MAX - 1);
+    let before = clock.clone();
+
+    assert_eq!(
+        clock.advance_ms(2),
+        Err(ClockError::Overflow {
+            now_ms: u64::MAX - 1,
+            delta_ms: 2,
+        })
+    );
+    assert_eq!(clock, before);
+
+    assert_eq!(
+        clock.advance_to_ms(u64::MAX - 2),
+        Err(ClockError::Backwards {
+            now_ms: u64::MAX - 1,
+            target_ms: u64::MAX - 2,
+        })
+    );
+    assert_eq!(clock, before);
 }
