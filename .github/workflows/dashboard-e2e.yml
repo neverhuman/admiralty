@@ -13,7 +13,7 @@ jobs:
   dashboard-e2e:
     runs-on:
       group: neverhuman-lan
-      labels: [self-hosted, Linux, X64, lan-ci]
+      labels: [self-hosted, Linux, X64, lan-ci, browser158]
     timeout-minutes: 10
     steps:
       - name: Record selected runner
@@ -36,6 +36,7 @@ jobs:
           browser_bin=""
           for candidate in \
             "${ADMIRALTY_BROWSER_BINARY:-}" \
+            /opt/google/chrome/chrome \
             /usr/bin/google-chrome-stable \
             /usr/bin/google-chrome \
             /usr/bin/chromium \
@@ -70,6 +71,19 @@ jobs:
               exit 1
               ;;
           esac
+          for sandbox_candidate in \
+            "$(dirname "$browser_bin")/chrome_sandbox" \
+            "$(dirname "$browser_bin")/chrome-sandbox" \
+            /opt/google/chrome/chrome-sandbox; do
+            if [ -u "$sandbox_candidate" ] && [ -x "$sandbox_candidate" ]; then
+              printf 'CHROME_DEVEL_SANDBOX=%s\n' "$sandbox_candidate" >> "$GITHUB_ENV"
+              printf 'verified_setuid_sandbox=%s\n' "$sandbox_candidate"
+              break
+            fi
+          done
+          printf 'apparmor_restrict_unprivileged_userns=%s unprivileged_userns_clone=%s\n' \
+            "$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null || echo unavailable)" \
+            "$(cat /proc/sys/kernel/unprivileged_userns_clone 2>/dev/null || echo unavailable)"
           printf 'ADMIRALTY_BROWSER_BINARY=%s\n' "$browser_bin" >> "$GITHUB_ENV"
       - name: Prepare pinned pnpm in job scratch
         run: |
@@ -77,12 +91,9 @@ jobs:
           npm install --global --prefix "$RUNNER_TEMP/admiralty-pnpm" pnpm@11.15.1 --ignore-scripts --no-audit --no-fund
           printf '%s\n' "$RUNNER_TEMP/admiralty-pnpm/bin" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Ensure pinned axe-core 4.14.0 is installed and verified
+      - name: Verify pinned axe-core 4.14.0 from lockfile
         run: |
-          if [ ! -f node_modules/axe-core/axe.min.js ]; then
-            pnpm add -D -w axe-core@4.14.0 --ignore-scripts
-            git checkout -- package.json pnpm-lock.yaml
-          fi
+          test -f node_modules/axe-core/axe.min.js
           actual_sha=$(sha256sum node_modules/axe-core/axe.min.js | awk '{print $1}')
           expected_sha="20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878"
           test "$actual_sha" = "$expected_sha"

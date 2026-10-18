@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { homedir, tmpdir } from 'node:os';
-import { extname, join, normalize, resolve } from 'node:path';
+import { dirname, extname, join, normalize, resolve } from 'node:path';
 import type { Duplex, Readable, Writable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
@@ -311,6 +311,7 @@ export function discoverChromiumBinary(): string {
   }
 
   for (const candidate of [
+    '/opt/google/chrome/chrome',
     '/usr/bin/google-chrome-stable',
     '/usr/bin/google-chrome',
     '/usr/bin/chromium',
@@ -344,6 +345,37 @@ export function discoverChromiumBinary(): string {
   );
 }
 
+function discoverNormalUserSetuidSandbox(binaryPath: string): string | undefined {
+  if (process.env.CHROME_DEVEL_SANDBOX && existsSync(process.env.CHROME_DEVEL_SANDBOX)) {
+    return process.env.CHROME_DEVEL_SANDBOX;
+  }
+  const binDir = dirname(binaryPath);
+  for (const candidate of [
+    join(binDir, 'chrome_sandbox'),
+    join(binDir, 'chrome-sandbox'),
+    '/opt/google/chrome/chrome-sandbox',
+  ]) {
+    if (!existsSync(candidate)) continue;
+    try {
+      const st = statSync(candidate);
+      if (st.uid === 0 && (st.mode & 0o4111) === 0o4111) {
+        return candidate;
+      }
+    } catch {
+      // Ignore unreadable candidate
+    }
+  }
+  return undefined;
+}
+
+function readSysctlDiagnostic(path: string): string {
+  try {
+    return existsSync(path) ? readFileSync(path, 'utf8').trim() : 'unavailable';
+  } catch {
+    return 'unreadable';
+  }
+}
+
 export interface BrowserHarness {
   binaryPath: string;
   browserVersion: { product: string; revision: string; protocolVersion: string };
@@ -367,11 +399,17 @@ export interface BrowserHarness {
 
 export async function launchBrowserHarness(): Promise<BrowserHarness> {
   const binaryPath = discoverChromiumBinary();
+  const setuidSandboxPath = discoverNormalUserSetuidSandbox(binaryPath);
   const baseTmp = process.env.TMPDIR && existsSync(process.env.TMPDIR) ? process.env.TMPDIR : tmpdir();
   mkdirSync(baseTmp, { recursive: true, mode: 0o700 });
   const profileDir = mkdtempSync(join(baseTmp, 'adm-e2e-browser-'));
 
-  // Launch with OS sandbox intact (no --no-sandbox or --disable-setuid-sandbox bypass)
+  const childEnv: Record<string, string | undefined> = {
+    ...process.env,
+    ...(setuidSandboxPath ? { CHROME_DEVEL_SANDBOX: setuidSandboxPath } : {}),
+  };
+
+  // Launch with OS sandbox intact (never pass --no-sandbox or --disable-setuid-sandbox)
   const child: ChildProcess = spawn(
     binaryPath,
     [
@@ -387,7 +425,7 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
       '--window-size=1440,900',
       '--remote-debugging-pipe',
     ],
-    { stdio: ['ignore', 'pipe', 'pipe', 'pipe', 'pipe'] },
+    { stdio: ['ignore', 'pipe', 'pipe', 'pipe', 'pipe'], env: childEnv },
   );
 
   const cdpWrite = child.stdio[3] as Writable;
@@ -396,11 +434,48 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
   let nextId = 1;
   let buffer = '';
   let closedReason: string | null = null;
+  let stderrHead = '';
   let stderrTail = '';
+  let exitCode: number | null | undefined = undefined;
+  let exitSignal: string | null | undefined = undefined;
 
   child.stderr?.on('data', (chunk: Buffer) => {
-    stderrTail = (stderrTail + chunk.toString('utf8')).slice(-2_000);
+    const text = chunk.toString('utf8');
+    if (stderrHead.length < 2_000) {
+      stderrHead = (stderrHead + text).slice(0, 2_000);
+    }
+    stderrTail = (stderrTail + text).slice(-2_000);
   });
+
+  function formatStderrEvidence(): string {
+    const head = stderrHead.trim();
+    const tail = stderrTail.trim();
+    if (!head && !tail) return 'none';
+    if (head === tail || !tail || head.includes(tail)) return head;
+    return `${head}\n...[truncated]...\n${tail}`;
+  }
+
+  function formatDiagnosticContext(): string {
+    const apparmorUserns = readSysctlDiagnostic(
+      '/proc/sys/kernel/apparmor_restrict_unprivileged_userns',
+    );
+    const unprivUsernsClone = readSysctlDiagnostic('/proc/sys/kernel/unprivileged_userns_clone');
+    const stderrCombined = `${stderrHead}\n${stderrTail}`;
+    const sandboxUnsupported =
+      stderrCombined.includes('No usable sandbox!') ||
+      stderrCombined.includes('zygote_host_impl_linux.cc') ||
+      (exitSignal === 'SIGABRT' && apparmorUserns === '1' && !setuidSandboxPath);
+    const prefix = sandboxUnsupported
+      ? 'Unsupported runner browser sandbox configuration (normal-user Chromium sandbox failed closed without --no-sandbox bypass): '
+      : '';
+    return (
+      `${prefix}binary=${binaryPath} exitCode=${String(exitCode)} signal=${String(exitSignal)} ` +
+      `apparmor_restrict_unprivileged_userns=${apparmorUserns} ` +
+      `unprivileged_userns_clone=${unprivUsernsClone} ` +
+      `setuid_sandbox=${setuidSandboxPath ?? 'none'} ` +
+      `stderr=${formatStderrEvidence()}`
+    );
+  }
 
   const pending = new Map<
     number,
@@ -416,17 +491,26 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
     for (const [id, entry] of pending.entries()) {
       clearTimeout(entry.timer);
       pending.delete(id);
-      entry.reject(new Error(`${reason}${stderrTail ? ` (stderr: ${stderrTail.trim()})` : ''}`));
+      entry.reject(new Error(`${reason} [${formatDiagnosticContext()}]`));
     }
   }
 
+  let resolveExitDrain: (() => void) | undefined;
+  const exitDrainPromise = new Promise<void>((resolve) => {
+    resolveExitDrain = resolve;
+  });
+
   child.once('error', (err) => {
     rejectAllPending(`Browser process error (${binaryPath}): ${err.message}`);
+    resolveExitDrain?.();
   });
   child.once('exit', (code, signal) => {
+    exitCode = code;
+    exitSignal = signal;
     rejectAllPending(
       `Browser process exited unexpectedly (code=${String(code)}, signal=${String(signal)})`,
     );
+    resolveExitDrain?.();
   });
   cdpRead.once('close', () => {
     rejectAllPending('CDP read pipe closed');
@@ -470,7 +554,9 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
     timeoutMs = CDP_COMMAND_TIMEOUT_MS,
   ): Promise<Record<string, unknown>> {
     if (closedReason) {
-      return Promise.reject(new Error(`Cannot send CDP ${method}: ${closedReason}`));
+      return Promise.reject(
+        new Error(`Cannot send CDP ${method}: ${closedReason} [${formatDiagnosticContext()}]`),
+      );
     }
     const id = nextId++;
     return new Promise((resolveCmd, rejectCmd) => {
@@ -540,9 +626,15 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
       }),
     ]);
   } catch (err) {
+    // Allow brief drain so child exit code/signal and stderr head/tail are captured before throwing
+    await Promise.race([
+      exitDrainPromise,
+      new Promise<void>((resolve) => setTimeout(resolve, 250)),
+    ]);
     child.kill('SIGKILL');
     rmSync(profileDir, { recursive: true, force: true });
-    throw err;
+    const baseMsg = err instanceof Error ? err.message : String(err);
+    throw new Error(`${baseMsg} | ${formatDiagnosticContext()}`);
   } finally {
     clearTimeout(startupTimer);
   }
