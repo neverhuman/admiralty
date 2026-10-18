@@ -127,6 +127,10 @@ name = "provider_claude"
 path = "../../tests/integration/provider_claude.rs"
 
 [[test]]
+name = "codex_round8"
+path = "../../tests/integration/codex_round8.rs"
+
+[[test]]
 name = "provider_codex"
 path = "../../tests/integration/provider_codex.rs"
 
