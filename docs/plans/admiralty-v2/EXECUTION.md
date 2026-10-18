@@ -1,6 +1,6 @@
 # Admiralty execution ledger
 
-Planning baseline: `1e8ed17eff27ed3ab80dc6860fc8eda301406aee`. Implementation started on 18 October 2026. PR #9 carries the integration branch. A tested read-only rollout panel is running on the existing dashboard as an immutable PR canary; only its exact collector child was restarted. Existing coding projects retain their lanes and ownership. Native v2 execution remains disabled pending qualification.
+Planning baseline: `1e8ed17eff27ed3ab80dc6860fc8eda301406aee`. Implementation started on 18 October 2026. PR #9 was merged by the owner at head `9debe5dd` on 18 October at 13:58 UTC. Subsequent main commits contain the offline workplan registry, controlled Codex harness and private scratch correction. The read-only dashboard still runs its separately pinned binary/assets; merging source does not deploy it. Existing coding projects retain their lanes and ownership. Native v2 execution remains disabled pending qualification.
 
 Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). Integrator assigns one current base/interface version and exact write scope per packet. Update this table from evidence; do not infer completion from agent messages.
 
@@ -27,8 +27,8 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). In
 | P18 | in_progress | Luna conflict lane + strong review | candidate `54d57e0`, imported `03d42fe` | Bounded conservative conflict graph reviewed; merge train/runtime integration pending |
 | P19 | in_progress | Luna publication lane + strong review | candidate `c3e3289`, imported `4a7eee0` | Frozen request/receipt publication fences reviewed; credential gateway/forge qualification pending |
 | P20 | in_progress | Luna retirement lane + strong review | candidate `164aee7`, imported `94336b5` | Scope/pin/identity/replay retirement proposals reviewed; no destructive executor or permission |
-| P21 | in_progress | provider candidate + strong review | candidate `9cbd0210`, not imported | Four candidate tests pass but 14 offline counterexamples reproduce blockers; fix launch/session/usage/parser claims before integration or qualification |
-| P22 | in_progress | provider candidate + integration review | candidate `f5a34805`, not imported | Static review requires Cargo/fixture registration, conservative identity, strict framing and shared launch limits; help-only evidence is not live qualification |
+| P21 | in_progress | provider candidate + strong review | imported `a16e41a` + `103c564`, unregistered | Four candidate tests pass but 14 offline counterexamples reproduce blockers; fix launch/session/usage/parser claims and registered tests before activation or qualification |
+| P22 | in_progress | provider candidate + integration review | imported `84c7d15`, unregistered | Static review requires Cargo/fixture registration, conservative identity, strict framing and shared launch limits; help-only evidence is not live qualification |
 | P23 | in_progress | Luna enrollment lane + strong review | candidate `e3a9125`, imported `a6637a6` | Scope/clock/revocation enrollment contracts reviewed; real enrollment/replay transport pending |
 | P24 | in_progress | Luna placement lane + strong review | candidate `a791470`, imported `08c3a38` | Scoped fresh ownership/continuation placement proposals reviewed; real partition qualification pending |
 | P25 | in_progress | Luna recovery lane + strong review | candidate `fa77ebd`, imported `4494af9` | Snapshot/fence/closure recovery bindings reviewed; executor restore/cutover qualification pending |
@@ -70,7 +70,7 @@ The existing legacy dashboard has a generic rollout summary and expanded agent
 table. Rust and React now serve real producer observations on loopback18891;
 the original dashboard stays available on18890 and under `/legacy/`. React assets
 are pinned to `9debe5dd`; the legacy roster bridge is `b2523eb2` and the running Rust
-binary is `17c7a76d`. These are unmerged PR canaries. The default page
+binary is `17c7a76d`. These are immutable, separately deployed canary revisions, now represented in merged source. The default page
 is the detailed real fleet; synthetic demo now defaults to18892.
 
 A bounded observer joins captain reports into runtime JSON every15 seconds
@@ -235,8 +235,9 @@ source. The global `/tmp/.git` directory caused an additional retained environme
 failure; the passing run uses a fresh owned 0700 temporary root outside Git.
 Neither the custody rule nor the foreign checkout was changed.
 
-P21 candidate `9cbd0210` and P22 candidate `f5a34805` remain outside the integrated
-runtime. Strong review reproduces 14 P21 counterexamples despite all four original
+At that review baseline, P21 candidate `9cbd0210` and P22 candidate `f5a34805`
+were not imported. Subsequent main imports retain them as unregistered, inactive
+source prototypes, with the same review blockers. Strong review reproduces 14 P21 counterexamples despite all four original
 tests passing; P22 static review identifies test registration, identity, framing
 and launch-envelope gaps. Their review receipts name exact source and next fixes.
 All 32 parent contracts are reconciled in `receipts/reconciliation/`; none is fully
@@ -254,3 +255,42 @@ and nine idle, determined from provider-session task boundaries. The configured
 Gemini 4 Argon Commodore is observed again; /healthz is 200 with native qualification
 false. The 14:01:57 producer timestamp and stale 13:51:31 manifest timestamp remain
 explicit in the receipt. No idle lane is treated as released capacity.
+
+
+## Main reconciliation and conservative progress checks
+
+Main `9227e8b` now contains the offline registry/harness and private scratch fix
+through rebased commits `0b20ea7`/`9227e8b`. All 18 implementation paths match the
+independently tested `455ee5f4` blobs exactly. Historical tested SHAs are not
+ancestors of rebased main; the new reconciliation records actual ancestry and
+explicit blob equivalence instead of carrying those earlier ancestry claims
+forward. Registered Rust inputs, UI/contracts and packaging/smoke sources are
+unchanged. The six newly imported provider module/test source files are dormant;
+their modules and test targets remain unregistered. Their retained review findings
+still require fixes. No full new-head Rust test pass is inferred from import.
+
+At source `b6622f8`, the collector and audit no longer promote bare or inconsistent
+receipt claims, override blocked holds with activity/main observations, or treat
+`unverified` as a closed lane. Real failure verdicts remain visible. Fourteen new
+collector regressions and eleven audit regressions receive separate independent
+review. macOS discovers 88 legacy tests (87 pass, one platform skip) and passes
+44 audit tests; clean Linux passes all 88 legacy and 44 audit tests.
+
+The first Linux fixture step failed because the verifier invoked the local `rtk`
+helper absent from a minimal CI environment. That failed receipt/log is retained.
+Source `3312ba0` invokes Git directly; its clean Linux verifier passes all 37 pinned
+sources and 11 synthetic cases, explicitly reporting 18 current drift paths.
+Unchanged passing Python tests are reused with exact object/log hashes rather
+than rerun. CI now includes the audit regression suite and creates private scratch
+outside the checkout. Preexisting test-fixture ResourceWarnings are retained.
+
+The successor review branch is `codex/admiralty-quality-checkpoint`. Detailed
+current evidence is in `receipts/integration/3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d.json`
+and `receipts/reconciliation/2026-10-18T1425Z-3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d.json`.
+All 32 parent contracts still have remaining gates, with zero full acceptance.
+Main GitHub run 39134086804 was queued without assigned runners at observation;
+independent source checks do not substitute for hosted checks or exact-head review.
+No new production binary, provider activation, native execution or fleet cutover
+occurred. The pinned real-data dashboard, manager identity and other projects stay
+intact. Next ready work is scoped provider hardening, resource-permit reconciliation
+and live workplan command authority/import UI; complete those before activation.
