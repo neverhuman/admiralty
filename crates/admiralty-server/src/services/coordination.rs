@@ -1,14 +1,17 @@
 //! Authorized pending observations, scoped application ACKs and historical replay.
 //!
-//! This prototype does not authenticate callers, run a delivery loop, or confer
-//! authority. A trusted service caller must inject current actor/scope grants.
+//! Configured opaque credentials map to exact coordination and I1 task grants.
+//! This service does not run a delivery loop or infer authority from request labels.
 use admiralty_core::{
-    CoordinationMessage, DomainEvent, MessageId, PrincipalId, ProjectId, SourceIdentity,
+    CoordinationMessage, DomainEvent, LifecycleAction, LifecycleCommand, MessageId, PrincipalId,
+    ProjectId, SourceIdentity, TaskId, TaskView, content_digest,
     coordination::mailbox::{BoundedMailbox, DeliveryOutcome},
 };
 use admiralty_store::inbox::{InboxCursor, InboxScope, PendingInboxPage, validate_request};
-use admiralty_store::{AppendReceipt, Cursor, Store, StoreError};
-use std::collections::BTreeSet;
+use admiralty_store::{
+    AppendReceipt, Cursor, LifecycleAuthority, LifecycleEffect, Store, StoreError,
+};
+use std::{collections::BTreeSet, sync::Mutex};
 
 /// Bound both underlying durable events examined and returned message allocation.
 pub const MAX_COORDINATION_SCAN_EVENTS: usize = 16;
@@ -50,6 +53,9 @@ pub trait CoordinationAuthorizer {
 pub const MAX_COORDINATION_CREDENTIALS: usize = 128;
 pub const MAX_COORDINATION_GRANTS_PER_CREDENTIAL: usize = 64;
 pub const MAX_COORDINATION_GRANTS: usize = 1024;
+pub const MAX_LIFECYCLE_GRANTS_PER_CREDENTIAL: usize = 64;
+pub const MAX_LIFECYCLE_GRANTS: usize = 1024;
+const MAX_LIFECYCLE_PERMITS: usize = 256;
 pub const MAX_COORDINATION_TOKEN_BYTES: usize = 4096;
 const MIN_COORDINATION_TOKEN_BYTES: usize = 32;
 const MAX_COORDINATION_CREDENTIAL_ID_BYTES: usize = 128;
@@ -64,6 +70,26 @@ pub struct CoordinationCredentialGrant {
     pub source: Option<SourceIdentity>,
 }
 
+/// The service credential adapter directly authorizes only lifecycle actions
+/// that need no verifier, supervisor-closure, or optional-effect proof.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LifecycleCredentialAction {
+    CancelPending,
+    ReviseContract,
+}
+
+/// Exact I1 task CAS grant. Proof-bearing actions are intentionally absent;
+/// they require the separate trusted evidence adapters described by I1.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LifecycleCredentialGrant {
+    pub project_id: ProjectId,
+    pub root_id: admiralty_core::RootId,
+    pub task_id: TaskId,
+    pub expected_task_digest: String,
+    pub action: LifecycleCredentialAction,
+    pub source: SourceIdentity,
+}
+
 /// Configuration input for the in-memory credential authority. `token` is an
 /// opaque secret supplied by the configured credential source; this type does
 /// not generate, transform, serialize, or format it.
@@ -72,6 +98,7 @@ pub struct CoordinationCredential {
     pub actor: PrincipalId,
     pub grants: Vec<CoordinationCredentialGrant>,
     token: String,
+    lifecycle_grants: Vec<LifecycleCredentialGrant>,
 }
 
 impl CoordinationCredential {
@@ -86,7 +113,13 @@ impl CoordinationCredential {
             actor,
             grants,
             token,
+            lifecycle_grants: Vec::new(),
         }
+    }
+
+    pub fn with_lifecycle_grants(mut self, grants: Vec<LifecycleCredentialGrant>) -> Self {
+        self.lifecycle_grants = grants;
+        self
     }
 }
 
@@ -95,7 +128,13 @@ struct CredentialRecord {
     token: String,
     actor: PrincipalId,
     grants: Vec<CoordinationCredentialGrant>,
-    revoked: bool,
+    lifecycle_grants: Vec<LifecycleCredentialGrant>,
+}
+
+struct LifecyclePermit {
+    credential_id: String,
+    source: SourceIdentity,
+    command_digest: String,
 }
 
 /// Bounded adapter from configured opaque credentials to exact coordination
@@ -103,6 +142,8 @@ struct CredentialRecord {
 /// `Debug` implementation because it retains bearer credentials.
 pub struct CoordinationCredentialAuthority {
     credentials: Vec<CredentialRecord>,
+    revoked: Mutex<BTreeSet<String>>,
+    lifecycle_permits: Mutex<Vec<LifecyclePermit>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -153,10 +194,11 @@ impl CoordinationCredentialAuthority {
         for credential in credentials {
             if !valid_credential_id(&credential.credential_id)
                 || !valid_opaque_token(&credential.token)
-                || credential.grants.is_empty()
                 || credential.grants.len() > MAX_COORDINATION_GRANTS_PER_CREDENTIAL
+                || credential.lifecycle_grants.len() > MAX_LIFECYCLE_GRANTS_PER_CREDENTIAL
                 || !ids.insert(credential.credential_id.clone())
                 || !tokens.insert(credential.token.clone())
+                || (credential.grants.is_empty() && credential.lifecycle_grants.is_empty())
             {
                 return Err(CoordinationCredentialError::InvalidInput);
             }
@@ -180,16 +222,34 @@ impl CoordinationCredentialAuthority {
                     _ => return Err(CoordinationCredentialError::InvalidInput),
                 }
             }
+            for grant in &credential.lifecycle_grants {
+                if !valid_source_identity(&grant.source)
+                    || !valid_contract_digest(&grant.expected_task_digest)
+                {
+                    return Err(CoordinationCredentialError::InvalidInput);
+                }
+            }
             records.push(CredentialRecord {
                 credential_id: credential.credential_id,
                 token: credential.token,
                 actor: credential.actor,
                 grants: credential.grants,
-                revoked: false,
+                lifecycle_grants: credential.lifecycle_grants,
             });
+        }
+        let total_lifecycle_grants = records
+            .iter()
+            .try_fold(0_usize, |total, record| {
+                total.checked_add(record.lifecycle_grants.len())
+            })
+            .ok_or(CoordinationCredentialError::Capacity)?;
+        if total_lifecycle_grants > MAX_LIFECYCLE_GRANTS {
+            return Err(CoordinationCredentialError::Capacity);
         }
         Ok(Self {
             credentials: records,
+            revoked: Mutex::new(BTreeSet::new()),
+            lifecycle_permits: Mutex::new(Vec::new()),
         })
     }
 
@@ -202,9 +262,15 @@ impl CoordinationCredentialAuthority {
         if !valid_opaque_token(token) {
             return Err(CoordinationCredentialError::InvalidInput);
         }
+        let revoked = self
+            .revoked
+            .lock()
+            .map_err(|_| CoordinationCredentialError::Unauthorized)?;
         self.credentials
             .iter()
-            .find(|credential| !credential.revoked && credential.token == token)
+            .find(|credential| {
+                !revoked.contains(&credential.credential_id) && credential.token == token
+            })
             .map(|credential| AuthenticatedCoordinationActor {
                 credential_id: credential.credential_id.clone(),
                 principal: credential.actor.clone(),
@@ -214,14 +280,26 @@ impl CoordinationCredentialAuthority {
 
     /// Revocation takes effect on the next service authorization check,
     /// including for already-authenticated actor handles.
-    pub fn revoke(&mut self, credential_id: &str) -> Result<(), CoordinationCredentialError> {
-        let credential = self
+    pub fn revoke(&self, credential_id: &str) -> Result<(), CoordinationCredentialError> {
+        if !self
             .credentials
-            .iter_mut()
-            .find(|credential| credential.credential_id == credential_id)
-            .ok_or(CoordinationCredentialError::Unauthorized)?;
-        credential.revoked = true;
+            .iter()
+            .any(|credential| credential.credential_id == credential_id)
+        {
+            return Err(CoordinationCredentialError::Unauthorized);
+        }
+        self.revoked
+            .lock()
+            .map_err(|_| CoordinationCredentialError::Unauthorized)?
+            .insert(credential_id.to_owned());
         Ok(())
+    }
+
+    fn is_revoked(&self, credential_id: &str) -> bool {
+        self.revoked
+            .lock()
+            .map(|revoked| revoked.contains(credential_id))
+            .unwrap_or(true)
     }
 
     fn permits(
@@ -240,7 +318,7 @@ impl CoordinationCredentialAuthority {
             .iter()
             .find(|credential| {
                 credential.credential_id == authenticated.credential_id
-                    && !credential.revoked
+                    && !self.is_revoked(&credential.credential_id)
                     && credential.actor == authenticated.principal
             })
             .is_some_and(|credential| {
@@ -251,6 +329,81 @@ impl CoordinationCredentialAuthority {
                         && grant.source.as_ref() == source
                 })
             })
+    }
+
+    fn prepare_lifecycle_permit(
+        &self,
+        authenticated: &AuthenticatedCoordinationActor,
+        source: &SourceIdentity,
+        command: &LifecycleCommand,
+    ) -> Result<String, CoordinationCredentialError> {
+        let action = lifecycle_credential_action(&command.action)
+            .ok_or(CoordinationCredentialError::Unauthorized)?;
+        if command.actor != authenticated.principal
+            || !valid_source_identity(source)
+            || command.protocol_version != 2
+        {
+            return Err(CoordinationCredentialError::Unauthorized);
+        }
+        let credential = self
+            .credentials
+            .iter()
+            .find(|credential| credential.credential_id == authenticated.credential_id)
+            .filter(|credential| credential.actor == authenticated.principal)
+            .filter(|credential| !self.is_revoked(&credential.credential_id))
+            .ok_or(CoordinationCredentialError::Unauthorized)?;
+        let grant_matches = credential.lifecycle_grants.iter().any(|grant| {
+            grant.task_id == command.task_id
+                && grant.expected_task_digest == command.expected_task_digest
+                && grant.action == action
+                && grant.source == *source
+        });
+        if !grant_matches {
+            return Err(CoordinationCredentialError::Unauthorized);
+        }
+        let command_digest =
+            content_digest(command).map_err(|_| CoordinationCredentialError::InvalidInput)?;
+        let mut permits = self
+            .lifecycle_permits
+            .lock()
+            .map_err(|_| CoordinationCredentialError::Unauthorized)?;
+        if permits.len() >= MAX_LIFECYCLE_PERMITS
+            || permits.iter().any(|permit| permit.source == *source)
+        {
+            return Err(CoordinationCredentialError::Capacity);
+        }
+        permits.push(LifecyclePermit {
+            credential_id: authenticated.credential_id.clone(),
+            source: source.clone(),
+            command_digest: command_digest.clone(),
+        });
+        Ok(command_digest)
+    }
+
+    fn discard_lifecycle_permit(&self, source: &SourceIdentity, command_digest: &str) {
+        if let Ok(mut permits) = self.lifecycle_permits.lock() {
+            permits.retain(|permit| {
+                permit.source != *source || permit.command_digest != command_digest
+            });
+        }
+    }
+}
+
+fn valid_contract_digest(value: &str) -> bool {
+    value.len() == 71
+        && value.starts_with("sha256:")
+        && value.as_bytes()[7..]
+            .iter()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(byte))
+}
+
+fn lifecycle_credential_action(action: &LifecycleAction) -> Option<LifecycleCredentialAction> {
+    match action {
+        LifecycleAction::CancelPending { .. } => Some(LifecycleCredentialAction::CancelPending),
+        LifecycleAction::ReviseContract { .. } => Some(LifecycleCredentialAction::ReviseContract),
+        LifecycleAction::DecideCandidate { .. }
+        | LifecycleAction::CloseAttempt { .. }
+        | LifecycleAction::Retry { .. } => None,
     }
 }
 
@@ -263,6 +416,65 @@ fn valid_source_identity(source: &SourceIdentity) -> bool {
         && !source.producer_id.chars().any(char::is_control)
         && !source.incarnation.chars().any(char::is_control)
         && source.validate().is_ok()
+}
+
+impl LifecycleAuthority for CoordinationCredentialAuthority {
+    fn authorize(
+        &self,
+        source: &SourceIdentity,
+        command: &LifecycleCommand,
+        task: &TaskView,
+        effect: Option<&LifecycleEffect<'_>>,
+    ) -> bool {
+        // This auth packet has no independent verifier, supervisor-closure, or
+        // outbox-effect evidence adapter. Such operations therefore remain
+        // denied even when an input command carries their digest-shaped claims.
+        if effect.is_some() {
+            return false;
+        }
+        let Some(action) = lifecycle_credential_action(&command.action) else {
+            return false;
+        };
+        let Ok(command_digest) = content_digest(command) else {
+            return false;
+        };
+        let Ok(mut permits) = self.lifecycle_permits.lock() else {
+            return false;
+        };
+        let Some(index) = permits
+            .iter()
+            .position(|permit| permit.source == *source && permit.command_digest == command_digest)
+        else {
+            return false;
+        };
+        let permit = permits.remove(index);
+        drop(permits);
+        let Ok(task_digest) = content_digest(task) else {
+            return false;
+        };
+        if self.is_revoked(&permit.credential_id)
+            || task.contract.task_id != command.task_id
+            || command.expected_task_digest != task_digest
+        {
+            return false;
+        }
+        self.credentials
+            .iter()
+            .find(|credential| {
+                credential.credential_id == permit.credential_id
+                    && credential.actor == command.actor
+            })
+            .is_some_and(|credential| {
+                credential.lifecycle_grants.iter().any(|grant| {
+                    grant.project_id == task.contract.project_id
+                        && grant.root_id == task.contract.root_id
+                        && grant.task_id == command.task_id
+                        && grant.expected_task_digest == command.expected_task_digest
+                        && grant.action == action
+                        && grant.source == *source
+                })
+            })
+    }
 }
 
 struct AuthenticatedAuthorizer<'a> {
@@ -461,6 +673,30 @@ impl<'a> CoordinationService<'a> {
             message_id,
             observed_utc,
         )
+    }
+
+    /// Execute an authenticated I1 lifecycle command through the configured
+    /// Store authority. This packet permits only pending cancellation and
+    /// contract revision; verifier, closure, and effect-bearing commands fail
+    /// closed until their independent evidence adapters are connected.
+    pub fn execute_lifecycle_authenticated(
+        &self,
+        actor: &AuthenticatedCoordinationActor,
+        credentials: &CoordinationCredentialAuthority,
+        source: SourceIdentity,
+        command: LifecycleCommand,
+        observed_utc: String,
+    ) -> Result<AppendReceipt, StoreError> {
+        let command_digest = credentials
+            .prepare_lifecycle_permit(actor, &source, &command)
+            .map_err(|_| {
+                StoreError::Invalid("native lifecycle command is not authorized".into())
+            })?;
+        let result = self
+            .store
+            .execute_lifecycle(source.clone(), command, observed_utc, None);
+        credentials.discard_lifecycle_permit(&source, &command_digest);
+        result
     }
 
     /// Replay matching queue observations without cloning the global projection.
@@ -790,7 +1026,7 @@ mod tests {
 
     #[test]
     fn revocation_and_bounded_credential_inputs_fail_closed() {
-        let mut credentials =
+        let credentials =
             CoordinationCredentialAuthority::new(vec![credential(vec![read_grant(scope())])])
                 .expect("valid configured credential");
         let actor = credentials
@@ -849,5 +1085,107 @@ mod tests {
             ),
             Err(CoordinationCredentialError::Capacity)
         ));
+    }
+
+    #[test]
+    fn authenticated_lifecycle_cancel_uses_frozen_i1_store_authority_types() {
+        use std::sync::Arc;
+
+        let path = store_path();
+        let task = task_contract();
+        let seed_store = Store::open(&path).expect("open seed store");
+        seed_store
+            .append(
+                SourceIdentity {
+                    producer_id: "seed".into(),
+                    incarnation: "seed-run".into(),
+                    sequence: "1".into(),
+                },
+                DomainEvent::TaskSubmitted {
+                    contract: task.clone(),
+                },
+                "2030-01-01T00:00:00Z".into(),
+            )
+            .expect("seed current P02 contract");
+        let current = seed_store
+            .snapshot()
+            .expect("read task snapshot")
+            .projection
+            .tasks
+            .get(&task.task_id)
+            .cloned()
+            .expect("task view exists");
+        let expected_task_digest = content_digest(&current).expect("I1 task CAS digest");
+        drop(seed_store);
+
+        let lifecycle_source = SourceIdentity {
+            producer_id: "worker-producer".into(),
+            incarnation: "worker-incarnation".into(),
+            sequence: "1".into(),
+        };
+        let lifecycle_grant = LifecycleCredentialGrant {
+            project_id: task.project_id.clone(),
+            root_id: task.root_id.clone(),
+            task_id: task.task_id.clone(),
+            expected_task_digest: expected_task_digest.clone(),
+            action: LifecycleCredentialAction::CancelPending,
+            source: lifecycle_source.clone(),
+        };
+        let credentials = Arc::new(
+            CoordinationCredentialAuthority::new(vec![
+                credential(Vec::new()).with_lifecycle_grants(vec![lifecycle_grant]),
+            ])
+            .expect("install exact task, action, digest, and source grant"),
+        );
+        let store = Store::open_with_lifecycle_authority(&path, credentials.clone())
+            .expect("open Store with frozen I1 callback");
+        let service = CoordinationService::new(&store);
+        let actor = credentials
+            .authenticate(TOKEN)
+            .expect("configured lifecycle token authenticates");
+        let command = LifecycleCommand {
+            protocol_version: 2,
+            task_id: task.task_id.clone(),
+            expected_task_digest: expected_task_digest.clone(),
+            actor: scope().recipient.clone(),
+            action: LifecycleAction::CancelPending {
+                reason: "operator requested cancellation".into(),
+            },
+        };
+        service
+            .execute_lifecycle_authenticated(
+                &actor,
+                &credentials,
+                lifecycle_source.clone(),
+                command.clone(),
+                "2030-01-01T00:00:01Z".into(),
+            )
+            .expect("authenticated I1 command reaches the Store authority");
+        let cancelled = store
+            .snapshot()
+            .expect("read cancelled task")
+            .projection
+            .tasks
+            .get(&task.task_id)
+            .cloned()
+            .expect("task view remains present");
+        assert_eq!(cancelled.state, admiralty_core::SchedulingState::Cancelled);
+
+        let mut wrong_source = lifecycle_source;
+        wrong_source.sequence = "2".into();
+        assert!(
+            service
+                .execute_lifecycle_authenticated(
+                    &actor,
+                    &credentials,
+                    wrong_source,
+                    command,
+                    "2030-01-01T00:00:02Z".into(),
+                )
+                .is_err()
+        );
+        drop(store);
+        drop(credentials);
+        cleanup_store(&path);
     }
 }
