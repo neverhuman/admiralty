@@ -179,5 +179,37 @@ fn codex_round18_p04_p10_lease_recovery_deterministic_receipt_audit() -> Result<
     let mut tampered: serde_json::Value = serde_json::from_slice(&receipt_bytes)?;
     tampered["receipt_authorized"] = serde_json::Value::Bool(true);
     assert!(serde_json::from_value::<ReservationLedger>(tampered).is_err());
+
+    // The release bundle binds the contract, admitted workspace boundary, and
+    // settled ledger under one explicit schema. Rebuilding it yields the same
+    // digest, and decoding preserves both wrapper and ledger schema parity.
+    let bundled_contract_digest = content_digest(&contract)?;
+    let release_bundle = || {
+        serde_json::json!({
+            "schema_version": 1,
+            "contract_digest": bundled_contract_digest,
+            "workspace_owned_paths": ["src"],
+            "workspace_forbidden_paths": [".git"],
+            "reservation_ledger": recovered,
+        })
+    };
+    let bundle = release_bundle();
+    let bundle_bytes = serde_json::to_vec(&bundle)?;
+    let bundle_digest = content_digest(&bundle)?;
+    let replayed_bundle = release_bundle();
+    assert_eq!(content_digest(&replayed_bundle)?, bundle_digest);
+    let decoded_bundle: serde_json::Value = serde_json::from_slice(&bundle_bytes)?;
+    assert_eq!(decoded_bundle, replayed_bundle);
+    assert_eq!(decoded_bundle["schema_version"], 1);
+    assert_eq!(
+        decoded_bundle["reservation_ledger"]
+            .as_object()
+            .map(|ledger| ledger.len()),
+        Some(6),
+        "release ledger schema has exactly the six declared fields"
+    );
+    let decoded_ledger: ReservationLedger =
+        serde_json::from_value(decoded_bundle["reservation_ledger"].clone())?;
+    assert_eq!(decoded_ledger, recovered);
     Ok(())
 }
