@@ -51,6 +51,10 @@ name = "disaster_restore"
 path = "../../tests/integration/disaster_restore.rs"
 
 [[test]]
+name = "deterministic_faults"
+path = "../../tests/integration/deterministic_faults.rs"
+
+[[test]]
 name = "economic_conservation"
 path = "../../tests/integration/economic_conservation.rs"
 

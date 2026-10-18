@@ -49,7 +49,7 @@ and [OpenCode SSH integration](docs/operators/opencode-ssh.md).
 
 ## Admiralty v2 implementation
 
-The fleet is building the Rust control plane and React dashboard on integration PR [#9](https://github.com/neverhuman/admiralty/pull/9). Admiralty appears as an ordinary project in the detailed React view, with its worker lanes and work packets. Packet claims, candidate review, verification and integration are distinct; worker reports do not create accepted work.
+The fleet is building the Rust control plane and React dashboard through reviewed implementation PRs. The [execution ledger](docs/plans/admiralty-v2/EXECUTION.md) records exact source revisions, validation evidence and remaining gates; historical PR [#9](https://github.com/neverhuman/admiralty/pull/9) began that integration. Admiralty appears as an ordinary project in the detailed React view, with its worker lanes and work packets. Packet claims, candidate review, verification and integration are distinct; worker reports do not create accepted work.
 
 The current Rust foundation provides durable scoped task/message state, context capsules, crash replay, backups, generated schemas/TypeScript and a read-only API/SSE demo. Native execution and fleet enrollment remain disabled pending their qualification gates.
 

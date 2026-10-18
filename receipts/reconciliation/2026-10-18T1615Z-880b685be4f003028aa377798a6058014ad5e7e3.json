@@ -1,0 +1,340 @@
+{
+  "accepted_parents": 0,
+  "current_quality_receipt": "receipts/integration/880b685be4f003028aa377798a6058014ad5e7e3.json",
+  "current_quality_receipt_sha256": "5cdb83c12b2e1fa60d71412be7feefcd5a67be35b35463c855341710ed2a57ae",
+  "next_ready_actions": [
+    "Reconcile current manager task/checkout/permit metadata and replace status-only fanout with disjoint implementation contracts.",
+    "Implement the authenticated bounded durable coordination command/delivery seam using current Store policy and replay contracts.",
+    "Complete hosted checks/exact-head review, provider/runtime admission, installation and full acceptance/rollout gates."
+  ],
+  "observed_utc": "2026-10-18T16:13:06.791424+00:00",
+  "packet_count": 32,
+  "packets": [
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P00",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "eee9610980ed0a150851e79be8db829314e2da4dcf53f9ae9b4b057c991ba96d",
+      "remaining_or_next_gate": "Review engineering closeout with the authorized issuer; no additional live inventory fill-in or native provider qualification is a P00 criterion. This observational receipt does not issue domain acceptance.",
+      "state": "review"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Deterministic clock/fault/forge and split/reset fixture gap implemented; five actual cross-module harness tests plus31 helper tests; exact combined source gates pass.",
+      "native_execution_qualified": false,
+      "packet": "P01",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "cba45b230cd44ebf1907e8bf0f3f175f04a7693bbd99af8cf00defc4467ead85",
+      "remaining_or_next_gate": "Review full bootstrap clean-install/CLI and hosted CI evidence against original P01 contract; this fixture/checkpoint receipt does not issue domain acceptance.",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P02",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "0848c94ebcfe4ff5ccc2399e6259dcebcba5bb8612ab7e8dd3b7a6caf98cb34a",
+      "remaining_or_next_gate": "Typed contracts, pure reducers and schema/TS checks are integrated; complete authority/policy negotiation remains pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P03",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "79378aceac4ef10e546872436b6f0aa1e984ccc52f80fa1a98f1aacb55d2646a",
+      "remaining_or_next_gate": "Atomic domain/outbox admission, immutable request/effect associations, replay and receive-time retry compatibility tested; durable executor admission loop pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P04",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "66f6801094d8e3c1aa010c566c91734aa7573a29bff028aca778060cb20fc303",
+      "remaining_or_next_gate": "Transactional asset/pin catalog with full observation binding, fixed clock policy and receipt closure; trusted filesystem observation/startup activation pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P05",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "3dd59b149902581975d19846f051f1e66401bf286ec382362ddb995cce788419",
+      "remaining_or_next_gate": "Pin the durable delivery/subscription command interface against existing Store outbox/recipient-epoch ACK and trusted service authority before implementing its executor; preserve native execution disabled.",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P06",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "2be0c04f7ca674fd593f8f5a533ce9ded59c288d6ed20e283e59697ea99428af",
+      "remaining_or_next_gate": "Constraint-preserving capsules, epochs and bounded attention governor; durable governor/outbox activation and retrieval pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P07",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "99637926a84d465414e34ec9f71366176a105eb6652200d41177530f8220bd1b",
+      "remaining_or_next_gate": "Independent private Unix-socket host, reconnect continuity, compatible launch envelope, final capture watermark and native owned-group cleanup; restart adoption and admitted fleet activation unqualified",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P08",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "1c5cd7ba1163f2f17e0c87c8d9a63062f158de2726c8f371a45652d883892d6e",
+      "remaining_or_next_gate": "Offline Linux fake harness passed; reconcile resources and review a bounded real-run tuple separately from native execution admission and full qualification.",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P09",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "f9fbc6024f4465f247731e72317836d80b28915ff9e00edddd02b6471dd86cad",
+      "remaining_or_next_gate": "Read-only custody registration; real runner/resource isolation pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P10",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "df063cb46cf1df18e17dc77c610941b315aab1a8991159b115ba29d746f1385a",
+      "remaining_or_next_gate": "Segmented usage plus conservative scoped reservations reviewed; runtime reservation activation pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P11",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "7bbe3da38c2dd86a640942f1ec0327604afb82f7759f6e1149ed3950ba6b81b8",
+      "remaining_or_next_gate": "Authenticated bounded read API/SSE and offline CLI are tested; live command envelopes, terminal input and agent tools pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P12",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "c356b0c6206f5f2c86acc4efefd4fa3457bc72d24a62a2449912be7d46bb36f2",
+      "remaining_or_next_gate": "Dense real-data console, 13 temporal metrics, observed manager selection and centered owner deployed; 75 React tests/build pass; full scale/accessibility qualification pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P13",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "b1ba9db0a780c6fcbfe7b3284936162c83ab493c112dc470b043748cdd525e8c",
+      "remaining_or_next_gate": "Durable immutable JSON revisions, CAS/retry, reciprocal task identity, writer/CLI and backup/rebuild tests; TOML/Markdown, import UI and live admission pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P14",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "16001e1aa921c8a3483edd797702dba95ef176b94f4ae45f4a0d57bcf916ce99",
+      "remaining_or_next_gate": "Pure scheduler independently hardened at `03772f94`; durable scheduling and launches remain pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P15",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "da2c449abd574ec7d047165ea19d57e54c8bb22f9a05a0f4c27f50071bdf1a8d",
+      "remaining_or_next_gate": "Scoped evidence consistency hardened at `03772f94`; trusted independent verifier execution pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P16",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "fd29e5fffdf80c57ab337ed85a0e655d8caff4553d0955916520a6530bf35e02",
+      "remaining_or_next_gate": "Staged audit candidate under independent review; no Jankurai execution qualification",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P17",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "0e73cdaef0eaff88a875bd026d55f2612f16461783dbe91d36896ebaa8d3db8f",
+      "remaining_or_next_gate": "Scoped interface reducer reviewed; peer tools/durable transport pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P18",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "d077dcff8ca33a3bde6ddaeb52f12dfc593683dc7509d381109e080441f7f188",
+      "remaining_or_next_gate": "Bounded conservative conflict graph reviewed; merge train/runtime integration pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P19",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "699df997ab5da534c003394407dcb188f3754393b5fc665873911e6b703bd651",
+      "remaining_or_next_gate": "Frozen request/receipt publication fences reviewed; credential gateway/forge qualification pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P20",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "0307ec635020b55e184927fa3d14b6d4ca3e21904d5de4e6960efa2a37e36e97",
+      "remaining_or_next_gate": "Scope/pin/identity/replay retirement proposals reviewed; no destructive executor or permission",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P21",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "e75d3a28f6598a1efbdda08208344ddb65abc6b0243e9fcfee882b9066b0f92a",
+      "remaining_or_next_gate": "Immutable prepared-launch task/configuration/custody/resource/credential binding; Trusted executable, session journal/EOF/watermark and actual observed execution identity; Bounded real continuity and parent/child usage qualification",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P22",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "c4e76284cd6b297054a64300fcaf4c1ceebfe7ea79fa837977b31560cd443ad4",
+      "remaining_or_next_gate": "Trusted executable/configuration identity and actual launch/permission behavior; Managed session/journal/watermark and replay binding; Bounded real transport, resume and usage qualification",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P23",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "b50ba449f5e82caf992bd7a32a8150452246587be96f57fbb9d175aa46099f2b",
+      "remaining_or_next_gate": "Scope/clock/revocation enrollment contracts reviewed; real enrollment/replay transport pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P24",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "eda33f836f74b4ea44974620e877fbcf87fdd15eacbda15c1e615a565b8d7d9d",
+      "remaining_or_next_gate": "Scoped fresh ownership/continuation placement proposals reviewed; real partition qualification pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P25",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "f5e68993c221a7cc38675af60cf09e6ce4ad0280539aa1a49a87be3b5f586deb",
+      "remaining_or_next_gate": "Snapshot/fence/closure recovery bindings reviewed; executor restore/cutover qualification pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P26",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "9b8c0888f94e2e7bb80a4864c8293579fd76ea2a230510c49787046e29b7f297",
+      "remaining_or_next_gate": "Exact scoped usage/correction/coverage economics reviewed; explorer/service integration pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P27",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "d21646fb5eb60f9f3cb1d09ce46ba2893dbabe893e57c639dd145c104bccf3a5",
+      "remaining_or_next_gate": "Canonical bounded scoped excursion state reviewed; durable proposal loop activation pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P28",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "3835a82fd90c573c9f292c64420d8db007b9118aff8cf640bdc3bfc7694da890",
+      "remaining_or_next_gate": "Fixed cohort/seed/oracle trial analysis reviewed; independent live trials pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P29",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "07040bea43eed77d9f2154ce55d56f6be664fb4f648d5c8247b08d279e3ae8f5",
+      "remaining_or_next_gate": "Bounded recorded diagnostic CLI tested; durable action/job, assets/fleet UX and named accessibility/E2E gates pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P30",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "f6f105de3307e9b7bfa2791647d99a81eca9626d512e4ed03f36e326eda42848",
+      "remaining_or_next_gate": "Explicit-input archive builder passes 10 checks; clean-install, signed distribution, rights and complete operator paths pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "gate_change": "Fresh combined workspace checks cover current component harnesses; prior full-contract gaps retained. No name/count/self-report promotion.",
+      "native_execution_qualified": false,
+      "packet": "P31",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "83cbe48bba2ea2068738de1868ee8b4cfb8ed4756c2f2d8f7a22ba6b6546af2d",
+      "remaining_or_next_gate": "Isolated binary smoke and offline controlled provider harness are integrated; real provider, soak, savings, restore and fleet cutover gates remain open",
+      "state": "in_progress"
+    }
+  ],
+  "previous_reconciliation": "receipts/reconciliation/2026-10-18T1540Z-67f2ccde6c12f377aeefd243c2f4e7657d7d6af4.json",
+  "previous_reconciliation_sha256": "8b8ce38d2c6fffbbff51ae9b3264825e16791ea7917b0f28ac4bea275373909b",
+  "review_source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+  "technical_artifact_criteria_verified": [
+    "P00"
+  ]
+}

@@ -1,0 +1,2866 @@
+{
+  "baseline_full_gate": {
+    "initial_mac_fmt_clippy": {
+      "path": "target/quality/testkit-checkpoint/mac-gate.json",
+      "sha256": "53812389a4ffe74f1033405c6427096e44a3ae04ee808fc6434255cebf5a455c"
+    },
+    "linux": {
+      "commands": [
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "/home/ubuntu/.cargo/bin/cargo",
+            "fmt",
+            "--all",
+            "--",
+            "--check"
+          ],
+          "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+          "elapsed_s": 1.002,
+          "exit_code": 0,
+          "finished_utc": "2026-10-18T16:04:54.256034Z",
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/62e34266ce2d47cb8c5e290e2d0c326b-fmt.log",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "name": "fmt",
+          "output_tail": [],
+          "oversized_output": false,
+          "rust_test_results": [],
+          "started_utc": "2026-10-18T16:04:53.254286Z",
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "/home/ubuntu/.cargo/bin/cargo",
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+          "elapsed_s": 34.626,
+          "exit_code": 0,
+          "finished_utc": "2026-10-18T16:05:28.882887Z",
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/62e34266ce2d47cb8c5e290e2d0c326b-clippy.log",
+          "log_sha256": "4171d9ce81e297f1c251aabbf1d8f0c1de3a36dba2004899bbfbb399a2c3e98f",
+          "name": "clippy",
+          "output_tail": [
+            "    Checking admiralty-core v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/crates/admiralty-core)",
+            "    Checking admiralty-runtime v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/crates/admiralty-runtime)",
+            "    Checking admiralty-store v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/crates/admiralty-store)",
+            "    Checking admiralty-server v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/crates/admiralty-server)",
+            "    Checking admiralty-testkit v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/crates/admiralty-testkit)",
+            "    Checking admiralty-cli v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/crates/admiralty-cli)",
+            "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 34.47s"
+          ],
+          "oversized_output": false,
+          "rust_test_results": [],
+          "started_utc": "2026-10-18T16:04:54.256960Z",
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "/home/ubuntu/.cargo/bin/cargo",
+            "test",
+            "--workspace",
+            "--locked"
+          ],
+          "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+          "elapsed_s": 127.898,
+          "exit_code": 0,
+          "finished_utc": "2026-10-18T16:07:36.781317Z",
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/62e34266ce2d47cb8c5e290e2d0c326b-workspace-tests.log",
+          "log_sha256": "f813b18eba87223a159bbead7b5e5faf2d413ac6228c44950f32768fed555a23",
+          "name": "workspace-tests",
+          "output_tail": [
+            "",
+            "   Doc-tests admiralty_runtime",
+            "",
+            "running 1 test",
+            "test crates/admiralty-runtime/src/audits.rs - audits::AuditProposal (line 197) - compile fail ... ok",
+            "",
+            "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s",
+            "",
+            "   Doc-tests admiralty_server",
+            "",
+            "running 0 tests",
+            "",
+            "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+            "",
+            "   Doc-tests admiralty_store",
+            "",
+            "running 0 tests",
+            "",
+            "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+            "",
+            "   Doc-tests admiralty_testkit",
+            "",
+            "running 0 tests",
+            "",
+            "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+            ""
+          ],
+          "oversized_output": false,
+          "rust_test_results": [
+            {
+              "failed": 0,
+              "passed": 17,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 176,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 127,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 63,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 34,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 19,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 7,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 14,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 13,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 23,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 13,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 11,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            }
+          ],
+          "started_utc": "2026-10-18T16:05:28.883701Z",
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "/home/ubuntu/.cargo/bin/cargo",
+            "build",
+            "-p",
+            "admiralty-server",
+            "-p",
+            "admiralty-cli",
+            "--locked"
+          ],
+          "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+          "elapsed_s": 0.201,
+          "exit_code": 0,
+          "finished_utc": "2026-10-18T16:07:36.984245Z",
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/62e34266ce2d47cb8c5e290e2d0c326b-isolated-binary-build.log",
+          "log_sha256": "59639588a6f1826f129cbcd121edc07279dab94786f5fa5bde6b3439b2e845cc",
+          "name": "isolated-binary-build",
+          "output_tail": [
+            "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s"
+          ],
+          "oversized_output": false,
+          "rust_test_results": [],
+          "started_utc": "2026-10-18T16:07:36.782927Z",
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "python3",
+            "scripts/check/canary-smoke.py",
+            "--admiraltyd-binary",
+            "/home/ubuntu/admiralty-v2-build/targets/quality-review/debug/admiraltyd",
+            "--admiralty-binary",
+            "/home/ubuntu/admiralty-v2-build/targets/quality-review/debug/admiralty",
+            "--scratch-root",
+            "/home/ubuntu/admiralty-v2-build/quality-smoke/62e34266ce2d47cb8c5e290e2d0c326b"
+          ],
+          "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+          "elapsed_s": 1.603,
+          "exit_code": 0,
+          "finished_utc": "2026-10-18T16:07:38.588076Z",
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/62e34266ce2d47cb8c5e290e2d0c326b-actual-isolated-smoke.log",
+          "log_sha256": "08f29ae4dd4548dee8f51af0ce02df7b55d7817230df796787f1beb5f7f51ee0",
+          "name": "actual-isolated-smoke",
+          "output_tail": [
+            "{\"acceptance\":false,\"binaries\":{\"admiralty_sha256\":\"sha256:2bab736c6661a819ea70accad441208ed0905a655df3f6fe7d6c690f031dd5b6\",\"admiraltyd_sha256\":\"sha256:4d28270556e3bdb02057107d89a27ffead526ff67bea7e957631f5a749c52a61\"},\"checks\":[{\"duration_ms\":844,\"name\":\"real_server_startup\",\"state\":\"pass\"},{\"duration_ms\":4,\"name\":\"real_health_native_unqualified\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"unauthorized_real_fleet_rejected\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"unauthorized_real_models_rejected\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"model_auth_precedes_body_validation\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"authorized_real_fleet\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"authorized_models_policy\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"model_selection_proposal_only\",\"state\":\"pass\"},{\"duration_ms\":342,\"name\":\"demo_startup\",\"state\":\"pass\"},{\"duration_ms\":2,\"name\":\"demo_fleet_simulated\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"demo_no_models\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"demo_no_model_policy_write\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"demo_no_legacy_policy\",\"state\":\"pass\"},{\"name\":\"doctor_read_only_capability\",\"state\":\"pass\"},{\"name\":\"demo_cli_has_no_real_policy_flags\",\"state\":\"pass\"}],\"cleanup\":{\"admiraltyd\":\"terminated\",\"demo\":\"terminated\"},\"clock\":\"UTC start timestamp plus monotonic elapsed/deadline measurements\",\"duration_ms\":1402,\"fleet_rollout_closure\":false,\"randomness\":\"ephemeral token from OS CSPRNG; token value not recorded\",\"started_at_utc\":\"2026-10-18T16:07:37.067725+00:00\",\"status\":\"pass\",\"synthetic\":false}"
+          ],
+          "oversized_output": false,
+          "rust_test_results": [],
+          "smoke_receipt": {
+            "acceptance": false,
+            "binaries": {
+              "admiralty_sha256": "sha256:2bab736c6661a819ea70accad441208ed0905a655df3f6fe7d6c690f031dd5b6",
+              "admiraltyd_sha256": "sha256:4d28270556e3bdb02057107d89a27ffead526ff67bea7e957631f5a749c52a61"
+            },
+            "checks": [
+              {
+                "duration_ms": 844,
+                "name": "real_server_startup",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 4,
+                "name": "real_health_native_unqualified",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "unauthorized_real_fleet_rejected",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "unauthorized_real_models_rejected",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "model_auth_precedes_body_validation",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "authorized_real_fleet",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "authorized_models_policy",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "model_selection_proposal_only",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 342,
+                "name": "demo_startup",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 2,
+                "name": "demo_fleet_simulated",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "demo_no_models",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "demo_no_model_policy_write",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "demo_no_legacy_policy",
+                "state": "pass"
+              },
+              {
+                "name": "doctor_read_only_capability",
+                "state": "pass"
+              },
+              {
+                "name": "demo_cli_has_no_real_policy_flags",
+                "state": "pass"
+              }
+            ],
+            "cleanup": {
+              "admiraltyd": "terminated",
+              "demo": "terminated"
+            },
+            "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+            "duration_ms": 1402,
+            "fleet_rollout_closure": false,
+            "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+            "started_at_utc": "2026-10-18T16:07:37.067725+00:00",
+            "status": "pass",
+            "synthetic": false
+          },
+          "started_utc": "2026-10-18T16:07:36.985598Z",
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "/home/ubuntu/.cargo/bin/cargo",
+            "run",
+            "-p",
+            "admiralty-cli",
+            "--locked",
+            "--",
+            "contracts",
+            "check"
+          ],
+          "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+          "elapsed_s": 0.802,
+          "exit_code": 0,
+          "finished_utc": "2026-10-18T16:07:39.391228Z",
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/62e34266ce2d47cb8c5e290e2d0c326b-schemas-check.log",
+          "log_sha256": "b94dceb363a7f1b41455eaf6b73e34a17c3402329a8eac9316cf74579db35959",
+          "name": "schemas-check",
+          "output_tail": [
+            "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s",
+            "     Running `/home/ubuntu/admiralty-v2-build/targets/quality-review/debug/admiralty contracts check`",
+            "{",
+            "  \"checked\": [",
+            "    \"task-contract.schema.json\",",
+            "    \"coordination-message.schema.json\",",
+            "    \"domain-event.schema.json\"",
+            "  ],",
+            "  \"directory\": \"schemas\",",
+            "  \"drift\": false",
+            "}"
+          ],
+          "oversized_output": false,
+          "rust_test_results": [],
+          "started_utc": "2026-10-18T16:07:38.589511Z",
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "python3",
+            "tests/fixtures/legacy/verify.py"
+          ],
+          "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+          "elapsed_s": 0.401,
+          "exit_code": 0,
+          "finished_utc": "2026-10-18T16:07:39.794642Z",
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/62e34266ce2d47cb8c5e290e2d0c326b-legacy-fixtures.log",
+          "log_sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12",
+          "name": "legacy-fixtures",
+          "output_tail": [
+            "{\"base_sha\": \"1e8ed17eff27ed3ab80dc6860fc8eda301406aee\", \"mirror_checks\": \"pass\", \"secret_scan\": \"pass\", \"synthetic_cases\": 11, \"verified_sources\": 37, \"working_tree_drift\": [\"README.md\", \"captains/MODEL_ROUTING_PLAYBOOK.md\", \"captains/super_captain_BRIEF.md\", \"dashboard/collector.py\", \"dashboard/extras.py\", \"dashboard/index.html\", \"data/history/ledger/model_usage.csv\", \"data/history/ledger/model_usage_2026-10-18.jsonl\", \"data/history/quota/codex_quota.csv\", \"data/history/resources/disk_used.csv\", \"data/history/resources/host_snapshots.csv\", \"data/history/snapshots/projects_2026-10-18.jsonl\", \"data/history/timeseries/history.csv\", \"data/history/timeseries/history_2026-10-18.jsonl\", \"data/history/token_yield/token_yield_2026-10-18.jsonl\", \"data/history/tokens/claude_hourly.csv\", \"data/history/tokens/codex_sessions.csv\", \"tools/sc_audit.py\"]}"
+          ],
+          "oversized_output": false,
+          "rust_test_results": [],
+          "started_utc": "2026-10-18T16:07:39.393180Z",
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests/legacy",
+            "-v"
+          ],
+          "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+          "elapsed_s": 10.809,
+          "exit_code": 0,
+          "finished_utc": "2026-10-18T16:07:50.605301Z",
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/62e34266ce2d47cb8c5e290e2d0c326b-legacy-tests.log",
+          "log_sha256": "628876b56282867b1e85eb7472e62bb5dbb64840c01366817a7c479170258499",
+          "name": "legacy-tests",
+          "output_tail": [
+            "test_receipt_import_is_idempotent_and_never_trusted (test_rollout_packets.RolloutTests.test_receipt_import_is_idempotent_and_never_trusted) ... ok",
+            "test_receipts_require_scope_base_owner_and_complete_command_evidence (test_rollout_packets.RolloutTests.test_receipts_require_scope_base_owner_and_complete_command_evidence) ... ok",
+            "test_reexport_preserves_claim_and_old_generation_references (test_rollout_packets.RolloutTests.test_reexport_preserves_claim_and_old_generation_references) ... ok",
+            "test_scope_changes_fail_closed (test_rollout_packets.RolloutTests.test_scope_changes_fail_closed) ... ok",
+            "test_state_requires_integrated_dependencies_and_claim (test_rollout_packets.RolloutTests.test_state_requires_integrated_dependencies_and_claim) ... ok",
+            "test_unknown_duplicate_and_unsafe_ids_rejected (test_rollout_packets.RolloutTests.test_unknown_duplicate_and_unsafe_ids_rejected) ... ok",
+            "test_verified_and_integrated_require_distinct_proof (test_rollout_packets.RolloutTests.test_verified_and_integrated_require_distinct_proof) ... ok",
+            "test_aggregate_execution_log_budget_fails_closed (test_stage_evidence_regressions.StageEvidenceTests.test_aggregate_execution_log_budget_fails_closed) ... ok",
+            "test_bare_pass_and_live_verified_claim_do_not_establish_done (test_stage_evidence_regressions.StageEvidenceTests.test_bare_pass_and_live_verified_claim_do_not_establish_done) ... ok",
+            "test_blocked_or_audit_held_task_stays_blocked_even_with_active_lane (test_stage_evidence_regressions.StageEvidenceTests.test_blocked_or_audit_held_task_stays_blocked_even_with_active_lane) ... ok",
+            "test_contradictory_log_head_and_exit_headers_are_rejected (test_stage_evidence_regressions.StageEvidenceTests.test_contradictory_log_head_and_exit_headers_are_rejected) ... ok",
+            "test_current_real_failed_verdicts_and_explicit_negations (test_stage_evidence_regressions.StageEvidenceTests.test_current_real_failed_verdicts_and_explicit_negations) ... ok",
+            "test_duplicate_json_and_symlink_or_oversized_evidence_are_rejected (test_stage_evidence_regressions.StageEvidenceTests.test_duplicate_json_and_symlink_or_oversized_evidence_are_rejected) ... ok",
+            "test_explicit_markdown_verdict_formats_and_zero_counts (test_stage_evidence_regressions.StageEvidenceTests.test_explicit_markdown_verdict_formats_and_zero_counts) ... ok",
+            "test_final_test_failure_is_not_overridden_by_receipt_exit_zero (test_stage_evidence_regressions.StageEvidenceTests.test_final_test_failure_is_not_overridden_by_receipt_exit_zero) ... ok",
+            "test_missing_or_invalid_time_never_counts_as_verified (test_stage_evidence_regressions.StageEvidenceTests.test_missing_or_invalid_time_never_counts_as_verified) ... ok",
+            "test_ordinary_completed_main_task_still_promotes_to_done (test_stage_evidence_regressions.StageEvidenceTests.test_ordinary_completed_main_task_still_promotes_to_done) ... ok",
+            "test_unsuccessful_missing_or_forged_execution_evidence_is_rejected (test_stage_evidence_regressions.StageEvidenceTests.test_unsuccessful_missing_or_forged_execution_evidence_is_rejected) ... ok",
+            "test_valid_packet_matched_receipt_and_ancestor_are_supported (test_stage_evidence_regressions.StageEvidenceTests.test_valid_packet_matched_receipt_and_ancestor_are_supported) ... ok",
+            "test_wrong_task_checkout_criterion_or_unmapped_cases_are_rejected (test_stage_evidence_regressions.StageEvidenceTests.test_wrong_task_checkout_criterion_or_unmapped_cases_are_rejected) ... ok",
+            "test_zero_test_log_is_not_successful_case_coverage (test_stage_evidence_regressions.StageEvidenceTests.test_zero_test_log_is_not_successful_case_coverage) ... ok",
+            "",
+            "----------------------------------------------------------------------",
+            "Ran 88 tests in 10.619s",
+            "",
+            "OK"
+          ],
+          "oversized_output": false,
+          "rust_test_results": [],
+          "started_utc": "2026-10-18T16:07:39.796400Z",
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_sc_audit*.py",
+            "-v"
+          ],
+          "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+          "elapsed_s": 0.802,
+          "exit_code": 0,
+          "finished_utc": "2026-10-18T16:07:51.408568Z",
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/62e34266ce2d47cb8c5e290e2d0c326b-audit-tests.log",
+          "log_sha256": "9bb7dd347c8cd021311571528ba8a338af033232bb37542a0779e4c805c9f928",
+          "name": "audit-tests",
+          "output_tail": [
+            "test_unlabelled_substitute_and_open_decision_are_red (test_sc_audit_joil_flip.JoilFlip.test_unlabelled_substitute_and_open_decision_are_red) ... ok",
+            "test_plain_assignment_not_survey (test_sc_audit_survey.SurveyRegex.test_plain_assignment_not_survey) ... ok",
+            "test_priority_label_not_survey (test_sc_audit_survey.SurveyRegex.test_priority_label_not_survey) ... ok",
+            "test_real_rating_scale_is_survey (test_sc_audit_survey.SurveyRegex.test_real_rating_scale_is_survey) ... ok",
+            "test_future_mdt_and_merged_not_flagged (test_sc_audit_watchdog.Eta.test_future_mdt_and_merged_not_flagged) ... ok",
+            "test_mdt_conversion (test_sc_audit_watchdog.Eta.test_mdt_conversion) ... ok",
+            "test_passed_eta_in_live_status_is_red (test_sc_audit_watchdog.Eta.test_passed_eta_in_live_status_is_red) ... ok",
+            "test_no_push_30m_with_open_work (test_sc_audit_watchdog.PushAndClaims.test_no_push_30m_with_open_work) ... ok",
+            "test_state_text_and_idle_claims (test_sc_audit_watchdog.PushAndClaims.test_state_text_and_idle_claims) ... ok",
+            "test_claim_with_input_ok (test_sc_audit_watchdog.Redrive.test_claim_with_input_ok) ... ok",
+            "test_claim_without_terminal_input_is_red (test_sc_audit_watchdog.Redrive.test_claim_without_terminal_input_is_red) ... ok",
+            "test_busy_agy_not_idle_and_first_sighting_not_flagged (test_sc_audit_watchdog.Watch.test_busy_agy_not_idle_and_first_sighting_not_flagged) ... ok",
+            "test_claude_auto_mode_idle_is_red_after_20_min (test_sc_audit_watchdog.Watch.test_claude_auto_mode_idle_is_red_after_20_min) ... ok",
+            "test_claude_background_monitor_counts_as_busy (test_sc_audit_watchdog.Watch.test_claude_background_monitor_counts_as_busy) ... ok",
+            "test_newer_completed_or_zero_footer_overrides_old_running_footer (test_sc_audit_watchdog.Watch.test_newer_completed_or_zero_footer_overrides_old_running_footer) ... ok",
+            "test_old_running_footer_outside_raw_tail_is_not_revived_by_filtering (test_sc_audit_watchdog.Watch.test_old_running_footer_outside_raw_tail_is_not_revived_by_filtering) ... ok",
+            "test_parked_and_positional_lane_lines_are_managed (test_sc_audit_watchdog.Watch.test_parked_and_positional_lane_lines_are_managed) ... ok",
+            "test_positive_running_background_ui_footer_is_busy (test_sc_audit_watchdog.Watch.test_positive_running_background_ui_footer_is_busy) ... ok",
+            "test_quoted_or_fenced_busy_examples_are_not_live_ui (test_sc_audit_watchdog.Watch.test_quoted_or_fenced_busy_examples_are_not_live_ui) ... ok",
+            "test_zero_completed_and_plaintext_counts_do_not_suppress_idle (test_sc_audit_watchdog.Watch.test_zero_completed_and_plaintext_counts_do_not_suppress_idle) ... ok",
+            "test_zero_monitor_footer_stays_red_after_twenty_minutes (test_sc_audit_watchdog.Watch.test_zero_monitor_footer_stays_red_after_twenty_minutes) ... ok",
+            "",
+            "----------------------------------------------------------------------",
+            "Ran 67 tests in 0.508s",
+            "",
+            "OK"
+          ],
+          "oversized_output": false,
+          "rust_test_results": [],
+          "started_utc": "2026-10-18T16:07:50.607054Z",
+          "timed_out": false
+        }
+      ],
+      "receipt": {
+        "path": "target/quality/testkit-checkpoint/linux-gate.json",
+        "sha256": "1a4d6a783ddccb78047bb383b95b5c8ebcb3af6f67ce5caf82df127c5ad9459f"
+      },
+      "rust_checks_passed": 641,
+      "source_sha": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "worktree_clean": true
+    },
+    "linux_totals": {
+      "actual-isolated-smoke": {
+        "acceptance": false,
+        "binaries": {
+          "admiralty_sha256": "sha256:2bab736c6661a819ea70accad441208ed0905a655df3f6fe7d6c690f031dd5b6",
+          "admiraltyd_sha256": "sha256:4d28270556e3bdb02057107d89a27ffead526ff67bea7e957631f5a749c52a61"
+        },
+        "checks": [
+          {
+            "duration_ms": 844,
+            "name": "real_server_startup",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 4,
+            "name": "real_health_native_unqualified",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "unauthorized_real_fleet_rejected",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "unauthorized_real_models_rejected",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "model_auth_precedes_body_validation",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "authorized_real_fleet",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "authorized_models_policy",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "model_selection_proposal_only",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 342,
+            "name": "demo_startup",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 2,
+            "name": "demo_fleet_simulated",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "demo_no_models",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "demo_no_model_policy_write",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "demo_no_legacy_policy",
+            "state": "pass"
+          },
+          {
+            "name": "doctor_read_only_capability",
+            "state": "pass"
+          },
+          {
+            "name": "demo_cli_has_no_real_policy_flags",
+            "state": "pass"
+          }
+        ],
+        "cleanup": {
+          "admiraltyd": "terminated",
+          "demo": "terminated"
+        },
+        "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+        "duration_ms": 1402,
+        "fleet_rollout_closure": false,
+        "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+        "started_at_utc": "2026-10-18T16:07:37.067725+00:00",
+        "status": "pass",
+        "synthetic": false
+      },
+      "audit-tests": {
+        "discovered": 67,
+        "exit_code": 0,
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/62e34266ce2d47cb8c5e290e2d0c326b-audit-tests.log",
+        "log_sha256": "9bb7dd347c8cd021311571528ba8a338af033232bb37542a0779e4c805c9f928",
+        "platform_skip": 0
+      },
+      "legacy-tests": {
+        "discovered": 88,
+        "exit_code": 0,
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/50d0abed5d9157958a145d1ad5ac2f4b6b7415fb/62e34266ce2d47cb8c5e290e2d0c326b-legacy-tests.log",
+        "log_sha256": "628876b56282867b1e85eb7472e62bb5dbb64840c01366817a7c479170258499",
+        "platform_skip": 0
+      }
+    },
+    "mac": {
+      "commands": [
+        {
+          "argv": [
+            "cargo",
+            "test",
+            "--workspace",
+            "--locked"
+          ],
+          "elapsed_s": 19.247,
+          "exit_code": 0,
+          "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/testkit-checkpoint/mac-retry/workspace-tests.log",
+          "log_sha256": "9d524ff43952d93c6a5e16ec8b7232f8313423fb1255243a7696554ab85aefcc",
+          "name": "workspace-tests",
+          "output_tail": [
+            "   Doc-tests admiralty_runtime",
+            "",
+            "running 1 test",
+            "test crates/admiralty-runtime/src/audits.rs - audits::AuditProposal (line 197) - compile fail ... ok",
+            "",
+            "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s",
+            "",
+            "   Doc-tests admiralty_server",
+            "",
+            "running 0 tests",
+            "",
+            "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+            "",
+            "   Doc-tests admiralty_store",
+            "",
+            "running 0 tests",
+            "",
+            "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+            "",
+            "   Doc-tests admiralty_testkit",
+            "",
+            "running 0 tests",
+            "",
+            "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+            ""
+          ],
+          "rust_test_results": [
+            {
+              "failed": 0,
+              "passed": 17,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 176,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 126,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 63,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 34,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 19,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 7,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 14,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 13,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 23,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 13,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 11,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            }
+          ],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "cargo",
+            "build",
+            "-p",
+            "admiralty-server",
+            "-p",
+            "admiralty-cli",
+            "--locked"
+          ],
+          "elapsed_s": 0.149,
+          "exit_code": 0,
+          "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/testkit-checkpoint/mac-retry/isolated-binary-build.log",
+          "log_sha256": "4cf86278c1e6d659943a46a3d7e3da429ac15be90f0f17742e24ef85228e7d3e",
+          "name": "isolated-binary-build",
+          "output_tail": [
+            "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s"
+          ],
+          "rust_test_results": [],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "python3",
+            "scripts/check/canary-smoke.py",
+            "--admiraltyd-binary",
+            "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd",
+            "--admiralty-binary",
+            "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty",
+            "--scratch-root",
+            "/private/var/folders/jv/799z43hd61j1s9gjyg0dtqlm0000gn/T/am-8uwbg0gk/smoke"
+          ],
+          "elapsed_s": 0.65,
+          "exit_code": 0,
+          "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/testkit-checkpoint/mac-retry/actual-isolated-smoke.log",
+          "log_sha256": "b0ba0b4e1fe62f97ce9809312ba7c662c996f3d30648f6fffc65c25b1cf0838f",
+          "name": "actual-isolated-smoke",
+          "output_tail": [
+            "{\"acceptance\":false,\"binaries\":{\"admiralty_sha256\":\"sha256:41c18b94e69a379b1ca01ccf00fd0210275e9c3e4e25fa36694a156b70958e1c\",\"admiraltyd_sha256\":\"sha256:33880bfb9787c66facc0944aabf9ed4a38cfea8b2d219ee4f76cfcb4c1ba9010\"},\"checks\":[{\"duration_ms\":259,\"name\":\"real_server_startup\",\"state\":\"pass\"},{\"duration_ms\":4,\"name\":\"real_health_native_unqualified\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"unauthorized_real_fleet_rejected\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"unauthorized_real_models_rejected\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"model_auth_precedes_body_validation\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"authorized_real_fleet\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"authorized_models_policy\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"model_selection_proposal_only\",\"state\":\"pass\"},{\"duration_ms\":248,\"name\":\"demo_startup\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"demo_fleet_simulated\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"demo_no_models\",\"state\":\"pass\"},{\"duration_ms\":0,\"name\":\"demo_no_model_policy_write\",\"state\":\"pass\"},{\"duration_ms\":0,\"name\":\"demo_no_legacy_policy\",\"state\":\"pass\"},{\"name\":\"doctor_read_only_capability\",\"state\":\"pass\"},{\"name\":\"demo_cli_has_no_real_policy_flags\",\"state\":\"pass\"}],\"cleanup\":{\"admiraltyd\":\"terminated\",\"demo\":\"terminated\"},\"clock\":\"UTC start timestamp plus monotonic elapsed/deadline measurements\",\"duration_ms\":549,\"fleet_rollout_closure\":false,\"randomness\":\"ephemeral token from OS CSPRNG; token value not recorded\",\"started_at_utc\":\"2026-10-18T16:06:11.324556+00:00\",\"status\":\"pass\",\"synthetic\":false}"
+          ],
+          "rust_test_results": [],
+          "smoke_receipt": {
+            "acceptance": false,
+            "binaries": {
+              "admiralty_sha256": "sha256:41c18b94e69a379b1ca01ccf00fd0210275e9c3e4e25fa36694a156b70958e1c",
+              "admiraltyd_sha256": "sha256:33880bfb9787c66facc0944aabf9ed4a38cfea8b2d219ee4f76cfcb4c1ba9010"
+            },
+            "checks": [
+              {
+                "duration_ms": 259,
+                "name": "real_server_startup",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 4,
+                "name": "real_health_native_unqualified",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "unauthorized_real_fleet_rejected",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "unauthorized_real_models_rejected",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "model_auth_precedes_body_validation",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "authorized_real_fleet",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "authorized_models_policy",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "model_selection_proposal_only",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 248,
+                "name": "demo_startup",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "demo_fleet_simulated",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 1,
+                "name": "demo_no_models",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 0,
+                "name": "demo_no_model_policy_write",
+                "state": "pass"
+              },
+              {
+                "duration_ms": 0,
+                "name": "demo_no_legacy_policy",
+                "state": "pass"
+              },
+              {
+                "name": "doctor_read_only_capability",
+                "state": "pass"
+              },
+              {
+                "name": "demo_cli_has_no_real_policy_flags",
+                "state": "pass"
+              }
+            ],
+            "cleanup": {
+              "admiraltyd": "terminated",
+              "demo": "terminated"
+            },
+            "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+            "duration_ms": 549,
+            "fleet_rollout_closure": false,
+            "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+            "started_at_utc": "2026-10-18T16:06:11.324556+00:00",
+            "status": "pass",
+            "synthetic": false
+          },
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "cargo",
+            "run",
+            "-p",
+            "admiralty-cli",
+            "--locked",
+            "--",
+            "contracts",
+            "check"
+          ],
+          "elapsed_s": 0.422,
+          "exit_code": 0,
+          "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/testkit-checkpoint/mac-retry/schemas-check.log",
+          "log_sha256": "8484fffdfcbf87b7e980d19dc3e00694df7cbea204ddbb676892ccf7e69dc9d5",
+          "name": "schemas-check",
+          "output_tail": [
+            "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.05s",
+            "     Running `target/debug/admiralty contracts check`",
+            "{",
+            "  \"checked\": [",
+            "    \"task-contract.schema.json\",",
+            "    \"coordination-message.schema.json\",",
+            "    \"domain-event.schema.json\"",
+            "  ],",
+            "  \"directory\": \"schemas\",",
+            "  \"drift\": false",
+            "}"
+          ],
+          "rust_test_results": [],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "python3",
+            "tests/fixtures/legacy/verify.py"
+          ],
+          "elapsed_s": 0.479,
+          "exit_code": 0,
+          "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/testkit-checkpoint/mac-retry/legacy-fixtures.log",
+          "log_sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12",
+          "name": "legacy-fixtures",
+          "output_tail": [
+            "{\"base_sha\": \"1e8ed17eff27ed3ab80dc6860fc8eda301406aee\", \"mirror_checks\": \"pass\", \"secret_scan\": \"pass\", \"synthetic_cases\": 11, \"verified_sources\": 37, \"working_tree_drift\": [\"README.md\", \"captains/MODEL_ROUTING_PLAYBOOK.md\", \"captains/super_captain_BRIEF.md\", \"dashboard/collector.py\", \"dashboard/extras.py\", \"dashboard/index.html\", \"data/history/ledger/model_usage.csv\", \"data/history/ledger/model_usage_2026-10-18.jsonl\", \"data/history/quota/codex_quota.csv\", \"data/history/resources/disk_used.csv\", \"data/history/resources/host_snapshots.csv\", \"data/history/snapshots/projects_2026-10-18.jsonl\", \"data/history/timeseries/history.csv\", \"data/history/timeseries/history_2026-10-18.jsonl\", \"data/history/token_yield/token_yield_2026-10-18.jsonl\", \"data/history/tokens/claude_hourly.csv\", \"data/history/tokens/codex_sessions.csv\", \"tools/sc_audit.py\"]}"
+          ],
+          "rust_test_results": [],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests/legacy",
+            "-v"
+          ],
+          "elapsed_s": 1.287,
+          "exit_code": 0,
+          "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/testkit-checkpoint/mac-retry/legacy-tests.log",
+          "log_sha256": "b87a67d06b19ce6be300675d90a8ea71fa1cfa39e9fd6bbd265bd9ff73b2d41a",
+          "name": "legacy-tests",
+          "output_tail": [
+            "test_receipts_require_scope_base_owner_and_complete_command_evidence (test_rollout_packets.RolloutTests.test_receipts_require_scope_base_owner_and_complete_command_evidence) ... ok",
+            "test_reexport_preserves_claim_and_old_generation_references (test_rollout_packets.RolloutTests.test_reexport_preserves_claim_and_old_generation_references) ... ok",
+            "test_scope_changes_fail_closed (test_rollout_packets.RolloutTests.test_scope_changes_fail_closed) ... ok",
+            "test_state_requires_integrated_dependencies_and_claim (test_rollout_packets.RolloutTests.test_state_requires_integrated_dependencies_and_claim) ... ok",
+            "test_unknown_duplicate_and_unsafe_ids_rejected (test_rollout_packets.RolloutTests.test_unknown_duplicate_and_unsafe_ids_rejected) ... ok",
+            "test_verified_and_integrated_require_distinct_proof (test_rollout_packets.RolloutTests.test_verified_and_integrated_require_distinct_proof) ... ok",
+            "test_aggregate_execution_log_budget_fails_closed (test_stage_evidence_regressions.StageEvidenceTests.test_aggregate_execution_log_budget_fails_closed) ... ok",
+            "test_bare_pass_and_live_verified_claim_do_not_establish_done (test_stage_evidence_regressions.StageEvidenceTests.test_bare_pass_and_live_verified_claim_do_not_establish_done) ... ok",
+            "test_blocked_or_audit_held_task_stays_blocked_even_with_active_lane (test_stage_evidence_regressions.StageEvidenceTests.test_blocked_or_audit_held_task_stays_blocked_even_with_active_lane) ... ok",
+            "test_contradictory_log_head_and_exit_headers_are_rejected (test_stage_evidence_regressions.StageEvidenceTests.test_contradictory_log_head_and_exit_headers_are_rejected) ... ok",
+            "test_current_real_failed_verdicts_and_explicit_negations (test_stage_evidence_regressions.StageEvidenceTests.test_current_real_failed_verdicts_and_explicit_negations) ... ok",
+            "test_duplicate_json_and_symlink_or_oversized_evidence_are_rejected (test_stage_evidence_regressions.StageEvidenceTests.test_duplicate_json_and_symlink_or_oversized_evidence_are_rejected) ... ok",
+            "test_explicit_markdown_verdict_formats_and_zero_counts (test_stage_evidence_regressions.StageEvidenceTests.test_explicit_markdown_verdict_formats_and_zero_counts) ... ok",
+            "test_final_test_failure_is_not_overridden_by_receipt_exit_zero (test_stage_evidence_regressions.StageEvidenceTests.test_final_test_failure_is_not_overridden_by_receipt_exit_zero) ... ok",
+            "test_missing_or_invalid_time_never_counts_as_verified (test_stage_evidence_regressions.StageEvidenceTests.test_missing_or_invalid_time_never_counts_as_verified) ... ok",
+            "test_ordinary_completed_main_task_still_promotes_to_done (test_stage_evidence_regressions.StageEvidenceTests.test_ordinary_completed_main_task_still_promotes_to_done) ... ok",
+            "test_unsuccessful_missing_or_forged_execution_evidence_is_rejected (test_stage_evidence_regressions.StageEvidenceTests.test_unsuccessful_missing_or_forged_execution_evidence_is_rejected) ... ok",
+            "test_valid_packet_matched_receipt_and_ancestor_are_supported (test_stage_evidence_regressions.StageEvidenceTests.test_valid_packet_matched_receipt_and_ancestor_are_supported) ... ok",
+            "test_wrong_task_checkout_criterion_or_unmapped_cases_are_rejected (test_stage_evidence_regressions.StageEvidenceTests.test_wrong_task_checkout_criterion_or_unmapped_cases_are_rejected) ... ok",
+            "test_zero_test_log_is_not_successful_case_coverage (test_stage_evidence_regressions.StageEvidenceTests.test_zero_test_log_is_not_successful_case_coverage) ... ok",
+            "",
+            "----------------------------------------------------------------------",
+            "Ran 88 tests in 1.146s",
+            "",
+            "OK (skipped=1)"
+          ],
+          "rust_test_results": [],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_sc_audit*.py",
+            "-v"
+          ],
+          "elapsed_s": 1.606,
+          "exit_code": 0,
+          "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/testkit-checkpoint/mac-retry/audit-tests.log",
+          "log_sha256": "00a201c79470c4aaf9aeaa9e64acf036d43c7d61ac24640d8e80cae2515c3d74",
+          "name": "audit-tests",
+          "output_tail": [
+            "test_plain_assignment_not_survey (test_sc_audit_survey.SurveyRegex.test_plain_assignment_not_survey) ... ok",
+            "test_priority_label_not_survey (test_sc_audit_survey.SurveyRegex.test_priority_label_not_survey) ... ok",
+            "test_real_rating_scale_is_survey (test_sc_audit_survey.SurveyRegex.test_real_rating_scale_is_survey) ... ok",
+            "test_future_mdt_and_merged_not_flagged (test_sc_audit_watchdog.Eta.test_future_mdt_and_merged_not_flagged) ... ok",
+            "test_mdt_conversion (test_sc_audit_watchdog.Eta.test_mdt_conversion) ... ok",
+            "test_passed_eta_in_live_status_is_red (test_sc_audit_watchdog.Eta.test_passed_eta_in_live_status_is_red) ... ok",
+            "test_no_push_30m_with_open_work (test_sc_audit_watchdog.PushAndClaims.test_no_push_30m_with_open_work) ... ok",
+            "test_state_text_and_idle_claims (test_sc_audit_watchdog.PushAndClaims.test_state_text_and_idle_claims) ... ok",
+            "test_claim_with_input_ok (test_sc_audit_watchdog.Redrive.test_claim_with_input_ok) ... ok",
+            "test_claim_without_terminal_input_is_red (test_sc_audit_watchdog.Redrive.test_claim_without_terminal_input_is_red) ... ok",
+            "test_busy_agy_not_idle_and_first_sighting_not_flagged (test_sc_audit_watchdog.Watch.test_busy_agy_not_idle_and_first_sighting_not_flagged) ... ok",
+            "test_claude_auto_mode_idle_is_red_after_20_min (test_sc_audit_watchdog.Watch.test_claude_auto_mode_idle_is_red_after_20_min) ... ok",
+            "test_claude_background_monitor_counts_as_busy (test_sc_audit_watchdog.Watch.test_claude_background_monitor_counts_as_busy) ... ok",
+            "test_newer_completed_or_zero_footer_overrides_old_running_footer (test_sc_audit_watchdog.Watch.test_newer_completed_or_zero_footer_overrides_old_running_footer) ... ok",
+            "test_old_running_footer_outside_raw_tail_is_not_revived_by_filtering (test_sc_audit_watchdog.Watch.test_old_running_footer_outside_raw_tail_is_not_revived_by_filtering) ... ok",
+            "test_parked_and_positional_lane_lines_are_managed (test_sc_audit_watchdog.Watch.test_parked_and_positional_lane_lines_are_managed) ... ok",
+            "test_positive_running_background_ui_footer_is_busy (test_sc_audit_watchdog.Watch.test_positive_running_background_ui_footer_is_busy) ... ok",
+            "test_quoted_or_fenced_busy_examples_are_not_live_ui (test_sc_audit_watchdog.Watch.test_quoted_or_fenced_busy_examples_are_not_live_ui) ... ok",
+            "test_zero_completed_and_plaintext_counts_do_not_suppress_idle (test_sc_audit_watchdog.Watch.test_zero_completed_and_plaintext_counts_do_not_suppress_idle) ... ok",
+            "test_zero_monitor_footer_stays_red_after_twenty_minutes (test_sc_audit_watchdog.Watch.test_zero_monitor_footer_stays_red_after_twenty_minutes) ... ok",
+            "",
+            "----------------------------------------------------------------------",
+            "Ran 67 tests in 1.423s",
+            "",
+            "OK"
+          ],
+          "rust_test_results": [],
+          "timed_out": false
+        }
+      ],
+      "receipt": {
+        "path": "target/quality/testkit-checkpoint/mac-retry/mac-gate.json",
+        "sha256": "2c2c95c62f8062b3250c1de9c35566210d56ea9862bc7e0d61f8695482e31c54"
+      },
+      "rust_checks_passed": 639,
+      "source_sha": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "worktree_clean": true
+    },
+    "mac_totals": {
+      "actual-isolated-smoke": {
+        "acceptance": false,
+        "binaries": {
+          "admiralty_sha256": "sha256:41c18b94e69a379b1ca01ccf00fd0210275e9c3e4e25fa36694a156b70958e1c",
+          "admiraltyd_sha256": "sha256:33880bfb9787c66facc0944aabf9ed4a38cfea8b2d219ee4f76cfcb4c1ba9010"
+        },
+        "checks": [
+          {
+            "duration_ms": 259,
+            "name": "real_server_startup",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 4,
+            "name": "real_health_native_unqualified",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "unauthorized_real_fleet_rejected",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "unauthorized_real_models_rejected",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "model_auth_precedes_body_validation",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "authorized_real_fleet",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "authorized_models_policy",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "model_selection_proposal_only",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 248,
+            "name": "demo_startup",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "demo_fleet_simulated",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 1,
+            "name": "demo_no_models",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 0,
+            "name": "demo_no_model_policy_write",
+            "state": "pass"
+          },
+          {
+            "duration_ms": 0,
+            "name": "demo_no_legacy_policy",
+            "state": "pass"
+          },
+          {
+            "name": "doctor_read_only_capability",
+            "state": "pass"
+          },
+          {
+            "name": "demo_cli_has_no_real_policy_flags",
+            "state": "pass"
+          }
+        ],
+        "cleanup": {
+          "admiraltyd": "terminated",
+          "demo": "terminated"
+        },
+        "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+        "duration_ms": 549,
+        "fleet_rollout_closure": false,
+        "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+        "started_at_utc": "2026-10-18T16:06:11.324556+00:00",
+        "status": "pass",
+        "synthetic": false
+      },
+      "audit-tests": {
+        "discovered": 67,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/testkit-checkpoint/mac-retry/audit-tests.log",
+        "log_sha256": "00a201c79470c4aaf9aeaa9e64acf036d43c7d61ac24640d8e80cae2515c3d74",
+        "platform_skip": 0
+      },
+      "legacy-tests": {
+        "discovered": 88,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/testkit-checkpoint/mac-retry/legacy-tests.log",
+        "log_sha256": "b87a67d06b19ce6be300675d90a8ea71fa1cfa39e9fd6bbd265bd9ff73b2d41a",
+        "platform_skip": 1
+      }
+    },
+    "note": "The initial50-source Mac workspace run failed a3second FIFO elapsed assertion. Unchanged exact test passed0.28s and a complete retry passed639. No timeout/assertion was weakened. Current880 workspace passes670; counts are whole-suite totals, not additive unique tests.",
+    "source_sha": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb"
+  },
+  "fleet_observation": {
+    "advanced_candidate_heads": 0,
+    "comparison": "prior15:23 receipt; no session transcript/activity scan in this observation",
+    "legacy_affinity_holds": {
+      "104": 3,
+      "105": 3,
+      "106": 3,
+      "107": 3,
+      "108": 3,
+      "109": 3
+    },
+    "manager": {
+      "capture_bytes": 1199,
+      "capture_is_visible_frame_only": true,
+      "capture_mode": "0o600",
+      "capture_sha256": "4d6a7f7d98508daad8b7def04a3ab90e9b5796aecb5cb2620717715052e34002",
+      "configured_id": "2062267.agy_captain_admiralty",
+      "exact_screen_present": true,
+      "execution_model_attestation": "not_available",
+      "observed_start_ticks": "50846861",
+      "observed_utc": "2026-10-18T16:04:43.329996+00:00",
+      "owned_raw_capture_removed": true,
+      "process_exists": true,
+      "visible_gem_4_argon_abbreviation": false,
+      "visible_gemini_4_argon_label": true
+    },
+    "no_release_inferred": true,
+    "observed_utc": {
+      "ended_utc": "2026-10-18T16:04:43.346228+00:00",
+      "started_utc": "2026-10-18T16:04:42.828220+00:00"
+    },
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/fleet-observations/a60172ceebeb4742b8d7155840f46c14/receipt.json",
+    "sha256": "a66329d64c4c5504af218d8272f7cc4d96cadd4c2b3bf13f557ae164fcc8de2f",
+    "tracked_clean": 15,
+    "workers": 15
+  },
+  "hosted_ci": {
+    "conclusion": "CurrentPR35exact880head jobs queued without assignedrunner orsteps; nohostedpass/causeinferred; nogithubsettingschanged",
+    "jobs": [
+      {
+        "conclusion": null,
+        "id": 117723353849,
+        "labels": [
+          "ubuntu-latest"
+        ],
+        "name": "rust-and-legacy",
+        "runner_id": 0,
+        "runner_name": "",
+        "status": "queued",
+        "steps": []
+      },
+      {
+        "conclusion": null,
+        "id": 117723353992,
+        "labels": [
+          "ubuntu-latest"
+        ],
+        "name": "contracts",
+        "runner_id": 0,
+        "runner_name": "",
+        "status": "queued",
+        "steps": []
+      }
+    ],
+    "observed_utc": "2026-10-18T16:12:56.867487+00:00",
+    "pr": {
+      "headRefOid": "880b685be4f003028aa377798a6058014ad5e7e3",
+      "isDraft": true,
+      "mergeable": "MERGEABLE",
+      "number": 35,
+      "reviews": [],
+      "state": "OPEN",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "0001-01-01T00:00:00Z",
+          "conclusion": "",
+          "detailsUrl": "https://github.com/neverhuman/admiralty/actions/runs/39143775775/job/117723353849",
+          "name": "rust-and-legacy",
+          "startedAt": "2026-10-18T16:10:12Z",
+          "status": "QUEUED",
+          "workflowName": "Admiralty checks"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "0001-01-01T00:00:00Z",
+          "conclusion": "",
+          "detailsUrl": "https://github.com/neverhuman/admiralty/actions/runs/39143775775/job/117723353992",
+          "name": "contracts",
+          "startedAt": "2026-10-18T16:10:12Z",
+          "status": "QUEUED",
+          "workflowName": "Admiralty checks"
+        }
+      ]
+    },
+    "prior_main_run": {
+      "conclusion": "No hosted success; cancellation cause not established; no settings changes",
+      "jobs": [
+        {
+          "completed_at": "2026-10-18T16:01:56Z",
+          "conclusion": "cancelled",
+          "id": 117718768172,
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "name": "contracts",
+          "runner_id": 0,
+          "runner_name": "",
+          "status": "completed",
+          "steps": []
+        },
+        {
+          "completed_at": "2026-10-18T16:01:56Z",
+          "conclusion": "cancelled",
+          "id": 117718768422,
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "name": "rust-and-legacy",
+          "runner_id": 0,
+          "runner_name": "",
+          "status": "completed",
+          "steps": []
+        }
+      ],
+      "run_id": 39142210407,
+      "source_sha": "82e00ca36d406e7f85649c7f9e38ba43f2aafdbb"
+    },
+    "run_id": 39143775775
+  },
+  "implemented": [
+    "Bounded explicit FakeClock, occurrence FaultPlan and immutable CAS ForgeSimulator; pure symbolic offline effects.",
+    "Seeded valid fragmented UTF-8 JSONL and typed/decimal cumulative unknown/duplicate/reset fixtures.",
+    "Five shared integration tests exercise actual mailbox, strict decoder and UsageAccumulator plus simulated forge reconciliation.",
+    "Recent positive active UI hints replace zero/completed/prose/quoted/fenced/stale-footer false-busy inference.",
+    "Canonical private artifact fixtures, bounded child-exit observation, exact size-limit and valid-digest collision assertions.",
+    "Reviewed latest main test additions integrated; malformed test inputs and lint/temp-path regressions repaired without changing production policy."
+  ],
+  "independent_review": {
+    "clock_fault_forge": "scoped agent and root review; bounded state and explicit no-authority limitations",
+    "fake_usage_and_shared_harness": "second agent review; corrected strict unwrap lint without suppressions",
+    "merged_main": "read-only review found raw Mac temporary path, strict lint and invalid-hex false-positive tests; all repaired",
+    "watchdog": "two reviewers; recency and completed-footer regressions added"
+  },
+  "kind": "deterministic_testkit_and_combined_harness_quality_checkpoint",
+  "limitations": [
+    "Clock/fault/forge fixtures are offline infrastructure, not runtime timers, real transport/forge or provider qualification. Cached forge retries do not reinject reply-loss faults.",
+    "Cumulative fixture has eight frames/six semantic usage events; unknown opening balance remains unknown. No complete-session token savings claim.",
+    "All31 named targets pass component checks; target names and generic boundary assertions do not establish whole P00-P31 acceptance.",
+    "Current legacy manager is visibly Gemini4Argon; backend identity is not attested. Fifteen present/unchanged candidates are not proof of new implementation progress.",
+    "Three current binding mismatches and stale11:16 workqueue remain unresolved at observation. No new legacy permit, worker reset or native admission introduced.",
+    "Host CI is separate; cancelled/unassigned runs and local equivalents do not prove hosted success. Required exact-head review and merge rules remain binding.",
+    "No production checkout edits, dashboard binary/UI deployment, provider call or native cutover by root."
+  ],
+  "linux_validation": {
+    "commands": [
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/880b685be4f003028aa377798a6058014ad5e7e3",
+        "elapsed_s": 0.802,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T16:10:15.988620Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/880b685be4f003028aa377798a6058014ad5e7e3/a679ce9890ad49eaaf55b5153c44eeac-fmt.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "name": "fmt",
+        "output_tail": [],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "started_utc": "2026-10-18T16:10:15.186809Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/880b685be4f003028aa377798a6058014ad5e7e3",
+        "elapsed_s": 32.627,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T16:10:48.616138Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/880b685be4f003028aa377798a6058014ad5e7e3/a679ce9890ad49eaaf55b5153c44eeac-clippy.log",
+        "log_sha256": "bc26c45ebab586d135ce52a09054aafe9d4693d84b9d24b2c44d3fd6e53c1f6e",
+        "name": "clippy",
+        "output_tail": [
+          "    Checking admiralty-core v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/880b685be4f003028aa377798a6058014ad5e7e3/crates/admiralty-core)",
+          "    Checking admiralty-runtime v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/880b685be4f003028aa377798a6058014ad5e7e3/crates/admiralty-runtime)",
+          "    Checking admiralty-store v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/880b685be4f003028aa377798a6058014ad5e7e3/crates/admiralty-store)",
+          "    Checking admiralty-server v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/880b685be4f003028aa377798a6058014ad5e7e3/crates/admiralty-server)",
+          "    Checking admiralty-testkit v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/880b685be4f003028aa377798a6058014ad5e7e3/crates/admiralty-testkit)",
+          "    Checking admiralty-cli v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/880b685be4f003028aa377798a6058014ad5e7e3/crates/admiralty-cli)",
+          "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 32.51s"
+        ],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "started_utc": "2026-10-18T16:10:15.989651Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "test",
+          "--workspace",
+          "--locked"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/880b685be4f003028aa377798a6058014ad5e7e3",
+        "elapsed_s": 120.686,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T16:12:49.303056Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/880b685be4f003028aa377798a6058014ad5e7e3/a679ce9890ad49eaaf55b5153c44eeac-workspace-tests.log",
+        "log_sha256": "a831aa30e0c7e27a61e74c949d5efff824c043123bf6d83ae770f072ec67cbf0",
+        "name": "workspace-tests",
+        "output_tail": [
+          "",
+          "   Doc-tests admiralty_runtime",
+          "",
+          "running 1 test",
+          "test crates/admiralty-runtime/src/audits.rs - audits::AuditProposal (line 197) - compile fail ... ok",
+          "",
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s",
+          "",
+          "   Doc-tests admiralty_server",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "",
+          "   Doc-tests admiralty_store",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "",
+          "   Doc-tests admiralty_testkit",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          ""
+        ],
+        "oversized_output": false,
+        "rust_test_results": [
+          {
+            "failed": 0,
+            "passed": 17,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 176,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 127,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 63,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 4,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 34,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 19,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 8,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 14,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 7,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 4,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 9,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 4,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 9,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 9,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 4,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 13,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 7,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 24,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 15,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 7,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 7,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 11,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          }
+        ],
+        "started_utc": "2026-10-18T16:10:48.616823Z",
+        "timed_out": false
+      }
+    ],
+    "receipt": {
+      "path": "target/quality/testkit-checkpoint/combined/linux-gate.json",
+      "sha256": "32e2396ce56564fa2f7ae204c262bc1ae391ac687ac50a51342fb3a0158f8ef8"
+    },
+    "rust_checks_passed": 672,
+    "source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+    "worktree_clean": true
+  },
+  "live_dashboard": {
+    "browser_observation": {
+      "admiralty_manager_label": "agy Gemini 4 Argon",
+      "browser": "iab",
+      "history_samples": 184,
+      "kind": "accessibility_state",
+      "limitations": "Read-only rendered accessibility state; no pixel screenshot or fresh UI build/deploy performed",
+      "original_detailed_dashboard_link": true,
+      "owner_profile_and_grokbot_image_present": true,
+      "project_tab_admiralty": true,
+      "tab": "2",
+      "temporal_cards": 13,
+      "terminology": [
+        "Admiral",
+        "Commodore"
+      ],
+      "url": "http://localhost:18891/"
+    },
+    "health": {
+      "native_execution_qualified": false,
+      "status": "ok",
+      "version": "0.1.0"
+    },
+    "history_count_correction": "history is an object; sample count is len(history.rows), confirmed184",
+    "history_samples": 185,
+    "native_execution_qualified": false,
+    "observed_utc": "2026-10-18T16:12:21.537851+00:00",
+    "rollout_counts": {
+      "blocked": 0,
+      "claimed": 0,
+      "in_progress": 0,
+      "integrated": 0,
+      "planned": 0,
+      "ready": 0,
+      "review": 0,
+      "verified": 32
+    },
+    "rollout_pr": {
+      "head": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "url": "https://github.com/neverhuman/admiralty/pull/35"
+    },
+    "source_generated_utc": "2026-10-18T16:11:42+00:00"
+  },
+  "mac_validation": {
+    "commands": [
+      {
+        "argv": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "elapsed_s": 0.501,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/testkit-checkpoint/combined/fmt.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "name": "fmt",
+        "output_tail": [],
+        "rust_test_results": [],
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "elapsed_s": 3.121,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/testkit-checkpoint/combined/clippy.log",
+        "log_sha256": "8105601911a485c23b028ba65ae6332f61b6003548d8de587dd6b152696977ef",
+        "name": "clippy",
+        "output_tail": [
+          "    Checking admiralty-testkit v0.1.0 (/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-testkit)",
+          "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.03s"
+        ],
+        "rust_test_results": [],
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "cargo",
+          "test",
+          "--workspace",
+          "--locked"
+        ],
+        "elapsed_s": 21.591,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/testkit-checkpoint/combined/workspace-tests.log",
+        "log_sha256": "1f4a85e674868c23c55e2b41ee309b0ff2c4cd7d4da12ae49189a71fa49d7c8f",
+        "name": "workspace-tests",
+        "output_tail": [
+          "   Doc-tests admiralty_runtime",
+          "",
+          "running 1 test",
+          "test crates/admiralty-runtime/src/audits.rs - audits::AuditProposal (line 197) - compile fail ... ok",
+          "",
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s",
+          "",
+          "   Doc-tests admiralty_server",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "",
+          "   Doc-tests admiralty_store",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "",
+          "   Doc-tests admiralty_testkit",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          ""
+        ],
+        "rust_test_results": [
+          {
+            "failed": 0,
+            "passed": 17,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 176,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 126,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 63,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 4,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 34,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 19,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 8,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 14,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 7,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 4,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 9,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 4,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 9,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 9,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 4,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 13,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 7,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 24,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 15,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 7,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 7,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 11,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          }
+        ],
+        "timed_out": false
+      }
+    ],
+    "receipt": {
+      "path": "target/quality/testkit-checkpoint/combined/mac-gate.json",
+      "sha256": "862236fe5cd1a265919f65a70c7ac3d67cbc7b70fa8bef328867f2482af4e962"
+    },
+    "rust_checks_passed": 670,
+    "source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+    "worktree_clean": true
+  },
+  "merged_main": "0f6b1b69efe684ca29d5b7c49dfad07d8a60864c",
+  "native_execution_qualified": false,
+  "next_actions": [
+    "Reconcile current manager task/checkout/permit metadata and replace status-only fanout with disjoint implementation contracts.",
+    "Implement the authenticated bounded durable coordination command/delivery seam using current Store policy and replay contracts.",
+    "Complete hosted checks/exact-head review, provider/runtime admission, installation and full acceptance/rollout gates."
+  ],
+  "observed_utc": "2026-10-18T16:13:06.791424+00:00",
+  "paid_provider_calls": 0,
+  "parent_acceptance": false,
+  "primary_fleet_binding_observation": {
+    "local": {
+      "path": "target/quality/testkit-checkpoint/fleet-primary.json",
+      "sha256": "db682e46c61f231a8ab909186de558ed3aa191ef496c030866802b5e901aedac"
+    },
+    "note": "Three current top-level lane rows have declared branch/HEAD different from exact-PID worktree; historical nested records excluded. Reconcile candidate origin versus current authority before worker reuse."
+  },
+  "pull_request": "https://github.com/neverhuman/admiralty/pull/35",
+  "registered_integration_targets": [
+    {
+      "name": "api_stream",
+      "path": "../../tests/integration/api_stream.rs"
+    },
+    {
+      "name": "artifact_custody",
+      "path": "../../tests/integration/artifact_custody.rs"
+    },
+    {
+      "name": "cleanup_custody",
+      "path": "../../tests/integration/cleanup_custody.rs"
+    },
+    {
+      "name": "context_fidelity",
+      "path": "../../tests/integration/context_fidelity.rs"
+    },
+    {
+      "name": "coordination_delivery",
+      "path": "../../tests/integration/coordination_delivery.rs"
+    },
+    {
+      "name": "core_contracts",
+      "path": "../../tests/integration/core_contracts.rs"
+    },
+    {
+      "name": "disaster_restore",
+      "path": "../../tests/integration/disaster_restore.rs"
+    },
+    {
+      "name": "deterministic_faults",
+      "path": "../../tests/integration/deterministic_faults.rs"
+    },
+    {
+      "name": "economic_conservation",
+      "path": "../../tests/integration/economic_conservation.rs"
+    },
+    {
+      "name": "exact_candidate",
+      "path": "../../tests/integration/exact_candidate.rs"
+    },
+    {
+      "name": "excursion_lineage",
+      "path": "../../tests/integration/excursion_lineage.rs"
+    },
+    {
+      "name": "experiment_validity",
+      "path": "../../tests/integration/experiment_validity.rs"
+    },
+    {
+      "name": "fleet_partition",
+      "path": "../../tests/integration/fleet_partition.rs"
+    },
+    {
+      "name": "fleet_transport",
+      "path": "../../tests/integration/fleet_transport.rs"
+    },
+    {
+      "name": "input_uncertainty",
+      "path": "../../tests/integration/input_uncertainty.rs"
+    },
+    {
+      "name": "integration_train",
+      "path": "../../tests/integration/integration_train.rs"
+    },
+    {
+      "name": "jankurai_staged",
+      "path": "../../tests/integration/jankurai_staged.rs"
+    },
+    {
+      "name": "legacy_import",
+      "path": "../../tests/integration/legacy_import.rs"
+    },
+    {
+      "name": "peer_handoff",
+      "path": "../../tests/integration/peer_handoff.rs"
+    },
+    {
+      "name": "plan_import",
+      "path": "../../tests/integration/plan_import.rs"
+    },
+    {
+      "name": "provider_claude",
+      "path": "../../tests/integration/provider_claude.rs"
+    },
+    {
+      "name": "provider_codex",
+      "path": "../../tests/integration/provider_codex.rs"
+    },
+    {
+      "name": "provider_matrix",
+      "path": "../../tests/integration/provider_matrix.rs"
+    },
+    {
+      "name": "publication_gate",
+      "path": "../../tests/integration/publication_gate.rs"
+    },
+    {
+      "name": "release_smoke",
+      "path": "../../tests/integration/release_smoke.rs"
+    },
+    {
+      "name": "runner_isolation",
+      "path": "../../tests/integration/runner_isolation.rs"
+    },
+    {
+      "name": "scheduler_admission",
+      "path": "../../tests/integration/scheduler_admission.rs"
+    },
+    {
+      "name": "session_continuity",
+      "path": "../../tests/integration/session_continuity.rs"
+    },
+    {
+      "name": "store_crash",
+      "path": "../../tests/integration/store_crash.rs"
+    },
+    {
+      "name": "store_replay",
+      "path": "../../tests/integration/store_replay.rs"
+    },
+    {
+      "name": "upgrade_continuity",
+      "path": "../../tests/integration/upgrade_continuity.rs"
+    }
+  ],
+  "retained_failures": {
+    "failures": [
+      {
+        "log": "target/quality/testkit-checkpoint/initial-cargo-failure.log",
+        "sha256": "99109393b55ea6535a7a562831ec12167c5e69433f30706a5c2154290a3d0cd0"
+      },
+      {
+        "log": "target/quality/testkit-checkpoint/initial-clippy-failure.log",
+        "sha256": "1631dbe1ec586e200419169311e0fdb1d1d4fd3d6d078d42037e2edf45a4401a"
+      },
+      {
+        "log": "target/quality/testkit-checkpoint/watchdog-before-fix.log",
+        "sha256": "7f845fb7bb009a6451085fcb415a3fa92def037c1f1f5bbecbdefb9512172608"
+      },
+      {
+        "log": "target/quality/testkit-checkpoint/watchdog-stale-footer-before-fix.log",
+        "sha256": "83269c9c0e0a883956b48172e46978c0f2f3cd86f7f321b8376351c66676f484"
+      },
+      {
+        "log": "target/quality/testkit-checkpoint/watchdog-recency-before-fix.log",
+        "sha256": "4d2d831be6aec52d567cd819ed479233e89fc2af6e29fe53e0ab6957db2647b0"
+      }
+    ],
+    "fifo_gate_failure": {
+      "assertion": "FIFO rejection elapsed <3s",
+      "cause": "not established; a timing/scheduling transient is possible, not proven",
+      "log": "target/quality/testkit-checkpoint/workspace-tests.log",
+      "receipt": "target/quality/testkit-checkpoint/mac-gate.json",
+      "source_sha": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "targeted_elapsed_s": 0.28,
+      "targeted_recheck_log": "target/quality/testkit-checkpoint/fifo-recheck.log",
+      "timeout_or_source_changed": false
+    },
+    "initial_environment_failure": {
+      "correction": "Explicit owned CARGO_TARGET_DIR",
+      "result": "Inherited Cargo target directory /Volumes/MOE inaccessible"
+    },
+    "unlogged_first_clippy": {
+      "correction": "expect messages; no lint suppression",
+      "result": "37 unwrap_used errors in new harness; tool transcript retained, no raw local log from first invocation"
+    }
+  },
+  "reuse_scope": "Production/source fixtures, tools, legacy tests, pinned fixture verifier, schema/build and actual smoke inputs match50 exactly; these checks are reused. React/contracts/package/harness inputs match661bf36f exactly. New combined integration harness source receives fresh fmt/strict Clippy/full workspace tests on both platforms.",
+  "reused_checks": {
+    "contract_runtime_checks": 5,
+    "note": "React/contracts/package/harness objects are identical. Audit and legacy suites executed fresh because the merged tools tree changed.",
+    "package_self_tests": 10,
+    "react_build": "pass",
+    "react_tests": 75,
+    "react_typecheck": "pass",
+    "reference": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+    "reference_sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021",
+    "smoke_harness_checks": 18
+  },
+  "root_implementation_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+  "source_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+  "source_tree": "1cc050d81a78b1552e7c711a674b103c6b481b03",
+  "state": "partial_review",
+  "unchanged_source_reuse": [
+    {
+      "baseline_object": "4294ba3caf57223414afcd08a5af9bdaa5e8bd9c",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "4294ba3caf57223414afcd08a5af9bdaa5e8bd9c",
+      "identical": true,
+      "path": "crates/admiralty-core/src"
+    },
+    {
+      "baseline_object": "4145d4d0c3eb386c0b920fa91d06dd7deb9e6c6d",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "4145d4d0c3eb386c0b920fa91d06dd7deb9e6c6d",
+      "identical": true,
+      "path": "crates/admiralty-runtime/src"
+    },
+    {
+      "baseline_object": "0a916df1ca925da6a026b75638917d8167aaf50a",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "0a916df1ca925da6a026b75638917d8167aaf50a",
+      "identical": true,
+      "path": "crates/admiralty-runtime/examples"
+    },
+    {
+      "baseline_object": "76d50bf56906a08f34cb1c67eb44aa9badfd7bf1",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "76d50bf56906a08f34cb1c67eb44aa9badfd7bf1",
+      "identical": true,
+      "path": "crates/admiralty-server/src"
+    },
+    {
+      "baseline_object": "81b8e23062a312461bae1e3dcd51b34a5479898c",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "81b8e23062a312461bae1e3dcd51b34a5479898c",
+      "identical": true,
+      "path": "crates/admiralty-cli/src"
+    },
+    {
+      "baseline_object": "e8a4aeca26d5ace8223083c4dc727954500a09e3",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "e8a4aeca26d5ace8223083c4dc727954500a09e3",
+      "identical": true,
+      "path": "crates/admiralty-store/src"
+    },
+    {
+      "baseline_object": "38d45d2d58df1c4a04ae44313dfc8b3173ba700e",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "38d45d2d58df1c4a04ae44313dfc8b3173ba700e",
+      "identical": true,
+      "path": "crates/admiralty-testkit/src"
+    },
+    {
+      "baseline_object": "56ce9eaa2740e9be7d7145a419dadf35cd85eb01",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "56ce9eaa2740e9be7d7145a419dadf35cd85eb01",
+      "identical": true,
+      "path": "Cargo.toml"
+    },
+    {
+      "baseline_object": "ece8dbd8e21a9cd052cf3fc9e5751883e180f09c",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "ece8dbd8e21a9cd052cf3fc9e5751883e180f09c",
+      "identical": true,
+      "path": "Cargo.lock"
+    },
+    {
+      "baseline_object": "12dd5258cd08aebcc0bf38ac6675cb74cb6ec69a",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "12dd5258cd08aebcc0bf38ac6675cb74cb6ec69a",
+      "identical": true,
+      "path": "rust-toolchain.toml"
+    },
+    {
+      "baseline_object": "9bab1db56c913bac230264ef521269ee91180fcb",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "9bab1db56c913bac230264ef521269ee91180fcb",
+      "identical": true,
+      "path": "configs"
+    },
+    {
+      "baseline_object": "3b8e5d8b4d38e1bbcdadf04129f432e18b0c3145",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "3b8e5d8b4d38e1bbcdadf04129f432e18b0c3145",
+      "identical": true,
+      "path": "tools"
+    },
+    {
+      "baseline_object": "1e8129387baaf7a43c44f5fa1be5ab461c47713d",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "1e8129387baaf7a43c44f5fa1be5ab461c47713d",
+      "identical": true,
+      "path": "tests/legacy"
+    },
+    {
+      "baseline_object": "9627e43e8d8cb129d4daf38c84fc5cce39e4226e",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "9627e43e8d8cb129d4daf38c84fc5cce39e4226e",
+      "identical": true,
+      "path": "tests/fixtures/legacy"
+    },
+    {
+      "baseline_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "identical": true,
+      "path": "scripts/check/canary-smoke.py"
+    },
+    {
+      "baseline_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "identical": true,
+      "path": "scripts/release/package.py"
+    },
+    {
+      "baseline_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "identical": true,
+      "path": "schemas"
+    },
+    {
+      "baseline_object": "ca39c6fa3800cf0aa5a03ad8056ac9df6fc321cc",
+      "baseline_source": "50d0abed5d9157958a145d1ad5ac2f4b6b7415fb",
+      "current_object": "ca39c6fa3800cf0aa5a03ad8056ac9df6fc321cc",
+      "identical": true,
+      "path": "README.md"
+    }
+  ],
+  "unchanged_ui_contract_package_inputs": [
+    {
+      "current_object": "3488f6bf7cd14f506bdc018657ad4908a3b672d5",
+      "identical": true,
+      "path": "apps/dashboard",
+      "prior_object": "3488f6bf7cd14f506bdc018657ad4908a3b672d5",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c"
+    },
+    {
+      "current_object": "c1b85bc834151b86919bda4b5c0fcbc8d3a476a1",
+      "identical": true,
+      "path": "packages/contracts",
+      "prior_object": "c1b85bc834151b86919bda4b5c0fcbc8d3a476a1",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c"
+    },
+    {
+      "current_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "identical": true,
+      "path": "schemas",
+      "prior_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c"
+    },
+    {
+      "current_object": "11db476204136b8f180828c6ebc1a02878fb6b59",
+      "identical": true,
+      "path": "package.json",
+      "prior_object": "11db476204136b8f180828c6ebc1a02878fb6b59",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c"
+    },
+    {
+      "current_object": "7681223a6442bb9dd3ed8646f6fecdbbf8abc26f",
+      "identical": true,
+      "path": "pnpm-lock.yaml",
+      "prior_object": "7681223a6442bb9dd3ed8646f6fecdbbf8abc26f",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c"
+    },
+    {
+      "current_object": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+      "identical": true,
+      "path": "pnpm-workspace.yaml",
+      "prior_object": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c"
+    },
+    {
+      "current_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "identical": true,
+      "path": "scripts/release/package.py",
+      "prior_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c"
+    },
+    {
+      "current_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "identical": true,
+      "path": "scripts/check/canary-smoke.py",
+      "prior_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c"
+    },
+    {
+      "current_object": "3010e0a8d4ff76c213b890e7052fb4a8fc21f06d",
+      "identical": true,
+      "path": ".github/workflows/ci.yml",
+      "prior_object": "3010e0a8d4ff76c213b890e7052fb4a8fc21f06d",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c"
+    }
+  ]
+}

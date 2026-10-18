@@ -26,6 +26,12 @@ fn receipt_parser_rejects_input_over_the_size_limit() {
     use admiralty_core::verification::MAX_RECEIPT_BYTES;
 
     let oversized = vec![b' '; MAX_RECEIPT_BYTES + 1];
-    assert!(parse_receipt(&oversized).is_err());
+    assert_eq!(
+        parse_receipt(&oversized)
+            .expect_err("oversized receipt rejected before JSON decoding")
+            .0,
+        "receipt exceeds 1 MiB",
+        "the bound must reject before the JSON parser, not merely reject invalid JSON"
+    );
     assert!(parse_receipt(br#"{} trailing"#).is_err());
 }

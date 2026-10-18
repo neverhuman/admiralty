@@ -180,6 +180,22 @@ fn stale_automation_rejection_does_not_append_to_the_input_journal() {
     );
     host.close_input_if_epoch("stale-epoch", 1)
         .expect("close owned child input");
+    let deadline = std::time::Instant::now() + Duration::from_secs(3);
+    loop {
+        if host
+            .status("stale-epoch")
+            .expect("observe owned child cleanup")
+            .exit
+            .is_some()
+        {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "owned stale-epoch cat must exit on EOF"
+        );
+        thread::sleep(Duration::from_millis(5));
+    }
     assert!(
         host.wait("stale-epoch")
             .expect("reap child and drain capture")

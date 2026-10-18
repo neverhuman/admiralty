@@ -1071,7 +1071,19 @@ IDLE_RED_MIN = 20          # managed screen idle (not busy) and unchanged this l
 NO_PUSH_RED_MIN = 30       # project with open work and no push to any branch this long -> red
 ETA_GRACE_MIN = 5          # an ETA in super_captain_status.json this far in the past -> red (owed deliverable overdue)
 REDRIVE_GRACE_MIN = 15     # a 're-drove X' claim needs terminal input on X no earlier than this before the claim
-BUSY_RE = re.compile(r'esc to (cancel|interrupt)|\b\d+ (monitor|background task|shell)s?\b[^\n]{0,20}\brunning\b|\b\d+ monitors?\b', re.I)   # Claude bg monitor/tasks count as busy
+BUSY_RE = re.compile(r'esc to (cancel|interrupt)', re.I)
+# A count/menu entry or prose about a monitor is not current worker activity.
+# Recognize only a positive, explicitly running Claude duration/status footer.
+# These remain screen hints, never durable progress or task acceptance evidence.
+CLAUDE_STATUS_PREFIX = (
+    r'^[ \t]*[A-Za-z]+(?:[ \t]+[A-Za-z]+){0,2}[ \t]+for[ \t]+'
+    r'[0-9]+(?:\.[0-9]+)?[hms](?:[ \t]*[0-9]+(?:\.[0-9]+)?[hms])*'
+    r'[ \t]*·[ \t]*done[ \t]+[0-9]{1,2}:[0-9]{2}(?:[ \t]*[AP]M)?')
+BACKGROUND_STATUS_RE = re.compile(CLAUDE_STATUS_PREFIX + r'(?:[ \t]*·[^\n]*)?[ \t]*$', re.I)
+BACKGROUND_BUSY_RE = re.compile(
+    CLAUDE_STATUS_PREFIX +
+    r'[ \t]*·[ \t]*[1-9][0-9]*[ \t]+(?:monitors?|background tasks?|shells?)'
+    r'[ \t]+(?:still[ \t]+)?running[ \t]*$', re.I)
 SCREEN_ID_RE = re.compile(r'\b(\d{3,8})\.([A-Za-z][\w-]+)\b')
 NOT_WORKER = re.compile(r'^(sc_|disk_|captains_dash|super_captain)')
 ETA_LIVE_KEYS = ('captains', 'overall', 'summary', 'needs_jepson', 'escalations', 'issues', 'actions')
@@ -1081,8 +1093,31 @@ def MA(sev, scope, code, text, evidence=None):
     F(sev, scope, code, text, evidence); findings[-1]['must_act'] = True
 
 def tail_busy(text):
-    lines = [l for l in text.rstrip('\n').split('\n') if l.strip()][-12:]
-    return bool(BUSY_RE.search('\n'.join(lines)))
+    raw_lines = text.rstrip('\n').split('\n')
+    recent_indexes = [i for i, line in enumerate(raw_lines) if line.strip()][-12:]
+    if BUSY_RE.search('\n'.join(raw_lines[i] for i in recent_indexes)):
+        return True
+    recent_start = recent_indexes[0] if recent_indexes else len(raw_lines)
+    # Do not interpret quoted documentation or fenced examples as background UI.
+    fence = None; visible = []
+    for index, line in enumerate(raw_lines):
+        stripped = line.lstrip()
+        marker = re.match(r'(`{3,}|~{3,})', stripped)
+        if marker:
+            kind = marker.group(1)[0]
+            if fence is None: fence = kind
+            elif fence == kind: fence = None
+            continue
+        if index >= recent_start and fence is None and line.strip() and not stripped.startswith(('>', '`', '"', "'")):
+            visible.append(line)
+    for line in reversed(visible):
+        # A newer completed status or explicit zero-count footer supersedes the
+        # old running footer still visible in terminal scrollback.
+        if re.search(r'\bauto mode on\b[^\n]*·[ \t]*0[ \t]+(?:monitors?|background tasks?|shells?)\b', line, re.I):
+            return False
+        if BACKGROUND_STATUS_RE.fullmatch(line):
+            return bool(BACKGROUND_BUSY_RE.fullmatch(line))
+    return False
 
 def tail_hash(text):
     lines = [l.rstrip() for l in text.rstrip('\n').split('\n') if l.strip()][-25:]

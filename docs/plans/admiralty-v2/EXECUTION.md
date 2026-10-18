@@ -508,3 +508,73 @@ and its 32-row reconciliation in `receipts/reconciliation/`. The successor PR
 contains the final source-bound receipts and ledger; the functional fixes are
 already on main through the external PR26 merge. Full P00–P31 gates and the
 manager's stale bindings/status-only fanout remain the next implementation work.
+
+## Deterministic testkit and current harness checkpoint
+
+Source `50d0abe` fills the missing P01 offline clock, occurrence-fault and forge
+fixture infrastructure, plus valid split UTF-8 and cumulative unknown/reset
+provider observations. Three agents own disjoint helper files; root owns shared
+wiring and a five-test harness over the real mailbox, strict JSONL decoder and
+usage accumulator. Independent review checks replay bounds and ambiguity. The
+forge remains simulated: admitted intent/reply loss, cached outcomes and CAS
+grant no execution, publication or acceptance. Eight cumulative frames contain
+six semantic events; opening usage stays unknown. See
+[fixture scope](../../architecture/deterministic-testkit.md).
+
+Review also repairs latest-main regressions: the watchdog no longer treats
+zero/completed/prose/quoted/fenced/old monitor status as current background work;
+newer completed/zero UI status overrides old running status within the original
+raw-line recency window. Screen hints still establish no durable task progress.
+Canonical directories are private at creation, an owned-child exit observation
+is bounded before waiting, and negative tests assert the actual size guard and
+valid-digest collision instead of passing through malformed input. The latest
+main `0f6b1b6` adds component boundary/replay checks; it is integrated through a
+normal merge, preserving those assertions and root's fixes. No force push.
+
+At exact combined source `880b685`, macOS passes 670 Rust checks and clean Linux
+passes 672, including all 31 named integration targets. Both pass formatting and
+strict workspace Clippy. The full `50d0abe` gate separately passes 639/641 Rust
+checks, 67 audit tests, the pinned 37-source/11-case fixture verifier, schemas,
+binary builds and 15 actual isolated HTTP/CLI smokes per platform; both smoke
+children terminate. Legacy discovers 88 checks (Mac 87 pass/one skip, Linux all
+88 pass). Eighteen exact input objects are identical from 50 to 880, so the
+unaffected non-Rust-suite checks are reused; combined Rust checks are fresh.
+Unchanged React 75, contract 5, package 10 and smoke-harness 18 checks retain
+their prior source attribution through nine verified object identities.
+
+The initial 50 Mac workspace attempt fails an existing FIFO three-second elapsed
+assertion once. Its unchanged targeted recheck passes in 0.28 seconds, then the
+full 50 and combined 880 workspace suites pass. Cause is not established; no
+timeout or assertion was relaxed. Initial inherited-target permission failure,
+strict unwrap lint and three watchdog negative-test failures are retained or
+explicitly identified where only tool output exists. Counts are suite totals,
+not additive unique tests.
+
+The 16:04 fleet observation verifies all 15 exact PID/start identities, clean
+tracked candidate trees and zero HEAD advances since 15:23. Session activity was
+not scanned, so no new implementation progress is inferred. The manager's
+visible frame explicitly says Gemini 4 Argon; backend attestation is unavailable.
+At 16:07, three current top-level lane rows still disagree with actual branch/HEAD
+(P21A, P22A, P04B); historical nested metadata is excluded from that conclusion.
+The 11:16 workqueue remains stale. Their legacy CPU holds remain reserved; root
+does not release, reset or redispatch them. A compact manager inbox handoff asks
+for checkout/task/permit reconciliation and disjoint implementation contracts,
+and asks it to hold further shared harness churn during integration.
+
+Live port 18891 remains healthy with native qualification false. Rendered browser
+state confirms the 13 temporal cards, detailed real-data console, colored models,
+owner/Grokbot images and Admiral/Commodore labels. It exposes PR35 as the current
+source reference; 32 verified labels remain observational receipt references,
+not whole-packet acceptance. The production checkout and deployed 17c7a76d
+canary/UI are preserved. Root performs no model call, PR merge or native cutover.
+
+PR [#35](https://github.com/neverhuman/admiralty/pull/35) contains this source and
+its source-bound evidence. Hosted jobs on 880 are queued without assigned runner
+or steps at observation; prior main jobs were cancelled. Local proof does not
+substitute a hosted success or configured exact-head review. Evidence:
+`receipts/P01/880b685be4f003028aa377798a6058014ad5e7e3.json`,
+`receipts/integration/880b685be4f003028aa377798a6058014ad5e7e3.json` and the 32-row
+`receipts/reconciliation/2026-10-18T1615Z-880b685be4f003028aa377798a6058014ad5e7e3.json`.
+All full parent acceptance gates remain separate; P00's prior technical artifact
+verification is retained. Next ready implementation is the authenticated bounded
+durable coordination command/delivery seam, after manager ownership reconciliation.
