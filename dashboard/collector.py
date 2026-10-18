@@ -3,6 +3,7 @@
 Writes status.json every INTERVAL seconds. Never types into screens; only hardcopy.
 Tolerates missing/changing files (fields become "unknown")."""
 import json, os, re, subprocess, time, glob, hashlib, traceback, datetime, collections
+from rollout import collect_rollout
 
 HOME = '/home/ubuntu'
 BASE = os.environ.get('CDASH_RUNTIME', '/home/ubuntu/xbabe2_kicker/captains-dashboard')  # runtime data dir (status.json, history, tokens.db); code lives in admiralty/dashboard
@@ -934,6 +935,9 @@ def cycle():
         out.update(extras.collect(out, screens, {"agent_proc": agent_proc, "descendants": descendants, "screen_info": screen_info, "project_of": project_of}))
     except Exception as e:
         out["extras_error"] = str(e)[:300]; traceback.print_exc()
+    rollout_state = collect_rollout(BASE)
+    if rollout_state is not None:
+        out['rollout'] = rollout_state
     wj(HIST, HISTORY)
     wj(OUT, out)
 
