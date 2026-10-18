@@ -2,8 +2,8 @@
 
 use admiralty_core::coordination::questions::{QuestionEvent, QuestionScope, QuestionStatus};
 use admiralty_core::verification::{
-    CheckResult, ReceiptProducer, VerificationInputs, VerificationPolicy, VerificationReceipt,
-    parse_receipt, validate_receipt,
+    CheckResult, ReceiptProducer, RequiredNegativeCheck, VerificationInputs, VerificationPolicy,
+    VerificationReceipt, parse_receipt, validate_receipt,
 };
 use admiralty_core::{
     AcceptanceCriterion, AttemptId, CheckSpec, MessageId, PrincipalId, ProjectId, RootId,
@@ -171,7 +171,17 @@ fn codex_round20_p05_p15_post_pr57_release_qualification() {
         schema_version: 1,
         verifier: PrincipalId::new("independent-reviewer").expect("valid verifier"),
         protected_oracle_digest: format!("sha256:{}", "a".repeat(64)),
-        required_negative_checks: vec![],
+        required_negative_checks: vec![RequiredNegativeCheck {
+            check: CheckSpec {
+                id: "round20-negative-check".into(),
+                program: "fixture".into(),
+                args: vec![],
+                cwd: ".".into(),
+                timeout_secs: 10,
+            },
+            expected_exit_code: 1,
+            fixture_digest: format!("sha256:{}", "e".repeat(64)),
+        }],
     };
     let inputs = VerificationInputs {
         project_id: contract.project_id.clone(),
@@ -204,7 +214,16 @@ fn codex_round20_p05_p15_post_pr57_release_qualification() {
                 stderr_digest: format!("sha256:{}", "d".repeat(64)),
             })
             .collect(),
-        negative_checks: vec![],
+        negative_checks: policy
+            .required_negative_checks
+            .iter()
+            .map(|negative| CheckResult {
+                check: negative.check.clone(),
+                exit_code: Some(1),
+                stdout_digest: format!("sha256:{}", "f".repeat(64)),
+                stderr_digest: format!("sha256:{}", "0".repeat(64)),
+            })
+            .collect(),
     };
     let bytes = serde_json::to_vec(&receipt).expect("encode portable P15 receipt");
     let parsed = parse_receipt(&bytes).expect("strict receipt schema roundtrips");
