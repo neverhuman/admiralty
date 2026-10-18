@@ -204,12 +204,30 @@ pub struct ObservationFailure {
     pub io_kind: Option<&'static str>,
 }
 
+/// One bounded numeric observation, for private failure receipts only. CPU
+/// prefixes are truncated to 16 entries; counts retain the complete set size.
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct ObservedCgroupLimits {
+    pub cpu_count: usize,
+    pub cpu_prefix: Vec<u32>,
+    pub expected_cpu_count: usize,
+    pub expected_cpu_prefix: Vec<u32>,
+    pub memory_max_bytes: u64,
+    pub expected_memory_max_bytes: u64,
+    pub tasks_max: u64,
+    pub expected_tasks_max: u32,
+    pub main_pid_present: bool,
+    pub process_count: usize,
+    pub pids_current: Option<u64>,
+}
+
 #[derive(Clone, Debug, Default, serde::Serialize)]
 pub struct ObservationDiagnostics {
     pub attempts: u32,
     pub first_failure: Option<ObservationFailure>,
     pub first_significant_failure: Option<ObservationFailure>,
     pub last_failure: Option<ObservationFailure>,
+    pub first_cgroup_limits: Option<ObservedCgroupLimits>,
 }
 
 impl ObservationDiagnostics {
@@ -1053,17 +1071,49 @@ impl SystemdCgroupBackend {
             let tasks = parse_limit(&read_text(&group.join("pids.max"))?)?;
             stage = "cgroup_processes";
             let process_ids = parse_pids(&read_text(&group.join("cgroup.procs"))?)?;
-            stage = "cgroup_limits_match";
-            if cpus != claims.cpu_set
-                || memory == 0
-                || memory > claims.memory_max_bytes
-                || tasks == 0
-                || tasks > u64::from(claims.max_tasks)
-                || !process_ids.contains(&pid)
-                || parse_limit(&read_text(&group.join("pids.current"))?)? > tasks
+            let mut observed_limits = ObservedCgroupLimits {
+                cpu_count: cpus.len(),
+                cpu_prefix: cpus.iter().copied().take(16).collect(),
+                expected_cpu_count: claims.cpu_set.len(),
+                expected_cpu_prefix: claims.cpu_set.iter().copied().take(16).collect(),
+                memory_max_bytes: memory,
+                expected_memory_max_bytes: claims.memory_max_bytes,
+                tasks_max: tasks,
+                expected_tasks_max: claims.max_tasks,
+                main_pid_present: process_ids.contains(&pid),
+                process_count: process_ids.len(),
+                pids_current: None,
+            };
+            if let Some(failed_stage) =
+                cgroup_limit_failure(&cpus, memory, tasks, &process_ids, pid, claims)
             {
+                stage = failed_stage;
+                diagnostics
+                    .first_cgroup_limits
+                    .get_or_insert(observed_limits);
                 return Err(ResourceGateError::EnforcementMismatch(
                     "effective cgroup limits differ from permit",
+                ));
+            }
+            stage = "cgroup_pids_current_read";
+            let current_tasks =
+                match read_text(&group.join("pids.current")).and_then(|text| parse_limit(&text)) {
+                    Ok(current) => current,
+                    Err(error) => {
+                        diagnostics
+                            .first_cgroup_limits
+                            .get_or_insert(observed_limits);
+                        return Err(error);
+                    }
+                };
+            observed_limits.pids_current = Some(current_tasks);
+            diagnostics
+                .first_cgroup_limits
+                .get_or_insert(observed_limits);
+            stage = "cgroup_pids_current_match";
+            if current_tasks > tasks {
+                return Err(ResourceGateError::EnforcementMismatch(
+                    "effective cgroup task usage exceeds task limit",
                 ));
             }
             stage = "process_start_recheck";
@@ -1094,6 +1144,29 @@ impl SystemdCgroupBackend {
         })();
         diagnostics.record(stage, result.as_ref().err());
         result
+    }
+}
+
+/// Preserve the original enforcement order and exact comparisons while
+/// identifying the particular mismatch; diagnostic labels never grant admission.
+fn cgroup_limit_failure(
+    cpus: &BTreeSet<u32>,
+    memory: u64,
+    tasks: u64,
+    process_ids: &[u32],
+    pid: u32,
+    claims: &ResourcePermitClaims,
+) -> Option<&'static str> {
+    if cpus != &claims.cpu_set {
+        Some("cgroup_cpu_set_match")
+    } else if memory == 0 || memory > claims.memory_max_bytes {
+        Some("cgroup_memory_limit_match")
+    } else if tasks == 0 || tasks > u64::from(claims.max_tasks) {
+        Some("cgroup_task_limit_match")
+    } else if !process_ids.contains(&pid) {
+        Some("cgroup_main_pid_match")
+    } else {
+        None
     }
 }
 
@@ -1460,6 +1533,41 @@ fn bounded_output(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cgroup_diagnostics_distinguish_every_enforcement_comparison() {
+        let claims = claims();
+        let check = |cpus: BTreeSet<u32>, memory, tasks, pids: &[u32]| {
+            cgroup_limit_failure(&cpus, memory, tasks, pids, 42, &claims)
+        };
+        assert_eq!(check(BTreeSet::from([2]), 1024, 4, &[42]), None);
+        // Stricter memory/task ceilings retain the original admission semantics.
+        assert_eq!(check(BTreeSet::from([2]), 1, 1, &[42]), None);
+        for cpus in [BTreeSet::from([1, 2]), BTreeSet::from([1]), BTreeSet::new()] {
+            assert_eq!(check(cpus, 1024, 4, &[42]), Some("cgroup_cpu_set_match"));
+        }
+        for memory in [0, 1025] {
+            assert_eq!(
+                check(BTreeSet::from([2]), memory, 4, &[42]),
+                Some("cgroup_memory_limit_match")
+            );
+        }
+        for tasks in [0, 5] {
+            assert_eq!(
+                check(BTreeSet::from([2]), 1024, tasks, &[42]),
+                Some("cgroup_task_limit_match")
+            );
+        }
+        assert_eq!(
+            check(BTreeSet::from([2]), 1024, 4, &[41]),
+            Some("cgroup_main_pid_match")
+        );
+        // Preserve the previous first-failure order when multiple checks differ.
+        assert_eq!(
+            check(BTreeSet::new(), 0, 0, &[]),
+            Some("cgroup_cpu_set_match")
+        );
+    }
 
     #[test]
     fn actual_systemctl_empty_job_format_means_no_pending_job_only_when_present() {
