@@ -8,3 +8,4 @@ mod codex_round14_p20;
 mod codex_round14_p23;
 mod codex_round14_p25_p30;
 mod codex_round14_p26_p31;
+mod codex_round14_p27;
