@@ -50,9 +50,11 @@ Frames consist of a four-byte unsigned big-endian byte length followed by UTF-8
 JSON. Empty frames and request lengths above 262,144 bytes fail before allocating
 the body. Unknown/duplicate fields and unknown command variants are rejected.
 Eight connections may be active; saturation returns a bounded `busy` response.
-Reads and writes share a two-second absolute I/O deadline, including partial
-frames. This bounds socket I/O; filesystem sync and process spawn remain OS calls
-and are not a qualified hard real-time deadline.
+Reads and writes share an aggregate two-second socket I/O budget, including
+partial frames. The remaining response budget pauses during dispatch so a
+completed durable mutation can still return its receipt after a slow sync or
+spawn. Filesystem sync and process spawn remain OS calls and are not a qualified
+hard real-time deadline.
 
 Requests are:
 
