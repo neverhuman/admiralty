@@ -885,54 +885,102 @@ pub struct VerifiedUsageClosure {
     outcome: VerifiedUsageOutcome,
 }
 
+fn validate_reservation_claim_report_bindings(
+    reservation: &Reservation,
+    slot_claim: &InferenceSlotClaim,
+    report: &UsageReconciliationReport,
+) -> Result<(String, String), ModelSelectionError> {
+    let expected_claims_digest = content_digest(slot_claim)
+        .map_err(|e| ModelSelectionError::Invalid(format!("slot claim digest failed: {e}")))?;
+    let expected_scope_digest = content_digest(&reservation.scope)
+        .map_err(|e| ModelSelectionError::Invalid(format!("scope digest failed: {e}")))?;
+
+    if reservation.id != report.reservation_id
+        || slot_claim.attempt_id != report.attempt_id
+        || slot_claim.model_id != report.model_id
+        || reservation.scope.resource_claims_digest != expected_claims_digest
+        || reservation.scope.project_id != slot_claim.project_id
+        || reservation.scope.root_id != slot_claim.root_id
+        || reservation.scope.task_id != slot_claim.task_id
+        || reservation.scope.attempt_id != slot_claim.attempt_id
+        || reservation.scope.contract_revision != slot_claim.contract_revision
+        || reservation.scope.contract_digest != slot_claim.contract_digest
+        || report.resource_claims_digest != expected_claims_digest
+        || report.scope_digest != expected_scope_digest
+    {
+        return Err(ModelSelectionError::Reservation(
+            ReservationError::BindingMismatch,
+        ));
+    }
+
+    Ok((expected_scope_digest, expected_claims_digest))
+}
+
 impl VerifiedUsageClosure {
-    /// Construct a `VerifiedUsageClosure` after checking exact reservation/claim bindings
-    /// and explicit reconciliation flags. Never fabricates `true` flags or `ConfirmedNoUsage`.
-    pub fn authenticate(
+    /// Construct an unauthenticated held `VerifiedUsageClosure` after checking reservation
+    /// and slot claim digest bindings. Never mutates ledger state or releases a slot.
+    pub fn unauthenticated_held(
         reservation: &Reservation,
         slot_claim: &InferenceSlotClaim,
         report: &UsageReconciliationReport,
-        closure_authenticated: bool,
     ) -> Result<Self, ModelSelectionError> {
-        let expected_claims_digest = content_digest(slot_claim)
-            .map_err(|e| ModelSelectionError::Invalid(format!("slot claim digest failed: {e}")))?;
-        let expected_scope_digest = content_digest(&reservation.scope)
-            .map_err(|e| ModelSelectionError::Invalid(format!("scope digest failed: {e}")))?;
+        let (expected_scope_digest, expected_claims_digest) =
+            validate_reservation_claim_report_bindings(reservation, slot_claim, report)?;
 
-        if reservation.id != report.reservation_id
-            || slot_claim.attempt_id != report.attempt_id
-            || slot_claim.model_id != report.model_id
-            || reservation.scope.resource_claims_digest != expected_claims_digest
-            || reservation.scope.project_id != slot_claim.project_id
-            || reservation.scope.root_id != slot_claim.root_id
-            || reservation.scope.task_id != slot_claim.task_id
-            || reservation.scope.attempt_id != slot_claim.attempt_id
-            || reservation.scope.contract_revision != slot_claim.contract_revision
-            || reservation.scope.contract_digest != slot_claim.contract_digest
-            || report.resource_claims_digest != expected_claims_digest
-            || report.scope_digest != expected_scope_digest
+        Ok(Self {
+            reservation_id: reservation.id.clone(),
+            attempt_id: slot_claim.attempt_id.clone(),
+            model_id: slot_claim.model_id.clone(),
+            scope_digest: expected_scope_digest,
+            resource_claims_digest: expected_claims_digest,
+            trusted_closure_verified: false,
+            outcome: VerifiedUsageOutcome::HeldIncomplete {
+                interim_amount: None,
+                reason: "untrusted_or_unauthenticated_closure".into(),
+            },
+        })
+    }
+
+    /// Construct an authenticated `VerifiedUsageClosure` from a protected
+    /// [`AuthenticatedClosureReceipt`], rejecting any contradictory raw claims in `report`.
+    pub fn from_authenticated_receipt(
+        reservation: &Reservation,
+        slot_claim: &InferenceSlotClaim,
+        settlement_event_id: &str,
+        report: &UsageReconciliationReport,
+        receipt: &AuthenticatedClosureReceipt,
+    ) -> Result<Self, ModelSelectionError> {
+        let (expected_scope_digest, expected_claims_digest) =
+            validate_reservation_claim_report_bindings(reservation, slot_claim, report)?;
+
+        if receipt.reservation_id != reservation.id
+            || receipt.attempt_id != slot_claim.attempt_id
+            || receipt.model_id != slot_claim.model_id
+            || receipt.scope_digest != expected_scope_digest
+            || receipt.resource_claims_digest != expected_claims_digest
         {
             return Err(ModelSelectionError::Reservation(
                 ReservationError::BindingMismatch,
             ));
         }
 
-        if !closure_authenticated || report.evidence_ref.trim().is_empty() {
-            return Ok(Self {
-                reservation_id: reservation.id.clone(),
-                attempt_id: slot_claim.attempt_id.clone(),
-                model_id: slot_claim.model_id.clone(),
-                scope_digest: expected_scope_digest,
-                resource_claims_digest: expected_claims_digest,
-                trusted_closure_verified: false,
-                outcome: VerifiedUsageOutcome::HeldIncomplete {
-                    interim_amount: None,
-                    reason: "untrusted_or_unauthenticated_closure".into(),
-                },
-            });
+        if receipt.settlement_event_id != settlement_event_id
+            || receipt.evidence_ref.trim().is_empty()
+            || report.measured_amount != receipt.measured_amount
+            || report.disposition != receipt.disposition
+            || report.usage_complete != receipt.usage_complete
+            || report.effects_reconciled != receipt.effects_reconciled
+            || report.resource_claims_reconciled != receipt.resource_claims_reconciled
+            || report.scope_digest != receipt.scope_digest
+            || report.resource_claims_digest != receipt.resource_claims_digest
+            || report.evidence_ref != receipt.evidence_ref
+        {
+            return Err(ModelSelectionError::Reservation(
+                ReservationError::InvalidSettlement,
+            ));
         }
 
-        let Some(measured_amount) = report.measured_amount.clone() else {
+        let Some(measured_amount) = receipt.measured_amount.clone() else {
             return Ok(Self {
                 reservation_id: reservation.id.clone(),
                 attempt_id: slot_claim.attempt_id.clone(),
@@ -947,10 +995,10 @@ impl VerifiedUsageClosure {
             });
         };
 
-        if report.disposition == UsageDisposition::IncompleteOrUnknown
-            || report.usage_complete != Some(true)
-            || report.effects_reconciled != Some(true)
-            || report.resource_claims_reconciled != Some(true)
+        if receipt.disposition == UsageDisposition::IncompleteOrUnknown
+            || receipt.usage_complete != Some(true)
+            || receipt.effects_reconciled != Some(true)
+            || receipt.resource_claims_reconciled != Some(true)
         {
             return Ok(Self {
                 reservation_id: reservation.id.clone(),
@@ -967,14 +1015,14 @@ impl VerifiedUsageClosure {
         }
 
         let reconciliation = ReconciliationEvidence {
-            scope_digest: expected_scope_digest.clone(),
-            resource_claims_digest: expected_claims_digest.clone(),
-            usage_complete: report.usage_complete,
-            effects_reconciled: report.effects_reconciled,
-            resource_claims_reconciled: report.resource_claims_reconciled,
+            scope_digest: receipt.scope_digest.clone(),
+            resource_claims_digest: receipt.resource_claims_digest.clone(),
+            usage_complete: receipt.usage_complete,
+            effects_reconciled: receipt.effects_reconciled,
+            resource_claims_reconciled: receipt.resource_claims_reconciled,
         };
 
-        let final_evidence = match report.disposition {
+        let final_evidence = match receipt.disposition {
             UsageDisposition::ConfirmedNoUsage => {
                 if measured_amount.get() != 0 || reservation.settled.get() != 0 {
                     return Err(ModelSelectionError::Reservation(
@@ -982,12 +1030,12 @@ impl VerifiedUsageClosure {
                     ));
                 }
                 FinalEvidence::ConfirmedNoUsage {
-                    evidence_ref: report.evidence_ref.clone(),
+                    evidence_ref: receipt.evidence_ref.clone(),
                     reconciliation,
                 }
             }
             UsageDisposition::SettledAndTerminated => FinalEvidence::SettledAndTerminated {
-                evidence_ref: report.evidence_ref.clone(),
+                evidence_ref: receipt.evidence_ref.clone(),
                 reconciliation,
             },
             UsageDisposition::IncompleteOrUnknown => unreachable!(),
@@ -1015,25 +1063,34 @@ pub trait UsageClosureVerifier {
         &self,
         reservation: &Reservation,
         slot_claim: &InferenceSlotClaim,
+        settlement_event_id: &str,
         report: &UsageReconciliationReport,
     ) -> Result<VerifiedUsageClosure, ModelSelectionError>;
 }
 
 /// Authenticated closure receipt registered with [`AuthenticatedUsageVerifier`].
+/// Binds the exact `settlement_event_id`, `scope_digest`, `resource_claims_digest`,
+/// cumulative `measured_amount`, `disposition`, and all three reconciliation flags.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AuthenticatedClosureReceipt {
+    pub settlement_event_id: String,
     pub reservation_id: String,
     pub attempt_id: AttemptId,
     pub model_id: String,
-    pub measured_amount: MinorUnits,
+    pub measured_amount: Option<MinorUnits>,
     pub disposition: UsageDisposition,
+    pub usage_complete: Option<bool>,
+    pub effects_reconciled: Option<bool>,
+    pub resource_claims_reconciled: Option<bool>,
+    pub scope_digest: String,
+    pub resource_claims_digest: String,
     pub evidence_ref: String,
 }
 
 /// Concrete trusted [`UsageClosureVerifier`] backed by authenticated runtime/verifier receipts.
 #[derive(Clone, Debug, Default)]
 pub struct AuthenticatedUsageVerifier {
-    receipts: BTreeMap<String, AuthenticatedClosureReceipt>,
+    receipts: BTreeMap<String, Vec<AuthenticatedClosureReceipt>>,
 }
 
 impl AuthenticatedUsageVerifier {
@@ -1042,14 +1099,23 @@ impl AuthenticatedUsageVerifier {
     }
 
     pub fn with_receipt(mut self, receipt: AuthenticatedClosureReceipt) -> Self {
-        self.receipts
-            .insert(receipt.reservation_id.clone(), receipt);
+        self.insert_receipt(receipt);
         self
     }
 
     pub fn insert_receipt(&mut self, receipt: AuthenticatedClosureReceipt) {
-        self.receipts
-            .insert(receipt.reservation_id.clone(), receipt);
+        let entries = self
+            .receipts
+            .entry(receipt.reservation_id.clone())
+            .or_default();
+        if let Some(existing) = entries
+            .iter_mut()
+            .find(|r| r.settlement_event_id == receipt.settlement_event_id)
+        {
+            *existing = receipt;
+        } else {
+            entries.push(receipt);
+        }
     }
 }
 
@@ -1058,17 +1124,28 @@ impl UsageClosureVerifier for AuthenticatedUsageVerifier {
         &self,
         reservation: &Reservation,
         slot_claim: &InferenceSlotClaim,
+        settlement_event_id: &str,
         report: &UsageReconciliationReport,
     ) -> Result<VerifiedUsageClosure, ModelSelectionError> {
-        let authenticated = self.receipts.get(&reservation.id).is_some_and(|receipt| {
-            receipt.reservation_id == report.reservation_id
-                && receipt.attempt_id == report.attempt_id
-                && receipt.model_id == report.model_id
-                && Some(&receipt.measured_amount) == report.measured_amount.as_ref()
-                && receipt.disposition == report.disposition
-                && receipt.evidence_ref == report.evidence_ref
-        });
-        VerifiedUsageClosure::authenticate(reservation, slot_claim, report, authenticated)
+        validate_reservation_claim_report_bindings(reservation, slot_claim, report)?;
+        let Some(entries) = self.receipts.get(&reservation.id) else {
+            return VerifiedUsageClosure::unauthenticated_held(reservation, slot_claim, report);
+        };
+        let Some(receipt) = entries
+            .iter()
+            .find(|r| r.settlement_event_id == settlement_event_id)
+        else {
+            return Err(ModelSelectionError::Reservation(
+                ReservationError::InvalidSettlement,
+            ));
+        };
+        VerifiedUsageClosure::from_authenticated_receipt(
+            reservation,
+            slot_claim,
+            settlement_event_id,
+            report,
+            receipt,
+        )
     }
 }
 
@@ -1083,9 +1160,10 @@ impl UsageClosureVerifier for UntrustedProposalUsageAdapter {
         &self,
         reservation: &Reservation,
         slot_claim: &InferenceSlotClaim,
+        _settlement_event_id: &str,
         report: &UsageReconciliationReport,
     ) -> Result<VerifiedUsageClosure, ModelSelectionError> {
-        VerifiedUsageClosure::authenticate(reservation, slot_claim, report, false)
+        VerifiedUsageClosure::unauthenticated_held(reservation, slot_claim, report)
     }
 }
 
@@ -1116,29 +1194,57 @@ fn resolve_settlement_event_for_ledger(
     existing: &Reservation,
     event_id: String,
     reservation_id: String,
-    amount: MinorUnits,
+    cumulative_amount: MinorUnits,
     final_evidence: Option<FinalEvidence>,
+    is_terminal: bool,
 ) -> Result<(ReservationEvent, bool), ModelSelectionError> {
     if let Some(prior_digest) = ledger.processed_events.get(&event_id) {
+        let mut candidate_amounts = Vec::new();
+        let current_delta = cumulative_amount
+            .get()
+            .saturating_sub(existing.settled.get());
+        candidate_amounts.push(current_delta);
+        if cumulative_amount.get() != current_delta {
+            candidate_amounts.push(cumulative_amount.get());
+        }
+        for amt in 0..=cumulative_amount.get().min(4096) {
+            if amt != current_delta && amt != cumulative_amount.get() {
+                candidate_amounts.push(amt);
+            }
+        }
         for rev in (1..=existing.revision).rev() {
-            let candidate = ReservationEvent::Settle {
-                event_id: event_id.clone(),
-                reservation_id: reservation_id.clone(),
-                binding: ReservationBinding {
-                    scope: existing.scope.clone(),
-                    correlation_id: existing.correlation_id.clone(),
-                    expected_revision: rev,
-                },
-                amount: amount.clone(),
-                final_evidence: final_evidence.clone(),
-            };
-            let digest = content_digest(&candidate).map_err(|_| ReservationError::TooLarge)?;
-            if &digest == prior_digest {
-                return Ok((candidate, true));
+            for &amt in &candidate_amounts {
+                let candidate = ReservationEvent::Settle {
+                    event_id: event_id.clone(),
+                    reservation_id: reservation_id.clone(),
+                    binding: ReservationBinding {
+                        scope: existing.scope.clone(),
+                        correlation_id: existing.correlation_id.clone(),
+                        expected_revision: rev,
+                    },
+                    amount: MinorUnits::new(amt),
+                    final_evidence: final_evidence.clone(),
+                };
+                let digest = content_digest(&candidate).map_err(|_| ReservationError::TooLarge)?;
+                if &digest == prior_digest {
+                    return Ok((candidate, true));
+                }
             }
         }
         return Err(ModelSelectionError::Reservation(
             ReservationError::EventCollision,
+        ));
+    }
+
+    if !existing.outstanding || cumulative_amount.get() < existing.settled.get() {
+        return Err(ModelSelectionError::Reservation(
+            ReservationError::InvalidSettlement,
+        ));
+    }
+    let delta_amount = cumulative_amount.get() - existing.settled.get();
+    if !is_terminal && delta_amount == 0 && existing.revision > 1 {
+        return Err(ModelSelectionError::Reservation(
+            ReservationError::InvalidSettlement,
         ));
     }
 
@@ -1147,7 +1253,7 @@ fn resolve_settlement_event_for_ledger(
             event_id,
             reservation_id,
             binding: existing.binding(),
-            amount,
+            amount: MinorUnits::new(delta_amount),
             final_evidence,
         },
         false,
@@ -1159,6 +1265,9 @@ fn resolve_settlement_event_for_ledger(
 ///
 /// - Never fabricates `usage_complete`, `effects_reconciled`, `resource_claims_reconciled`,
 ///   or `ConfirmedNoUsage` from raw caller strings/amounts.
+/// - Treats `measured_amount` as cumulative usage for the reservation and charges only the
+///   non-negative delta over `existing.settled` so chained interim -> terminal settlements
+///   never double-charge.
 /// - Wrong, missing, unknown, or untrusted usage keeps the reservation and slot held.
 /// - Mutates `proposed_capacity` ONLY on the first legitimate terminal settlement
 ///   (`outstanding: true -> false`), never on idempotent replay of `settlement_event_id`.
@@ -1181,8 +1290,18 @@ pub fn settle_model_slot_attempt<V: UsageClosureVerifier + ?Sized>(
         .get(reservation_id)
         .ok_or_else(|| ReservationError::UnknownReservation(reservation_id.to_owned()))?;
 
-    let closure = verifier.verify_usage_closure(existing, slot_claim, report)?;
     let event_id = settlement_event_id.into();
+    let closure = match verifier.verify_usage_closure(existing, slot_claim, &event_id, report) {
+        Ok(closure) => closure,
+        Err(ModelSelectionError::Reservation(ReservationError::InvalidSettlement))
+            if ledger.processed_events.contains_key(&event_id) =>
+        {
+            return Err(ModelSelectionError::Reservation(
+                ReservationError::EventCollision,
+            ));
+        }
+        Err(err) => return Err(err),
+    };
 
     match closure.outcome {
         VerifiedUsageOutcome::HeldIncomplete { interim_amount, .. } => {
@@ -1202,14 +1321,15 @@ pub fn settle_model_slot_attempt<V: UsageClosureVerifier + ?Sized>(
                 });
             }
 
-            let amount = interim_amount.expect("checked Some above");
+            let cumulative_amount = interim_amount.expect("checked Some above");
             let (event, is_replay) = resolve_settlement_event_for_ledger(
                 ledger,
                 existing,
                 event_id,
                 reservation_id.to_owned(),
-                amount,
+                cumulative_amount,
                 None,
+                false,
             )?;
             let next_ledger = reduce_reservation(ledger, event.clone())?;
             Ok(ModelSlotSettlementProposal {
@@ -1238,6 +1358,7 @@ pub fn settle_model_slot_attempt<V: UsageClosureVerifier + ?Sized>(
                 reservation_id.to_owned(),
                 settled_amount,
                 Some(final_evidence),
+                true,
             )?;
             let next_ledger = reduce_reservation(ledger, event.clone())?;
             let settled_now = next_ledger
@@ -1422,11 +1543,13 @@ pub fn propose_strategy_slot_reservations(
 
 /// Raw, unverified variant candidate submission for comparison prior to synthesis.
 /// Deserializing this struct never confers verification trust; a [`CandidateCustodyVerifier`]
-/// must authenticate custody and independent verification before any candidate can enter synthesis.
+/// must authenticate custody, authoritative task/attempt ownership, check verdict, policy digest,
+/// and independent verification before any candidate can enter synthesis.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct VariantCandidateSubmission {
     pub unit_id: String,
+    pub attempt_id: AttemptId,
     pub worker_principal: PrincipalId,
     pub report: VariantReport,
     pub claimed_verification: Option<CandidateDecisionEvidence>,
@@ -1434,43 +1557,119 @@ pub struct VariantCandidateSubmission {
 }
 
 /// Non-deserializable token proving that a [`CandidateCustodyVerifier`] adapter
-/// authenticated independent verifier custody and check receipts for a variant candidate.
+/// authenticated independent verifier custody, authoritative worker ownership, policy digest,
+/// and check-pass verdict for a variant candidate.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AttestedCandidateCustody {
     unit_id: String,
+    attempt_id: AttemptId,
+    worker_principal: PrincipalId,
+    verification_policy_digest: String,
     commit_sha: String,
     tree_sha: String,
     verifier: PrincipalId,
 }
 
+fn verify_authoritative_task_attempt_owner(
+    task: &TaskView,
+    attempt_id: &AttemptId,
+    worker_principal: &PrincipalId,
+) -> Result<(), ModelSelectionError> {
+    if let Some(lifecycle) = &task.lifecycle {
+        if lifecycle.attempts.get(attempt_id) != Some(worker_principal) {
+            return Err(ModelSelectionError::Invalid(format!(
+                "candidate worker_principal {} is not bound to attempt {} in task.lifecycle.attempts",
+                worker_principal, attempt_id
+            )));
+        }
+    } else if task.attempt_id.as_ref() != Some(attempt_id)
+        || task.owner.as_ref() != Some(worker_principal)
+    {
+        return Err(ModelSelectionError::Invalid(format!(
+            "candidate worker_principal {} and attempt {} do not match authoritative task.owner / task.attempt_id",
+            worker_principal, attempt_id
+        )));
+    }
+    Ok(())
+}
+
 impl AttestedCandidateCustody {
-    pub fn authenticate(
+    /// Construct an `AttestedCandidateCustody` from an [`AuthenticatedCandidateReceipt`],
+    /// verifying authoritative `TaskView` attempt ownership, independent verifier identity
+    /// (`receipt.verifier != receipt.worker_principal`), and exact agreement with `submission`.
+    pub fn from_authenticated_receipt(
         plan: &BestOfPlan,
+        task: &TaskView,
         submission: &VariantCandidateSubmission,
         candidate: &CandidateRef,
-        custody_authenticated: bool,
-    ) -> Option<Self> {
-        if !custody_authenticated || !submission.claimed_checks_passed {
-            return None;
+        receipt: &AuthenticatedCandidateReceipt,
+    ) -> Result<Option<Self>, ModelSelectionError> {
+        verify_authoritative_task_attempt_owner(
+            task,
+            &receipt.attempt_id,
+            &receipt.worker_principal,
+        )?;
+
+        if receipt.verifier == receipt.worker_principal {
+            return Err(ModelSelectionError::Invalid(
+                "authenticated candidate receipt verifier cannot equal receipt.worker_principal"
+                    .into(),
+            ));
         }
-        let ev = submission.claimed_verification.as_ref()?;
-        if ev.verifier == submission.worker_principal
-            || ev.contract_digest != plan.original.contract_digest
-            || ev.source_commit_sha != candidate.commit_sha
-            || ev.source_tree_sha != candidate.tree_sha
-            || !valid_sha256_digest(&ev.verification_policy_digest)
-            || !valid_sha256_digest(&ev.receipt_digest)
-            || !valid_sha256_digest(&ev.custody_digest)
-            || !valid_sha256_digest(&ev.closure_digest)
+
+        if !plan.variants.iter().any(|v| v.id == receipt.unit_id)
+            || receipt.unit_id != submission.unit_id
+            || receipt.attempt_id != submission.attempt_id
+            || receipt.worker_principal != submission.worker_principal
+            || receipt.checks_passed != submission.claimed_checks_passed
+            || receipt.contract_digest != plan.original.contract_digest
+            || receipt.commit_sha != candidate.commit_sha
+            || receipt.tree_sha != candidate.tree_sha
+            || !valid_sha256_digest(&receipt.verification_policy_digest)
+            || !valid_sha256_digest(&receipt.receipt_digest)
+            || !valid_sha256_digest(&receipt.custody_digest)
+            || !valid_sha256_digest(&receipt.closure_digest)
         {
-            return None;
+            return Err(ModelSelectionError::Invalid(
+                "candidate submission contradicts authenticated candidate receipt".into(),
+            ));
         }
-        Some(Self {
-            unit_id: submission.unit_id.clone(),
-            commit_sha: candidate.commit_sha.clone(),
-            tree_sha: candidate.tree_sha.clone(),
-            verifier: ev.verifier.clone(),
-        })
+
+        let Some(ev) = submission.claimed_verification.as_ref() else {
+            return Err(ModelSelectionError::Invalid(
+                "candidate submission missing claimed_verification for authenticated receipt"
+                    .into(),
+            ));
+        };
+
+        if ev.contract_digest != receipt.contract_digest
+            || ev.verification_policy_digest != receipt.verification_policy_digest
+            || ev.receipt_digest != receipt.receipt_digest
+            || ev.custody_digest != receipt.custody_digest
+            || ev.closure_digest != receipt.closure_digest
+            || ev.source_commit_sha != receipt.commit_sha
+            || ev.source_tree_sha != receipt.tree_sha
+            || ev.verifier != receipt.verifier
+        {
+            return Err(ModelSelectionError::Invalid(
+                "candidate verification evidence contradicts authenticated candidate receipt"
+                    .into(),
+            ));
+        }
+
+        if !receipt.checks_passed {
+            return Ok(None);
+        }
+
+        Ok(Some(Self {
+            unit_id: receipt.unit_id.clone(),
+            attempt_id: receipt.attempt_id.clone(),
+            worker_principal: receipt.worker_principal.clone(),
+            verification_policy_digest: receipt.verification_policy_digest.clone(),
+            commit_sha: receipt.commit_sha.clone(),
+            tree_sha: receipt.tree_sha.clone(),
+            verifier: receipt.verifier.clone(),
+        }))
     }
 }
 
@@ -1480,16 +1679,24 @@ pub trait CandidateCustodyVerifier {
     fn verify_candidate_custody(
         &self,
         plan: &BestOfPlan,
+        task: &TaskView,
         submission: &VariantCandidateSubmission,
         candidate: &CandidateRef,
-    ) -> Option<AttestedCandidateCustody>;
+    ) -> Result<Option<AttestedCandidateCustody>, ModelSelectionError>;
 }
 
 /// Authenticated custody & oracle receipt registered with [`TrustedCustodyVerifierAdapter`].
+/// Binds authoritative `attempt_id`, `worker_principal`, `checks_passed` verdict,
+/// `verification_policy_digest`, contract/commit/tree/receipt/custody/closure digests,
+/// and independent `verifier`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AuthenticatedCandidateReceipt {
     pub unit_id: String,
+    pub attempt_id: AttemptId,
+    pub worker_principal: PrincipalId,
+    pub checks_passed: bool,
     pub contract_digest: String,
+    pub verification_policy_digest: String,
     pub commit_sha: String,
     pub tree_sha: String,
     pub receipt_digest: String,
@@ -1499,8 +1706,10 @@ pub struct AuthenticatedCandidateReceipt {
 }
 
 /// Concrete [`CandidateCustodyVerifier`] that requires an explicit authenticated receipt
-/// matching the candidate's commit, tree, custody, receipt, closure digests, and independent
-/// verifier identity. Arbitrary deserialized JSON without a registered receipt is rejected.
+/// matching the candidate's worker principal, attempt ownership, check verdict, policy digest,
+/// commit, tree, custody, receipt, closure digests, and independent verifier identity.
+/// Arbitrary deserialized JSON without a registered receipt is downgraded to `ReconciledFailure`;
+/// any submission that contradicts a registered receipt or authoritative task ownership is rejected.
 #[derive(Clone, Debug, Default)]
 pub struct TrustedCustodyVerifierAdapter {
     receipts: BTreeMap<String, AuthenticatedCandidateReceipt>,
@@ -1525,22 +1734,16 @@ impl CandidateCustodyVerifier for TrustedCustodyVerifierAdapter {
     fn verify_candidate_custody(
         &self,
         plan: &BestOfPlan,
+        task: &TaskView,
         submission: &VariantCandidateSubmission,
         candidate: &CandidateRef,
-    ) -> Option<AttestedCandidateCustody> {
-        let ev = submission.claimed_verification.as_ref()?;
-        let authenticated = self.receipts.get(&submission.unit_id).is_some_and(|r| {
-            r.unit_id == submission.unit_id
-                && r.contract_digest == plan.original.contract_digest
-                && r.commit_sha == candidate.commit_sha
-                && r.tree_sha == candidate.tree_sha
-                && r.receipt_digest == ev.receipt_digest
-                && r.custody_digest == ev.custody_digest
-                && r.closure_digest == ev.closure_digest
-                && r.verifier == ev.verifier
-                && r.verifier != submission.worker_principal
-        });
-        AttestedCandidateCustody::authenticate(plan, submission, candidate, authenticated)
+    ) -> Result<Option<AttestedCandidateCustody>, ModelSelectionError> {
+        let Some(receipt) = self.receipts.get(&submission.unit_id) else {
+            return Ok(None);
+        };
+        AttestedCandidateCustody::from_authenticated_receipt(
+            plan, task, submission, candidate, receipt,
+        )
     }
 }
 
@@ -1553,11 +1756,12 @@ pub struct UntrustedProposalCustodyAdapter;
 impl CandidateCustodyVerifier for UntrustedProposalCustodyAdapter {
     fn verify_candidate_custody(
         &self,
-        plan: &BestOfPlan,
-        submission: &VariantCandidateSubmission,
-        candidate: &CandidateRef,
-    ) -> Option<AttestedCandidateCustody> {
-        AttestedCandidateCustody::authenticate(plan, submission, candidate, false)
+        _plan: &BestOfPlan,
+        _task: &TaskView,
+        _submission: &VariantCandidateSubmission,
+        _candidate: &CandidateRef,
+    ) -> Result<Option<AttestedCandidateCustody>, ModelSelectionError> {
+        Ok(None)
     }
 }
 
@@ -1574,26 +1778,52 @@ pub struct CandidateComparisonProposal {
 }
 
 /// Compare parallel variant candidates through a non-deserializable [`CandidateCustodyVerifier`]
-/// adapter (enforcing authenticated custody receipts, `verifier != worker_principal`, and
-/// matching contract/commit/tree digests), downgrade unattested or failed candidates to
-/// `ReconciledFailure`, and produce an explicit non-accepting synthesis proposal.
+/// adapter (enforcing authenticated custody receipts, authoritative `TaskView` attempt ownership,
+/// `verifier != receipt.worker_principal`, check-pass verdict, and matching contract/policy/commit/tree
+/// digests), downgrade unattested or failed candidates to `ReconciledFailure`, and produce an
+/// explicit non-accepting synthesis proposal.
 pub fn compare_candidates_and_plan_synthesis<V: CandidateCustodyVerifier + ?Sized>(
     plan: &BestOfPlan,
+    task: &TaskView,
     entries: &[VariantCandidateSubmission],
     verifier: &V,
     registry: &ModelRegistry,
     observed: &ObservedModelSlotState,
     now_tick: u64,
 ) -> Result<(SynthesisDecision, CandidateComparisonProposal), ModelSelectionError> {
+    if task.contract.project_id != plan.contract.project_id
+        || task.contract.root_id != plan.contract.root_id
+        || task.contract.task_id != plan.contract.task_id
+        || task.contract.revision != plan.contract.revision
+    {
+        return Err(ModelSelectionError::Invalid(
+            "task contract identity or revision does not match BestOfPlan.contract".into(),
+        ));
+    }
+
     let mut reconciled_reports = Vec::with_capacity(entries.len());
     let mut custody_attested_units = Vec::new();
     let mut downgraded_to_failure_units = Vec::new();
+    let mut seen_units = BTreeSet::new();
+    let mut seen_attempts = BTreeSet::new();
 
     for entry in entries {
         if entry.unit_id != entry.report.unit_id {
             return Err(ModelSelectionError::Invalid(
                 "entry unit_id does not match VariantReport.unit_id".into(),
             ));
+        }
+        if !seen_units.insert(entry.unit_id.clone()) {
+            return Err(ModelSelectionError::Invalid(format!(
+                "duplicate variant unit_id {} in candidate submissions",
+                entry.unit_id
+            )));
+        }
+        if !seen_attempts.insert(entry.attempt_id.clone()) {
+            return Err(ModelSelectionError::Invalid(format!(
+                "duplicate variant attempt_id {} in candidate submissions",
+                entry.attempt_id
+            )));
         }
         match &entry.report.outcome {
             VariantOutcome::Unresolved | VariantOutcome::ReconciledFailure { .. } => {
@@ -1604,7 +1834,7 @@ pub fn compare_candidates_and_plan_synthesis<V: CandidateCustodyVerifier + ?Size
                 diagnostic,
             } => {
                 if verifier
-                    .verify_candidate_custody(plan, entry, candidate)
+                    .verify_candidate_custody(plan, task, entry, candidate)?
                     .is_some()
                 {
                     custody_attested_units.push(entry.unit_id.clone());
@@ -1983,6 +2213,7 @@ mod tests {
         ledger: &ReservationLedger,
         slot_claim: &InferenceSlotClaim,
         reservation_id: &str,
+        settlement_event_id: &str,
         amount: MinorUnits,
         disposition: UsageDisposition,
         evidence_ref: &str,
@@ -2002,17 +2233,23 @@ mod tests {
             usage_complete: Some(true),
             effects_reconciled: Some(true),
             resource_claims_reconciled: Some(true),
-            scope_digest,
-            resource_claims_digest,
+            scope_digest: scope_digest.clone(),
+            resource_claims_digest: resource_claims_digest.clone(),
             evidence_ref: evidence_ref.into(),
         };
         let verifier =
             AuthenticatedUsageVerifier::new().with_receipt(AuthenticatedClosureReceipt {
+                settlement_event_id: settlement_event_id.into(),
                 reservation_id: reservation_id.into(),
                 attempt_id: slot_claim.attempt_id.clone(),
                 model_id: slot_claim.model_id.clone(),
-                measured_amount: amount,
+                measured_amount: Some(amount),
                 disposition,
+                usage_complete: Some(true),
+                effects_reconciled: Some(true),
+                resource_claims_reconciled: Some(true),
+                scope_digest,
+                resource_claims_digest,
                 evidence_ref: evidence_ref.into(),
             });
         (report, verifier)
@@ -2090,6 +2327,7 @@ mod tests {
             &ledger,
             &proposal1.slot_claim,
             "res-1",
+            "evt-settle-1",
             MinorUnits::new(8),
             UsageDisposition::SettledAndTerminated,
             "receipt:attempt-1",
@@ -2138,6 +2376,7 @@ mod tests {
             &ledger,
             &proposal2.slot_claim,
             "res-2",
+            "evt-settle-2",
             MinorUnits::new(10),
             UsageDisposition::SettledAndTerminated,
             "receipt:attempt-2",
@@ -2276,6 +2515,7 @@ mod tests {
             &ledger_both,
             &proposal1.slot_claim,
             "res-1",
+            "evt-settle-w1",
             MinorUnits::new(6),
             UsageDisposition::SettledAndTerminated,
             "receipt:worker-1-close",
@@ -2314,6 +2554,23 @@ mod tests {
         // 3. Missing usage amount (None) or incomplete reconciliation flags stay held (in_use remains 2).
         let mut missing_amount_report = report1.clone();
         missing_amount_report.measured_amount = None;
+        missing_amount_report.disposition = UsageDisposition::IncompleteOrUnknown;
+        missing_amount_report.usage_complete = Some(false);
+        let missing_verifier =
+            AuthenticatedUsageVerifier::new().with_receipt(AuthenticatedClosureReceipt {
+                settlement_event_id: "evt-settle-w1-missing".into(),
+                reservation_id: "res-1".into(),
+                attempt_id: proposal1.slot_claim.attempt_id.clone(),
+                model_id: "ornith".into(),
+                measured_amount: None,
+                disposition: UsageDisposition::IncompleteOrUnknown,
+                usage_complete: Some(false),
+                effects_reconciled: Some(true),
+                resource_claims_reconciled: Some(true),
+                scope_digest: missing_amount_report.scope_digest.clone(),
+                resource_claims_digest: missing_amount_report.resource_claims_digest.clone(),
+                evidence_ref: missing_amount_report.evidence_ref.clone(),
+            });
         let held_missing = settle_model_slot_attempt(
             &ledger_both,
             &capacity_both,
@@ -2321,7 +2578,7 @@ mod tests {
             "res-1",
             "evt-settle-w1-missing",
             &missing_amount_report,
-            &verifier1,
+            &missing_verifier,
         )
         .expect("missing usage stays held");
         assert!(!held_missing.slot_released);
@@ -2330,6 +2587,21 @@ mod tests {
 
         let mut unreconciled_report = report1.clone();
         unreconciled_report.effects_reconciled = Some(false);
+        let interim_verifier =
+            AuthenticatedUsageVerifier::new().with_receipt(AuthenticatedClosureReceipt {
+                settlement_event_id: "evt-settle-w1-unreconciled".into(),
+                reservation_id: "res-1".into(),
+                attempt_id: proposal1.slot_claim.attempt_id.clone(),
+                model_id: "ornith".into(),
+                measured_amount: Some(MinorUnits::new(6)),
+                disposition: UsageDisposition::SettledAndTerminated,
+                usage_complete: Some(true),
+                effects_reconciled: Some(false),
+                resource_claims_reconciled: Some(true),
+                scope_digest: unreconciled_report.scope_digest.clone(),
+                resource_claims_digest: unreconciled_report.resource_claims_digest.clone(),
+                evidence_ref: unreconciled_report.evidence_ref.clone(),
+            });
         let held_unreconciled = settle_model_slot_attempt(
             &ledger_both,
             &capacity_both,
@@ -2337,23 +2609,102 @@ mod tests {
             "res-1",
             "evt-settle-w1-unreconciled",
             &unreconciled_report,
-            &verifier1,
+            &interim_verifier,
         )
         .expect("unreconciled effects stay held while recording interim spend");
         assert!(!held_unreconciled.slot_released);
         assert_eq!(held_unreconciled.proposed_capacity.in_use["ornith"], 2);
         assert!(held_unreconciled.proposed_ledger.reservations["res-1"].outstanding);
+        assert_eq!(
+            held_unreconciled.proposed_ledger.reservations["res-1"].settled,
+            MinorUnits::new(6)
+        );
+
+        // 3b. Flipping raw report flags (`effects_reconciled = Some(true)`) against the interim receipt
+        // is rejected with InvalidSettlement and never releases capacity!
+        let mut flipped_flags_report = unreconciled_report.clone();
+        flipped_flags_report.effects_reconciled = Some(true);
+        let flipped_err = settle_model_slot_attempt(
+            &held_unreconciled.proposed_ledger,
+            &held_unreconciled.proposed_capacity,
+            &proposal1.slot_claim,
+            "res-1",
+            "evt-settle-w1-unreconciled",
+            &flipped_flags_report,
+            &interim_verifier,
+        )
+        .expect_err("flipping reconciliation flags against interim receipt must be rejected");
+        assert!(matches!(
+            flipped_err,
+            ModelSelectionError::Reservation(
+                ReservationError::EventCollision | ReservationError::InvalidSettlement
+            )
+        ));
+        let flipped_fresh_evt_err = settle_model_slot_attempt(
+            &ledger_both,
+            &capacity_both,
+            &proposal1.slot_claim,
+            "res-1",
+            "evt-settle-w1-unreconciled",
+            &flipped_flags_report,
+            &interim_verifier,
+        )
+        .expect_err("contradicting receipt reconciliation flags must fail with InvalidSettlement");
+        assert!(matches!(
+            flipped_fresh_evt_err,
+            ModelSelectionError::Reservation(ReservationError::InvalidSettlement)
+        ));
+
+        // 3c. Replaying an interim report at the same cumulative usage (6) with a NEW settlement_event_id
+        // is rejected and never double-charges!
+        let replay_new_evt_verifier =
+            interim_verifier
+                .clone()
+                .with_receipt(AuthenticatedClosureReceipt {
+                    settlement_event_id: "evt-settle-w1-unreconciled-replay".into(),
+                    reservation_id: "res-1".into(),
+                    attempt_id: proposal1.slot_claim.attempt_id.clone(),
+                    model_id: "ornith".into(),
+                    measured_amount: Some(MinorUnits::new(6)),
+                    disposition: UsageDisposition::SettledAndTerminated,
+                    usage_complete: Some(true),
+                    effects_reconciled: Some(false),
+                    resource_claims_reconciled: Some(true),
+                    scope_digest: unreconciled_report.scope_digest.clone(),
+                    resource_claims_digest: unreconciled_report.resource_claims_digest.clone(),
+                    evidence_ref: unreconciled_report.evidence_ref.clone(),
+                });
+        let duplicate_interim_err = settle_model_slot_attempt(
+            &held_unreconciled.proposed_ledger,
+            &held_unreconciled.proposed_capacity,
+            &proposal1.slot_claim,
+            "res-1",
+            "evt-settle-w1-unreconciled-replay",
+            &unreconciled_report,
+            &replay_new_evt_verifier,
+        )
+        .expect_err("replaying same cumulative interim usage under a new event_id must fail");
+        assert!(matches!(
+            duplicate_interim_err,
+            ModelSelectionError::Reservation(ReservationError::InvalidSettlement)
+        ));
 
         // 4. Zero spend with SettledAndTerminated is NOT auto-converted into ConfirmedNoUsage,
         // and ConfirmedNoUsage with non-zero spend is rejected.
         report1.disposition = UsageDisposition::ConfirmedNoUsage;
         let bad_no_usage_verifier =
             AuthenticatedUsageVerifier::new().with_receipt(AuthenticatedClosureReceipt {
+                settlement_event_id: "evt-settle-bad-no-usage".into(),
                 reservation_id: "res-1".into(),
                 attempt_id: proposal1.slot_claim.attempt_id.clone(),
                 model_id: "ornith".into(),
-                measured_amount: MinorUnits::new(6),
+                measured_amount: Some(MinorUnits::new(6)),
                 disposition: UsageDisposition::ConfirmedNoUsage,
+                usage_complete: Some(true),
+                effects_reconciled: Some(true),
+                resource_claims_reconciled: Some(true),
+                scope_digest: report1.scope_digest.clone(),
+                resource_claims_digest: report1.resource_claims_digest.clone(),
                 evidence_ref: "receipt:worker-1-close".into(),
             });
         let bad_no_usage = settle_model_slot_attempt(
@@ -2372,22 +2723,59 @@ mod tests {
         ));
         report1.disposition = UsageDisposition::SettledAndTerminated;
 
-        // 5. First legitimate terminal settlement of Worker 1 releases exactly 1 slot (in_use: 2 -> 1).
+        // 5. Chaining `held_unreconciled.proposed_ledger` (where 6 minor units are already settled)
+        // into the first legitimate terminal settlement of Worker 1 (cumulative measured_amount = 6)
+        // charges ONLY the delta (0), leaving total settled at 6 (not 12!), and releases 1 slot (2 -> 1).
         let first_settle = settle_model_slot_attempt(
-            &ledger_both,
-            &capacity_both,
+            &held_unreconciled.proposed_ledger,
+            &held_unreconciled.proposed_capacity,
             &proposal1.slot_claim,
             "res-1",
             "evt-settle-w1",
             &report1,
             &verifier1,
         )
-        .expect("first legitimate settlement of worker 1");
+        .expect("first legitimate terminal settlement chained after held interim settlement");
         assert!(first_settle.slot_released);
         assert!(!first_settle.idempotent_replay);
         assert!(!first_settle.proposed_ledger.reservations["res-1"].outstanding);
+        assert_eq!(
+            first_settle.proposed_ledger.reservations["res-1"].settled,
+            MinorUnits::new(6)
+        );
+        assert_eq!(
+            first_settle.proposed_ledger.settled[&proposal1.reservation_scope],
+            MinorUnits::new(6)
+        );
         assert!(first_settle.proposed_ledger.reservations["res-2"].outstanding);
         assert_eq!(first_settle.proposed_capacity.in_use["ornith"], 1);
+
+        // Also verify chaining `held_unreconciled.proposed_ledger` (settled = 6) into a terminal
+        // receipt with higher cumulative usage (8) charges only the delta (2), yielding total settled = 8.
+        let (report1_cum8, verifier1_cum8) = build_authenticated_settlement(
+            &held_unreconciled.proposed_ledger,
+            &proposal1.slot_claim,
+            "res-1",
+            "evt-settle-w1-cum8",
+            MinorUnits::new(8),
+            UsageDisposition::SettledAndTerminated,
+            "receipt:worker-1-close-cum8",
+        );
+        let chained_cum8 = settle_model_slot_attempt(
+            &held_unreconciled.proposed_ledger,
+            &held_unreconciled.proposed_capacity,
+            &proposal1.slot_claim,
+            "res-1",
+            "evt-settle-w1-cum8",
+            &report1_cum8,
+            &verifier1_cum8,
+        )
+        .expect("chained terminal settlement with delta 2");
+        assert!(chained_cum8.slot_released);
+        assert_eq!(
+            chained_cum8.proposed_ledger.reservations["res-1"].settled,
+            MinorUnits::new(8)
+        );
 
         // 6. Idempotent replay of the exact same settlement_event_id ("evt-settle-w1")
         // MUST NOT decrement capacity again or release Worker 2's active slot!
@@ -2414,6 +2802,7 @@ mod tests {
             &first_settle.proposed_ledger,
             &proposal1.slot_claim,
             "res-1",
+            "evt-settle-w1",
             MinorUnits::new(9),
             UsageDisposition::SettledAndTerminated,
             "receipt:worker-1-tampered",
@@ -2580,6 +2969,7 @@ mod tests {
             &proposal1.next_ledger,
             &proposal1.slot_claim,
             "res-1",
+            "evt-settle-1",
             MinorUnits::new(0),
             UsageDisposition::ConfirmedNoUsage,
             "receipt:no-usage",
@@ -2777,10 +3167,34 @@ mod tests {
             artifact: diagnostic_ref('6'),
         };
 
+        let attempt_v0 = AttemptId::new("attempt-v0").expect("attempt-v0");
+        let attempt_v1 = AttemptId::new("attempt-v1").expect("attempt-v1");
+        let worker_v0 = PrincipalId::new("worker-v0").expect("worker-v0");
+        let worker_v1 = PrincipalId::new("worker-v1").expect("worker-v1");
+
+        let strat_task = TaskView {
+            contract: contract.clone(),
+            state: SchedulingState::Running,
+            attempt_id: Some(attempt_v0.clone()),
+            owner: Some(worker_v0.clone()),
+            candidate_ref: None,
+            lifecycle: Some(TaskLifecycleView {
+                revision: 2,
+                attempts: BTreeMap::from([
+                    (attempt_v0.clone(), worker_v0.clone()),
+                    (attempt_v1.clone(), worker_v1.clone()),
+                ]),
+                closure_digest: None,
+                decision: None,
+                reason: None,
+            }),
+        };
+
         let entries = vec![
             VariantCandidateSubmission {
                 unit_id: v0.id.clone(),
-                worker_principal: PrincipalId::new("worker-v0").expect("worker-v0"),
+                attempt_id: attempt_v0.clone(),
+                worker_principal: worker_v0.clone(),
                 report: VariantReport {
                     unit_id: v0.id.clone(),
                     original: strat_proposal.plan.original.clone(),
@@ -2803,7 +3217,8 @@ mod tests {
             },
             VariantCandidateSubmission {
                 unit_id: v1.id.clone(),
-                worker_principal: PrincipalId::new("worker-v1").expect("worker-v1"),
+                attempt_id: attempt_v1.clone(),
+                worker_principal: worker_v1.clone(),
                 report: VariantReport {
                     unit_id: v1.id.clone(),
                     original: strat_proposal.plan.original.clone(),
@@ -2830,6 +3245,7 @@ mod tests {
         // With UntrustedProposalCustodyAdapter, BOTH candidates are downgraded to ReconciledFailure.
         let (_, untrusted_summary) = compare_candidates_and_plan_synthesis(
             &strat_proposal.plan,
+            &strat_task,
             &entries,
             &UntrustedProposalCustodyAdapter,
             &registry,
@@ -2844,20 +3260,117 @@ mod tests {
         assert!(!untrusted_summary.execution_granted);
 
         // With TrustedCustodyVerifierAdapter holding a receipt ONLY for v0, only v0 enters synthesis.
+        let valid_v0_receipt = AuthenticatedCandidateReceipt {
+            unit_id: v0.id.clone(),
+            attempt_id: attempt_v0.clone(),
+            worker_principal: worker_v0.clone(),
+            checks_passed: true,
+            contract_digest: contract_digest.clone(),
+            verification_policy_digest: sha256_tag('1'),
+            commit_sha: cand0.commit_sha.clone(),
+            tree_sha: cand0.tree_sha.clone(),
+            receipt_digest: sha256_tag('2'),
+            custody_digest: sha256_tag('3'),
+            closure_digest: sha256_tag('4'),
+            verifier: PrincipalId::new("independent-verifier").expect("verifier"),
+        };
         let custody_verifier =
+            TrustedCustodyVerifierAdapter::new().with_receipt(valid_v0_receipt.clone());
+
+        // Regression tests for Bug 3:
+        // (a) Substituting `submission.worker_principal` in raw JSON is rejected!
+        let mut substituted_worker_entries = entries.clone();
+        substituted_worker_entries[0].worker_principal =
+            PrincipalId::new("impostor-worker").expect("impostor");
+        compare_candidates_and_plan_synthesis(
+            &strat_proposal.plan,
+            &strat_task,
+            &substituted_worker_entries,
+            &custody_verifier,
+            &registry,
+            &observed,
+            106,
+        )
+        .expect_err("substituting submission.worker_principal must be rejected");
+
+        // (b) Passing `claimed_checks_passed: true` when `receipt.checks_passed == false` is rejected!
+        let failed_receipt_verifier =
             TrustedCustodyVerifierAdapter::new().with_receipt(AuthenticatedCandidateReceipt {
-                unit_id: v0.id.clone(),
-                contract_digest: contract_digest.clone(),
-                commit_sha: cand0.commit_sha.clone(),
-                tree_sha: cand0.tree_sha.clone(),
-                receipt_digest: sha256_tag('2'),
-                custody_digest: sha256_tag('3'),
-                closure_digest: sha256_tag('4'),
-                verifier: PrincipalId::new("independent-verifier").expect("verifier"),
+                checks_passed: false,
+                ..valid_v0_receipt.clone()
             });
+        compare_candidates_and_plan_synthesis(
+            &strat_proposal.plan,
+            &strat_task,
+            &entries,
+            &failed_receipt_verifier,
+            &registry,
+            &observed,
+            106,
+        )
+        .expect_err("claimed_checks_passed: true against checks_passed: false receipt must fail");
+
+        // (c) Mismatched `verification_policy_digest` or self-verified `verifier == receipt.worker_principal` is rejected!
+        let bad_policy_verifier =
+            TrustedCustodyVerifierAdapter::new().with_receipt(AuthenticatedCandidateReceipt {
+                verification_policy_digest: sha256_tag('a'),
+                ..valid_v0_receipt.clone()
+            });
+        compare_candidates_and_plan_synthesis(
+            &strat_proposal.plan,
+            &strat_task,
+            &entries,
+            &bad_policy_verifier,
+            &registry,
+            &observed,
+            106,
+        )
+        .expect_err("mismatched verification_policy_digest must fail");
+
+        let self_verified_receipt_verifier =
+            TrustedCustodyVerifierAdapter::new().with_receipt(AuthenticatedCandidateReceipt {
+                verifier: worker_v0.clone(),
+                ..valid_v0_receipt.clone()
+            });
+        compare_candidates_and_plan_synthesis(
+            &strat_proposal.plan,
+            &strat_task,
+            &entries,
+            &self_verified_receipt_verifier,
+            &registry,
+            &observed,
+            106,
+        )
+        .expect_err("verifier == receipt.worker_principal must fail");
+
+        // (d) Unowned worker not recorded in authoritative `TaskView` (`task.lifecycle.attempts`) is rejected!
+        let mut unowned_task = strat_task.clone();
+        unowned_task.lifecycle = Some(TaskLifecycleView {
+            revision: 2,
+            attempts: BTreeMap::from([(
+                attempt_v0.clone(),
+                PrincipalId::new("different-owner").expect("different-owner"),
+            )]),
+            closure_digest: None,
+            decision: None,
+            reason: None,
+        });
+        compare_candidates_and_plan_synthesis(
+            &strat_proposal.plan,
+            &unowned_task,
+            &entries,
+            &custody_verifier,
+            &registry,
+            &observed,
+            106,
+        )
+        .expect_err(
+            "receipt worker_principal not matching authoritative TaskView ownership must fail",
+        );
 
         let (synth_decision, summary) = compare_candidates_and_plan_synthesis(
             &strat_proposal.plan,
+            &strat_task,
             &entries,
             &custody_verifier,
             &registry,
@@ -2984,6 +3497,7 @@ mod tests {
             &proposal1.next_ledger,
             &proposal1.slot_claim,
             "res-1",
+            "evt-settle-1",
             MinorUnits::new(0),
             UsageDisposition::ConfirmedNoUsage,
             "receipt:repair-needed",
@@ -3093,6 +3607,7 @@ mod tests {
             &proposal1.next_ledger,
             &proposal1.slot_claim,
             "res-1",
+            "evt-settle-1",
             MinorUnits::new(250),
             UsageDisposition::SettledAndTerminated,
             "receipt:attempt-1",
