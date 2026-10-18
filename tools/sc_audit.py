@@ -14,13 +14,21 @@ HOME = os.path.expanduser('~')
 KICK = HOME + '/xbabe2_kicker/captains-20261017'
 OUT_DEFAULT = KICK + '/sc_audit'
 GH = HOME + '/.local/bin/gh'
-CAPTAINS = {'joil': 'captain_joil', 'dope': 'captain_dope', 'jopedime': 'captain_jopedime', 'jarambit': 'captain_jarambit'}
+CAPTAINS = {'joil': 'captain_joil', 'dope': 'captain_dope', 'jopedime': 'captain_jopedime', 'jarambit': 'captain_jarambit',
+            'admiralty': 'agy_captain_admiralty'}   # agy captain (Jepson 5:25 AM MDT Oct 18); the Codex screen captain_admiralty is its worker
 LOGS = {'joil': HOME + '/joil/COORD.md', 'dope': HOME + '/dope/COMMS.md',
-        'jopedime': HOME + '/JopeDime/COMMS.md', 'jarambit': HOME + '/jarambit/COMMS.md'}
-REPOS = {'joil': HOME + '/joil', 'dope': HOME + '/dope', 'jopedime': HOME + '/JopeDime', 'jarambit': HOME + '/jarambit'}
-GHREPO = {'joil': 'neverhuman/joil', 'dope': 'neverhuman/dope', 'jopedime': 'neverhuman/JopeDime', 'jarambit': 'neverhuman/jarambit'}
+        'jopedime': HOME + '/JopeDime/COMMS.md', 'jarambit': HOME + '/jarambit/COMMS.md',
+        'admiralty': HOME + '/admiralty-v2-build/COMMS.md'}
+REPOS = {'joil': HOME + '/joil', 'dope': HOME + '/dope', 'jopedime': HOME + '/JopeDime', 'jarambit': HOME + '/jarambit',
+         'admiralty': HOME + '/.admiralty-captain'}   # captain's own clone; never ~/admiralty (Codex working tree)
+GHREPO = {'joil': 'neverhuman/joil', 'dope': 'neverhuman/dope', 'jopedime': 'neverhuman/JopeDime', 'jarambit': 'neverhuman/jarambit',
+          'admiralty': 'neverhuman/admiralty'}
 # xbabe2 CPU slices (CPU_SLICES.md); overflow claims are parsed from the file at run time
-SLICES = {'jopedime': '22-31,92-101', 'dope': '78-89', 'jarambit': '6-15', 'joil': '36-39,90-91,110-111,32-35,0-5,16-21,40-43'}
+SLICES = {'jopedime': '22-31,92-101', 'dope': '78-89', 'jarambit': '6-15', 'joil': '36-39,90-91,110-111,32-35,0-5,16-21,40-43',
+          'admiralty': '102-109,112-113,64-65'}
+ADM = HOME + '/admiralty-v2-build'   # Admiralty v2 rollout state (read-only here; deployments/ and controller/ belong to the local Codex integrator)
+ADM_DONE_STATES = ('integrated',)    # rollout.json is an observation; 'done' additionally needs a verification record
+ADM_FINISHED = ('finished', 'integrated', 'verified', 'closed', 'retired', 'released')
 AGENT_RANGE = '0-50,64-114'
 OVERFLOW = '44-50,64-67,102-109,112-114'
 RESERVED_NON_JOIL = '0-5,16-21,32-43,68-77,90-91,110-111'
@@ -387,6 +395,60 @@ def audit_jarambit():
             F('amber', 'jarambit', 'COUNTER_MISMATCH', f'WORKPLAN counter says {m.group(1)}/{m.group(2)}, table parses {c["done"]}/{len(rows)} (BLOCKED rows not counted)', wp)
     return res
 
+def _age_min(now, v):
+    t = parse_utc(v)
+    return None if t is None else (now - t).total_seconds() / 60
+
+def audit_admiralty(scr, prev, newh, now):
+    """Admiralty v2: packets from rollout.json, workers from live-lanes.json + screens. Read-only."""
+    res = {'source': ADM + '/rollout.json (+ live-lanes.json)'}
+    r = rj(ADM + '/rollout.json')
+    if not r or not isinstance(r.get('packets'), list):
+        F('amber', 'admiralty', 'LEDGER_UNREADABLE', 'rollout.json unreadable', ADM + '/rollout.json'); return res
+    pk = r['packets']
+    st = collections.Counter(str(x.get('status')) for x in pk)
+    done = [x for x in pk if x.get('status') in ADM_DONE_STATES and x.get('verification')]
+    claimed = [x for x in pk if x.get('status') in ('verified', 'integrated')]
+    res.update(total=len(pk), done_recomputed=len(done), status_counts=dict(st), blocked=st.get('blocked', 0),
+               verified_or_integrated_claimed=len(claimed), pr=r.get('pr'),
+               note='done = integrated with a verification record; acceptance on main still has to be checked by the captain')
+    for x in claimed:
+        if not x.get('verification'):
+            F('red', 'admiralty', 'DONE_NO_EVIDENCE', f'{x.get("id")} is {x.get("status")} with no verification record', ADM + '/rollout.json')
+    age = _age_min(now, r.get('updated_utc'))
+    res['rollout_age_min'] = None if age is None else round(age)
+    if age is not None and age >= 30:
+        F('amber', 'admiralty', 'ROLLOUT_STALE', f'rollout.json not updated for {round(age)} min (packet statuses on the dashboard are stale)', ADM + '/rollout.json')
+    ll = rj(ADM + '/live-lanes.json') or {}
+    lanes = ll.get('lanes') if isinstance(ll, dict) else None
+    if not isinstance(lanes, list):
+        F('amber', 'admiralty', 'LANES_UNREADABLE', 'live-lanes.json unreadable', ADM + '/live-lanes.json'); return res
+    workers, dead, stale, unverified = {}, [], [], []
+    for l in lanes:
+        n = re.sub(r'^\d+\.', '', str(l.get('screen') or l.get('id') or '?'))
+        status = str(l.get('status') or '')
+        a = _age_min(now, l.get('updated_utc'))
+        info = {'packet': l.get('packet_id') or l.get('packet') or l.get('id') or l.get('branch'), 'branch': l.get('branch'), 'status': status,
+                'reported_age_min': None if a is None else round(a), 'alive': n in scr}
+        finished = any(k in status.lower() for k in ADM_FINISHED)
+        if not info['alive'] and not finished: dead.append(f'{n}({info["packet"]})')
+        if info['alive']:
+            s = screen_state(hardcopy(n, f'/tmp/sc_audit_hc_{n}.txt')); p = prev.get(n, {})
+            newh[n] = {'hash': s['hash'], 'since': p.get('since') if p.get('hash') == s['hash'] else now.isoformat(timespec='seconds')}
+            info['unchanged_min'] = round((now - datetime.datetime.fromisoformat(newh[n]['since'])).total_seconds() / 60)
+            info['idle_prompt'] = s['idle_prompt']
+            if s['survey'] or s['approval_prompt']: F('red', 'admiralty', 'LANE_PROMPT_BLOCKED', f'{n} is stuck on a survey/approval prompt', f'/tmp/sc_audit_hc_{n}.txt')
+            if s['quota']: F('amber', 'admiralty', 'LANE_QUOTA', f'{n} mentions quota/rate limit', f'/tmp/sc_audit_hc_{n}.txt')
+            if not finished and ((a is not None and a >= 30) or info['unchanged_min'] >= 30):
+                stale.append(f'{n}({info["packet"]}, reported {info["reported_age_min"]}m ago, screen unchanged {info["unchanged_min"]}m{", idle" if s["idle_prompt"] else ""})')
+        if 'unverified' in status.lower() and a is not None and a >= 60: unverified.append(f'{n}({info["packet"]})')
+        workers[n] = info
+    res['workers'] = workers
+    if dead: F('amber', 'admiralty', 'LANE_DEAD', f'{len(dead)} live-lanes entries are not finished but their screens are gone: {" ".join(dead[:20])}', ADM + '/live-lanes.json')
+    if stale: F('amber', 'admiralty', 'LANE_STALE', f'{len(stale)} workers stale (>=30 min without a reported transition or screen change): {"; ".join(stale[:20])}. agy_captain_admiralty must re-drive or close them', ADM + '/live-lanes.json')
+    if unverified: F('amber', 'admiralty', 'UNVERIFIED_CANDIDATES_AGING', f'{len(unverified)} candidates committed but unverified for >=60 min: {" ".join(unverified[:20])}; drive verification on the exact commit, then hand to the integrator', ADM + '/live-lanes.json')
+    return res
+
 def audit_joil():
     res = {}
     try:
@@ -650,6 +712,7 @@ def main():
     report['projects']['dope'] = audit_dope()
     report['projects']['jarambit'] = audit_jarambit()
     report['projects']['joil'] = audit_joil()
+    report['projects']['admiralty'] = audit_admiralty(scr, prev, newh, now)
     if not a.no_gh:
         for proj in CAPTAINS:
             report['projects'][proj]['open_prs'] = open_prs(proj)
