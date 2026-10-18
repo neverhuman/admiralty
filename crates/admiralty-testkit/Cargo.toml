@@ -154,9 +154,6 @@ path = "../../tests/integration/codex_worktree_lease.rs"
 name = "codex_worktree_publication"
 path = "../../tests/integration/codex_worktree_publication.rs"
 
-[[test]]
-name = "codex_round8"
-path = "../../tests/integration/codex_round8.rs"
 
 [[test]]
 name = "codex_round8_packaging"

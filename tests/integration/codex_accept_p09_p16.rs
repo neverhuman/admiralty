@@ -249,7 +249,7 @@ fn p09_p16_round9_item3_workspace_doctor_qualification() {
         edge.risks.contains(&ConflictRisk::UnknownAncestry)
             && edge.risks.contains(&ConflictRisk::SamePathUnknownHunks)
     }));
-    assert_eq!(graph.generation.combined_verification_required, true);
+    assert!(graph.generation.combined_verification_required);
 
     // P21: literal argv rejects NUL before any process can be launched.
     let launch = LaunchSpec {
