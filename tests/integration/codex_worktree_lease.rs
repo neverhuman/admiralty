@@ -608,3 +608,126 @@ fn p05_p15_round10_item3_workspace_gate_audit() {
         "custody retirement records a claim and never mutates artifact bytes"
     );
 }
+
+#[test]
+fn p02_p05_p15_round11_item4_final_validation_gate() {
+    use admiralty_core::verification::parse_receipt;
+
+    let (contract, _) = fixture();
+    let contract_digest = content_digest(&contract).expect("canonical P02 contract digest");
+    let contract_json = serde_json::to_vec(&contract).expect("serialize frozen task contract");
+    let decoded: TaskContract = serde_json::from_slice(&contract_json)
+        .expect("P02 versioned contract round-trips through its public JSON shape");
+    assert_eq!(content_digest(&decoded).unwrap(), contract_digest);
+    let mut unknown_field: serde_json::Value = serde_json::from_slice(&contract_json).unwrap();
+    unknown_field["future_required_semantics"] = serde_json::json!("unknown");
+    assert!(
+        serde_json::from_value::<TaskContract>(unknown_field).is_err(),
+        "closed P02 contract rejects fields with unknown required semantics"
+    );
+
+    let directory = tempfile::tempdir().expect("private validation journal directory");
+    let database = directory.path().join("validation.sqlite3");
+    let mut connection = Connection::open(&database).expect("open durable validation journal");
+    initialize_questions(&connection).expect("initialize P05 durable question schema");
+    let scope = JournalScope {
+        root_id: contract.root_id.clone(),
+        question: admiralty_core::coordination::questions::QuestionScope {
+            question_id: admiralty_core::MessageId::new("round11-validation-question").unwrap(),
+            project_id: contract.project_id.clone(),
+            task_id: contract.task_id.clone(),
+        },
+        authority_ref: contract.authority_ref.clone(),
+    };
+    let opening = QuestionEvent::Open {
+        event_id: admiralty_core::MessageId::new("round11-open-event").unwrap(),
+        scope: scope.question.clone(),
+        authority_ref: scope.authority_ref.clone(),
+        asker: PrincipalId::new("captain").unwrap(),
+        recipient: PrincipalId::new("worker").unwrap(),
+        allowed_recipients: vec![
+            PrincipalId::new("worker").unwrap(),
+            PrincipalId::new("reviewer").unwrap(),
+        ],
+        requirement: format!("Review contract digest {contract_digest}"),
+        question: "Does the candidate satisfy the exact contract checks?".into(),
+        options: vec!["review".into(), "hold".into()],
+        deadline_utc: None,
+    };
+    let mut foreign_scope = scope.clone();
+    foreign_scope.question.task_id = TaskId::new("foreign-task").unwrap();
+    assert!(matches!(
+        append_question(
+            &mut connection,
+            &foreign_scope,
+            &admiralty_core::MessageId::new("round11-foreign-command").unwrap(),
+            &opening,
+        ),
+        Err(admiralty_store::questions::QuestionStoreError::ScopeMismatch)
+    ));
+    append_question(
+        &mut connection,
+        &scope,
+        &admiralty_core::MessageId::new("round11-open-command").unwrap(),
+        &opening,
+    )
+    .expect("P05 opens question bound to exact P02 contract scope");
+    append_question(
+        &mut connection,
+        &scope,
+        &admiralty_core::MessageId::new("round11-route-command").unwrap(),
+        &QuestionEvent::Route {
+            event_id: admiralty_core::MessageId::new("round11-route-event").unwrap(),
+            scope: scope.question.clone(),
+            expected_revision: 1,
+            authority_ref: scope.authority_ref.clone(),
+            actor: PrincipalId::new("worker").unwrap(),
+            recipient: PrincipalId::new("reviewer").unwrap(),
+        },
+    )
+    .expect("current recipient routes only to explicitly allowed reviewer");
+    append_question(
+        &mut connection,
+        &scope,
+        &admiralty_core::MessageId::new("round11-answer-command").unwrap(),
+        &QuestionEvent::Answer {
+            event_id: admiralty_core::MessageId::new("round11-answer-event").unwrap(),
+            scope: scope.question.clone(),
+            expected_revision: 2,
+            authority_ref: scope.authority_ref.clone(),
+            actor: PrincipalId::new("reviewer").unwrap(),
+            answer: "hold pending independent verification".into(),
+        },
+    )
+    .expect("only routed reviewer records the final scoped question answer");
+    drop(connection);
+    let connection = Connection::open(&database).expect("reopen durable validation journal");
+    let recovered = reconstruct_question(&connection, &scope)
+        .unwrap()
+        .expect("P05 question state reconstructs after restart");
+    assert_eq!(recovered.state.revision, 3);
+    assert_eq!(
+        recovered.state.status,
+        QuestionStatus::Answered {
+            answer: "hold pending independent verification".into()
+        }
+    );
+
+    let forged_receipt = format!(
+        r#"{{"schema_version":1,"receipt_id":"round11-forged","producer":"provider_claim","verifier":"reviewer","inputs":{{"project_id":"{}","root_id":"{}","task_id":"{}","attempt_id":"attempt-1","candidate_ref":"candidate:round11","contract_revision":{},"contract_digest":"{}","verification_policy_digest":"sha256:{}","source_commit_sha":"{}","source_tree_sha":"{}","source_artifact_digest":"sha256:{}","protected_oracle_digest":"sha256:{}"}},"checks":[],"negative_checks":[],"acceptance_granted":true}}"#,
+        contract.project_id,
+        contract.root_id,
+        contract.task_id,
+        contract.revision,
+        contract_digest,
+        "b".repeat(64),
+        "1".repeat(40),
+        "2".repeat(40),
+        "c".repeat(64),
+        "d".repeat(64),
+    );
+    assert!(
+        parse_receipt(forged_receipt.as_bytes()).is_err(),
+        "P15 rejects provider self-claims even when the forged receipt names the exact P02 scope"
+    );
+}
