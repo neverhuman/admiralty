@@ -35,9 +35,9 @@ fn p19_round12_item5_redteam_audit_gate() {
     let candidate = "b".repeat(40);
     let generation = DecimalU64::new(12);
     let scope = PublicationScope {
-        project_id: ProjectId::new("round12-redteam").unwrap(),
-        root_id: RootId::new("redteam-root").unwrap(),
-        task_id: TaskId::new("receipt-audit").unwrap(),
+        project_id: ProjectId::new("round12-redteam").unwrap_or_else(|e| panic!("project: {e}")),
+        root_id: RootId::new("redteam-root").unwrap_or_else(|e| panic!("root: {e}")),
+        task_id: TaskId::new("receipt-audit").unwrap_or_else(|e| panic!("task: {e}")),
         target_ref: "refs/heads/main".into(),
         authority_generation: generation.clone(),
     };
@@ -64,19 +64,25 @@ fn p19_round12_item5_redteam_audit_gate() {
         caller_is_owner: false,
         unresolved_intent: false,
     };
-    let digest = publication_request_digest(&scope, &snapshot, &candidate, &generation).unwrap();
+    let digest = publication_request_digest(&scope, &snapshot, &candidate, &generation)
+        .unwrap_or_else(|e| panic!("digest: {e}"));
     let proposal = propose_publication(&scope, &snapshot, &candidate, &digest, &generation);
     assert!(proposal.eligible);
     assert!(!proposal.execution_granted());
-    let intent = proposal.intent.unwrap();
+    let Some(intent) = proposal.intent else {
+        panic!("eligible proposal has intent");
+    };
 
-    let staged = reduce_publication_intent(None, &intent, None).unwrap();
+    let staged =
+        reduce_publication_intent(None, &intent, None).unwrap_or_else(|e| panic!("stage: {e}"));
     let mut claimed_input = staged.clone();
     claimed_input.stage = IntentStage::Claimed;
-    let claimed = reduce_publication_intent(Some(&staged), &claimed_input, None).unwrap();
+    let claimed = reduce_publication_intent(Some(&staged), &claimed_input, None)
+        .unwrap_or_else(|e| panic!("claim: {e}"));
     let mut ambiguous_input = claimed.clone();
     ambiguous_input.stage = IntentStage::Ambiguous;
-    let ambiguous = reduce_publication_intent(Some(&claimed), &ambiguous_input, None).unwrap();
+    let ambiguous = reduce_publication_intent(Some(&claimed), &ambiguous_input, None)
+        .unwrap_or_else(|e| panic!("ambiguous: {e}"));
 
     // Wrong digest, scope, head, or effect claim cannot reconcile ambiguity.
     let mut receipt = ReconciliationReceipt {
@@ -100,8 +106,8 @@ fn p19_round12_item5_redteam_audit_gate() {
     assert!(reduce_publication_intent(Some(&ambiguous), &ambiguous, Some(&receipt)).is_err());
 
     snapshot.approvals[0].head = "c".repeat(40);
-    let changed_digest =
-        publication_request_digest(&scope, &snapshot, &candidate, &generation).unwrap();
+    let changed_digest = publication_request_digest(&scope, &snapshot, &candidate, &generation)
+        .unwrap_or_else(|e| panic!("changed digest: {e}"));
     let stale_review =
         propose_publication(&scope, &snapshot, &candidate, &changed_digest, &generation);
     assert!(!stale_review.eligible, "stale approval must fail closed");
