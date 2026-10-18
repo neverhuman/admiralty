@@ -3,12 +3,16 @@
 //! public layer format.
 
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    io::{self, Write},
+};
 use thiserror::Error;
 
 const MAX_LAYER_BYTES: usize = 256 * 1024;
 const MAX_ITEMS: usize = 256;
 const MAX_TEXT: usize = 4096;
+const MAX_PATH_COMPONENTS: usize = 128;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
@@ -96,6 +100,22 @@ impl From<ConfigLayerName> for ProvenanceOrigin {
     }
 }
 
+/// Ordered contributors remain available even when a later public value wins.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ProvenanceContribution {
+    pub origin: ProvenanceOrigin,
+    /// Private policy has no public source identity and is never relabeled Runtime.
+    pub source_ref: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ConfigLayerReceipt {
+    pub layer: ConfigLayerName,
+    pub source_ref: String,
+    /// Binds the complete typed public layer, including values later overridden.
+    pub digest: String,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolvedConfig {
     pub listen: String,
@@ -105,6 +125,8 @@ pub struct ResolvedConfig {
     pub models: Vec<ModelConfig>,
     pub denied_paths: Vec<String>,
     pub provenance: BTreeMap<String, ProvenanceOrigin>,
+    pub provenance_history: BTreeMap<String, Vec<ProvenanceContribution>>,
+    pub source_layers: Vec<ConfigLayerReceipt>,
     pub private_policy: PrivatePolicy,
 }
 
@@ -126,6 +148,8 @@ pub enum ConfigError {
     DuplicateId,
     #[error("model references an unknown node")]
     UnknownNode,
+    #[error("could not digest configuration layer: {0}")]
+    Digest(String),
 }
 
 /// Parse one bounded JSON layer. Unknown keys, including any attempted private
@@ -171,6 +195,11 @@ pub fn resolve_config(
                 .values
                 .max_context_tokens
                 .is_some_and(|v| v > private_policy.max_context_tokens)
+            || layer.values.models.as_ref().is_some_and(|models| {
+                models
+                    .iter()
+                    .any(|model| model.max_concurrency > private_policy.max_agents)
+            })
         {
             return Err(ConfigError::PrivateCapExceeded);
         }
@@ -183,35 +212,52 @@ pub fn resolve_config(
     let mut models = None;
     let mut denied = BTreeSet::new();
     let mut provenance = BTreeMap::new();
+    let mut provenance_history = BTreeMap::new();
+    let mut source_layers = Vec::with_capacity(layers.len());
 
     for layer in layers {
         let values = &layer.values;
         let origin = ProvenanceOrigin::from(layer.layer);
+        source_layers.push(ConfigLayerReceipt {
+            layer: layer.layer,
+            source_ref: layer.source_ref.clone(),
+            digest: crate::content_digest(layer)
+                .map_err(|error| ConfigError::Digest(error.to_string()))?,
+        });
+        let mut record = |field: &str| {
+            record_contribution(
+                &mut provenance,
+                &mut provenance_history,
+                field.to_owned(),
+                origin,
+                Some(&layer.source_ref),
+            );
+        };
         if let Some(value) = &values.listen {
             listen = Some(value.clone());
-            provenance.insert("listen".into(), origin);
+            record("listen");
         }
         if let Some(value) = values.max_agents {
             max_agents = Some(value);
-            provenance.insert("max_agents".into(), origin);
+            record("max_agents");
         }
         if let Some(value) = values.max_context_tokens {
             max_context_tokens = Some(value);
-            provenance.insert("max_context_tokens".into(), origin);
+            record("max_context_tokens");
         }
         if let Some(value) = &values.nodes {
             nodes = Some(value.clone());
-            provenance.insert("nodes".into(), origin);
+            record("nodes");
         }
         if let Some(value) = &values.models {
             models = Some(value.clone());
-            provenance.insert("models".into(), origin);
+            record("models");
         }
         if let Some(paths) = &values.denied_paths {
-            provenance.insert("denied_paths".into(), origin);
+            record("denied_paths");
             for path in paths {
                 denied.insert(path.clone());
-                provenance.insert(format!("denied_paths.{path}"), origin);
+                record(&format!("denied_paths.{path}"));
             }
         }
     }
@@ -233,10 +279,22 @@ pub fn resolve_config(
     validate_effective_nodes_models(&nodes, &models, max_agents)?;
     for path in &private_policy.denied_paths {
         denied.insert(path.clone());
-        provenance.insert(format!("denied_paths.{path}"), ProvenanceOrigin::Private);
+        record_contribution(
+            &mut provenance,
+            &mut provenance_history,
+            format!("denied_paths.{path}"),
+            ProvenanceOrigin::Private,
+            None,
+        );
     }
     if !private_policy.denied_paths.is_empty() {
-        provenance.insert("denied_paths".into(), ProvenanceOrigin::Private);
+        record_contribution(
+            &mut provenance,
+            &mut provenance_history,
+            "denied_paths".into(),
+            ProvenanceOrigin::Private,
+            None,
+        );
     }
 
     Ok(ResolvedConfig {
@@ -247,8 +305,27 @@ pub fn resolve_config(
         models,
         denied_paths: denied.into_iter().collect(),
         provenance,
+        provenance_history,
+        source_layers,
         private_policy: private_policy.clone(),
     })
+}
+
+fn record_contribution(
+    provenance: &mut BTreeMap<String, ProvenanceOrigin>,
+    history: &mut BTreeMap<String, Vec<ProvenanceContribution>>,
+    key: String,
+    origin: ProvenanceOrigin,
+    source_ref: Option<&str>,
+) {
+    provenance.insert(key.clone(), origin);
+    history
+        .entry(key)
+        .or_default()
+        .push(ProvenanceContribution {
+            origin,
+            source_ref: source_ref.map(str::to_owned),
+        });
 }
 
 fn defaults_complete(patch: &ConfigPatch) -> bool {
@@ -271,8 +348,12 @@ fn validate_layer(layer: &ConfigLayer) -> Result<(), ConfigError> {
     }
     if let Some(nodes) = &p.nodes {
         bounded(nodes.len())?;
+        let mut ids = BTreeSet::new();
         for node in nodes {
             valid_id(&node.id)?;
+            if !ids.insert(&node.id) {
+                return Err(ConfigError::DuplicateId);
+            }
             valid_text(&node.label, MAX_TEXT, false)?;
             if let Some(address) = &node.address {
                 valid_text(address, MAX_TEXT, false)?;
@@ -281,12 +362,19 @@ fn validate_layer(layer: &ConfigLayer) -> Result<(), ConfigError> {
     }
     if let Some(models) = &p.models {
         bounded(models.len())?;
+        let mut ids = BTreeSet::new();
         for model in models {
             valid_id(&model.id)?;
+            if !ids.insert(&model.id) {
+                return Err(ConfigError::DuplicateId);
+            }
             valid_text(&model.provider, MAX_TEXT, false)?;
             valid_text(&model.model_ref, MAX_TEXT, false)?;
             if let Some(node_id) = &model.node_id {
                 valid_id(node_id)?;
+            }
+            if model.max_concurrency == 0 {
+                return Err(ConfigError::Invalid("model concurrency must be nonzero"));
             }
         }
     }
@@ -296,7 +384,26 @@ fn validate_layer(layer: &ConfigLayer) -> Result<(), ConfigError> {
             valid_path(path)?;
         }
     }
+    // Programmatic callers get the same aggregate bound as parsed public layers.
+    serde_json::to_writer(LayerByteLimit(MAX_LAYER_BYTES), layer)
+        .map_err(|_| ConfigError::LayerTooLarge)?;
     Ok(())
+}
+
+struct LayerByteLimit(usize);
+
+impl Write for LayerByteLimit {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        if bytes.len() > self.0 {
+            return Err(io::ErrorKind::FileTooLarge.into());
+        }
+        self.0 -= bytes.len();
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
 }
 
 fn validate_policy(policy: &PrivatePolicy) -> Result<(), ConfigError> {
@@ -378,11 +485,27 @@ fn valid_text(value: &str, max: usize, allow_empty: bool) -> Result<(), ConfigEr
 
 fn valid_path(value: &str) -> Result<(), ConfigError> {
     if value.is_empty()
+        || value.len() > MAX_TEXT
+        || !value.is_ascii()
         || value.starts_with('/')
-        || value.contains(['\\', '\0', ':'])
-        || value
-            .split('/')
-            .any(|part| part.is_empty() || part == "." || part == "..")
+        || value.contains(['\\', ':', '<', '>', '"', '|', '?', '*'])
+        || value.chars().any(char::is_control)
+        || value.split('/').count() > MAX_PATH_COMPONENTS
+        || value.split('/').any(|part| {
+            let base = part
+                .split('.')
+                .next()
+                .unwrap_or_default()
+                .to_ascii_uppercase();
+            part.is_empty()
+                || part == "."
+                || part == ".."
+                || part.ends_with(['.', ' '])
+                || matches!(base.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+                || ((base.starts_with("COM") || base.starts_with("LPT"))
+                    && base.len() == 4
+                    && matches!(base.as_bytes()[3], b'1'..=b'9'))
+        })
     {
         return Err(ConfigError::Invalid(
             "denied path must be a safe relative component path",
@@ -788,5 +911,185 @@ mod tests {
             parse_layer(raw.to_string().as_bytes()).unwrap().layer,
             ConfigLayerName::Runtime
         );
+    }
+
+    #[test]
+    fn shadowed_model_duplicates_zero_and_private_cap_violations_are_rejected() {
+        let erased = || {
+            layer(
+                ConfigLayerName::Runtime,
+                ConfigPatch {
+                    models: Some(vec![]),
+                    nodes: Some(vec![]),
+                    ..Default::default()
+                },
+            )
+        };
+        let mut high = defaults();
+        high.values.models.as_mut().unwrap()[0].max_concurrency = policy().max_agents + 1;
+        assert_eq!(
+            resolve_config(&[high], &policy()).unwrap_err(),
+            ConfigError::PrivateCapExceeded
+        );
+        let mut high = defaults();
+        high.values.models.as_mut().unwrap()[0].max_concurrency = policy().max_agents + 1;
+        assert_eq!(
+            resolve_config(&[high, erased()], &policy()).unwrap_err(),
+            ConfigError::PrivateCapExceeded
+        );
+        let mut zero = defaults();
+        zero.values.models.as_mut().unwrap()[0].max_concurrency = 0;
+        assert!(matches!(
+            resolve_config(&[zero, erased()], &policy()),
+            Err(ConfigError::Invalid(_))
+        ));
+
+        let mut duplicate_models = defaults();
+        let model = duplicate_models.values.models.as_ref().unwrap()[0].clone();
+        duplicate_models.values.models.as_mut().unwrap().push(model);
+        assert_eq!(
+            resolve_config(&[duplicate_models, erased()], &policy()).unwrap_err(),
+            ConfigError::DuplicateId
+        );
+        let mut duplicate_nodes = defaults();
+        let node = duplicate_nodes.values.nodes.as_ref().unwrap()[0].clone();
+        duplicate_nodes.values.nodes.as_mut().unwrap().push(node);
+        assert_eq!(
+            resolve_config(&[duplicate_nodes, erased()], &policy()).unwrap_err(),
+            ConfigError::DuplicateId
+        );
+    }
+
+    #[test]
+    fn portable_denials_and_programmatic_layer_sizes_are_bounded() {
+        let paths = [
+            "a\nb".to_owned(),
+            "a\u{7f}b".to_owned(),
+            "a/child.".to_owned(),
+            "a/child ".to_owned(),
+            "a/*".to_owned(),
+            "a/CON.txt".to_owned(),
+            "a/com1".to_owned(),
+            "a/lpt9.log".to_owned(),
+            "a/résumé".to_owned(),
+            "x".repeat(MAX_TEXT + 1),
+            vec!["a"; MAX_PATH_COMPONENTS + 1].join("/"),
+        ];
+        for path in paths {
+            let mut public = defaults();
+            public.values.denied_paths = Some(vec![path.clone()]);
+            assert!(
+                resolve_config(&[public], &policy()).is_err(),
+                "public: {path:?}"
+            );
+            let mut private = policy();
+            private.denied_paths = vec![path.clone()];
+            assert!(
+                resolve_config(&[defaults()], &private).is_err(),
+                "private: {path:?}"
+            );
+        }
+        let mut large = defaults();
+        large.values.nodes = Some(
+            (0..100)
+                .map(|index| NodeConfig {
+                    id: format!("node-{index}"),
+                    label: "x".repeat(MAX_TEXT),
+                    address: None,
+                })
+                .collect(),
+        );
+        large.values.models = Some(vec![]);
+        assert_eq!(
+            resolve_config(&[large], &policy()).unwrap_err(),
+            ConfigError::LayerTooLarge
+        );
+    }
+
+    #[test]
+    fn provenance_retains_source_identities_and_overwritten_layer_receipts() {
+        let mut first = defaults();
+        first.values.denied_paths = Some(vec!["secrets".into()]);
+        let public = layer(
+            ConfigLayerName::User,
+            ConfigPatch {
+                listen: Some("127.0.0.1:7444".into()),
+                denied_paths: Some(vec!["secrets".into()]),
+                ..Default::default()
+            },
+        );
+        let layers = vec![first, public];
+        let before = layers.clone();
+        let private = policy();
+        let resolved = resolve_config(&layers, &private).unwrap();
+        assert_eq!(layers, before);
+        assert_eq!(private, policy());
+        assert_eq!(resolved.private_policy, private);
+        assert_eq!(resolved.provenance["listen"], ProvenanceOrigin::User);
+        assert_eq!(
+            resolved.provenance_history["listen"],
+            [
+                ProvenanceContribution {
+                    origin: ProvenanceOrigin::Defaults,
+                    source_ref: Some(layers[0].source_ref.clone()),
+                },
+                ProvenanceContribution {
+                    origin: ProvenanceOrigin::User,
+                    source_ref: Some(layers[1].source_ref.clone()),
+                },
+            ]
+        );
+        assert_eq!(
+            resolved.provenance_history["denied_paths.secrets"]
+                .iter()
+                .map(|entry| entry.origin)
+                .collect::<Vec<_>>(),
+            [
+                ProvenanceOrigin::Defaults,
+                ProvenanceOrigin::User,
+                ProvenanceOrigin::Private
+            ]
+        );
+        assert_eq!(
+            resolved.provenance_history["denied_paths.secrets"][2].source_ref,
+            None
+        );
+        assert_eq!(resolved.source_layers.len(), 2);
+        assert_eq!(
+            resolved.source_layers[0].digest,
+            crate::content_digest(&layers[0]).unwrap()
+        );
+        let mut changed = layers;
+        changed[0].values.listen = Some("127.0.0.1:7555".into());
+        let other = resolve_config(&changed, &private).unwrap();
+        assert_eq!(resolved.listen, other.listen);
+        assert_ne!(
+            resolved.source_layers[0].digest,
+            other.source_layers[0].digest
+        );
+        assert_eq!(resolved.source_layers[1], other.source_layers[1]);
+    }
+
+    #[test]
+    fn duplicate_json_fields_and_private_invalid_limits_fail_closed() {
+        for raw in [
+            br#"{"layer":"defaults","layer":"runtime","source_ref":"d","values":{}}"#.as_slice(),
+            br#"{"layer":"defaults","source_ref":"d","values":{"max_agents":1,"max_agents":2}}"#
+                .as_slice(),
+        ] {
+            assert!(matches!(parse_layer(raw), Err(ConfigError::Json(_))));
+        }
+        let mut private = policy();
+        private.max_agents = 0;
+        assert!(matches!(
+            resolve_config(&[defaults()], &private),
+            Err(ConfigError::Invalid(_))
+        ));
+        let mut private = policy();
+        private.max_context_tokens = 0;
+        assert!(matches!(
+            resolve_config(&[defaults()], &private),
+            Err(ConfigError::Invalid(_))
+        ));
     }
 }

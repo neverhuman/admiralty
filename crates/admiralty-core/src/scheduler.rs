@@ -1,10 +1,14 @@
 //! Pure, bounded scheduling proposals. This module never starts work.
 use crate::{ProjectId, RootId, TaskContract, TaskId, content_digest};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    io::{self, Write},
+};
 
 pub const SCHEDULER_SCHEMA_VERSION: u32 = 1;
 pub const MAX_SCHEDULED_TASKS: usize = 1000;
+pub const MAX_SCHEDULER_BYTES: usize = 1024 * 1024;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -31,7 +35,7 @@ pub enum TaskSchedulingState {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum LeaseObservation {
     Absent,
     Held { expires_tick: Option<u64> },
@@ -54,7 +58,9 @@ pub struct SchedulerSnapshot {
     pub schema_version: u32,
     pub scope: SchedulingScope,
     pub tasks: Vec<ScheduledTask>,
+    /// Caller-observed remaining task slots, not a permit or an inferred token balance.
     pub available_quota: Knowledge<u16>,
+    /// Caller-observed remaining task slots, not a resource reservation.
     pub available_capacity: Knowledge<u16>,
 }
 
@@ -89,6 +95,10 @@ pub struct SchedulingProposal {
 
 #[derive(Clone, Debug, thiserror::Error, PartialEq, Eq)]
 pub enum SchedulerError {
+    #[error("scheduler snapshot exceeds the 1 MiB input limit")]
+    SnapshotTooLarge,
+    #[error("invalid scheduler snapshot JSON: {0}")]
+    Json(String),
     #[error("unsupported scheduler snapshot schema version")]
     UnsupportedVersion,
     #[error("scheduler scope revision must be nonzero")]
@@ -118,6 +128,36 @@ pub enum SchedulerError {
     Digest(String),
 }
 
+/// Decode a bounded snapshot. Semantic validation occurs in `propose_ready_tasks`.
+/// This does not authenticate the source or turn reported completion into acceptance.
+pub fn parse_scheduler_snapshot(bytes: &[u8]) -> Result<SchedulerSnapshot, SchedulerError> {
+    if bytes.len() > MAX_SCHEDULER_BYTES {
+        return Err(SchedulerError::SnapshotTooLarge);
+    }
+    let snapshot: SchedulerSnapshot =
+        serde_json::from_slice(bytes).map_err(|error| SchedulerError::Json(error.to_string()))?;
+    if snapshot.tasks.len() > MAX_SCHEDULED_TASKS {
+        return Err(SchedulerError::TooManyTasks);
+    }
+    Ok(snapshot)
+}
+
+struct SnapshotByteLimit(usize);
+
+impl Write for SnapshotByteLimit {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        if bytes.len() > self.0 {
+            return Err(io::ErrorKind::FileTooLarge.into());
+        }
+        self.0 -= bytes.len();
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
 /// Validate a bounded snapshot and propose ready pending tasks in lexical ID
 /// order. This function has no clock, filesystem, network, or execution effects.
 pub fn propose_ready_tasks(
@@ -136,6 +176,10 @@ pub fn propose_ready_tasks(
     if snapshot.tasks.len() > MAX_SCHEDULED_TASKS {
         return Err(SchedulerError::TooManyTasks);
     }
+    // Typed callers bypass the byte parser. Bound nested contracts before their
+    // validation, graph construction or digesting, without allocating a JSON copy.
+    serde_json::to_writer(SnapshotByteLimit(MAX_SCHEDULER_BYTES), snapshot)
+        .map_err(|_| SchedulerError::SnapshotTooLarge)?;
 
     let mut tasks = BTreeMap::new();
     for scheduled in &snapshot.tasks {
@@ -709,5 +753,118 @@ mod tests {
                 .values()
                 .any(|reasons| reasons == &[ReadinessBlocker::QuotaLimit])
         );
+    }
+
+    #[test]
+    fn byte_parser_and_typed_input_bound_nested_contracts_without_clock_or_effects() {
+        let input = snapshot(vec![]);
+        let mut bytes = serde_json::to_vec(&input).expect("snapshot JSON");
+        bytes.resize(MAX_SCHEDULER_BYTES, b' ');
+        assert_eq!(
+            parse_scheduler_snapshot(&bytes).expect("exact byte bound"),
+            input
+        );
+        bytes.push(b' ');
+        assert_eq!(
+            parse_scheduler_snapshot(&bytes),
+            Err(SchedulerError::SnapshotTooLarge)
+        );
+
+        let mut oversized = snapshot(vec![scheduled(
+            contract("a", &[]),
+            TaskSchedulingState::Pending,
+            LeaseObservation::Absent,
+        )]);
+        oversized.tasks[0].contract.objective = "x".repeat(MAX_SCHEDULER_BYTES);
+        assert_eq!(propose(&oversized), Err(SchedulerError::SnapshotTooLarge));
+
+        // Held is an observation, never an expiry/reclaim permit. Neither an
+        // old tick, zero nor a far-future tick triggers a wall-clock decision.
+        for expires_tick in [None, Some(0), Some(1), Some(u64::MAX)] {
+            let held = snapshot(vec![scheduled(
+                contract("held", &[]),
+                TaskSchedulingState::Pending,
+                LeaseObservation::Held { expires_tick },
+            )]);
+            let before = held.clone();
+            let first = propose(&held).expect("held lease observation");
+            assert_eq!(propose(&held).expect("repeat pure proposal"), first);
+            assert_eq!(held, before);
+            assert!(first.ready.is_empty());
+            assert!(!first.execution_granted);
+            assert_eq!(
+                first.blocked[&TaskId::new("held").expect("task ID")],
+                [ReadinessBlocker::LeaseHeld { expires_tick }]
+            );
+        }
+    }
+
+    #[test]
+    fn parser_rejects_duplicate_fields_nested_unknowns_and_execution_injection() {
+        let input = snapshot(vec![scheduled(
+            contract("a", &[]),
+            TaskSchedulingState::Pending,
+            LeaseObservation::Held {
+                expires_tick: Some(7),
+            },
+        )]);
+        let original = serde_json::to_value(&input).expect("snapshot value");
+        let mut extra = original.clone();
+        extra["tasks"][0]["lease"]["held"]["reclaim"] = true.into();
+        assert!(matches!(
+            parse_scheduler_snapshot(&serde_json::to_vec(&extra).expect("JSON")),
+            Err(SchedulerError::Json(_))
+        ));
+        let mut extra = original;
+        extra["execution_granted"] = true.into();
+        assert!(matches!(
+            parse_scheduler_snapshot(&serde_json::to_vec(&extra).expect("JSON")),
+            Err(SchedulerError::Json(_))
+        ));
+        let duplicate =
+            serde_json::to_string(&input)
+                .expect("JSON")
+                .replacen("{", "{\"schema_version\":1,", 1);
+        assert!(matches!(
+            parse_scheduler_snapshot(duplicate.as_bytes()),
+            Err(SchedulerError::Json(_))
+        ));
+    }
+
+    #[test]
+    fn all_slot_combinations_respect_independent_capacity_and_quota_boundaries() {
+        for quota in 0..=4_u16 {
+            for capacity in 0..=4_u16 {
+                let mut input = snapshot(
+                    ["a", "b", "c"]
+                        .into_iter()
+                        .map(|id| {
+                            scheduled(
+                                contract(id, &[]),
+                                TaskSchedulingState::Pending,
+                                LeaseObservation::Absent,
+                            )
+                        })
+                        .collect(),
+                );
+                input.available_quota = Knowledge::Known(quota);
+                input.available_capacity = Knowledge::Known(capacity);
+                let proposal = propose(&input).expect("valid observed task-slot counts");
+                let limit = usize::from(quota.min(capacity)).min(3);
+                assert_eq!(proposal.ready, ids(&["a", "b", "c"][..limit]));
+                for reasons in proposal.blocked.values() {
+                    assert!(!reasons.is_empty());
+                    assert_eq!(
+                        reasons.contains(&ReadinessBlocker::QuotaLimit),
+                        quota <= capacity && usize::from(quota) < 3
+                    );
+                    assert_eq!(
+                        reasons.contains(&ReadinessBlocker::CapacityLimit),
+                        capacity <= quota && usize::from(capacity) < 3
+                    );
+                }
+                assert!(!proposal.execution_granted);
+            }
+        }
     }
 }
