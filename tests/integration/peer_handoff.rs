@@ -3,6 +3,7 @@ use admiralty_core::interfaces::{
     InterfaceScope, RecipientEpoch, reduce_interface_for,
 };
 use admiralty_core::{MessageId, PrincipalId, ProjectId, RootId, TaskId};
+use admiralty_testkit::faults::{FaultEffect, FaultPlan, FaultRule};
 
 fn principal(value: &str) -> PrincipalId {
     PrincipalId::new(value).expect("fixture principal")
@@ -178,4 +179,50 @@ fn consumer_ack_is_provisional_and_new_revision_proposes_invalidation() {
         DecimalU64::new(1)
     );
     assert_eq!(revised.invalidations[0].new_revision, DecimalU64::new(2));
+}
+
+#[test]
+fn injected_ack_drop_preserves_unacknowledged_state_until_retry() {
+    let scope = scope();
+    let owner = principal("owner");
+    let producer = principal("producer");
+    let consumer = principal("consumer");
+    let published = reduce_interface_for(
+        &None,
+        &publish("fault-publish", 1, None),
+        &scope,
+        &producer,
+        &owner,
+    )
+    .expect("publish before injected delivery fault");
+    let initial_state = published.state;
+    let acknowledgement = acknowledge();
+    let mut faults = FaultPlan::new(vec![FaultRule {
+        point: "peer-ack-delivery".into(),
+        occurrence: 1,
+        effect: FaultEffect::Drop,
+    }])
+    .expect("bounded deterministic fault schedule");
+
+    assert_eq!(
+        faults.hit("peer-ack-delivery"),
+        Ok(Some(FaultEffect::Drop)),
+        "first acknowledgment delivery is deterministically dropped"
+    );
+    assert!(!initial_state.evidence.contains_key(&consumer));
+
+    assert_eq!(faults.hit("peer-ack-delivery"), Ok(None));
+    let retried = reduce_interface_for(
+        &Some(initial_state),
+        &acknowledgement,
+        &scope,
+        &consumer,
+        &owner,
+    )
+    .expect("retry after dropped delivery");
+    assert!(matches!(
+        retried.state.evidence.get(&consumer),
+        Some(CompatibilityEvidence::ProvisionalAck { .. })
+    ));
+    assert_eq!(faults.hits("peer-ack-delivery"), Ok(2));
 }
