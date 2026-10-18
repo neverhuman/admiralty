@@ -378,7 +378,35 @@ DOPE_PROBLEMS = {
     'checkout_sha_mismatch': 'checkout sha differs from the receipt sha',
     'sha_not_on_main': 'receipt sha is not on origin/main',
     'receipt_predates_sha': 'verified_at is older than the commit it names (relabeled, not re-run)',
+    'vacuous_zero_tests': 'log shows the test command ran ZERO tests (cargo "0 passed ... N filtered out", unittest "Ran 0 tests", pytest "no tests ran") - a filter that matches nothing passes vacuously',
+    'not_a_test_command': 'command is not a test/validation run (sha256sum, git log, gh run list, ls, cat, echo, ...) - proves a file exists, not that acceptance passes',
+    'empty_input_hash': 'log contains the SHA-256 of EMPTY input (e3b0c442...) - a hash command was run with no file arguments',
 }
+# GB red-team 2026-10-18 ~06:45 MDT: captain_dope receipts on 402954ed included cargo filters matching 0 tests
+# (D00 D01 B00 W00 U00 R10) and re-pinned planning receipts to `sha256sum ` with no arguments (P00).
+DOPE_NON_TEST_CMDS = {'sha256sum', 'sha1sum', 'md5sum', 'git', 'gh', 'ls', 'cat', 'echo', 'stat', 'wc', 'true', 'test', 'head', 'tail', 'jq', 'printf', 'find', 'du'}
+EMPTY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+
+def dope_cmd_program(cmd):
+    """First real program of a shell command, skipping VAR=value assignments and env/taskset/nice/timeout wrappers."""
+    toks = str(cmd or '').strip().split()
+    wrappers = ('env', 'nice', 'ionice', 'time', 'command', 'exec', 'taskset', 'timeout', 'stdbuf')
+    wrapped = False
+    for t in toks:
+        if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*=\S*', t): continue
+        if t in wrappers: wrapped = True; continue
+        if wrapped and (t.startswith('-') or re.fullmatch(r'[0-9][0-9,.\-]*[smhd]?', t)): continue
+        return os.path.basename(t)
+    return ''
+
+def dope_log_vacuous(text):
+    """True when the log proves the test runner executed zero tests."""
+    cargo = re.findall(r'test result: \w+\. (\d+) passed; (\d+) failed', text)
+    if cargo and sum(int(a) + int(b) for a, b in cargo) == 0: return True
+    ran = [int(x) for x in re.findall(r'^Ran (\d+) tests? in', text, re.M)]
+    if ran and sum(ran) == 0: return True
+    if re.search(r'^(no tests ran|collected 0 items)\b', text, re.M): return True
+    return False
 
 def _sha256_file(p):
     try:
@@ -424,6 +452,8 @@ def check_dope_receipt(task_id, ref_path, ref_hash, on_main, commit_time_fn=None
     for c in cmds:
         if not isinstance(c, dict): probs.add('no_commands'); continue
         info['cmds'].append(str(c.get('cmd') or c.get('command') or ''))
+        prog = dope_cmd_program(c.get('cmd') or c.get('command'))
+        if prog in DOPE_NON_TEST_CMDS: probs.add('not_a_test_command')
         ec = c['exit_codes'] if 'exit_codes' in c else c.get('exit_code')
         ecs = ec if isinstance(ec, list) else [ec]
         if not ecs or any(type(x) is not int for x in ecs): probs.add('exit_code_not_integer')
@@ -435,7 +465,10 @@ def check_dope_receipt(task_id, ref_path, ref_hash, on_main, commit_time_fn=None
         elif _sha256_file(lp) != lh.split(':')[-1]: probs.add('log_sha256_mismatch')
         else:
             info['log_hashes'].append(lh.split(':')[-1])
-            with open(lp, errors='replace') as fh: head = fh.read(20000)
+            with open(lp, errors='replace') as fh: full = fh.read(2000000)
+            head = full[:20000]
+            if dope_log_vacuous(full): probs.add('vacuous_zero_tests')
+            if EMPTY_SHA256 in full: probs.add('empty_input_hash')
             ls = set(re.findall(r'^head_sha:\s*([0-9a-f]{40})\s*$', head, re.M))
             if ls and good_sha and ls != {sha}: probs.add('log_names_other_sha')
             le = {int(x) for x in re.findall(r'^exit_code:\s*(-?\d+)\s*$', head, re.M)}
@@ -505,6 +538,12 @@ def audit_dope(packet=None, on_main=None, commit_time_fn=None):
         F('red', 'dope', 'PROGRESS_VS_LEDGER', f'progress.json counts.done={pc.get("done")} but tasks.json has {len(done)} done', packet)
     for x in done:
         if not x.get('evidence'): F('red', 'dope', 'DONE_NO_EVIDENCE', f'{x["id"]} is done with empty evidence', packet + '/tasks.json')
+    contra = sorted(x['id'] for x in done if re.search(r'blocked|partial|fail', str(x.get('sub_status') or ''), re.I))
+    if contra:
+        F('red', 'dope', 'DONE_BUT_SUBSTATUS_BLOCKED', f'{len(contra)} task(s) are status=done while their own sub_status says blocked/partial/failed: {" ".join(contra)} - mark them blocked with the precise blocker instead of done', packet + '/tasks.json')
+    stale = sorted(x['id'] for x in done if re.search(r'awaiting|pending', str(x.get('sub_status') or ''), re.I) and x['id'] not in contra)
+    if stale:
+        F('amber', 'dope', 'DONE_SUBSTATUS_STALE', f'{len(stale)} done task(s) still carry an awaiting/pending sub_status (stale bookkeeping): {" ".join(stale[:30])}', packet + '/tasks.json')
     by_prob = collections.defaultdict(list)
     for tid, ps in bad.items():
         for q in ps: by_prob[q].append(tid)
