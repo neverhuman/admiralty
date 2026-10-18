@@ -6,14 +6,19 @@ use admiralty_core::nodes::{
 };
 use admiralty_core::{PrincipalId, ProjectId, RootId, TaskId};
 use admiralty_runtime::{
+    providers::{claude, codex, process},
     providers::codex::{CodexEffort, CodexNdjsonStream},
     session::{OutputChunk, OutputStream},
+    workspace::registry::{Custody, NodeRef, WorkspaceSpec},
 };
+use std::{fs, path::PathBuf};
 
 use admiralty_core::economics::{DecimalU128, ObservedAmount};
 use admiralty_runtime::session::{LaunchSpec, validate_launch_envelope};
 
 const TURN: &[u8] = include_bytes!("../fixtures/providers/codex/fragmented-turn.jsonl");
+const CODEX_TURN: &[u8] = include_bytes!("../fixtures/providers/codex/fragmented-turn.jsonl");
+const CLAUDE_TURN: &[u8] = include_bytes!("../fixtures/providers/claude/continuity-turn.jsonl");
 
 fn digest(ch: char) -> String {
     format!("sha256:{}", ch.to_string().repeat(64))
@@ -165,4 +170,60 @@ fn p26_p31_round8_p12_hitl_cockpit_qualification() {
     let mut oversized = safe;
     oversized.args = vec!["x".repeat(64 * 1024 + 1)];
     assert!(validate_launch_envelope(&oversized).is_err());
-}
+
+#[test]
+fn p08_p21_p22_round8_worktree_isolation_receipt_qualification() {
+    let temp = tempfile::tempdir().expect("temporary receipt workspace");
+    let root = fs::canonicalize(temp.path()).expect("canonical root");
+    let worktree = root.join("worktree");
+    let sibling = root.join("sibling");
+    fs::create_dir_all(worktree.join("src")).expect("worktree source");
+    fs::create_dir_all(&sibling).expect("sibling workspace");
+    fs::write(worktree.join("src/main.rs"), b"candidate").expect("candidate fixture");
+    fs::write(sibling.join("private.receipt"), b"sibling sentinel").expect("sibling sentinel");
+
+    let spec = WorkspaceSpec {
+        node_id: NodeRef::new("round8-node").expect("node ID"),
+        root_id: RootId::new("round8-root").expect("root ID"),
+        project_id: ProjectId::new("round8-project").expect("project ID"),
+        workspace: worktree.clone(),
+        owned_paths: vec![PathBuf::from("src")],
+        forbidden_paths: vec![PathBuf::from(".git"), PathBuf::from("private.receipt")],
+    };
+    let scope = spec.validate().expect("registered worktree scope");
+    assert_eq!(scope.custody, Custody::RegisteredOnly);
+    assert!(scope.owns(std::path::Path::new("src/main.rs")));
+    assert!(!scope.owns(std::path::Path::new("../sibling/private.receipt")));
+    assert_eq!(
+        fs::read(sibling.join("private.receipt")).expect("sibling receipt remains intact"),
+        b"sibling sentinel"
+    );
+
+    // P08 and P21 fixture parsing is repeatable and remains observational evidence.
+    let codex = codex::CodexNdjsonStream::new("fixture-model", codex::CodexEffort::Medium)
+        .expect("Codex parser configuration");
+    let mut codex = codex;
+    let codex_events = codex
+        .push_chunk(&admiralty_runtime::session::OutputChunk {
+            offset: 0,
+            stream: admiralty_runtime::session::OutputStream::Stdout,
+            bytes: CODEX_TURN.to_vec(),
+        })
+        .expect("Codex fixture parses");
+    assert!(!codex_events.is_empty());
+    assert!(!codex.finish(Some(0), true).trusted_acceptance());
+
+    let claude =
+        claude::parse_stream(CLAUDE_TURN, Some("fixture-session")).expect("Claude fixture parses");
+    assert!(!claude.trusted_acceptance());
+
+    // P22 legacy identity is only a hint and cannot turn a receipt into acceptance.
+    let identity = process::classify_legacy(
+        &["/opt/agy".into(), "--model".into(), "fixture-model".into()],
+        None,
+        None,
+    )
+    .expect("bounded legacy identity");
+    assert!(identity.observed_only);
+    assert_eq!(identity.observed_provider, None);
+
