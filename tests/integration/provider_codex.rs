@@ -4,6 +4,7 @@ use admiralty_runtime::{
     },
     session::{OutputChunk, OutputStream},
 };
+use admiralty_testkit::faults::{FaultEffect, FaultPlan, FaultRule};
 
 const TURN: &[u8] = include_bytes!("../fixtures/providers/codex/fragmented-turn.jsonl");
 
@@ -177,6 +178,33 @@ fn completed_provider_turn_stays_unknown_without_complete_capture() {
             bytes: TURN.to_vec(),
         })
         .expect("provider turn parses");
+    let summary = parser.finish(Some(0), false);
+    assert_eq!(summary.termination, CodexTermination::Unknown);
+    assert!(!summary.capture_complete);
+    assert!(!summary.trusted_acceptance());
+}
+
+#[test]
+fn injected_codex_tail_loss_keeps_capture_unqualified() {
+    let mut faults = FaultPlan::new(vec![FaultRule {
+        point: "codex-read".into(),
+        occurrence: 2,
+        effect: FaultEffect::Drop,
+    }])
+    .expect("bounded deterministic fault schedule");
+    let mut parser = CodexNdjsonStream::new("selected-model", CodexEffort::Low)
+        .expect("explicit model accepted");
+    let split = TURN.len() / 2;
+    assert_eq!(faults.hit("codex-read"), Ok(None));
+    parser
+        .push_chunk(&OutputChunk {
+            offset: 0,
+            stream: OutputStream::Stdout,
+            bytes: TURN[..split].to_vec(),
+        })
+        .expect("first provider read");
+    assert_eq!(faults.hit("codex-read"), Ok(Some(FaultEffect::Drop)));
+
     let summary = parser.finish(Some(0), false);
     assert_eq!(summary.termination, CodexTermination::Unknown);
     assert!(!summary.capture_complete);

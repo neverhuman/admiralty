@@ -7,6 +7,7 @@ use admiralty_runtime::{
     },
     session::MAX_INPUT_BYTES,
 };
+use admiralty_testkit::faults::{FaultEffect, FaultPlan, FaultRule};
 use serde_json::{Value, json};
 use std::path::PathBuf;
 
@@ -602,4 +603,29 @@ fn replaying_a_complete_claude_capture_preserves_events_and_usage() {
     assert_eq!(replay.events, first.events);
     assert_eq!(replay.usage, first.usage);
     assert!(!replay.trusted_acceptance());
+}
+
+#[test]
+fn injected_loss_of_terminal_claude_event_cannot_complete_the_turn() {
+    let records = TURN
+        .split_inclusive(|byte| *byte == b'\n')
+        .collect::<Vec<_>>();
+    assert!(records.len() >= 2);
+    let mut faults = FaultPlan::new(vec![FaultRule {
+        point: "claude-event".into(),
+        occurrence: records.len() as u64,
+        effect: FaultEffect::Drop,
+    }])
+    .expect("bounded deterministic fault schedule");
+    let mut observed = Vec::new();
+    for (index, record) in records.iter().enumerate() {
+        let effect = faults.hit("claude-event").expect("registered fault point");
+        if index + 1 == records.len() {
+            assert_eq!(effect, Some(FaultEffect::Drop));
+        } else {
+            assert_eq!(effect, None);
+            observed.extend_from_slice(record);
+        }
+    }
+    assert!(parse_stream(&observed, None).is_err());
 }
