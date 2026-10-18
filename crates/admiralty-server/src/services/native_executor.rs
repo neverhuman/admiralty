@@ -33,6 +33,35 @@ use std::{
 
 const MAX_RUN_ID_BYTES: usize = 128;
 
+/// Trusted service-local persistence boundary. Called only with an actual
+/// resource observation whose recovery identity was durably journaled first.
+/// Implementations must not re-enter the executor or launch/authorize work.
+/// An error is an unknown persistence outcome and must be safe to retry exactly.
+pub trait StartedSink: Send + Sync {
+    fn record_started(
+        &self,
+        intent: &DispatchIntent,
+        recovery: &RecoveryIdentity,
+    ) -> Result<(), StartedSinkError>;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StartedSinkError {
+    InvalidBinding,
+    Capacity,
+    Unavailable,
+}
+impl std::fmt::Display for StartedSinkError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::InvalidBinding => "started observation binding differs",
+            Self::Capacity => "started observation registry is full",
+            Self::Unavailable => "started observation persistence is unavailable",
+        })
+    }
+}
+impl std::error::Error for StartedSinkError {}
+
 pub struct NativeExecutionPlan {
     /// Immutable contract/work-order and provider preparation bindings.
     pub task_id: TaskId,
@@ -63,6 +92,7 @@ pub struct NativeExecutor {
     pending: Mutex<BTreeMap<String, PendingRun>>,
     reserved_runs: Mutex<BTreeSet<String>>,
     completed: Mutex<BTreeMap<String, ClosedExecution>>,
+    started_sink: Arc<dyn StartedSink>,
 }
 
 struct PendingRun {
@@ -74,6 +104,7 @@ struct PendingRun {
     intent: DispatchIntent,
     recovery: RecoveryIdentity,
     observed_persisted: bool,
+    started_persisted: bool,
     refresh_attempts: u32,
     refresh_failed: bool,
 }
@@ -122,6 +153,7 @@ pub struct PendingDiagnostics {
     pub refresh_attempts: u32,
     pub refresh_failed: bool,
     pub observed_identity_persisted: bool,
+    pub started_persisted: bool,
 }
 
 #[derive(Serialize)]
@@ -149,6 +181,7 @@ impl NativeExecutor {
         deadline: Duration,
         capture_limit: usize,
         max_pending: usize,
+        started_sink: Arc<dyn StartedSink>,
     ) -> Result<Self, NativeExecutorError> {
         let journal = PrivateJournal::open(journal_root.as_ref())?;
         if deadline.is_zero()
@@ -170,7 +203,43 @@ impl NativeExecutor {
             pending: Mutex::new(BTreeMap::new()),
             reserved_runs: Mutex::new(BTreeSet::new()),
             completed: Mutex::new(BTreeMap::new()),
+            started_sink,
         })
+    }
+
+    /// Return the original preparation capability only before launch has taken
+    /// the plan. Never erase journals or withdraw a pending/closed execution.
+    /// Holding `plans` excludes launch's ownership transfer throughout the check.
+    pub fn withdraw_unstarted_plan(
+        &self,
+        run_id: &str,
+    ) -> Result<Option<NativeExecutionPlan>, NativeExecutorError> {
+        if !valid_run_id(run_id) {
+            return Err(NativeExecutorError::InvalidBinding);
+        }
+        let mut plans = self
+            .plans
+            .lock()
+            .map_err(|_| NativeExecutorError::Poisoned)?;
+        if !plans.contains_key(run_id) {
+            return Ok(None);
+        }
+        for kind in ["prepared", "observed", "closed"] {
+            if self.journal.exists(&journal_name(run_id, kind)?)? {
+                return Err(NativeExecutorError::LaunchUnknown);
+            }
+        }
+        let mut reserved = self
+            .reserved_runs
+            .lock()
+            .map_err(|_| NativeExecutorError::Poisoned)?;
+        if !reserved.contains(run_id) {
+            return Err(NativeExecutorError::LaunchUnknown);
+        }
+        // No fallible operations after removing the actual owned plan.
+        let result = plans.remove(run_id);
+        reserved.remove(run_id);
+        Ok(result)
     }
 
     /// Install a plan from trusted server composition. Duplicate run identities
@@ -237,6 +306,7 @@ impl NativeExecutor {
                 refresh_attempts: entry.refresh_attempts,
                 refresh_failed: entry.refresh_failed,
                 observed_identity_persisted: entry.observed_persisted,
+                started_persisted: entry.started_persisted,
             })
     }
     /// Reconcile without launching or signalling. Unknown runs retain their own
@@ -272,6 +342,18 @@ impl NativeExecutor {
             self.journal
                 .write_same_or_new(&journal_name(run_id, "observed")?, &entry.recovery)?;
             entry.observed_persisted = true;
+        }
+        persist_started_once(
+            self.started_sink.as_ref(),
+            &entry.intent,
+            &entry.recovery,
+            entry.observed_persisted && entry.running.observation().is_some(),
+            &mut entry.started_persisted,
+        )?;
+        // Without an actual persisted observation there can be no start or
+        // completion handoff. Keep every original handle for reconciliation.
+        if !entry.started_persisted {
+            return Ok(None);
         }
         let status = match entry.host.status(run_id) {
             Ok(status) => status,
@@ -494,6 +576,7 @@ impl NativeExecutor {
                 intent: intent.clone(),
                 recovery,
                 observed_persisted: false,
+                started_persisted: false,
                 refresh_attempts: 0,
                 refresh_failed: false,
             },
@@ -544,6 +627,7 @@ pub enum NativeExecutorError {
     Poisoned,
     Journal,
     Digest,
+    StartedPersistence,
 }
 
 impl std::fmt::Display for NativeExecutorError {
@@ -563,11 +647,29 @@ impl std::fmt::Display for NativeExecutorError {
             Self::Poisoned => "native executor registry lock is poisoned",
             Self::Journal => "private recovery evidence could not be durably written",
             Self::Digest => "native output or evidence digest could not be produced",
+            Self::StartedPersistence => {
+                "started persistence outcome is unknown; recovery handle retained"
+            }
         })
     }
 }
 
 impl std::error::Error for NativeExecutorError {}
+
+fn persist_started_once(
+    sink: &dyn StartedSink,
+    intent: &DispatchIntent,
+    recovery: &RecoveryIdentity,
+    observed_persisted: bool,
+    started_persisted: &mut bool,
+) -> Result<(), NativeExecutorError> {
+    if !*started_persisted && observed_persisted {
+        sink.record_started(intent, recovery)
+            .map_err(|_| NativeExecutorError::StartedPersistence)?;
+        *started_persisted = true;
+    }
+    Ok(())
+}
 
 fn validate_bindings(
     task: &TaskView,
@@ -940,8 +1042,26 @@ mod tests {
         }
     }
 
-    #[test]
-    fn unconfigured_resource_gate_denies_before_child_spawn_and_keeps_marker_absent() {
+    struct RejectStarted;
+    impl StartedSink for RejectStarted {
+        fn record_started(
+            &self,
+            _: &DispatchIntent,
+            _: &RecoveryIdentity,
+        ) -> Result<(), StartedSinkError> {
+            Err(StartedSinkError::Unavailable)
+        }
+    }
+    struct Fixture {
+        temp: PathBuf,
+        journal: PathBuf,
+        marker: PathBuf,
+        view: TaskView,
+        intent: DispatchIntent,
+        plan: NativeExecutionPlan,
+        executor: NativeExecutor,
+    }
+    fn fixture() -> Fixture {
         let temp = private_fixture("native-executor-test");
         let source = temp.join("source");
         let managed_parent = temp.join("managed");
@@ -1139,9 +1259,10 @@ mod tests {
             Duration::from_millis(50),
             1024,
             1,
+            Arc::new(RejectStarted),
         )
         .expect("executor");
-        let mut plan = NativeExecutionPlan {
+        let plan = NativeExecutionPlan {
             task_id,
             attempt_id,
             contract_digest,
@@ -1157,6 +1278,28 @@ mod tests {
             permit_claims: claims,
             permit_authority: Arc::new(CurrentPermit),
         };
+        Fixture {
+            temp,
+            journal,
+            marker,
+            view,
+            intent,
+            plan,
+            executor,
+        }
+    }
+
+    #[test]
+    fn unconfigured_resource_gate_denies_before_child_spawn_and_keeps_marker_absent() {
+        let Fixture {
+            temp,
+            journal,
+            marker,
+            view,
+            intent,
+            mut plan,
+            executor,
+        } = fixture();
         assert!(
             validate_bindings(&view, &intent, &plan).is_ok(),
             "actual prepared workspace and full reservation binding"
@@ -1224,6 +1367,161 @@ mod tests {
                 make_fixture_metadata_private(&entry.expect("owned child").path());
             }
         }
+    }
+
+    #[test]
+    fn withdraw_returns_actual_unstarted_preparation_and_releases_only_its_reservation() {
+        let Fixture {
+            temp,
+            journal,
+            marker,
+            view,
+            intent,
+            plan,
+            executor,
+        } = fixture();
+        let head = plan.prepared_workspace.head_oid().to_owned();
+        let tree = plan.prepared_workspace.tree_oid().to_owned();
+        executor.register_plan(plan).expect("register actual plan");
+        let original = executor
+            .withdraw_unstarted_plan(&intent.run_id)
+            .expect("withdraw safely")
+            .expect("actual plan returned");
+        assert_eq!(original.prepared_workspace.head_oid(), head);
+        assert_eq!(original.prepared_workspace.tree_oid(), tree);
+        assert!(validate_bindings(&view, &intent, &original).is_ok());
+        assert!(
+            executor
+                .withdraw_unstarted_plan(&intent.run_id)
+                .expect("already withdrawn")
+                .is_none()
+        );
+        assert!(executor.pending_run_ids().is_empty());
+        assert!(!marker.exists());
+        assert_eq!(
+            fs::read_dir(&journal)
+                .expect("no journal deletion or writes")
+                .count(),
+            0
+        );
+        executor
+            .register_plan(original)
+            .expect("reservation released, original capability reusable");
+        assert!(
+            executor
+                .withdraw_unstarted_plan(&intent.run_id)
+                .expect("second safe withdrawal")
+                .is_some()
+        );
+        fs::remove_dir_all(temp).expect("owned fixture cleanup");
+    }
+
+    #[test]
+    fn withdraw_refuses_durable_launch_evidence_without_losing_plan_or_evidence() {
+        let Fixture {
+            temp,
+            marker,
+            intent,
+            plan,
+            executor,
+            ..
+        } = fixture();
+        let head = plan.prepared_workspace.head_oid().to_owned();
+        executor.register_plan(plan).expect("register actual plan");
+        let name = journal_name(&intent.run_id, "prepared").expect("journal name");
+        executor
+            .journal
+            .write_new(&name, &serde_json::json!({"retained":"prepared"}))
+            .expect("durable barrier");
+        assert!(matches!(
+            executor.withdraw_unstarted_plan(&intent.run_id),
+            Err(NativeExecutorError::LaunchUnknown)
+        ));
+        assert!(
+            executor
+                .journal
+                .exists(&name)
+                .expect("original evidence retained")
+        );
+        assert!(
+            executor
+                .reserved_runs
+                .lock()
+                .expect("reservations")
+                .contains(&intent.run_id)
+        );
+        assert_eq!(
+            executor
+                .plans
+                .lock()
+                .expect("plans")
+                .get(&intent.run_id)
+                .expect("original plan retained")
+                .prepared_workspace
+                .head_oid(),
+            head
+        );
+        assert!(!marker.exists());
+        assert!(executor.pending_run_ids().is_empty());
+        fs::remove_dir_all(temp).expect("owned fixture cleanup");
+    }
+
+    #[test]
+    fn started_sink_requires_durable_observation_and_retries_without_marking_rejection_done() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        struct LoseFirstAck {
+            calls: AtomicUsize,
+        }
+        impl StartedSink for LoseFirstAck {
+            fn record_started(
+                &self,
+                _: &DispatchIntent,
+                _: &RecoveryIdentity,
+            ) -> Result<(), StartedSinkError> {
+                if self.calls.fetch_add(1, Ordering::SeqCst) == 0 {
+                    Err(StartedSinkError::Unavailable)
+                } else {
+                    Ok(())
+                }
+            }
+        }
+        let Fixture {
+            temp, intent, plan, ..
+        } = fixture();
+        let recovery = RecoveryIdentity {
+            identity: plan.permit_claims.identity.clone(),
+            launch_spec_digest: plan.permit_claims.launch_spec_digest.clone(),
+            worker_environment_digest: plan.permit_claims.worker_environment_digest.clone(),
+            unit: "observed.service".into(),
+            run_id: intent.run_id.clone(),
+            permit_id: plan.permit_claims.permit_id.clone(),
+            reservation_ref: plan.reservation.id.clone(),
+            host_incarnation: plan.permit_claims.host_incarnation.clone(),
+            backend_config_digest: plan.permit_claims.backend_config_digest.clone(),
+            invocation_id: Some("actual-invocation".into()),
+            main_pid: Some(1234),
+            process_start: Some("observed-start".into()),
+        };
+        let sink = LoseFirstAck {
+            calls: AtomicUsize::new(0),
+        };
+        let mut persisted = false;
+        persist_started_once(&sink, &intent, &recovery, false, &mut persisted)
+            .expect("no unobserved callback");
+        assert_eq!(sink.calls.load(Ordering::SeqCst), 0);
+        assert!(!persisted);
+        assert!(matches!(
+            persist_started_once(&sink, &intent, &recovery, true, &mut persisted),
+            Err(NativeExecutorError::StartedPersistence)
+        ));
+        assert!(!persisted, "a rejection cannot advance pending state");
+        persist_started_once(&sink, &intent, &recovery, true, &mut persisted)
+            .expect("retry acknowledgement");
+        assert!(persisted);
+        persist_started_once(&sink, &intent, &recovery, true, &mut persisted)
+            .expect("no repeated acknowledged callback");
+        assert_eq!(sink.calls.load(Ordering::SeqCst), 2);
+        fs::remove_dir_all(temp).expect("owned fixture cleanup");
     }
     fn private_fixture(prefix: &str) -> PathBuf {
         // CI checkouts may have shared or differently owned ancestors. The
