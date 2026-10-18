@@ -56,7 +56,7 @@ declare module 'node:child_process' {
   export function spawn(
     command: string,
     args: ReadonlyArray<string>,
-    options: { stdio: Array<'ignore' | 'pipe'> },
+    options: { stdio: Array<'ignore' | 'pipe'>; env?: Record<string, string | undefined> },
   ): ChildProcess;
 }
 
@@ -68,7 +68,7 @@ declare module 'node:fs' {
   export function readFileSync(path: string): Buffer;
   export function readFileSync(path: string, encoding: 'utf8'): string;
   export function rmSync(path: string, options?: { recursive?: boolean; force?: boolean }): void;
-  export function statSync(path: string): { isDirectory(): boolean };
+  export function statSync(path: string): { isDirectory(): boolean; uid: number; mode: number };
 }
 
 declare module 'node:http' {
