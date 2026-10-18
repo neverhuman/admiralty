@@ -221,3 +221,7 @@ path = "../../tests/integration/upgrade_continuity.rs"
 [[test]]
 name = "codex_p04_p10_r10_workspace_gate_audit"
 path = "../../tests/integration/codex_p04_p10_r10_workspace_gate_audit.rs"
+
+[[test]]
+name = "codex_p00_p01_p04_p10_round11_final_validation"
+path = "../../tests/integration/codex_p00_p01_p04_p10_round11_final_validation.rs"
