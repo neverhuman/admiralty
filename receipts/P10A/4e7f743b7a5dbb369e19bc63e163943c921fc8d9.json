@@ -1,0 +1,100 @@
+{
+  "packet": "ADM-P10A",
+  "state": "in_progress",
+  "owner": "adm_lane_2_testkit",
+  "base_sha": "c1a4e6fd7d44fab3b9f9e042caba71571ce18373",
+  "head_sha": "4e7f743b7a5dbb369e19bc63e163943c921fc8d9",
+  "contract_version": "ADM-P10A frozen capsule",
+  "changed_paths": [
+    "crates/admiralty-runtime/src/providers/usage.rs",
+    "docs/architecture/usage-segments.md"
+  ],
+  "criteria": [
+    {
+      "name": "Identical source event replay is deduplicated; changed payload under the same session/event ID is rejected",
+      "result": "pass",
+      "evidence": ["tests::identical_event_is_deduplicated_and_changed_reuse_is_rejected"]
+    },
+    {
+      "name": "Counters are monotonic within immutable model segments; an explicit baseline or new segment is required for reset accounting",
+      "result": "pass",
+      "evidence": ["tests::explicit_reset_baseline_opens_a_segment_and_new_segment_resets_counters", "tests::model_is_immutable_within_a_segment"]
+    },
+    {
+      "name": "Unknown opening balances remain unknown while later known increments can be reported",
+      "result": "pass",
+      "evidence": ["tests::unknown_opening_balance_stays_unknown_until_a_new_segment"]
+    },
+    {
+      "name": "Capacity caps must be positive and exhaustion returns an explicit error without eviction",
+      "result": "pass",
+      "evidence": ["tests::limits_are_positive_and_capacity_exhaustion_is_explicit"]
+    },
+    {
+      "name": "Cache read/write categories remain separate and large values have decimal-string accessors",
+      "result": "pass",
+      "evidence": ["tests::cache_read_and_write_are_separate_and_large_values_have_string_forms"]
+    },
+    {
+      "name": "Checked total arithmetic rejects overflow",
+      "result": "pass",
+      "evidence": ["tests::checked_total_rejects_overflow"]
+    },
+    {
+      "name": "Standalone module compiles with warnings denied and all inline tests pass",
+      "result": "pass",
+      "evidence": ["rustc standalone test run: 7 passed, 0 failed"]
+    }
+  ],
+  "validation": [
+    {
+      "argv": ["rustfmt", "--edition", "2024", "--check", "crates/admiralty-runtime/src/providers/usage.rs"],
+      "cwd": "/home/ubuntu/admiralty-v2-build/controller/.agent/worktrees/adm_lane_2_testkit",
+      "exit_code": 0,
+      "artifact": "Formatting check passed"
+    },
+    {
+      "argv": ["rustc", "--edition=2024", "--test", "-D", "warnings", "crates/admiralty-runtime/src/providers/usage.rs", "-o", "target/usage_tests"],
+      "cwd": "/home/ubuntu/admiralty-v2-build/controller/.agent/worktrees/adm_lane_2_testkit",
+      "exit_code": 0,
+      "artifact": "target/usage_tests built with warnings denied"
+    },
+    {
+      "argv": ["target/usage_tests"],
+      "cwd": "/home/ubuntu/admiralty-v2-build/controller/.agent/worktrees/adm_lane_2_testkit",
+      "exit_code": 0,
+      "artifact": "7 tests passed, 0 failed"
+    },
+    {
+      "argv": ["git", "show", "--check", "--oneline", "HEAD"],
+      "cwd": "/home/ubuntu/admiralty-v2-build/controller/.agent/worktrees/adm_lane_2_testkit",
+      "exit_code": 0,
+      "artifact": "Committed patch whitespace check passed"
+    }
+  ],
+  "environment": {
+    "rustc": "rustc 1.95.0 (59807616e 2026-04-14)",
+    "rustfmt": "rustfmt 1.9.0-stable (59807616e1 2026-04-14)",
+    "cargo": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)",
+    "lane_env": "/home/ubuntu/admiralty/bin/lane-env.sh sourced for Rust build",
+    "build_output": "reused worktree-local target/",
+    "provider_or_network_calls": false
+  },
+  "digests": {
+    "crates/admiralty-runtime/src/providers/usage.rs": "sha256:a43e09c5618aff7040d50224fed02e712796dc79c3237970df1a5c7b5a4cedf4",
+    "docs/architecture/usage-segments.md": "sha256:c898de0fc50d694d74643dc999f97724290dabd98c1988cd6adcd6e1e7d2c5fb"
+  },
+  "decisions": [
+    "Event identity is scoped to a session and source_event_id.",
+    "A missing cumulative reading leaves the last known cumulative value unchanged and never contributes zero usage.",
+    "A left-censored opening balance keeps the full segment total unknown, even when later increments are known.",
+    "The overflow unit test directly exercises the checked-add boundary because valid monotone u64 observations cannot overflow their own cumulative counter."
+  ],
+  "limitations": [
+    "The module is not wired into providers/mod.rs or lib.rs because shared wiring is outside this packet's scope.",
+    "The accumulator is in-memory; persistence, provider event parsing, and retention lifecycle belong to integration/runtime owners.",
+    "The module was validated with a standalone rustc test harness rather than Cargo because no module registration is permitted in this packet."
+  ],
+  "blockers": [],
+  "next_action": "Integrator review and wiring; treat this as prototype evidence, not acceptance."
+}
