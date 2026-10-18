@@ -47,6 +47,10 @@ name = "codex_p25_p30_round10"
 path = "../../tests/integration/codex_p25_p30_round10.rs"
 
 [[test]]
+name = "codex_p25_p30_round13"
+path = "../../tests/integration/codex_p25_p30_round13.rs"
+
+[[test]]
 name = "codex_round9"
 path = "../../tests/integration/codex_round9.rs"
 
