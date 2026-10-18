@@ -2,7 +2,7 @@
 """Read-only live collector for the 4 captain dashboard.
 Writes status.json every INTERVAL seconds. Never types into screens; only hardcopy.
 Tolerates missing/changing files (fields become "unknown")."""
-import json, os, re, subprocess, time, glob, hashlib, traceback, datetime, collections
+import json, os, re, subprocess, time, glob, hashlib, traceback, datetime, collections, stat
 from rollout import collect_rollout, observe_rollout_workers
 
 HOME = '/home/ubuntu'
@@ -416,10 +416,31 @@ def joil_git_changes():
     wj(GITC, cache)
     return changes
 
+def audit_failure_verdicts(section):
+    """Count explicit current audit verdicts, not quoted examples or red-control output."""
+    failures, fence = 0, None
+    for line in section.splitlines():
+        marker = re.match(r'^\s*(```+|~~~+)', line)
+        if marker:
+            token = marker.group(1)[0]
+            fence = None if fence == token else token
+            continue
+        if fence or line.lstrip().startswith('>'):
+            continue
+        verdict = re.match(r'^\s*(?:#{1,6}\s+)?(?:[-*]\s+)?(?:\*\*)?Verdicts?(?:\*\*)?\s*:(?:\*\*)?\s*(.*)', line, re.I)
+        if not verdict:
+            continue
+        value = re.sub(r'\*\*|__', '', verdict.group(1)).strip()
+        match = re.match(r'(?:(\d+)\s+)?FAIL(?:ED)?\b(?!\s*[:=]?\s*0\b)', value, re.I)
+        if match and (match.group(1) is None or int(match.group(1)) > 0):
+            failures += 1
+    return failures
+
 def joil_validator():
     p = JCTL + '/gorkbot/validator/LATEST.md'
     try:
-        txt = open(p).read()
+        with open(p) as stream:
+            txt = stream.read()
     except Exception:
         return {'status': 'unknown'}
     sec = txt.split('## Previous')[0]
@@ -429,8 +450,7 @@ def joil_validator():
     held = sorted(set(x for x in re.findall(r'(V5-\d\d-\d\d)[^\n]{0,60}AUDIT-HELD', sec)))
     return {'audit': m.group(1) if m else None, 'observed_utc': obs.group(1).replace('Z', '+00:00') if obs else None,
             'verified_mentions': len(re.findall(r'\bVERIFIED\b', sec)), 'weak_mentions': len(re.findall(r'\bWEAK\b', sec)),
-            # count real FAIL verdicts only: not "no FAIL" and not expected red-control logs ("FAILED with exit 101")
-            'fail_mentions': len(re.findall(r'(?<!no )\bFAIL\b(?! *[,/]? *(?:no |0\b))', re.sub(r'FAILED with exit \d+', '', sec))),
+            'fail_mentions': audit_failure_verdicts(sec),
             'canonical': {'done': int(canon.group(1)), 'review': int(canon.group(2)), 'todo': int(canon.group(3))} if canon else None,
             'audit_held': held, 'file_mtime_utc': mtime_iso(p)}
 
@@ -535,7 +555,100 @@ def collect_dope(screens, do_hc):
 JE = HOME + '/jope-evidence/spec-integration-20261017'
 JP = JE + '/packet-v4-921643bc3ae0'
 
-def jope_receipts(statuses):
+def jope_evidence_bytes(path, limit):
+    """Read only bounded regular evidence, without following a final symlink/FIFO."""
+    if not isinstance(path, str) or not path or len(path) > 4096:
+        return None
+    try:
+        flags = os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0)
+        with os.fdopen(os.open(path, flags), 'rb') as stream:
+            before = os.fstat(stream.fileno())
+            if not stat.S_ISREG(before.st_mode) or before.st_size > limit:
+                return None
+            value = stream.read(limit + 1)
+            after = os.fstat(stream.fileno())
+            if len(value) > limit or (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+                return None
+            return value
+    except (OSError, ValueError):
+        return None
+
+def jope_receipt_proof(tid, receipt, task, sha):
+    """Corroborate the existing packet criterion/cases with successful hashed execution logs."""
+    if not isinstance(receipt, dict) or not isinstance(task, dict):
+        return False
+    if receipt.get('task_id', tid) != tid:
+        return False
+    criterion = task.get('completion_criterion')
+    expected = task.get('acceptance_cases')
+    cases = receipt.get('case_to_test_map') or receipt.get('cases')
+    commands = receipt.get('commands', [])
+    if not isinstance(criterion, str) or not criterion.strip() or receipt.get('completion_criterion') != criterion:
+        return False
+    if not isinstance(expected, list) or not expected or len(expected) > 128 or any(not isinstance(case, str) or not case.strip() for case in expected):
+        return False
+    if not isinstance(cases, list) or not cases or len(cases) > 128 or not isinstance(commands, list) or len(commands) > 128:
+        return False
+    if any(not isinstance(case, dict) for case in cases + commands):
+        return False
+    names = [case.get('acceptance_case') for case in cases]
+    if any(not isinstance(name, str) or not name for name in names) or len(set(names)) != len(names) or set(names) != set(expected):
+        return False
+    execution = re.compile(r'\b(cargo|nextest|pytest|just|npm|pnpm|make|ctest|uv run|go test|bash\s+\S+\.sh|\./\S+)\b|\bpython3?\s+(-m\s+\w+|[\w/.-]+\.py)\b')
+    logs, remaining_bytes = {}, 32 * 1024 * 1024
+    for case in cases + commands:
+        if type(case.get('exit_code')) is not int or case['exit_code'] != 0 or case.get('passed') is False:
+            return False
+        command = case.get('command') or case.get('test_or_code')
+        if not isinstance(command, str) or not execution.search(command):
+            return False
+        if (case.get('checkout_sha') or case.get('head_sha') or receipt.get('checkout_sha')) != sha:
+            return False
+        digest = case.get('log_sha256')
+        if not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest):
+            return False
+        path = case.get('log_path')
+        if not isinstance(path, str):
+            return False
+        if path not in logs:
+            data = jope_evidence_bytes(path, min(8 * 1024 * 1024, remaining_bytes))
+            if data is None or len(data) > remaining_bytes:
+                return False
+            remaining_bytes -= len(data)
+            logs[path] = data
+        data = logs[path]
+        if not data or hashlib.sha256(data).hexdigest() != digest:
+            return False
+        text = data.decode('utf-8', 'replace')
+        # Structured execution headers corroborate the receipt; quoted stdout is not a header.
+        header = text.split('--- STDOUT ---', 1)[0]
+        for field, value in re.findall(r'^\s*(head_sha|checkout_sha|exit_code)\s*:\s*(.*?)\s*$', header, re.M):
+            if field in ('head_sha', 'checkout_sha') and value != sha:
+                return False
+            if field == 'exit_code' and value != '0':
+                return False
+        output, fence = [], None
+        for line in text.splitlines():
+            marker = re.match(r'^\s*(```+|~~~+)', line)
+            if marker:
+                token = marker.group(1)[0]
+                fence = None if fence == token else token
+                continue
+            if not fence and not line.lstrip().startswith('>'):
+                output.append(line)
+        unquoted = '\n'.join(output)
+        summaries = re.findall(r'^test result: (ok|FAILED)\. (\d+) passed; (\d+) failed;', unquoted, re.M)
+        if summaries and (summaries[-1][0] != 'ok' or int(summaries[-1][2]) != 0):
+            return False
+        unittest_results = re.findall(r'^(OK|FAILED)(?: \([^\n]*\))?\s*$', unquoted, re.M)
+        if unittest_results and unittest_results[-1] == 'FAILED':
+            return False
+        counts = [result[1] for result in summaries if result[0] == 'ok']
+        if (counts and not any(int(count) for count in counts)) or re.search(r'Ran 0 tests\b', text):
+            return False
+    return True
+
+def jope_receipts(statuses, task_specs=None):
     repo = HOME + '/JopeDime'
     rc, main, _ = run(['git', '-C', repo, 'rev-parse', '--verify', '-q', 'origin/main^{commit}'], timeout=10)
     main = main.strip() if rc == 0 else ''
@@ -543,7 +656,19 @@ def jope_receipts(statuses):
     if not main: return ok, relabeled
     for f in sorted(glob.glob(JE + '/verify/I[0-9][0-9].json')):
         tid = os.path.basename(f)[:-5]
-        r = rj(f) or {}
+        data = jope_evidence_bytes(f, 2 * 1024 * 1024)
+        try:
+            def unique_object(pairs):
+                result = {}
+                for key, value in pairs:
+                    if key in result: raise ValueError('duplicate evidence field')
+                    result[key] = value
+                return result
+            r = json.loads(data, object_pairs_hook=unique_object) if data is not None else {}
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(r, dict):
+            continue
         sha, csha = str(r.get('sha') or ''), str(r.get('checkout_sha') or '')
         if tid not in statuses or str(r.get('status', '')).upper() != 'PASS' or not re.fullmatch(r'[0-9a-f]{40}', sha) or (csha and csha != sha):
             continue
@@ -551,26 +676,33 @@ def jope_receipts(statuses):
             continue
         rc, ct, _ = run(['git', '-C', repo, 'log', '-1', '--format=%ct', sha], timeout=10)
         try:
-            va = datetime.datetime.fromisoformat(str(r.get('verified_at_utc') or r.get('verified_at') or '').replace('Z', '+00:00')).timestamp()
-            if rc == 0 and va < int(ct.strip()):
+            observed = datetime.datetime.fromisoformat(str(r.get('verified_at_utc') or r.get('verified_at') or '').replace('Z', '+00:00'))
+            if observed.tzinfo is None or rc != 0:
+                continue
+            if observed > datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=30):
+                continue
+            va = observed.timestamp()
+            if va < int(ct.strip()):
                 relabeled.append(tid); continue
-        except ValueError:
-            pass
-        ok.append(tid)
+        except (ValueError, OverflowError):
+            continue
+        if jope_receipt_proof(tid, r, (task_specs or {}).get(tid), sha):
+            ok.append(tid)
     return ok, relabeled
 
 def collect_jopedime(screens, do_hc):
-    r = {'name': 'JopeDime', 'ledger_source': 'packet-v4 tasks.json (66 ids, immutable, all PROPOSED) overlaid with LIVE_STATUS.json verified/active + captain-state ASSIGNMENT_*.md'}
+    r = {'name': 'JopeDime', 'ledger_source': 'packet-v4 tasks.json + packet-matched on-main execution receipts; LIVE_STATUS active/claims + captain-state assignments'}
     try:
         t = rj(JP + '/tasks.json'); live = rj(JE + '/LIVE_STATUS.json') or {}
         statuses = {x['id']: 'open' for x in t['tasks']}
         titles = {x['id']: x.get('title') for x in t['tasks']}
-        verified = [v.get('task_id') for v in live.get('verified_tasks') or []]
+        verified_claims = {v.get('task_id') for v in live.get('verified_tasks') or [] if isinstance(v, dict) and v.get('task_id') in statuses}
         # also count per-task verify receipts (verify/Ixx.json) that are a genuine PASS on a commit contained in main
         # and were verified after that commit existed (receipts relabeled to a newer sha are NOT counted)
-        rec_ok, rec_relabeled = jope_receipts(statuses)
-        verified = sorted(set(verified) | set(rec_ok))
-        r['receipts'] = {'genuine_on_main': len(rec_ok), 'relabeled_not_rerun': sorted(rec_relabeled)}
+        rec_ok, rec_relabeled = jope_receipts(statuses, {task['id']: task for task in t['tasks']})
+        verified = sorted(set(rec_ok))
+        r['receipts'] = {'genuine_on_main': len(rec_ok), 'relabeled_not_rerun': sorted(rec_relabeled),
+                         'unsupported_verified_claims': sorted(verified_claims - set(rec_ok))}
         for v in verified:
             if v in statuses: statuses[v] = 'done'
         at = live.get('active_task') or {}
@@ -595,6 +727,7 @@ def collect_jopedime(screens, do_hc):
         r['counts'] = {k: c[k] for k in ('done', 'in_progress', 'blocked', 'open')}
         r['raw_status_counts'] = dict(collections.Counter(statuses.values()))
         r['live_status'] = {'updated_utc': live.get('updated_at'), 'programme_progress': live.get('programme_progress'),
+                            'verified_task_claims': sorted(verified_claims),
                             'active_task': {'task': active, 'owner': at.get('owner'), 'branch': at.get('branch'),
                                             'head': (at.get('head_sha') or '')[:12], 'lease_expires_utc': at.get('lease_expires_at')} if active else None}
         r['assigned_from_captain_state'] = sorted(assigned)
@@ -608,8 +741,8 @@ def collect_jopedime(screens, do_hc):
                             'main': {'sha': (rm.get('sha') or '')[:12], 'ci_green': main_green}}
         seed = []
         if verified:
-            seed = [{'task': v, 'old': None, 'new': 'done (verified)', 'at': (live.get('updated_at') or '').replace('Z', '+00:00'),
-                     'source': 'LIVE_STATUS.json updated_at'} for v in verified]
+            seed = [{'task': v, 'old': None, 'new': 'done (verified receipt)', 'at': mtime_iso(JE + '/verify/' + v + '.json'),
+                     'source': 'packet-matched verify receipt file mtime'} for v in verified]
         for tid in assigned:
             seed.append({'task': tid, 'old': 'open', 'new': 'assigned', 'at': mtime_iso(JE + f'/captain-state/ASSIGNMENT_{tid}.md'), 'source': 'ASSIGNMENT file mtime'})
         if active:
@@ -824,12 +957,13 @@ def compute_stages(key, p, statuses, lanes, active_src):
     held = {}   # ledger-blocked tasks stay 'blocked' (acceptance/audit hold) even when their code is further along
     def promote(t, s, w):
         if t not in statuses: return
-        if stage.get(t) == 'blocked' and t not in active_src:
+        if stage.get(t) == 'blocked':
             if RANK[s] > RANK.get(held.get(t, 'not_started'), 0): held[t] = s
             return
         if RANK[s] > RANK.get(stage.get(t, 'not_started'), 0): stage[t] = s; why[t] = w
     for t, v in statuses.items():
-        b = 'in_progress' if t in active_src else bucket(v)
+        b = bucket(v)
+        if b != 'blocked' and t in active_src: b = 'in_progress'
         stage[t] = {'done': 'done', 'in_progress': 'in_progress', 'blocked': 'blocked'}.get(b, 'not_started'); why[t] = 'ledger ' + str(v)
     pr = p.get('pr') or {}
     prn = pr.get('number') if pr.get('state') == 'OPEN' else None
@@ -840,7 +974,7 @@ def compute_stages(key, p, statuses, lanes, active_src):
         main_done = joil_main_statuses()
         for t, v in statuses.items():
             if main_done.get(t) == 'done':
-                stage[t] = 'done'; why[t] = 'ledger done on origin/main'
+                promote(t, 'done', 'ledger done on origin/main')
             elif v in ('done', 'review'):
                 stage[t] = 'in_pr'; why[t] = 'ledger %s on integration branch, not yet on main (main merge is Jepson-only)' % v
                 if v == 'done': accepted_in_pr += 1
@@ -875,7 +1009,7 @@ def compute_stages(key, p, statuses, lanes, active_src):
                        'main_ci_green': (ss.get('main') or {}).get('ci_green'), 'accepted_in_pr': accepted_in_pr,
                        'blocked_code_stage': dict(collections.Counter(held.values())),
                        'note': {'joil': 'done = task done in the origin/main ledger (PR #6 merged 2026-10-18 09:55Z); done/review only on the integration branch = in PR. Blocked = ledger blocked or validator audit_held, even where code is integrated.',
-                                'jopedime': 'done = LIVE_STATUS verified_tasks + verify/Ixx.json PASS receipts on a commit in main, verified after that commit existed (relabeled receipts stay on main); on main = verified_task_ids claimed on green main without verify receipts; in PR = lane_complete ids on the open integration PR branch.',
+                                'jopedime': 'done = packet-matched verify/Ixx.json execution receipts with successful hashed logs on a commit in main; unsupported LIVE_STATUS verified claims remain observations. Relabeled receipts stay on main; in PR = lane_complete ids on the open integration PR branch.',
                                 'dope': 'done = packet-v2 tasks.json done; LANE lines + lane-branch ancestry (origin/main, PR head) refine the rest.',
                                 'jarambit': 'done = WORKPLAN.md DONE; LANE lines + lane-branch ancestry refine the rest.'}.get(key)}
     p['stage_by_task'] = {t: {'stage': stage[t], 'why': why.get(t)} for t in sorted(stage)}

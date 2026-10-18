@@ -27,8 +27,8 @@ GHREPO = {'joil': 'neverhuman/joil', 'dope': 'neverhuman/dope', 'jopedime': 'nev
 SLICES = {'jopedime': '22-31,92-101', 'dope': '78-89', 'jarambit': '6-15', 'joil': '36-39,90-91,110-111,32-35,0-5,16-21,40-43',
           'admiralty': '102-109,112-113,64-65'}
 ADM = HOME + '/admiralty-v2-build'   # Admiralty v2 rollout state (read-only here; deployments/ and controller/ belong to the local Codex integrator)
-ADM_DONE_STATES = ('integrated',)    # rollout.json is an observation; 'done' additionally needs a verification record
-ADM_FINISHED = ('finished', 'integrated', 'verified', 'closed', 'retired', 'released')
+ADM_DONE_STATES = ('integrated',)    # recorded provenance only; receipt contents/main acceptance are not verified here
+ADM_FINISHED = ('finished', 'integrated', 'verified', 'closed', 'retired', 'released')  # exact lane states, never substrings
 AGENT_RANGE = '0-50,64-114'
 OVERFLOW = '44-50,64-67,102-109,112-114'
 RESERVED_NON_JOIL = '0-5,16-21,32-43,68-77,90-91,110-111'
@@ -355,6 +355,7 @@ def audit_jopedime(sc_claims):
 # own (a receipt shared by several tasks counts only for tasks that have their own per-task entry with their own log).
 DOPE_VERIFY_REF = re.compile(r'(/\S+?/verify/\S+?\.json)(?:#sha256=([0-9a-f]{64}))?\s*$')
 DOPE_GENERIC_CMD_MIN = 5      # same command proving >= this many tasks is reported (amber) as generic evidence
+DOPE_CONTRADICTORY_SUBSTATUS = re.compile(r'blocked|partial|fail', re.I)
 DOPE_PROBLEMS = {
     'no_receipt': 'no verify receipt referenced in tasks.json evidence (prose/typed evidence only)',
     'receipt_missing': 'referenced receipt file does not exist',
@@ -363,6 +364,7 @@ DOPE_PROBLEMS = {
     'receipt_not_for_task': 'receipt names a different task_id',
     'shared_receipt_no_task_entry': 'receipt is shared by several tasks and has no per-task entry (with its own log) for this task',
     'status_not_passed': 'receipt status is not passed',
+    'contradictory_sub_status': 'ledger sub_status explicitly says blocked, partial or failed despite status=done',
     'bad_or_missing_sha': 'receipt sha missing, truncated or malformed (need 40-hex)',
     'no_commands': 'receipt lists no executed commands',
     'exit_code_not_integer': 'exit code missing or typed as text/prose instead of an integer',
@@ -489,9 +491,13 @@ def verify_dope_tasks(tasks, on_main, commit_time_fn=None):
     for x in tasks:
         if x.get('status') != 'done': continue
         tid = x.get('id')
+        contradiction = bool(DOPE_CONTRADICTORY_SUBSTATUS.search(str(x.get('sub_status') or '')))
         refs = dope_receipt_refs(x)
-        if not refs: bad[tid] = ['no_receipt']; continue
+        if not refs:
+            bad[tid] = sorted({'no_receipt'} | ({'contradictory_sub_status'} if contradiction else set()))
+            continue
         p, i = check_dope_receipt(tid, refs[-1][0], refs[-1][1], on_main, commit_time_fn)
+        if contradiction: p = sorted(set(p) | {'contradictory_sub_status'})
         infos[tid] = i
         if p: bad[tid] = p
     # one receipt / one log per task: the same log cited for several tasks is not per-task proof
@@ -538,7 +544,7 @@ def audit_dope(packet=None, on_main=None, commit_time_fn=None):
         F('red', 'dope', 'PROGRESS_VS_LEDGER', f'progress.json counts.done={pc.get("done")} but tasks.json has {len(done)} done', packet)
     for x in done:
         if not x.get('evidence'): F('red', 'dope', 'DONE_NO_EVIDENCE', f'{x["id"]} is done with empty evidence', packet + '/tasks.json')
-    contra = sorted(x['id'] for x in done if re.search(r'blocked|partial|fail', str(x.get('sub_status') or ''), re.I))
+    contra = sorted(x['id'] for x in done if DOPE_CONTRADICTORY_SUBSTATUS.search(str(x.get('sub_status') or '')))
     if contra:
         F('red', 'dope', 'DONE_BUT_SUBSTATUS_BLOCKED', f'{len(contra)} task(s) are status=done while their own sub_status says blocked/partial/failed: {" ".join(contra)} - mark them blocked with the precise blocker instead of done', packet + '/tasks.json')
     stale = sorted(x['id'] for x in done if re.search(r'awaiting|pending', str(x.get('sub_status') or ''), re.I) and x['id'] not in contra)
@@ -627,6 +633,41 @@ def _age_min(now, v):
     t = parse_utc(v)
     return None if t is None else (now - t).total_seconds() / 60
 
+def admiralty_verification_record(packet, now):
+    """Recognize recorded rollout provenance, never receipt contents or acceptance.
+
+    Match the rollout reference fields. Legacy references have no outcome field;
+    when one is supplied, only explicit positive outcomes are understood.
+    """
+    proof = packet.get('verification')
+    if not isinstance(proof, dict): return False
+    placeholders = ('unknown', 'unverified', 'false', 'none', 'null', 'pending', 'failed')
+    for key in ('receipt', 'revision', 'verifier', 'observed_utc'):
+        value = proof.get(key)
+        if (not isinstance(value, str) or not 1 <= len(value) <= 1000 or not value.strip()
+                or value.strip().lower() in placeholders or any(ord(c) < 32 or ord(c) == 127 for c in value)):
+            return False
+    if not re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', proof['revision']): return False
+    try:
+        observed = datetime.datetime.fromisoformat(proof['observed_utc'].replace('Z', '+00:00'))
+        if observed.tzinfo is None or observed > now: return False
+    except (ValueError, TypeError, OverflowError):
+        return False
+    for key in ('status', 'result', 'outcome'):
+        if key in proof and (not isinstance(proof[key], str)
+                             or proof[key].strip().lower() not in ('pass', 'passed', 'success', 'verified')):
+            return False
+    for key in ('passed', 'verified', 'success'):
+        if key in proof and proof[key] is not True: return False
+    candidate = packet.get('candidate_revision')
+    if candidate is not None and candidate != '' and candidate != proof['revision']: return False
+    integration = packet.get('integration')
+    if isinstance(integration, dict) and 'revision' in integration and integration['revision'] != proof['revision']:
+        return False
+    claim = packet.get('claim')
+    if isinstance(claim, dict) and claim.get('owner') == proof['verifier']: return False
+    return True
+
 def audit_admiralty(scr, prev, newh, now):
     """Admiralty v2: packets from rollout.json, workers from live-lanes.json + screens. Read-only."""
     res = {'source': ADM + '/rollout.json (+ live-lanes.json)'}
@@ -635,14 +676,14 @@ def audit_admiralty(scr, prev, newh, now):
         F('amber', 'admiralty', 'LEDGER_UNREADABLE', 'rollout.json unreadable', ADM + '/rollout.json'); return res
     pk = r['packets']
     st = collections.Counter(str(x.get('status')) for x in pk)
-    done = [x for x in pk if x.get('status') in ADM_DONE_STATES and x.get('verification')]
+    done = [x for x in pk if x.get('status') in ADM_DONE_STATES and admiralty_verification_record(x, now)]
     claimed = [x for x in pk if x.get('status') in ('verified', 'integrated')]
     res.update(total=len(pk), done_recomputed=len(done), status_counts=dict(st), blocked=st.get('blocked', 0),
                verified_or_integrated_claimed=len(claimed), pr=r.get('pr'),
-               note='done = integrated with a verification record; acceptance on main still has to be checked by the captain')
+               note='done = integrated with a well-formed recorded verification reference; receipt contents and acceptance on main are not independently verified by this audit')
     for x in claimed:
-        if not x.get('verification'):
-            F('red', 'admiralty', 'DONE_NO_EVIDENCE', f'{x.get("id")} is {x.get("status")} with no verification record', ADM + '/rollout.json')
+        if not admiralty_verification_record(x, now):
+            F('red', 'admiralty', 'DONE_NO_EVIDENCE', f'{x.get("id")} is {x.get("status")} with missing, invalid or contradictory verification provenance', ADM + '/rollout.json')
     age = _age_min(now, r.get('updated_utc'))
     res['rollout_age_min'] = None if age is None else round(age)
     if age is not None and age >= 30:
@@ -658,7 +699,7 @@ def audit_admiralty(scr, prev, newh, now):
         a = _age_min(now, l.get('updated_utc'))
         info = {'packet': l.get('packet_id') or l.get('packet') or l.get('id') or l.get('branch'), 'branch': l.get('branch'), 'status': status,
                 'reported_age_min': None if a is None else round(a), 'alive': n in scr}
-        finished = any(k in status.lower() for k in ADM_FINISHED)
+        finished = status.strip().lower() in ADM_FINISHED
         if not info['alive'] and not finished: dead.append(f'{n}({info["packet"]})')
         if info['alive']:
             s = screen_state(hardcopy(n, f'/tmp/sc_audit_hc_{n}.txt')); p = prev.get(n, {})
