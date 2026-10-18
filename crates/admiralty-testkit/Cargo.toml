@@ -51,6 +51,10 @@ name = "core_contracts"
 path = "../../tests/integration/core_contracts.rs"
 
 [[test]]
+name = "codex_round8_interfaces"
+path = "../../tests/integration/codex_round8_interfaces.rs"
+
+[[test]]
 name = "disaster_restore"
 path = "../../tests/integration/disaster_restore.rs"
 
