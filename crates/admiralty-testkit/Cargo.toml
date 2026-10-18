@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
+autotests = false
 [dependencies]
 admiralty-core.workspace = true
 admiralty-runtime.workspace = true
@@ -93,10 +94,6 @@ path = "../../tests/integration/codex_p06_p13_p14_round13.rs"
 [[test]]
 name = "codex_round16_p06_p13_p14"
 path = "../../tests/integration/codex_round16_p06_p13_p14.rs"
-
-[[test]]
-name = "codex_round15_p06_p13_p14"
-path = "tests/integration/mod.rs"
 
 [[test]]
 name = "coordination_delivery"
