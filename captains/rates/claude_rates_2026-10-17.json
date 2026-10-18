@@ -1,0 +1,146 @@
+{
+  "as_of": "2026-10-17",
+  "vendor": "anthropic",
+  "product": "Claude Code",
+  "plan": "Claude Max (claude.ai login)",
+  "speed": "standard (Fast mode excluded, never use)",
+  "unit": "USD per 1M tokens (API list price, used as quota proxy)",
+  "currency": "USD",
+  "baseline_model": "claude-haiku-5-5 (prompt <=100K)",
+  "aliases": {
+    "haiku": "claude-haiku-5-5",
+    "sonnet": "claude-sonnet-5-5",
+    "opus": "claude-opus-5-5",
+    "fable": "claude-fable-5-1"
+  },
+  "models": [
+    {
+      "model": "claude-fable-5-1",
+      "input": 10,
+      "cached_input": 0.25,
+      "output": 50,
+      "tier": "C3",
+      "status": "last_resort_justify"
+    },
+    {
+      "model": "claude-fable-5",
+      "input": 10,
+      "cached_input": 1,
+      "output": 50,
+      "status": "banned_dominated"
+    },
+    {
+      "model": "claude-opus-5",
+      "input": 5,
+      "cached_input": 0.5,
+      "output": 25,
+      "status": "banned_dominated"
+    },
+    {
+      "model": "claude-opus-4-8",
+      "input": 5,
+      "cached_input": 0.5,
+      "output": 25,
+      "status": "banned_dominated"
+    },
+    {
+      "model": "claude-opus-4-7",
+      "input": 5,
+      "cached_input": 0.5,
+      "output": 25,
+      "status": "banned_dominated"
+    },
+    {
+      "model": "claude-opus-4-6",
+      "input": 5,
+      "cached_input": 0.5,
+      "output": 25,
+      "status": "banned_dominated"
+    },
+    {
+      "model": "claude-opus-4-5",
+      "input": 5,
+      "cached_input": 0.5,
+      "output": 25,
+      "status": "banned_dominated"
+    },
+    {
+      "model": "claude-opus-5-5",
+      "input": 4,
+      "cached_input": 0.2,
+      "output": 20,
+      "tier": "C2",
+      "status": "allowed"
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "input": 3,
+      "cached_input": 0.3,
+      "output": 15,
+      "status": "banned_dominated",
+      "deprecated_retires": "2026-11-30"
+    },
+    {
+      "model": "claude-sonnet-4-5",
+      "input": 3,
+      "cached_input": 0.3,
+      "output": 15,
+      "status": "banned_dominated",
+      "deprecated_retires": "2026-11-30"
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "input": 2,
+      "cached_input": 0.1,
+      "output": 10,
+      "tier": "C1",
+      "status": "allowed"
+    },
+    {
+      "model": "claude-sonnet-5",
+      "input": 2,
+      "cached_input": 0.2,
+      "output": 10,
+      "status": "banned_dominated"
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "input": 1,
+      "cached_input": 0.1,
+      "output": 5,
+      "status": "banned_dominated"
+    },
+    {
+      "model": "claude-haiku-5-5",
+      "input": 0.1,
+      "cached_input": 0.01,
+      "output": 0.5,
+      "tier": "C0",
+      "status": "default",
+      "prompt_tokens": "<=100K",
+      "long_context": {
+        "prompt_tokens": ">100K",
+        "input": 0.5,
+        "cached_input": 0.05,
+        "output": 2.5
+      }
+    }
+  ],
+  "plan_notes": [
+    "rolling 5h session window",
+    "weekly all-models limit",
+    "SEPARATE weekly Sonnet-only limit",
+    "Fable 5/5.1 may use at most 50% of the weekly limit and burns it faster",
+    "limits shared with claude.ai and Desktop",
+    "Anthropic publishes no per-token quota ratios; list prices are the proxy",
+    "4.7+ tokenizer produces ~30% more tokens per text than 4.6 and older"
+  ],
+  "verified_on_xbabe2": {
+    "command": "claude --print --model haiku --effort medium",
+    "resolved_model": "claude-haiku-5-5",
+    "at": "2026-10-17T22:30-06:00"
+  },
+  "sources": [
+    "https://docs.anthropic.com/en/docs/about-claude/pricing (API list prices, as provided by Jepson 2026-10-17)"
+  ]
+}

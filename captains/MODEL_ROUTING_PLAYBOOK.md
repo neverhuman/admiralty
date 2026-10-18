@@ -264,3 +264,78 @@ This section replaces the short Claude bullets in §1. Everything else carries o
 **Codex vs Claude:** Codex credits and Claude USD are different currencies, so don't compare them directly. Use the cheapest tier of whichever vendor still has quota (Codex T0 gpt-6-luna, Claude C0 haiku). If one vendor's quota is low, route simple packets to the other's cheapest tier. Post `NEEDS JEPSON:` if both run low.
 
 **Captain checks each cycle (add to §7):** list every Claude screen and run with its model, and flag any running without `--model`, on a banned model, or on Fable without a justification. Include in the tier mix: `claude C0:n C1:n C2:n C3:n`.
+
+---
+
+## 12. GROK ROUTING: DORMANT until Jepson re-enables Grok (added 10:35 PM MDT)
+
+**Grok is offline right now. Don't start any Grok lanes until Jepson says Grok is back.** This section is ready for that moment. When Grok returns, it follows the same rules as Codex: escalation criteria and budgets (§3), logging and handoffs (§4), `model_usage.jsonl` with model ids like `grok-build-0.1`, and de-escalation.
+
+**Rates** (USD per 1M tokens: input / cached / output, standard speed, prompt <200K; at >=200K prompt tokens the whole request costs about 2x). Raw file: `captains/rates/grok_rates_2026-10-17.json`.
+
+| Model | In | Cached | Out | Out vs grok-build-0.1 | Verdict |
+|---|---:|---:|---:|---:|---|
+| grok-4.7-fast | 2x grok-4.7 | | | 6x | BANNED (2x price; Cursor/Grok Build only) |
+| **grok-4.7** (flagship, 500K ctx, effort low/medium/high/xhigh) | 2 | 0.5 | 6 | 3x | G2/G3 |
+| grok-4.6 | 2 | 0.5 | 6 | 3x | BANNED (same price as 4.7, older) |
+| grok-4.5 | 2 | 0.3 | 6 | 3x | Only for cache-heavy long sessions (cheaper cached input), otherwise use 4.7 |
+| **grok-4.3** (1M ctx) | 1.25 | 0.2 | 2.5 | 1.25x | G1 |
+| grok-4.20-0309-reasoning, plus its non-reasoning and multi-agent variants | 1.25 | 0.2 | 2.5 | 1.25x | BANNED (same price as 4.3, so use 4.3) |
+| **grok-build-0.1** (coding-optimized, 256K ctx) | 1 | 0.2 | 2 | **1x** | **G0 DEFAULT** |
+
+**Ladder:**
+- G0 `grok-build-0.1` for coding. Keep prompts under 200K: one task per session, fresh session per task.
+- G1 `grok-4.3`, the cheaper non-flagship. Also the pick for long context up to 1M.
+- G2 `grok-4.7` at medium/high.
+- G3 `grok-4.7` xhigh, which needs a `GROK XHIGH JUSTIFICATION <task>: ...` line.
+
+**Plan:** The X Subscription (Plus 1x, Premium 4x, Super 15x, Ultra 50x). It's ONE rolling weekly pool shared across Grok Chat, Imagine, Voice, Build, Grok Bot and Cursor Grok models. API usage is billed separately. xAI publishes no per-token pool ratios, so list prices are the proxy.
+
+**IMPORTANT: the same pool powers Grok Bot, the orchestration bot that drives you.** Heavy Grok lane use competes with the bot's own capacity, so keep Grok lanes modest and prefer Codex T0 / Claude C0 when they have quota.
+
+Grok USD and Codex credits are different currencies, so don't compare them directly.
+
+---
+
+## 13. agy / GEMINI ROUTING (captains and super_captain), added 10:36 PM MDT
+
+You (the captains) and super_captain run agy on **Gemini 4 Argon High**, which costs 6.67x the gemini-3.1-flash-lite baseline. Argon is cheaper than 3.1 Pro and better at planning, so it stays the planner, at the lowest thinking level that holds up.
+
+**Rates** (USD per 1M tokens: input / cached / output; plan Google AI Ultra $199.99/mo). Raw file: `captains/rates/gemini_rates_2026-10-17.json`.
+
+| Model | In | Cached | Out | Out vs 3.1 flash-lite | Verdict |
+|---|---:|---:|---:|---:|---|
+| gemini-3.1-pro-preview, prompt >200K | 4 | 0.4 | 18 | 12x | BANNED |
+| gemini-3.1-pro-preview, prompt <=200K | 2 | 0.2 | 12 | 8x | BANNED (costs more than Argon) |
+| **gemini-4-argon** (intro price until **2026-11-30**) | 2 | 0.1 | 10 | 6.67x | A-plan |
+| **gemini-3.8-flash** (intro price until **2026-12-31**) | 0.75 | 0.075 | 3.75 | 2.5x | A-routine |
+| gemini-3.7-flash (intro price until 2026-12-31) | 0.75 | 0.075 | 3.75 | 2.5x | BANNED (same price as 3.8) |
+| gemini-3-flash-preview | 0.5 | n.a. | 3 | 2x | optional middle step |
+| gemini-3.5-flash-lite | 0.3 | 0.03 | 2.5 | 1.67x | optional middle step |
+| **gemini-3.1-flash-lite** | 0.25 | 0.025 | 1.5 | **1x** | A-trivial |
+
+No per-token quota ratios are published for Ultra, so list prices are the proxy. **Re-check the rates on 2026-11-30 (Argon intro ends) and 2026-12-31 (3.8 Flash intro ends).**
+
+**Tiers:**
+- **A-plan** = `gemini-4-argon` for planning, routing, evidence review and merge decisions (the hard judgment part). Try `gemini-4-argon-medium` first. Stay on `-high` only if medium makes judgment errors.
+- **A-routine** = `gemini-3.8-flash` (low/medium) for low-judgment turns: status polling, log summarization, ledger parsing, ticker checks.
+- **A-trivial** = `gemini-3.1-flash-lite` for pure text munging. **agy 1.4.2 on xbabe2 doesn't offer it** (it's not in `agy models`). Use a shell script, or `gemini-3.8-flash-low` instead.
+
+**What agy 1.4.2 on xbabe2 actually supports (verified 10:40 PM MDT):**
+- `agy models` lists: `gemini-4-argon-low|medium|high`, `gemini-3.8-flash-low|medium|high`, `claude-opus-5-5-low|medium|high`, `claude-sonnet-5-5-low|medium|high`, `gpt-oss-120b-medium`. No 3.1 Pro, no flash-lite, no 3.7 Flash.
+- At launch: `agy --model <id> --effort low|medium|high|xhigh|max`.
+- In a live session: `/model` (fuzzy picker, or `/model <id>`) and `/effort`.
+- **One-shot:** `/model <id> <prompt>` runs a single prompt on another model, then returns to the session model. If a turn is already running, it waits for that turn to finish first. **This is the clean way to do A-routine work without disturbing your session.** Example: `/model gemini-3.8-flash-low Summarize the last 200 lines of COMMS.md into a status line`.
+- The Claude models inside agy draw on the Google plan, not on Claude Max. Don't use them for coding (agy doesn't code).
+
+**Rules:**
+- Don't switch a live captain's model mid-turn, and never restart a captain to change models.
+- At a turn boundary, a captain MAY run `/model gemini-4-argon-medium` (or `/effort medium`) and use the one-shot `/model gemini-3.8-flash-low <prompt>` for routine checks.
+- If quality drops (missed evidence, wrong routing), go back to `gemini-4-argon-high` and log why.
+- Log agy model changes in `model_usage.jsonl` (model `gemini-4-argon` with effort `medium|high`, or `gemini-3.8-flash`).
+
+---
+
+## 14. Raw rate files (single source of truth for the dashboard cost index)
+
+`/home/ubuntu/admiralty/captains/rates/`: `codex_rates_2026-10-17.json`, `claude_rates_2026-10-17.json`, `grok_rates_2026-10-17.json` and `gemini_rates_2026-10-17.json`. Each one lists every model with its input/cached/output price, a status (default, allowed, banned_dominated, ...), its tier, and its sources. Each vendor uses its own currency, so never sum or compare across files.

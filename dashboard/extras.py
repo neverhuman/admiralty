@@ -16,9 +16,32 @@ QHIST = BASE + '/.quota_history.json'
 SESS = HOME + '/.codex/sessions'
 COORD = {'joil': HOME + '/joil/COORD.md', 'dope': HOME + '/dope/COMMS.md', 'jopedime': HOME + '/JopeDime/COMMS.md', 'jarambit': HOME + '/jarambit/COMMS.md'}
 REPOS = {'joil': HOME + '/joil', 'dope': HOME + '/dope', 'jopedime': HOME + '/JopeDime', 'jarambit': HOME + '/jarambit'}
-# Published Codex credit rates per 1M tokens (Standard speed): (uncached input, cached input, output)
-RATES = {'gpt-6-astra': (250, 25, 1250), 'gpt-5.6-sol': (100, 10, 500), 'gpt-5.6-terra': (50, 5, 300),
+# Published Codex credit rates per 1M tokens (Standard speed): (uncached input, cached input, output).
+# Source of truth: captains/rates/codex_rates_*.json (newest file wins); the literal below is only a fallback.
+_RATES_FALLBACK = {'gpt-6-astra': (250, 25, 1250), 'gpt-5.6-sol': (100, 10, 500), 'gpt-5.6-terra': (50, 5, 300),
          'gpt-6.1-sol': (50, 2.5, 250), 'gpt-6-sol': (50, 5, 250), 'gpt-5.6-luna': (5, 0.5, 30), 'gpt-6-luna': (2.5, 0.25, 12.5)}
+RATES_DIR = os.environ.get('ADMIRALTY_RATES_DIR', os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'captains', 'rates'))
+
+def load_rate_file(vendor):
+    """Return (path, parsed json) for the newest captains/rates/<vendor>_rates_*.json, or (None, None)."""
+    try:
+        fs = sorted(f for f in os.listdir(RATES_DIR) if f.startswith(vendor + '_rates_') and f.endswith('.json'))
+        if not fs: return None, None
+        p = os.path.join(RATES_DIR, fs[-1])
+        with open(p) as fh: return p, json.load(fh)
+    except Exception:
+        return None, None
+
+def _load_codex_rates():
+    p, d = load_rate_file('codex')
+    try:
+        r = {m['model']: (float(m['input']), float(m['cached_input']), float(m['output'])) for m in d['models']}
+        if 'gpt-6-luna' in r: return r, p
+    except Exception:
+        pass
+    return dict(_RATES_FALLBACK), None
+
+RATES, RATES_SOURCE = _load_codex_rates()
 DOMINATED = {'gpt-6-sol', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'}
 ROUTINES = ['Joil drive via captain_joil (30 min)', 'DOPE workplan drive via captain_dope (30 min)',
             'JopeDime self-play workplan drive via captain_jopedime (30 min)', 'Jarambit drive via captain_jarambit (30 min)']
@@ -380,6 +403,8 @@ def collect(out, screens, helpers):
                    'escalated': esc_counts.get('escalated', 0), 'lane_lines_with_class': len(lanes),
                    'note': 'From MODEL lines in coordination logs and .agent/model_usage.jsonl (playbook §4c)' if usage else 'No MODEL usage lines found yet (playbook §4c) — escalation counts unavailable'},
         'rates_per_1m': {k: {'input': v[0], 'cached': v[1], 'output': v[2]} for k, v in RATES.items()},
+        'rates_source': RATES_SOURCE or 'built-in fallback',
+        'rate_files': {v: load_rate_file(v)[0] for v in ('codex', 'claude', 'grok', 'gemini')},
         'claude_note': 'Claude/agy usage is not on Codex quota; token counts for them are not tracked here.'}
     res['token_efficiency']['ledger_stats'] = ledger_stats(usage)
     res['agents'] = agents
