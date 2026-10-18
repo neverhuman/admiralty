@@ -227,7 +227,7 @@ def _normalize(value, now, source):
 
 
 def observe_rollout_workers(rollout, screens, projects, screen_info, *, do_hc=False,
-                            inventory_available=True, local_node=None, sanitize_tail=None):
+                            inventory_available=True, local_node=None, sanitize_tail=None, observation_clock=None):
     """Join bounded manifest identities to a caller-supplied local inventory.
 
     No I/O occurs except the trusted read-only screen_info callback, invoked at
@@ -363,8 +363,18 @@ def observe_rollout_workers(rollout, screens, projects, screen_info, *, do_hc=Fa
                       model=_text(info.get("model"), 200) or None, effort=_text(info.get("effort"), 40) or None)
         changed = _timestamp(info.get("screen_changed_utc"))
         source = rollout.get("source")
-        capture = _timestamp(source.get("loaded_utc")) if isinstance(source, dict) else None
-        record["screen_changed_utc"] = changed.isoformat(timespec="seconds") if changed and (capture is None or changed <= capture) else None
+        loaded = _timestamp(source.get("loaded_utc")) if isinstance(source, dict) else None
+        # Manifest loading precedes Screen capture. It is not a ceiling for a
+        # change observed later in this same cycle; using it hid real activity.
+        try:
+            capture = observation_clock() if observation_clock else datetime.datetime.now(datetime.timezone.utc)
+            capture = _timestamp(capture.isoformat()) if isinstance(capture, datetime.datetime) else None
+        except Exception:
+            capture = None
+        if capture and loaded and capture < loaded:
+            capture = None
+        record["observed_utc"] = capture.isoformat(timespec="seconds") if capture else None
+        record["screen_changed_utc"] = changed.isoformat(timespec="seconds") if changed and capture and changed <= capture else None
         if callable(sanitize_tail) and isinstance(info.get("tail"), list):
             for line in info["tail"][-(8 if role == "captain" else 3):]:
                 if isinstance(line, str):

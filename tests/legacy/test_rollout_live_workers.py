@@ -45,8 +45,20 @@ def info(sid, record, do_hc, project):
 
 class RolloutLiveWorkerTests(unittest.TestCase):
     def observe(self, state=None, inventory=None, **kwargs):
+        kwargs.setdefault("observation_clock", lambda: NOW)
         return rollout.observe_rollout_workers(state or manifest(), screen() if inventory is None else inventory,
             kwargs.pop("projects", {}), kwargs.pop("observer", info), sanitize_tail=lambda value: value.replace("secret-value", "[redacted]"), **kwargs)
+
+    def test_activity_is_checked_after_capture_not_against_manifest_load_time(self):
+        observer=lambda *args:{**info(*args),"screen_changed_utc":(NOW+dt.timedelta(seconds=2)).isoformat()}
+        result=self.observe(observer=observer,observation_clock=lambda:NOW+dt.timedelta(seconds=3))
+        worker=result["winfo"]["101.custom_worker"][1]
+        self.assertEqual(worker["screen_changed_utc"],(NOW+dt.timedelta(seconds=2)).isoformat())
+        self.assertEqual(worker["observed_utc"],(NOW+dt.timedelta(seconds=3)).isoformat())
+        future=self.observe(observer=observer,observation_clock=lambda:NOW)
+        self.assertIsNone(future["winfo"]["101.custom_worker"][1]["screen_changed_utc"])
+        rollback=self.observe(observation_clock=lambda:NOW-dt.timedelta(seconds=10))
+        self.assertIsNone(rollback["winfo"]["101.custom_worker"][1]["screen_changed_utc"])
 
     def test_normalization_preserves_pid_pins_and_rejects_bad_pid_values(self):
         for bad in [True, 0, -1, 2**31, "101"]:
