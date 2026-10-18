@@ -299,6 +299,14 @@ fn opaque_child_result_does_not_complete_or_replace_parent_result() {
     assert_eq!(out.usage.input_tokens, Some(200));
     assert_eq!(out.usage.output_tokens, Some(30));
     assert_eq!(out.events[2].scope, EventScope::OpaqueChild);
+    assert_eq!(out.outcome, TurnOutcome::Succeeded);
+    assert_eq!(
+        out.events
+            .iter()
+            .filter(|event| event.event_type == "result" && event.scope == EventScope::Parent)
+            .count(),
+        1
+    );
     source[2]["session_id"] = json!("foreign");
     assert_eq!(
         parse_stream(&wire(&source), None),

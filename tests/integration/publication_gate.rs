@@ -258,4 +258,11 @@ fn ambiguous_effect_slot_requires_matching_reconciliation_and_replays_once() {
         reduce_publication_intent(Some(&completed), &completed, Some(&conflicting_receipt)),
         Err(PublicationError::ReceiptCollision)
     );
+
+    let mut reopened = completed.clone();
+    reopened.stage = IntentStage::Ambiguous;
+    assert_eq!(
+        reduce_publication_intent(Some(&completed), &reopened, None),
+        Err(PublicationError::InvalidReconciliation)
+    );
 }

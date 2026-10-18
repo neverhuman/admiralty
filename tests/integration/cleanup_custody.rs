@@ -244,6 +244,20 @@ fn durable_active_pin_blocks_retirement_claim_until_release() {
         custody::claim_retirement(
             &mut connection,
             ClaimRetirementRequest {
+                command_id: "claim-stale-revision".into(),
+                binding: binding.clone(),
+                claim_id: "stale-claim".into(),
+                expected_revision: "1".into(),
+                observation: observation(&binding, true, 11),
+            }
+        ),
+        Err(CustodyError::StaleRevision)
+    ));
+
+    assert!(matches!(
+        custody::claim_retirement(
+            &mut connection,
+            ClaimRetirementRequest {
                 command_id: "claim-blocked".into(),
                 binding: binding.clone(),
                 claim_id: "claim-1".into(),

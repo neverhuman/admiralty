@@ -134,6 +134,10 @@ fn replaying_the_same_snapshot_produces_the_same_non_authorizing_proposal() {
 
     assert_eq!(first, replay);
     assert!(!replay.execution_granted);
+    assert!(input.tasks.iter().all(|task| {
+        replay.ready.contains(&task.contract.task_id)
+            ^ replay.blocked.contains_key(&task.contract.task_id)
+    }));
 }
 
 #[test]

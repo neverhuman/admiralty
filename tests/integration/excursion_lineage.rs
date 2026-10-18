@@ -71,6 +71,11 @@ fn independent_recurrence_remains_separate_and_foreign_or_cyclic_causes_fail() {
     let task_scope = scope("task-recurrence");
     let initial = input(&task_scope, event("failure-1", None, "failure"));
     let first = reduce_excursions(&None, &task_scope, &[initial]).expect("initial failure");
+    let other_task = scope("task-other-state");
+    let error = reduce_excursions(&Some(first.clone()), &other_task, &[])
+        .expect_err("a state snapshot cannot cross task scopes");
+    assert_eq!(error.0, "excursion scope mismatch");
+
     let changed_replay = input(&task_scope, event("failure-1", None, "recovered"));
     let error = reduce_excursions(&Some(first.clone()), &task_scope, &[changed_replay])
         .expect_err("an event ID cannot be replayed with changed bytes");

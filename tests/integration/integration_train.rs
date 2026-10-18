@@ -84,6 +84,25 @@ fn replaying_identical_candidate_is_idempotent_and_does_not_create_a_conflict() 
 }
 
 #[test]
+fn combined_verification_flag_tracks_unique_frozen_candidate_count() {
+    let empty = analyze_conflicts(&[], "policy-1").expect("empty generation");
+    assert!(empty.generation.candidate_ids.is_empty());
+    assert!(!empty.generation.combined_verification_required);
+
+    let one = candidate("one", 'a', &["crates/one.rs"]);
+    let singleton = analyze_conflicts(&[one], "policy-1").expect("singleton generation");
+    assert_eq!(singleton.generation.candidate_ids, ["one"]);
+    assert!(!singleton.generation.combined_verification_required);
+
+    let left = candidate("left", 'a', &["crates/left.rs"]);
+    let right = candidate("right", 'a', &["crates/right.rs"]);
+    let multiple =
+        analyze_conflicts(&[right, left], "policy-1").expect("multi-candidate generation");
+    assert_eq!(multiple.generation.candidate_ids, ["left", "right"]);
+    assert!(multiple.generation.combined_verification_required);
+}
+
+#[test]
 fn stale_bases_are_reported_and_candidate_order_is_stable() {
     let first = candidate("first", 'a', &["crates/admiralty-runtime/src/first.rs"]);
     let second = candidate("second", 'b', &["crates/admiralty-runtime/src/second.rs"]);
