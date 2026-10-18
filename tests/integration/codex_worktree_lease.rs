@@ -731,3 +731,168 @@ fn p02_p05_p15_round11_item4_final_validation_gate() {
         "P15 rejects provider self-claims even when the forged receipt names the exact P02 scope"
     );
 }
+
+#[test]
+fn p02_p05_p15_round12_item5_redteam_audit_gate() {
+    use admiralty_core::verification::{
+        CheckResult, ReceiptProducer, RequiredNegativeCheck, VerificationInputs,
+        VerificationPolicy, VerificationReceipt, parse_receipt, validate_receipt,
+    };
+
+    // P02 rejects both ambiguous duplicate fields and forward fields whose
+    // required semantics this reader cannot interpret.
+    let (contract, _) = fixture();
+    let contract_json = serde_json::to_vec(&contract).expect("serialize P02 contract");
+    let contract_text = String::from_utf8(contract_json.clone()).expect("contract JSON is UTF-8");
+    let duplicate_version = contract_text.replacen(
+        "\"schema_version\":1",
+        "\"schema_version\":1,\"schema_version\":1",
+        1,
+    );
+    assert_ne!(
+        duplicate_version, contract_text,
+        "fixture contains schema version"
+    );
+    assert!(serde_json::from_str::<TaskContract>(&duplicate_version).is_err());
+    let mut future_contract: serde_json::Value = serde_json::from_slice(&contract_json).unwrap();
+    future_contract["unreviewed_authority_override"] = serde_json::json!(true);
+    assert!(serde_json::from_value::<TaskContract>(future_contract).is_err());
+
+    // A well-shaped portable receipt parses, but its digest/evidence claims
+    // never confer authority and malformed or injected trust fields fail shut.
+    let protected_oracle_digest = format!("sha256:{}", "d".repeat(64));
+    let policy = VerificationPolicy {
+        schema_version: 1,
+        verifier: PrincipalId::new("reviewer").unwrap(),
+        protected_oracle_digest: protected_oracle_digest.clone(),
+        required_negative_checks: vec![RequiredNegativeCheck {
+            check: CheckSpec {
+                id: "negative".into(),
+                program: "fixture-negative".into(),
+                args: vec![],
+                cwd: ".".into(),
+                timeout_secs: 1,
+            },
+            expected_exit_code: 1,
+            fixture_digest: format!("sha256:{}", "9".repeat(64)),
+        }],
+    };
+    let inputs = VerificationInputs {
+        project_id: contract.project_id.clone(),
+        root_id: contract.root_id.clone(),
+        task_id: contract.task_id.clone(),
+        attempt_id: AttemptId::new("attempt-1").unwrap(),
+        candidate_ref: "candidate:redteam".into(),
+        contract_revision: contract.revision,
+        contract_digest: content_digest(&contract).unwrap(),
+        verification_policy_digest: content_digest(&policy).unwrap(),
+        source_commit_sha: "1".repeat(40),
+        source_tree_sha: "2".repeat(40),
+        source_artifact_digest: format!("sha256:{}", "c".repeat(64)),
+        protected_oracle_digest,
+    };
+    let receipt = VerificationReceipt {
+        schema_version: 1,
+        receipt_id: "redteam-receipt".into(),
+        producer: ReceiptProducer::IndependentVerifier,
+        verifier: PrincipalId::new("reviewer").unwrap(),
+        inputs: inputs.clone(),
+        checks: contract
+            .checks
+            .iter()
+            .cloned()
+            .map(|check| CheckResult {
+                check,
+                exit_code: Some(0),
+                stdout_digest: format!("sha256:{}", "e".repeat(64)),
+                stderr_digest: format!("sha256:{}", "f".repeat(64)),
+            })
+            .collect(),
+        negative_checks: policy
+            .required_negative_checks
+            .iter()
+            .map(|negative| CheckResult {
+                check: negative.check.clone(),
+                exit_code: Some(1),
+                stdout_digest: format!("sha256:{}", "1".repeat(64)),
+                stderr_digest: format!("sha256:{}", "2".repeat(64)),
+            })
+            .collect(),
+    };
+    let receipt_bytes =
+        serde_json::to_vec(&receipt).expect("serialize deterministic receipt fixture");
+    assert!(
+        parse_receipt(&receipt_bytes).is_ok(),
+        "well-shaped receipt fixture is parseable"
+    );
+    let validated = validate_receipt(&contract, &inputs, &policy, &receipt)
+        .expect("independent receipt matches exact pinned contract and policy");
+    assert!(validated.all_checks_passed());
+    assert!(!validated.acceptance_granted());
+    assert!(!validated.verifier_authenticated());
+
+    let mut provider_claim = receipt.clone();
+    provider_claim.producer = ReceiptProducer::ProviderClaim;
+    assert!(parse_receipt(&serde_json::to_vec(&provider_claim).unwrap()).is_ok());
+    assert!(validate_receipt(&contract, &inputs, &policy, &provider_claim).is_err());
+    let mut injected_trust = serde_json::to_value(&receipt).unwrap();
+    injected_trust["acceptance_granted"] = serde_json::json!(true);
+    assert!(parse_receipt(&serde_json::to_vec(&injected_trust).unwrap()).is_err());
+    let mut malformed_digest = serde_json::to_value(&receipt).unwrap();
+    malformed_digest["inputs"]["source_artifact_digest"] = serde_json::json!("sha256:short");
+    assert!(parse_receipt(&serde_json::to_vec(&malformed_digest).unwrap()).is_err());
+    let receipt_text = String::from_utf8(receipt_bytes).unwrap();
+    let duplicate_receipt_id = receipt_text.replacen(
+        "\"receipt_id\":\"redteam-receipt\"",
+        "\"receipt_id\":\"redteam-receipt\",\"receipt_id\":\"attacker\"",
+        1,
+    );
+    assert_ne!(duplicate_receipt_id, receipt_text);
+    assert!(parse_receipt(duplicate_receipt_id.as_bytes()).is_err());
+
+    // P05 reconstructs only from integrity-bound events and projection. A
+    // valid opening followed by payload tampering must not yield trusted state.
+    let directory = tempfile::tempdir().expect("private red-team journal directory");
+    let mut connection =
+        Connection::open(directory.path().join("questions.sqlite3")).expect("open P05 journal");
+    initialize_questions(&connection).expect("initialize P05 journal");
+    let question_scope = admiralty_core::coordination::questions::QuestionScope {
+        question_id: admiralty_core::MessageId::new("round12-redteam-question").unwrap(),
+        project_id: contract.project_id.clone(),
+        task_id: contract.task_id.clone(),
+    };
+    let scope = JournalScope {
+        root_id: contract.root_id.clone(),
+        question: question_scope.clone(),
+        authority_ref: contract.authority_ref.clone(),
+    };
+    let opening = QuestionEvent::Open {
+        event_id: admiralty_core::MessageId::new("round12-redteam-open-event").unwrap(),
+        scope: question_scope,
+        authority_ref: scope.authority_ref.clone(),
+        asker: PrincipalId::new("captain").unwrap(),
+        recipient: PrincipalId::new("worker").unwrap(),
+        allowed_recipients: vec![
+            PrincipalId::new("worker").unwrap(),
+            PrincipalId::new("reviewer").unwrap(),
+        ],
+        requirement: "Verify P02 contract and P15 evidence independently".into(),
+        question: "Does the evidence satisfy the pinned contract?".into(),
+        options: vec!["hold".into(), "review".into()],
+        deadline_utc: None,
+    };
+    append_question(
+        &mut connection,
+        &scope,
+        &admiralty_core::MessageId::new("round12-redteam-open-command").unwrap(),
+        &opening,
+    )
+    .expect("append valid scoped opening");
+    connection
+        .execute(
+            "UPDATE durable_question_events SET event_json='{}' WHERE question_id=?1",
+            [scope.question.question_id.as_str()],
+        )
+        .expect("tamper durable P05 event payload");
+    assert!(reconstruct_question(&connection, &scope).is_err());
+}
