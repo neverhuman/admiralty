@@ -1,10 +1,26 @@
+use admiralty_core::{
+    ProjectId, RootId, TaskId,
+    economics::{DecimalU128, ObservedAmount},
+    placement::{
+        BudgetRequirement, Capacity, DecimalU64, Known, NodeId, NodeOffer, Observation,
+        PlacementPolicy, PlacementRequest, propose_placement,
+    },
+};
 use admiralty_runtime::{
     providers::codex::{
         CodexEffort, CodexError, CodexNdjsonStream, CodexTermination, MAX_STREAM_BYTES,
     },
+    recovery::plan_recovery,
     session::{OutputChunk, OutputStream},
 };
-use admiralty_testkit::faults::{FaultEffect, FaultPlan, FaultRule};
+use admiralty_testkit::{
+    clock::FakeClock,
+    faults::{FaultEffect, FaultPlan, FaultRule},
+    forge::{Fault, ForgeKey, ForgeOutcome, ForgeReply, ForgeRequest, ForgeSimulator},
+};
+
+#[path = "support/recovery.rs"]
+mod recovery_support;
 
 const TURN: &[u8] = include_bytes!("../fixtures/providers/codex/fragmented-turn.jsonl");
 
@@ -238,4 +254,181 @@ fn p24_p29_round8_p08_telegram_worktree_qualification() {
     assert!(!incomplete.capture_complete);
     assert!(!incomplete.trusted_acceptance());
     assert!(!incomplete.native_execution_qualified());
+}
+
+fn d(value: u64) -> DecimalU64 {
+    DecimalU64::new(value)
+}
+
+fn round9_placement_request() -> PlacementRequest {
+    PlacementRequest {
+        project: ProjectId::new("round9-project").expect("fixture project"),
+        root: RootId::new("round9-root").expect("fixture root"),
+        task: TaskId::new("round9-task").expect("fixture task"),
+        contract_digest: format!("sha256:{}", "a".repeat(64)),
+        authority_ref: "round9-grant".into(),
+        required_capabilities: vec!["codex".into()],
+        locality_refs: vec!["src".into()],
+        budget_requirement: BudgetRequirement {
+            account_pool: "pool".into(),
+            amount: d(5),
+        },
+    }
+}
+
+fn round9_placement_offer() -> NodeOffer {
+    NodeOffer {
+        node_id: NodeId::new("round9-node").expect("fixture node"),
+        boot_id: "round9-boot".into(),
+        authority_generation: d(1),
+        visible_scopes: Observation {
+            value: vec!["round9-project".into()],
+            observed_at: d(10),
+        },
+        capabilities: Observation {
+            value: vec!["codex".into()],
+            observed_at: d(10),
+        },
+        account_pool: Observation {
+            value: "pool".into(),
+            observed_at: d(10),
+        },
+        capacity: Observation {
+            value: Known::Known {
+                value: Capacity {
+                    slots: d(1),
+                    budget_remaining: d(10),
+                },
+            },
+            observed_at: d(10),
+        },
+        current_pressure: Observation {
+            value: Known::Known { value: d(1) },
+            observed_at: d(10),
+        },
+        spool_free: Observation {
+            value: Known::Known { value: d(10) },
+            observed_at: d(10),
+        },
+        existing_active_roots: vec![],
+        controller_connected: true,
+        locality_refs: vec!["src".into()],
+        continuation_permit: None,
+        reconciliation_required: false,
+        ownership_observed_at: Some(d(10)),
+        ownership_revision: Some(d(1)),
+    }
+}
+
+#[test]
+fn p24_p29_round9_item3_telegram_bridge_migration_qualification() {
+    // P04/P07: scripted faults and fake time have exact occurrence and boundary behavior.
+    let mut plan = FaultPlan::new(vec![FaultRule {
+        point: "telegram-delivery".into(),
+        occurrence: 1,
+        effect: FaultEffect::Drop,
+    }])
+    .expect("bounded deterministic fault schedule");
+    assert_eq!(plan.hit("telegram-delivery"), Ok(Some(FaultEffect::Drop)));
+    assert_eq!(plan.hit("telegram-delivery"), Ok(None));
+
+    let mut clock = FakeClock::new(10);
+    let deadline = clock.deadline_after_ms(5).expect("bounded deadline");
+    assert!(
+        clock.advance_to_ms(9).is_err(),
+        "backward clock movement is rejected"
+    );
+    assert_eq!(clock.now_ms(), 10, "rejected clock skew is atomic");
+    clock.advance_ms(5).expect("forward fake time");
+    assert!(deadline.is_due(clock.now_ms()), "deadline equality is due");
+
+    // P18: an uncertain pre-mutation bridge reply stays NotApplied on exact retry.
+    let key = ForgeKey {
+        repository: "fixture/telegram-bridge".into(),
+        target: "refs/heads/migration".into(),
+    };
+    let mut forge = ForgeSimulator::default();
+    let old_head = "a".repeat(40);
+    let new_head = "b".repeat(40);
+    forge
+        .seed_ref(key.clone(), old_head.clone())
+        .expect("seed bridge ref");
+    let request = ForgeRequest {
+        id: "round9-migration".into(),
+        key: key.clone(),
+        expected_head: old_head.clone(),
+        new_head,
+    };
+    assert_eq!(
+        forge.submit(request.clone(), Fault::LoseReplyBeforeMutation),
+        Ok(ForgeReply::OutcomeUnknown)
+    );
+    assert_eq!(
+        forge.submit(request, Fault::None),
+        Ok(ForgeReply::Observed(ForgeOutcome::NotApplied))
+    );
+    assert_eq!(forge.head(&key), Some(old_head.as_str()));
+    assert_eq!(forge.applied_mutations(), 0);
+
+    // P21: a completed provider transcript without complete capture cannot qualify.
+    let mut parser =
+        CodexNdjsonStream::new("round9-model", CodexEffort::Low).expect("explicit fixture model");
+    parser
+        .push_chunk(&OutputChunk {
+            offset: 0,
+            stream: OutputStream::Stdout,
+            bytes: TURN.to_vec(),
+        })
+        .expect("deterministic provider fixture");
+    let summary = parser.finish(Some(0), false);
+    assert_eq!(summary.termination, CodexTermination::Unknown);
+    assert!(!summary.trusted_acceptance());
+    assert!(!summary.native_execution_qualified());
+
+    // P24: stale ownership evidence at the age boundary yields no placement candidate.
+    let policy = PlacementPolicy {
+        max_observation_age: d(10),
+        maximum_pressure: d(5),
+        minimum_spool_reserve: d(2),
+        disconnected_continuation_only: true,
+        ownership_revision: Some(d(1)),
+    };
+    let proposal = propose_placement(
+        &round9_placement_request(),
+        &[round9_placement_offer()],
+        &policy,
+        21,
+    )
+    .expect("stale ownership is a safe rejection");
+    assert!(proposal.candidates.is_empty());
+    assert_eq!(proposal.rejected.len(), 1);
+    assert!(!proposal.execution_granted);
+    assert!(!proposal.publication_granted);
+    assert!(!proposal.authority_granted);
+    let mut revision_mismatch = round9_placement_offer();
+    revision_mismatch.ownership_revision = Some(d(2));
+    let mismatched = propose_placement(
+        &round9_placement_request(),
+        &[revision_mismatch],
+        &policy,
+        10,
+    )
+    .expect("ownership revision mismatch is a safe rejection");
+    assert!(mismatched.candidates.is_empty());
+    assert!(!mismatched.authority_granted);
+
+    // P25: missing recovery fencing blocks resume and external effects.
+    let (manifest, observation, _) = recovery_support::valid_recovery_evidence();
+    let recovery = plan_recovery(&manifest, &observation, None).expect("bounded recovery plan");
+    assert!(!recovery.resume_proposed);
+    assert!(!recovery.restore_authorized());
+    assert!(!recovery.effects_authorized());
+
+    // P26: integer overflow and unknown provider cost remain explicit edge cases.
+    assert!(DecimalU128::parse("340282366920938463463374607431768211456").is_err());
+    let unknown = serde_json::to_value(ObservedAmount::Unknown {
+        reason: "bridge supplied no cost".into(),
+    })
+    .expect("unknown cost serializes");
+    assert_eq!(unknown["kind"], "unknown");
 }
