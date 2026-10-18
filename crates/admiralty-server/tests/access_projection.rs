@@ -223,13 +223,13 @@ async fn request(
             match stream.try_read(&mut chunk) {
                 Ok(0) => break,
                 Ok(count) => {
-                    response.extend_from_slice(&chunk[..count]);
-                    if response.len() > MAX_HTTP_BYTES {
+                    if count > MAX_HTTP_BYTES.saturating_sub(response.len()) {
                         return Err(io::Error::new(
                             io::ErrorKind::InvalidData,
                             "response exceeds bound",
                         ));
                     }
+                    response.extend_from_slice(&chunk[..count]);
                 }
                 Err(error) if error.kind() == io::ErrorKind::WouldBlock => continue,
                 Err(error) => return Err(error),

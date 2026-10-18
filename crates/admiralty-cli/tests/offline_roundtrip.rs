@@ -2,8 +2,9 @@ use serde_json::{Value, json};
 use std::{
     fs::{self, OpenOptions},
     io::{self, Read},
-    path::{Path, PathBuf},
+    path::Path,
     process::{Command, ExitStatus, Stdio},
+    sync::mpsc::{self, Receiver},
     thread,
     time::{Duration, Instant},
 };
@@ -11,6 +12,7 @@ use tempfile::{Builder, TempDir};
 
 const OUTPUT_LIMIT: usize = 64 * 1024;
 const CHILD_TIMEOUT: Duration = Duration::from_secs(15);
+const CLEANUP_TIMEOUT: Duration = Duration::from_secs(2);
 const PRODUCER: &str = "p11t2-offline-test";
 const EPOCH: &str = "fixture-epoch-1";
 
@@ -26,13 +28,10 @@ struct ResultOutput {
 }
 
 fn private_fixture_root() -> TempDir {
-    let target = PathBuf::from(
-        std::env::var("CARGO_TARGET_DIR").expect("packet command sets private CARGO_TARGET_DIR"),
-    );
     Builder::new()
         .prefix("p11t2-offline-roundtrip-")
-        .tempdir_in(target)
-        .expect("create private packet fixture under the assigned target")
+        .tempdir()
+        .expect("create an owned temporary fixture directory")
 }
 
 fn write_private(path: &Path, bytes: &[u8]) {
@@ -71,18 +70,45 @@ fn drain_bounded(mut reader: impl Read) -> io::Result<Captured> {
     Ok(captured)
 }
 
+fn capture_pipe(reader: impl Read + Send + 'static) -> Receiver<io::Result<Captured>> {
+    let (sender, receiver) = mpsc::sync_channel(1);
+    thread::spawn(move || {
+        let _ = sender.send(drain_bounded(reader));
+    });
+    receiver
+}
+
+fn receive_capture(
+    receiver: &Receiver<io::Result<Captured>>,
+    deadline: Instant,
+) -> io::Result<Captured> {
+    let remaining = deadline.saturating_duration_since(Instant::now());
+    receiver.recv_timeout(remaining).map_err(|error| {
+        let kind = match error {
+            mpsc::RecvTimeoutError::Timeout => io::ErrorKind::TimedOut,
+            mpsc::RecvTimeoutError::Disconnected => io::ErrorKind::UnexpectedEof,
+        };
+        io::Error::new(
+            kind,
+            "owned CLI output reader did not finish before its deadline",
+        )
+    })?
+}
+
 fn invoke(root: &Path, args: &[String]) -> ResultOutput {
     let mut child = Command::new(env!("CARGO_BIN_EXE_admiralty"));
     child
         .args(args)
+        .current_dir(root)
         .env("TMPDIR", root)
+        .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     let mut child = child.spawn().expect("start the CLI test binary");
     let stdout_reader = child.stdout.take().expect("capture child stdout");
     let stderr_reader = child.stderr.take().expect("capture child stderr");
-    let stdout_thread = thread::spawn(move || drain_bounded(stdout_reader));
-    let stderr_thread = thread::spawn(move || drain_bounded(stderr_reader));
+    let stdout_receiver = capture_pipe(stdout_reader);
+    let stderr_receiver = capture_pipe(stderr_reader);
     let started = Instant::now();
     let status = loop {
         if let Some(status) = child.try_wait().expect("poll owned CLI child") {
@@ -92,23 +118,31 @@ fn invoke(root: &Path, args: &[String]) -> ResultOutput {
             child
                 .kill()
                 .expect("kill only the timed out owned CLI child");
-            let _ = child
-                .wait()
-                .expect("reap only the timed out owned CLI child");
-            let _ = stdout_thread.join().expect("join stdout reader");
-            let _ = stderr_thread.join().expect("join stderr reader");
+            let cleanup_deadline = Instant::now() + CLEANUP_TIMEOUT;
+            loop {
+                if child
+                    .try_wait()
+                    .expect("poll only the killed owned child")
+                    .is_some()
+                    || Instant::now() >= cleanup_deadline
+                {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(10));
+            }
+            // A descendant retaining a pipe cannot make test cleanup wait forever.
+            // Never signal a historical PID or an unowned descendant to obtain EOF.
+            let _ = receive_capture(&stdout_receiver, cleanup_deadline);
+            let _ = receive_capture(&stderr_receiver, cleanup_deadline);
             panic!("CLI child exceeded bounded timeout: {args:?}");
         }
         thread::sleep(Duration::from_millis(10));
     };
-    let stdout = stdout_thread
-        .join()
-        .expect("stdout reader thread must finish")
-        .expect("read bounded CLI stdout");
-    let stderr = stderr_thread
-        .join()
-        .expect("stderr reader thread must finish")
-        .expect("read bounded CLI stderr");
+    let output_deadline = started + CHILD_TIMEOUT + CLEANUP_TIMEOUT;
+    let stdout = receive_capture(&stdout_receiver, output_deadline)
+        .expect("read bounded CLI stdout within deadline");
+    let stderr = receive_capture(&stderr_receiver, output_deadline)
+        .expect("read bounded CLI stderr within deadline");
     assert!(
         stdout.total <= OUTPUT_LIMIT,
         "CLI stdout exceeded its bound: {args:?}"
@@ -168,6 +202,29 @@ fn expect_private_file(path: &Path) {
         use std::os::unix::fs::PermissionsExt;
         assert_eq!(metadata.permissions().mode() & 0o777, 0o600);
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn output_reader_deadline_survives_a_pipe_without_eof() {
+    let (reader, writer) = std::os::unix::net::UnixStream::pair().expect("owned pipe-like fixture");
+    let receiver = capture_pipe(reader);
+    let started = Instant::now();
+    let error = receive_capture(&receiver, started + Duration::from_millis(20));
+    assert!(matches!(error, Err(ref error) if error.kind() == io::ErrorKind::TimedOut));
+    assert!(started.elapsed() < CLEANUP_TIMEOUT);
+    drop(writer);
+    let finished = receive_capture(&receiver, Instant::now() + CLEANUP_TIMEOUT)
+        .expect("closing our writer releases the owned reader");
+    assert_eq!(finished.total, 0);
+}
+
+#[test]
+fn output_capture_retains_only_its_byte_budget() {
+    let bytes = vec![b'x'; OUTPUT_LIMIT + 4096];
+    let result = drain_bounded(io::Cursor::new(bytes)).expect("read finite output fixture");
+    assert_eq!(result.total, OUTPUT_LIMIT + 4096);
+    assert_eq!(result.bytes.len(), OUTPUT_LIMIT);
 }
 
 #[test]
@@ -393,6 +450,10 @@ fn offline_task_message_and_restart_roundtrip_preserves_scope_without_activation
     assert_eq!(acknowledgment["acknowledgment"], "application_receipt_only");
     let after_ack = snapshot(root, &database);
     assert_eq!(after_ack["cursor"]["event_seq"], "3");
+    assert_eq!(
+        after_ack["projection"]["tasks"],
+        first_snapshot["projection"]["tasks"]
+    );
     assert_eq!(
         after_ack["projection"]["acknowledgments"]["p11t2-message"],
         EPOCH
