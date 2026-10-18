@@ -3,7 +3,6 @@ use admiralty_core::{
     SourceIdentity, TaskContract, TaskId, content_digest,
 };
 use admiralty_store::{Store, StoreError};
-use std::path::Path;
 
 const OBSERVED: &str = "2026-10-18T00:00:00Z";
 
@@ -88,7 +87,16 @@ fn unchanged_after_rejection(
     );
 }
 
-fn private_fixture_dir(path: &Path) {
+fn private_fixture_dir() -> tempfile::TempDir {
+    let base = std::fs::canonicalize(std::env::temp_dir()).expect("canonical temporary base");
+    let mut builder = tempfile::Builder::new();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        builder.permissions(std::fs::Permissions::from_mode(0o700));
+    }
+    let directory = builder.tempdir_in(base).expect("private fixture directory");
+    let path = directory.path();
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -103,12 +111,12 @@ fn private_fixture_dir(path: &Path) {
             0o700
         );
     }
+    directory
 }
 
 #[test]
 fn pending_assignment_and_ack_survive_store_restart_with_scoped_validation() {
-    let directory = tempfile::tempdir().expect("private fixture tempdir");
-    private_fixture_dir(directory.path());
+    let directory = private_fixture_dir();
     let database = directory.path().join("coordination.sqlite");
     let task = contract();
 
@@ -325,8 +333,7 @@ fn pending_assignment_and_ack_survive_store_restart_with_scoped_validation() {
 
 #[test]
 fn source_identity_payload_collision_does_not_advance_cursor_or_projection() {
-    let directory = tempfile::tempdir().expect("private collision fixture tempdir");
-    private_fixture_dir(directory.path());
+    let directory = private_fixture_dir();
     let store = Store::open(directory.path().join("collision.sqlite"))
         .expect("open collision fixture store");
     let task = contract();
@@ -442,13 +449,37 @@ fn loss_reorder_duplicate_storm_and_cross_project_isolation_converge_or_require_
     use admiralty_core::coordination::{
         mailbox::{BoundedMailbox, DeliveryOutcome},
         message::validate_scoped_envelope,
-        topics::{ScopedTopic, TopicDirectory},
+        topics::{ScopedTopic, TopicAction, TopicAuthorizer, TopicDirectory},
     };
     use admiralty_server::services::coordination::CoordinationService;
 
     let task = contract();
     let project = task.project_id.clone();
     let worker = PrincipalId::new("worker").expect("valid worker");
+    struct Policy {
+        project: ProjectId,
+        task: TaskId,
+        worker: PrincipalId,
+    }
+    impl TopicAuthorizer for Policy {
+        fn authorize(
+            &self,
+            actor: &PrincipalId,
+            _action: TopicAction,
+            topic: &ScopedTopic,
+            subscriber: Option<&PrincipalId>,
+        ) -> bool {
+            actor == &self.worker
+                && topic.project_id == self.project
+                && topic.task_id.as_ref() == Some(&self.task)
+                && subscriber.is_none_or(|value| value == &self.worker)
+        }
+    }
+    let policy = Policy {
+        project: project.clone(),
+        task: task.task_id.clone(),
+        worker: worker.clone(),
+    };
     let mut topics = TopicDirectory::default();
     let topic = ScopedTopic {
         project_id: project.clone(),
@@ -457,19 +488,25 @@ fn loss_reorder_duplicate_storm_and_cross_project_isolation_converge_or_require_
     };
     assert!(
         topics
-            .subscribe(&project, topic.clone(), worker.clone())
+            .subscribe(&worker, &policy, topic.clone(), worker.clone())
             .expect("subscribe in project")
     );
-    let other_project = ProjectId::new("foreign-project").expect("valid foreign project");
-    assert!(topics.resolve(&other_project, &topic).is_err());
+    let intruder = PrincipalId::new("intruder").expect("foreign actor");
+    assert!(
+        topics
+            .resolve_page(&intruder, &policy, &topic, None, 10)
+            .is_err()
+    );
     assert_eq!(
         topics
-            .resolve(&project, &topic)
-            .expect("resolve subscribers"),
+            .resolve_page(&worker, &policy, &topic, None, 10)
+            .expect("resolve subscribers")
+            .subscribers,
         vec![worker.clone()]
     );
 
-    let mut mailbox = BoundedMailbox::new(project.clone(), worker.clone(), 2);
+    let mut mailbox =
+        BoundedMailbox::new(project.clone(), worker.clone(), 2).expect("bounded mailbox");
     let m1 = assignment(&task, "msg-1");
     let m2 = assignment(&task, "msg-2");
     let m3 = assignment(&task, "msg-3");
@@ -507,10 +544,10 @@ fn loss_reorder_duplicate_storm_and_cross_project_isolation_converge_or_require_
             dropped_seq: 4
         }
     );
-    assert!(mailbox.resnapshot_required);
+    assert!(mailbox.resnapshot_required());
 
-    // Acking and supplying missing seq 1 after freeing capacity converges contiguous batch.
-    let mut fresh_box = BoundedMailbox::new(project, worker, 3);
+    // A fresh mailbox epoch with enough history capacity accepts the missing prefix.
+    let mut fresh_box = BoundedMailbox::new(project, worker, 3).expect("fresh bounded mailbox");
     assert_eq!(
         CoordinationService::route_to_mailbox(&mut fresh_box, 2, assignment(&task, "r-2")),
         DeliveryOutcome::BufferedOutOfOrder {
@@ -520,14 +557,253 @@ fn loss_reorder_duplicate_storm_and_cross_project_isolation_converge_or_require_
     );
     assert_eq!(
         CoordinationService::route_to_mailbox(&mut fresh_box, 1, assignment(&task, "r-1")),
-        DeliveryOutcome::BufferedOutOfOrder {
-            seq: 1,
-            contiguous_seq: 2
-        }
+        DeliveryOutcome::Enqueued { seq: 1 }
     );
     let delivered = fresh_box.deliver_contiguous_batch(10);
     assert_eq!(delivered.len(), 2);
     assert!(fresh_box.ack_delivery(1));
     assert!(fresh_box.ack_delivery(2));
     assert!(fresh_box.deliver_contiguous_batch(10).is_empty());
+}
+
+struct ReadPolicy {
+    scope: admiralty_server::services::coordination::CoordinationReadScope,
+}
+
+impl admiralty_server::services::coordination::CoordinationReadAuthorizer for ReadPolicy {
+    fn authorize(
+        &self,
+        actor: &PrincipalId,
+        scope: &admiralty_server::services::coordination::CoordinationReadScope,
+    ) -> bool {
+        actor == &self.scope.recipient && scope == &self.scope
+    }
+}
+
+#[test]
+fn recipient_queue_replay_is_bounded_scoped_and_survives_reopen() {
+    use admiralty_server::services::coordination::{CoordinationReadScope, CoordinationService};
+    let directory = private_fixture_dir();
+    let database = directory.path().join("recipient-pages.sqlite");
+    let store = Store::open(&database).expect("private real Store");
+    let task = contract();
+    let mut foreign_task = task.clone();
+    foreign_task.project_id = ProjectId::new("foreign-project").expect("foreign project");
+    foreign_task.task_id = TaskId::new("FOREIGN-TASK").expect("foreign task");
+    foreign_task.authority_ref = "grant:foreign-task".into();
+    append(
+        &store,
+        "paginator",
+        "inc",
+        1,
+        DomainEvent::TaskSubmitted {
+            contract: task.clone(),
+        },
+    );
+    append(
+        &store,
+        "paginator",
+        "inc",
+        2,
+        DomainEvent::TaskSubmitted {
+            contract: foreign_task.clone(),
+        },
+    );
+    let start = store.snapshot().expect("starting fixture cursor").cursor;
+    let mine_one = assignment(&task, "mine-one");
+    let mine_two = assignment(&task, "mine-two");
+    let foreign = assignment(&foreign_task, "foreign-message");
+    let mut wrong_recipient = assignment(&task, "different-recipient");
+    wrong_recipient.recipient = PrincipalId::new("another-worker").expect("other worker");
+    let mut wrong_epoch = assignment(&task, "different-epoch");
+    wrong_epoch.context_epoch = "expired-epoch".into();
+    let scope = CoordinationReadScope {
+        project_id: task.project_id.clone(),
+        recipient: mine_one.recipient.clone(),
+        context_epoch: mine_one.context_epoch.clone(),
+    };
+    let policy = ReadPolicy {
+        scope: scope.clone(),
+    };
+    let service = CoordinationService::new(&store);
+    for (index, message) in [
+        foreign,
+        mine_one.clone(),
+        wrong_recipient,
+        wrong_epoch,
+        mine_two.clone(),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        service
+            .enqueue_durable(
+                source("paginator", "inc", index as u64 + 3),
+                message,
+                OBSERVED.into(),
+            )
+            .expect("durable valid queue event");
+    }
+    service
+        .acknowledge_durable(
+            source("paginator", "inc", 8),
+            mine_one.message_id.clone(),
+            mine_one.recipient.clone(),
+            mine_one.context_epoch.clone(),
+            OBSERVED.into(),
+        )
+        .expect("durable ACK");
+    let first = service
+        .queued_messages_since(&scope.recipient, &policy, &scope, &start, 2)
+        .expect("first scoped page");
+    assert_eq!(first.scanned_events, 2);
+    assert_eq!(first.messages, vec![mine_one.clone()]);
+    let second = service
+        .queued_messages_since(&scope.recipient, &policy, &scope, &first.cursor, 2)
+        .expect("filtered empty page");
+    assert!(second.messages.is_empty());
+    assert_eq!(second.scanned_events, 2);
+    assert_ne!(
+        second.cursor, first.cursor,
+        "empty filtered pages advance the scanned durable cursor"
+    );
+    let third = service
+        .queued_messages_since(&scope.recipient, &policy, &scope, &second.cursor, 2)
+        .expect("last populated page");
+    assert_eq!(third.messages, vec![mine_two]);
+    assert_eq!(third.scanned_events, 2);
+    let end = service
+        .queued_messages_since(&scope.recipient, &policy, &scope, &third.cursor, 2)
+        .expect("end page");
+    assert!(end.messages.is_empty());
+    assert_eq!(end.scanned_events, 0);
+    assert_eq!(end.cursor, third.cursor);
+    drop(store);
+    let reopened = Store::open(&database).expect("reopen durable queue");
+    let service = CoordinationService::new(&reopened);
+    let replay = service
+        .queued_messages_since(&scope.recipient, &policy, &scope, &start, 2)
+        .expect("replay after reopen");
+    assert_eq!(
+        replay, first,
+        "ACK does not erase immutable queue observations"
+    );
+    let old = replay.cursor;
+    reopened.rebuild().expect("explicit projection recovery");
+    assert!(
+        service
+            .queued_messages_since(&scope.recipient, &policy, &scope, &old, 2)
+            .is_err(),
+        "generation change requires a fresh cursor"
+    );
+}
+
+#[test]
+fn recipient_queue_pages_reject_bad_scope_limits_and_revoked_access_before_read() {
+    use admiralty_server::services::coordination::{
+        CoordinationReadScope, CoordinationService, MAX_COORDINATION_SCAN_EVENTS,
+    };
+    let directory = private_fixture_dir();
+    let store = Store::open(directory.path().join("read-authority.sqlite")).expect("private Store");
+    let cursor = store.snapshot().expect("empty cursor").cursor;
+    let scope = CoordinationReadScope {
+        project_id: ProjectId::new("allowed-project").expect("project"),
+        recipient: PrincipalId::new("worker").expect("worker"),
+        context_epoch: "epoch-one".into(),
+    };
+    let policy = ReadPolicy {
+        scope: scope.clone(),
+    };
+    let service = CoordinationService::new(&store);
+    let intruder = PrincipalId::new("intruder").expect("intruder");
+    let mut invalid_cursor = cursor.clone();
+    invalid_cursor.recovery_generation = "not-the-store-generation".into();
+    let result = service
+        .queued_messages_since(&intruder, &policy, &scope, &invalid_cursor, 1)
+        .expect_err("denied before querying a bad cursor");
+    assert!(result.to_string().contains("not authorized"));
+    for limit in [0, MAX_COORDINATION_SCAN_EVENTS + 1, usize::MAX] {
+        assert!(
+            service
+                .queued_messages_since(&scope.recipient, &policy, &scope, &cursor, limit)
+                .is_err()
+        );
+    }
+    for epoch in [String::new(), " ".into(), "e".repeat(16_385)] {
+        let mut malformed = scope.clone();
+        malformed.context_epoch = epoch;
+        assert!(
+            service
+                .queued_messages_since(&scope.recipient, &policy, &malformed, &cursor, 1)
+                .is_err()
+        );
+    }
+    for (generation, sequence) in [
+        ("g".repeat(65), "0".into()),
+        (String::new(), "0".into()),
+        (cursor.recovery_generation.clone(), "9".repeat(20)),
+        (cursor.recovery_generation.clone(), "-1".into()),
+        (cursor.recovery_generation.clone(), "01".into()),
+        (cursor.recovery_generation.clone(), "+1".into()),
+        (
+            cursor.recovery_generation.clone(),
+            "9223372036854775808".into(),
+        ),
+    ] {
+        let malformed = admiralty_store::Cursor {
+            recovery_generation: generation,
+            event_seq: sequence,
+        };
+        assert!(
+            service
+                .queued_messages_since(&scope.recipient, &policy, &scope, &malformed, 1)
+                .is_err()
+        );
+    }
+    let page = service
+        .queued_messages_since(
+            &scope.recipient,
+            &policy,
+            &scope,
+            &cursor,
+            MAX_COORDINATION_SCAN_EVENTS,
+        )
+        .expect("bounded empty page");
+    assert_eq!(page.scanned_events, 0);
+    // A formerly permitted actor is re-evaluated on the next page.
+    let revoked = ReadPolicy {
+        scope: CoordinationReadScope {
+            context_epoch: "new-epoch".into(),
+            ..scope.clone()
+        },
+    };
+    assert!(
+        service
+            .queued_messages_since(&scope.recipient, &revoked, &scope, &page.cursor, 1)
+            .is_err()
+    );
+    for denied_scope in [
+        CoordinationReadScope {
+            project_id: ProjectId::new("foreign-project").expect("foreign project"),
+            ..scope.clone()
+        },
+        CoordinationReadScope {
+            recipient: intruder,
+            ..scope.clone()
+        },
+        CoordinationReadScope {
+            context_epoch: "stale-epoch".into(),
+            ..scope.clone()
+        },
+    ] {
+        assert!(
+            service
+                .queued_messages_since(&scope.recipient, &policy, &denied_scope, &page.cursor, 1)
+                .is_err()
+        );
+    }
+    assert_eq!(
+        store.snapshot().expect("unchanged after reads").cursor,
+        cursor
+    );
 }
