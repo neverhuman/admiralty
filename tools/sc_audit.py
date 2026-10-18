@@ -240,6 +240,16 @@ def audit_jopedime(sc_claims):
         if MEASURE.search(crit) and not any('measure' in k.lower() for k in r) and 'measurement' not in json.dumps(r).lower():
             bad['measurement_criterion_unit_tests_only'].append(tid)
         if len(cases) == 0: bad['pass_without_cases'].append(tid); continue
+        # log integrity: a case log that no longer matches the sha256 the receipt recorded was overwritten (e.g. lane log-name collision)
+        lbad = False
+        for c in cases:
+            lp, hs = c.get('log_path'), c.get('log_sha256')
+            if lp and hs and re.fullmatch(r'[0-9a-f]{64}', str(hs)):
+                try:
+                    if hashlib.sha256(open(lp, 'rb').read()).hexdigest() != hs: lbad = True
+                except OSError:
+                    lbad = True
+        if lbad: bad['log_sha256_mismatch'].append(tid); continue
         ok_pass.append(tid)
         if main and re.fullmatch(r'[0-9a-f]{40}', sha) and is_anc(repo, sha, main): on_main_pass.append(tid)
     labels = {'truncated_or_bad_sha': ('red', 'PASS/receipt carries a truncated or malformed git sha'),
@@ -252,6 +262,7 @@ def audit_jopedime(sc_claims):
               'pass_without_cases': ('red', 'status PASS with no acceptance cases mapped'),
               'receipt_predates_sha': ('red', 'verified_at is older than the commit the receipt names (relabeled to a newer sha, not re-run; not counted)'),
               'proof_names_other_sha': ('red', 'proof says the tests ran at a different full sha than the receipt names (not counted)'),
+              'log_sha256_mismatch': ('red', 'a case log is missing or no longer matches the log_sha256 in the receipt (overwritten; not counted)'),
               'unreadable': ('amber', 'receipt JSON unreadable')}
     for k, ids in bad.items():
         sev, txt = labels[k]
