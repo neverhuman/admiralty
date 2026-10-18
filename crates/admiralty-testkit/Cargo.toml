@@ -67,6 +67,10 @@ name = "codex_round11"
 path = "../../tests/integration/codex_round11.rs"
 
 [[test]]
+name = "codex_round12"
+path = "../../tests/integration/codex_round12.rs"
+
+[[test]]
 name = "context_fidelity"
 path = "../../tests/integration/context_fidelity.rs"
 
