@@ -6,7 +6,7 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). In
 
 | Packet | State | Owner | Integrated commit or candidate | Evidence and next action |
 | --- | --- | --- | --- | --- |
-| P00 | review | evidence lane + integration review | integrated fixture baseline | 37-source/11-synthetic verifier and 74 Linux legacy checks pass at 9debe5d; full inventory/receipt closure remains pending |
+| P00 | review | evidence lane + integration review | independently checked at `a9ba930e` | 37 pinned hashes, 11 synthetic cases, distinct 449/503 baselines and unknown-explicit inventory worksheet satisfy inspected artifact criteria; hashed current execution evidence recorded, authorized engineering receipt closeout pending |
 | P01 | in_progress | integration + quality review | reviewed `9debe5d` | Six crates, pinned tools and independent Linux CI-equivalent gate pass; hosted runner jobs remain unassigned; full fault/simulator matrix pending |
 | P02 | in_progress | domain + integration review | reviewed `03772f94` | Typed contracts, pure reducers and schema/TS checks are integrated; complete authority/policy negotiation remains pending |
 | P03 | in_progress | local store agent + integration reviewer | reviewed `29acc013` | Atomic domain/outbox admission, immutable request/effect associations, replay and receive-time retry compatibility tested; durable executor admission loop pending |
@@ -27,8 +27,8 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). In
 | P18 | in_progress | Luna conflict lane + strong review | candidate `54d57e0`, imported `03d42fe` | Bounded conservative conflict graph reviewed; merge train/runtime integration pending |
 | P19 | in_progress | Luna publication lane + strong review | candidate `c3e3289`, imported `4a7eee0` | Frozen request/receipt publication fences reviewed; credential gateway/forge qualification pending |
 | P20 | in_progress | Luna retirement lane + strong review | candidate `164aee7`, imported `94336b5` | Scope/pin/identity/replay retirement proposals reviewed; no destructive executor or permission |
-| P21 | in_progress | provider candidate + strong review | imported `a16e41a` + `103c564`, unregistered | Four candidate tests pass but 14 offline counterexamples reproduce blockers; fix launch/session/usage/parser claims and registered tests before activation or qualification |
-| P22 | in_progress | provider candidate + integration review | imported `84c7d15`, unregistered | Static review requires Cargo/fixture registration, conservative identity, strict framing and shared launch limits; help-only evidence is not live qualification |
+| P21 | in_progress | provider implementation + independent cross-review | PR26 `a9ba930e`, offline compiled/tested | 22 registered tests and shared strict decoder address offline counterexamples; unadmitted launch/configuration/journal/real transport and nested usage qualification remain pending |
+| P22 | in_progress | provider implementation + independent cross-review | PR26 `a9ba930e`, offline compiled/tested | 12 registered matrix tests cover portable fixtures, truthful identity hints, strict incremental framing and shared launch envelopes; native identity/journal/transport qualification remains pending |
 | P23 | in_progress | Luna enrollment lane + strong review | candidate `e3a9125`, imported `a6637a6` | Scope/clock/revocation enrollment contracts reviewed; real enrollment/replay transport pending |
 | P24 | in_progress | Luna placement lane + strong review | candidate `a791470`, imported `08c3a38` | Scoped fresh ownership/continuation placement proposals reviewed; real partition qualification pending |
 | P25 | in_progress | Luna recovery lane + strong review | candidate `fa77ebd`, imported `4494af9` | Snapshot/fence/closure recovery bindings reviewed; executor restore/cutover qualification pending |
@@ -294,3 +294,63 @@ No new production binary, provider activation, native execution or fleet cutover
 occurred. The pinned real-data dashboard, manager identity and other projects stay
 intact. Next ready work is scoped provider hardening, resource-permit reconciliation
 and live workplan command authority/import UI; complete those before activation.
+
+
+## Registered offline providers and independent claim reconciliation
+
+PR26 source `a9ba930e` compiles the Claude, AGY, Grok and generic-process
+prototypes and registers the two provider integration targets in ordinary Cargo
+workspace checks. No server provider route or model-selection enum was added.
+A shared bounded incremental JSONL decoder rejects recursive duplicate keys,
+scalar roots, partial final frames and sticky failures. Four decoder tests,
+22 Claude tests and 12 provider-matrix tests pass and receive independent review.
+The four new synthetic Claude JSONL fixtures are explicitly tracked, so clean
+checkout checks exercise the same inputs. See
+[offline provider observations](../../architecture/provider-observations.md).
+
+Claude now requires one initialized, session-matched complete parent turn and
+keeps malformed/absent terminal usage distinct from earlier parent/opaque-child
+observations. Multiline user input stays inside the session's encoded 4096-byte
+wire bound. Launch proposals explicitly remain unadmitted, with configuration,
+resume, nested accounting and native qualification flags false. AGY/Grok wrappers
+keep semantic failures sticky; generic argv/model hints never become observed
+identity. Complete launch envelopes enforce shared total/serialized bounds and
+reject option-like requested values. Real CLI transport, trusted identity,
+journal/watermark binding and native admission remain pending P21/P22 gates.
+
+The frozen macOS combined tree passes 502 Rust checks, strict workspace Clippy,
+formatting, build, schemas and 15 actual isolated binary smoke checks. Its first
+smoke attempt refused the macOS `/var` symlink alias; the failed log is retained.
+The same source passes with the canonical `/private/var` scratch path, without
+changing the guard or repeating passing Rust suites. Clean Linux at exact commit
+`a9ba930e` independently passes 504 Rust checks (including all six fake Codex
+example checks), strict workspace Clippy, formatting, build, schemas and 15 actual
+isolated smoke checks. Both smoke runs terminated their two owned children.
+Unchanged Python/UI/contracts/package/harness checks are reused through explicit
+Git-object identity, with source/log hashes, not presented as fresh executions.
+
+The 14:40 UTC independent fleet receipt observes 15 owned workers with reported
+open task boundaries, not proven useful progress. Declared candidate receipts
+and SHAs had not advanced since 14:03. P21/P22 worktree declarations still resolve
+to older scheduler/verifier candidates, so no dispatch/adoption was made through
+those pointers. CPU/conversation reservations remain retained; native permit
+configuration is distinct from the legacy pool. The actual configured manager
+is again visibly Gemini 4 Argon; native execution attestation remains unavailable.
+
+Six new legacy whole-packet claims were independently inspected. P00's artifact
+criteria are technically satisfied; a complete live inventory or native provider
+qualification is not an additional P00 requirement. Its current receipt now names
+a hashed independent execution log, leaving authorized engineering closeout
+separate from this observation. P01/P02/P03/P06/P11 have genuine component test
+logs but specific complete-contract gaps; they do not close from passing those
+subsets. The dashboard projection quarantines the self-claims. All 32 contracts
+are reconciled again without issuing native acceptance or silently promoting
+parent status. Missing P01 fake-clock/fault/forge/cumulative-reset harness work,
+live command/coordination authority and provider admission remain ready follow-ups.
+
+Current evidence: `receipts/integration/a9ba930e6eb3b46b76797582427cce6bacefdaab.json`,
+P00/P21/P22 partial receipts at that source, and
+`receipts/reconciliation/2026-10-18T1450Z-a9ba930e6eb3b46b76797582427cce6bacefdaab.json`.
+Hosted checks and configured exact-head review remain pending independently of
+these source checks. No merge, production deployment, native activation or
+other-project dispatch occurred.

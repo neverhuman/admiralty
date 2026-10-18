@@ -1,0 +1,23 @@
+{
+  "head_sha": "a9ba930e6eb3b46b76797582427cce6bacefdaab",
+  "base_sha": "47fc27da1c00a1c1295f53dcce064d3af1c9b875",
+  "observed_utc": "2026-10-18T14:49:17.351273+00:00",
+  "state": "partial_review",
+  "packet_accepted": false,
+  "native_execution_qualified": false,
+  "paid_provider_calls": 0,
+  "packet": "P00",
+  "technical_artifact_criteria_verified": true,
+  "criteria": {
+    "pinned_source_hashes": 37,
+    "synthetic_cases": 11,
+    "old449_vs503_separated": true,
+    "worksheet_with_explicit_unknowns": true,
+    "legacy_import_tests_passed": 13
+  },
+  "artifact_check_receipt": "/home/ubuntu/admiralty-v2-build/receipts/fleet-observations/909b3942875c4a43a3271e2ac9a3497a/reconciliation-frozen.json",
+  "artifact_check_receipt_sha256": "509cf90a37a9a83214994a884833b29d6a44346f5d7c7eb3abba0eb4829b5a67",
+  "execution_log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/a9ba930e6eb3b46b76797582427cce6bacefdaab/03ee94f304f14d86811a72343307692c-workspace-tests.log",
+  "execution_log_sha256": "b47f63e908714853c717ddc83e2147d4d7bf5cecc62ab19ac27ed95e7b480b1a",
+  "next_action": "Review engineering closeout with the authorized issuer; no additional live inventory fill-in or native provider qualification is a P00 criterion. This observational receipt does not issue domain acceptance."
+}
