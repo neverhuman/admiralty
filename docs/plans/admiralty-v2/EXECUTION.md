@@ -479,3 +479,32 @@ checks and configured exact-head review remain separate gates. No PR merge,
 production binary/UI deployment or native cutover occurred. Next ready work is
 manager task/permit reconciliation, the missing P01 deterministic fault matrix,
 and the durable coordination service authority/delivery interface and executor.
+
+
+## External PR26 merge and receipt successor
+
+While root published the 318-source receipts, another integrator pushed
+`703c9c2` to PR26 and merged it as main `0d7d77e` at 15:36:31 UTC. A configured
+neverhumanbot APPROVED review is bound to exact head `703c9c2`; the hosted jobs
+were cancelled, so no hosted pass is inferred from its local-check summary.
+Root's stale push was rejected without overwriting remote work. Root preserved
+its committed receipts and moved them onto `codex/admiralty-coordination-evidence`
+from that main; root did not perform the PR merge or a force push.
+
+The only changed code since tested source `318ac713` is eight finite timing values in
+`codex_qualification.rs`'s cfg(test) fixtures. Independent review verifies the
+production prefix and every assertion are byte-identical, including the 20 ms
+negative and false native/task-acceptance assertions. Exact successor source
+`67f2ccde` passes five Mac and six clean Linux qualification-example checks,
+strict example Clippy, formatting and the fixture verifier. Other implementation,
+UI, CI and test source objects are unchanged; the full 582/584, 50 audit, legacy
+and 15 actual smoke results remain explicitly attributed to318 and reused only
+through that object identity. Example reruns are not additional unique tests.
+The fresh verifier covers the 11 later history-export inputs. No paid provider,
+production deployment, active-session change or native activation was introduced.
+
+Evidence: `receipts/integration/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4.json`
+and its 32-row reconciliation in `receipts/reconciliation/`. The successor PR
+contains the final source-bound receipts and ledger; the functional fixes are
+already on main through the external PR26 merge. Full P00–P31 gates and the
+manager's stale bindings/status-only fanout remain the next implementation work.
