@@ -1,0 +1,184 @@
+{
+  "packet": "P05",
+  "component": "I0_writer_owned_pending_inbox_scope_index",
+  "state": "review",
+  "base_sha": "8b1878622160a9ab21bc05d9e3dda39021384ccf",
+  "head_sha": "8412623ac76fe3214559cac56ce8b5ce9441d606",
+  "observed_utc": "2026-10-18T19:49:29.248261+00:00",
+  "changed_paths": [
+    "crates/admiralty-store/src/inbox.rs",
+    "crates/admiralty-store/src/lib.rs",
+    "tests/integration/coordination_delivery.rs",
+    "docs/architecture/pending-inbox.md"
+  ],
+  "criteria": [
+    {
+      "name": "Queries seek only exact project/recipient/epoch pending IDs; at most16selected records plus own-key lookahead",
+      "result": "pass"
+    },
+    {
+      "name": "Foreign and ACKed histories cannot change own cursor IDs/counts/page boundaries",
+      "result": "pass"
+    },
+    {
+      "name": "Index built once from checked replay; precommit prepared delta applied only after successful SQL commit",
+      "result": "pass"
+    },
+    {
+      "name": "Exact-source lost-reply and ACK replay retain authoritative facts; new-source queue replay stays rejected",
+      "result": "pass"
+    },
+    {
+      "name": "Outbox rejection and late SQL-trigger failure for queue/ACK leave live index/projection unchanged; same identities succeed after removing owned fault",
+      "result": "pass"
+    },
+    {
+      "name": "Explicit rebuild changes cursor generation and reopens to the same pending view",
+      "result": "pass"
+    }
+  ],
+  "validation": [
+    {
+      "name": "store",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-store",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "log": "target/quality/native-scope-index/store-194645718078.log",
+      "sha256": "d9356438048c9194e25c75d6461dc9f4dc5451e82040a9287cc0296ef4bb1f86"
+    },
+    {
+      "name": "coordination",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-testkit",
+        "--test",
+        "coordination_delivery",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "log": "target/quality/native-scope-index/coordination-194652519214.log",
+      "sha256": "f18e1ba847aaaf1a22f7ba00c8a6ad571428be88592f7bd4cefe9d7553d9655b"
+    },
+    {
+      "name": "clippy",
+      "argv": [
+        "cargo",
+        "clippy",
+        "-p",
+        "admiralty-store",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "target/quality/native-scope-index/clippy-194654872402.log",
+      "sha256": "3f65c45ac7f7a952a3f98d957406d9a181cca9990c9a388796e323c9045bb25f"
+    },
+    {
+      "name": "fmt",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "target/quality/native-scope-index/fmt-194655977422.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "durability",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-testkit",
+        "--test",
+        "store_crash",
+        "--test",
+        "store_replay",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "log": "target/quality/native-scope-index/durability-194818.log",
+      "sha256": "1df7fea3e9139b200083671cc29636ecc71330a75c231f552daa0ce39b790f8f"
+    },
+    {
+      "name": "coordination-clippy",
+      "argv": [
+        "cargo",
+        "clippy",
+        "-p",
+        "admiralty-testkit",
+        "--test",
+        "coordination_delivery",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "target/quality/native-scope-index/coordination-clippy-194823.log",
+      "sha256": "ac4aa80c51444ba528908926fef47a0eca761d79f1a5bd1eeca374a5ab71cfaa"
+    }
+  ],
+  "test_counts": {
+    "store_unit": 79,
+    "store_compile_fail_doc": 14,
+    "coordination_integration": 11,
+    "store_crash": 2,
+    "store_replay": 11,
+    "total_checks": 117
+  },
+  "environment": {
+    "os": "Darwin",
+    "arch": "arm64",
+    "rustc": "rustc 1.95.0 (59807616e 2026-04-14) (Homebrew)",
+    "cargo_build_jobs": 2
+  },
+  "review": [
+    {
+      "reviewer": "independent existing runtime reviewer",
+      "source": "7bcc1dddc398902fac437a17b7de918eed4ab0c7",
+      "result": "no blocking finding; suggested late SQL-fault coverage"
+    },
+    {
+      "reviewer": "same independent reviewer",
+      "source": "8412623ac76fe3214559cac56ce8b5ce9441d606",
+      "result": "no blocker; late queue/ACK SQL fault coverage gap closed; static review, no tests rerun"
+    }
+  ],
+  "initial_failed_attempts": [
+    {
+      "evidence": "tool transcript only; no raw log retained",
+      "result": "76passed/2failed",
+      "cause": "new reducer/Store fixtures omitted required TaskSubmitted",
+      "repair": "register valid immutable fixture task; production validation retained"
+    },
+    {
+      "evidence": "tool transcript only; no raw log retained",
+      "result": "76passed/2failed",
+      "cause": "new tests assumed business queue replay was accepted; actual reducer rejects it",
+      "repair": "assert rejection, preserve source replay and defensive retained-ACK delta check; production reducer unchanged"
+    }
+  ],
+  "limitations": [
+    "No agent authentication, HTTP route, durable subscription/delivery executor, provider launch or native activation.",
+    "Scope index is derived in-memory state; durable event authority/history unchanged.",
+    "No qualified throughput/soak, global history bound or elimination of reducer full-projection clone.",
+    "Only selected index-reference contradictions are checked per query; completeness maintained by exclusive writer updates and full rebuild."
+  ],
+  "packet_accepted": false,
+  "native_execution_qualified": false,
+  "next_action": "Merge I0 under exact-head review; freeze I1 authoritative lifecycle/command contracts and integrate real execution/verification slices."
+}
