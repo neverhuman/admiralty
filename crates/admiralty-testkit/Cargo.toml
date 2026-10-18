@@ -24,7 +24,7 @@ workspace = true
 
 [[test]]
 name = "integration"
-path = "tests/integration/mod.rs"
+path = "tests/integration.rs"
 
 [[test]]
 name = "api_stream"
