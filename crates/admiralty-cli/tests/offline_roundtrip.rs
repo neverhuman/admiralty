@@ -28,8 +28,14 @@ struct ResultOutput {
 }
 
 fn private_fixture_root() -> TempDir {
-    Builder::new()
-        .prefix("p11t2-offline-roundtrip-")
+    let mut builder = Builder::new();
+    builder.prefix("p11t2-offline-roundtrip-");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        builder.permissions(fs::Permissions::from_mode(0o700));
+    }
+    builder
         .tempdir()
         .expect("create an owned temporary fixture directory")
 }
@@ -96,7 +102,10 @@ fn receive_capture(
 }
 
 fn invoke(root: &Path, args: &[String]) -> ResultOutput {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_admiralty"));
+    invoke_command(root, args, Command::new(env!("CARGO_BIN_EXE_admiralty")))
+}
+
+fn invoke_command(root: &Path, args: &[String], mut child: Command) -> ResultOutput {
     child
         .args(args)
         .current_dir(root)
@@ -156,6 +165,39 @@ fn invoke(root: &Path, args: &[String]) -> ResultOutput {
         stdout,
         stderr,
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn isolated_demo_creates_private_state_under_group_writable_umask() {
+    let root = private_fixture_root();
+    // Change only this owned child's umask; never mutate the test process's
+    // global umask while other tests run. exec retains the captured child PID.
+    let mut command = Command::new("/bin/sh");
+    command.args([
+        "-c",
+        "umask 002\nexec \"$@\"",
+        "admiralty-demo-umask-test",
+        env!("CARGO_BIN_EXE_admiralty"),
+    ]);
+    let output = invoke_command(
+        root.path(),
+        &string_args(&["demo", "--snapshot-only"]),
+        command,
+    );
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr.bytes)
+    );
+    let snapshot: Value = serde_json::from_slice(&output.stdout.bytes).expect("demo snapshot");
+    assert_eq!(
+        snapshot["projection"]["tasks"]
+            .as_object()
+            .expect("tasks")
+            .len(),
+        3
+    );
 }
 
 fn invoke_json(root: &Path, args: Vec<String>) -> Value {

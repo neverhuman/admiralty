@@ -216,6 +216,17 @@ fn invalid(message: impl Into<String>) -> Box<dyn Error + Send + Sync> {
     io::Error::new(io::ErrorKind::InvalidInput, message.into()).into()
 }
 
+fn private_tempdir(prefix: &str) -> io::Result<tempfile::TempDir> {
+    let mut builder = tempfile::Builder::new();
+    builder.prefix(prefix);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        builder.permissions(fs::Permissions::from_mode(0o700));
+    }
+    builder.tempdir()
+}
+
 fn read_bounded(path: &Path) -> CliResult<Vec<u8>> {
     let mut options = fs::OpenOptions::new();
     options.read(true);
@@ -503,9 +514,7 @@ async fn run(cli: Cli) -> CliResult<()> {
                     "assets must name a built dashboard directory containing index.html",
                 ));
             }
-            let directory = tempfile::Builder::new()
-                .prefix("admiralty-isolated-demo-")
-                .tempdir()?;
+            let directory = private_tempdir("admiralty-isolated-demo-")?;
             let store = Store::open(directory.path().join("demo.sqlite"))?;
             seed_demo(&store)?;
             eprintln!(
@@ -771,7 +780,15 @@ mod tests {
 
     #[test]
     fn isolated_demo_has_bounded_coordination_and_no_acceptance() -> CliResult<()> {
-        let directory = tempfile::tempdir()?;
+        let directory = private_tempdir("admiralty-demo-test-")?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                directory.path().metadata()?.permissions().mode() & 0o777,
+                0o700
+            );
+        }
         let store = Store::open(directory.path().join("demo.sqlite"))?;
         seed_demo(&store)?;
         let snapshot = store.snapshot()?;
