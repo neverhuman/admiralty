@@ -187,3 +187,8 @@ Jepson: "You should not have to catch these, that is the goal of the super_capta
 
 ### Status JSON additions
 `"audit": {"ran_utc": "...", "red": n, "amber": n, "acted_on": ["CODE scope", ...], "spot_checks": [{"item": "I15", "file": "...", "verdict": "ok|bogus"}]}`, `captains.<x>.done_source`, `captains.<x>.claimed`, `"escalations": [...]` (red items unfixed after 2 checks). Grok Bot's single check-in routine reads these and re-runs the audit itself; any red it finds that you did not act on is treated as a super_captain bug.
+
+### Pasting into agy screens: ONE LINE, and how to deliver now (found Oct 18 2026, 3:13 AM MDT)
+- agy submits **every pasted line as a separate message**. A multi-line nudge file pasted with readbuf/paste becomes several messages: the first starts a turn, the rest sit as "user-queued messages", and the last line can stay unsent in the input box. That is how captains ended up with piles of undelivered queued messages tonight.
+- So write the full nudge to a file, but paste ONE line: `SUPER_CAPTAIN NUDGE <HHMM>: read /home/ubuntu/xbabe2_kicker/captains-20261017/sc_nudge_<x>_<HHMM>.txt and act on it now; reply ACK in the coordination log.` (no newlines inside), then CR.
+- After pasting, hardcopy again: if the prompt line still holds your text, send CR once more; if the screen shows `Press up to edit queued messages` and the item is red, send it immediately with alt+m: `screen -S <id> -X stuff $'\033m'` (agy hint: "alt+m to send immediately"). It joins the running turn; it does not cancel it. Never send Esc to a busy screen.
