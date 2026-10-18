@@ -1,16 +1,40 @@
 #![cfg(unix)]
 
 use admiralty_runtime::session::{InputKind, LaunchSpec, SessionError, SessionHost};
-use std::{fs, os::unix::fs::PermissionsExt, thread, time::Duration};
-use tempfile::tempdir;
+use std::{
+    fs, io,
+    os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt},
+    thread,
+    time::Duration,
+};
+use tempfile::TempDir;
+
+fn private_tempdir() -> io::Result<TempDir> {
+    let directory = tempfile::Builder::new()
+        .prefix("ai-")
+        .permissions(fs::Permissions::from_mode(0o700))
+        .tempdir_in(fs::canonicalize(std::env::temp_dir())?)?;
+    assert_eq!(fs::metadata(directory.path())?.mode() & 0o777, 0o700);
+    Ok(directory)
+}
+
+fn private_spool(directory: &std::path::Path) -> std::path::PathBuf {
+    let spool = directory.join("spool");
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&spool)
+        .expect("private spool at creation");
+    assert_eq!(
+        fs::metadata(&spool).expect("spool mode").mode() & 0o777,
+        0o700
+    );
+    spool
+}
 
 #[test]
 fn failed_delivery_is_unknown_and_cannot_be_retried() {
-    let temporary = tempdir().expect("private test fixture directory");
-    let spool_root = temporary.path().join("spool");
-    fs::create_dir(&spool_root).expect("create spool root");
-    fs::set_permissions(&spool_root, fs::Permissions::from_mode(0o700))
-        .expect("make spool root private");
+    let temporary = private_tempdir().expect("canonical private-at-creation fixture");
+    let spool_root = private_spool(temporary.path());
     let spool = spool_root.join("exited");
     let host = SessionHost::new();
     host.launch(LaunchSpec {
@@ -57,15 +81,17 @@ fn failed_delivery_is_unknown_and_cannot_be_retried() {
         fs::read(&journal_path).expect("read input journal after rejected retry"),
         journal_before_retry
     );
+    assert!(
+        host.wait("exited")
+            .expect("reap exited child and drain capture")
+            .success()
+    );
 }
 
 #[test]
 fn human_input_advances_epoch_and_stales_queued_automation() {
-    let temporary = tempdir().expect("private test fixture directory");
-    let spool_root = temporary.path().join("spool");
-    fs::create_dir(&spool_root).expect("create spool root");
-    fs::set_permissions(&spool_root, fs::Permissions::from_mode(0o700))
-        .expect("make spool root private");
+    let temporary = private_tempdir().expect("canonical private-at-creation fixture");
+    let spool_root = private_spool(temporary.path());
     let host = SessionHost::new();
     host.launch(LaunchSpec {
         run_id: "input-epoch".into(),
@@ -91,4 +117,27 @@ fn human_input_advances_epoch_and_stales_queued_automation() {
             current: 1
         })
     ));
+    host.close_input_if_epoch("input-epoch", 1)
+        .expect("close only the owned child input");
+    let deadline = std::time::Instant::now() + Duration::from_secs(3);
+    loop {
+        if host
+            .status("input-epoch")
+            .expect("observe owned child cleanup")
+            .exit
+            .is_some()
+        {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "owned cat must exit on EOF"
+        );
+        thread::sleep(Duration::from_millis(5));
+    }
+    assert!(
+        host.wait("input-epoch")
+            .expect("reap owned cat and drain readers")
+            .success()
+    );
 }
