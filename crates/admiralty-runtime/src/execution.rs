@@ -9,7 +9,14 @@ use crate::{
     workspace::registry::{ValidatedWorkspace, WorkspaceSpec},
 };
 use admiralty_core::{AttemptId, ProjectId, RootId, SourceIdentity, TaskId};
-use std::{collections::BTreeMap, ffi::OsString, io, path::PathBuf, sync::Mutex};
+use std::{
+    collections::BTreeMap,
+    ffi::OsString,
+    path::PathBuf,
+    sync::Mutex,
+    thread,
+    time::{Duration, Instant},
+};
 use thiserror::Error;
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
@@ -24,8 +31,9 @@ pub struct ExecutionIdentity {
     pub verification_policy_digest: String,
     pub evidence_source: SourceIdentity,
     pub workspace: PathBuf,
-    pub provider: String,
-    pub model: String,
+    /// Requested route only. No provider/model observation is claimed here.
+    pub requested_provider: String,
+    pub requested_model: String,
     pub run_id: String,
     pub resource_permit_ref: String,
 }
@@ -45,8 +53,8 @@ impl PreparedCommand {
     ) -> Result<Self, ExecutionError> {
         if identity.run_id != spec.run_id
             || identity.workspace != spec.cwd
-            || identity.provider.trim().is_empty()
-            || identity.model.trim().is_empty()
+            || identity.requested_provider.trim().is_empty()
+            || identity.requested_model.trim().is_empty()
             || identity.resource_permit_ref.trim().is_empty()
             || [
                 &identity.contract_digest,
@@ -115,6 +123,8 @@ pub struct AdmissionProof {
 pub enum ExecutionError {
     #[error("execution identity does not match the prepared command")]
     InvalidBinding,
+    #[error("attempt/run identity has already been submitted to this adapter")]
+    DuplicateAttempt,
     #[error("no in-process launch identity exists; prior runs cannot be adopted")]
     UnknownIdentity,
     #[error("execution adapter state is poisoned")]
@@ -125,8 +135,6 @@ pub enum ExecutionError {
     Denied(String),
     #[error("session launch failed: {0}")]
     Session(#[from] SessionError),
-    #[error("session output could not be read: {0}")]
-    Io(#[from] io::Error),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -140,8 +148,21 @@ pub enum ExecutionOutcome {
         output_digest: String,
     },
     Unknown {
-        reason: &'static str,
+        reason: UnknownReason,
     },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UnknownReason {
+    LaunchAmbiguous,
+    StdinCloseUnknown,
+    SessionUnavailable,
+    ObservationBusyUntilDeadline,
+    DeadlineExceeded,
+    CaptureFailed,
+    OutputLimitExceeded,
+    JournalNoProgress,
+    OutputObservationFailed,
 }
 
 /// Runtime evidence is bound to the candidate, policy, source, and task identity.
@@ -165,7 +186,20 @@ pub struct ExecutionAdapter<V> {
     host: SessionHost,
     validator: V,
     max_output_bytes: usize,
-    launched: Mutex<BTreeMap<String, ExecutionIdentity>>,
+    launched: Mutex<BTreeMap<String, LaunchRecord>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum LaunchState {
+    Starting,
+    Running,
+    Unknown(UnknownReason),
+}
+
+#[derive(Clone)]
+struct LaunchRecord {
+    identity: ExecutionIdentity,
+    state: LaunchState,
 }
 impl<V: ExecutionAdmissionValidator> ExecutionAdapter<V> {
     pub fn new(validator: V, max_output_bytes: usize) -> Self {
@@ -218,10 +252,38 @@ impl<V: ExecutionAdmissionValidator> ExecutionAdapter<V> {
             return Err(ExecutionError::InvalidBinding);
         }
         let mut launched = self.launched.lock().map_err(|_| ExecutionError::Internal)?;
-        self.host
-            .launch_with_environment(command.spec.clone(), &command.environment)?;
-        launched.insert(command.identity.run_id.clone(), command.identity.clone());
-        Ok(())
+        if launched.contains_key(&command.identity.run_id) {
+            return Err(ExecutionError::DuplicateAttempt);
+        }
+        let run_id = command.identity.run_id.clone();
+        launched.insert(
+            run_id.clone(),
+            LaunchRecord {
+                identity: command.identity.clone(),
+                state: LaunchState::Starting,
+            },
+        );
+        match self
+            .host
+            .launch_with_environment(command.spec.clone(), &command.environment)
+        {
+            Ok(()) => {
+                if let Some(record) = launched.get_mut(&run_id) {
+                    record.state = LaunchState::Running;
+                }
+                Ok(())
+            }
+            Err(error @ (SessionError::InvalidSpec(_) | SessionError::Poisoned)) => {
+                launched.remove(&run_id);
+                Err(ExecutionError::Session(error))
+            }
+            Err(error) => {
+                if let Some(record) = launched.get_mut(&run_id) {
+                    record.state = LaunchState::Unknown(UnknownReason::LaunchAmbiguous);
+                }
+                Err(ExecutionError::Session(error))
+            }
+        }
     }
 
     fn admit(&self, request: ExecutionRequest<'_>) -> Result<AdmissionProof, ExecutionError> {
@@ -236,26 +298,125 @@ impl<V: ExecutionAdmissionValidator> ExecutionAdapter<V> {
         })
     }
 
-    /// Closes prepared stdin, reaps the child, and returns an execution candidate;
-    /// task acceptance remains a separate trusted-check decision.
-    pub fn finish(&self, run_id: &str) -> Result<RuntimeEvidence, ExecutionError> {
-        let identity = self
+    /// Observe until the supplied monotonic deadline. It never waits for a live
+    /// child beyond the deadline; ambiguous status/capture remains unknown.
+    pub fn finish_until(
+        &self,
+        run_id: &str,
+        deadline: Instant,
+    ) -> Result<RuntimeEvidence, ExecutionError> {
+        let record = self
             .launched
             .lock()
             .map_err(|_| ExecutionError::Internal)?
             .get(run_id)
             .cloned()
             .ok_or(ExecutionError::UnknownIdentity)?;
-        self.host.close_input(run_id)?;
-        let exit = self.host.wait(run_id)?;
-        let mut status = self.host.status(run_id)?;
-        if status.capture_state == CaptureState::Capturing {
-            status = self.host.status(run_id)?;
+        if let LaunchState::Unknown(reason) = record.state {
+            return Ok(RuntimeEvidence {
+                identity: record.identity,
+                outcome: ExecutionOutcome::Unknown { reason },
+            });
         }
-        Ok(RuntimeEvidence {
-            identity,
-            outcome: self.outcome(run_id, &status, exit.code(), exit.success())?,
-        })
+        if let Err(error) = self.host.close_input(run_id) {
+            let reason = if matches!(error, SessionError::UnknownRun(_)) {
+                UnknownReason::SessionUnavailable
+            } else {
+                UnknownReason::StdinCloseUnknown
+            };
+            return Ok(unknown_evidence(record.identity, reason));
+        }
+        loop {
+            let status = match self.host.status(run_id) {
+                Ok(status) => status,
+                Err(SessionError::Busy) if Instant::now() < deadline => {
+                    thread::sleep(
+                        Duration::from_millis(5)
+                            .min(deadline.saturating_duration_since(Instant::now())),
+                    );
+                    continue;
+                }
+                Err(SessionError::Busy) => {
+                    return Ok(unknown_evidence(
+                        record.identity,
+                        UnknownReason::ObservationBusyUntilDeadline,
+                    ));
+                }
+                Err(SessionError::UnknownRun(_)) => {
+                    return Ok(unknown_evidence(
+                        record.identity,
+                        UnknownReason::SessionUnavailable,
+                    ));
+                }
+                Err(_) => {
+                    return Ok(unknown_evidence(
+                        record.identity,
+                        UnknownReason::OutputObservationFailed,
+                    ));
+                }
+            };
+            if status.input_outcome_unknown {
+                return Ok(unknown_evidence(
+                    record.identity,
+                    UnknownReason::StdinCloseUnknown,
+                ));
+            }
+            if status.capture_failed || status.capture_state == CaptureState::Failed {
+                return Ok(unknown_evidence(
+                    record.identity,
+                    UnknownReason::CaptureFailed,
+                ));
+            }
+            if status.output_offset > self.max_output_bytes as u64 {
+                return Ok(unknown_evidence(
+                    record.identity,
+                    UnknownReason::OutputLimitExceeded,
+                ));
+            }
+            if let Some((code, success)) = status.exit
+                && status.capture_state == CaptureState::Complete
+            {
+                if Instant::now() >= deadline {
+                    return Ok(unknown_evidence(
+                        record.identity,
+                        UnknownReason::DeadlineExceeded,
+                    ));
+                }
+                // status() has already observed/reaped the direct child. wait()
+                // now only finalizes bounded capture state; it cannot wait on a
+                // still-running provider process.
+                let finalized = self.host.wait(run_id);
+                if finalized.is_err() {
+                    return Ok(unknown_evidence(
+                        record.identity,
+                        UnknownReason::CaptureFailed,
+                    ));
+                }
+                if Instant::now() > deadline {
+                    return Ok(unknown_evidence(
+                        record.identity,
+                        UnknownReason::DeadlineExceeded,
+                    ));
+                }
+                let outcome = self.outcome(run_id, &status, code, success).unwrap_or(
+                    ExecutionOutcome::Unknown {
+                        reason: UnknownReason::OutputObservationFailed,
+                    },
+                );
+                return Ok(RuntimeEvidence {
+                    identity: record.identity,
+                    outcome,
+                });
+            }
+            let now = Instant::now();
+            if now >= deadline {
+                return Ok(unknown_evidence(
+                    record.identity,
+                    UnknownReason::DeadlineExceeded,
+                ));
+            }
+            thread::sleep(Duration::from_millis(10).min(deadline.saturating_duration_since(now)));
+        }
     }
 
     fn outcome(
@@ -265,12 +426,14 @@ impl<V: ExecutionAdmissionValidator> ExecutionAdapter<V> {
         code: Option<i32>,
         success: bool,
     ) -> Result<ExecutionOutcome, ExecutionError> {
-        if status.capture_failed
-            || status.capture_state != CaptureState::Complete
-            || status.output_offset > self.max_output_bytes as u64
-        {
+        if status.capture_failed || status.capture_state != CaptureState::Complete {
             return Ok(ExecutionOutcome::Unknown {
-                reason: "capture incomplete or output bound exceeded",
+                reason: UnknownReason::CaptureFailed,
+            });
+        }
+        if status.output_offset > self.max_output_bytes as u64 {
+            return Ok(ExecutionOutcome::Unknown {
+                reason: UnknownReason::OutputLimitExceeded,
             });
         }
         let mut collected =
@@ -284,7 +447,7 @@ impl<V: ExecutionAdmissionValidator> ExecutionAdapter<V> {
             )?;
             if tail.next_offset <= cursor {
                 return Ok(ExecutionOutcome::Unknown {
-                    reason: "output journal made no progress",
+                    reason: UnknownReason::JournalNoProgress,
                 });
             }
             for chunk in tail.chunks {
@@ -308,6 +471,13 @@ impl<V: ExecutionAdmissionValidator> ExecutionAdapter<V> {
     }
 }
 
+fn unknown_evidence(identity: ExecutionIdentity, reason: UnknownReason) -> RuntimeEvidence {
+    RuntimeEvidence {
+        identity,
+        outcome: ExecutionOutcome::Unknown { reason },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -323,7 +493,36 @@ mod tests {
         if let Some(path) = path {
             let _ = fs::write(path.trim_start_matches("FAKE_MARKER="), b"spawned\n");
         }
+        if let Some(delay) = std::env::args()
+            .skip(1)
+            .find_map(|s| s.strip_prefix("FAKE_DELAY_MS=")?.parse::<u64>().ok())
+        {
+            thread::sleep(Duration::from_millis(delay));
+        }
         println!("deterministic fake child output");
+    }
+
+    fn identity(workspace: PathBuf, run_id: &str) -> ExecutionIdentity {
+        ExecutionIdentity {
+            project_id: ProjectId::new("p").expect("project id"),
+            root_id: RootId::new("r").expect("root id"),
+            task_id: TaskId::new("t").expect("task id"),
+            attempt_id: AttemptId::new("a").expect("attempt id"),
+            contract_digest: "contract".into(),
+            context_digest: "context".into(),
+            candidate_digest: "candidate".into(),
+            verification_policy_digest: "policy".into(),
+            evidence_source: SourceIdentity {
+                producer_id: "execution-adapter".into(),
+                incarnation: "test-incarnation".into(),
+                sequence: "1".into(),
+            },
+            workspace,
+            requested_provider: "fake".into(),
+            requested_model: "fake-model".into(),
+            run_id: run_id.into(),
+            resource_permit_ref: "test-permit".into(),
+        }
     }
 
     struct Admit;
@@ -400,8 +599,8 @@ mod tests {
                 sequence: "1".into(),
             },
             workspace: workspace.clone(),
-            provider: "fake".into(),
-            model: "fake-model".into(),
+            requested_provider: "fake".into(),
+            requested_model: "fake-model".into(),
             run_id: "denied-attempt".into(),
             resource_permit_ref: "missing-permit".into(),
         };
@@ -453,6 +652,30 @@ mod tests {
     }
 
     #[test]
+    fn completed_nonzero_child_is_failed_execution_not_acceptance() {
+        let status = SessionStatus {
+            pid: 1,
+            start_identity: None,
+            exit: Some((Some(17), false)),
+            input_epoch: 0,
+            input_outcome_unknown: false,
+            input_closed: true,
+            output_offset: 0,
+            capture_failed: false,
+            capture_state: CaptureState::Complete,
+            final_output_offset: Some(0),
+        };
+        let adapter = ExecutionAdapter::new(Admit, 1024);
+        assert!(matches!(
+            adapter.outcome("unused", &status, Some(17), false),
+            Ok(ExecutionOutcome::Failed {
+                exit_code: Some(17),
+                ..
+            })
+        ));
+    }
+
+    #[test]
     fn bounded_capture_overflow_is_unknown() {
         let status = SessionStatus {
             pid: 1,
@@ -469,8 +692,84 @@ mod tests {
         let adapter = ExecutionAdapter::new(Admit, 1024);
         assert!(matches!(
             adapter.outcome("unused", &status, Some(0), true),
-            Ok(ExecutionOutcome::Unknown { .. })
+            Ok(ExecutionOutcome::Unknown {
+                reason: UnknownReason::OutputLimitExceeded
+            })
         ));
+    }
+
+    #[test]
+    fn deadline_returns_unknown_without_waiting_for_live_child() {
+        use std::time::Instant;
+
+        let temp = tempfile::tempdir().expect("temporary directory");
+        let workspace = fs::canonicalize(temp.path()).expect("canonical workspace");
+        let run_id = "deadline-attempt";
+        let identity = identity(workspace.clone(), run_id);
+        let binary = std::env::current_exe().expect("test binary");
+        let spec = LaunchSpec {
+            run_id: run_id.into(),
+            program: binary,
+            args: vec![
+                "--exact".into(),
+                "execution::tests::deterministic_fake_child".into(),
+                "--ignored".into(),
+                "--nocapture".into(),
+                "--".into(),
+                "FAKE_DELAY_MS=2000".into(),
+            ],
+            cwd: workspace,
+            spool_dir: temp.path().join("deadline-spool"),
+        };
+        let adapter = ExecutionAdapter::new(Admit, 1024);
+        assert!(adapter.host.launch_with_environment(spec, &[]).is_ok());
+        adapter.launched.lock().expect("adapter lock").insert(
+            run_id.into(),
+            LaunchRecord {
+                identity,
+                state: LaunchState::Running,
+            },
+        );
+        let start = Instant::now();
+        let evidence = adapter
+            .finish_until(run_id, start + Duration::from_millis(25))
+            .expect("deadline result");
+        assert_eq!(
+            evidence.outcome(),
+            &ExecutionOutcome::Unknown {
+                reason: UnknownReason::DeadlineExceeded
+            }
+        );
+        assert!(
+            adapter
+                .host
+                .status(run_id)
+                .expect("live child status")
+                .exit
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn ambiguous_launch_is_retained_as_unknown_without_observation_retry() {
+        let adapter = ExecutionAdapter::new(Admit, 1024);
+        let identity = identity(PathBuf::from("/workspace"), "ambiguous-run");
+        adapter.launched.lock().expect("adapter lock").insert(
+            "ambiguous-run".into(),
+            LaunchRecord {
+                identity,
+                state: LaunchState::Unknown(UnknownReason::LaunchAmbiguous),
+            },
+        );
+        let evidence = adapter
+            .finish_until("ambiguous-run", Instant::now() + Duration::from_secs(1))
+            .expect("unknown outcome retained");
+        assert_eq!(
+            evidence.outcome(),
+            &ExecutionOutcome::Unknown {
+                reason: UnknownReason::LaunchAmbiguous
+            }
+        );
     }
 
     #[test]
@@ -537,8 +836,8 @@ mod tests {
                 sequence: "1".into(),
             },
             workspace: PathBuf::from("/workspace"),
-            provider: "codex".into(),
-            model: "m".into(),
+            requested_provider: "codex".into(),
+            requested_model: "m".into(),
             run_id: "stable-token".into(),
             resource_permit_ref: "permit".into(),
         };
