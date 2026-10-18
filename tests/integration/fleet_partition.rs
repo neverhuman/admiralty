@@ -6,6 +6,7 @@ use admiralty_core::{
         decode_input, propose_placement,
     },
 };
+use admiralty_testkit::clock::FakeClock;
 
 fn d(value: u64) -> DecimalU64 {
     DecimalU64::new(value)
@@ -241,4 +242,22 @@ fn corrupted_placement_snapshot_with_unknown_field_is_rejected() {
         decode_input(&corrupted),
         Err(PlacementError::Invalid("placement JSON"))
     );
+}
+
+#[test]
+fn fake_clock_skew_makes_old_ownership_snapshot_ineligible() {
+    let mut clock = FakeClock::new(10);
+    clock.advance_ms(11).expect("bounded simulated clock skew");
+
+    let proposal = propose_placement(&request(), &[offer()], &policy(), clock.now_ms())
+        .expect("stale evidence is a safe rejection");
+    assert!(proposal.candidates.is_empty());
+    assert_eq!(proposal.rejected.len(), 1);
+    assert_eq!(
+        proposal.rejected[0].reason,
+        "topology ownership unknown, stale, or unreconciled"
+    );
+    assert!(!proposal.execution_granted);
+    assert!(!proposal.publication_granted);
+    assert!(!proposal.authority_granted);
 }
