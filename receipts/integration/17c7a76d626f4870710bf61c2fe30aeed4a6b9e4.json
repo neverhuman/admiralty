@@ -1,0 +1,120 @@
+{
+  "head_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4",
+  "observed_utc": "2026-10-18T11:58:03.233885+00:00",
+  "state": "partial_review",
+  "rust_checks_passed": 357,
+  "rust_compile_fail_doctests_included": 2,
+  "strict_workspace_clippy": "pass",
+  "react_tests_passed": 66,
+  "react_typecheck": "pass",
+  "react_build": "pass",
+  "legacy_python_tests_passed": 73,
+  "legacy_python_tests_skipped_platform": 1,
+  "contract_runtime_tests_passed": 5,
+  "contract_drift": "pass",
+  "rust_schema_drift": "pass",
+  "source_fixture_verification": {
+    "source_files": 37,
+    "synthetic_cases": 11,
+    "result": "pass"
+  },
+  "package_self_tests_passed": 10,
+  "smoke_harness_self_tests_passed": 16,
+  "actual_binary_smoke_checks_passed": 15,
+  "binary_smoke": {
+    "acceptance": false,
+    "binaries": {
+      "admiralty_sha256": "sha256:fbfbe2249d622ef64a0ea5662f55b6f7d5b4e32aae3bdddc323531ddada98570",
+      "admiraltyd_sha256": "sha256:d9ea73e04296a8dbed52d37a2ebf6219dbbed0320253168e3d782662e2d834c6"
+    },
+    "checks": [
+      {
+        "duration_ms": 242,
+        "name": "real_server_startup",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 4,
+        "name": "real_health_native_unqualified",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "unauthorized_real_fleet_rejected",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 0,
+        "name": "unauthorized_real_models_rejected",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "model_auth_precedes_body_validation",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "authorized_real_fleet",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "authorized_models_policy",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "model_selection_proposal_only",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 237,
+        "name": "demo_startup",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 2,
+        "name": "demo_fleet_simulated",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "demo_no_models",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 0,
+        "name": "demo_no_model_policy_write",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 0,
+        "name": "demo_no_legacy_policy",
+        "state": "pass"
+      },
+      {
+        "name": "doctor_read_only_capability",
+        "state": "pass"
+      },
+      {
+        "name": "demo_cli_has_no_real_policy_flags",
+        "state": "pass"
+      }
+    ],
+    "cleanup": {
+      "admiraltyd": "terminated",
+      "demo": "terminated"
+    },
+    "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+    "duration_ms": 516,
+    "fleet_rollout_closure": false,
+    "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+    "started_at_utc": "2026-10-18T11:49:43.175585+00:00",
+    "status": "pass",
+    "synthetic": false
+  },
+  "github_ci": "configured; last observed queued, no success claimed",
+  "native_execution_qualified": false,
+  "all_packets_accepted": false
+}
