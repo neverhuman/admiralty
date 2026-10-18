@@ -83,6 +83,10 @@ name = "codex_round10_workspace_gate"
 path = "../../tests/integration/codex_round10_workspace_gate.rs"
 
 [[test]]
+name = "codex_round16_p07_p17"
+path = "../../tests/integration/codex_round16_p07_p17.rs"
+
+[[test]]
 name = "disaster_restore"
 path = "../../tests/integration/disaster_restore.rs"
 
