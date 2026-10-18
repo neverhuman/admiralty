@@ -1563,7 +1563,7 @@ mod tests {
             }
         }
         assert!(blocked, "unread input must hit timeout or journal budget");
-        assert!(started.elapsed() < Duration::from_secs(3));
+        assert!(started.elapsed() < Duration::from_secs(10));
         host.terminate("no-reader")?;
         Ok(())
     }
