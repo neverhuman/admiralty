@@ -134,7 +134,12 @@ fn p12_p18_round9_item3_doctor_repair_idempotence_qualification() {
             .expect("replaying publication is idempotent"),
         reference
     );
-    assert_eq!(artifacts.read_verified(&reference).unwrap(), evidence);
+    assert_eq!(
+        artifacts
+            .read_verified(&reference)
+            .expect("verified artifact bytes"),
+        evidence
+    );
     std::fs::write(
         artifact_root.join(reference.sha256.trim_start_matches("sha256:")),
         b"tampered",
