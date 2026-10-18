@@ -1,5 +1,6 @@
 //! Single-owner durable event store. Replay only applies the pure domain reducer.
 pub mod artifacts;
+pub mod outbox;
 use admiralty_core::{DomainEvent, Projection, SourceIdentity, TransitionError, reduce};
 use fs2::FileExt;
 use rusqlite::{Connection, OptionalExtension, params};
@@ -28,6 +29,8 @@ pub enum StoreError {
     Json(#[from] serde_json::Error),
     #[error(transparent)]
     Transition(#[from] TransitionError),
+    #[error("outbox storage initialization failed: {0}")]
+    Outbox(#[from] outbox::OutboxError),
     #[error("store already has an owner")]
     AlreadyOwned,
     #[error("store writer is unavailable")]
@@ -396,6 +399,9 @@ impl Writer {
             ));
         }
         connection.execute_batch(include_str!("../migrations/0001_foundation.sql"))?;
+        // Storage initialization only. Startup/replay never reserves or delivers
+        // an outbox intent; explicit trusted-clock helpers remain separate.
+        outbox::initialize(&connection)?;
         let generation = connection
             .query_row(
                 "SELECT value FROM metadata WHERE key='recovery_generation'",
@@ -693,7 +699,7 @@ fn replay(connection: &Connection) -> Result<Projection> {
 
 #[cfg(test)]
 mod tests {
-    use super::fixed_sqlite;
+    use super::{Store, fixed_sqlite, outbox};
     #[test]
     fn wal_fix_version_gate() {
         for version in [3_044_006, 3_044_007, 3_050_007, 3_051_003, 3_052_000] {
@@ -702,5 +708,85 @@ mod tests {
         for version in [3_044_005, 3_045_000, 3_050_006, 3_051_002] {
             assert!(!fixed_sqlite(version));
         }
+    }
+
+    #[test]
+    fn store_open_initializes_outbox_and_reopen_replay_do_not_dispatch_it() {
+        let directory = tempfile::tempdir().expect("tempdir");
+        let path = directory.path().join("store.sqlite");
+        let store = Store::open(&path).expect("normal store initializes migrations");
+        let initial = store.snapshot().expect("initial snapshot");
+        drop(store);
+        // The Store is closed before this explicit helper fixture writes rows.
+        let mut fixture = rusqlite::Connection::open(&path).expect("fixture connection");
+        let tables: i64 = fixture.query_row("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('outbox_clock','outbox_intents','outbox_integrity_incidents')", [], |row| row.get(0)).expect("outbox tables");
+        assert_eq!(tables, 3);
+        let claimed_id = outbox::enqueue(
+            &mut fixture,
+            outbox::OutboxIntent {
+                idempotency_key: "claimed".into(),
+                payload: serde_json::json!({"reference":"first"}),
+                not_before: 0,
+            },
+        )
+        .expect("first intent");
+        let pending_id = outbox::enqueue(
+            &mut fixture,
+            outbox::OutboxIntent {
+                idempotency_key: "pending".into(),
+                payload: serde_json::json!({"reference":"second"}),
+                not_before: 0,
+            },
+        )
+        .expect("second intent");
+        let claim = outbox::claim_due(&mut fixture, Some(0), "fixture-owner", 5)
+            .expect("explicit reservation")
+            .expect("claim");
+        assert_eq!(claim.id, claimed_id);
+        drop(fixture);
+
+        let reopened = Store::open(&path).expect("normal reopen reruns idempotent migrations");
+        assert_eq!(reopened.snapshot().expect("reopened snapshot"), initial);
+        let rebuilt = reopened.rebuild().expect("pure event replay");
+        assert_eq!(rebuilt.projection, initial.projection);
+        assert_eq!(rebuilt.cursor.event_seq, "0");
+        drop(reopened);
+        let mut fixture = rusqlite::Connection::open(&path).expect("inspect outbox after replay");
+        let rows: Vec<(String, String)> = fixture
+            .prepare("SELECT id,state FROM outbox_intents ORDER BY id")
+            .expect("states query")
+            .query_map([], |row| {
+                Ok((row.get::<_, i64>(0)?.to_string(), row.get(1)?))
+            })
+            .expect("states")
+            .collect::<rusqlite::Result<_>>()
+            .expect("state rows");
+        assert_eq!(
+            rows,
+            vec![
+                (claimed_id.clone(), "claimed".into()),
+                (pending_id.clone(), "pending".into())
+            ]
+        );
+        let observed: i64 = fixture
+            .query_row(
+                "SELECT last_observed FROM outbox_clock WHERE singleton=1",
+                [],
+                |row| row.get(0),
+            )
+            .expect("recorded clock");
+        assert_eq!(observed, 0, "startup and rebuild never invent a clock");
+        let next = outbox::claim_due(&mut fixture, Some(6), "restarted-owner", 5)
+            .expect("explicit recovery observation")
+            .expect("next due intent");
+        assert_eq!(next.id, pending_id);
+        let old_state: String = fixture
+            .query_row(
+                "SELECT state FROM outbox_intents WHERE id=?1",
+                [&claimed_id],
+                |row| row.get(0),
+            )
+            .expect("old claim state");
+        assert_eq!(old_state, "unknown");
     }
 }

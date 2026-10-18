@@ -1,5 +1,5 @@
 //! Bounded, preview-only import of JSON workplans.
-use crate::{ProjectId, TaskContract, TaskId};
+use crate::{ProjectId, TaskContract, TaskId, content_digest};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
@@ -26,6 +26,8 @@ pub struct WorkplanPreview {
     pub source_digest: String,
     /// Task IDs in deterministic dependency-first order.
     pub task_order: Vec<TaskId>,
+    /// Exact contract identities; a task ID cannot silently acquire new content.
+    pub task_digests: BTreeMap<TaskId, String>,
 }
 
 #[derive(Clone, Debug, thiserror::Error, PartialEq, Eq)]
@@ -36,7 +38,7 @@ pub enum WorkplanError {
     Json(String),
     #[error("unsupported workplan schema version")]
     UnsupportedVersion,
-    #[error("plan ID must be nonempty and revision must be positive")]
+    #[error("plan ID requires 1..128 ASCII identifier characters and revision must be positive")]
     InvalidMetadata,
     #[error("workplan exceeds the 1000 task limit")]
     TooManyTasks,
@@ -44,6 +46,8 @@ pub enum WorkplanError {
     InvalidContract { task_id: String, reason: String },
     #[error("duplicate task ID: {0}")]
     DuplicateTaskId(String),
+    #[error("existing task identity has different immutable contract content: {0}")]
+    TaskIdentityConflict(String),
     #[error("task {task_id} belongs to a different project")]
     ProjectMismatch { task_id: String },
     #[error("task {task_id} depends on missing task {dependency}")]
@@ -62,7 +66,7 @@ pub fn preview_workplan(source: &[u8]) -> Result<WorkplanPreview, WorkplanError>
     if plan.schema_version != WORKPLAN_SCHEMA_VERSION {
         return Err(WorkplanError::UnsupportedVersion);
     }
-    if plan.plan_id.trim().is_empty() || plan.revision == 0 {
+    if TaskId::new(plan.plan_id.clone()).is_err() || plan.revision == 0 {
         return Err(WorkplanError::InvalidMetadata);
     }
     if plan.tasks.len() > MAX_WORKPLAN_TASKS {
@@ -70,6 +74,7 @@ pub fn preview_workplan(source: &[u8]) -> Result<WorkplanPreview, WorkplanError>
     }
 
     let mut tasks = BTreeMap::new();
+    let mut task_digests = BTreeMap::new();
     for task in plan.tasks {
         let id = task.task_id.clone();
         if task.project_id != plan.project_id {
@@ -82,6 +87,26 @@ pub fn preview_workplan(source: &[u8]) -> Result<WorkplanPreview, WorkplanError>
                 task_id: id.to_string(),
                 reason: error.0,
             })?;
+        // Windows drive/ADS syntax must not be accepted as a relative path just
+        // because the preview happens to run on Unix. No executable is invoked.
+        if task
+            .owned_paths
+            .iter()
+            .chain(&task.forbidden_paths)
+            .chain(&task.read_first)
+            .chain(task.checks.iter().map(|check| &check.cwd))
+            .any(|path| path.contains(':'))
+        {
+            return Err(WorkplanError::InvalidContract {
+                task_id: id.to_string(),
+                reason: "scope/check paths must exclude platform-ambiguous colon syntax".into(),
+            });
+        }
+        let digest = content_digest(&task).map_err(|error| WorkplanError::InvalidContract {
+            task_id: id.to_string(),
+            reason: error.to_string(),
+        })?;
+        task_digests.insert(id.clone(), digest);
         if tasks.insert(id.clone(), task).is_some() {
             return Err(WorkplanError::DuplicateTaskId(id.to_string()));
         }
@@ -137,7 +162,24 @@ pub fn preview_workplan(source: &[u8]) -> Result<WorkplanPreview, WorkplanError>
         project_id: plan.project_id,
         source_digest: format!("sha256:{:x}", Sha256::digest(source)),
         task_order,
+        task_digests,
     })
+}
+
+/// Optional admission preflight against authoritative stored task digests.
+/// Identical existing contracts are safe to preview again; any content or
+/// revision change under an existing ID is rejected, not interpreted as an edit.
+pub fn preview_workplan_with_existing(
+    source: &[u8],
+    existing: &BTreeMap<TaskId, String>,
+) -> Result<WorkplanPreview, WorkplanError> {
+    let preview = preview_workplan(source)?;
+    for (id, digest) in &preview.task_digests {
+        if existing.get(id).is_some_and(|previous| previous != digest) {
+            return Err(WorkplanError::TaskIdentityConflict(id.to_string()));
+        }
+    }
+    Ok(preview)
 }
 
 #[cfg(test)]
@@ -280,6 +322,82 @@ mod tests {
         assert!(matches!(
             preview_workplan(&source(vec![invalid])),
             Err(WorkplanError::InvalidContract { .. })
+        ));
+    }
+
+    #[test]
+    fn preview_has_exact_task_identity_and_rejects_existing_id_rewrites() {
+        let input = source(vec![contract("a", &[])]);
+        let preview = preview_workplan(&input).expect("preview");
+        assert_eq!(
+            preview.task_digests[&TaskId::new("a").expect("id")],
+            content_digest(&contract("a", &[])).expect("contract digest")
+        );
+        assert!(preview_workplan_with_existing(&input, &preview.task_digests).is_ok());
+        let mut changed = contract("a", &[]);
+        changed.objective = "Different work".into();
+        assert!(matches!(
+            preview_workplan_with_existing(&source(vec![changed]), &preview.task_digests),
+            Err(WorkplanError::TaskIdentityConflict(_))
+        ));
+        let mut changed = contract("a", &[]);
+        changed.revision = 2;
+        assert!(matches!(
+            preview_workplan_with_existing(&source(vec![changed]), &preview.task_digests),
+            Err(WorkplanError::TaskIdentityConflict(_))
+        ));
+    }
+
+    #[test]
+    fn rejects_ambiguous_plan_ids_and_platform_paths() {
+        for id in ["../escape", "plan\nforged", " ", "💣", &"x".repeat(129)] {
+            let mut value: Workplan = serde_json::from_slice(&source(vec![])).expect("plan");
+            value.plan_id = id.into();
+            assert_eq!(
+                preview_workplan(&serde_json::to_vec(&value).expect("serialize")),
+                Err(WorkplanError::InvalidMetadata)
+            );
+        }
+        for path in [
+            "C:/escape",
+            "C:relative",
+            "src/file:stream",
+            "../escape",
+            "src\\private",
+        ] {
+            let mut task = contract("a", &[]);
+            task.owned_paths = vec![path.into()];
+            assert!(matches!(
+                preview_workplan(&source(vec![task])),
+                Err(WorkplanError::InvalidContract { .. })
+            ));
+        }
+    }
+
+    #[test]
+    fn rejects_duplicate_json_fields_and_contract_dependency_aliases() {
+        let mut input = source(vec![]);
+        input.pop();
+        input.extend_from_slice(b",\"plan_id\":\"replacement\"}");
+        assert!(matches!(
+            preview_workplan(&input),
+            Err(WorkplanError::Json(_))
+        ));
+        assert!(matches!(
+            preview_workplan(&source(vec![contract("a", &["a"])])),
+            Err(WorkplanError::InvalidContract { .. })
+        ));
+        assert!(matches!(
+            preview_workplan(&source(vec![
+                contract("a", &[]),
+                contract("b", &["a", "a"])
+            ])),
+            Err(WorkplanError::InvalidContract { .. })
+        ));
+        let nested = [vec![b'['; 150], vec![b']'; 150]].concat();
+        assert!(matches!(
+            preview_workplan(&nested),
+            Err(WorkplanError::Json(_))
         ));
     }
 }
