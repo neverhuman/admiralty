@@ -29,10 +29,16 @@ fn p19_round18_end_to_end_release_bundle_schema_parity_qualification() {
     let repeated = store
         .publish_bytes(bundle)
         .unwrap_or_else(|error| panic!("replay release bundle: {error}"));
-    assert_eq!(artifact, repeated, "release retries retain content identity");
+    assert_eq!(
+        artifact, repeated,
+        "release retries retain content identity"
+    );
     assert_eq!(artifact.size_bytes, bundle.len() as u64);
     let expected_digest = format!("sha256:{:x}", Sha256::digest(bundle));
-    assert_eq!(artifact.sha256, expected_digest, "reference hashes published bytes");
+    assert_eq!(
+        artifact.sha256, expected_digest,
+        "reference hashes published bytes"
+    );
     assert_eq!(
         store.read_verified(&artifact).ok().as_deref(),
         Some(bundle.as_slice())
@@ -44,10 +50,8 @@ fn p19_round18_end_to_end_release_bundle_schema_parity_qualification() {
     let scope = PublicationScope {
         project_id: ProjectId::new("round18-p19")
             .unwrap_or_else(|error| panic!("project id: {error}")),
-        root_id: RootId::new("release-root")
-            .unwrap_or_else(|error| panic!("root id: {error}")),
-        task_id: TaskId::new("release-bundle")
-            .unwrap_or_else(|error| panic!("task id: {error}")),
+        root_id: RootId::new("release-root").unwrap_or_else(|error| panic!("root id: {error}")),
+        task_id: TaskId::new("release-bundle").unwrap_or_else(|error| panic!("task id: {error}")),
         target_ref: "refs/heads/release".into(),
         authority_generation: generation.clone(),
     };
@@ -124,13 +128,9 @@ fn p19_round18_end_to_end_release_bundle_schema_parity_qualification() {
 
     let mut absent_bundle_provenance = restored;
     absent_bundle_provenance.checks[0].provenance_ref.clear();
-    let negative_digest = publication_request_digest(
-        &scope,
-        &absent_bundle_provenance,
-        &candidate,
-        &generation,
-    )
-    .unwrap_or_else(|error| panic!("negative-path digest: {error}"));
+    let negative_digest =
+        publication_request_digest(&scope, &absent_bundle_provenance, &candidate, &generation)
+            .unwrap_or_else(|error| panic!("negative-path digest: {error}"));
     let rejected = propose_publication(
         &scope,
         &absent_bundle_provenance,
