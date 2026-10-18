@@ -199,6 +199,10 @@ name = "codex_round14_p09_p16"
 path = "../../tests/integration/codex_round14_p09_p16.rs"
 
 [[test]]
+name = "codex_round15_p09_p16"
+path = "../../tests/integration/codex_round15_p09_p16.rs"
+
+[[test]]
 name = "codex_worktree_lease"
 path = "../../tests/integration/codex_worktree_lease.rs"
 
