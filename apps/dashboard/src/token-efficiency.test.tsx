@@ -36,6 +36,15 @@ const snapshot = () => parseLegacy({
 const render = (source = snapshot()) => renderToStaticMarkup(<TokenEfficiency snapshot={source} />);
 
 describe('source-faithful token efficiency panel', () => {
+  it('keeps native measured token cost distinct from the historical per-agent index', () => {
+    const source = snapshot();
+    source.token_efficiency = { cost_index_basis: 'measured_tokens_15m', cost_index_vs_all_luna: null,
+      cost_index_note: 'Incomplete observed token window; aggregate cost unknown.' };
+    const html = render(source);
+    expect(html).toContain('Measured token mix · last 15 min');
+    expect(html).toContain('aggregate cost unknown');
+    expect(html).not.toContain('agent weighted');
+  });
   it('renders dense KPIs, bright model bars and source-window provenance', () => {
     const html = render();
     for (const value of ['44.4%', '20.4×', '411.5', '306.5', 'Weekly quota used', '41%', '9691.1815655000',

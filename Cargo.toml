@@ -50,8 +50,8 @@ name = "codex_round17_p25_p30"
 path = "tests/integration/codex_round17_p25_p30.rs"
 
 [workspace]
-members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests"]
-default-members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests"]
+members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests", "crates/admiralty-observe"]
+default-members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests", "crates/admiralty-observe"]
 resolver = "2"
 
 [workspace.package]

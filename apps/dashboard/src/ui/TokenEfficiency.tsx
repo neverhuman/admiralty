@@ -55,6 +55,7 @@ export function TokenEfficiency({ snapshot }: { snapshot: LegacySnapshot }) {
   const sourceNotes = [efficiency.windows_note, efficiency.quota_note, efficiency.claude_note].map(text).filter(Boolean);
   const cheapest = number(efficiency.pct_codex_on_cheapest);
   const cost = number(efficiency.cost_index_vs_all_luna), used = number(quota.used_percent);
+  const measuredCost = efficiency.cost_index_basis === 'measured_tokens_15m';
   const quotaBurn = signed(quota.burn_pct_per_hour);
   const hasEfficiency = Object.keys(efficiency).length > 0;
 
@@ -69,7 +70,7 @@ export function TokenEfficiency({ snapshot }: { snapshot: LegacySnapshot }) {
         note={<>Detected models · <span>gpt-6-luna baseline</span></>} />
       <Kpi label="Cost index vs all-Luna" accent={cost === null ? 'neutral' : cost > 10 ? 'astra' : cost > 4 ? 'sol' : 'luna'}
         value={cost === null ? 'Unknown' : `${fmt(cost)}×`} title={text(efficiency.cost_index_note) || 'Source agent-weighted output-rate index; not token-weighted spend.'}
-        note={<>{metric(efficiency.cost_index_avg_output_rate)} cr/1M output <span>· agent weighted</span></>} />
+        note={measuredCost ? <>Measured token mix · last 15 min</> : <>{metric(efficiency.cost_index_avg_output_rate)} cr/1M output <span>· agent weighted</span></>} />
       <Kpi label="Codex burn · last 60 min" value={<>{metric(hour.credits_per_hour_est)} <span>cr/h</span></>}
         note={<><span className="te-estimate">Estimate{incomplete ? ' · priced subtotal' : ''}</span> · 15m pace {metric(quarter.credits_per_hour_est)} cr/h{quarterIncomplete ? ' (subtotal)' : ''}<br />{compact(hour.output_tokens)} out / {compact(hour.input_tokens)} in <span>· measured tokens</span></>} />
       <Kpi label={quotaLabel(quota)} accent={used === null || used > 100 ? 'neutral' : used >= 85 ? 'astra' : used >= 60 ? 'sol' : 'luna'} value={percent(quota.used_percent)}
