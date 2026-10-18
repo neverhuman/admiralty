@@ -1,20 +1,28 @@
 //! Round 8 cross-packet qualification for recorded Codex and node telemetry.
 
+use admiralty_core::conflicts::{CandidateChange, FileChange, analyze_conflicts};
 use admiralty_core::nodes::{
     DecimalU64, EnrollmentEvent, EnrollmentToken, NodeId, NodeIdentity, NodeRegistry, NodeScope,
-    reduce_enrollment_for,
+    decode_event, reduce_enrollment_for,
+};
+use admiralty_core::placement::{
+    BudgetRequirement, Capacity, DecimalU64 as PlacementTick, Known, NodeId as PlacementNodeId,
+    NodeOffer, Observation, PlacementPolicy, PlacementRequest, propose_placement,
 };
 use admiralty_core::{PrincipalId, ProjectId, RootId, TaskId};
 use admiralty_runtime::{
     providers::{claude, codex, process},
-    providers::codex::{CodexEffort, CodexNdjsonStream},
-    session::{OutputChunk, OutputStream},
+    providers::codex::{CodexEffort, CodexError, CodexNdjsonStream},
+    recovery::{Blocker, plan_recovery},
+    session::{LaunchSpec, OutputChunk, OutputStream, validate_launch_envelope},
     workspace::registry::{Custody, NodeRef, WorkspaceSpec},
 };
+use admiralty_store::artifacts::ArtifactStore;
+#[path = "support/recovery.rs"]
+mod recovery_fixture;
 use std::{fs, path::PathBuf};
 
 use admiralty_core::economics::{DecimalU128, ObservedAmount};
-use admiralty_runtime::session::{LaunchSpec, validate_launch_envelope};
 
 const TURN: &[u8] = include_bytes!("../fixtures/providers/codex/fragmented-turn.jsonl");
 const CODEX_TURN: &[u8] = include_bytes!("../fixtures/providers/codex/fragmented-turn.jsonl");
@@ -24,6 +32,28 @@ fn digest(ch: char) -> String {
     format!("sha256:{}", ch.to_string().repeat(64))
 }
 
+fn issued_token(id: &str, expires: u64, now: u64) -> NodeRegistry {
+    let event_scope = scope();
+    reduce_enrollment_for(
+        &NodeRegistry::default(),
+        &EnrollmentEvent::TokenIssued {
+            event_id: format!("issue-{id}"),
+            token: EnrollmentToken {
+                token_id: id.into(),
+                token_digest: digest('a'),
+                scope: event_scope.clone(),
+                expires_tick: DecimalU64::new(expires),
+                consumed_binding: None,
+            },
+        },
+        &event_scope,
+        &event_scope.authority,
+        Some(now),
+    )
+    .expect("issue scoped fixture token")
+}
+
+
 fn scope() -> NodeScope {
     NodeScope {
         project_id: ProjectId::new("p12-p23-project").expect("project fixture"),
@@ -31,6 +61,73 @@ fn scope() -> NodeScope {
         task_id: TaskId::new("p12-p23-task").expect("task fixture"),
         authority: PrincipalId::new("p12-p23-captain").expect("authority fixture"),
     }
+}
+
+
+fn placement_fixture() -> (PlacementRequest, NodeOffer, PlacementPolicy) {
+    let tick = |value| PlacementTick::new(value);
+    let request = PlacementRequest {
+        project: ProjectId::new("round9-project").expect("project"),
+        root: RootId::new("round9-root").expect("root"),
+        task: TaskId::new("round9-task").expect("task"),
+        contract_digest: digest('a'),
+        authority_ref: "round9-grant".into(),
+        required_capabilities: vec!["ingest".into()],
+        locality_refs: vec!["payload".into()],
+        budget_requirement: BudgetRequirement {
+            account_pool: "pool".into(),
+            amount: tick(1),
+        },
+    };
+    let offer = NodeOffer {
+        node_id: PlacementNodeId::new("arbitrary-node").expect("node"),
+        boot_id: "boot-1".into(),
+        authority_generation: tick(1),
+        visible_scopes: Observation {
+            value: vec!["round9-project".into()],
+            observed_at: tick(10),
+        },
+        capabilities: Observation {
+            value: vec!["ingest".into()],
+            observed_at: tick(10),
+        },
+        account_pool: Observation {
+            value: "pool".into(),
+            observed_at: tick(10),
+        },
+        capacity: Observation {
+            value: Known::Known {
+                value: Capacity {
+                    slots: tick(1),
+                    budget_remaining: tick(2),
+                },
+            },
+            observed_at: tick(10),
+        },
+        current_pressure: Observation {
+            value: Known::Known { value: tick(0) },
+            observed_at: tick(10),
+        },
+        spool_free: Observation {
+            value: Known::Known { value: tick(4) },
+            observed_at: tick(10),
+        },
+        existing_active_roots: vec![],
+        controller_connected: true,
+        locality_refs: vec!["payload".into()],
+        continuation_permit: None,
+        reconciliation_required: false,
+        ownership_observed_at: Some(tick(10)),
+        ownership_revision: Some(tick(1)),
+    };
+    let policy = PlacementPolicy {
+        max_observation_age: tick(10),
+        maximum_pressure: tick(5),
+        minimum_spool_reserve: tick(2),
+        disconnected_continuation_only: true,
+        ownership_revision: Some(tick(1)),
+    };
+    (request, offer, policy)
 }
 
 #[test]
@@ -170,6 +267,7 @@ fn p26_p31_round8_p12_hitl_cockpit_qualification() {
     let mut oversized = safe;
     oversized.args = vec!["x".repeat(64 * 1024 + 1)];
     assert!(validate_launch_envelope(&oversized).is_err());
+}
 
 #[test]
 fn p08_p21_p22_round8_worktree_isolation_receipt_qualification() {
@@ -226,4 +324,127 @@ fn p08_p21_p22_round8_worktree_isolation_receipt_qualification() {
     .expect("bounded legacy identity");
     assert!(identity.observed_only);
     assert_eq!(identity.observed_provider, None);
+}
 
+#[test]
+fn p23_p25_round9_item3_webhook_node_ingest_qualification() {
+    // P04: content-addressed body storage makes exact webhook retries stable.
+    let temp = tempfile::tempdir().expect("temporary artifact fixture");
+    let object_root = temp.path().join("objects");
+    fs::create_dir(&object_root).expect("artifact root");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&object_root, fs::Permissions::from_mode(0o700))
+            .expect("restrict artifact root");
+    }
+    let artifacts = ArtifactStore::open(&object_root, 1024).expect("artifact store");
+    let body = b"deterministic node webhook fixture";
+    let reference = artifacts.publish_bytes(body).expect("publish webhook body");
+    assert_eq!(
+        artifacts.publish_bytes(body).expect("idempotent retry"),
+        reference
+    );
+    assert_eq!(
+        artifacts.read_verified(&reference).expect("verified body"),
+        body
+    );
+
+    // P07/P21: a retry cannot bridge a journal gap or promote malformed bytes.
+    let mut parser =
+        CodexNdjsonStream::new("fixture-model", CodexEffort::Low).expect("fixture model");
+    assert!(matches!(
+        parser.push_chunk(&OutputChunk {
+            offset: 1,
+            stream: OutputStream::Stdout,
+            bytes: b"{}\n".to_vec(),
+        }),
+        Err(CodexError::JournalGap)
+    ));
+    assert!(matches!(
+        parser.push_chunk(&OutputChunk {
+            offset: 0,
+            stream: OutputStream::Stdout,
+            bytes: b"{}\n".to_vec(),
+        }),
+        Err(CodexError::Failed)
+    ));
+
+    // P23 webhook node ingest is strict, scoped and replay deterministic.
+    // Transport authentication is not implemented, so the event remains data.
+    let admission_scope = scope();
+    let actor = admission_scope.authority.clone();
+    let issued = issued_token("round9-ingest", 20, 1);
+    let event = EnrollmentEvent::Enrolled {
+        event_id: "round9-enroll".into(),
+        token_id: "round9-ingest".into(),
+        scope: admission_scope.clone(),
+        identity: NodeIdentity {
+            node_id: NodeId::new("round9-node").expect("node fixture"),
+            boot_id: "boot-1".into(),
+            public_key_digest: digest('b'),
+            generation: DecimalU64::new(1),
+            capability_digest: digest('c'),
+        },
+    };
+    let payload = serde_json::to_vec(&event).expect("serialize stable webhook payload");
+    let decoded = decode_event(&payload).expect("strict node event decode");
+    let enrolled = reduce_enrollment_for(&issued, &decoded, &admission_scope, &actor, Some(2))
+        .expect("scoped enrollment");
+    assert_eq!(
+        reduce_enrollment_for(&enrolled, &decoded, &admission_scope, &actor, Some(2))
+            .expect("exact webhook replay"),
+        enrolled
+    );
+    let foreign = PrincipalId::new("foreign-webhook-actor").expect("foreign actor");
+    assert!(reduce_enrollment_for(&issued, &decoded, &admission_scope, &foreign, Some(2)).is_err());
+    let mut unknown = serde_json::to_value(&event).expect("event object");
+    unknown
+        .as_object_mut()
+        .expect("object")
+        .insert("signature_valid".into(), serde_json::json!(true));
+    assert!(decode_event(&serde_json::to_vec(&unknown).expect("encode unknown field")).is_err());
+
+    // P18: a changed ancestry cannot reuse an otherwise identical conflict proof.
+    let candidate = |ancestry: char| CandidateChange {
+        project_id: ProjectId::new("round9-project").expect("project"),
+        root_id: RootId::new("round9-root").expect("root"),
+        task_id: TaskId::new("round9-task").expect("task"),
+        candidate_id: "round9-candidate".into(),
+        base_sha: digest('d'),
+        head_sha: digest('e'),
+        tree_sha: digest('f'),
+        ancestry_digest: Some(digest(ancestry)),
+        files: vec![FileChange {
+            path: "src/node.rs".into(),
+            hunks: None,
+        }],
+        constraints: None,
+    };
+    let a = candidate('a');
+    let b = candidate('b');
+    let first = analyze_conflicts(std::slice::from_ref(&a), "round9-policy").expect("analysis");
+    let changed = analyze_conflicts(std::slice::from_ref(&b), "round9-policy").expect("analysis");
+    assert_ne!(first.source_digest, changed.source_digest);
+
+    // P24: a disconnected node cannot start ordinary ingest work.
+    let (request, mut offer, policy) = placement_fixture();
+    offer.controller_connected = false;
+    let placement = propose_placement(&request, &[offer], &policy, 10).expect("placement proposal");
+    assert!(placement.candidates.is_empty());
+    assert!(!placement.execution_granted && !placement.publication_granted);
+
+    // P25: recovery cannot propose a resume without the external executor fence.
+    let (manifest, observation, _fence) = recovery_fixture::valid_recovery_evidence();
+    let recovery = plan_recovery(&manifest, &observation, None).expect("bounded recovery plan");
+    assert!(recovery.blockers.contains(&Blocker::MissingExternalFence));
+    assert!(!recovery.resume_proposed);
+    assert!(!recovery.effects_authorized());
+
+    // P26: missing webhook cost remains unknown rather than zero.
+    let cost = serde_json::to_value(ObservedAmount::Unknown {
+        reason: "node webhook did not report cost".into(),
+    })
+    .expect("serialize unknown economics");
+    assert_eq!(cost["kind"], "unknown");
+}
