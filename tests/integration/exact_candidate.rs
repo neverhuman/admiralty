@@ -1,6 +1,16 @@
 use admiralty_core::verification::{MAX_RETAINED_RECEIPTS, ReceiptRegistry, parse_receipt};
 
 #[test]
+fn backwards_clock_skew_is_rejected_without_mutating_time() {
+    let mut clock = admiralty_testkit::clock::FakeClock::new(1_000);
+    let before_skew = clock.clone();
+
+    assert!(clock.advance_to_ms(999).is_err());
+    assert_eq!(clock, before_skew);
+    assert_eq!(clock.now_ms(), 1_000);
+}
+
+#[test]
 fn receipt_parser_rejects_forged_unknown_fields_and_registry_is_bounded() {
     let forged_claim = br#"{"schema_version":1,"receipt_id":"r1","producer":"provider_claim","verifier":"verifier","inputs":{},"checks":[],"negative_checks":[],"acceptance_granted":true}"#;
     assert!(parse_receipt(forged_claim).is_err());

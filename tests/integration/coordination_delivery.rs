@@ -1510,3 +1510,23 @@ fn pending_service_admits_bounds_before_policy_and_denies_before_store_generatio
     assert_eq!(after.cursor, before.cursor);
     assert_eq!(after.projection, before.projection);
 }
+
+#[test]
+fn retry_drop_fault_fires_on_its_configured_delivery_attempt_only() {
+    use admiralty_testkit::faults::{FaultEffect, FaultPlan, FaultRule};
+
+    let mut plan = FaultPlan::new(vec![FaultRule {
+        point: "coordination.delivery".into(),
+        occurrence: 2,
+        effect: FaultEffect::Drop,
+    }])
+    .expect("valid deterministic delivery fault schedule");
+
+    assert_eq!(plan.hit("coordination.delivery"), Ok(None));
+    assert_eq!(
+        plan.hit("coordination.delivery"),
+        Ok(Some(FaultEffect::Drop))
+    );
+    assert_eq!(plan.hit("coordination.delivery"), Ok(None));
+    assert_eq!(plan.hits("coordination.delivery"), Ok(3));
+}
