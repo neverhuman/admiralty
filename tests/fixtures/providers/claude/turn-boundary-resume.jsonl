@@ -1,0 +1,2 @@
+{"type":"system","subtype":"init","session_id":"fixture-session","claude_code_version":"2.1.302","model":"claude-sonnet-5-5","permissionMode":"dontAsk"}
+{"type":"result","subtype":"success","session_id":"fixture-session","usage":{"input_tokens":2,"cache_read_input_tokens":2032,"cache_creation_input_tokens":720,"output_tokens":22}}
