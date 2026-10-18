@@ -568,3 +568,134 @@ async fn p11_p12_p18_round12_item5_redteam_audit_gate() {
         Err(admiralty_core::conflicts::ConflictError::ScopeMismatch { .. })
     ));
 }
+
+#[tokio::test]
+async fn p11_p12_p18_round13_wo_needs_attention_projection() {
+    let directory = private_directory();
+    let store = Store::open(directory.path().join("round13.sqlite")).expect("fixture store");
+    let prerequisite = task_fixture("round13-prerequisite");
+    let prerequisite_id = prerequisite.task_id.clone();
+    store
+        .append(
+            SourceIdentity {
+                producer_id: "round13-work-order".into(),
+                incarnation: "boot-1".into(),
+                sequence: "1".into(),
+            },
+            DomainEvent::TaskSubmitted {
+                contract: prerequisite,
+            },
+            "2026-10-18T00:00:00Z".into(),
+        )
+        .expect("record prerequisite task");
+    let mut waiting = task_fixture("round13-needs-attention");
+    waiting.dependencies.push(prerequisite_id);
+    store
+        .append(
+            SourceIdentity {
+                producer_id: "round13-work-order".into(),
+                incarnation: "boot-1".into(),
+                sequence: "2".into(),
+            },
+            DomainEvent::TaskSubmitted { contract: waiting },
+            "2026-10-18T00:00:01Z".into(),
+        )
+        .expect("record dependent work order task");
+    let snapshot = store.snapshot().expect("consistent projection cursor");
+    let router = app(
+        store.clone(),
+        ServerConfig {
+            listen: "127.0.0.1:0"
+                .parse::<SocketAddr>()
+                .expect("loopback address"),
+            simulated: false,
+            token: Some(ROUND11_TOKEN.into()),
+            assets: None,
+            legacy: None,
+            models_file: None,
+        },
+    )
+    .expect("authenticated work-order projection API");
+
+    let fleet_response = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/v1/fleet")
+                .header("authorization", format!("Bearer {ROUND11_TOKEN}"))
+                .body(Body::empty())
+                .expect("authenticated needs-attention snapshot request"),
+        )
+        .await
+        .expect("fleet snapshot response");
+    assert_eq!(fleet_response.status(), StatusCode::OK);
+    let fleet_bytes = to_bytes(fleet_response.into_body(), 1024 * 1024)
+        .await
+        .expect("bounded fleet projection");
+    let fleet: Value = serde_json::from_slice(&fleet_bytes).expect("fleet JSON");
+    assert_eq!(fleet["simulated"], false);
+    assert_eq!(fleet["native_execution_qualified"], false);
+    assert_eq!(fleet["cursor"]["event_seq"], "2");
+    assert_eq!(fleet["projects"][0]["total"], 2);
+    assert_eq!(fleet["projects"][0]["blocked"], 1);
+    assert_eq!(fleet["projects"][0]["accepted"], 0);
+    let waiting = fleet["tasks"]
+        .as_array()
+        .expect("task projection")
+        .iter()
+        .find(|task| task["contract"]["task_id"] == "round13-needs-attention")
+        .expect("dependent work order task is visible");
+    assert_eq!(waiting["state"], "blocked");
+    assert_eq!(waiting["attempt_id"], Value::Null);
+    assert_eq!(waiting["candidate_ref"], Value::Null);
+    assert!(waiting.get("release").is_none());
+
+    let uri = format!(
+        "/v1/events?after=1&generation={}",
+        snapshot.cursor.recovery_generation
+    );
+    let stream_response = router
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(uri)
+                .header("authorization", format!("Bearer {ROUND11_TOKEN}"))
+                .body(Body::empty())
+                .expect("authenticated incremental event request"),
+        )
+        .await
+        .expect("event replay response");
+    assert_eq!(stream_response.status(), StatusCode::OK);
+    let frame = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        stream_response.into_body().into_data_stream().next(),
+    )
+    .await
+    .expect("dependent task event arrives")
+    .expect("event stream yields a frame")
+    .expect("SSE frame is valid");
+    let frame = String::from_utf8(frame.to_vec()).expect("SSE frame is UTF-8");
+    assert!(frame.contains("round13-needs-attention"));
+    assert!(frame.contains("\"seq\":\"2\""));
+
+    let candidates = [
+        candidate("round13-candidate-a"),
+        candidate("round13-candidate-b"),
+    ];
+    let graph = analyze_conflicts(&candidates, "round13-policy").expect("P18 frozen release gate");
+    assert!(graph.generation.combined_verification_required);
+    assert_eq!(
+        graph.generation.candidate_ids,
+        ["round13-candidate-a", "round13-candidate-b"]
+    );
+    assert!(
+        graph.edges[0]
+            .risks
+            .contains(&ConflictRisk::UnknownWriteScope)
+    );
+    assert_eq!(
+        graph,
+        analyze_conflicts(&candidates, "round13-policy").expect("deterministic gate replay")
+    );
+}
