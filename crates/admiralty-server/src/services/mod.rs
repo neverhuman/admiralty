@@ -5,3 +5,5 @@ pub mod coordination;
 pub mod native_commands;
 #[cfg(unix)]
 pub mod native_lifecycle;
+
+pub mod native_executor;
