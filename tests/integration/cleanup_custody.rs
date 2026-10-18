@@ -11,6 +11,7 @@ use admiralty_store::custody::{
     self, AcquirePinRequest, AssetBinding, ClaimRetirementRequest, CustodyError,
     CustodyObservation, RegisterAssetRequest, ReleasePinRequest,
 };
+use admiralty_testkit::clock::{ClockError, FakeClock};
 use rusqlite::Connection;
 use std::{
     fs,
@@ -199,12 +200,22 @@ fn durable_active_pin_blocks_retirement_claim_until_release() {
         Err(CustodyError::Invalid("identifier bounds"))
     ));
 
+    let mut logical_clock = FakeClock::new(11);
+    assert_eq!(
+        logical_clock.advance_to_ms(10),
+        Err(ClockError::Backwards {
+            now_ms: 11,
+            target_ms: 10,
+        })
+    );
+    assert_eq!(logical_clock.now_ms(), 11);
+
     let acquire_request = AcquirePinRequest {
         command_id: "acquire-1".into(),
         binding: binding.clone(),
         pin_id: "pin-1".into(),
         expected_revision: "1".into(),
-        observation: observation(&binding, true, 11),
+        observation: observation(&binding, true, logical_clock.now_ms()),
     };
     let acquired =
         custody::acquire_pin(&mut connection, acquire_request.clone()).expect("record active pin");
