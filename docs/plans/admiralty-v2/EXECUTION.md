@@ -666,3 +666,11 @@ The linear batch branch `codex/batch-item3-p04-p07-p18-p21-p24-p25-p26` is based
 Final tested source commit: `9531ba089abb44c962538d8bf1159db05a6a9a91`. Exact checks pass: `cargo fmt --all -- --check`; `cargo test --workspace --locked` (721 passed, 0 failed, 1 ignored across 66 suites); `cargo clippy --workspace --all-targets --locked -- -D warnings`; and `pnpm contracts:check` (three Rust schemas match; no generated files changed). Logs and hashes are recorded in `receipts/P04/9531ba089abb44c962538d8bf1159db05a6a9a91.json` and companion P07/P18/P21/P24/P25/P26 receipts.
 
 P04, P07, P18, P21, P24, P25 and P26 remain candidate evidence only; no main merge or acceptance transition is claimed. The batch is held for the 17:30Z-17:35Z merge window.
+
+## Queue Item 3 Round 10 rebased consolidation — 2026-10-18T17:28:21Z
+
+Rebased `codex/batch-item3-p04-p07-p18-p21-p24-p25-p26` onto requested `origin/main` `d965812016b9bd05448512c18e7ea03514d1638c`. The latest observed `origin/main` is `96ab86317aaeaa553f79386098dc55ff05399d5d`; it is ahead of the requested rebase point, so this branch remains based on `d965812016b9bd05448512c18e7ea03514d1638c` as ordered. The 15 named Round 10 worker commits are integrated. A fresh fetch and scan of all `origin/codex/accept-*` refs found no additional unintegrated Round 10 or Round 11 commits. The history is linear with no merge commits.
+
+Tested source commit: `0c4f743050fe1082f9bba48baa72a1fa10a0be1a`. Final exact gates pass: `cargo fmt --all -- --check`; `cargo test --workspace --locked` (742 passed, 0 failed, 1 ignored in 73 suites); `cargo clippy --workspace --all-targets --locked -- -D warnings`; and `pnpm contracts:check` (three Rust schemas match; no generated changes). The final test, lint and contract logs and SHA-256 values are included in the new P04/P07/P18/P21/P24/P25/P26 receipts at `0c4f743050fe1082f9bba48baa72a1fa10a0be1a.json`.
+
+The candidate branch is pushed but unmerged. Packet rollout statuses are unchanged; these receipts record candidate qualification only and do not assert post-merge acceptance.

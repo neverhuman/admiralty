@@ -1,0 +1,133 @@
+{
+  "packet": "P04",
+  "state": "partial_review",
+  "owner": "batch integration reviewer",
+  "base_sha": "d965812016b9bd05448512c18e7ea03514d1638c",
+  "head_sha": "0c4f743050fe1082f9bba48baa72a1fa10a0be1a",
+  "branch": "codex/batch-item3-p04-p07-p18-p21-p24-p25-p26",
+  "observed_utc": "2026-10-18T17:28:21Z",
+  "source_worker_commits": [
+    "e1cda48ee09a7b823016222906128d38893d1d4e",
+    "e1da37d6f34748746770540ff3ac66f72996828a",
+    "fdf5a39596304e66107d386e2388c99ad6225b9e",
+    "f640ee0a4d2c076c3ab51bf8d1c903780054935e",
+    "61394310a2ce45a46eb783f328d41d8dadb0d128",
+    "c6134770dd40c398ba20e1b20fd9a260e1958a91",
+    "8b8772effa669785ade40f0917102ee2b7d78d6f",
+    "5fe408c4632670473b1b91850d8614a8a0dd49ea",
+    "306f9b066c4d723c09e0cc2613d0a3ed90a64f86",
+    "c5f00c6f9b7d64c3877a6be5f752068098a1f8bd",
+    "4aa9e8b384a930851a43d455c45e6579e7454d75",
+    "ebb65669755ab2fbd2abc5e7bb4506a912d83b4b",
+    "f809527b1aee17bccd5982e787995469a921cda8",
+    "c560b8b984686238ab237a2897071152cd60563e",
+    "d525e94e58dacd7e815a89840ffa0a660a24fbad",
+    "15a3ad8fd23a9438216c7d775f30187858c5564e",
+    "23ef05834b112d71edb1869fba6598929299c4d1",
+    "9b37e4b2361b70d5639ca3866d0761767bd23d53",
+    "ce3c2b4ee4c83da5ae396e55f0781c7dd5f0301c",
+    "3dfd8f62295a7a0083c1fdbf35cae42b46139c69",
+    "0e7d673dcd06b808d412c3a22e554841e349215e",
+    "3431ab9cc22f991aacb5de99bf4d9ead4c958eb6",
+    "187e263d7fbd40edd1e6b5b4dc13c08b141b1bdf",
+    "532e2af97d8a55d0c08888a36726bba5182ca4c9",
+    "fa38fb37efe36cba0e188534277bec8ddd359cfb",
+    "de109284c156797ea72eac581e488d4426c13a59",
+    "6cad14eea5ca2bc81a73eaf283c29adbbc9996b4",
+    "7d9ef7570ce88420347dbe94d51277e409705183",
+    "6803081efa136b53600216add50066b432b637df",
+    "7514a42a88566e1dc1b3e0782d127bca1def3a52",
+    "e0656328c4957b5cc1703e22931a762544c8e467",
+    "1a2c4c886cd16f4de380f9f6ee28539f57bd5926",
+    "a9de12221ce686c8c6c8954f47d1025a7b3a1e1c",
+    "adc80f1238ef3dd9e526ca624b029f1db898cdc9",
+    "1637dde1d73b1e238eb61ca4c033d42cf6021eaa",
+    "c00cc44a37a88125eeaea141403a2cd11dbc671f"
+  ],
+  "additional_unintegrated_round10_round11_commits": [],
+  "latest_origin_main_observed": "96ab86317aaeaa553f79386098dc55ff05399d5d",
+  "changed_paths": [
+    "tests/integration/codex_round8_p08_worktree_isolation.rs",
+    "tests/integration/codex_p04_p10_r10_workspace_gate_audit.rs",
+    "tests/integration/codex_round8_qualification.rs"
+  ],
+  "criteria": [
+    {
+      "name": "worktree custody isolation and artifact workspace gate audit",
+      "result": "pass",
+      "evidence": [
+        "Exact full-workspace test and lint gates passed on this batch tree; this is candidate evidence only."
+      ]
+    }
+  ],
+  "validation": [
+    {
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "result": "742 passed; 0 failed; 1 ignored across 73 suites",
+      "artifact": "/home/ubuntu/admiralty-v2-build/logs/item3-rebased-cargo-test.log",
+      "artifact_sha256": "5185f42aa51c81546c2f2ad1af64c20e127f486a53c898c218945d4ea13cf631"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "result": "passed",
+      "artifact": "/home/ubuntu/admiralty-v2-build/logs/item3-rebased-clippy.log",
+      "artifact_sha256": "2eb5fe1a3af742a6bdfecd21329d5ec4d8ca8a56f114de14df90e2cc21faffe2"
+    },
+    {
+      "argv": [
+        "pnpm",
+        "contracts:check"
+      ],
+      "exit_code": 0,
+      "result": "passed; three Rust schemas match and generated files unchanged",
+      "artifact": "/home/ubuntu/admiralty-v2-build/logs/item3-rebased-contracts.log",
+      "artifact_sha256": "afafbe0f113d1c5c735a73678c73cbe59c170160f85dd4b1d3c3c5867e486058"
+    }
+  ],
+  "environment": {
+    "platform": "Linux",
+    "rust": "1.95.0",
+    "cargo_target_dir": "/home/ubuntu/admiralty-v2-build/targets/main-acceptance",
+    "tmpdir": "/home/ubuntu/.adm-main-acceptance-tmp"
+  },
+  "superseded_attempts": [
+    {
+      "command": "cargo test --workspace --locked",
+      "result": "one run hit a transient server doctest import error while the shared target was in use; targeted server doctest and final full rerun passed"
+    }
+  ],
+  "limitations": [
+    "The batch branch is not merged; this receipt does not replace post-merge packet acceptance.",
+    "Native execution qualification remains false."
+  ],
+  "packet_accepted": false,
+  "native_execution_qualified": false,
+  "next_action": "Open/review the batched change under the authorized merge flow; perform exact-main acceptance after merge."
+}
