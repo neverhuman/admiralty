@@ -151,6 +151,11 @@ name = "codex_round8"
 path = "../../tests/integration/codex_round8.rs"
 
 [[test]]
+name = "codex_round8_packaging"
+path = "../../tests/integration/codex_round8_packaging.rs"
+>>>>>>> 23fa33d (test: qualify round 8 cross-packet packaging)
+
+[[test]]
 name = "provider_matrix"
 path = "../../tests/integration/provider_matrix.rs"
 
