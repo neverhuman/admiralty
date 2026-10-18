@@ -1,6 +1,9 @@
 //! Round 8 Item 2 cross-packet qualification for P09 and P20.
 
-use admiralty_core::placement::decode_input;
+use admiralty_core::placement::{
+    ActiveRoot, BudgetRequirement, Capacity, DecimalU64, IsolatedPermit, Known, NodeId, NodeOffer,
+    Observation, PlacementPolicy, PlacementRequest, decode_input, propose_placement,
+};
 use admiralty_core::{
     AttemptId,
     conflicts::{
@@ -42,6 +45,80 @@ fn observation(binding: &AssetBinding, registered: bool, at: u64) -> CustodyObse
         foreign: Some(false),
         dirty: Some(false),
         held: Some(false),
+    }
+}
+
+fn placement_request() -> PlacementRequest {
+    PlacementRequest {
+        project: ProjectId::new("round10-project").expect("project id"),
+        root: RootId::new("round10-root").expect("root id"),
+        task: TaskId::new("round10-task").expect("task id"),
+        contract_digest: format!("sha256:{}", "a".repeat(64)),
+        authority_ref: "round10-grant".into(),
+        required_capabilities: vec!["workspace".into()],
+        locality_refs: vec!["repo".into()],
+        budget_requirement: BudgetRequirement {
+            account_pool: "round10-pool".into(),
+            amount: DecimalU64::new(5),
+        },
+    }
+}
+
+fn placement_offer() -> NodeOffer {
+    NodeOffer {
+        node_id: NodeId::new("round10-node").expect("node id"),
+        boot_id: "round10-boot".into(),
+        authority_generation: DecimalU64::new(1),
+        visible_scopes: Observation {
+            value: vec!["round10-project".into()],
+            observed_at: DecimalU64::new(10),
+        },
+        capabilities: Observation {
+            value: vec!["workspace".into()],
+            observed_at: DecimalU64::new(10),
+        },
+        account_pool: Observation {
+            value: "round10-pool".into(),
+            observed_at: DecimalU64::new(10),
+        },
+        capacity: Observation {
+            value: Known::Known {
+                value: Capacity {
+                    slots: DecimalU64::new(1),
+                    budget_remaining: DecimalU64::new(10),
+                },
+            },
+            observed_at: DecimalU64::new(10),
+        },
+        current_pressure: Observation {
+            value: Known::Known {
+                value: DecimalU64::new(1),
+            },
+            observed_at: DecimalU64::new(10),
+        },
+        spool_free: Observation {
+            value: Known::Known {
+                value: DecimalU64::new(10),
+            },
+            observed_at: DecimalU64::new(10),
+        },
+        existing_active_roots: Vec::new(),
+        controller_connected: false,
+        locality_refs: vec!["repo".into()],
+        continuation_permit: None,
+        reconciliation_required: false,
+        ownership_observed_at: Some(DecimalU64::new(10)),
+        ownership_revision: Some(DecimalU64::new(1)),
+    }
+}
+
+fn placement_policy() -> PlacementPolicy {
+    PlacementPolicy {
+        max_observation_age: DecimalU64::new(10),
+        maximum_pressure: DecimalU64::new(5),
+        minimum_spool_reserve: DecimalU64::new(2),
+        disconnected_continuation_only: true,
+        ownership_revision: Some(DecimalU64::new(1)),
     }
 }
 
@@ -301,4 +378,98 @@ fn p20_p24_round9_item3_telegram_retirement_qualification() {
     );
     assert!(Rational::new(1, 0).is_none());
     let _ = AttemptId::new("round9-attempt").expect("typed attempt edge fixture");
+}
+
+#[test]
+fn p20_p24_round10_item3_workspace_gate_audit() {
+    let binding = AssetBinding {
+        project_id: ProjectId::new("round10-project").expect("project id"),
+        root_id: RootId::new("round10-root").expect("root id"),
+        task_id: TaskId::new("round10-task").expect("task id"),
+        asset_id: "round10-workspace".into(),
+        owner_id: PrincipalId::new("round10-owner").expect("owner id"),
+        sha256: format!("sha256:{}", "c".repeat(64)),
+        generation: "1".into(),
+    };
+    let mut db = Connection::open_in_memory().expect("open deterministic custody database");
+    custody::initialize(&db).expect("initialize custody database");
+    custody::register_asset(
+        &mut db,
+        RegisterAssetRequest {
+            command_id: "round10-register".into(),
+            binding: binding.clone(),
+            expected_revision: "0".into(),
+            observation: observation(&binding, false, 10),
+        },
+    )
+    .expect("register workspace custody");
+    custody::acquire_pin(
+        &mut db,
+        AcquirePinRequest {
+            command_id: "round10-active-reference".into(),
+            binding: binding.clone(),
+            pin_id: "active-placement".into(),
+            expected_revision: "1".into(),
+            observation: observation(&binding, true, 11),
+        },
+    )
+    .expect("pin workspace while referenced");
+    assert!(matches!(
+        custody::claim_retirement(
+            &mut db,
+            ClaimRetirementRequest {
+                command_id: "round10-retire-active".into(),
+                binding: binding.clone(),
+                claim_id: "round10-retirement".into(),
+                expected_revision: "2".into(),
+                observation: observation(&binding, true, 12),
+            }
+        ),
+        Err(CustodyError::ActivePins)
+    ));
+
+    // A disconnected P24 node with apparent capacity cannot receive new work
+    // without an exact continuation permit for an already active root.
+    let request = placement_request();
+    let node = placement_offer();
+    let proposal = propose_placement(&request, &[node.clone()], &placement_policy(), 10)
+        .expect("deterministic placement proposal");
+    assert!(proposal.candidates.is_empty());
+    assert!(!proposal.execution_granted);
+    assert!(!proposal.publication_granted);
+    assert!(!proposal.authority_granted);
+    assert_eq!(
+        proposal,
+        propose_placement(&request, &[node], &placement_policy(), 10).expect("stable replay")
+    );
+
+    // Even an active-root permit expiring exactly at decision time is stale.
+    let mut expiring_node = placement_offer();
+    expiring_node.existing_active_roots = vec![ActiveRoot {
+        root: request.root.clone(),
+        ordinary: true,
+    }];
+    expiring_node.continuation_permit = Some(IsolatedPermit {
+        permit_id: "round10-continuation".into(),
+        root: request.root.clone(),
+        project: request.project.clone(),
+        task: request.task.clone(),
+        node_id: expiring_node.node_id.clone(),
+        authority_ref: request.authority_ref.clone(),
+        expires_at: DecimalU64::new(10),
+        immutable_digest: request.contract_digest.clone(),
+        authority_generation: DecimalU64::new(1),
+        reboot_id: expiring_node.boot_id.clone(),
+        remaining_budget: DecimalU64::new(5),
+        spool_reserve: DecimalU64::new(3),
+        minimum_spool_reserve: DecimalU64::new(2),
+    });
+    let expired = propose_placement(&request, &[expiring_node], &placement_policy(), 10)
+        .expect("expired permit is a safe placement rejection");
+    assert!(expired.candidates.is_empty());
+    assert_eq!(expired.rejected.len(), 1);
+    assert_eq!(expired.rejected[0].reason, "continuation permit expired");
+    assert!(!expired.execution_granted);
+    assert!(!expired.publication_granted);
+    assert!(!expired.authority_granted);
 }
