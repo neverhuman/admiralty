@@ -214,3 +214,7 @@ path = "../../tests/integration/upgrade_continuity.rs"
 [[test]]
 name = "codex_round13"
 path = "../../tests/integration/codex_round13.rs"
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"

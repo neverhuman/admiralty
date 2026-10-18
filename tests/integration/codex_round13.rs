@@ -16,9 +16,9 @@ fn release_fixture() -> (PublicationScope, PublicationSnapshot, DecimalU64) {
     let generation = DecimalU64::new(3);
     (
         PublicationScope {
-            project_id: ProjectId::new("round13-project").unwrap(),
-            root_id: RootId::new("round13-root").unwrap(),
-            task_id: TaskId::new("round13-task").unwrap(),
+            project_id: ProjectId::new("round13-project").expect("deterministic round 13 fixture"),
+            root_id: RootId::new("round13-root").expect("deterministic round 13 fixture"),
+            task_id: TaskId::new("round13-task").expect("deterministic round 13 fixture"),
             target_ref: "refs/heads/release".into(),
             authority_generation: generation.clone(),
         },
@@ -53,7 +53,7 @@ fn release_fixture() -> (PublicationScope, PublicationSnapshot, DecimalU64) {
 fn p26_p31_round13_wo_cutover_release_evidence() {
     // Work-order preview is deterministic and read-only; task identity is
     // bound to the declared project and dependency order.
-    let project = ProjectId::new("round13-project").unwrap();
+    let project = ProjectId::new("round13-project").expect("deterministic round 13 fixture");
     let plan = Workplan {
         schema_version: 1,
         plan_id: "round13-release-work-order".into(),
@@ -62,8 +62,8 @@ fn p26_p31_round13_wo_cutover_release_evidence() {
         tasks: vec![TaskContract {
             schema_version: 1,
             project_id: project.clone(),
-            root_id: RootId::new("round13-root").unwrap(),
-            task_id: TaskId::new("round13-task").unwrap(),
+            root_id: RootId::new("round13-root").expect("deterministic round 13 fixture"),
+            task_id: TaskId::new("round13-task").expect("deterministic round 13 fixture"),
             revision: 1,
             title: "Qualify release evidence".into(),
             objective: "Require independent approval and passing release checks".into(),
@@ -89,27 +89,37 @@ fn p26_p31_round13_wo_cutover_release_evidence() {
             simulated: true,
         }],
     };
-    let source = serde_json::to_vec(&plan).unwrap();
-    let first = preview_workplan(&source).unwrap();
-    assert_eq!(first, preview_workplan(&source).unwrap());
-    assert_eq!(first.task_order, vec![TaskId::new("round13-task").unwrap()]);
+    let source = serde_json::to_vec(&plan).expect("deterministic round 13 fixture");
+    let first = preview_workplan(&source).expect("deterministic round 13 fixture");
+    assert_eq!(
+        first,
+        preview_workplan(&source).expect("deterministic round 13 fixture")
+    );
+    assert_eq!(
+        first.task_order,
+        vec![TaskId::new("round13-task").expect("deterministic round 13 fixture")]
+    );
 
     // Release cutover requires matching, undismissed approval and passing
     // check provenance on the expected head; the proposal alone authorizes no effect.
     let (scope, snapshot, generation) = release_fixture();
     let key = "round13-intent";
-    let digest = publication_request_digest(&scope, &snapshot, key, &generation).unwrap();
+    let digest = publication_request_digest(&scope, &snapshot, key, &generation)
+        .expect("deterministic round 13 fixture");
     let proposal = propose_publication(&scope, &snapshot, key, &digest, &generation);
     assert!(proposal.eligible);
     assert!(!proposal.execution_granted());
-    let proposed = proposal.intent.unwrap();
-    let staged = reduce_publication_intent(None, &proposed, None).unwrap();
+    let proposed = proposal.intent.expect("deterministic round 13 fixture");
+    let staged =
+        reduce_publication_intent(None, &proposed, None).expect("deterministic round 13 fixture");
     let mut claimed = staged.clone();
     claimed.stage = IntentStage::Claimed;
-    let claimed = reduce_publication_intent(Some(&staged), &claimed, None).unwrap();
+    let claimed = reduce_publication_intent(Some(&staged), &claimed, None)
+        .expect("deterministic round 13 fixture");
     let mut ambiguous = claimed.clone();
     ambiguous.stage = IntentStage::Ambiguous;
-    let ambiguous = reduce_publication_intent(Some(&claimed), &ambiguous, None).unwrap();
+    let ambiguous = reduce_publication_intent(Some(&claimed), &ambiguous, None)
+        .expect("deterministic round 13 fixture");
     assert_eq!(
         reduce_publication_intent(Some(&ambiguous), &ambiguous, None),
         Ok(ambiguous.clone()),
@@ -126,18 +136,19 @@ fn p26_p31_round13_wo_cutover_release_evidence() {
         effect_occurred: true,
         provenance_ref: "fixture:independent-release-probe:round13".into(),
     };
-    let completed =
-        reduce_publication_intent(Some(&ambiguous), &ambiguous, Some(&evidence)).unwrap();
+    let completed = reduce_publication_intent(Some(&ambiguous), &ambiguous, Some(&evidence))
+        .expect("deterministic round 13 fixture");
     assert_eq!(completed.stage, IntentStage::ReconciledSuccess);
     assert_eq!(
-        reduce_publication_intent(Some(&completed), &completed, Some(&evidence)).unwrap(),
+        reduce_publication_intent(Some(&completed), &completed, Some(&evidence))
+            .expect("deterministic round 13 fixture"),
         completed
     );
 
     let (scope, mut blocked, generation) = release_fixture();
     blocked.checks[0].state = CheckState::Unknown;
-    let blocked_digest =
-        publication_request_digest(&scope, &blocked, "blocked", &generation).unwrap();
+    let blocked_digest = publication_request_digest(&scope, &blocked, "blocked", &generation)
+        .expect("deterministic round 13 fixture");
     let blocked = propose_publication(&scope, &blocked, "blocked", &blocked_digest, &generation);
     assert!(!blocked.eligible && !blocked.execution_granted());
     assert!(
