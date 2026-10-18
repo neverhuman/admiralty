@@ -1,0 +1,341 @@
+{
+  "accepted_parents": 0,
+  "current_quality_receipt": "receipts/integration/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4.json",
+  "current_quality_receipt_sha256": "46a601bd7bf5510daf48a3ac0fa5b2e744e1c64803b4f5376230faaa633eb008",
+  "next_ready_actions": [
+    "Reconcile manager whole-packet claims, stale bindings, old workqueue and source actor of status-only fanout before reusing legacy workers.",
+    "Use small implementation contracts instead of per-worker status turns when deterministic observations suffice.",
+    "Implement missing P01 fake clock/fault/forge/cumulative-reset fixtures on isolated scopes; do not confuse30named targets with that matrix.",
+    "Advance durable coordination delivery/subscription authority and executor in separate scoped packets."
+  ],
+  "observed_utc": "2026-10-18T15:40:44.635439+00:00",
+  "packet_count": 32,
+  "packets": [
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P00",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "61f7466bf525e74a545dd1bd3149dc0815dcdd822d0048e4ad56759a852ec12b",
+      "remaining_or_next_gate": "Review engineering closeout with the authorized issuer; no additional live inventory fill-in or native provider qualification is a P00 criterion. This observational receipt does not issue domain acceptance.",
+      "state": "review"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P01",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "34bdb0328d266283290a354c064f2fce291af84fe3b86d7711d8cf94d9187b92",
+      "remaining_or_next_gate": "Six crates, pinned tools and independent Linux CI-equivalent gate pass; hosted runner jobs remain unassigned; full fault/simulator matrix pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P02",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "4c18824a813bcb4481526735eecda115badf0ac4a5703065705e7cc422bcd525",
+      "remaining_or_next_gate": "Typed contracts, pure reducers and schema/TS checks are integrated; complete authority/policy negotiation remains pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P03",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "9c9f2c388a533a2e06efa8fbd428796436c193d95f9b94f31943844a6c084c3b",
+      "remaining_or_next_gate": "Atomic domain/outbox admission, immutable request/effect associations, replay and receive-time retry compatibility tested; durable executor admission loop pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P04",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "34043a1f95f4e4474e35fb4c6ee66dea3618d746f1917bff39f3c28f2c9319c2",
+      "remaining_or_next_gate": "Transactional asset/pin catalog with full observation binding, fixed clock policy and receipt closure; trusted filesystem observation/startup activation pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P05",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "1b275b9c4aa2c646ff2a5253450f82c0057a456998fe3374921768138cfba608",
+      "remaining_or_next_gate": "Pin the durable delivery/subscription command interface against existing Store outbox/recipient-epoch ACK and trusted service authority before implementing its executor; preserve native execution disabled.",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P06",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "a167868f2387bf6199ccb2302f2a591b7664606fe724897c61e24daf1ec94857",
+      "remaining_or_next_gate": "Constraint-preserving capsules, epochs and bounded attention governor; durable governor/outbox activation and retrieval pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P07",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "114a1f0f81db03ce6c6fb786a9e2c7a847ffa814df500d69d33753346a9c7a0c",
+      "remaining_or_next_gate": "Independent private Unix-socket host, reconnect continuity, compatible launch envelope, final capture watermark and native owned-group cleanup; restart adoption and admitted fleet activation unqualified",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "P08 fake fixture timing only; actual provider still unqualified",
+      "native_execution_qualified": false,
+      "packet": "P08",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "ebed49c2a6f887e3bb45999f580a375d9857b8326ea9944c7c7bb22f60bb22f3",
+      "remaining_or_next_gate": "Offline Linux fake harness passed; reconcile resources and review a bounded real-run tuple separately from native execution admission and full qualification.",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P09",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "3a9dca48c9d57bd1666b919a9678c0d68ac2328e4eb3cca75269641885122dca",
+      "remaining_or_next_gate": "Read-only custody registration; real runner/resource isolation pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P10",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "28574a1a991f707fc8e4e3b9872eb55094206e247447ab3409da2ffdef72bcbb",
+      "remaining_or_next_gate": "Segmented usage plus conservative scoped reservations reviewed; runtime reservation activation pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P11",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "7449bda9a6b35e3406ecd6a9ed0ffe9e583ceb19a66d1fea9743e1b7572a824f",
+      "remaining_or_next_gate": "Authenticated bounded read API/SSE and offline CLI are tested; live command envelopes, terminal input and agent tools pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P12",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "e75a1df6eba9cecd6948323d78491bf15a6f6b8bc34a844b4a359d68a334d687",
+      "remaining_or_next_gate": "Dense real-data console, 13 temporal metrics, observed manager selection and centered owner deployed; 75 React tests/build pass; full scale/accessibility qualification pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P13",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "bd5eb09292a13d4868523dfbe65a066b01a59bec95dc4ff66a09b7183ea7d426",
+      "remaining_or_next_gate": "Durable immutable JSON revisions, CAS/retry, reciprocal task identity, writer/CLI and backup/rebuild tests; TOML/Markdown, import UI and live admission pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P14",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "e77fe86963d3134112d1393474f03c194483b1475ded362e08e4a6e0e38ecef5",
+      "remaining_or_next_gate": "Pure scheduler independently hardened at `03772f94`; durable scheduling and launches remain pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P15",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "26542a0d1f8837ff0ba9d861255f9c69a0303f34c5618a927ec0b84e6fe3aebf",
+      "remaining_or_next_gate": "Scoped evidence consistency hardened at `03772f94`; trusted independent verifier execution pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P16",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "3ea63f79296aba9e54ed63f9c023eb34f9b257c32ce2e8a35a617bbd103ea25d",
+      "remaining_or_next_gate": "Staged audit candidate under independent review; no Jankurai execution qualification",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P17",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "fbf03fb3b3bff0a7f261669b68a920a1b5019f2d30251b261a392060838c3ae7",
+      "remaining_or_next_gate": "Scoped interface reducer reviewed; peer tools/durable transport pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P18",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "037f2fa5f425525b2838818de857727c152a6d1a3f659e57cc3fc67cc4235993",
+      "remaining_or_next_gate": "Bounded conservative conflict graph reviewed; merge train/runtime integration pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P19",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "b601e43a4d6e114ca308ab2dc79c636f9d8cd4a3e315b37f24f7bcedaddc97d0",
+      "remaining_or_next_gate": "Frozen request/receipt publication fences reviewed; credential gateway/forge qualification pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P20",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "2aba99e8613df6e8756c3f9daee19e7722621f79c9ca9e631d25a3d4da6d6ac2",
+      "remaining_or_next_gate": "Scope/pin/identity/replay retirement proposals reviewed; no destructive executor or permission",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P21",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "c4db8c94b4f6dedc42cdb0a02b50982918eddf180861054827befcc18f584706",
+      "remaining_or_next_gate": "Immutable prepared-launch task/configuration/custody/resource/credential binding; Trusted executable, session journal/EOF/watermark and actual observed execution identity; Bounded real continuity and parent/child usage qualification",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P22",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "368c1e3998a781a7f0214191d15f86eb6fa7c4cfaa678516bb6e2595c3a55b59",
+      "remaining_or_next_gate": "Trusted executable/configuration identity and actual launch/permission behavior; Managed session/journal/watermark and replay binding; Bounded real transport, resume and usage qualification",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P23",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "fd58e316d0735381f63d7ce1216cb3a476b47d6aaaa01d29a6002cb08bfc02cf",
+      "remaining_or_next_gate": "Scope/clock/revocation enrollment contracts reviewed; real enrollment/replay transport pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P24",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "55ce13aab5d43807d634d04641bd95b48a5d307ec2eae5a3f84c625e4452309c",
+      "remaining_or_next_gate": "Scoped fresh ownership/continuation placement proposals reviewed; real partition qualification pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P25",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "17486d01db75762b7c00e03c403dca6c3658740beb45de688d833c5b51f5fd89",
+      "remaining_or_next_gate": "Snapshot/fence/closure recovery bindings reviewed; executor restore/cutover qualification pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P26",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "97af98e56efe44252e6728e4dfd6a1b07e4b846fe76852bc0db92ce84c4bfc11",
+      "remaining_or_next_gate": "Exact scoped usage/correction/coverage economics reviewed; explorer/service integration pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P27",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "d042c979b04b050e13b3dc8ea4e69b369a1519cdd61ea095bf6fea1d263572a8",
+      "remaining_or_next_gate": "Canonical bounded scoped excursion state reviewed; durable proposal loop activation pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P28",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "b29de8659469269d5387cada10956cc877419598a796ccb967bd6604eda53cd5",
+      "remaining_or_next_gate": "Fixed cohort/seed/oracle trial analysis reviewed; independent live trials pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P29",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "674e1de58c806aa9e722eb91375ededb98867fc9aae8385565232001ea3318e3",
+      "remaining_or_next_gate": "Bounded recorded diagnostic CLI tested; durable action/job, assets/fleet UX and named accessibility/E2E gates pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P30",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "bb38dcd02d8710c59e9ae8138489b3f23fb0b01d7d8c097b947d345709645d12",
+      "remaining_or_next_gate": "Explicit-input archive builder passes 10 checks; clean-install, signed distribution, rights and complete operator paths pending",
+      "state": "in_progress"
+    },
+    {
+      "current_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+      "gate_change": "No code/input gate change beyond scoped test fixture and verified history exports; prior full-contract gaps retained",
+      "native_execution_qualified": false,
+      "packet": "P31",
+      "parent_accepted": false,
+      "prior_contract_row_sha256": "b4e5b79ffd3550e7d57f934b66d2dfad3b3a66e7c713b8a4034b1f4a6c4e25f5",
+      "remaining_or_next_gate": "Isolated binary smoke and offline controlled provider harness are integrated; real provider, soak, savings, restore and fleet cutover gates remain open",
+      "state": "in_progress"
+    }
+  ],
+  "previous_reconciliation": "receipts/reconciliation/2026-10-18T1535Z-318ac71330d23b2cc57824a06cad8456d74eaa05.json",
+  "previous_reconciliation_sha256": "81f9f346a72898ab8920c85575668551dcf5f8921c0af9441009a6d4c2319032",
+  "review_source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+  "technical_artifact_criteria_verified": [
+    "P00"
+  ]
+}

@@ -1,0 +1,317 @@
+{
+  "base_main": "0d7d77e",
+  "example_sha256": "2d133d717551427fc136de4a819a8c987de0d2cc5f89e5f7666b6ad5a062edeb",
+  "external_exact_head_reviewer": "neverhumanbot",
+  "external_merged_pr": "https://github.com/neverhuman/admiralty/pull/26",
+  "external_review_head": "703c9c2c3bb4f14b3f7e00f0fd7520c61512e8e3",
+  "external_review_state": "APPROVED",
+  "hosted_ci_result": "PR26 hosted runs cancelled/queued; no hosted success inferred from local proof or external reviewer body.",
+  "independent_review": {
+    "all_deadlines_finite": true,
+    "assertions_unchanged": true,
+    "production_prefix_identical": true,
+    "result": "clear",
+    "test_only_timing": true,
+    "timeout_negative_still_ms": 20
+  },
+  "kind": "post_merge_source_reconciliation",
+  "limitations": [
+    "Five Mac/six Linux example checks are reruns of existing checks, not additional unique workspace checks.",
+    "This is engineering evidence for merged code, not a native run, service cutover or full parent acceptance."
+  ],
+  "linux": {
+    "commands": [
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+        "elapsed_s": 0.601,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T15:38:56.135884Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4/4166516905ef4572b56ab6d49eabd44c-fmt.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "name": "fmt",
+        "output_tail": [],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "started_utc": "2026-10-18T15:38:55.534440Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "clippy",
+          "-p",
+          "admiralty-runtime",
+          "--example",
+          "codex_qualification",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+        "elapsed_s": 12.411,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T15:39:08.547040Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4/4166516905ef4572b56ab6d49eabd44c-example-clippy.log",
+        "log_sha256": "dfe3ffa5447d46b234561b28dd9914a1c2d74b9e0325c34a946c6aa5e91abd57",
+        "name": "example-clippy",
+        "output_tail": [
+          "    Checking serde_core v1.0.229",
+          "    Checking memchr v2.8.3",
+          "    Checking serde_json v1.0.154",
+          "    Checking ref-cast v1.0.27",
+          "    Checking serde v1.0.229",
+          "    Checking schemars v1.2.3",
+          "    Checking thiserror v2.0.21",
+          "    Checking once_cell v1.21.4",
+          "    Checking tempfile v3.27.0",
+          "    Checking admiralty-core v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4/crates/admiralty-core)",
+          "    Checking admiralty-runtime v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4/crates/admiralty-runtime)",
+          "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 12.24s"
+        ],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "started_utc": "2026-10-18T15:38:56.136538Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "test",
+          "-p",
+          "admiralty-runtime",
+          "--example",
+          "codex_qualification",
+          "--locked",
+          "--",
+          "--test-threads=1"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+        "elapsed_s": 19.417,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T15:39:27.964498Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4/4166516905ef4572b56ab6d49eabd44c-qualification-example-tests.log",
+        "log_sha256": "1f69207971a8ad6bd7ae2758daf3ba5e440c6844e24904c920037b599abca37a",
+        "name": "qualification-example-tests",
+        "output_tail": [
+          "   Compiling admiralty-core v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4/crates/admiralty-core)",
+          "   Compiling admiralty-runtime v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4/crates/admiralty-runtime)",
+          "    Finished `test` profile [unoptimized + debuginfo] target(s) in 17.05s",
+          "     Running unittests examples/codex_qualification.rs (/home/ubuntu/admiralty-v2-build/targets/quality-review/debug/examples/codex_qualification-7e424d97b459b00f)",
+          "",
+          "running 6 tests",
+          "test tests::closed_config_rejects_unknown_and_duplicate_fields ... ok",
+          "test tests::executable_raw_sha256_detects_same_identity_and_timestamp_content_mutation ... ok",
+          "test tests::full_linux_harness_uses_only_fake_provider_and_retains_false_qualification ... ok",
+          "test tests::no_run_is_the_default_and_unknown_arguments_fail ... ok",
+          "test tests::owned_fake_child_is_bounded_and_has_complete_eof_without_provider_inference ... ok",
+          "test tests::safe_oracle_rejects_source_injection_forbidden_changes_and_oracle_mutation ... ok",
+          "",
+          "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.27s",
+          ""
+        ],
+        "oversized_output": false,
+        "rust_test_results": [
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          }
+        ],
+        "started_utc": "2026-10-18T15:39:08.547705Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "python3",
+          "tests/fixtures/legacy/verify.py"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+        "elapsed_s": 0.401,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T15:39:28.366378Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4/4166516905ef4572b56ab6d49eabd44c-legacy-fixtures.log",
+        "log_sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12",
+        "name": "legacy-fixtures",
+        "output_tail": [
+          "{\"base_sha\": \"1e8ed17eff27ed3ab80dc6860fc8eda301406aee\", \"mirror_checks\": \"pass\", \"secret_scan\": \"pass\", \"synthetic_cases\": 11, \"verified_sources\": 37, \"working_tree_drift\": [\"README.md\", \"captains/MODEL_ROUTING_PLAYBOOK.md\", \"captains/super_captain_BRIEF.md\", \"dashboard/collector.py\", \"dashboard/extras.py\", \"dashboard/index.html\", \"data/history/ledger/model_usage.csv\", \"data/history/ledger/model_usage_2026-10-18.jsonl\", \"data/history/quota/codex_quota.csv\", \"data/history/resources/disk_used.csv\", \"data/history/resources/host_snapshots.csv\", \"data/history/snapshots/projects_2026-10-18.jsonl\", \"data/history/timeseries/history.csv\", \"data/history/timeseries/history_2026-10-18.jsonl\", \"data/history/token_yield/token_yield_2026-10-18.jsonl\", \"data/history/tokens/claude_hourly.csv\", \"data/history/tokens/codex_sessions.csv\", \"tools/sc_audit.py\"]}"
+        ],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "started_utc": "2026-10-18T15:39:27.965145Z",
+        "timed_out": false
+      }
+    ],
+    "qualification_example_tests": 6,
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/67f2ccde6c12f377aeefd243c2f4e7657d7d6af4/4166516905ef4572b56ab6d49eabd44c-provider-gate.json",
+    "sha256": "91231cd2e187fcb1c8c60346e0a937f6b1432b2c6ce2526c2c07a72ccfdc60f5",
+    "worktree_clean": true
+  },
+  "mac": {
+    "commands": [
+      {
+        "argv": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "elapsed_s": 0.538,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/postmerge-checkpoint/fmt.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "name": "fmt",
+        "output_tail": [],
+        "rust_test_results": [],
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "cargo",
+          "clippy",
+          "-p",
+          "admiralty-runtime",
+          "--example",
+          "codex_qualification",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "elapsed_s": 5.185,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/postmerge-checkpoint/example-clippy.log",
+        "log_sha256": "415420f284d9aa589fac1a8e5b7ac697a91e7e20fbfeb043aa976bb474cc480c",
+        "name": "example-clippy",
+        "output_tail": [
+          "    Checking admiralty-core v0.1.0 (/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-core)",
+          "    Checking admiralty-runtime v0.1.0 (/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-runtime)",
+          "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.13s"
+        ],
+        "rust_test_results": [],
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "cargo",
+          "test",
+          "-p",
+          "admiralty-runtime",
+          "--example",
+          "codex_qualification",
+          "--locked",
+          "--",
+          "--test-threads=1"
+        ],
+        "elapsed_s": 7.632,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/postmerge-checkpoint/qualification-example-tests.log",
+        "log_sha256": "28d62ed1556f7eee59d5fc636224e1898755b7d9a7762dd7475193624c3760ee",
+        "name": "qualification-example-tests",
+        "output_tail": [
+          "   Compiling admiralty-core v0.1.0 (/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-core)",
+          "   Compiling admiralty-runtime v0.1.0 (/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-runtime)",
+          "    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.98s",
+          "     Running unittests examples/codex_qualification.rs (target/debug/examples/codex_qualification-96c4df4be77e0a17)",
+          "",
+          "running 5 tests",
+          "test tests::closed_config_rejects_unknown_and_duplicate_fields ... ok",
+          "test tests::executable_raw_sha256_detects_same_identity_and_timestamp_content_mutation ... ok",
+          "test tests::no_run_is_the_default_and_unknown_arguments_fail ... ok",
+          "test tests::owned_fake_child_is_bounded_and_has_complete_eof_without_provider_inference ... ok",
+          "test tests::safe_oracle_rejects_source_injection_forbidden_changes_and_oracle_mutation ... ok",
+          "",
+          "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s",
+          ""
+        ],
+        "rust_test_results": [
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          }
+        ],
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "python3",
+          "tests/fixtures/legacy/verify.py"
+        ],
+        "elapsed_s": 0.542,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/postmerge-checkpoint/legacy-fixtures.log",
+        "log_sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12",
+        "name": "legacy-fixtures",
+        "output_tail": [
+          "{\"base_sha\": \"1e8ed17eff27ed3ab80dc6860fc8eda301406aee\", \"mirror_checks\": \"pass\", \"secret_scan\": \"pass\", \"synthetic_cases\": 11, \"verified_sources\": 37, \"working_tree_drift\": [\"README.md\", \"captains/MODEL_ROUTING_PLAYBOOK.md\", \"captains/super_captain_BRIEF.md\", \"dashboard/collector.py\", \"dashboard/extras.py\", \"dashboard/index.html\", \"data/history/ledger/model_usage.csv\", \"data/history/ledger/model_usage_2026-10-18.jsonl\", \"data/history/quota/codex_quota.csv\", \"data/history/resources/disk_used.csv\", \"data/history/resources/host_snapshots.csv\", \"data/history/snapshots/projects_2026-10-18.jsonl\", \"data/history/timeseries/history.csv\", \"data/history/timeseries/history_2026-10-18.jsonl\", \"data/history/token_yield/token_yield_2026-10-18.jsonl\", \"data/history/tokens/claude_hourly.csv\", \"data/history/tokens/codex_sessions.csv\", \"tools/sc_audit.py\"]}"
+        ],
+        "rust_test_results": [],
+        "timed_out": false
+      }
+    ],
+    "qualification_example_tests": 5,
+    "receipt": "target/quality/postmerge-checkpoint/mac-gate.json",
+    "sha256": "eb1376ef4feb6620b39f1e2c217025ab4d8d3220dd60de39ed85fe4cc0d5fa47"
+  },
+  "native_execution_qualified": false,
+  "observed_utc": "2026-10-18T15:40:44.635439+00:00",
+  "only_changed_code": [
+    "crates/admiralty-runtime/examples/codex_qualification.rs"
+  ],
+  "paid_provider_calls": 0,
+  "parent_acceptance": false,
+  "prior_full_gate_receipt": "receipts/integration/318ac71330d23b2cc57824a06cad8456d74eaa05.json",
+  "prior_full_gate_receipt_sha256": "e2a27c20fe2a28fedaeee1785e0e268b138da066b58264ab213020da737a383e",
+  "root_did_not_merge": true,
+  "source_reuse": {
+    "actual_smokes_each_platform": 15,
+    "audit_tests_each_platform": 50,
+    "full_gate_source": "318ac71330d23b2cc57824a06cad8456d74eaa05",
+    "full_rust_linux": 584,
+    "full_rust_mac": 582,
+    "legacy_linux": 88,
+    "legacy_mac": 87,
+    "legacy_mac_skipped": 1,
+    "scope": "Prior full checks reused only for identical code/input objects; changed qualification example rerun on both platforms. Fresh fixture verifier covers current11history-export changes. No second full-workspace execution claimed."
+  },
+  "source_sha": "67f2ccde6c12f377aeefd243c2f4e7657d7d6af4",
+  "tracked_changes_since_full_gate": [
+    "crates/admiralty-runtime/examples/codex_qualification.rs",
+    "data/history/ledger/model_usage.csv",
+    "data/history/ledger/model_usage_2026-10-18.jsonl",
+    "data/history/quota/codex_quota.csv",
+    "data/history/resources/disk_used.csv",
+    "data/history/resources/host_snapshots.csv",
+    "data/history/snapshots/projects_2026-10-18.jsonl",
+    "data/history/timeseries/history.csv",
+    "data/history/timeseries/history_2026-10-18.jsonl",
+    "data/history/token_yield/token_yield_2026-10-18.jsonl",
+    "data/history/tokens/claude_hourly.csv",
+    "data/history/tokens/codex_sessions.csv",
+    "docs/plans/admiralty-v2/EXECUTION.md",
+    "receipts/P05/318ac71330d23b2cc57824a06cad8456d74eaa05.json",
+    "receipts/integration/318ac71330d23b2cc57824a06cad8456d74eaa05.json",
+    "receipts/reconciliation/2026-10-18T1535Z-318ac71330d23b2cc57824a06cad8456d74eaa05.json"
+  ]
+}
