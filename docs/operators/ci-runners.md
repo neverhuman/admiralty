@@ -45,7 +45,9 @@ before admission is not proof that the organization pool is absent.
 The Rust/legacy and contracts/dashboard checks retain their existing triggers,
 job names, timeouts, pinned checkout/setup-node actions, pinned Rust/Node/pnpm,
 read-only workflow token and concurrency cancellation. Private test scratch and
-actual isolated-binary smoke scratch remain under `RUNNER_TEMP`. Pinned pnpm is
+actual isolated-binary smoke scratch use a fresh owner-only canonical `/tmp`
+directory, with ancestor custody recorded by CI. Rust homes and pinned pnpm use
+job-owned directories under `RUNNER_TEMP`. Pinned pnpm is
 installed into a job-owned prefix under `RUNNER_TEMP`, with its `bin` directory
 added through `GITHUB_PATH`; the workflow does not modify a shared global npm
 prefix. Each job prints the selected runner name, OS and architecture so a run
