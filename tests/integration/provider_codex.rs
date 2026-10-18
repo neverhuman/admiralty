@@ -136,3 +136,32 @@ fn replaying_a_codex_journal_chunk_cannot_duplicate_observations() {
     ));
     assert_eq!(parser.observations().len(), 1);
 }
+
+#[test]
+fn invalid_utf8_in_a_fragmented_codex_event_is_rejected_without_observation() {
+    let mut parser = CodexNdjsonStream::new("selected-model", CodexEffort::Low)
+        .expect("explicit model accepted");
+    let corrupted = b"{\"type\":\"thread.started\",\"thread_id\":\"\xc3(\"}\n";
+    let split = corrupted
+        .windows(2)
+        .position(|pair| pair == b"\xc3(")
+        .expect("corrupt UTF-8 sequence");
+    assert!(
+        parser
+            .push_chunk(&OutputChunk {
+                offset: 0,
+                stream: OutputStream::Stdout,
+                bytes: corrupted[..split + 1].to_vec(),
+            })
+            .is_ok()
+    );
+    assert!(matches!(
+        parser.push_chunk(&OutputChunk {
+            offset: (split + 1) as u64,
+            stream: OutputStream::Stdout,
+            bytes: corrupted[split + 1..].to_vec(),
+        }),
+        Err(CodexError::Json(_))
+    ));
+    assert!(parser.observations().is_empty());
+}

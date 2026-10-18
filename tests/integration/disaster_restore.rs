@@ -1,4 +1,4 @@
-use admiralty_runtime::recovery::{Blocker, DecimalU64, plan_recovery};
+use admiralty_runtime::recovery::{Blocker, DecimalU64, RecoveryError, plan_recovery};
 use std::{
     io::{self, Read},
     path::PathBuf,
@@ -175,6 +175,19 @@ fn missing_artifact_or_stale_external_fence_blocks_restore_proposal() {
     assert!(stale.blockers.contains(&Blocker::StaleExternalGeneration));
     assert!(!stale.restore_authorized());
     assert!(!stale.effects_authorized());
+}
+
+#[test]
+fn corrupted_artifact_closure_identifier_is_rejected() {
+    let (mut manifest, observation, fence) = recovery_fixture::valid_recovery_evidence();
+    manifest.artifact_closure[0].closure_id.push('x');
+
+    let error = plan_recovery(&manifest, &observation, Some(&fence))
+        .expect_err("corrupted artifact closure identity is rejected");
+    assert_eq!(
+        error,
+        RecoveryError::Invalid("artifact closure ID does not match immutable content".into())
+    );
 }
 
 #[test]

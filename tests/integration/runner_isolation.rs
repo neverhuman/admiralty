@@ -117,3 +117,25 @@ fn workspace_scope_path_limit_is_enforced_at_boundary() {
         WorkspaceError::InputTooLarge
     );
 }
+
+#[test]
+fn workspace_scope_path_byte_limit_rejects_overflow() {
+    use admiralty_runtime::workspace::registry::MAX_PATH_BYTES;
+
+    let temp = tempfile::tempdir().expect("temporary workspace fixture");
+    let workspace = fs::canonicalize(temp.path()).expect("canonical fixture root");
+    let spec = WorkspaceSpec {
+        node_id: NodeRef::new("node-path-bytes").expect("node ID"),
+        root_id: RootId::new("root-path-bytes").expect("root ID"),
+        project_id: ProjectId::new("project-path-bytes").expect("project ID"),
+        workspace,
+        owned_paths: vec![PathBuf::from("a".repeat(MAX_PATH_BYTES + 1))],
+        forbidden_paths: Vec::new(),
+    };
+
+    assert_eq!(
+        spec.validate()
+            .expect_err("overlong owned path must fail closed"),
+        WorkspaceError::InvalidRelativePath
+    );
+}

@@ -137,6 +137,17 @@ fn replaying_the_same_snapshot_produces_the_same_non_authorizing_proposal() {
 }
 
 #[test]
+fn unsupported_snapshot_schema_is_rejected_before_proposal() {
+    let mut input = snapshot(scheduled("task", LeaseObservation::Absent));
+    input.schema_version = u32::MAX;
+
+    assert_eq!(
+        propose_ready_tasks(&input, &scope()),
+        Err(SchedulerError::UnsupportedVersion)
+    );
+}
+
+#[test]
 fn changed_scope_is_rejected_instead_of_escalating_or_claiming() {
     let mut expected = scope();
     expected.revision += 1;

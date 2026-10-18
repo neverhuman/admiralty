@@ -401,7 +401,7 @@ fn line_stream_event_and_metadata_limits_fail_closed() {
         boundary_stream
             .split(|byte| *byte == b'\n')
             .nth(1)
-            .unwrap()
+            .expect("boundary stream contains the inserted event")
             .len(),
         MAX_EVENT_BYTES
     );
