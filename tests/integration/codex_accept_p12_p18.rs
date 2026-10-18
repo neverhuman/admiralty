@@ -112,6 +112,92 @@ async fn p12_p18_round8_p12_api_tui_doctor_qualification() {
     );
 }
 
+#[tokio::test]
+async fn p12_p18_round10_item3_workspace_gate_audit() {
+    let directory = private_directory();
+    let store = Store::open(directory.path().join("round10.sqlite")).expect("fixture store");
+    store
+        .append(
+            SourceIdentity {
+                producer_id: "round10-audit".into(),
+                incarnation: "boot-1".into(),
+                sequence: "1".into(),
+            },
+            DomainEvent::TaskSubmitted {
+                contract: task_fixture("round10-audit-task"),
+            },
+            "2026-10-18T00:00:00Z".into(),
+        )
+        .expect("record deterministic workspace audit fixture");
+    let router = app(
+        store,
+        ServerConfig {
+            listen: "127.0.0.1:0"
+                .parse::<SocketAddr>()
+                .expect("loopback address"),
+            simulated: true,
+            token: None,
+            assets: None,
+            legacy: None,
+            models_file: None,
+        },
+    )
+    .expect("simulated read-only workspace audit API");
+
+    async fn fleet_snapshot(router: axum::Router) -> Value {
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/v1/fleet")
+                    .body(Body::empty())
+                    .expect("deterministic fleet request"),
+            )
+            .await
+            .expect("fleet response");
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = to_bytes(response.into_body(), 1024 * 1024)
+            .await
+            .expect("bounded fleet response");
+        serde_json::from_slice(&bytes).expect("fleet JSON")
+    }
+
+    let first = fleet_snapshot(router.clone()).await;
+    let replay = fleet_snapshot(router).await;
+    assert_eq!(
+        first, replay,
+        "repeated workspace audit is read-only and stable"
+    );
+    assert_eq!(first["simulated"], true);
+    assert_eq!(first["native_execution_qualified"], false);
+    assert_eq!(first["cursor"]["event_seq"], "1");
+    assert_eq!(first["tasks"][0]["contract"]["simulated"], true);
+
+    let in_scope = [candidate("workspace-a"), candidate("workspace-b")];
+    let graph =
+        analyze_conflicts(&in_scope, "round10-policy").expect("analyze workspace generation");
+    assert_eq!(
+        graph.scope.as_ref().map(|scope| &scope.project_id),
+        Some(&in_scope[0].project_id)
+    );
+    assert_eq!(
+        graph.generation.candidate_ids,
+        ["workspace-a", "workspace-b"]
+    );
+    assert!(graph.generation.combined_verification_required);
+    assert_eq!(
+        graph,
+        analyze_conflicts(&in_scope, "round10-policy").expect("replay same generation")
+    );
+
+    let mut foreign = candidate("foreign-workspace");
+    foreign.project_id = ProjectId::new("different-workspace").expect("valid foreign workspace");
+    assert!(matches!(
+        analyze_conflicts(&[in_scope[0].clone(), foreign], "round10-policy"),
+        Err(admiralty_core::conflicts::ConflictError::ScopeMismatch { .. })
+    ));
+}
+
 #[test]
 fn p12_p18_round9_item3_doctor_repair_idempotence_qualification() {
     let directory = private_directory();
