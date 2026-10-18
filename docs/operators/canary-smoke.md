@@ -65,7 +65,13 @@ protected legacy port. Fleet rollout still requires the complete P31 inventory,
 backup, shadow, observed-session, bounded new-task canary, staged expansion and
 rollback evidence from the deployment owner.
 
-The HTTP deadline also covers a peer that slowly drips response headers: a
-monotonic watchdog shuts down only the connection opened by this request. Tests
+The HTTP deadline covers connect, request transmission, response headers and the
+complete response body. A monotonic watchdog shuts down only this request's own
+connection. Shutdown can surface as EOF rather than a timeout exception, so the
+reader checks an independent expiry marker and monotonic time after blocking I/O,
+including EOF, before reporting success. A body shorter than its declared content
+length is rejected. Tests retain the original slow-drip timing limits and include
+deterministic EOF/expiry coverage plus complete and truncated local responses.
+These checks do not contact inference or production services. Tests
 resolve their own temporary-root aliases before passing strict no-symlink paths;
 production input validation still refuses symlink components.
