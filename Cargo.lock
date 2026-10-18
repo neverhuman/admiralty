@@ -38,6 +38,8 @@ version = "0.1.0"
 dependencies = [
  "admiralty-core",
  "admiralty-runtime",
+ "admiralty-store",
+ "rusqlite",
  "serde_json",
  "tempfile",
 ]
