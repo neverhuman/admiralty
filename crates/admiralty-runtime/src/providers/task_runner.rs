@@ -3,7 +3,6 @@
 //! This facade only returns a prepared command. It never launches a process,
 //! reads credentials, performs provider inference, or treats a prepared command
 //! as execution/resource admission.
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::{codex, opencode_ssh};
 use crate::models::{

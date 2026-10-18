@@ -1,5 +1,7 @@
 //! Offline domain operations and an isolated, read-only demo. No provider execution.
 mod diagnostics;
+pub mod native_intake;
+pub mod native_package;
 pub mod native_recovery;
 mod workplans;
 use admiralty_core::{
@@ -110,6 +112,11 @@ enum Command {
     },
     /// Create-only backups, isolated restore rehearsals and non-authorizing recovery proposals.
     Recover(native_recovery::RecoveryArgs),
+    /// Stage explicit release inputs; this does not install, sign or activate a release.
+    Release {
+        #[command(subcommand)]
+        command: ReleaseCommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -157,6 +164,26 @@ impl SourceArgs {
 
 #[derive(Subcommand)]
 enum WorkCommand {
+    /// Preview immutable JSON workplan contracts and diagnostics; no WorkOrder/execution is created.
+    Preview {
+        #[arg(long, value_parser = bounded_absolute_path)]
+        file: PathBuf,
+        #[command(flatten)]
+        source: IntakeSourceArgs,
+    },
+    /// Register an explicitly selected workplan preview offline; emits no task events.
+    Register {
+        #[arg(long, value_parser = bounded_absolute_path)]
+        database: PathBuf,
+        #[arg(long, value_parser = bounded_absolute_path)]
+        file: PathBuf,
+        #[arg(long)]
+        selected_preview_digest: String,
+        #[arg(long)]
+        expected_current_revision: String,
+        #[command(flatten)]
+        source: IntakeSourceArgs,
+    },
     Validate {
         #[arg(long)]
         file: PathBuf,
@@ -169,6 +196,125 @@ enum WorkCommand {
         #[command(flatten)]
         source: SourceArgs,
     },
+}
+
+#[derive(Args)]
+struct IntakeSourceArgs {
+    #[arg(long, value_parser = bounded_source_label)]
+    producer: String,
+    #[arg(long, value_parser = bounded_source_label)]
+    incarnation: String,
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..=i64::MAX as u64))]
+    sequence: u64,
+}
+
+impl IntakeSourceArgs {
+    fn identity(self) -> SourceIdentity {
+        SourceIdentity {
+            producer_id: self.producer,
+            incarnation: self.incarnation,
+            sequence: self.sequence.to_string(),
+        }
+    }
+}
+
+fn bounded_source_label(value: &str) -> Result<String, String> {
+    if value.trim().is_empty() || value.len() > 256 || value.chars().any(char::is_control) {
+        return Err("source labels require 1..256 bytes without control characters".into());
+    }
+    Ok(value.to_owned())
+}
+
+fn bounded_absolute_path(value: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(value);
+    if value.len() > 4096
+        || value.chars().any(char::is_control)
+        || !path.is_absolute()
+        || value.split('/').any(|part| matches!(part, "." | ".."))
+    {
+        return Err(
+            "paths must be absolute, normalized and fit 4096 bytes without controls".into(),
+        );
+    }
+    Ok(path)
+}
+
+#[derive(Subcommand)]
+enum ReleaseCommand {
+    Stage {
+        #[arg(long, value_parser = bounded_absolute_path)]
+        input_root: PathBuf,
+        #[arg(long, value_parser = bounded_absolute_path)]
+        output: PathBuf,
+        /// Private JSON array of {source,expected_sha256,mode}; SHA-256 is raw 64-character lowercase hex.
+        #[arg(long, value_parser = bounded_absolute_path)]
+        allowlist: PathBuf,
+        #[arg(long)]
+        version: String,
+        #[arg(long)]
+        target: String,
+        /// Recorded full commit label; this command does not attest checkout/build provenance.
+        #[arg(long)]
+        source_commit: String,
+    },
+}
+
+fn read_private_command_input(path: &Path) -> CliResult<Vec<u8>> {
+    if !path.is_absolute() || path.as_os_str().len() > 4096 {
+        return Err(invalid(
+            "new command input requires an absolute bounded path",
+        ));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
+        let mut current = PathBuf::from("/");
+        for part in path.components() {
+            if let std::path::Component::Normal(name) = part {
+                current.push(name);
+                if fs::symlink_metadata(&current)?.file_type().is_symlink() {
+                    return Err(invalid("command input path must not contain symlinks"));
+                }
+            } else if matches!(
+                part,
+                std::path::Component::CurDir | std::path::Component::ParentDir
+            ) {
+                return Err(invalid("command input path must be normalized"));
+            }
+        }
+        let file = fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(
+                (rustix::fs::OFlags::NOFOLLOW
+                    | rustix::fs::OFlags::NONBLOCK
+                    | rustix::fs::OFlags::CLOEXEC)
+                    .bits() as i32,
+            )
+            .open(path)?;
+        let metadata = file.metadata()?;
+        if !metadata.is_file()
+            || metadata.nlink() != 1
+            || metadata.uid() != rustix::process::geteuid().as_raw()
+            || metadata.permissions().mode() & 0o077 != 0
+            || metadata.len() > MAX_JSON_BYTES
+        {
+            return Err(invalid(
+                "command input must be an owner-only regular file of at most 1 MiB",
+            ));
+        }
+        let mut bytes = Vec::with_capacity(metadata.len() as usize);
+        file.take(MAX_JSON_BYTES + 1).read_to_end(&mut bytes)?;
+        if bytes.len() as u64 > MAX_JSON_BYTES {
+            return Err(invalid("command input exceeds 1 MiB"));
+        }
+        Ok(bytes)
+    }
+    #[cfg(not(unix))]
+    {
+        Err(invalid(
+            "private input custody is unsupported on this platform",
+        ))
+    }
 }
 
 #[derive(Subcommand)]
@@ -581,6 +727,41 @@ async fn run(cli: Cli) -> CliResult<()> {
         }
         Command::Workplan(args) => workplans::run(args)?,
         Command::Work { command } => match command {
+            WorkCommand::Preview { file, source } => {
+                let preview = native_intake::preview_work_order(
+                    &read_private_command_input(&file)?,
+                    source.identity(),
+                )?;
+                print_json(native_intake::preview_json(&preview))?;
+            }
+            WorkCommand::Register {
+                database,
+                file,
+                selected_preview_digest,
+                expected_current_revision,
+                source,
+            } => {
+                let preview = native_intake::preview_work_order(
+                    &read_private_command_input(&file)?,
+                    source.identity(),
+                )?;
+                native_intake::validate_selection(
+                    &preview,
+                    &selected_preview_digest,
+                    &expected_current_revision,
+                )?;
+                let store = Store::open(database)?;
+                let receipt = native_intake::register_preview(
+                    &store,
+                    &preview,
+                    &selected_preview_digest,
+                    &expected_current_revision,
+                )?;
+                print_json(
+                    json!({"recorded_only":true,"kind":"workplan_registration","receipt":receipt,
+                    "work_order_created":false,"execution_granted":false,"acceptance_granted":false,"native_execution_qualified":false}),
+                )?;
+            }
             WorkCommand::Validate { file } => {
                 let contract = read_contract(&file)?;
                 print_json(
@@ -745,6 +926,32 @@ async fn run(cli: Cli) -> CliResult<()> {
             )?;
         }
         Command::Recover(args) => print_json(native_recovery::run(args)?)?,
+        Command::Release {
+            command:
+                ReleaseCommand::Stage {
+                    input_root,
+                    output,
+                    allowlist,
+                    version,
+                    target,
+                    source_commit,
+                },
+        } => {
+            let inputs: Vec<native_package::PackageInput> =
+                serde_json::from_slice(&read_private_command_input(&allowlist)?)?;
+            let receipt = native_package::stage_native_package(
+                &input_root,
+                &output,
+                &version,
+                &target,
+                &source_commit,
+                &inputs,
+            )?;
+            print_json(
+                json!({"recorded_only":true,"receipt":receipt,"source_commit_verified":false,
+                "execution_granted":false,"acceptance_granted":false,"native_execution_qualified":false,"activated":false}),
+            )?;
+        }
     }
     Ok(())
 }

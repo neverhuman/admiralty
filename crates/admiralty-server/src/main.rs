@@ -2,7 +2,7 @@ use clap::Parser;
 use std::{net::SocketAddr, path::PathBuf};
 
 #[derive(Parser)]
-#[command(about = "Read-only Admiralty coordinator projection server")]
+#[command(about = "Admiralty coordinator and dashboard")]
 struct Args {
     #[arg(long)]
     database: PathBuf,
@@ -20,12 +20,25 @@ struct Args {
     legacy_public_read: bool,
     #[arg(long)]
     models_file: Option<PathBuf>,
+    /// Private, owner-controlled native operator and exact agent grant configuration.
+    #[arg(long)]
+    native_config: Option<PathBuf>,
+    /// Optional old-port compatibility redirect served by this Rust binary.
+    #[arg(long)]
+    redirect_listen: Option<SocketAddr>,
 }
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let args = Args::parse();
-    let token = std::fs::read_to_string(args.token_file)?.trim().to_string();
-    let store = admiralty_store::Store::open(args.database)?;
+    let token = admiralty_server::startup::read_private_token(&args.token_file)?;
+    let (store, native_routes) = match args.native_config {
+        Some(path) => {
+            let configured =
+                admiralty_server::startup::open_native_services(&args.database, &path, &token)?;
+            (configured.store, Some(configured.routes))
+        }
+        None => (admiralty_store::Store::open(args.database)?, None),
+    };
     let legacy =
         args.legacy_status_file
             .zip(args.legacy_index_file)
@@ -36,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     public_read: args.legacy_public_read,
                 },
             );
-    admiralty_server::serve(
+    let primary = admiralty_server::serve_with_native_routes(
         store,
         admiralty_server::ServerConfig {
             listen: args.listen,
@@ -46,6 +59,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             legacy,
             models_file: args.models_file,
         },
-    )
-    .await
+        native_routes,
+    );
+    match args.redirect_listen {
+        Some(listen) => tokio::select! {
+            result = primary => result,
+            result = admiralty_server::serve_redirect(listen, args.listen) => result,
+        },
+        None => primary.await,
+    }
 }
