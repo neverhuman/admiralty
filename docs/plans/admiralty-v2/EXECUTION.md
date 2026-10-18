@@ -7,11 +7,11 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). In
 | Packet | State | Owner | Integrated commit or candidate | Evidence and next action |
 | --- | --- | --- | --- | --- |
 | P00 | review | evidence lane + integration review | independently checked at `a9ba930e` | 37 pinned hashes, 11 synthetic cases, distinct 449/503 baselines and unknown-explicit inventory worksheet satisfy inspected artifact criteria; hashed current execution evidence recorded, authorized engineering receipt closeout pending |
-| P01 | in_progress | integration + quality review | combined source `661bf36f` | All 30 named integration targets registered; Mac 558 and clean Linux 560 Rust checks plus strict gates pass; hosted run cancelled before steps; full fault/simulator matrix pending |
+| P01 | in_progress | integration + quality review | combined source `318ac713` | All 30 named targets registered; Mac 582 and clean Linux 584 Rust checks plus strict gates pass; hosted jobs queued without a runner; full fault/simulator matrix pending |
 | P02 | in_progress | domain + integration review | reviewed `03772f94` | Typed contracts, pure reducers and schema/TS checks are integrated; complete authority/policy negotiation remains pending |
 | P03 | in_progress | local store agent + integration reviewer | reviewed `29acc013` | Atomic domain/outbox admission, immutable request/effect associations, replay and receive-time retry compatibility tested; durable executor admission loop pending |
 | P04 | in_progress | artifact + custody lanes + strong review | reviewed `29acc013` | Transactional asset/pin catalog with full observation binding, fixed clock policy and receipt closure; trusted filesystem observation/startup activation pending |
-| P05 | in_progress | local coordination team + strong review | Store reviewed `29acc013`; later main `429595d` requires fixes | Durable scoped Store messages/ACK and question journal retained; new in-memory mailbox has collision/retention/validation blockers; durable delivery/subscriptions pending |
+| P05 | in_progress | local coordination team + strong review | reviewed `318ac713` | Mailbox collision/history/envelope bounds, authorized bounded topics and scoped queue-history pages reviewed and tested; trusted service authentication and durable delivery/subscription activation pending |
 | P06 | in_progress | local context team | PR prototype | Constraint-preserving capsules, epochs and bounded attention governor; durable governor/outbox activation and retrieval pending |
 | P07 | in_progress | remote session lane + local reviewer | runtime `e2b540fb`; fixture `661bf36f` | Private socket fixture now bounds framing, connect, I/O and owned-child cleanup; same-daemon client reconnect passes; control-service restart adoption and admitted fleet activation unqualified |
 | P08 | in_progress | provider + integration review | reviewed `455ee5f4` | Adds opt-in controlled exact-fixture Codex transport harness with offline CI tests and executable hashes; no real run or native qualification |
@@ -420,3 +420,62 @@ and `receipts/reviews/429595d196fcb6b730d5683e04d479faa1ec968c-P05.json`.
 Next ready work is the scoped P05 repair, stale lane/permit reconciliation,
 missing P01 deterministic fault/clock/forge/reset harnesses, and live command
 admission. Hosted CI and exact-head review remain separate merge gates.
+
+
+## Coordination hardening checkpoint
+
+Source `318ac713` incorporates the reviewed main P05 additions through a clean
+local merge, then repairs the concrete offline blockers. Two disjoint agents own
+mailbox/envelope and topic files; integration owns the server wrapper and shared
+harness. Mailboxes now reject invalid capacities, sequence zero and full-envelope
+errors; exact replay requires the same ID, sequence and complete immutable
+message. Conflicts leave state unchanged. ACKed history retains collision
+evidence within the same bound, with explicit sticky resnapshot on exhaustion
+and checked prefix arithmetic. Topic subscriptions and pages require injected
+trusted-service policy, hard byte/container/page limits and authorization before
+mutation. Reads inspect at most limit+1 targets and return no unbounded clones.
+
+The unpaged global-snapshot message wrapper is replaced by recipient/epoch queue
+observation replay over 1–16 durable events. Every page checks actual caller
+policy before Store access; scope and canonical cursor fields are bounded before
+cloning/enqueueing. Independent review found and closed that last cursor-bound
+seam. Empty filtered pages still advance the scanned cursor, so consumers cannot
+mistake them for EOF. ACKed observations remain historical facts. Real Store
+reopen and recovery-generation tests cover the supported semantics. These are
+building blocks, not an authenticated agent route, pending-delivery queue or
+activated durable broker. See
+[component boundaries](../../architecture/coordination-observation-limits.md).
+
+At exact source `318ac713`, macOS passes 582 Rust checks and clean Linux passes
+584, including all 30 named integration targets, 19 new mailbox/envelope/topic
+unit regressions and six coordination integration checks. Both pass formatting,
+strict workspace Clippy, schemas, binary build, the pinned 37-source/11-case
+fixture verifier, 50 audit tests and 15 actual isolated binary HTTP/CLI smokes.
+Both owned smoke children terminate. Fresh legacy checks discover 88 on macOS
+(87 pass, one platform skip) and pass all 88 on Linux. The legacy/audit rerun is
+justified by the merged tools tree change. Unchanged React/contracts/package and
+smoke-harness checks are reused by exact object identity. The intermediate
+concurrent topic Default lint warning was corrected; its original output has no
+saved raw log, while both final strict logs and hashes are retained.
+
+The 15:23 fleet snapshot observes 15 newly started turns but no new candidate
+HEADs/receipts. Bounded sanitized latest-input classification finds only
+review/verification/status nudges, with no explicit implementation directive;
+source actor and authority remain unknown. Do not call those implementation
+progress. The manager remains visibly Gemini 4 Argon. Its correction application
+is unproven: all 32 whole-packet claims, three stale worktree bindings and the
+11:16 workqueue remain unchanged. Their legacy CPU reservations are still held;
+no new dispatch, process interruption or native permit was introduced by root.
+The live collector continues to quarantine all 32 claims, and health remains OK
+with native qualification false. The UI retains its real-data console and plots.
+
+Current evidence: `receipts/P05/318ac71330d23b2cc57824a06cad8456d74eaa05.json`,
+`receipts/integration/318ac71330d23b2cc57824a06cad8456d74eaa05.json` and
+`receipts/reconciliation/2026-10-18T1535Z-318ac71330d23b2cc57824a06cad8456d74eaa05.json`.
+The source proof excludes the later hourly data export `f85725f`, which changes
+only 11 history inputs. Hosted run 39140691489 is still queued with no assigned
+runner/steps at observation; inspected APIs expose no cause. Required hosted
+checks and configured exact-head review remain separate gates. No PR merge,
+production binary/UI deployment or native cutover occurred. Next ready work is
+manager task/permit reconciliation, the missing P01 deterministic fault matrix,
+and the durable coordination service authority/delivery interface and executor.

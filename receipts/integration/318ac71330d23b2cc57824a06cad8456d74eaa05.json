@@ -1,0 +1,1181 @@
+{
+  "changed_paths": [
+    {
+      "blob": "1307461f30961b6f6a32b0359734bf3a82e6e63c",
+      "path": "crates/admiralty-core/src/coordination/mailbox.rs",
+      "sha256": "e787becd1930cf458a92590ab39a4d6c2552a1191f54763d76618886e7a43873"
+    },
+    {
+      "blob": "4ac5cb854ce8476b02241c06d3ef3a4fcb89a264",
+      "path": "crates/admiralty-core/src/coordination/message.rs",
+      "sha256": "b70a7554e8488f618a355ba372972d3f42a227ac7010382dcb6173f523a8a471"
+    },
+    {
+      "blob": "013a3e2d1f83998cd1d86bfd10a6b93cdd577209",
+      "path": "crates/admiralty-core/src/coordination/topics.rs",
+      "sha256": "ddea87cc57e38ac8afb7cf2d33948abe885d011c14dd5f72dab3673e116d2a3e"
+    },
+    {
+      "blob": "a03f6c8484e79bc4db19e00e78a1837ef20c8e0b",
+      "path": "crates/admiralty-server/src/services/coordination.rs",
+      "sha256": "b2f9a5922953aef957783fb98051afa442e9a438b7b9d77573bcaebfe310e055"
+    },
+    {
+      "blob": "1a04b85adef0c1490c05cf6b97a08f172b85799e",
+      "path": "tests/integration/coordination_delivery.rs",
+      "sha256": "7cc30e325467b5755aa3d9e5f39514118b3f998d27800c6dd16271ea9fa8110c"
+    },
+    {
+      "blob": "981e079f6eaca08ba24fd5a6e0829bc83654cd28",
+      "path": "docs/architecture/coordination-observation-limits.md",
+      "sha256": "0fe5075ae0f46dc8f788465201f7546d4d993fc60277b51d2acfb4ddf38cca8f"
+    }
+  ],
+  "fleet_observation": {
+    "correction_application_unproven": true,
+    "legacy_affinity_holds": {
+      "104": 3,
+      "105": 3,
+      "106": 3,
+      "107": 3,
+      "108": 3,
+      "109": 3
+    },
+    "manager": {
+      "capture_sha256": "79f9fca66c85766735859db74a8456f23ca751a6bcdaef386a8bc7fa5f37eeec",
+      "configured_id": "2062267.agy_captain_admiralty",
+      "execution_model_attestation": "not_available",
+      "observed_utc": "2026-10-18T15:23:41.818587+00:00",
+      "process_exists": true,
+      "reference_limit": "Read/ACK words near inbox reference are visible text only; no binding to latest correction hash or proof of applied policy.",
+      "screen_exists": true,
+      "visible_ack_or_read_reference_only": true,
+      "visible_case_insensitive_inbox_reference": true,
+      "visible_model_labels": [
+        "Gemini 4 Argon"
+      ]
+    },
+    "new_turns": 15,
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/fleet-observations/3398539f6c9141468f5b85b9aa7f8895/reconciliation-frozen.json",
+    "reported_whole_packet_claims": 32,
+    "sha256": "835f356faea1ae7b14244faa42e05c7cba8bd85809a8d99b9744a9424b3e049b",
+    "task_bindings_still_stale": 3,
+    "window": {
+      "ended_utc": "2026-10-18T15:23:41.825961+00:00",
+      "started_utc": "2026-10-18T15:23:40.604435+00:00"
+    },
+    "worker_candidates_advanced": false,
+    "workqueue_updated_utc": "2026-10-18T11:16:44.601103+00:00"
+  },
+  "hosted_ci": {
+    "exact_head_review_present": false,
+    "queue_cause": "not exposed by inspected APIs; no billing or missing-hosted-runner inference",
+    "run": 39140691489,
+    "source_head": "318ac71330d23b2cc57824a06cad8456d74eaa05",
+    "state": "queued without assigned runner or steps"
+  },
+  "input_purpose": {
+    "classification": "15 review/verification/status nudges by bounded lexical observations; no explicit implementation directive detected; actor/authority unknown.",
+    "productive_implementation_not_inferred": true,
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/fleet-observations/3398539f6c9141468f5b85b9aa7f8895/input-purpose.json",
+    "sha256": "012dcf9e4deac4884c663d897207dc2ecd3f06cb9cd7a9ba4c928b3ebb19b9b5"
+  },
+  "kind": "coordination_hardening_combined_checkpoint",
+  "later_main_excluded": {
+    "scope": "11 read-only hourly history export paths; no pass of those later data objects claimed",
+    "sha": "f85725f7d5b6317af5ff2c28c128e6e0ae1009fd"
+  },
+  "legacy_validation": {
+    "linux": {
+      "argv": [
+        "taskset",
+        "-c",
+        "102,103",
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/legacy",
+        "-v"
+      ],
+      "elapsed_s": 17.247,
+      "exit_code": 0,
+      "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/318ac71330d23b2cc57824a06cad8456d74eaa05/42f5854ff5bb4a4cadccabad25bb60a0-legacy-tests.log",
+      "log_sha256": "6fdd9e7a4482b97f8f3c38916a77caf14f44444bee7b52c8eea6bc445540be15",
+      "observed_utc": "2026-10-18T15:33:04.087630+00:00",
+      "reason": "Merged tools tree changed; recheck legacy compatibility on clean combined source.",
+      "source_sha": "318ac71330d23b2cc57824a06cad8456d74eaa05",
+      "tail": [
+        "test_zero_test_log_is_not_successful_case_coverage (test_stage_evidence_regressions.StageEvidenceTests.test_zero_test_log_is_not_successful_case_coverage) ... ok",
+        "",
+        "----------------------------------------------------------------------",
+        "Ran 88 tests in 17.047s",
+        "",
+        "OK"
+      ],
+      "timed_out": false,
+      "worktree_clean": true
+    },
+    "linux_passed": 88,
+    "linux_supplement_sha256": "a87e8fbb40d30c381dcd221ceb687b912a23c9610c56275a9623812520c202ee",
+    "mac": {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/legacy",
+        "-v"
+      ],
+      "elapsed_s": 1.373,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/coordination-checkpoint/mac-legacy-tests.log",
+      "log_sha256": "d05cc974e46d546144bcecb4f9e35aee26561c53ee263174ce1738b179fcaab8",
+      "observed_utc": "2026-10-18T15:32:25.647745+00:00",
+      "reason": "Merged tools tree changed; check legacy compatibility on the combined source rather than assume subtree identity.",
+      "source_sha": "318ac71330d23b2cc57824a06cad8456d74eaa05",
+      "tail": [
+        "test_zero_test_log_is_not_successful_case_coverage (test_stage_evidence_regressions.StageEvidenceTests.test_zero_test_log_is_not_successful_case_coverage) ... ok",
+        "",
+        "----------------------------------------------------------------------",
+        "Ran 88 tests in 1.219s",
+        "",
+        "OK (skipped=1)"
+      ]
+    },
+    "mac_discovered": 88,
+    "mac_passed": 87,
+    "mac_skipped": 1
+  },
+  "limitations": [
+    "All32 full packet contracts remain separate from component tests and named harnesses.",
+    "No PR merge, production binary/UI change, native cutover, provider invocation or remote worker dispatch by root.",
+    "No runner/account configuration changed. Hosted required checks and configured exact-head review remain separate."
+  ],
+  "linux_private_receipt": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/318ac71330d23b2cc57824a06cad8456d74eaa05/ce473f77f3974cac8e11e2c2f240f58d-provider-gate.json",
+  "linux_validation": {
+    "actual_smoke": {
+      "acceptance": false,
+      "binaries": {
+        "admiralty_sha256": "sha256:84dabb343fc4cab27edeee9185323260ccfd7144e1d325eb7a6c4d487d3dc587",
+        "admiraltyd_sha256": "sha256:896d391bbad40ea8e6c11c4c0ddc18f588bb033228fb8c5c1b57ca9e55fe29bc"
+      },
+      "checks": [
+        {
+          "duration_ms": 161,
+          "name": "real_server_startup",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 3,
+          "name": "real_health_native_unqualified",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "unauthorized_real_fleet_rejected",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "unauthorized_real_models_rejected",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "model_auth_precedes_body_validation",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "authorized_real_fleet",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "authorized_models_policy",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "model_selection_proposal_only",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 302,
+          "name": "demo_startup",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 2,
+          "name": "demo_fleet_simulated",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "demo_no_models",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "demo_no_model_policy_write",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "demo_no_legacy_policy",
+          "state": "pass"
+        },
+        {
+          "name": "doctor_read_only_capability",
+          "state": "pass"
+        },
+        {
+          "name": "demo_cli_has_no_real_policy_flags",
+          "state": "pass"
+        }
+      ],
+      "cleanup": {
+        "admiraltyd": "terminated",
+        "demo": "terminated"
+      },
+      "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+      "duration_ms": 510,
+      "fleet_rollout_closure": false,
+      "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+      "started_at_utc": "2026-10-18T15:31:58.291377+00:00",
+      "status": "pass",
+      "synthetic": false
+    },
+    "audit_tests": 50,
+    "commands": [
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "elapsed_s": 0.601,
+        "exit_code": 0,
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/318ac71330d23b2cc57824a06cad8456d74eaa05/ce473f77f3974cac8e11e2c2f240f58d-fmt.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "name": "fmt"
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "elapsed_s": 30.423,
+        "exit_code": 0,
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/318ac71330d23b2cc57824a06cad8456d74eaa05/ce473f77f3974cac8e11e2c2f240f58d-clippy.log",
+        "log_sha256": "0615d35a9d6a81b60f533f5e9b66f9b32f3921cf8a781ee6525934e17859d90c",
+        "name": "clippy"
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "test",
+          "--workspace",
+          "--locked"
+        ],
+        "elapsed_s": 109.488,
+        "exit_code": 0,
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/318ac71330d23b2cc57824a06cad8456d74eaa05/ce473f77f3974cac8e11e2c2f240f58d-workspace-tests.log",
+        "log_sha256": "ce06d5b3545640596fa9265e89a79f96b38472d0707347f0f122b983a75f4b13",
+        "name": "workspace-tests"
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "build",
+          "-p",
+          "admiralty-server",
+          "-p",
+          "admiralty-cli",
+          "--locked"
+        ],
+        "elapsed_s": 0.201,
+        "exit_code": 0,
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/318ac71330d23b2cc57824a06cad8456d74eaa05/ce473f77f3974cac8e11e2c2f240f58d-isolated-binary-build.log",
+        "log_sha256": "59639588a6f1826f129cbcd121edc07279dab94786f5fa5bde6b3439b2e845cc",
+        "name": "isolated-binary-build"
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "python3",
+          "scripts/check/canary-smoke.py",
+          "--admiraltyd-binary",
+          "/home/ubuntu/admiralty-v2-build/targets/quality-review/debug/admiraltyd",
+          "--admiralty-binary",
+          "/home/ubuntu/admiralty-v2-build/targets/quality-review/debug/admiralty",
+          "--scratch-root",
+          "/home/ubuntu/admiralty-v2-build/quality-smoke/ce473f77f3974cac8e11e2c2f240f58d"
+        ],
+        "elapsed_s": 0.802,
+        "exit_code": 0,
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/318ac71330d23b2cc57824a06cad8456d74eaa05/ce473f77f3974cac8e11e2c2f240f58d-actual-isolated-smoke.log",
+        "log_sha256": "be56c25bdd66657d86c0f0ff4266c464353154d8746b46056571dc67cdfb8002",
+        "name": "actual-isolated-smoke"
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "run",
+          "-p",
+          "admiralty-cli",
+          "--locked",
+          "--",
+          "contracts",
+          "check"
+        ],
+        "elapsed_s": 0.201,
+        "exit_code": 0,
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/318ac71330d23b2cc57824a06cad8456d74eaa05/ce473f77f3974cac8e11e2c2f240f58d-schemas-check.log",
+        "log_sha256": "e011ea465e8497fe26e1f3ee17ae0b3be9bfad9596f0ec931d3ada580d884acc",
+        "name": "schemas-check"
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "python3",
+          "tests/fixtures/legacy/verify.py"
+        ],
+        "elapsed_s": 0.401,
+        "exit_code": 0,
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/318ac71330d23b2cc57824a06cad8456d74eaa05/ce473f77f3974cac8e11e2c2f240f58d-legacy-fixtures.log",
+        "log_sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12",
+        "name": "legacy-fixtures"
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests",
+          "-p",
+          "test_sc_audit*.py",
+          "-v"
+        ],
+        "elapsed_s": 1.002,
+        "exit_code": 0,
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/318ac71330d23b2cc57824a06cad8456d74eaa05/ce473f77f3974cac8e11e2c2f240f58d-audit-tests.log",
+        "log_sha256": "7b25be2e39bc129411bd23c664d9e5c286579f3bdf02a15c34210233a9a5f163",
+        "name": "audit-tests"
+      }
+    ],
+    "receipt": "target/quality/coordination-checkpoint/linux-receipt.json",
+    "receipt_sha256": "640e79055f4e0b059688a937620b0e23e24de4cfd4e0ce922d98988ab6589986",
+    "rust_checks_passed": 584,
+    "source_sha": "318ac71330d23b2cc57824a06cad8456d74eaa05",
+    "worktree_clean": true
+  },
+  "live_dashboard": {
+    "history_samples": 183,
+    "native_execution_qualified": false,
+    "observed_manager": "2062267.agy_captain_admiralty",
+    "receipt": "target/quality/coordination-checkpoint/live-observation.json",
+    "sha256": "3c9a53e0936f2b6d5eb0c483c52f0edeb9a1d587e5326770d8ab2b472ccb6eec",
+    "visible_model": "Gemini 4 Argon",
+    "whole_claims_quarantined": 32
+  },
+  "mac_target_results": [
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 17,
+      "result": "ok",
+      "target": "Running unittests src/main.rs (target/debug/deps/admiralty-fbf0df417b295e4f)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 6,
+      "result": "ok",
+      "target": "Running tests/offline_roundtrip.rs (target/debug/deps/offline_roundtrip-d1ad2555b374aa39)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 176,
+      "result": "ok",
+      "target": "Running unittests src/lib.rs (target/debug/deps/admiralty_core-e93a58eab283a547)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "result": "ok",
+      "target": "Running tests/context_mailbox_fixtures.rs (target/debug/deps/context_mailbox_fixtures-a560c1787234f157)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 126,
+      "result": "ok",
+      "target": "Running unittests src/lib.rs (target/debug/deps/admiralty_runtime-c7db4d84e088538b)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 0,
+      "result": "ok",
+      "target": "Running unittests src/bin/admiralty-node.rs (target/debug/deps/admiralty_node-36084d3fc31f0e0a)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Running unittests src/bin/admiralty-session.rs (target/debug/deps/admiralty_session-b0178a90c8f88c92)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "result": "ok",
+      "target": "Running unittests examples/codex_qualification.rs (target/debug/examples/codex_qualification-c6a071acbeca9a2f)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running unittests src/lib.rs (target/debug/deps/admiralty_server-b553e2f9a28b4c41)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 0,
+      "result": "ok",
+      "target": "Running unittests src/main.rs (target/debug/deps/admiraltyd-2a5308e19fc64730)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running tests/access_projection.rs (target/debug/deps/access_projection-33ef704c30f7990a)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 63,
+      "result": "ok",
+      "target": "Running unittests src/lib.rs (target/debug/deps/admiralty_store-83b86728dc6999ca)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 3,
+      "result": "ok",
+      "target": "Running tests/backup_reopen.rs (target/debug/deps/backup_reopen-d802b2835dc34cd0)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running tests/coordination_restart.rs (target/debug/deps/coordination_restart-ec345ffda815e86b)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "result": "ok",
+      "target": "Running tests/durable_task_lifecycle.rs (target/debug/deps/durable_task_lifecycle-6ea27fcfaeeda933)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 4,
+      "result": "ok",
+      "target": "Running tests/workplan_registry.rs (target/debug/deps/workplan_registry-7b9854b723c7281f)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 3,
+      "result": "ok",
+      "target": "Running unittests src/lib.rs (target/debug/deps/admiralty_testkit-1af42e7e619e4d56)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 19,
+      "result": "ok",
+      "target": "Running ../../tests/integration/api_stream.rs (target/debug/deps/api_stream-a53c35fa09aa9e5c)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Running ../../tests/integration/artifact_custody.rs (target/debug/deps/artifact_custody-9b0aefd004814168)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/cleanup_custody.rs (target/debug/deps/cleanup_custody-3c4c08bbc38d7b93)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 6,
+      "result": "ok",
+      "target": "Running ../../tests/integration/context_fidelity.rs (target/debug/deps/context_fidelity-344f593ae0252410)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 6,
+      "result": "ok",
+      "target": "Running ../../tests/integration/coordination_delivery.rs (target/debug/deps/coordination_delivery-1a5663d137bd4e20)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 14,
+      "result": "ok",
+      "target": "Running ../../tests/integration/core_contracts.rs (target/debug/deps/core_contracts-775cd611625c1ea0)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "result": "ok",
+      "target": "Running ../../tests/integration/disaster_restore.rs (target/debug/deps/disaster_restore-f507d8f7193e5ea4)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 3,
+      "result": "ok",
+      "target": "Running ../../tests/integration/economic_conservation.rs (target/debug/deps/economic_conservation-d21748e7f5058031)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Running ../../tests/integration/exact_candidate.rs (target/debug/deps/exact_candidate-b2f828b743e2e186)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 3,
+      "result": "ok",
+      "target": "Running ../../tests/integration/excursion_lineage.rs (target/debug/deps/excursion_lineage-1644056678d9825d)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "result": "ok",
+      "target": "Running ../../tests/integration/experiment_validity.rs (target/debug/deps/experiment_validity-5e74c32c8d73755c)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/fleet_partition.rs (target/debug/deps/fleet_partition-81f38df2536790cf)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "result": "ok",
+      "target": "Running ../../tests/integration/fleet_transport.rs (target/debug/deps/fleet_transport-d7c871cb6bde27f4)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/input_uncertainty.rs (target/debug/deps/input_uncertainty-53fe43a95d925f5d)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "result": "ok",
+      "target": "Running ../../tests/integration/integration_train.rs (target/debug/deps/integration_train-632b36e4e3ff6e06)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Running ../../tests/integration/jankurai_staged.rs (target/debug/deps/jankurai_staged-120a8404479721d9)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 13,
+      "result": "ok",
+      "target": "Running ../../tests/integration/legacy_import.rs (target/debug/deps/legacy_import-4e12b7ce095a8e28)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Running ../../tests/integration/peer_handoff.rs (target/debug/deps/peer_handoff-64d96adf54cfefae)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 3,
+      "result": "ok",
+      "target": "Running ../../tests/integration/plan_import.rs (target/debug/deps/plan_import-311d06e6ee5764e8)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 22,
+      "result": "ok",
+      "target": "Running ../../tests/integration/provider_claude.rs (target/debug/deps/provider_claude-4e0577efc901b2a8)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/provider_codex.rs (target/debug/deps/provider_codex-cf54967b92faff58)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 12,
+      "result": "ok",
+      "target": "Running ../../tests/integration/provider_matrix.rs (target/debug/deps/provider_matrix-f818667675a7b401)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 4,
+      "result": "ok",
+      "target": "Running ../../tests/integration/publication_gate.rs (target/debug/deps/publication_gate-08432555096dcb44)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/release_smoke.rs (target/debug/deps/release_smoke-8f58ff52d9d4eb6e)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Running ../../tests/integration/runner_isolation.rs (target/debug/deps/runner_isolation-23be7c7ed0c50081)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 3,
+      "result": "ok",
+      "target": "Running ../../tests/integration/scheduler_admission.rs (target/debug/deps/scheduler_admission-f672767a1064e403)"
+    },
+    {
+      "failed": 0,
+      "ignored": 1,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/session_continuity.rs (target/debug/deps/session_continuity-1aa03ab6d5628b9b)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/store_crash.rs (target/debug/deps/store_crash-ba15e591cd42104a)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 11,
+      "result": "ok",
+      "target": "Running ../../tests/integration/store_replay.rs (target/debug/deps/store_replay-ec77ee7fe22a2cfc)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2,
+      "result": "ok",
+      "target": "Running ../../tests/integration/upgrade_continuity.rs (target/debug/deps/upgrade_continuity-db3bb71937304bc0)"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Doc-tests admiralty_core"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1,
+      "result": "ok",
+      "target": "Doc-tests admiralty_runtime"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 0,
+      "result": "ok",
+      "target": "Doc-tests admiralty_server"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 0,
+      "result": "ok",
+      "target": "Doc-tests admiralty_store"
+    },
+    {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 0,
+      "result": "ok",
+      "target": "Doc-tests admiralty_testkit"
+    }
+  ],
+  "mac_validation": {
+    "actual_smoke": {
+      "acceptance": false,
+      "binaries": {
+        "admiralty_sha256": "sha256:41c18b94e69a379b1ca01ccf00fd0210275e9c3e4e25fa36694a156b70958e1c",
+        "admiraltyd_sha256": "sha256:33880bfb9787c66facc0944aabf9ed4a38cfea8b2d219ee4f76cfcb4c1ba9010"
+      },
+      "checks": [
+        {
+          "duration_ms": 266,
+          "name": "real_server_startup",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 4,
+          "name": "real_health_native_unqualified",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "unauthorized_real_fleet_rejected",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 0,
+          "name": "unauthorized_real_models_rejected",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 0,
+          "name": "model_auth_precedes_body_validation",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "authorized_real_fleet",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "authorized_models_policy",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "model_selection_proposal_only",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 267,
+          "name": "demo_startup",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 3,
+          "name": "demo_fleet_simulated",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 0,
+          "name": "demo_no_models",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 0,
+          "name": "demo_no_model_policy_write",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 0,
+          "name": "demo_no_legacy_policy",
+          "state": "pass"
+        },
+        {
+          "name": "doctor_read_only_capability",
+          "state": "pass"
+        },
+        {
+          "name": "demo_cli_has_no_real_policy_flags",
+          "state": "pass"
+        }
+      ],
+      "cleanup": {
+        "admiraltyd": "terminated",
+        "demo": "terminated"
+      },
+      "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+      "duration_ms": 569,
+      "fleet_rollout_closure": false,
+      "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+      "started_at_utc": "2026-10-18T15:30:35.487686+00:00",
+      "status": "pass",
+      "synthetic": false
+    },
+    "audit_tests": 50,
+    "commands": [
+      {
+        "argv": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "elapsed_s": 0.45,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/coordination-checkpoint/fmt.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "name": "fmt"
+      },
+      {
+        "argv": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "elapsed_s": 11.178,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/coordination-checkpoint/clippy.log",
+        "log_sha256": "f676523d5198d8b920b110cb4f53c922789f16b97437d1fea01f349120c548b6",
+        "name": "clippy"
+      },
+      {
+        "argv": [
+          "cargo",
+          "test",
+          "--workspace",
+          "--locked"
+        ],
+        "elapsed_s": 47.032,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/coordination-checkpoint/workspace-tests.log",
+        "log_sha256": "7d793b2ef86e32874f9ca5ceacb5387ec206a0777fdd43177005ea4ae8e1b318",
+        "name": "workspace-tests"
+      },
+      {
+        "argv": [
+          "cargo",
+          "build",
+          "-p",
+          "admiralty-server",
+          "-p",
+          "admiralty-cli",
+          "--locked"
+        ],
+        "elapsed_s": 0.239,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/coordination-checkpoint/isolated-binary-build.log",
+        "log_sha256": "4f27ac380b22e1d975eee20ce727fa8cbc09061177f6253af0777fd4de7b7506",
+        "name": "isolated-binary-build"
+      },
+      {
+        "argv": [
+          "python3",
+          "scripts/check/canary-smoke.py",
+          "--admiraltyd-binary",
+          "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd",
+          "--admiralty-binary",
+          "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty",
+          "--scratch-root",
+          "/private/var/folders/jv/799z43hd61j1s9gjyg0dtqlm0000gn/T/am-jim73761/smoke"
+        ],
+        "elapsed_s": 0.726,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/coordination-checkpoint/actual-isolated-smoke.log",
+        "log_sha256": "de65084052e6f9e465bdd7e6196338c8a96830f011528c8ebc138734517afefe",
+        "name": "actual-isolated-smoke"
+      },
+      {
+        "argv": [
+          "cargo",
+          "run",
+          "-p",
+          "admiralty-cli",
+          "--locked",
+          "--",
+          "contracts",
+          "check"
+        ],
+        "elapsed_s": 0.401,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/coordination-checkpoint/schemas-check.log",
+        "log_sha256": "35c9df6c744ee8845319469dde262e4458b3243d10ca26bc112ad4b3c8769aea",
+        "name": "schemas-check"
+      },
+      {
+        "argv": [
+          "python3",
+          "tests/fixtures/legacy/verify.py"
+        ],
+        "elapsed_s": 0.676,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/coordination-checkpoint/legacy-fixtures.log",
+        "log_sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12",
+        "name": "legacy-fixtures"
+      },
+      {
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests",
+          "-p",
+          "test_sc_audit*.py",
+          "-v"
+        ],
+        "elapsed_s": 2.013,
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/coordination-checkpoint/audit-tests.log",
+        "log_sha256": "d6544244cd83b2e2f5f4de4e19df894b56b32d96dcde15ea39582b6d938db35d",
+        "name": "audit-tests"
+      }
+    ],
+    "receipt": "target/quality/coordination-checkpoint/mac-gate.json",
+    "receipt_sha256": "462334260acf4f527eaaafc8e14f4753e07d1343806d720b6f0dd699073c73f6",
+    "rust_checks_passed": 582,
+    "source_sha": "318ac71330d23b2cc57824a06cad8456d74eaa05",
+    "worktree_clean": true
+  },
+  "main_merge": "b3a28c32f76550cf1ededde1539c5b2aa9f69c92",
+  "native_execution_qualified": false,
+  "next_actions": [
+    "Reconcile manager whole-packet claims, stale bindings, old workqueue and source actor of status-only fanout before reusing legacy workers.",
+    "Use small implementation contracts instead of per-worker status turns when deterministic observations suffice.",
+    "Implement missing P01 fake clock/fault/forge/cumulative-reset fixtures on isolated scopes; do not confuse30named targets with that matrix.",
+    "Advance durable coordination delivery/subscription authority and executor in separate scoped packets."
+  ],
+  "observed_utc": "2026-10-18T15:35:23.883934+00:00",
+  "packet_receipt": {
+    "path": "receipts/P05/318ac71330d23b2cc57824a06cad8456d74eaa05.json",
+    "sha256": "ae708a7b2e09c1a9cdd392535b9185e2f9b3885513407db066f99cad35217271"
+  },
+  "paid_provider_calls": 0,
+  "parent_acceptance": false,
+  "previous_checkpoint": "661bf36f0a401c79c87e2166fd75be325984e09c",
+  "registered_integration_targets": 30,
+  "retained_failure_evidence": {
+    "description": "An intermediate core Clippy check found concurrent topics derivable_impls. Topic owner derived Default; focused strict and both combined strict gates pass. Original intermediate output exists only in agent tool transcript, not a saved raw-file hash."
+  },
+  "reused_checks": {
+    "contract_runtime_checks": 5,
+    "note": "React/contracts/package/harness objects are identical. Audit and legacy suites executed fresh because the merged tools tree changed.",
+    "package_self_tests": 10,
+    "react_build": "pass",
+    "react_tests": 75,
+    "react_typecheck": "pass",
+    "reference": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+    "reference_sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021",
+    "smoke_harness_checks": 18
+  },
+  "source_sha": "318ac71330d23b2cc57824a06cad8456d74eaa05",
+  "source_tree": "c0a7f2c98f484acd4bafaa48f9636d4adffd762e",
+  "state": "partial_review",
+  "unchanged_source_reuse": [
+    {
+      "current_object": "3488f6bf7cd14f506bdc018657ad4908a3b672d5",
+      "identical": true,
+      "path": "apps/dashboard",
+      "prior_object": "3488f6bf7cd14f506bdc018657ad4908a3b672d5",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "c1b85bc834151b86919bda4b5c0fcbc8d3a476a1",
+      "identical": true,
+      "path": "packages/contracts",
+      "prior_object": "c1b85bc834151b86919bda4b5c0fcbc8d3a476a1",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "identical": true,
+      "path": "schemas",
+      "prior_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "11db476204136b8f180828c6ebc1a02878fb6b59",
+      "identical": true,
+      "path": "package.json",
+      "prior_object": "11db476204136b8f180828c6ebc1a02878fb6b59",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "7681223a6442bb9dd3ed8646f6fecdbbf8abc26f",
+      "identical": true,
+      "path": "pnpm-lock.yaml",
+      "prior_object": "7681223a6442bb9dd3ed8646f6fecdbbf8abc26f",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+      "identical": true,
+      "path": "pnpm-workspace.yaml",
+      "prior_object": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "ea3b037689095581c785531a76967799b3a345db",
+      "identical": true,
+      "path": "dashboard",
+      "prior_object": "ea3b037689095581c785531a76967799b3a345db",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "7a6673ad80a791d88165d20c356c0cf9e440b3cd",
+      "identical": false,
+      "path": "tools",
+      "prior_object": "fd3e27bdaad73c8ab90c6366a0d24513029b6f1f",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": false
+    },
+    {
+      "current_object": "1e8129387baaf7a43c44f5fa1be5ab461c47713d",
+      "identical": true,
+      "path": "tests/legacy",
+      "prior_object": "1e8129387baaf7a43c44f5fa1be5ab461c47713d",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "9627e43e8d8cb129d4daf38c84fc5cce39e4226e",
+      "identical": true,
+      "path": "tests/fixtures/legacy",
+      "prior_object": "9627e43e8d8cb129d4daf38c84fc5cce39e4226e",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "891e26490a36557700905e10f46a2a028efbe27b",
+      "identical": true,
+      "path": "tests/test_sc_audit_integrity.py",
+      "prior_object": "891e26490a36557700905e10f46a2a028efbe27b",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "63f664d4a5112e7e685db50245a8958e67b798eb",
+      "identical": true,
+      "path": "tests/test_sc_audit_dope.py",
+      "prior_object": "63f664d4a5112e7e685db50245a8958e67b798eb",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "60027b4bd5e565c648b7e1a54381693f49c9a255",
+      "identical": true,
+      "path": "tests/test_sc_audit_ci_queue.py",
+      "prior_object": "60027b4bd5e565c648b7e1a54381693f49c9a255",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "6825113da45e3a90ee6d4c91262a65515d1e0c8c",
+      "identical": true,
+      "path": "tests/test_sc_audit_survey.py",
+      "prior_object": "6825113da45e3a90ee6d4c91262a65515d1e0c8c",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "identical": true,
+      "path": "scripts/release/package.py",
+      "prior_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "identical": true,
+      "path": "scripts/check/canary-smoke.py",
+      "prior_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    },
+    {
+      "current_object": "3010e0a8d4ff76c213b890e7052fb4a8fc21f06d",
+      "identical": true,
+      "path": ".github/workflows/ci.yml",
+      "prior_object": "3010e0a8d4ff76c213b890e7052fb4a8fc21f06d",
+      "prior_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "reuse_validation": true
+    }
+  ]
+}
