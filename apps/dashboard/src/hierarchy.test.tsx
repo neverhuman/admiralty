@@ -26,7 +26,7 @@ describe('source-faithful fleet hierarchy', () => {
   it('renders the real owner/watcher/super-captain shape and compact source worker columns', () => {
     const html = renderToStaticMarkup(<LegacyHierarchy snapshot={source()} />);
     for (const value of ['Configured owner', 'Configured watcher', '2 routines', 'One bounded source routine', '902.super_captain',
-      'ticker ✓', 'check #15', 'source-check-time', 'data-captain-key="project-a"', '7/10 done', '2 in progress',
+      'Admiral', 'Commodores', 'ticker ✓', 'check #15', 'source-check-time', 'data-captain-key="project-a"', '7/10 done', '2 in progress',
       'Hygiene', 'A 100', 'Recorded hygiene note', 'worker_local', 'P-LOCAL', 'medium', 'T0', 'node-q', 'node-r', 'node-s',
       '1 active', '1 idle', '1 remote', '1 blocked', 'Quota source warning', '+2 finished / ended screens', 'source_unassigned']) expect(html).toContain(value);
     for (const family of ['local', 'luna', 'gemini', 'claude', 'astra', 'unknown']) expect(html).toContain(`model-badge--${family}`);

@@ -30,7 +30,7 @@ describe('detailed project source adapters', () => {
     expect((html.match(/<article[^>]*data-project-id=/g) ?? []).length).toBe(5);
     for (const text of ['Recently changed tasks', 'Source captain tail', 'source worker model', 'exact-head approval not confirmed',
       'Validator audit', 'Task leases', 'Live status', 'Evolution waves', 'Source coordination log', 'Hierarchy', 'Configured owner',
-      'Token efficiency', 'Fleet resources', 'History and trends', 'Super captain', 'Scoped packet']) expect(html).toContain(text);
+      'Token efficiency', 'Fleet resources', 'History and trends', 'Admiral', 'Scoped packet']) expect(html).toContain(text);
     expect(html).not.toContain('iframe'); expect(html).not.toContain('dangerouslySetInnerHTML');
   });
   it('selects one project without promoting the rollout above other project cards', () => {

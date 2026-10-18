@@ -25,8 +25,8 @@ function PacketTable({ values }: { values: unknown[] }) {
 }
 function Screen({ value }: { value: unknown }) {
   const screen = data(value);
-  if (!Object.keys(screen).length) return <div className="muted">No captain reported by producer.</div>;
-  return <div className="legacy-screen"><div><b>{text(screen.name ?? screen.screen ?? screen.id) || 'Captain'}</b> <span className={`source-state ${screen.agent_running === true || screen.state === 'active' ? 'active' : ''}`}>{screen.agent_running === true ? 'agent running' : text(screen.state) || (screen.alive === true ? 'screen alive; agent unconfirmed' : 'unknown')}</span></div><div><ModelBadge model={text(screen.model) || 'Unknown'} effort={text(screen.effort)} /> · {text(screen.screen_changed_utc ?? screen.last_token_utc) || 'Activity time unknown'}</div>{list(screen.tail).length > 0 && <pre>{list(screen.tail).map(text).join('\n')}</pre>}</div>;
+  if (!Object.keys(screen).length) return <div className="muted">No Commodore reported by producer.</div>;
+  return <div className="legacy-screen"><div><b>{text(screen.name ?? screen.screen ?? screen.id) || 'Commodore'}</b> <span className={`source-state ${screen.agent_running === true || screen.state === 'active' ? 'active' : ''}`}>{screen.agent_running === true ? 'agent running' : text(screen.state) || (screen.alive === true ? 'screen alive; agent unconfirmed' : 'unknown')}</span></div><div><ModelBadge model={text(screen.model) || 'Unknown'} effort={text(screen.effort)} /> · {text(screen.screen_changed_utc ?? screen.last_token_utc) || 'Activity time unknown'}</div>{list(screen.tail).length > 0 && <pre>{list(screen.tail).map(text).join('\n')}</pre>}</div>;
 }
 function Workers({ values }: { values: unknown[] }) {
   return <div className="legacy-table-scroll"><table><thead><tr><th>Screen / node</th><th>Model / effort</th><th>Task</th><th>Observed state</th></tr></thead><tbody>{values.map((value, index) => {
@@ -49,7 +49,7 @@ export function ProjectDetail({ project, compact = false }: { project: ProjectDe
     <div className="legacy-provenance">Producer observation: {project.observed} ({freshness(project.observed)}). Source claims and accepted counts retain their original meanings.</div>
     {project.alerts.map((alert, index) => <div className="legacy-alert" key={index}>{alert}</div>)}
     {project.recent.length > 0 && <section><h3>Recently changed tasks</h3><div className="legacy-table-scroll"><table><thead><tr><th>Task</th><th>Change</th><th>Observed</th><th>Source</th></tr></thead><tbody>{project.recent.map((value, index) => { const row = data(value); return <tr key={index}><td>{text(row.task)}</td><td>{text(row.old) || '∅'} → {text(row.new)}</td><td>{text(row.at)}</td><td>{text(row.source)}</td></tr>; })}</tbody></table></div></section>}
-    <section><h3>Captain</h3><Screen value={project.captain} /></section>
+    <section><h3>Commodore</h3><Screen value={project.captain} /></section>
     <section><h3>Worker screens and models ({project.workers.length})</h3><Workers values={project.workers} /></section>
     <section><h3>Integration PR, CI and review</h3><PullRequest value={project.pr} /></section>
     {project.sections.map((section, index) => <SourceSection key={`${section.title}:${index}`} {...section} />)}
@@ -68,7 +68,7 @@ export function LegacyFleetView({ snapshot, selected = 'all' }: { snapshot: Lega
         <TokenEfficiency snapshot={snapshot} />
         <div className="legacy-auxiliary panel legacy-side-panel">
           <SourceSection title="Fleet resources" value={snapshot.global_resources} />
-          <SourceSection title="Super captain" value={snapshot.super_captain} />
+          <SourceSection title="Admiral" value={snapshot.super_captain} />
           <SourceSection title="Token yield source and coverage" value={snapshot.token_yield} />
           <SourceSection title="Complete history source" value={snapshot.history} />
           <SourceSection title="All agent observations" value={snapshot.agents} />

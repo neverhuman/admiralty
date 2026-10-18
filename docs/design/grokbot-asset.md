@@ -2,7 +2,7 @@
 
 Generated with the built-in image generation tool from the user-supplied Grokbot
 reference, then copied non-destructively into `apps/dashboard/public/brand/grokbot.png`.
-The PNG has genuine RGBA transparency and is displayed at44 CSS pixels with an
+The PNG has genuine RGBA transparency and is displayed at 44 CSS pixels with an
 optical circular mask. Original generated output is retained outside the repo.
 
 Final prompt: Clean the supplied Grokbot PNG for dashboard use. Preserve the white
