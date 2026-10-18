@@ -543,6 +543,13 @@ def collect_jopedime(screens, do_hc):
                                             'head': (at.get('head_sha') or '')[:12], 'lease_expires_utc': at.get('lease_expires_at')} if active else None}
         r['assigned_from_captain_state'] = sorted(assigned)
         r['_statuses'] = statuses
+        pp = live.get('programme_progress') or {}
+        rm = live.get('receiving_main') or {}
+        main_green = str(rm.get('main_guard_conclusion') or '').startswith('success') and str(rm.get('full_main_cpu_conclusion') or '').startswith('success')
+        r['_stage_sets'] = {'done': set(verified), 'on_main': set(pp.get('verified_task_ids') or []) - set(verified),
+                            'lane_complete': set(pp.get('lane_complete_task_ids') or []), 'lane_complete_branch': pp.get('lane_complete_branch'),
+                            'in_progress': set(pp.get('in_progress_code_task_ids') or []),
+                            'main': {'sha': (rm.get('sha') or '')[:12], 'ci_green': main_green}}
         seed = []
         if verified:
             seed = [{'task': v, 'old': None, 'new': 'done (verified)', 'at': (live.get('updated_at') or '').replace('Z', '+00:00'),
@@ -557,7 +564,7 @@ def collect_jopedime(screens, do_hc):
         r['titles'] = {k: titles[k] for k in list(verified) + ([active] if active else []) + assigned if k in titles}
     except Exception as e:
         r['error'] = 'ledger unreadable: ' + str(e)[:160]; r['_hints'] = {}
-    r['pr'] = pr_lookup('neverhuman/JopeDime', None, ('feat/selfplay-spec-integration-20261018',))
+    r['pr'] = pr_lookup('neverhuman/JopeDime', None, ('feat/selfplay-batch4-integration-20261018', 'feat/selfplay-spec-integration-20261018'))
     r['coord_log'] = {'path': HOME + '/JopeDime/COMMS.md', 'tail': tail_lines(HOME + '/JopeDime/COMMS.md', 5), 'mtime_utc': mtime_iso(HOME + '/JopeDime/COMMS.md')}
     r['needs_jepson'] = needs_jepson(HOME + '/JopeDime/COMMS.md')
     return r
@@ -672,7 +679,8 @@ def lane_lines(path):
         st = LANE_STATE.search(m.group(2))
         if not st: continue
         scr = re.search(r'screen\s+`?([\w.\-]+)', m.group(2))
-        out[m.group(1)] = {'state': st.group(1).lower(), 'screen': scr.group(1) if scr else None}
+        br = re.search(r'branch\s+`?([\w./\-]+)', m.group(2))
+        out[m.group(1)] = {'state': st.group(1).lower(), 'screen': scr.group(1) if scr else None, 'branch': br.group(1).strip('`') if br else None}
     return out
 
 def joil_claims():
@@ -695,7 +703,8 @@ def joil_claims():
 
 def overlay_active(key, p):
     statuses = p.pop('_statuses', None)
-    if not statuses: return
+    if not statuses:
+        p.pop('_stage_sets', None); return
     log = (p.get('coord_log') or {}).get('path')
     lanes = lane_lines(log) if log else {}
     claims = joil_claims() if key == 'joil' else {}
@@ -727,6 +736,89 @@ def overlay_active(key, p):
         'queued_no_live_screen': len(p.get('queued_assignments_no_live_screen') or []),
         'label': 'in progress = ledger in-progress/review/assigned states + tasks with an active claim/assignment or a LANE line (in_progress|lane_complete|integrated) in the coordination log; JopeDime ASSIGNMENT files and LANE lines count only while their named screen is running (others are shown as queued)'}
     p['active_claims'] = dict(sorted(src.items())[:80])
+    try:
+        compute_stages(key, p, statuses, lanes, src)
+    except Exception as e:
+        p['stages_error'] = str(e)[:200]
+
+# ---------------- delivery stages (per task) ----------------
+STAGES = ['done', 'on_main', 'in_pr', 'implemented', 'in_progress', 'blocked', 'not_started']
+STAGE_LABEL = {'done': 'done (acceptance-verified on main)', 'on_main': 'on main, CI green, awaiting acceptance', 'in_pr': 'in integration PR',
+               'implemented': 'implemented in lane', 'in_progress': 'in progress', 'blocked': 'blocked', 'not_started': 'not started'}
+RANK = {'not_started': 0, 'blocked': 1, 'in_progress': 2, 'implemented': 3, 'in_pr': 4, 'on_main': 5, 'done': 6}
+REPO_DIR = {'joil': HOME + '/joil', 'dope': HOME + '/dope', 'jopedime': HOME + '/JopeDime', 'jarambit': HOME + '/jarambit'}
+ANC_CACHE = {}
+
+def _rev(repo, ref):
+    rc, out, _ = run(['git', '-C', repo, 'rev-parse', '--verify', '-q', ref + '^{commit}'], timeout=10)
+    return out.strip() if rc == 0 and out.strip() else None
+
+def _is_anc(repo, a, b):
+    k = (repo, a, b)
+    if k not in ANC_CACHE:
+        rc, _, _ = run(['git', '-C', repo, 'merge-base', '--is-ancestor', a, b], timeout=15)
+        ANC_CACHE[k] = (rc == 0)
+        if len(ANC_CACHE) > 5000: ANC_CACHE.clear()
+    return ANC_CACHE[k]
+
+def compute_stages(key, p, statuses, lanes, active_src):
+    """Per-task delivery stage. Only promotes (never demotes) a task as more evidence is found."""
+    ss = p.pop('_stage_sets', None) or {}
+    stage, why = {}, {}
+    held = {}   # ledger-blocked tasks stay 'blocked' (acceptance/audit hold) even when their code is further along
+    def promote(t, s, w):
+        if t not in statuses: return
+        if stage.get(t) == 'blocked' and t not in active_src:
+            if RANK[s] > RANK.get(held.get(t, 'not_started'), 0): held[t] = s
+            return
+        if RANK[s] > RANK.get(stage.get(t, 'not_started'), 0): stage[t] = s; why[t] = w
+    for t, v in statuses.items():
+        b = 'in_progress' if t in active_src else bucket(v)
+        stage[t] = {'done': 'done', 'in_progress': 'in_progress', 'blocked': 'blocked'}.get(b, 'not_started'); why[t] = 'ledger ' + str(v)
+    pr = p.get('pr') or {}
+    prn = pr.get('number') if pr.get('state') == 'OPEN' else None
+    accepted_in_pr = 0
+    if key == 'joil':
+        # Joil's ledger lives on the PR #6 branch; origin/main has no docs/v5-plan, so nothing is acceptance-verified ON MAIN yet.
+        for t, v in statuses.items():
+            if v in ('done', 'review'):
+                stage[t] = 'in_pr'; why[t] = 'ledger %s on PR #%s branch (main merge is Jepson-only)' % (v, pr.get('number') or 6)
+                if v == 'done': accepted_in_pr += 1
+    if key == 'jopedime':
+        for t in ss.get('in_progress', ()): promote(t, 'in_progress', 'LIVE_STATUS in_progress_code')
+        for t in ss.get('lane_complete', ()): promote(t, 'implemented', 'LIVE_STATUS lane_complete')
+        if prn and ss.get('lane_complete_branch') and ss.get('lane_complete_branch') == pr.get('branch'):
+            for t in ss.get('lane_complete', ()): promote(t, 'in_pr', 'lane_complete on PR #%s branch %s' % (prn, pr.get('branch')))
+        for t in ss.get('on_main', ()): promote(t, 'on_main', 'LIVE_STATUS verified_task_ids (main %s, CI %s; no verify receipt)' % (ss.get('main', {}).get('sha'), 'green' if ss.get('main', {}).get('ci_green') else 'not green'))
+    repo = REPO_DIR.get(key)
+    main_sha = _rev(repo, 'origin/main') if repo else None
+    pr_sha = pr.get('head') if prn else None
+    if pr_sha and repo and not _rev(repo, pr_sha): pr_sha = None
+    for t, ln in (lanes or {}).items():
+        targets = [t] if t in statuses else [k for k in statuses if k.startswith(t + '-')]
+        for tt in targets:
+            if ln['state'] == 'lane_complete': promote(tt, 'implemented', 'LANE lane_complete')
+            if ln['state'] == 'integrated': promote(tt, 'in_pr', 'LANE integrated')
+            if ln['state'] == 'done': promote(tt, 'implemented', 'LANE done')
+            br = ln.get('branch')
+            if br in (pr.get('branch'), 'main', 'origin/main'): br = None   # the shared integration/main branch itself says nothing about this lane
+            if br and repo and stage.get(tt) != 'done':
+                bs = _rev(repo, 'origin/' + br) or _rev(repo, br)
+                if bs and main_sha and bs != main_sha and _is_anc(repo, bs, main_sha):
+                    promote(tt, 'on_main', 'lane branch %s merged into origin/main' % br)
+                elif bs and pr_sha and _is_anc(repo, bs, pr_sha):
+                    promote(tt, 'in_pr', 'lane branch %s contained in PR #%s head' % (br, prn))
+    cnt = collections.Counter(stage.values())
+    p['stages'] = {s: cnt.get(s, 0) for s in STAGES}
+    p['stage_labels'] = STAGE_LABEL
+    p['stage_meta'] = {'pr_number': pr.get('number'), 'pr_open': bool(prn), 'main_sha': (main_sha or '')[:12] or None,
+                       'main_ci_green': (ss.get('main') or {}).get('ci_green'), 'accepted_in_pr': accepted_in_pr,
+                       'blocked_code_stage': dict(collections.Counter(held.values())),
+                       'note': {'joil': 'Joil ledger lives on the PR #6 branch; origin/main has no V5 plan yet, so done-on-main is 0 and the 34 accepted + review tasks are counted as in PR #6 (merge is Jepson-only). Blocked = validator audit_held, even where code is integrated on the PR branch.',
+                                'jopedime': 'done = LIVE_STATUS verified_tasks (acceptance receipts); on main = verified_task_ids claimed on green main without verify receipts; in PR = lane_complete ids on the open integration PR branch.',
+                                'dope': 'done = packet-v2 tasks.json done; LANE lines + lane-branch ancestry (origin/main, PR head) refine the rest.',
+                                'jarambit': 'done = WORKPLAN.md DONE; LANE lines + lane-branch ancestry refine the rest.'}.get(key)}
+    p['stage_by_task'] = {t: {'stage': stage[t], 'why': why.get(t)} for t in sorted(stage)}
 
 COLLECT = {'joil': collect_joil, 'dope': collect_dope, 'jopedime': collect_jopedime, 'jarambit': collect_jarambit}
 

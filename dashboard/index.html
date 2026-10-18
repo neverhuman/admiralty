@@ -13,6 +13,9 @@ h1{font-size:18px;margin:0 12px 0 0}.mut{color:var(--mut)}.mono{font-family:ui-m
 .card h2{margin:0 0 4px;font-size:17px;display:flex;justify-content:space-between;align-items:center}
 .bar{height:16px;background:var(--open);border-radius:8px;overflow:hidden;display:flex;margin:8px 0 4px}
 .bar span{display:block;height:100%}.done{background:var(--ok)}.inprog{background:var(--prog)}.blk{background:var(--bad)}
+.st-done{background:#3fb950}.st-on_main{background:#2ea0a0}.st-in_pr{background:#58a6ff}.st-implemented{background:#a371f7}.st-in_progress{background:#d29922}.st-blocked{background:#f85149}.st-not_started{background:#30363d}
+.sbar{height:16px;border-radius:8px;overflow:hidden;display:flex;margin:8px 0 4px;background:#30363d}.sbar span{display:block;height:100%}.sbar.smini{height:7px;margin:3px 0;min-width:150px}
+.slg{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;margin-bottom:4px}.slg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px}
 .counts{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}
 h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:12px 0 4px}
 table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:3px 6px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--mut);font-weight:500}
@@ -95,13 +98,21 @@ function extra(k,p){let h='';
   ${(w.legacy_champion_waves||[]).length?`<tr><td>Legacy champions</td><td class="mut">${w.legacy_champion_waves.length} older waves (${esc(w.legacy_champion_waves[0])}…${esc(w.legacy_champion_waves.slice(-1)[0])}) — ${esc(w.legacy_note)}</td></tr>`:''}
   ${p.declared_counter?`<tr><td>Plan's own counter</td><td>${p.declared_counter.done} / ${p.declared_counter.total} <span class="mut">${esc(p.declared_counter.note)}; bar above counts all ${p.total} parsed table rows</span></td></tr>`:''}</table>`}
  return h}
+const STG=['done','on_main','in_pr','implemented','in_progress','blocked','not_started'];
+const STL={done:'done',on_main:'on main',in_pr:'in PR',implemented:'implemented',in_progress:'in progress',blocked:'blocked',not_started:'not started'};
+function stageLine(p){const s=p.stages;if(!s)return p.total?`${p.done} done / ${p.total}`:'?';const pr=(p.stage_meta||{}).pr_number;
+ const parts=[`<b>${s.done}</b> done`,`<b style="color:#2ea0a0" title="on main incl. done: ${s.done} done + ${s.on_main} on main awaiting acceptance">${s.done+s.on_main}</b> on main`];if(s.in_pr)parts.push(`<b style="color:#58a6ff">${s.in_pr}</b> in PR${pr?' #'+pr:''}`);
+ if(s.implemented)parts.push(`<b style="color:#a371f7">${s.implemented}</b> implemented`);return parts.join(' · ')}
+function stageBar(p,mini){const s=p.stages,t=p.total;if(!s||!t)return'';return `<div class="sbar${mini?' smini':''}">${STG.map(k=>s[k]?`<span class="st-${k}" style="width:${(100*s[k]/t).toFixed(2)}%" title="${esc((p.stage_labels||{})[k]||k)}: ${s[k]}"></span>`:'').join('')}</div>`}
+function stageLegend(p){const s=p.stages;if(!s)return'';return `<div class="slg">${STG.map(k=>`<span title="${esc((p.stage_labels||{})[k]||k)}"><i class="st-${k}"></i>${STL[k]} <b>${s[k]}</b></span>`).join('')}</div>`+(Object.keys((p.stage_meta||{}).blocked_code_stage||{}).length?`<div class="mut small">blocked tasks whose code is further along: ${esc(Object.entries(p.stage_meta.blocked_code_stage).map(([a,b])=>b+' '+(STL[a]||a)).join(', '))}</div>`:'')+((p.stage_meta||{}).note?`<div class="mut small">${esc(p.stage_meta.note)}</div>`:'')}
 function card(k,p){const t=p.total,d=p.done||0,c=p.counts||{};const pct=t?(100*d/t):0;
  const w=x=>t?(100*(x||0)/t).toFixed(2)+'%':'0';const cap=p.captain||{};
  const flash=prevDone[k]!==undefined&&prevDone[k]!==d?'new':'';prevDone[k]=d;
  const capState=!cap.alive?'<span class="pill p-bad">screen missing</span>':cap.agent_running?'<span class="pill p-ok">alive</span>':'<span class="pill p-bad">no agent process</span>';
- return `<div class="card"><h2><span>${esc(p.name)}</span><span class="${flash}">${t?`${d} / ${t} · ${pct.toFixed(1)}%`:'<span class="stale">unknown</span>'}</span></h2>
+ return `<div class="card"><h2><span>${esc(p.name)}</span><span class="${flash}">${t?(p.stages?`${p.stages.done} done / ${t} · ${(100*p.stages.done/t).toFixed(1)}%${p.stages.done!==d?` <span class="mut" style="font-size:12px" title="ledger done count (not yet acceptance-verified on main)">ledger ${d}</span>`:''}`:`${d} / ${t} · ${pct.toFixed(1)}%`):'<span class="stale">unknown</span>'}</span></h2>
  <div class="mut">${esc(p.ledger_source||'')}</div>
- <div class="bar"><span class="done" style="width:${w(c.done)}"></span><span class="inprog" style="width:${w(c.in_progress)}"></span><span class="blk" style="width:${w(c.blocked)}"></span></div>
+ <div style="font-size:15px;margin-top:6px">${stageLine(p)} <span class="mut">of ${t??'?'}</span></div>
+ ${stageBar(p)}${stageLegend(p)}
  <div class="counts"><span><i class="dot done"></i>done ${c.done??'?'}</span><span title="${(p.in_progress_breakdown||{}).label||''}"><i class="dot inprog"></i>in progress ${c.in_progress??'?'}${p.in_progress_breakdown?' (ledger '+p.in_progress_breakdown.ledger_state+' + claims/lanes '+p.in_progress_breakdown.active_claims_and_lanes+')':''}</span><span><i class="dot blk"></i>blocked ${c.blocked??'?'}</span><span><i class="dot" style="background:var(--open)"></i>open ${c.open??'?'}</span>
  <span class="mut">raw: ${esc(Object.entries(p.raw_status_counts||{}).map(([a,b])=>a+'='+b).join(' '))}</span></div>
  ${(p.flags||[]).map(f=>`<div class="flag">⚠ ${esc(f)}</div>`).join('')}
@@ -230,7 +241,7 @@ function renderSide(s){const el=document.getElementById('side');if(!el)return;
  el.innerHTML=hierarchy(s)+tokenPanel(s)+yieldPanel(s)+superPanel(s)+(s.extras_error?`<div class="flag">extras error: ${esc(s.extras_error)}</div>`:'')}
 function render(s){try{renderStrip(s)}catch(e){document.getElementById('strip').innerHTML='<div class=flag>strip error: '+esc(e)+'</div>'}try{renderSide(s)}catch(e){document.getElementById('side').innerHTML='<div class=flag>side panel error: '+esc(e)+'</div>'}
 const ps=s.order.map(k=>[k,s.projects[k]]).filter(x=>x[1]);
- document.getElementById('sum').innerHTML=ps.map(([k,p])=>{const fl=(p.flags||[]).length;return `<div class="chip"><div>${esc(p.name)} ${fl?'<span class="p-bad">⚠'+fl+'</span>':''}</div><b>${p.total?p.done+'/'+p.total:'?'}</b> <span class="mut">${p.total?(100*p.done/p.total).toFixed(1)+'%':''}</span>
+ document.getElementById('sum').innerHTML=ps.map(([k,p])=>{const fl=(p.flags||[]).length;return `<div class="chip"><div>${esc(p.name)} ${fl?'<span class="p-bad">⚠'+fl+'</span>':''}</div><div class="small">${stageLine(p)} <span class="mut">/ ${p.total??'?'}</span></div>${stageBar(p,1)}
   <div class="mut">PR ${p.pr&&p.pr.number?'#'+p.pr.number+' '+((p.pr.ci||{}).state||''):'—'} · captain ${(p.captain||{}).agent_running?'✓':'✗'}</div></div>`}).join('');
  const age=(Date.now()-new Date(s.generated_utc))/1000;
  document.getElementById('upd').innerHTML=`Last update <b>${fmt(s.generated_utc,1)}</b> <span class="${age>180?'stale':''}">(${ago(s.generated_utc)})</span>${INLINE?' · <b>static snapshot</b>':' · auto-refresh 15s'}`;

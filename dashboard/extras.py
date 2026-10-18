@@ -547,6 +547,7 @@ def history_update(res, out):
         for k, p in (out.get('projects') or {}).items():
             c = p.get('counts') or {}; ci_ = ((p.get('pr') or {}).get('ci') or {})
             snap['proj'][k] = {'done': p.get('done'), 'total': p.get('total'), 'ip': c.get('in_progress'), 'ci': ci_.get('state'), 'pr': (p.get('pr') or {}).get('number')}
+            if p.get('stages'): snap['proj'][k]['st'] = p['stages']
             h = (scst.get(k) or {}).get('hygiene') or {}
             if h.get('score') is not None: snap['hyg'][k] = h['score']
         for hh in ((res.get('global_resources') or {}).get('hosts') or []):
