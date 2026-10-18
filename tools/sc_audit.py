@@ -106,7 +106,7 @@ def descendants(pid):
         for k in kids.get(x, []): res.append(k); stack.append(k)
     return res
 
-SURVEY = re.compile(r'(feedback survey|how (would|likely|satisfied)|rate (your|this|us)|take a (quick )?survey|\bNPS\b|on a scale of|1 = |\[1\] .*\[2\]|thumbs (up|down)\?)', re.I)
+SURVEY = re.compile(r'(feedback survey|how (would|likely|satisfied)|rate (your|this|us)|take a (quick )?survey|\bNPS\b|on a scale of|(?<![A-Za-z0-9])1\s*[=:]\s*\w+[^\n]{0,40}(?<![A-Za-z0-9])2\s*[=:]\s*\w+|\[1\] .*\[2\]|thumbs (up|down)\?)', re.I)
 QUOTA = re.compile(r'(quota (exceeded|exhausted)|rate.?limit(ed)?|RESOURCE_EXHAUSTED|\b429\b|out of credits|usage limit)', re.I)
 APPROVAL = re.compile(r'(Allow (this|once)|Do you want to (proceed|run|allow)|\(y/n\)|\[Y/n\]|Approve\?|Press enter to (confirm|continue))', re.I)
 
