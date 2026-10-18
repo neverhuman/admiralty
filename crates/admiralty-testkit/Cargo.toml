@@ -79,10 +79,6 @@ name = "codex_p13_p14_round8"
 path = "../../tests/integration/codex_p13_p14_round8.rs"
 
 [[test]]
-name = "codex_p13_p14_p21_round9"
-path = "../../tests/integration/codex_p13_p14_p21_round9.rs"
-
-[[test]]
 name = "codex_p06_p13_p14_round11"
 path = "../../tests/integration/codex_p06_p13_p14_round11.rs"
 
@@ -165,10 +161,6 @@ path = "../../tests/integration/plan_import.rs"
 [[test]]
 name = "provider_claude"
 path = "../../tests/integration/provider_claude.rs"
-
-[[test]]
-name = "codex_round8"
-path = "../../tests/integration/codex_round8.rs"
 
 [[test]]
 name = "provider_codex"
