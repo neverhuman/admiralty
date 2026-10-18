@@ -3,6 +3,8 @@ import { fleetTotals, formatUnknown, taskStateLabel, type Fleet } from '../api';
 import { watchFleet, type ConnectionState } from '../events';
 import LegacyDetailed from './LegacyDetailed';
 import Models from './Models';
+import { useProfile } from '../profile';
+import { ProfileAvatar, ProfileSettings } from './Profile';
 
 type View = 'Legacy detailed view' | 'Overview' | 'Workplans' | 'Coordination' | 'Models';
 
@@ -14,6 +16,9 @@ function App() {
   const [token, setToken] = useState('');
   const [tokenDraft, setTokenDraft] = useState('');
   const [showAccess, setShowAccess] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const profile = useProfile();
+  const profileName = profile.displayName || 'Operator';
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [filter, setFilter] = useState('');
   const [connection, setConnection] = useState<ConnectionState>('connecting');
@@ -50,7 +55,7 @@ function App() {
       </nav>
       <div className="sidebar-spacer" />
       <div className="brand-slot"><img className="brand-slot-mark" src="/brand/admiralty-source.png" alt="Admiralty mascot" /><span>Admiralty<br /><small>Coordinate. Build. Verify.</small></span></div>
-      <div className="sidebar-footer"><span className="avatar">A</span><span><b>Local operator</b><small>Read only access</small></span><button aria-label="Access settings" onClick={() => setShowAccess(true)}>···</button></div>
+      <div className="sidebar-footer"><ProfileAvatar name={profileName} profile={profile} /><span><b>{profileName}</b><small>Read only access</small></span><button aria-label="Access settings" onClick={() => setShowAccess(true)}>···</button></div>
     </aside>
 
     <main className="main-area">
@@ -58,7 +63,7 @@ function App() {
         <div className="breadcrumbs">Fleet <span>/</span> <strong>{view}</strong></div>
         <div className="top-actions"><span className={`connection ${!legacyView && connection === 'connected' ? 'online' : !legacyView && connection === 'paused' ? 'offline' : ''}`} aria-live="polite"><i />{legacyView ? 'Detailed producer view' : connection === 'connected' ? 'Live updates' : connection === 'paused' ? 'Updates paused' : connection === 'reconnecting' ? 'Reconnecting' : 'Connecting'}</span>
           <button className="icon-button" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? '☼' : '◐'}</button>
-          <button className="operator-button" onClick={() => setShowAccess(true)}><span className="avatar small">A</span><span>Operator</span><span>⌄</span></button>
+          <button className="operator-button" aria-label="Your profile" onClick={() => setShowProfile(true)}><ProfileAvatar name={profileName} className="small" profile={profile} /><span>{profileName}</span><span>⌄</span></button>
         </div>
       </header>
 
@@ -77,6 +82,7 @@ function App() {
         <footer className="page-footer"><span>{modelsView ? 'MODEL POLICY CONFIGURATION' : `READ ONLY · SOURCE: ${legacyView ? 'LEGACY PRODUCER SNAPSHOT' : 'NATIVE FLEET API'}`}</span><span>{legacyView ? 'Source provenance and uncertainty preserved' : <>Native execution {fleet?.native_execution_qualified ? 'qualified' : 'not qualified'} <b>·</b> Usage {formatUnknown(fleet?.coordination.measured_tokens)}</>}</span></footer>
       </div>
     </main>
+    {showProfile && <ProfileSettings onClose={() => setShowProfile(false)} onAccess={() => { setShowProfile(false); setShowAccess(true); }} />}
     {showAccess && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAccess(false); }}>
       <section className="access-modal" role="dialog" aria-modal="true" aria-labelledby="access-title"><button className="modal-close" onClick={() => setShowAccess(false)} aria-label="Close access settings">×</button><div className="eyebrow">PRIVATE MODE</div><h2 id="access-title">Session access</h2><p>Bearer token stays in this page's memory and is sent only as an authorization header. It is never stored in the URL.</p><label htmlFor="bearer-token">Bearer token</label><input id="bearer-token" type="password" autoComplete="off" value={tokenDraft} onChange={(event) => setTokenDraft(event.target.value)} placeholder="Paste token" onKeyDown={(event) => { if (event.key === 'Enter') { setToken(tokenDraft.trim()); setShowAccess(false); } }} /><div className="modal-actions"><button className="secondary-button" onClick={() => { setToken(''); setTokenDraft(''); setShowAccess(false); }}>Clear session</button><button className="primary-button" onClick={() => { setToken(tokenDraft.trim()); setShowAccess(false); }}>Apply token</button></div></section>
     </div>}

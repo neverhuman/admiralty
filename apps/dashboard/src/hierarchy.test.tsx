@@ -35,6 +35,14 @@ describe('source-faithful fleet hierarchy', () => {
     expect(html).not.toContain('30 min each');
   });
 
+  it('fits the supplied Grokbot asset in the named watcher card without branding other watchers', () => {
+    const snapshot = source(); snapshot.hierarchy = { ...snapshot.hierarchy as Record<string, unknown>, grokbot: { name: 'Grok Bot (ENG:watcher)' } };
+    const html = renderToStaticMarkup(<LegacyHierarchy snapshot={snapshot} />);
+    expect(html).toContain('src="/brand/grokbot.png"'); expect(html).toContain('alt="Grokbot"');
+    expect(html).toContain('width="44" height="44"'); expect(html).toContain('Configured owner profile picture');
+    expect(renderToStaticMarkup(<LegacyHierarchy snapshot={source()} />)).not.toContain('/brand/grokbot.png');
+  });
+
   it('includes a manifest project captain and lanes as ordinary columns with exact reported state', () => {
     const snapshot = source();
     snapshot.agents = [{ project: 'custom-build', screen: 'captain_custom-build', model: 'gpt-6-luna', effort: 'medium', tier: 'T0', state: 'unknown' },
