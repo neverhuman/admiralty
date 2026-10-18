@@ -74,7 +74,9 @@ pub use admiralty_runtime::{
         ExecutionAdapter, ExecutionAdmissionValidator, ExecutionError, ExecutionIdentity,
         ExecutionOutcome, ExecutionRequest, PreparedCommand, RuntimeEvidence,
     },
-    resource_gate::{AdmissionIdentity, ResourcePermitAuthority, ResourcePermitClaims},
+    resource_gate::{
+        AdmissionIdentity, ResourcePermitAuthority, ResourcePermitClaims, VerifiedResourcePermit,
+    },
     workspace::registry::{ValidatedWorkspace, WorkspaceSpec},
 };
 use axum::{Json, http::StatusCode};
@@ -82,6 +84,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt,
+    sync::Arc,
 };
 
 pub const MAX_ATTEMPT_HISTORY: usize = 64;
@@ -2275,15 +2278,97 @@ pub struct LinkedExecutionReservations {
     pub next_ledger: ReservationLedger,
 }
 
+fn system_now_unix_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
+        .unwrap_or(u64::MAX)
+}
+
+fn is_valid_sha256_hex(s: &str) -> bool {
+    let hex = s.strip_prefix("sha256:").unwrap_or(s);
+    hex.len() == 64
+        && hex
+            .bytes()
+            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+}
+
+fn validate_kernel_permit_claims_liveness(
+    permit_claims: &ResourcePermitClaims,
+    current_unix_ms: u64,
+) -> Result<(), String> {
+    if permit_claims.issuer_ref.trim().is_empty()
+        || permit_claims.permit_id.trim().is_empty()
+        || permit_claims.reservation_ref.trim().is_empty()
+        || permit_claims.host_incarnation.trim().is_empty()
+        || permit_claims.identity.project_id.as_str().trim().is_empty()
+        || permit_claims.identity.task_id.as_str().trim().is_empty()
+        || permit_claims.identity.attempt_id.as_str().trim().is_empty()
+        || permit_claims.identity.node_id.as_str().trim().is_empty()
+        || permit_claims.identity.lease_id.trim().is_empty()
+    {
+        return Err(
+            "kernel permit_claims must carry non-empty issuer, permit_id, reservation_ref, host_incarnation, and identity fields"
+                .into(),
+        );
+    }
+    if permit_claims.expires_at_unix_ms == 0
+        || permit_claims.lease_expires_at_unix_ms == 0
+        || current_unix_ms >= permit_claims.expires_at_unix_ms
+        || current_unix_ms >= permit_claims.lease_expires_at_unix_ms
+    {
+        return Err(format!(
+            "kernel permit_claims expired or missing expiry (now_ms={current_unix_ms}, expires_at_ms={}, lease_expires_at_ms={})",
+            permit_claims.expires_at_unix_ms, permit_claims.lease_expires_at_unix_ms
+        ));
+    }
+    if permit_claims.cpu_set.is_empty()
+        || permit_claims.registered_cpu_scope.is_empty()
+        || !permit_claims
+            .cpu_set
+            .is_subset(&permit_claims.registered_cpu_scope)
+        || permit_claims.memory_max_bytes == 0
+        || permit_claims.max_tasks == 0
+        || permit_claims.max_concurrency == 0
+    {
+        return Err(
+            "kernel permit_claims has invalid CPU scope, memory_max_bytes, max_tasks, or max_concurrency"
+                .into(),
+        );
+    }
+    if !is_valid_sha256_hex(&permit_claims.launch_spec_digest)
+        || !is_valid_sha256_hex(&permit_claims.worker_environment_digest)
+        || !is_valid_sha256_hex(&permit_claims.backend_config_digest)
+    {
+        return Err("kernel permit_claims digests must be valid 64-char SHA-256 hex".into());
+    }
+    Ok(())
+}
+
 impl LinkedExecutionReservations {
     /// Validate that both the inference-slot reservation and the kernel-resource reservation
-    /// are active in `ledger` and that each reservation's `scope.resource_claims_digest`
-    /// equals its respective authoritative claim digest without conflation or relaxation.
+    /// are active in `ledger`, that `permit_claims` is live/unexpired against current wall-clock
+    /// time, and that each reservation's `scope.resource_claims_digest` equals its respective
+    /// authoritative claim digest without conflation or relaxation.
     pub fn validate_against_ledger(
         &self,
         slot_proposal: &SlotReservationProposal,
         ledger: &ReservationLedger,
     ) -> Result<(), String> {
+        self.validate_against_ledger_at(slot_proposal, ledger, system_now_unix_ms())
+    }
+
+    /// Validate against `ledger` at `current_unix_ms` (clamped at or above current system time
+    /// so callers cannot rewind wall-clock time to bypass permit or lease expiry).
+    pub fn validate_against_ledger_at(
+        &self,
+        slot_proposal: &SlotReservationProposal,
+        ledger: &ReservationLedger,
+        current_unix_ms: u64,
+    ) -> Result<(), String> {
+        let effective_now_ms = current_unix_ms.max(system_now_unix_ms());
+        validate_kernel_permit_claims_liveness(&self.permit_claims, effective_now_ms)?;
+
         let expected_inference_digest = content_digest(&slot_proposal.slot_claim)
             .map_err(|e| format!("inference slot_claim digest failed: {e}"))?;
         let expected_kernel_digest = native_resource_claims_digest(&self.permit_claims)
@@ -2412,15 +2497,8 @@ pub fn propose_linked_kernel_resource_reservation(
             ));
         }
     };
-    if permit_claims.reservation_ref.trim().is_empty()
-        || permit_claims.permit_id.trim().is_empty()
-        || permit_claims.host_incarnation.trim().is_empty()
-    {
-        return Err(ModelSelectionError::Invalid(
-            "kernel permit_claims must carry non-empty permit_id, reservation_ref, and host_incarnation"
-                .into(),
-        ));
-    }
+    validate_kernel_permit_claims_liveness(permit_claims, system_now_unix_ms())
+        .map_err(ModelSelectionError::Invalid)?;
     if permit_claims.reservation_ref == inference_reservation_id {
         return Err(ModelSelectionError::Invalid(
             "kernel reservation_ref must be distinct from inference_reservation_id".into(),
@@ -2535,16 +2613,38 @@ pub fn propose_linked_kernel_resource_reservation(
 
 /// Fail-closed runtime execution admission validator binding [`ModelRegistry`],
 /// [`ObservedModelSlotState`], [`SlotReservationProposal`], [`ReservationLedger`],
-/// and optional [`LinkedExecutionReservations`] to [`admiralty_runtime::execution::ExecutionAdapter`].
-#[derive(Clone, Debug)]
+/// optional [`LinkedExecutionReservations`], and live [`ResourcePermitAuthority`] to
+/// [`admiralty_runtime::execution::ExecutionAdapter`].
+#[derive(Clone)]
 pub struct ModelExecutionAdmissionGate {
     pub registry: ModelRegistry,
     pub observed_slots: ObservedModelSlotState,
     pub slot_proposal: SlotReservationProposal,
     pub ledger: ReservationLedger,
     pub current_tick: u64,
+    pub current_unix_ms: Option<u64>,
     pub expected_resource_permit_ref: Option<String>,
     pub linked_reservations: Option<LinkedExecutionReservations>,
+    pub permit_authority: Option<Arc<dyn ResourcePermitAuthority>>,
+}
+
+impl std::fmt::Debug for ModelExecutionAdmissionGate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ModelExecutionAdmissionGate")
+            .field("registry", &self.registry)
+            .field("observed_slots", &self.observed_slots)
+            .field("slot_proposal", &self.slot_proposal)
+            .field("ledger", &self.ledger)
+            .field("current_tick", &self.current_tick)
+            .field("current_unix_ms", &self.current_unix_ms)
+            .field(
+                "expected_resource_permit_ref",
+                &self.expected_resource_permit_ref,
+            )
+            .field("linked_reservations", &self.linked_reservations)
+            .field("has_permit_authority", &self.permit_authority.is_some())
+            .finish()
+    }
 }
 
 impl ModelExecutionAdmissionGate {
@@ -2561,8 +2661,10 @@ impl ModelExecutionAdmissionGate {
             slot_proposal,
             ledger,
             current_tick,
+            current_unix_ms: None,
             expected_resource_permit_ref: None,
             linked_reservations: None,
+            permit_authority: None,
         }
     }
 
@@ -2571,13 +2673,40 @@ impl ModelExecutionAdmissionGate {
         self
     }
 
+    /// Configure the trusted current wall-clock timestamp (in Unix milliseconds) used to
+    /// enforce kernel permit and node lease expiry at launch admission.
+    pub fn with_current_unix_ms(mut self, current_unix_ms: u64) -> Self {
+        self.current_unix_ms = Some(current_unix_ms);
+        self
+    }
+
+    /// Configure the live [`ResourcePermitAuthority`] required to verify that
+    /// [`LinkedExecutionReservations::permit_claims`] is currently valid and unrevoked.
+    pub fn with_permit_authority(mut self, authority: Arc<dyn ResourcePermitAuthority>) -> Self {
+        self.permit_authority = Some(authority);
+        self
+    }
+
     /// Configure an explicit [`LinkedExecutionReservations`] dual-authority binding so
     /// `validate_current` verifies BOTH the inference-slot reservation
     /// (`content_digest(&InferenceSlotClaim)`) and the kernel-resource reservation
-    /// (`native_resource_claims_digest(&ResourcePermitClaims)`) in `self.ledger`.
+    /// (`native_resource_claims_digest(&ResourcePermitClaims)`) in `self.ledger`, as well as
+    /// permit/lease liveness and live [`ResourcePermitAuthority`] currency.
     pub fn with_linked_reservations(mut self, linked: LinkedExecutionReservations) -> Self {
         self.expected_resource_permit_ref = Some(linked.permit_claims.permit_id.clone());
         self.linked_reservations = Some(linked);
+        self
+    }
+
+    /// Configure both [`LinkedExecutionReservations`] and its live [`ResourcePermitAuthority`].
+    pub fn with_linked_reservations_and_authority(
+        mut self,
+        linked: LinkedExecutionReservations,
+        authority: Arc<dyn ResourcePermitAuthority>,
+    ) -> Self {
+        self.expected_resource_permit_ref = Some(linked.permit_claims.permit_id.clone());
+        self.linked_reservations = Some(linked);
+        self.permit_authority = Some(authority);
         self
     }
 
@@ -2697,7 +2826,21 @@ impl ExecutionAdmissionValidator for ModelExecutionAdmissionGate {
         }
 
         if let Some(ref linked) = self.linked_reservations {
-            linked.validate_against_ledger(&self.slot_proposal, &self.ledger)?;
+            let effective_now_ms = self.current_unix_ms.unwrap_or(0).max(system_now_unix_ms());
+            linked.validate_against_ledger_at(
+                &self.slot_proposal,
+                &self.ledger,
+                effective_now_ms,
+            )?;
+            let authority = self.permit_authority.as_ref().ok_or_else(|| {
+                "linked kernel resource reservation requires a live ResourcePermitAuthority for current permit verification"
+                    .to_owned()
+            })?;
+            let _verified_permit = VerifiedResourcePermit::verify_current(
+                linked.permit_claims.clone(),
+                Arc::clone(authority),
+            )
+            .map_err(|e| format!("kernel resource permit verification failed: {e}"))?;
             if identity.resource_permit_ref != linked.permit_claims.permit_id
                 || request.workspace.node_id.as_str()
                     != linked.permit_claims.identity.node_id.as_str()
@@ -2710,6 +2853,26 @@ impl ExecutionAdmissionValidator for ModelExecutionAdmissionGate {
                 return Err(
                     "execution request reservation does not match linked kernel or inference reservation"
                         .into(),
+                );
+            }
+            let ledger_req = self
+                .ledger
+                .reservations
+                .get(&request.reservation.id)
+                .ok_or_else(|| {
+                    format!(
+                        "request reservation {} missing from active ledger",
+                        request.reservation.id
+                    )
+                })?;
+            if ledger_req != request.reservation
+                || !ledger_req.outstanding
+                || ledger_req.stop_requested
+                || ledger_req.original.get() == 0
+                || ledger_req.settled.get() >= ledger_req.original.get()
+            {
+                return Err(
+                    "request reservation is not active and un-stopped in current ledger".into(),
                 );
             }
             return Ok(());
@@ -2741,8 +2904,13 @@ impl ExecutionAdmissionValidator for ModelExecutionAdmissionGate {
     }
 }
 
-/// Observed post-run usage classification supplied to [`settle_runtime_execution_evidence`].
-/// `Unknown` and `Unpriced` observations never fabricate zero-cost (`MinorUnits(0)`) settlement.
+/// Declared post-run usage observation supplied to [`settle_runtime_execution_evidence`].
+///
+/// This type derives `Deserialize` and represents a caller-declared observation only;
+/// it NEVER confers settlement or slot-release authority on its own. Releasing reserved
+/// budget or inference slot capacity requires an independent [`PostRunClosureVerifier`]
+/// backed by a non-deserializable [`AuthenticatedPostRunClosureReceipt`] bound to the
+/// run, reservation, attempt, model/provider, and both inference and kernel claim digests.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ObservedPostRunUsage {
@@ -2764,68 +2932,202 @@ pub enum ObservedPostRunUsage {
     },
 }
 
-/// Result of post-run runtime execution accounting via [`settle_runtime_execution_evidence`].
-#[derive(Clone, Debug)]
-pub struct RuntimeExecutionAccountingResult {
+/// Non-deserializable, independently authenticated post-run closure receipt.
+///
+/// Binds the actual runtime execution (`run_id`, `provider`, `model_id`),
+/// inference-slot reservation (`reservation_id`, `expected_revision`, `prior_settled_amount`),
+/// kernel resource permit (`kernel_reservation_id`, `kernel_permit_id`),
+/// task attempt (`attempt_id`), and BOTH authoritative claim digests
+/// (`inference_claims_digest == content_digest(&InferenceSlotClaim)` and
+/// `kernel_resource_claims_digest == native_resource_claims_digest(&ResourcePermitClaims)`),
+/// together with `composite_binding_digest` and authenticated metering/reconciliation flags.
+///
+/// Deserializable [`ObservedPostRunUsage`] payloads can NEVER mint this receipt.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AuthenticatedPostRunClosureReceipt {
     pub run_id: String,
+    pub settlement_event_id: String,
     pub reservation_id: String,
+    pub kernel_reservation_id: String,
+    pub kernel_permit_id: String,
     pub attempt_id: AttemptId,
     pub model_id: String,
     pub provider: String,
-    pub outcome: ExecutionOutcome,
-    pub settlement_proposal: ModelSlotSettlementProposal,
-    pub committed_ledger: ReservationLedger,
-    pub committed_capacity: CapacitySnapshot,
-    pub native_execution_qualified: bool,
+    pub expected_revision: u64,
+    pub prior_settled_amount: MinorUnits,
+    pub inference_scope_digest: String,
+    pub inference_claims_digest: String,
+    pub kernel_resource_claims_digest: String,
+    pub composite_binding_digest: String,
+    pub measured_amount: Option<MinorUnits>,
+    pub disposition: UsageDisposition,
+    pub usage_complete: Option<bool>,
+    pub effects_reconciled: Option<bool>,
+    pub resource_claims_reconciled: Option<bool>,
+    pub evidence_ref: String,
 }
 
-fn validate_runtime_evidence_binding(
+impl AuthenticatedPostRunClosureReceipt {
+    /// Construct a non-deserializable [`AuthenticatedPostRunClosureReceipt`] from an
+    /// independent metering/closure authority bound to `evidence`, `slot_proposal`,
+    /// `linked`, and `existing_inference`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn for_post_run_evidence(
+        evidence: &RuntimeEvidence,
+        slot_proposal: &SlotReservationProposal,
+        linked: &LinkedExecutionReservations,
+        existing_inference: &Reservation,
+        settlement_event_id: impl Into<String>,
+        measured_amount: MinorUnits,
+        disposition: UsageDisposition,
+        usage_complete: Option<bool>,
+        effects_reconciled: Option<bool>,
+        resource_claims_reconciled: Option<bool>,
+        evidence_ref: impl Into<String>,
+    ) -> Result<Self, ModelSelectionError> {
+        let bindings = verify_post_run_dual_bindings(
+            evidence.identity(),
+            slot_proposal,
+            linked,
+            existing_inference,
+            &linked.next_ledger,
+        )?;
+        Ok(Self {
+            run_id: evidence.identity().run_id.clone(),
+            settlement_event_id: settlement_event_id.into(),
+            reservation_id: existing_inference.id.clone(),
+            kernel_reservation_id: linked.kernel_reservation.id.clone(),
+            kernel_permit_id: linked.permit_claims.permit_id.clone(),
+            attempt_id: evidence.identity().attempt_id.clone(),
+            model_id: evidence.identity().model.clone(),
+            provider: evidence.identity().provider.clone(),
+            expected_revision: existing_inference.revision,
+            prior_settled_amount: existing_inference.settled.clone(),
+            inference_scope_digest: bindings.inference_scope_digest,
+            inference_claims_digest: bindings.inference_claims_digest,
+            kernel_resource_claims_digest: bindings.kernel_resource_claims_digest,
+            composite_binding_digest: bindings.composite_binding_digest,
+            measured_amount: Some(measured_amount),
+            disposition,
+            usage_complete,
+            effects_reconciled,
+            resource_claims_reconciled,
+            evidence_ref: evidence_ref.into(),
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct VerifiedPostRunDualBindings {
+    inference_scope_digest: String,
+    inference_claims_digest: String,
+    kernel_resource_claims_digest: String,
+    composite_binding_digest: String,
+}
+
+fn verify_post_run_dual_bindings(
     identity: &ExecutionIdentity,
     slot_proposal: &SlotReservationProposal,
-    existing: &Reservation,
-) -> Result<(), ModelSelectionError> {
+    linked: &LinkedExecutionReservations,
+    existing_inference: &Reservation,
+    ledger: &ReservationLedger,
+) -> Result<VerifiedPostRunDualBindings, ModelSelectionError> {
     let claim = &slot_proposal.slot_claim;
     let expected_provider = provider_snake_case(&slot_proposal.provider);
-    if identity.project_id != existing.scope.project_id
+    let expected_scope_digest = content_digest(&existing_inference.scope)
+        .map_err(|e| ModelSelectionError::Invalid(format!("scope digest failed: {e}")))?;
+    let expected_inference_digest = content_digest(claim)
+        .map_err(|e| ModelSelectionError::Invalid(format!("slot_claim digest failed: {e}")))?;
+    let expected_kernel_digest = native_resource_claims_digest(&linked.permit_claims)
+        .map_err(|e| ModelSelectionError::Invalid(format!("kernel claims digest failed: {e}")))?;
+    let expected_composite_digest = content_digest(&(
+        "admiralty.composite_resource_and_inference_claims.v1",
+        &expected_inference_digest,
+        &linked.inference_reservation.id,
+        &linked.permit_claims.permit_id,
+        &linked.kernel_reservation.id,
+        &linked.permit_claims.host_incarnation,
+        &expected_kernel_digest,
+    ))
+    .map_err(|e| ModelSelectionError::Invalid(format!("composite digest failed: {e}")))?;
+
+    let Some(ledger_kernel) = ledger.reservations.get(&linked.kernel_reservation.id) else {
+        return Err(ModelSelectionError::Reservation(
+            ReservationError::UnknownReservation(linked.kernel_reservation.id.clone()),
+        ));
+    };
+
+    if identity.project_id != existing_inference.scope.project_id
         || identity.project_id != claim.project_id
-        || identity.root_id != existing.scope.root_id
+        || identity.root_id != existing_inference.scope.root_id
         || identity.root_id != claim.root_id
-        || identity.task_id != existing.scope.task_id
+        || identity.task_id != existing_inference.scope.task_id
         || identity.task_id != claim.task_id
-        || identity.attempt_id != existing.scope.attempt_id
+        || identity.attempt_id != existing_inference.scope.attempt_id
         || identity.attempt_id != claim.attempt_id
-        || identity.contract_digest != existing.scope.contract_digest
+        || identity.contract_digest != existing_inference.scope.contract_digest
         || identity.contract_digest != claim.contract_digest
         || identity.model != slot_proposal.selected_model_id
         || identity.model != claim.model_id
         || identity.provider != expected_provider
         || identity.run_id.trim().is_empty()
         || identity.resource_permit_ref.trim().is_empty()
-        || existing.scope != slot_proposal.reservation_scope
+        || identity.resource_permit_ref != linked.permit_claims.permit_id
+        || existing_inference.id != linked.inference_reservation.id
+        || existing_inference.id == linked.kernel_reservation.id
+        || expected_inference_digest == expected_kernel_digest
+        || existing_inference.scope != slot_proposal.reservation_scope
+        || existing_inference.scope.resource_claims_digest != expected_inference_digest
+        || slot_proposal.resource_claims_digest != expected_inference_digest
+        || linked.composite_claims.inference_slot_claim != *claim
+        || linked.composite_claims.inference_claims_digest != expected_inference_digest
+        || linked.composite_claims.inference_reservation_id != existing_inference.id
+        || linked.composite_claims.kernel_permit_id != linked.permit_claims.permit_id
+        || linked.composite_claims.kernel_reservation_id != linked.kernel_reservation.id
+        || linked.composite_claims.kernel_host_incarnation != linked.permit_claims.host_incarnation
+        || linked.composite_claims.kernel_resource_claims_digest != expected_kernel_digest
+        || linked.composite_claims.composite_binding_digest != expected_composite_digest
+        || linked.permit_claims.reservation_ref != linked.kernel_reservation.id
+        || ledger_kernel.scope != linked.kernel_reservation.scope
+        || ledger_kernel.scope.project_id != existing_inference.scope.project_id
+        || ledger_kernel.scope.root_id != existing_inference.scope.root_id
+        || ledger_kernel.scope.task_id != existing_inference.scope.task_id
+        || ledger_kernel.scope.attempt_id != existing_inference.scope.attempt_id
+        || ledger_kernel.scope.owner != existing_inference.scope.owner
+        || ledger_kernel.scope.contract_revision != existing_inference.scope.contract_revision
+        || ledger_kernel.scope.contract_digest != existing_inference.scope.contract_digest
+        || ledger_kernel.scope.authority_ref != existing_inference.scope.authority_ref
+        || ledger_kernel.scope.incarnation != linked.permit_claims.host_incarnation
+        || ledger_kernel.scope.resource_claims_digest != expected_kernel_digest
     {
         return Err(ModelSelectionError::Reservation(
             ReservationError::BindingMismatch,
         ));
     }
-    Ok(())
+
+    if let Some(ref expected_node) = claim.node_id
+        && linked.permit_claims.identity.node_id.as_str() != expected_node
+    {
+        return Err(ModelSelectionError::Reservation(
+            ReservationError::BindingMismatch,
+        ));
+    }
+
+    Ok(VerifiedPostRunDualBindings {
+        inference_scope_digest: expected_scope_digest,
+        inference_claims_digest: expected_inference_digest,
+        kernel_resource_claims_digest: expected_kernel_digest,
+        composite_binding_digest: expected_composite_digest,
+    })
 }
 
-#[allow(clippy::too_many_arguments)]
-fn build_post_run_report_and_verifier(
+fn build_untrusted_report_from_observed_usage(
     outcome: &ExecutionOutcome,
     slot_proposal: &SlotReservationProposal,
-    existing: &Reservation,
     reservation_id: &str,
-    event_id: &str,
-    expected_revision: u64,
-    prior_settled_amount: MinorUnits,
+    bindings: &VerifiedPostRunDualBindings,
     observed_usage: &ObservedPostRunUsage,
-) -> Result<(UsageReconciliationReport, AuthenticatedUsageVerifier), ModelSelectionError> {
-    let scope_digest = content_digest(&existing.scope)
-        .map_err(|e| ModelSelectionError::Invalid(format!("scope digest failed: {e}")))?;
-    let resource_claims_digest = content_digest(&slot_proposal.slot_claim)
-        .map_err(|e| ModelSelectionError::Invalid(format!("slot_claim digest failed: {e}")))?;
-
+) -> Result<UsageReconciliationReport, ModelSelectionError> {
     let (
         measured_amount,
         disposition,
@@ -2905,73 +3207,288 @@ fn build_post_run_report_and_verifier(
         ),
     };
 
-    let report = UsageReconciliationReport {
+    Ok(UsageReconciliationReport {
         reservation_id: reservation_id.to_owned(),
         attempt_id: slot_proposal.slot_claim.attempt_id.clone(),
         model_id: slot_proposal.slot_claim.model_id.clone(),
-        measured_amount: measured_amount.clone(),
-        disposition,
-        usage_complete,
-        effects_reconciled,
-        resource_claims_reconciled,
-        scope_digest: scope_digest.clone(),
-        resource_claims_digest: resource_claims_digest.clone(),
-        evidence_ref: evidence_ref.clone(),
-    };
-    let verifier = AuthenticatedUsageVerifier::new().with_receipt(AuthenticatedClosureReceipt {
-        settlement_event_id: event_id.to_owned(),
-        reservation_id: reservation_id.to_owned(),
-        attempt_id: slot_proposal.slot_claim.attempt_id.clone(),
-        model_id: slot_proposal.slot_claim.model_id.clone(),
-        expected_revision,
-        prior_settled_amount,
         measured_amount,
         disposition,
         usage_complete,
         effects_reconciled,
         resource_claims_reconciled,
-        scope_digest,
-        resource_claims_digest,
+        scope_digest: bindings.inference_scope_digest.clone(),
+        resource_claims_digest: bindings.inference_claims_digest.clone(),
         evidence_ref,
-    });
-    Ok((report, verifier))
+    })
+}
+
+/// Authority adapter separating caller-declared [`ObservedPostRunUsage`] (`Deserialize`)
+/// from independently authenticated closure/metering/resource reconciliation authority.
+pub trait PostRunClosureVerifier {
+    #[allow(clippy::too_many_arguments)]
+    fn verify_post_run_closure(
+        &self,
+        evidence: &RuntimeEvidence,
+        slot_proposal: &SlotReservationProposal,
+        linked: &LinkedExecutionReservations,
+        existing_inference: &Reservation,
+        ledger: &ReservationLedger,
+        reservation_id: &str,
+        settlement_event_id: &str,
+        observed_usage: &ObservedPostRunUsage,
+    ) -> Result<(UsageReconciliationReport, Box<dyn UsageClosureVerifier>), ModelSelectionError>;
+}
+
+/// Conservative default post-run verifier used until a live production metering and
+/// kernel-closure authority boundary is wired.
+///
+/// Never mints an [`AuthenticatedClosureReceipt`]: even if a caller supplies a
+/// `CandidateSuccess` or `Failed` process together with `ConfirmedNoUsage` or `MinorUnits(0)`
+/// and all `true` reconciliation booleans in [`ObservedPostRunUsage`], the reservation and
+/// inference slot remain conservatively held (`outstanding == true`, `slot_released == false`).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct UnauthenticatedPostRunUsageVerifier;
+
+impl PostRunClosureVerifier for UnauthenticatedPostRunUsageVerifier {
+    fn verify_post_run_closure(
+        &self,
+        evidence: &RuntimeEvidence,
+        slot_proposal: &SlotReservationProposal,
+        linked: &LinkedExecutionReservations,
+        existing_inference: &Reservation,
+        ledger: &ReservationLedger,
+        reservation_id: &str,
+        _settlement_event_id: &str,
+        observed_usage: &ObservedPostRunUsage,
+    ) -> Result<(UsageReconciliationReport, Box<dyn UsageClosureVerifier>), ModelSelectionError>
+    {
+        let bindings = verify_post_run_dual_bindings(
+            evidence.identity(),
+            slot_proposal,
+            linked,
+            existing_inference,
+            ledger,
+        )?;
+        let report = build_untrusted_report_from_observed_usage(
+            evidence.outcome(),
+            slot_proposal,
+            reservation_id,
+            &bindings,
+            observed_usage,
+        )?;
+        Ok((report, Box::new(UntrustedProposalUsageAdapter)))
+    }
+}
+
+/// Concrete trusted [`PostRunClosureVerifier`] backed by non-deserializable
+/// [`AuthenticatedPostRunClosureReceipt`] records.
+///
+/// - Requires an explicitly registered receipt matching `run_id`, `settlement_event_id`,
+///   `reservation_id`, `kernel_reservation_id`, `kernel_permit_id`, `attempt_id`,
+///   `model_id`, `provider`, `inference_scope_digest`, `inference_claims_digest`,
+///   `kernel_resource_claims_digest`, and `composite_binding_digest`.
+/// - Rejects any `ObservedPostRunUsage` that contradicts a registered receipt.
+/// - When no receipt is registered for `(reservation_id, settlement_event_id)`,
+///   `Unknown` / `Unpriced` observations remain conservatively held, and any
+///   unauthenticated `ObservedPostRunUsage::Measured` claim is rejected so forged
+///   caller booleans can never release budget or slot capacity.
+#[derive(Clone, Debug, Default)]
+pub struct AuthenticatedPostRunUsageVerifier {
+    receipts: BTreeMap<(String, String), AuthenticatedPostRunClosureReceipt>,
+}
+
+impl AuthenticatedPostRunUsageVerifier {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_receipt(mut self, receipt: AuthenticatedPostRunClosureReceipt) -> Self {
+        self.insert_receipt(receipt);
+        self
+    }
+
+    pub fn insert_receipt(&mut self, receipt: AuthenticatedPostRunClosureReceipt) {
+        self.receipts.insert(
+            (
+                receipt.reservation_id.clone(),
+                receipt.settlement_event_id.clone(),
+            ),
+            receipt,
+        );
+    }
+}
+
+impl PostRunClosureVerifier for AuthenticatedPostRunUsageVerifier {
+    fn verify_post_run_closure(
+        &self,
+        evidence: &RuntimeEvidence,
+        slot_proposal: &SlotReservationProposal,
+        linked: &LinkedExecutionReservations,
+        existing_inference: &Reservation,
+        ledger: &ReservationLedger,
+        reservation_id: &str,
+        settlement_event_id: &str,
+        observed_usage: &ObservedPostRunUsage,
+    ) -> Result<(UsageReconciliationReport, Box<dyn UsageClosureVerifier>), ModelSelectionError>
+    {
+        let bindings = verify_post_run_dual_bindings(
+            evidence.identity(),
+            slot_proposal,
+            linked,
+            existing_inference,
+            ledger,
+        )?;
+        let report = build_untrusted_report_from_observed_usage(
+            evidence.outcome(),
+            slot_proposal,
+            reservation_id,
+            &bindings,
+            observed_usage,
+        )?;
+
+        let Some(receipt) = self
+            .receipts
+            .get(&(reservation_id.to_owned(), settlement_event_id.to_owned()))
+        else {
+            return match observed_usage {
+                ObservedPostRunUsage::Unknown { .. } | ObservedPostRunUsage::Unpriced { .. } => {
+                    Ok((report, Box::new(UntrustedProposalUsageAdapter)))
+                }
+                ObservedPostRunUsage::Measured { .. } => Err(ModelSelectionError::Reservation(
+                    ReservationError::InvalidSettlement,
+                )),
+            };
+        };
+
+        let identity = evidence.identity();
+        if receipt.run_id != identity.run_id
+            || receipt.settlement_event_id != settlement_event_id
+            || receipt.reservation_id != reservation_id
+            || receipt.reservation_id != existing_inference.id
+            || receipt.kernel_reservation_id != linked.kernel_reservation.id
+            || receipt.kernel_permit_id != linked.permit_claims.permit_id
+            || receipt.kernel_permit_id != identity.resource_permit_ref
+            || receipt.attempt_id != identity.attempt_id
+            || receipt.model_id != identity.model
+            || receipt.provider != identity.provider
+            || receipt.inference_scope_digest != bindings.inference_scope_digest
+            || receipt.inference_claims_digest != bindings.inference_claims_digest
+            || receipt.kernel_resource_claims_digest != bindings.kernel_resource_claims_digest
+            || receipt.composite_binding_digest != bindings.composite_binding_digest
+        {
+            return Err(ModelSelectionError::Reservation(
+                ReservationError::BindingMismatch,
+            ));
+        }
+
+        if matches!(evidence.outcome(), ExecutionOutcome::Unknown { .. })
+            && (receipt.disposition != UsageDisposition::IncompleteOrUnknown
+                || receipt.usage_complete == Some(true)
+                || receipt.effects_reconciled == Some(true)
+                || receipt.resource_claims_reconciled == Some(true))
+        {
+            return Err(ModelSelectionError::Reservation(
+                ReservationError::InvalidSettlement,
+            ));
+        }
+
+        if report.measured_amount != receipt.measured_amount
+            || report.disposition != receipt.disposition
+            || report.usage_complete != receipt.usage_complete
+            || report.effects_reconciled != receipt.effects_reconciled
+            || report.resource_claims_reconciled != receipt.resource_claims_reconciled
+            || report.evidence_ref != receipt.evidence_ref
+        {
+            return Err(ModelSelectionError::Reservation(
+                ReservationError::InvalidSettlement,
+            ));
+        }
+
+        let closure_receipt = AuthenticatedClosureReceipt {
+            settlement_event_id: receipt.settlement_event_id.clone(),
+            reservation_id: receipt.reservation_id.clone(),
+            attempt_id: receipt.attempt_id.clone(),
+            model_id: receipt.model_id.clone(),
+            expected_revision: receipt.expected_revision,
+            prior_settled_amount: receipt.prior_settled_amount.clone(),
+            measured_amount: receipt.measured_amount.clone(),
+            disposition: receipt.disposition,
+            usage_complete: receipt.usage_complete,
+            effects_reconciled: receipt.effects_reconciled,
+            resource_claims_reconciled: receipt.resource_claims_reconciled,
+            scope_digest: receipt.inference_scope_digest.clone(),
+            resource_claims_digest: receipt.inference_claims_digest.clone(),
+            evidence_ref: receipt.evidence_ref.clone(),
+        };
+        Ok((
+            report,
+            Box::new(AuthenticatedUsageVerifier::new().with_receipt(closure_receipt)),
+        ))
+    }
+}
+
+/// Result of post-run runtime execution accounting via [`settle_runtime_execution_evidence`].
+///
+/// `committed_ledger` and `committed_capacity` represent pure in-memory reducer transitions
+/// (`in_memory_reducer_only == true`, `durable_store_committed == false`). They do NOT claim
+/// durable `Store` atomic admission or native user-systemd execution qualification
+/// (`native_execution_qualified == false`).
+#[derive(Clone, Debug)]
+pub struct RuntimeExecutionAccountingResult {
+    pub run_id: String,
+    pub reservation_id: String,
+    pub attempt_id: AttemptId,
+    pub model_id: String,
+    pub provider: String,
+    pub outcome: ExecutionOutcome,
+    pub settlement_proposal: ModelSlotSettlementProposal,
+    pub committed_ledger: ReservationLedger,
+    pub committed_capacity: CapacitySnapshot,
+    pub in_memory_reducer_only: bool,
+    pub durable_store_committed: bool,
+    pub native_execution_qualified: bool,
 }
 
 /// Settle completed [`RuntimeEvidence`] from [`ExecutionAdapter::finish`] against the
-/// admitted [`SlotReservationProposal`], [`ReservationLedger`], and [`CapacitySnapshot`].
+/// admitted [`SlotReservationProposal`], [`LinkedExecutionReservations`], [`ReservationLedger`],
+/// and [`CapacitySnapshot`] through an explicit [`PostRunClosureVerifier`].
 ///
-/// - Verifies `ExecutionIdentity` against the reservation scope and slot proposal.
-/// - Ensures `ExecutionOutcome::Unknown` or `ObservedPostRunUsage::{Unknown, Unpriced}`
-///   never fabricates zero-cost (`MinorUnits(0)`) terminal settlement.
-/// - Applies `propose_usage_settlement` and `reduce_reservation` to commit the post-run
-///   budget accounting transition while keeping `native_execution_qualified: false` honest.
+/// - Keeps declared [`ObservedPostRunUsage`] (`Deserialize`) and authenticated settlement
+///   authority ([`PostRunClosureVerifier`] / [`AuthenticatedPostRunClosureReceipt`]) separate;
+///   never internally mints authenticated receipts from deserialized reports.
+/// - Verifies `ExecutionIdentity`, `inference_claims_digest == content_digest(&InferenceSlotClaim)`,
+///   and `kernel_resource_claims_digest == native_resource_claims_digest(&ResourcePermitClaims)`.
+/// - Under [`UnauthenticatedPostRunUsageVerifier`] (or missing/unknown evidence), retains
+///   liability and slot capacity conservatively (`outstanding == true`, `slot_released == false`).
+/// - Returns pure in-memory reducer state (`in_memory_reducer_only: true`,
+///   `durable_store_committed: false`) and preserves `native_execution_qualified: false`
+///   (`MANAGED_EXECUTION_QUALIFIED == false`).
 #[allow(clippy::too_many_arguments)]
-pub fn settle_runtime_execution_evidence(
+pub fn settle_runtime_execution_evidence<V: PostRunClosureVerifier + ?Sized>(
     evidence: &RuntimeEvidence,
     slot_proposal: &SlotReservationProposal,
+    linked: &LinkedExecutionReservations,
     ledger: &ReservationLedger,
     capacity: &CapacitySnapshot,
     reservation_id: &str,
     settlement_event_id: impl Into<String>,
-    expected_revision: u64,
-    prior_settled_amount: MinorUnits,
     observed_usage: &ObservedPostRunUsage,
+    verifier: &V,
 ) -> Result<RuntimeExecutionAccountingResult, ModelSelectionError> {
     let existing = ledger
         .reservations
         .get(reservation_id)
         .ok_or_else(|| ReservationError::UnknownReservation(reservation_id.to_owned()))?;
-    validate_runtime_evidence_binding(evidence.identity(), slot_proposal, existing)?;
 
     let event_id = settlement_event_id.into();
-    let (report, verifier) = build_post_run_report_and_verifier(
-        evidence.outcome(),
+    let (report, usage_verifier) = verifier.verify_post_run_closure(
+        evidence,
         slot_proposal,
+        linked,
         existing,
+        ledger,
         reservation_id,
         &event_id,
-        expected_revision,
-        prior_settled_amount,
         observed_usage,
     )?;
     let settlement_proposal = propose_usage_settlement(
@@ -2981,7 +3498,7 @@ pub fn settle_runtime_execution_evidence(
         reservation_id,
         event_id,
         &report,
-        &verifier,
+        usage_verifier.as_ref(),
     )?;
     let committed_ledger = match &settlement_proposal.settlement_event {
         Some(event) => reduce_reservation(ledger, event.clone())?,
@@ -2999,6 +3516,8 @@ pub fn settle_runtime_execution_evidence(
         committed_capacity: settlement_proposal.proposed_capacity.clone(),
         committed_ledger,
         settlement_proposal,
+        in_memory_reducer_only: true,
+        durable_store_committed: false,
         native_execution_qualified: MANAGED_EXECUTION_QUALIFIED,
     })
 }
@@ -4991,7 +5510,58 @@ mod tests {
                 b"admitted\n",
             );
         }
+        let exit_code = std::env::args()
+            .skip(1)
+            .find(|arg| arg.starts_with("MODEL_ADMISSION_EXIT_CODE="))
+            .and_then(|arg| {
+                arg.trim_start_matches("MODEL_ADMISSION_EXIT_CODE=")
+                    .parse::<i32>()
+                    .ok()
+            })
+            .unwrap_or(0);
         println!("admitted model execution output");
+        if exit_code != 0 {
+            std::process::exit(exit_code);
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    struct TestKernelPermitAuthority {
+        active_permit_id: String,
+        active_reservation_ref: String,
+        active_host_incarnation: String,
+        revoked: bool,
+    }
+
+    impl TestKernelPermitAuthority {
+        fn for_claims(claims: &ResourcePermitClaims) -> Arc<dyn ResourcePermitAuthority> {
+            Arc::new(Self {
+                active_permit_id: claims.permit_id.clone(),
+                active_reservation_ref: claims.reservation_ref.clone(),
+                active_host_incarnation: claims.host_incarnation.clone(),
+                revoked: false,
+            })
+        }
+
+        fn revoked_for_claims(claims: &ResourcePermitClaims) -> Arc<dyn ResourcePermitAuthority> {
+            Arc::new(Self {
+                active_permit_id: claims.permit_id.clone(),
+                active_reservation_ref: claims.reservation_ref.clone(),
+                active_host_incarnation: claims.host_incarnation.clone(),
+                revoked: true,
+            })
+        }
+    }
+
+    impl ResourcePermitAuthority for TestKernelPermitAuthority {
+        fn is_current(&self, claims: &ResourcePermitClaims) -> bool {
+            !self.revoked
+                && claims.permit_id == self.active_permit_id
+                && claims.reservation_ref == self.active_reservation_ref
+                && claims.host_incarnation == self.active_host_incarnation
+                && claims.expires_at_unix_ms > system_now_unix_ms()
+                && claims.lease_expires_at_unix_ms > system_now_unix_ms()
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -5004,6 +5574,23 @@ mod tests {
         provider: &str,
         model: &str,
         permit_ref: &str,
+    ) -> PreparedCommand {
+        build_prepared_command_with_exit_code(
+            proposal, workspace, spool_dir, marker, run_id, provider, model, permit_ref, 0,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn build_prepared_command_with_exit_code(
+        proposal: &SlotReservationProposal,
+        workspace: &std::path::Path,
+        spool_dir: &std::path::Path,
+        marker: &std::path::Path,
+        run_id: &str,
+        provider: &str,
+        model: &str,
+        permit_ref: &str,
+        exit_code: i32,
     ) -> PreparedCommand {
         use admiralty_core::SourceIdentity;
         use admiralty_runtime::session::LaunchSpec;
@@ -5038,6 +5625,7 @@ mod tests {
                 "--nocapture".into(),
                 "--".into(),
                 format!("MODEL_ADMISSION_MARKER={}", marker.display()),
+                format!("MODEL_ADMISSION_EXIT_CODE={exit_code}"),
             ],
             cwd: workspace.to_path_buf(),
             spool_dir: spool_dir.to_path_buf(),
@@ -5069,8 +5657,8 @@ mod tests {
                 lease_id: "lease-ornith-1".into(),
             },
             host_incarnation: "host-incarnation-1".into(),
-            expires_at_unix_ms: 2_000_000_000_000,
-            lease_expires_at_unix_ms: 2_000_000_000_000,
+            expires_at_unix_ms: 4_000_000_000_000,
+            lease_expires_at_unix_ms: 4_000_000_000_000,
             registered_cpu_scope: [0u32, 1u32].into_iter().collect(),
             cpu_set: [0u32].into_iter().collect(),
             memory_max_bytes: 512 * 1024 * 1024,
@@ -5129,6 +5717,7 @@ mod tests {
 
         let permit_claims =
             sample_permit_claims_for_proposal(&proposal, "permit-cpu-104", "res-kernel-1");
+        let permit_authority = TestKernelPermitAuthority::for_claims(&permit_claims);
         let linked = propose_linked_kernel_resource_reservation(
             &proposal,
             &proposal.next_ledger,
@@ -5190,7 +5779,7 @@ mod tests {
             linked.next_ledger.clone(),
             105,
         )
-        .with_linked_reservations(linked.clone());
+        .with_linked_reservations_and_authority(linked.clone(), Arc::clone(&permit_authority));
         let adapter = ExecutionAdapter::new(gate.clone(), 65_536);
         adapter
             .launch(&command, &workspace_spec, &kernel_reservation)
@@ -5209,6 +5798,90 @@ mod tests {
             Some(b"admitted\n".as_slice())
         );
 
+        // Also run a short-lived non-zero exit process to verify ExecutionOutcome::Failed accounting.
+        let failed_marker = workspace.join("failed-marker");
+        let failed_spool = workspace.join("spool-run-failed-1");
+        let failed_command = build_prepared_command_with_exit_code(
+            &proposal,
+            &workspace,
+            &failed_spool,
+            &failed_marker,
+            "run-admitted-failed-1",
+            provider_str,
+            &proposal.selected_model_id,
+            "permit-cpu-104",
+            17,
+        );
+        adapter
+            .launch(&failed_command, &workspace_spec, &kernel_reservation)
+            .expect("admitted failed-outcome run launch succeeds");
+        let failed_evidence = adapter
+            .finish("run-admitted-failed-1")
+            .expect("finish failed-outcome run");
+        assert!(matches!(
+            failed_evidence.outcome(),
+            ExecutionOutcome::Failed {
+                exit_code: Some(17),
+                ..
+            }
+        ));
+
+        // Deserialized / unauthenticated ObservedPostRunUsage claiming ConfirmedNoUsage (0)
+        // with all-true closure booleans NEVER releases the reservation or slot for either
+        // CandidateSuccess or Failed runs.
+        let forged_zero_usage: ObservedPostRunUsage = serde_json::from_str(
+            r#"{
+                "kind": "measured",
+                "cumulative_amount": "0",
+                "disposition": "confirmed_no_usage",
+                "usage_complete": true,
+                "effects_reconciled": true,
+                "resource_claims_reconciled": true,
+                "evidence_ref": "forged:deserialized-zero"
+            }"#,
+        )
+        .expect("deserialize ObservedPostRunUsage");
+        for ev in [&evidence, &failed_evidence] {
+            let unauth_held = settle_runtime_execution_evidence(
+                ev,
+                &proposal,
+                &linked,
+                &linked.next_ledger,
+                &proposal.updated_capacity,
+                "res-1",
+                "evt-unauth-forged-zero",
+                &forged_zero_usage,
+                &UnauthenticatedPostRunUsageVerifier,
+            )
+            .expect("unauthenticated verifier retains liability conservatively");
+            assert!(!unauth_held.settlement_proposal.slot_released);
+            assert!(unauth_held.committed_ledger.reservations["res-1"].outstanding);
+            assert_eq!(
+                unauth_held.committed_ledger.reservations["res-1"].settled,
+                MinorUnits::new(0)
+            );
+            assert_eq!(unauth_held.committed_capacity.in_use["ornith"], 2);
+            assert!(unauth_held.in_memory_reducer_only);
+            assert!(!unauth_held.durable_store_committed);
+            assert!(!unauth_held.native_execution_qualified);
+
+            // Empty AuthenticatedPostRunUsageVerifier rejects unauthenticated zero-usage release.
+            assert!(
+                settle_runtime_execution_evidence(
+                    ev,
+                    &proposal,
+                    &linked,
+                    &linked.next_ledger,
+                    &proposal.updated_capacity,
+                    "res-1",
+                    "evt-auth-missing-receipt",
+                    &forged_zero_usage,
+                    &AuthenticatedPostRunUsageVerifier::new(),
+                )
+                .is_err()
+            );
+        }
+
         // Unknown / unpriced post-run usage NEVER fabricates zero-cost MinorUnits(0) settlement.
         for unpriced in [
             ObservedPostRunUsage::Unknown {
@@ -5223,13 +5896,13 @@ mod tests {
             let held = settle_runtime_execution_evidence(
                 &evidence,
                 &proposal,
+                &linked,
                 &linked.next_ledger,
                 &proposal.updated_capacity,
                 "res-1",
                 "evt-postrun-held",
-                inference_reservation.revision,
-                MinorUnits::new(0),
                 &unpriced,
+                &UnauthenticatedPostRunUsageVerifier,
             )
             .expect("unknown/unpriced usage stays held");
             assert!(!held.settlement_proposal.slot_released);
@@ -5242,7 +5915,8 @@ mod tests {
             assert!(!held.native_execution_qualified);
         }
 
-        // Measured post-run usage commits the accounting transition and releases the reserved slot.
+        // Independently authenticated post-run closure receipt commits the in-memory accounting
+        // transition and releases the reserved slot, and exact replay is idempotent without double-release.
         let measured = ObservedPostRunUsage::Measured {
             cumulative_amount: MinorUnits::new(7),
             disposition: UsageDisposition::SettledAndTerminated,
@@ -5251,26 +5925,85 @@ mod tests {
             resource_claims_reconciled: Some(true),
             evidence_ref: "receipt:measured-7".into(),
         };
+        let auth_receipt = AuthenticatedPostRunClosureReceipt::for_post_run_evidence(
+            &evidence,
+            &proposal,
+            &linked,
+            &inference_reservation,
+            "evt-postrun-settle-1",
+            MinorUnits::new(7),
+            UsageDisposition::SettledAndTerminated,
+            Some(true),
+            Some(true),
+            Some(true),
+            "receipt:measured-7",
+        )
+        .expect("mint bound authenticated post-run closure receipt");
+        let auth_verifier =
+            AuthenticatedPostRunUsageVerifier::new().with_receipt(auth_receipt.clone());
         let settled = settle_runtime_execution_evidence(
             &evidence,
             &proposal,
+            &linked,
             &linked.next_ledger,
             &proposal.updated_capacity,
             "res-1",
             "evt-postrun-settle-1",
-            inference_reservation.revision,
-            MinorUnits::new(0),
             &measured,
+            &auth_verifier,
         )
-        .expect("measured post-run settlement succeeds");
+        .expect("authenticated measured post-run settlement succeeds");
         assert!(settled.settlement_proposal.slot_released);
+        assert!(!settled.settlement_proposal.idempotent_replay);
         assert!(!settled.committed_ledger.reservations["res-1"].outstanding);
         assert_eq!(
             settled.committed_ledger.reservations["res-1"].settled,
             MinorUnits::new(7)
         );
         assert_eq!(settled.committed_capacity.in_use["ornith"], 1);
+        assert!(settled.in_memory_reducer_only);
+        assert!(!settled.durable_store_committed);
         assert!(!settled.native_execution_qualified);
+
+        // Exact replay against the already-settled ledger/capacity is idempotent and does NOT double-release.
+        let replayed = settle_runtime_execution_evidence(
+            &evidence,
+            &proposal,
+            &linked,
+            &settled.committed_ledger,
+            &settled.committed_capacity,
+            "res-1",
+            "evt-postrun-settle-1",
+            &measured,
+            &auth_verifier,
+        )
+        .expect("exact replay of authenticated post-run settlement is idempotent");
+        assert!(replayed.settlement_proposal.idempotent_replay);
+        assert!(!replayed.settlement_proposal.slot_released);
+        assert_eq!(replayed.committed_capacity.in_use["ornith"], 1);
+        assert_eq!(replayed.committed_ledger, settled.committed_ledger);
+
+        // Tampering with the receipt's kernel_resource_claims_digest fails closed.
+        let mut tampered_receipt = auth_receipt;
+        tampered_receipt.kernel_resource_claims_digest = sha256_tag('f');
+        let tampered_verifier =
+            AuthenticatedPostRunUsageVerifier::new().with_receipt(tampered_receipt);
+        assert!(matches!(
+            settle_runtime_execution_evidence(
+                &evidence,
+                &proposal,
+                &linked,
+                &linked.next_ledger,
+                &proposal.updated_capacity,
+                "res-1",
+                "evt-postrun-settle-1",
+                &measured,
+                &tampered_verifier,
+            ),
+            Err(ModelSelectionError::Reservation(
+                ReservationError::BindingMismatch
+            ))
+        ));
 
         // ExecutionOutcome::Unknown (capture bound exceeded) never fabricates zero-cost settlement.
         let spool_overflow = workspace.join("spool-run-overflow");
@@ -5307,13 +6040,13 @@ mod tests {
             settle_runtime_execution_evidence(
                 &unknown_evidence,
                 &proposal,
+                &linked,
                 &linked.next_ledger,
                 &proposal.updated_capacity,
                 "res-1",
                 "evt-postrun-unknown-zero",
-                inference_reservation.revision,
-                MinorUnits::new(0),
                 &zero_claim,
+                &UnauthenticatedPostRunUsageVerifier,
             )
             .is_err()
         );
@@ -5345,6 +6078,7 @@ mod tests {
 
         let permit_claims =
             sample_permit_claims_for_proposal(&proposal, "permit-cpu-104", "res-kernel-1");
+        let permit_authority = TestKernelPermitAuthority::for_claims(&permit_claims);
         let linked = propose_linked_kernel_resource_reservation(
             &proposal,
             &proposal.next_ledger,
@@ -5508,7 +6242,10 @@ mod tests {
             linked.next_ledger.clone(),
             105,
         )
-        .with_linked_reservations(conflated_linked.clone());
+        .with_linked_reservations_and_authority(
+            conflated_linked.clone(),
+            Arc::clone(&permit_authority),
+        );
         assert!(matches!(
             ExecutionAdapter::new(gate_conflated, 65_536).launch(
                 &command,
@@ -5525,13 +6262,13 @@ mod tests {
             .expect("res-1")
             .stop_requested = true;
         let gate_stopped_inference = ModelExecutionAdmissionGate::new(
-            registry,
-            observed,
-            proposal,
+            registry.clone(),
+            observed.clone(),
+            proposal.clone(),
             stopped_inference_ledger,
             105,
         )
-        .with_linked_reservations(linked.clone());
+        .with_linked_reservations_and_authority(linked.clone(), Arc::clone(&permit_authority));
         assert!(matches!(
             ExecutionAdapter::new(gate_stopped_inference, 65_536).launch(
                 &command,
@@ -5541,7 +6278,107 @@ mod tests {
             Err(ExecutionError::Denied(_))
         ));
 
-        // 6. Reservation with stop_requested == true or outstanding == false rejected.
+        // 6. Expired kernel permit_claims (expires_at_unix_ms = 0, lease_expires_at_unix_ms = 0,
+        // or <= current_unix_ms), missing ResourcePermitAuthority, or revoked permit fails closed.
+        for (exp_ms, lease_ms) in [
+            (0, 4_000_000_000_000),
+            (4_000_000_000_000, 0),
+            (1_000, 1_000),
+        ] {
+            let mut expired_claims = permit_claims.clone();
+            expired_claims.expires_at_unix_ms = exp_ms;
+            expired_claims.lease_expires_at_unix_ms = lease_ms;
+            assert!(
+                propose_linked_kernel_resource_reservation(
+                    &proposal,
+                    &proposal.next_ledger,
+                    &expired_claims,
+                    "evt-reserve-kernel-expired",
+                    "corr-kernel-expired",
+                    MinorUnits::new(1),
+                )
+                .is_err()
+            );
+
+            let mut expired_linked = linked.clone();
+            expired_linked.permit_claims.expires_at_unix_ms = exp_ms;
+            expired_linked.permit_claims.lease_expires_at_unix_ms = lease_ms;
+            let gate_expired = ModelExecutionAdmissionGate::new(
+                registry.clone(),
+                observed.clone(),
+                proposal.clone(),
+                linked.next_ledger.clone(),
+                105,
+            )
+            .with_linked_reservations_and_authority(expired_linked, Arc::clone(&permit_authority));
+            assert!(matches!(
+                ExecutionAdapter::new(gate_expired, 65_536).launch(
+                    &command,
+                    &workspace_spec,
+                    &linked.kernel_reservation
+                ),
+                Err(ExecutionError::Denied(_))
+            ));
+        }
+
+        // Advance current_unix_ms past permit_claims.expires_at_unix_ms (4_000_000_000_000): denied.
+        let gate_past_expiry = ModelExecutionAdmissionGate::new(
+            registry.clone(),
+            observed.clone(),
+            proposal.clone(),
+            linked.next_ledger.clone(),
+            105,
+        )
+        .with_linked_reservations_and_authority(linked.clone(), Arc::clone(&permit_authority))
+        .with_current_unix_ms(4_000_000_000_000);
+        assert!(matches!(
+            ExecutionAdapter::new(gate_past_expiry, 65_536).launch(
+                &command,
+                &workspace_spec,
+                &linked.kernel_reservation
+            ),
+            Err(ExecutionError::Denied(_))
+        ));
+
+        // Missing ResourcePermitAuthority or revoked authority fails closed.
+        let gate_no_authority = ModelExecutionAdmissionGate::new(
+            registry.clone(),
+            observed.clone(),
+            proposal.clone(),
+            linked.next_ledger.clone(),
+            105,
+        )
+        .with_linked_reservations(linked.clone());
+        assert!(matches!(
+            ExecutionAdapter::new(gate_no_authority, 65_536).launch(
+                &command,
+                &workspace_spec,
+                &linked.kernel_reservation
+            ),
+            Err(ExecutionError::Denied(_))
+        ));
+
+        let gate_revoked_authority = ModelExecutionAdmissionGate::new(
+            registry,
+            observed,
+            proposal,
+            linked.next_ledger.clone(),
+            105,
+        )
+        .with_linked_reservations_and_authority(
+            linked.clone(),
+            TestKernelPermitAuthority::revoked_for_claims(&permit_claims),
+        );
+        assert!(matches!(
+            ExecutionAdapter::new(gate_revoked_authority, 65_536).launch(
+                &command,
+                &workspace_spec,
+                &linked.kernel_reservation
+            ),
+            Err(ExecutionError::Denied(_))
+        ));
+
+        // 7. Reservation with stop_requested == true or outstanding == false rejected.
         let mut stopped_res = reservation.clone();
         stopped_res.stop_requested = true;
         assert!(
