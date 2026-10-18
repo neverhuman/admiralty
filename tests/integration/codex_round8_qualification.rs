@@ -22,11 +22,13 @@ use admiralty_runtime::{
     recovery::plan_recovery,
     session::{LaunchSpec, SessionError, validate_launch_envelope},
 };
+use admiralty_store::artifacts::ArtifactStore;
 use admiralty_store::custody::{
     self, AcquirePinRequest, AssetBinding, ClaimRetirementRequest, CustodyError,
     CustodyObservation, RegisterAssetRequest, ReleasePinRequest,
 };
 use rusqlite::Connection;
+use std::os::unix::fs::PermissionsExt;
 use std::{fs, path::PathBuf};
 
 #[path = "support/recovery.rs"]
@@ -718,4 +720,129 @@ fn p20_round12_item5_redteam_audit_gate() {
         })
         .expect("read command count after tamper rejection");
     assert_eq!(command_count, 1, "corrupt history must fail closed");
+}
+
+#[test]
+fn p20_round13_wo_retirement_release_evidence_gate() {
+    let fixture = tempfile::tempdir().expect("temporary work-order qualification fixture");
+    let root = fs::canonicalize(fixture.path()).expect("canonical fixture root");
+    let evidence_root = root.join("release-evidence");
+    fs::create_dir(&evidence_root).expect("create evidence object store");
+    fs::set_permissions(&evidence_root, fs::Permissions::from_mode(0o700))
+        .expect("restrict evidence store permissions");
+    let workspace = root.join("workspace");
+    fs::create_dir(&workspace).expect("create disposable workspace");
+    let candidate = workspace.join("candidate.bin");
+    let evidence_bytes = b"WO-13: independent release evidence for candidate sha256";
+    fs::write(&candidate, evidence_bytes).expect("write candidate evidence");
+    let artifacts = ArtifactStore::open(&evidence_root, 1024).expect("open bounded evidence store");
+    let evidence_ref = artifacts
+        .publish_bytes(evidence_bytes)
+        .expect("publish immutable release evidence");
+    assert_eq!(
+        artifacts
+            .read_verified(&evidence_ref)
+            .expect("verify release evidence"),
+        evidence_bytes
+    );
+
+    let binding = AssetBinding {
+        project_id: ProjectId::new("round13-project").expect("project id"),
+        root_id: RootId::new("round13-root").expect("root id"),
+        task_id: TaskId::new("round13-work-order").expect("work-order task id"),
+        asset_id: "round13-release-candidate".into(),
+        owner_id: PrincipalId::new("round13-owner").expect("owner id"),
+        sha256: evidence_ref.sha256.clone(),
+        generation: "1".into(),
+    };
+    let mut db = Connection::open_in_memory().expect("open deterministic custody db");
+    custody::initialize(&db).expect("initialize custody db");
+    let registered = custody::register_asset(
+        &mut db,
+        RegisterAssetRequest {
+            command_id: "round13-register-evidence".into(),
+            binding: binding.clone(),
+            expected_revision: "0".into(),
+            observation: observation(&binding, false, 10),
+        },
+    )
+    .expect("register candidate release evidence");
+    assert_eq!(registered.binding.sha256, evidence_ref.sha256);
+    assert_eq!(registered.revision, "1");
+    let pin = custody::acquire_pin(
+        &mut db,
+        AcquirePinRequest {
+            command_id: "round13-pin-release-evidence".into(),
+            binding: binding.clone(),
+            pin_id: "work-order-release-evidence".into(),
+            expected_revision: "1".into(),
+            observation: observation(&binding, true, 11),
+        },
+    )
+    .expect("pin release evidence while work order depends on it");
+    let blocked = ClaimRetirementRequest {
+        command_id: "round13-blocked-retirement".into(),
+        binding: binding.clone(),
+        claim_id: "round13-retirement".into(),
+        expected_revision: "2".into(),
+        observation: observation(&binding, true, 12),
+    };
+    assert!(matches!(
+        custody::claim_retirement(&mut db, blocked),
+        Err(CustodyError::ActivePins)
+    ));
+
+    custody::release_pin(
+        &mut db,
+        ReleasePinRequest {
+            command_id: "round13-release-evidence-pin".into(),
+            binding: binding.clone(),
+            pin_id: "work-order-release-evidence".into(),
+            expected_revision: "2".into(),
+            observation: observation(&binding, true, 12),
+        },
+    )
+    .expect("release evidence pin after work-order use");
+    let retirement = custody::claim_retirement(
+        &mut db,
+        ClaimRetirementRequest {
+            command_id: "round13-claim-retirement".into(),
+            binding: binding.clone(),
+            claim_id: "round13-retirement".into(),
+            expected_revision: "3".into(),
+            observation: observation(&binding, true, 13),
+        },
+    )
+    .expect("record retirement claim after evidence release");
+    assert_eq!(
+        retirement.reference_id.as_deref(),
+        Some("round13-retirement")
+    );
+    let retirement_json = serde_json::to_value(&retirement).expect("serialize retirement receipt");
+    assert_eq!(retirement_json["recorded_only"], true);
+    assert_eq!(retirement_json["destructive_permission"], false);
+    assert_eq!(
+        artifacts
+            .read_verified(&evidence_ref)
+            .expect("release evidence survives retirement"),
+        evidence_bytes
+    );
+    assert_eq!(
+        fs::read(&candidate).expect("candidate remains after recorded claim"),
+        evidence_bytes
+    );
+    assert!(matches!(
+        custody::acquire_pin(
+            &mut db,
+            AcquirePinRequest {
+                command_id: "round13-late-pin".into(),
+                binding: binding.clone(),
+                pin_id: "late-work-order-reference".into(),
+                expected_revision: "4".into(),
+                observation: observation(&binding, true, 14),
+            }
+        ),
+        Err(CustodyError::RetirementClaimed)
+    ));
+    assert_eq!(pin.revision, "2");
 }
