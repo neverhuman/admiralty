@@ -3,7 +3,9 @@
   "sources": ["dashboard/collector.py agent_proc", "tools/bin/classify_screen.py detect_kind"],
   "observed_argv_names": ["agy", "gemini", "grok"],
   "observed_model_flags": ["-m", "--model"],
-  "grok_screen_signals": ["Grok banner", "session name contains grok"],
-  "capabilities": {"direct_process_lifecycle": "caller supplied", "captured_output": "caller supplied", "provider_identity": "best-effort observation", "usage": "unknown", "resume": "unsupported", "permission_semantics": "unsupported"},
-  "qualification": "Classifier-compatible identity is an observation only; it does not attach to, inject into, or adopt a legacy Screen process."
+  "ignored_as_identity_evidence": ["Screen names", "transcripts", "quoted banners", "argv model requests"],
+  "capabilities": {"direct_process_lifecycle": "caller supplied", "captured_output": "caller supplied", "provider_identity": "unknown; executable basename is only an unauthenticated hint", "requested_model": "one bounded unambiguous argv model flag", "usage": "unknown", "resume": "unsupported", "permission_semantics": "unsupported"},
+  "native_execution_qualified": false,
+  "parent_acceptance": false,
+  "qualification": "Offline hints only; no trusted executable identity or executed model is established. Complete shared LaunchSpec envelope limits are checked without filesystem custody, domain admission, journal continuity or final watermark qualification. No legacy Screen process is attached, injected into or adopted."
 }

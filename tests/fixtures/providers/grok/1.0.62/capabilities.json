@@ -16,5 +16,8 @@
     "resume": "unsupported: resume flag exists, but continuation behavior has not been qualified",
     "permission_semantics": "unsupported: permission modes exist, but enforcement semantics have not been qualified"
   },
-  "qualification": "CLI help/version probe only; ACP is preserved as provider protocol. No task, auth, billing, continuation, or permission behavior was exercised."
+  "native_execution_qualified": false,
+  "parent_acceptance": false,
+  "offline_parser": "Strict bounded fragmented JSONL, recursive duplicate rejection and conservative JSON-RPC method object framing. Unknown methods remain raw observations; no journal/capture-watermark binding or full ACP conformance.",
+  "qualification": "Historical CLI help/version probe only; ACP remains provider protocol. Unadmitted launch data uses shared complete LaunchSpec bounds. Actual argv behavior, identity, custody and configuration still need controlled transport qualification; no task, auth, billing, continuation or permission behavior was exercised."
 }

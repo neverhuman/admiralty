@@ -1,3 +1,4 @@
-{"argv":["/home/ubuntu/.local/bin/agy","--model","gemini-2.5-pro"],"expected_provider":"agy","expected_model":"gemini-2.5-pro","observed_only":true}
-{"argv":["/home/ubuntu/.local/bin/grok","--model","grok-3"],"expected_provider":"grok","expected_model":"grok-3","observed_only":true}
-{"argv":["/usr/bin/gemini","-m","gemini-2.5-flash"],"expected_provider":"gemini","expected_model":"gemini-2.5-flash","observed_only":true}
+{"argv":["/home/ubuntu/.local/bin/agy","--model","gemini-2.5-pro"],"executable_hint":"agy","requested_model":"gemini-2.5-pro","observed_provider":null,"observed_model":null,"observed_only":true}
+{"argv":["/home/ubuntu/.local/bin/grok","--model","grok-3"],"executable_hint":"grok","requested_model":"grok-3","observed_provider":null,"observed_model":null,"observed_only":true}
+{"argv":["/usr/bin/gemini","-m","gemini-2.5-flash"],"executable_hint":"gemini","requested_model":"gemini-2.5-flash","observed_provider":null,"observed_model":null,"observed_only":true}
+{"argv":["/usr/bin/other","--model=requested-only"],"executable_hint":null,"requested_model":"requested-only","observed_provider":null,"observed_model":null,"observed_only":true}

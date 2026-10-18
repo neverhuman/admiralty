@@ -45,3 +45,11 @@ path = "../../tests/integration/store_crash.rs"
 [[test]]
 name = "api_stream"
 path = "../../tests/integration/api_stream.rs"
+
+[[test]]
+name = "provider_claude"
+path = "../../tests/integration/provider_claude.rs"
+
+[[test]]
+name = "provider_matrix"
+path = "../../tests/integration/provider_matrix.rs"

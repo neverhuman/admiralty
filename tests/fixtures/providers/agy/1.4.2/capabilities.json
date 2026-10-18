@@ -15,5 +15,8 @@
     "resume": "unsupported: continuation behavior has not been qualified",
     "permission_semantics": "unsupported: permission behavior has not been qualified"
   },
-  "qualification": "CLI help/version probe only; no authenticated task was run. Stream parsing is bounded and event payloads remain provider observations."
+  "native_execution_qualified": false,
+  "parent_acceptance": false,
+  "offline_parser": "Strict bounded fragmented JSONL, recursive duplicate rejection, object/type framing and sticky failure. Unknown events remain raw observations; no journal/capture-watermark binding.",
+  "qualification": "Historical CLI help/version probe only; no authenticated task was run. Unadmitted launch data uses the shared complete LaunchSpec bounds. Actual argv behavior, identity, custody and configuration still need controlled transport qualification."
 }
