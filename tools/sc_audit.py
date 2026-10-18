@@ -284,12 +284,23 @@ def max_claim(logp, total, scr):
 
 def audit_jarambit():
     res = {}
-    cands = [REPOS['jarambit'] + '/docs/WORKPLAN.md'] + [w + '/docs/WORKPLAN.md' for w in worktrees(REPOS['jarambit'])]
-    ex = [c for c in cands if os.path.isfile(c)]
-    if not ex: F('amber', 'jarambit', 'LEDGER_MISSING', 'docs/WORKPLAN.md not found'); return res
-    wp = max(ex, key=os.path.getmtime); res['source'] = wp
+    # Done counts only from what is on main. Never pick the newest-mtime WORKPLAN across worktrees:
+    # stale detached /tmp worktrees and unmerged feature branches flap the count (false red 2026-10-18 10:00Z).
+    repo = REPOS['jarambit']
+    try: subprocess.run(['git', '-C', repo, 'fetch', '-q', 'origin', 'main'], timeout=30, capture_output=True)
+    except Exception: pass
+    r = subprocess.run(['git', '-C', repo, 'show', 'origin/main:docs/WORKPLAN.md'], capture_output=True, text=True)
+    if r.returncode == 0 and r.stdout.strip():
+        sha = subprocess.run(['git', '-C', repo, 'rev-parse', '--short=9', 'origin/main'], capture_output=True, text=True).stdout.strip()
+        wp = f'{repo}@origin/main({sha}):docs/WORKPLAN.md'; lines = r.stdout.splitlines(True)
+    elif os.path.isfile(repo + '/docs/WORKPLAN.md'):
+        wp = repo + '/docs/WORKPLAN.md'; lines = open(wp, errors='replace').readlines()
+        F('amber', 'jarambit', 'LEDGER_NOT_FROM_MAIN', 'could not read origin/main:docs/WORKPLAN.md; fell back to the main checkout file', wp)
+    else:
+        F('amber', 'jarambit', 'LEDGER_MISSING', 'docs/WORKPLAN.md not found on origin/main or in the main checkout'); return res
+    res['source'] = wp
     header, rows = None, {}
-    for line in open(wp, errors='replace'):
+    for line in lines:
         if not line.startswith('|'): header = None; continue
         cells = [c.strip() for c in line.strip().strip('|').split('|')]
         if header is None: header = [c.lower() for c in cells]; continue
@@ -310,7 +321,7 @@ def audit_jarambit():
             F('red', 'jarambit', 'AMBIGUOUS_STATUS', f'{k} status cell contains both BLOCKED and DONE ("{s[:80]}"); naive parsers count it done', wp)
     c = collections.Counter(b(s) for s in rows.values())
     res.update(total=len(rows), done_recomputed=c['done'], blocked=c['blocked'])
-    txt = open(wp, errors='replace').read()
+    txt = ''.join(lines)
     m = re.search(r'Currently Done[^\n]*?`(\d+) / (\d+)`', txt)
     if m:
         res['declared_counter'] = f'{m.group(1)}/{m.group(2)}'
