@@ -1,0 +1,93 @@
+{
+  "packet": "P05",
+  "state": "in_progress",
+  "owner": "local integration reviewer",
+  "base_sha": "0b8b8cb2c0a5d62b49a3af995280cbb3128fae9f",
+  "head_sha": "29acc013bfc39b6d88724f33bd4ae76808a08e9c",
+  "observed_utc": "2026-10-18T12:25:51.036889+00:00",
+  "contract_version": "durable-follow-up/v1",
+  "changed_paths": [
+    "crates/admiralty-store/src/questions.rs",
+    "docs/architecture/durable-questions.md"
+  ],
+  "sha256": {
+    "crates/admiralty-store/src/questions.rs": "2acc93cfefe21a7c1fd338f2f277acf850f779df8905243255427d6ed9cc0634",
+    "docs/architecture/durable-questions.md": "6d75c71a8de8b9e67c7548ec111b2322572f601a00253ad530246a15c0446718"
+  },
+  "criteria": [
+    {
+      "name": "Durable canonical journal/projection/receipt replay",
+      "result": "pass",
+      "evidence": [
+        "Strong review and offline SQLite checks; no full parent acceptance"
+      ]
+    },
+    {
+      "name": "Real Store task-contract scope checked when domain catalog present",
+      "result": "pass",
+      "evidence": [
+        "Strong review and offline SQLite checks; no full parent acceptance"
+      ]
+    },
+    {
+      "name": "Exact command replay and transactional escalation proposal integrity",
+      "result": "pass",
+      "evidence": [
+        "Strong review and offline SQLite checks; no full parent acceptance"
+      ]
+    },
+    {
+      "name": "Complete parent packet acceptance",
+      "result": "not_run",
+      "evidence": [
+        "Question journal requires explicit caller-owned writer initialization",
+        "No delivery service, network/LLM effects or authenticated actor admission"
+      ]
+    }
+  ],
+  "validation": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-store",
+        "--all-targets",
+        "--locked",
+        "-q"
+      ],
+      "exit_code": 0,
+      "checks_passed": 62,
+      "source": "component reviewer report and root combined test output; relevant Store source exactly matches this commit",
+      "artifact": null
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "observation": "Root combined-tree check; uncommitted runtime follow-ups were included, so this does not attest the whole workspace at this SHA",
+      "artifact": null
+    }
+  ],
+  "environment": {
+    "platform": "macOS-15.7.5-arm64-arm-64bit-Mach-O",
+    "rust": "1.95.0",
+    "calls": "offline; no provider inference or production scheduling"
+  },
+  "limitations": [
+    "Question journal requires explicit caller-owned writer initialization",
+    "No delivery service, network/LLM effects or authenticated actor admission"
+  ],
+  "blockers": [],
+  "accepted": false,
+  "native_execution_qualified": false,
+  "next_action": "Integrate admitted services and satisfy parent qualification gates before acceptance."
+}

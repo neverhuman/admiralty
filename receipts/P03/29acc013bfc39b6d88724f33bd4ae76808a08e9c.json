@@ -1,0 +1,97 @@
+{
+  "packet": "P03",
+  "state": "in_progress",
+  "owner": "local integration reviewer",
+  "base_sha": "0b8b8cb2c0a5d62b49a3af995280cbb3128fae9f",
+  "head_sha": "29acc013bfc39b6d88724f33bd4ae76808a08e9c",
+  "observed_utc": "2026-10-18T12:25:51.021527+00:00",
+  "contract_version": "durable-follow-up/v1",
+  "changed_paths": [
+    "crates/admiralty-store/src/lib.rs",
+    "crates/admiralty-store/src/outbox.rs",
+    "crates/admiralty-store/migrations/0003_atomic_effects.sql",
+    "tests/integration/store_replay.rs",
+    "docs/architecture/atomic-effects.md"
+  ],
+  "sha256": {
+    "crates/admiralty-store/src/lib.rs": "2b1d74acc5eee3bdb06c51673dbdf0a2859acf97fbe97e7ff3d5786038c556a9",
+    "crates/admiralty-store/src/outbox.rs": "6e44b64106beda2eb5a4c0d30d8bf6232dc930775613acde232dd7e06fbd4919",
+    "crates/admiralty-store/migrations/0003_atomic_effects.sql": "451fd9441fc3db7c35a79d1b786c5557a65233ac89c92422133f58663f9dce33",
+    "tests/integration/store_replay.rs": "56ccce5d703b5449fd8611349196b407b42009dde709228e4bff26fba9de833a",
+    "docs/architecture/atomic-effects.md": "6828c71e8ff561c267ec8bb33bc47e65723c79d695986367a4c944a1969a2b97"
+  },
+  "criteria": [
+    {
+      "name": "Atomic domain/event/effect admission and first-admission receive timestamp retention",
+      "result": "pass",
+      "evidence": [
+        "Strong review and offline SQLite checks; no full parent acceptance"
+      ]
+    },
+    {
+      "name": "Immutable bindings checked on reopen/cursor/retry; ordinary SQL mutation blocked",
+      "result": "pass",
+      "evidence": [
+        "Strong review and offline SQLite checks; no full parent acceptance"
+      ]
+    },
+    {
+      "name": "Fault injection rollback and exact retry do not advance effects/projection/watch",
+      "result": "pass",
+      "evidence": [
+        "Strong review and offline SQLite checks; no full parent acceptance"
+      ]
+    },
+    {
+      "name": "Complete parent packet acceptance",
+      "result": "not_run",
+      "evidence": [
+        "No durable executor admission loop or external effect qualification"
+      ]
+    }
+  ],
+  "validation": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-store",
+        "--all-targets",
+        "--locked",
+        "-q"
+      ],
+      "exit_code": 0,
+      "checks_passed": 62,
+      "source": "component reviewer report and root combined test output; relevant Store source exactly matches this commit",
+      "artifact": null
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "observation": "Root combined-tree check; uncommitted runtime follow-ups were included, so this does not attest the whole workspace at this SHA",
+      "artifact": null
+    }
+  ],
+  "environment": {
+    "platform": "macOS-15.7.5-arm64-arm-64bit-Mach-O",
+    "rust": "1.95.0",
+    "calls": "offline; no provider inference or production scheduling"
+  },
+  "limitations": [
+    "No durable executor admission loop or external effect qualification"
+  ],
+  "blockers": [],
+  "accepted": false,
+  "native_execution_qualified": false,
+  "next_action": "Integrate admitted services and satisfy parent qualification gates before acceptance."
+}
