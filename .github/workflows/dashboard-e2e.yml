@@ -1,0 +1,43 @@
+name: Dashboard E2E & Accessibility Qualification
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: admiralty-dashboard-e2e-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+jobs:
+  dashboard-e2e:
+    runs-on:
+      group: neverhuman-lan
+      labels: [self-hosted, Linux, X64, lan-ci]
+    timeout-minutes: 10
+    steps:
+      - name: Record selected runner
+        run: printf 'runner=%s os=%s arch=%s\n' "$RUNNER_NAME" "$RUNNER_OS" "$RUNNER_ARCH"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Prepare private test scratch outside the checkout
+        run: |
+          umask 077
+          scratch=$(mktemp -d /tmp/adm-e2e.XXXXXX)
+          test "$(stat -c %a "$scratch")" = 700
+          printf 'TMPDIR=%s\n' "$scratch" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Prepare pinned pnpm in job scratch
+        run: |
+          install -d -m 700 "$RUNNER_TEMP/admiralty-pnpm"
+          npm install --global --prefix "$RUNNER_TEMP/admiralty-pnpm" pnpm@11.15.1 --ignore-scripts --no-audit --no-fund
+          printf '%s\n' "$RUNNER_TEMP/admiralty-pnpm/bin" >> "$GITHUB_PATH"
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm --dir apps/dashboard typecheck
+      - run: pnpm --dir apps/dashboard exec tsc -p e2e/tsconfig.json --noEmit
+      - run: pnpm --dir apps/dashboard build
+      - name: Run browser E2E and WCAG 2.1 AA axe accessibility qualification against built dashboard
+        run: pnpm --dir apps/dashboard test --run --config e2e/vitest.config.ts
