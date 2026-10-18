@@ -413,9 +413,20 @@ def joil_validator():
     held = sorted(set(x for x in re.findall(r'(V5-\d\d-\d\d)[^\n]{0,60}AUDIT-HELD', sec)))
     return {'audit': m.group(1) if m else None, 'observed_utc': obs.group(1).replace('Z', '+00:00') if obs else None,
             'verified_mentions': len(re.findall(r'\bVERIFIED\b', sec)), 'weak_mentions': len(re.findall(r'\bWEAK\b', sec)),
-            'fail_mentions': len(re.findall(r'\bFAIL(?:ED)?\b', sec)),
+            # count real FAIL verdicts only: not "no FAIL" and not expected red-control logs ("FAILED with exit 101")
+            'fail_mentions': len(re.findall(r'(?<!no )\bFAIL\b(?! *[,/]? *(?:no |0\b))', re.sub(r'FAILED with exit \d+', '', sec))),
             'canonical': {'done': int(canon.group(1)), 'review': int(canon.group(2)), 'todo': int(canon.group(3))} if canon else None,
             'audit_held': held, 'file_mtime_utc': mtime_iso(p)}
+
+def joil_main_statuses():
+    rc, out, _ = run(['git', '-C', JOIL, 'ls-tree', '--name-only', 'origin/main', JPLAN + '/progress/'], timeout=15)
+    res = {}
+    if rc != 0: return res
+    for f in out.split():
+        rc2, js, _ = run(['git', '-C', JOIL, 'show', 'origin/main:' + f], timeout=15)
+        try: res.update({k: v.get('status') for k, v in json.loads(js)['tasks'].items()})
+        except Exception: pass
+    return res
 
 def collect_joil(screens, do_hc):
     r = {'name': 'Joil', 'ledger_source': 'integration worktree docs/v5-plan/progress/*.json (via v5_plan.py format)'}
@@ -808,10 +819,14 @@ def compute_stages(key, p, statuses, lanes, active_src):
     prn = pr.get('number') if pr.get('state') == 'OPEN' else None
     accepted_in_pr = 0
     if key == 'joil':
-        # Joil's ledger lives on the PR #6 branch; origin/main has no docs/v5-plan, so nothing is acceptance-verified ON MAIN yet.
+        # PR #6 merged 2026-10-18 09:55Z (2ad0795): origin/main now carries docs/v5-plan, so tasks done in main's ledger ARE
+        # acceptance-verified on main. Done/review only on the integration branch stay 'in PR' (merge is Jepson-only).
+        main_done = joil_main_statuses()
         for t, v in statuses.items():
-            if v in ('done', 'review'):
-                stage[t] = 'in_pr'; why[t] = 'ledger %s on PR #%s branch (main merge is Jepson-only)' % (v, pr.get('number') or 6)
+            if main_done.get(t) == 'done':
+                stage[t] = 'done'; why[t] = 'ledger done on origin/main'
+            elif v in ('done', 'review'):
+                stage[t] = 'in_pr'; why[t] = 'ledger %s on integration branch, not yet on main (main merge is Jepson-only)' % v
                 if v == 'done': accepted_in_pr += 1
     if key == 'jopedime':
         for t in ss.get('in_progress', ()): promote(t, 'in_progress', 'LIVE_STATUS in_progress_code')
@@ -843,7 +858,7 @@ def compute_stages(key, p, statuses, lanes, active_src):
     p['stage_meta'] = {'pr_number': pr.get('number'), 'pr_open': bool(prn), 'main_sha': (main_sha or '')[:12] or None,
                        'main_ci_green': (ss.get('main') or {}).get('ci_green'), 'accepted_in_pr': accepted_in_pr,
                        'blocked_code_stage': dict(collections.Counter(held.values())),
-                       'note': {'joil': 'Joil ledger lives on the PR #6 branch; origin/main has no V5 plan yet, so done-on-main is 0 and the 34 accepted + review tasks are counted as in PR #6 (merge is Jepson-only). Blocked = validator audit_held, even where code is integrated on the PR branch.',
+                       'note': {'joil': 'done = task done in the origin/main ledger (PR #6 merged 2026-10-18 09:55Z); done/review only on the integration branch = in PR. Blocked = ledger blocked or validator audit_held, even where code is integrated.',
                                 'jopedime': 'done = LIVE_STATUS verified_tasks + verify/Ixx.json PASS receipts on a commit in main, verified after that commit existed (relabeled receipts stay on main); on main = verified_task_ids claimed on green main without verify receipts; in PR = lane_complete ids on the open integration PR branch.',
                                 'dope': 'done = packet-v2 tasks.json done; LANE lines + lane-branch ancestry (origin/main, PR head) refine the rest.',
                                 'jarambit': 'done = WORKPLAN.md DONE; LANE lines + lane-branch ancestry refine the rest.'}.get(key)}
