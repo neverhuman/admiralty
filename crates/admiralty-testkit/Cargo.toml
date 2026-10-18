@@ -396,3 +396,7 @@ path = "tests/integration/codex_round17_p04_p10.rs"
 [[test]]
 name = "codex_round18_p04_p10"
 path = "tests/integration/codex_round18_p04_p10.rs"
+
+[[test]]
+name = "codex_round17_p26_p31"
+path = "../../tests/integration/codex_round17_p26_p31.rs"
