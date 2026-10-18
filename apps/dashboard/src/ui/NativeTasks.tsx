@@ -55,7 +55,7 @@ export default function NativeTasks({ fleet, error, connection }: {
         </select></label>
         <span className="native-task-count">{visibleTasks.length} of {fleet.tasks.length} tasks</span>
       </div>
-      <div className="table-scroll"><table><thead><tr><th>Task</th><th>Project</th><th>State</th><th>Active attempt</th><th>Candidate reference</th></tr></thead><tbody>
+      <div className="table-scroll"><table aria-label="Task stage table"><thead><tr><th>Task</th><th>Project</th><th>State</th><th>Active attempt</th><th>Candidate reference</th></tr></thead><tbody>
         {visibleTasks.map(task => <tr key={`${task.contract.task_id}:${task.contract.revision}`}>
           <td><strong>{task.contract.title}</strong><small>{task.contract.task_id} · rev {task.contract.revision}</small></td>
           <td>{projects.get(task.contract.project_id) ?? task.contract.project_id}</td>
