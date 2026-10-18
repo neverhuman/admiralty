@@ -143,3 +143,9 @@ Full rules: `MODEL_ROUTING_PLAYBOOK.md` §11 (Claude) and §0-§1 (Codex). Check
 - **Flag as violations:** any `claude` process or runner launched WITHOUT `--model`. It silently runs opus xhigh from `~/.claude/settings.json`. Check with `/home/ubuntu/xbabe2_kicker/captains-20261017/mr_claude_probe.sh` (pid | screen | --model | --effort). Also flag a simple-class task on C2/C3 or T2+ without a logged escalation, and a screen left parked on Sol/Opus/Astra/Fable after its hard task finished.
 - **Ledger:** every project must be appending to `model_usage.jsonl`. Flag any project with zero lines, or with no lines in the last 30 min while lanes are active.
 - Record a `routing` block per captain in `super_captain_status.json`: violations list, claude C0..C3 counts and codex T0..T4 counts.
+
+## GROK + agy/GEMINI ROUTING CHECKS (Jepson, Oct 17 2026, 10:36 PM MDT)
+Full rules: `MODEL_ROUTING_PLAYBOOK.md` §12 (Grok), §13 (agy/Gemini) and §14 (rate files in `/home/ubuntu/admiralty/captains/rates/`).
+- **Grok is DORMANT.** Flag ANY Grok lane started before Jepson re-enables Grok. When Grok is enabled: G0 grok-build-0.1 → G1 grok-4.3 → G2 grok-4.7 medium/high → G3 grok-4.7 xhigh with a justification line. Banned: grok-4.6, grok-4.20 variants, grok-4.7-fast. grok-4.5 is allowed only for cache-heavy long sessions. The Grok pool also powers Grok Bot, so keep Grok lanes modest.
+- **agy/Gemini:** A-plan gemini-4-argon (medium first, high only if needed); A-routine gemini-3.8-flash via the one-shot `/model gemini-3.8-flash-low <prompt>`. Banned: gemini-3.1-pro-preview, gemini-3.7-flash. Flag any agy screen doing implementation/coding turns. Never switch a captain mid-turn or restart one to change models. You may apply the same changes to your own session at a turn boundary.
+- Re-check rates on 2026-11-30 (Argon intro price ends) and 2026-12-31 (3.8 Flash intro price ends).

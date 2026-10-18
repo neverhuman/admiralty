@@ -1,0 +1,93 @@
+{
+  "as_of": "2026-10-17",
+  "vendor": "openai",
+  "product": "Codex CLI",
+  "authentication": "ChatGPT sign-in",
+  "plan_interpretation": "ChatGPT Pro $500/month",
+  "speed": "standard",
+  "unit": "ChatGPT credits per 1M tokens",
+  "currency": "ChatGPT credits (NOT USD; do not compare with other vendors)",
+  "baseline_model": "gpt-6-luna",
+  "exact_included_quota_ranking_available": false,
+  "included_quota_percent_per_token": null,
+  "models": [
+    {
+      "model": "gpt-6-astra",
+      "input": 250,
+      "cached_input": 25,
+      "output": 1250,
+      "tier": "T4",
+      "status": "last_resort_justify"
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "input": 100,
+      "cached_input": 10,
+      "output": 500,
+      "status": "banned_dominated"
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "input": 50,
+      "cached_input": 5,
+      "output": 300,
+      "status": "banned_dominated"
+    },
+    {
+      "model": "gpt-6.1-sol",
+      "input": 50,
+      "cached_input": 2.5,
+      "output": 250,
+      "tier": "T2/T3",
+      "status": "allowed"
+    },
+    {
+      "model": "gpt-6-sol",
+      "input": 50,
+      "cached_input": 5,
+      "output": 250,
+      "status": "banned_dominated",
+      "note": "gpt-6.1-sol same price, cheaper cache"
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "input": 5,
+      "cached_input": 0.5,
+      "output": 30,
+      "status": "banned_dominated"
+    },
+    {
+      "model": "gpt-6-luna",
+      "input": 2.5,
+      "cached_input": 0.25,
+      "output": 12.5,
+      "tier": "T0/T1",
+      "status": "default"
+    }
+  ],
+  "speed_multipliers": {
+    "standard": {
+      "subscription": 1,
+      "purchased_credits": 1
+    },
+    "fast": {
+      "subscription": 2.5,
+      "purchased_credits": 2
+    },
+    "ultrafast": {
+      "subscription": 8,
+      "purchased_credits": 6,
+      "models": [
+        "gpt-6-astra",
+        "gpt-6.1-sol"
+      ]
+    }
+  },
+  "policy": "Standard speed only; never Fast/Ultrafast; never max/ultra effort.",
+  "sources": [
+    "https://developers.openai.com/codex/pricing",
+    "https://learn.chatgpt.com/docs/pricing",
+    "https://learn.chatgpt.com/docs/agent-configuration/speed",
+    "https://developers.openai.com/codex/models"
+  ]
+}
