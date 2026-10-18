@@ -487,3 +487,57 @@ fn p24_p29_round10_item3_workspace_gate_audit() {
     assert!(!proposal.publication_granted);
     assert!(!proposal.authority_granted);
 }
+
+#[test]
+fn p24_p29_round11_item4_final_validation_gate() {
+    // P29 workspace validation is stable, registered-only, and restricted to
+    // declared paths even when the workspace has Git metadata.
+    let temp = tempfile::tempdir().expect("final validation fixture");
+    let root = fs::canonicalize(temp.path()).expect("canonical fixture root");
+    let workspace = root.join("workspace");
+    fs::create_dir_all(workspace.join("src")).expect("source fixture");
+    fs::create_dir_all(workspace.join(".git")).expect("Git metadata fixture");
+    let spec = WorkspaceSpec {
+        node_id: NodeRef::new("round11-node").expect("node fixture"),
+        root_id: RootId::new("round11-root").expect("root fixture"),
+        project_id: ProjectId::new("round11-project").expect("project fixture"),
+        workspace,
+        owned_paths: vec![PathBuf::from("src")],
+        forbidden_paths: vec![PathBuf::from(".git"), PathBuf::from("secrets")],
+    };
+    let validated = spec.validate().expect("workspace gate validates");
+    assert_eq!(validated.custody, Custody::RegisteredOnly);
+    assert_eq!(validated.git_metadata, GitMetadata::Directory);
+    assert!(validated.owns(std::path::Path::new("src/lib.rs")));
+    assert!(!validated.owns(std::path::Path::new(".git/config")));
+    assert!(!validated.owns(std::path::Path::new("../outside")));
+    assert_eq!(spec.validate().expect("repeat workspace audit"), validated);
+
+    // P24 admits only fresh, revision-matched placement evidence. A valid
+    // placement proposal still grants no execution, publication, or authority.
+    let request = round9_placement_request();
+    let policy = PlacementPolicy {
+        max_observation_age: d(10),
+        maximum_pressure: d(5),
+        minimum_spool_reserve: d(2),
+        disconnected_continuation_only: true,
+        ownership_revision: Some(d(1)),
+    };
+    let fresh = propose_placement(&request, &[round9_placement_offer()], &policy, 10)
+        .expect("fresh placement evidence");
+    assert_eq!(fresh.candidates.len(), 1);
+    assert!(!fresh.execution_granted);
+    assert!(!fresh.publication_granted);
+    assert!(!fresh.authority_granted);
+
+    let mut stale = round9_placement_offer();
+    stale.ownership_observed_at = Some(d(10));
+    stale.ownership_revision = Some(d(2));
+    let rejected = propose_placement(&request, &[stale], &policy, 21)
+        .expect("stale and mismatched evidence is a safe rejection");
+    assert!(rejected.candidates.is_empty());
+    assert_eq!(rejected.rejected.len(), 1);
+    assert!(!rejected.execution_granted);
+    assert!(!rejected.publication_granted);
+    assert!(!rejected.authority_granted);
+}
