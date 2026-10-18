@@ -1,0 +1,19 @@
+[package]
+name = "admiralty-integration-tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+admiralty-core.workspace = true
+admiralty-store = { path = "../admiralty-store" }
+admiralty-testkit = { path = "../admiralty-testkit" }
+tempfile.workspace = true
+
+[lints]
+workspace = true
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
