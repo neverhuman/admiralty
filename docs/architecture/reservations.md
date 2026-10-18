@@ -1,0 +1,9 @@
+# Pure reservation component
+
+`admiralty_runtime::reservations` is a pure proposal/reducer component for account, project, and root budget exposure. It accepts explicit limits and immutable scope (project, root, task, account, currency code, and scale). Amounts are integer minor units encoded as canonical decimal strings, so values above JavaScript's exact integer range survive JSON round trips. Currency units include their scale and cannot be combined.
+
+`reduce_reservation` clones a ledger and returns either the complete next state or an error. Callers must compare the proposal's input revision with the authoritative revision and persist the new state and event atomically. This module does not provide durable transaction semantics, storage, clocks, providers, or external effects. A reducer replay with the same event ID and bytes is idempotent; a changed payload under that ID is a collision. Concurrent proposals from one revision are alternatives: only one may be committed by a compare-and-swap owner.
+
+Admission includes settled usage and every unresolved liability at each applicable scope. A missing limit fails closed. Cancellation and lease expiry are stop requests and preserve exposure. Partial settlement moves known spend into settled totals while retaining the outstanding reservation. Release of its remaining liability requires explicit final settlement or confirmed no-usage evidence. Model success text is not evidence. Corrections arrive through `CorrectSettlement` as new events and ledger revisions, with explicit evidence references. A durable accounting system still needs to retain and qualify the full external correction lineage.
+
+The component has no database wiring, accounting ingestion, rate-card valuation, provider enforcement, schema generation, scheduler integration, or external qualification. Those remain pending. This bounded candidate does not finish P10 and grants neither execution nor acceptance.
