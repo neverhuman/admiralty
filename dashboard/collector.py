@@ -690,7 +690,7 @@ def jope_receipts(statuses, task_specs=None):
             ok.append(tid)
     return ok, relabeled
 
-def collect_jopedime(screens, do_hc):
+def collect_jopedime_legacy(screens, do_hc):
     r = {'name': 'JopeDime', 'ledger_source': 'packet-v4 tasks.json + packet-matched on-main execution receipts; LIVE_STATUS active/claims + captain-state assignments'}
     try:
         t = rj(JP + '/tasks.json'); live = rj(JE + '/LIVE_STATUS.json') or {}
@@ -756,6 +756,111 @@ def collect_jopedime(screens, do_hc):
     r['pr'] = pr_lookup('neverhuman/JopeDime', None, ('feat/selfplay-batch4-integration-20261018', 'feat/selfplay-spec-integration-20261018'))
     r['coord_log'] = {'path': HOME + '/JopeDime/COMMS.md', 'tail': tail_lines(HOME + '/JopeDime/COMMS.md', 5), 'mtime_utc': mtime_iso(HOME + '/JopeDime/COMMS.md')}
     r['needs_jepson'] = needs_jepson(HOME + '/JopeDime/COMMS.md')
+    return r
+
+
+# ---------------- JopeDime major release (MR tracker, Jepson 11:37 AM MDT Oct 18) ----------------
+# The 66-task self-play packet (I01..I66) is a CLOSED previous milestone. The live ledger is the machine-readable
+# major-release tracker on origin/main. A task's status is derived from evidence only (verify receipt, PR, pushed
+# branch); the tracker's own 'status' field is shown as a claim and never promotes a task past in_progress.
+JOPE_REPO = HOME + '/JopeDime'
+MR_TRACKER = 'docs/plans/major-release-20261018/MAJOR_RELEASE_TRACKER.json'
+MR_STAGES = ['done', 'on_main', 'in_pr', 'implemented', 'in_progress', 'blocked', 'not_started']
+MR_LABEL = {'done': 'done (PASS receipt on a main commit, hashed logs verified)', 'on_main': 'done, pending verify (merged PR or PASS claim without a valid receipt)',
+            'in_pr': 'open PR', 'implemented': 'implemented', 'in_progress': 'in progress (pushed branch or live owner claim)',
+            'blocked': 'blocked (tracker says blocked)', 'not_started': 'todo'}
+MR_STATUS_NAME = {'done': 'done', 'on_main': 'done-pending-verify', 'in_pr': 'in_progress', 'in_progress': 'in_progress', 'blocked': 'blocked', 'not_started': 'todo'}
+MR_CACHE = {}
+
+def _mr_cached(key, ttl, fn):
+    ent = MR_CACHE.get(key)
+    if ent and time.time() - ent[0] < ttl: return ent[1]
+    try: val = fn()
+    except Exception: val = ent[1] if ent else None
+    MR_CACHE[key] = (time.time(), val); return val
+
+def _mr_ids(text):
+    return {'MR%02d' % int(m) for m in re.findall(r'(?i)\bmr[-_ ]?(\d{2})\b', text or '')} | ({'MRFV'} if re.search(r'(?i)\bmrfv\b', text or '') else set())
+
+def mr_receipt_check(path, repo, main_sha):
+    r = rj(path)
+    if not isinstance(r, dict): return None, 'unreadable receipt'
+    if str(r.get('status', '')).upper() != 'PASS': return None, 'receipt status %s' % r.get('status')
+    sha = str(r.get('sha') or ''); csha = str(r.get('checkout_sha') or sha)
+    if not re.fullmatch(r'[0-9a-f]{40}', sha) or sha != csha: return 'claim', 'bad/mismatched sha'
+    if not main_sha or not (sha == main_sha or _is_anc(repo, sha, main_sha)): return 'claim', 'sha %s not on origin/main' % sha[:9]
+    cases = r.get('case_to_test_map') or r.get('cases') or []
+    if not isinstance(cases, list) or not cases: return 'claim', 'no cases'
+    for c in cases:
+        if not isinstance(c, dict) or c.get('exit_code') != 0 or c.get('passed') is False: return 'claim', 'case failed/no exit 0'
+        lp, hs = c.get('log_path'), str(c.get('log_sha256') or '')
+        b = jope_evidence_bytes(lp, 64 * 1024 * 1024) if lp else None
+        if b is None or not re.fullmatch(r'[0-9a-f]{64}', hs) or hashlib.sha256(b).hexdigest() != hs: return 'claim', 'log missing or sha256 mismatch'
+    return 'ok', 'PASS on %s' % sha[:9]
+
+def collect_jopedime_mr(screens):
+    repo = JOPE_REPO
+    _mr_cached('fetch', 300, lambda: run(['git', '-C', repo, 'fetch', '-q', 'origin', 'main'], timeout=60))
+    main_sha = _rev(repo, 'origin/main')
+    rc, js, _ = run(['git', '-C', repo, 'show', 'origin/main:' + MR_TRACKER], timeout=15)
+    tdata = json.loads(js) if rc == 0 else None
+    if not tdata: return None
+    tasks = [t for t in tdata.get('tasks') or [] if isinstance(t, dict) and t.get('id')]
+    vdir = str(tdata.get('verify_dir') or (HOME + '/jope-evidence/major-release-20261018/verify'))
+    prs = _mr_cached('prs', 120, lambda: gh_json(['pr', 'list', '-R', 'neverhuman/JopeDime', '--state', 'all', '--limit', '60',
+                     '--json', 'number,title,state,headRefName,url,mergedAt'])[0]) or []
+    rc, br, _ = run(['git', '-C', repo, 'branch', '-r', '--format=%(refname:short)'], timeout=15)
+    branches = br.split() if rc == 0 else []
+    alive = {v['name'] for v in (screens or {}).values()}
+    rows, stage = [], {}
+    for t in tasks:
+        tid = t['id']; claim = str(t.get('status') or 'todo')
+        owner = t.get('owner_screen') or ''
+        tpr = [x for x in prs if tid in _mr_ids((x.get('headRefName') or '') + ' ' + (x.get('title') or '').split(':')[0])]
+        open_pr = next((x for x in tpr if x.get('state') == 'OPEN'), None)
+        merged_pr = next((x for x in tpr if x.get('state') == 'MERGED'), None)
+        rpath = vdir + '/' + tid + '.json'
+        rres, rwhy = mr_receipt_check(rpath, repo, main_sha) if os.path.isfile(rpath) else (None, 'no receipt')
+        tbr = [b for b in branches if tid in _mr_ids(b)]
+        if rres == 'ok': st, why = 'done', 'verify receipt ' + rwhy
+        elif merged_pr: st, why = 'on_main', 'PR #%s merged; receipt: %s' % (merged_pr['number'], rwhy)
+        elif rres == 'claim': st, why = 'on_main', 'PASS receipt not valid on main (%s)' % rwhy
+        elif open_pr: st, why = 'in_pr', 'open PR #%s' % open_pr['number']
+        elif tbr: st, why = 'in_progress', 'pushed branch ' + tbr[0]
+        elif claim.lower().startswith('blocked'): st, why = 'blocked', 'tracker status ' + claim
+        elif claim in ('in_progress', 'partial', 'pass') and owner.split('.', 1)[-1] in alive: st, why = 'in_progress', 'tracker claim %s, owner screen live (no branch/PR/receipt yet)' % claim
+        else: st, why = 'not_started', 'no branch/PR/receipt' + (' (tracker claims %s)' % claim if claim != 'todo' else '')
+        stage[tid] = st
+        pr = open_pr or merged_pr
+        rows.append({'id': tid, 'title': (t.get('completion_criterion') or '')[:140], 'release': t.get('release'), 'gate': t.get('gate'),
+                     'owner': owner, 'status': MR_STATUS_NAME[st], 'stage': st, 'why': why, 'tracker_claim': claim,
+                     'pr': {'number': pr['number'], 'state': pr['state'], 'url': pr.get('url')} if pr else None,
+                     'receipt': rpath if os.path.isfile(rpath) else None, 'receipt_check': rwhy, 'deps': t.get('deps') or []})
+    cnt = collections.Counter(stage.values())
+    return {'rows': rows, 'stages': {k: cnt.get(k, 0) for k in MR_STAGES}, 'total': len(rows), 'main_sha': (main_sha or '')[:12],
+            'source': 'origin/main:' + MR_TRACKER, 'verify_dir': vdir,
+            'status_counts': {n: sum(1 for r in rows if r['status'] == n) for n in ('todo', 'in_progress', 'blocked', 'done-pending-verify', 'done')}}
+
+def collect_jopedime(screens, do_hc):
+    legacy = collect_jopedime_legacy(screens, do_hc)
+    try:
+        mr = collect_jopedime_mr(screens)
+    except Exception as e:
+        mr = None; legacy['mr_error'] = str(e)[:200]
+    if not mr: return legacy
+    leg_counts = legacy.get('counts') or {}
+    r = {k: legacy[k] for k in ('pr', 'coord_log', 'needs_jepson', '_hints') if k in legacy}
+    r.update({'name': 'JopeDime', 'ledger_source': 'major-release tracker %s @ main %s; status from evidence (verify receipt / PR / pushed branch), tracker status shown as claim only' % (mr['source'], mr['main_sha']),
+              'total': mr['total'], 'done': mr['stages']['done'], 'stages': mr['stages'], 'stage_labels': MR_LABEL,
+              'counts': {'done': mr['stages']['done'], 'in_progress': mr['stages']['in_pr'] + mr['stages']['in_progress'] + mr['stages']['on_main'],
+                         'blocked': mr['stages']['blocked'], 'open': mr['stages']['not_started']},
+              'raw_status_counts': mr['status_counts'], 'mr_tasks': mr['rows'],
+              'stage_meta': {'note': 'done = PASS receipt in %s on a commit contained in origin/main with hashed logs re-verified; done-pending-verify = merged PR or PASS claim without a valid receipt.' % mr['verify_dir']},
+              'stage_by_task': {x['id']: {'stage': x['stage'], 'why': x['why']} for x in mr['rows']},
+              'previous_milestone': {'name': 'Self-play packet-v4 I01..I66 (closed)', 'total': legacy.get('total'), 'done': leg_counts.get('done'),
+                                     'merged_pr': 361, 'note': 'closed milestone; superseded by the major-release tracker (PR #362/#364)'},
+              'recent': [{'task': x['id'], 'old': None, 'new': x['status'], 'at': None, 'note': x['why'], 'source': 'evidence'} for x in mr['rows'] if x['stage'] != 'not_started'][:10]})
+    r['_hints'] = {x['owner']: x['id'] for x in mr['rows'] if x['stage'] in ('in_progress', 'in_pr') and x['owner']}
     return r
 
 # ---------------- Jarambit ----------------
