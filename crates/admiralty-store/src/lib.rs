@@ -1,4 +1,5 @@
 //! Single-owner durable event store. Replay only applies the pure domain reducer.
+pub mod artifacts;
 use admiralty_core::{DomainEvent, Projection, SourceIdentity, TransitionError, reduce};
 use fs2::FileExt;
 use rusqlite::{Connection, OptionalExtension, params};

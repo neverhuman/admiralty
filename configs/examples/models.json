@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "revision": "0",
+  "models": [
+    {
+      "id": "ornith",
+      "label": "Ornith (self-hosted)",
+      "provider": "openai_compatible",
+      "provider_model": "Ornith-1.5-35B-A3B",
+      "tier": 0,
+      "enabled": true,
+      "node_id": "inference-node",
+      "endpoint": "http://127.0.0.1:8000/v1",
+      "credential_file_ref": "credentials/ornith",
+      "max_concurrency": 16,
+      "capabilities": [
+        "coding",
+        "tool_calls",
+        "structured_output"
+      ],
+      "task_max_attempts": 2,
+      "escalate_to": "gpt-6-luna"
+    },
+    {
+      "id": "gpt-6-luna",
+      "label": "Luna",
+      "provider": "codex_cli",
+      "provider_model": "gpt-6-luna",
+      "tier": 1,
+      "enabled": true,
+      "node_id": null,
+      "endpoint": null,
+      "credential_file_ref": null,
+      "max_concurrency": 4,
+      "capabilities": [
+        "coding",
+        "tool_calls",
+        "structured_output"
+      ],
+      "task_max_attempts": 2,
+      "escalate_to": null
+    },
+    {
+      "id": "ornith-ssh-profile",
+      "label": "Ornith through OpenCode SSH (configure before enabling)",
+      "provider": "opencode_ssh",
+      "provider_model": "ornith/Ornith-1.5-35B-A3B",
+      "tier": 0,
+      "enabled": false,
+      "node_id": "inference-node",
+      "endpoint": "ssh://ornith-profile",
+      "credential_file_ref": null,
+      "max_concurrency": 16,
+      "capabilities": [
+        "coding",
+        "tool_calls"
+      ],
+      "task_max_attempts": 2,
+      "escalate_to": "gpt-6-luna"
+    }
+  ]
+}

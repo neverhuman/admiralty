@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fleetTotals, formatUnknown, getFleet, taskStateLabel, type Fleet } from '../api';
+import { fleetTotals, formatUnknown, taskStateLabel, type Fleet } from '../api';
+import { watchFleet, type ConnectionState } from '../events';
+import LegacyDetailed from './LegacyDetailed';
+import Models from './Models';
 
-type View = 'Overview' | 'Workplans' | 'Coordination';
+type View = 'Legacy detailed view' | 'Overview' | 'Workplans' | 'Coordination' | 'Models';
 
 function App() {
-  const [view, setView] = useState<View>('Overview');
+  const [view, setView] = useState<View>('Legacy detailed view');
   const [fleet, setFleet] = useState<Fleet | null>(null);
   const [error, setError] = useState('');
   const [updated, setUpdated] = useState<Date | null>(null);
@@ -13,65 +16,65 @@ function App() {
   const [showAccess, setShowAccess] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [filter, setFilter] = useState('');
+  const [connection, setConnection] = useState<ConnectionState>('connecting');
+  const [retry, setRetry] = useState(0);
+  const legacyView = view === 'Legacy detailed view';
+  const modelsView = view === 'Models';
 
   useEffect(() => {
-    const controller = new AbortController();
-    const refresh = async () => {
-      try {
-        const result = await getFleet(token || undefined, controller.signal);
+    setFleet(null); setUpdated(null); setError('');
+    return watchFleet({ token: token || undefined,
+      onFleet: (result) => {
         setFleet(result);
-        setError('');
         setUpdated(new Date());
-      } catch (reason) {
-        if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Fleet unavailable');
-      }
-    };
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), 15000);
-    return () => { controller.abort(); window.clearInterval(timer); };
-  }, [token]);
+      }, onState: setConnection, onError: setError,
+    });
+  }, [token, retry]);
 
   const totals = useMemo(() => fleet ? fleetTotals(fleet) : null, [fleet]);
   const visibleTasks = fleet?.tasks.filter(({ contract }) => `${contract.title} ${contract.objective} ${contract.project_id}`.toLowerCase().includes(filter.toLowerCase())) ?? [];
 
   return <div className={`app theme-${theme}`}>
     <aside className="sidebar">
-      <a className="brand" href="#overview" aria-label="Admiralty home" onClick={() => setView('Overview')}>
-        <span className="brand-mark" aria-hidden="true" /><span><strong>ADMIRALTY</strong><small>FLEET CONTROL</small></span>
+      <a className="brand" href="#overview" aria-label="Admiralty home" onClick={() => setView('Legacy detailed view')}>
+        <img className="brand-mark" src="/brand/admiralty-source.png" alt="" /><span><strong>ADMIRALTY</strong><small>FLEET CONTROL</small></span>
       </a>
       <div className="workspace-label">WORKSPACE</div>
       <div className="workspace"><span className="workspace-dot" /> Fleet overview <span className="chevron">⌄</span></div>
       <nav aria-label="Main navigation">
         <div className="nav-label">MONITOR</div>
-        {(['Overview', 'Workplans', 'Coordination'] as View[]).map((item, index) => <button key={item} className={`nav-item ${view === item ? 'active' : ''}`} onClick={() => setView(item)}>
-          <span className="nav-icon" aria-hidden="true">{['◫', '≡', '◉'][index]}</span>{item}
+        {(['Legacy detailed view', 'Overview', 'Workplans', 'Coordination', 'Models'] as View[]).map((item, index) => <button key={item} className={`nav-item ${view === item ? 'active' : ''}`} onClick={() => setView(item)}>
+          <span className="nav-icon" aria-hidden="true">{['▦', '◫', '≡', '◉', '⚙'][index]}</span>{item === 'Overview' && fleet?.simulated ? 'Demo overview' : item}
           {item === 'Coordination' && fleet && <span className="nav-count">{fleet.coordination.queued_messages}</span>}
         </button>)}
       </nav>
       <div className="sidebar-spacer" />
-      <div className="brand-slot"><span className="brand-slot-mark" aria-hidden="true" /><span>Brand mark<br /><small>source asset pending</small></span></div>
+      <div className="brand-slot"><img className="brand-slot-mark" src="/brand/admiralty-source.png" alt="Admiralty mascot" /><span>Admiralty<br /><small>Coordinate. Build. Verify.</small></span></div>
       <div className="sidebar-footer"><span className="avatar">A</span><span><b>Local operator</b><small>Read only access</small></span><button aria-label="Access settings" onClick={() => setShowAccess(true)}>···</button></div>
     </aside>
 
     <main className="main-area">
       <header className="topbar">
         <div className="breadcrumbs">Fleet <span>/</span> <strong>{view}</strong></div>
-        <div className="top-actions"><span className={`connection ${error ? 'offline' : fleet ? 'online' : ''}`}><i />{error ? 'Disconnected' : fleet ? 'Connected' : 'Connecting'}</span>
+        <div className="top-actions"><span className={`connection ${!legacyView && connection === 'connected' ? 'online' : !legacyView && connection === 'paused' ? 'offline' : ''}`} aria-live="polite"><i />{legacyView ? 'Detailed producer view' : connection === 'connected' ? 'Live updates' : connection === 'paused' ? 'Updates paused' : connection === 'reconnecting' ? 'Reconnecting' : 'Connecting'}</span>
           <button className="icon-button" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? '☼' : '◐'}</button>
           <button className="operator-button" onClick={() => setShowAccess(true)}><span className="avatar small">A</span><span>Operator</span><span>⌄</span></button>
         </div>
       </header>
 
-      <div className="content">
-        <section className="page-heading"><div><div className="eyebrow">ADMIRALTY / LOCAL FLEET</div><h1>{view}</h1><p>{view === 'Overview' ? 'A clear picture of delivery, blockers and fleet activity.' : view === 'Workplans' ? 'Task stages and current ownership across the fleet.' : 'Compact coordination activity and message acknowledgements.'}</p></div>
-          <div className="heading-meta"><span className={`mode-pill ${fleet?.simulated ? 'simulation' : ''}`}>{fleet?.simulated ? 'SIMULATION' : fleet ? 'LIVE SNAPSHOT' : 'AWAITING DATA'}</span><span className="freshness"><i />{updated ? `Updated ${updated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No snapshot yet'}</span></div>
+      <div className={`content ${legacyView ? 'legacy-content' : ''}`}>
+        <section className="page-heading"><div><div className="eyebrow">ADMIRALTY / {legacyView ? 'OBSERVED PRODUCER FLEET' : 'NATIVE CONTROL PLANE'}</div><h1>{legacyView ? 'Fleet detail' : view === 'Overview' && fleet?.simulated ? 'Demo overview' : view}</h1><p>{legacyView ? 'Every project, captain, worker and evidence source in one detailed view.' : view === 'Overview' ? 'Native task projections; separate from the detailed producer fleet.' : view === 'Workplans' ? 'Native task stages and current ownership.' : view === 'Models' ? 'Provider and model configuration.' : 'Compact native coordination activity and message acknowledgements.'}</p></div>
+          <div className="heading-meta"><span className={`mode-pill ${!legacyView && fleet?.simulated ? 'simulation' : ''}`}>{legacyView ? 'PRODUCER OBSERVATIONS' : fleet?.simulated ? 'SIMULATION · SYNTHETIC TASKS' : fleet ? 'NATIVE SNAPSHOT' : 'AWAITING DATA'}</span>{!legacyView && <span className="freshness"><i />{updated ? `Updated ${updated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No snapshot yet'}</span>}</div>
         </section>
-        {error && <div className="error-banner" role="status"><span>Connection issue</span><span>{error}. Retrying automatically.</span></div>}
-        {!fleet && !error && <div className="loading-card">Connecting to the local fleet service…</div>}
+        {legacyView && <LegacyDetailed token={token || undefined} />}
+        {!legacyView && fleet?.simulated && <div className="simulation-note">Simulation: these synthetic projects and tasks are separate from the real producer fleet.</div>}
+        {!legacyView && !modelsView && error && <div className="error-banner" role="status"><span>{connection === 'paused' ? 'Updates paused' : 'Connection issue'}</span><span>{error}{connection === 'reconnecting' ? ' · Reconnecting automatically.' : ''}</span><button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry connection</button></div>}
+        {!legacyView && !modelsView && !fleet && !error && <div className="loading-card">Connecting to the local native service…</div>}
         {fleet && view === 'Overview' && <Overview fleet={fleet} totals={totals!} onWorkplans={() => setView('Workplans')} />}
         {fleet && view === 'Workplans' && <Workplans fleet={fleet} tasks={visibleTasks} filter={filter} setFilter={setFilter} />}
         {fleet && view === 'Coordination' && <Coordination fleet={fleet} />}
-        <footer className="page-footer"><span>READ ONLY · SOURCE: LOCAL FLEET API</span><span>Native execution {fleet?.native_execution_qualified ? 'qualified' : 'not qualified'} <b>·</b> Usage {formatUnknown(fleet?.coordination.measured_tokens)}</span></footer>
+        {view === 'Models' && <Models token={token || undefined} onAccess={() => setShowAccess(true)} />}
+        <footer className="page-footer"><span>{modelsView ? 'MODEL POLICY CONFIGURATION' : `READ ONLY · SOURCE: ${legacyView ? 'LEGACY PRODUCER SNAPSHOT' : 'NATIVE FLEET API'}`}</span><span>{legacyView ? 'Source provenance and uncertainty preserved' : <>Native execution {fleet?.native_execution_qualified ? 'qualified' : 'not qualified'} <b>·</b> Usage {formatUnknown(fleet?.coordination.measured_tokens)}</>}</span></footer>
       </div>
     </main>
     {showAccess && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAccess(false); }}>
@@ -82,25 +85,25 @@ function App() {
 
 function Overview({ fleet, totals, onWorkplans }: { fleet: Fleet; totals: ReturnType<typeof fleetTotals>; onWorkplans: () => void }) {
   const stageItems = [
-    ['Accepted', totals.accepted, 'accepted'], ['In progress', totals.running, 'running'], ['Awaiting verification', totals.verifying, 'verifying'], ['Blocked', totals.blocked, 'blocked'],
+    ['Accepted', totals.accepted, 'accepted'], ['Claimed or running', totals.running, 'running'], ['Awaiting verification', totals.verifying, 'verifying'], ['Blocked', totals.blocked, 'blocked'],
   ] as const;
   return <>
     <section className="metric-grid" aria-label="Fleet summary">
       <Metric label="Active projects" value={totals.projects} detail="Across current fleet" icon="⌘" />
       <Metric label="Tasks in scope" value={totals.tasks} detail="Tracked work items" icon="▤" />
-      <Metric label="Running" value={totals.running} detail="Execution observed" icon="◷" tone="blue" />
+      <Metric label="Claimed or running" value={totals.running} detail="Includes claims; execution unqualified" icon="◷" tone="blue" />
       <Metric label="Blocked" value={totals.blocked} detail="Needs attention" icon="⏸" tone="gold" />
     </section>
     <section className="overview-grid">
       <div className="panel project-panel"><div className="panel-head"><div><div className="eyebrow">PROJECTS</div><h2>Fleet at a glance</h2></div><button className="text-button" onClick={onWorkplans}>View workplans <span>→</span></button></div>
         <div className="project-list">{fleet.projects.length ? fleet.projects.map((project) => {
           const progress = project.total ? Math.min(100, Math.round((project.accepted / project.total) * 100)) : 0;
-          return <article className="project-card" key={project.id}><div className="project-card-top"><span className="project-avatar">{project.name.slice(0, 1).toUpperCase()}</span><div className="project-name"><h3>{project.name}</h3><small>{project.id}</small></div><span className="project-total">{project.total} <small>tasks</small></span></div><div className="progress-track" role="progressbar" aria-label={`${project.name} accepted tasks`} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${progress}%` }} /></div><div className="project-stages"><span><i className="dot accepted" />{project.accepted} accepted</span><span><i className="dot running" />{project.running} running</span><span><i className="dot blocked" />{project.blocked} blocked</span><span><i className="dot verifying" />{project.awaiting_verification} verifying</span></div></article>;
+          return <article className="project-card" key={project.id}><div className="project-card-top"><span className="project-avatar">{project.name.slice(0, 1).toUpperCase()}</span><div className="project-name"><h3>{project.name}</h3><small>{project.id}</small></div><span className="project-total">{project.total} <small>tasks</small></span></div><div className="progress-track" role="progressbar" aria-label={`${project.name} accepted tasks`} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${progress}%` }} /></div><div className="project-stages"><span><i className="dot accepted" />{project.accepted} accepted</span><span><i className="dot running" />{project.running} claimed / running</span><span><i className="dot blocked" />{project.blocked} blocked</span><span><i className="dot verifying" />{project.awaiting_verification} awaiting verification</span></div></article>;
         }) : <Empty message="No projects in the current snapshot." />}</div>
       </div>
-      <div className="panel delivery-panel"><div className="panel-head"><div><div className="eyebrow">DELIVERY</div><h2>Task stages</h2></div><span className="tiny-badge">{totals.tasks} TOTAL</span></div><div className="stage-list">{stageItems.map(([label, count, kind]) => <div className="stage-row" key={label}><span className={`stage-icon ${kind}`}>{kind === 'accepted' ? '✓' : kind === 'running' ? '↗' : kind === 'blocked' ? '!' : '◷'}</span><span className="stage-label">{label}</span><strong>{count}</strong><span className="stage-track"><i className={kind} style={{ width: `${totals.tasks ? Math.max(count ? 3 : 0, count / totals.tasks * 100) : 0}%` }} /></span></div>)}</div><div className="delivery-note"><span>Quality gate</span><b>Managed verification</b><small>Accepted counts come from the fleet snapshot.</small></div></div>
+      <div className="panel delivery-panel"><div className="panel-head"><div><div className="eyebrow">DELIVERY</div><h2>Task stages</h2></div><span className="tiny-badge">{totals.tasks} TOTAL</span></div><div className="stage-list">{stageItems.map(([label, count, kind]) => <div className="stage-row" key={label}><span className={`stage-icon ${kind}`}>{kind === 'accepted' ? '✓' : kind === 'running' ? '↗' : kind === 'blocked' ? '!' : '◷'}</span><span className="stage-label">{label}</span><strong>{count}</strong><span className="stage-track"><i className={kind} style={{ width: `${totals.tasks ? Math.max(count ? 3 : 0, count / totals.tasks * 100) : 0}%` }} /></span></div>)}</div><div className="delivery-note"><span>Quality gate</span><b>Not yet qualified</b><small>Candidate reports await independent verification. Native execution remains disabled.</small></div></div>
     </section>
-    <section className="panel activity-panel"><div className="panel-head"><div><div className="eyebrow">COORDINATION</div><h2>Message pulse</h2></div><span className="panel-caption">No routine model turns</span></div><div className="coord-stats"><div><span className="stat-label">Queued messages</span><strong>{fleet.coordination.queued_messages}</strong><small>Awaiting acknowledgement</small></div><div><span className="stat-label">Acknowledged</span><strong>{fleet.coordination.acknowledged_messages}</strong><small>Recorded in snapshot</small></div><div><span className="stat-label">Routine turns</span><strong>{fleet.coordination.routine_model_turns}</strong><small>Current API contract</small></div><div><span className="stat-label">Measured tokens</span><strong>{formatUnknown(fleet.coordination.measured_tokens)}</strong><small>Unknown is distinct from zero</small></div></div></section>
+    <section className="panel activity-panel"><div className="panel-head"><div><div className="eyebrow">COORDINATION</div><h2>Message pulse</h2></div><span className="panel-caption">No routine model turns</span></div><div className="coord-stats"><div><span className="stat-label">Recorded messages</span><strong>{fleet.coordination.queued_messages}</strong><small>Durably queued in snapshot</small></div><div><span className="stat-label">Acknowledged</span><strong>{fleet.coordination.acknowledged_messages}</strong><small>Recorded in snapshot</small></div><div><span className="stat-label">Routine turns</span><strong>{fleet.coordination.routine_model_turns}</strong><small>Current API contract</small></div><div><span className="stat-label">Measured tokens</span><strong>{formatUnknown(fleet.coordination.measured_tokens)}</strong><small>Unknown is distinct from zero</small></div></div></section>
   </>;
 }
 
@@ -115,7 +118,7 @@ function Workplans({ fleet, tasks, filter, setFilter }: { fleet: Fleet; tasks: F
 
 function Coordination({ fleet }: { fleet: Fleet }) {
   const items = [
-    { label: 'Queued messages', value: fleet.coordination.queued_messages, detail: 'Waiting for a response', color: 'gold' },
+    { label: 'Recorded messages', value: fleet.coordination.queued_messages, detail: 'Message entries recorded', color: 'gold' },
     { label: 'Acknowledged messages', value: fleet.coordination.acknowledged_messages, detail: 'Acknowledgements recorded', color: 'blue' },
     { label: 'Routine model turns', value: fleet.coordination.routine_model_turns, detail: 'No routine turns observed', color: 'green' },
   ];

@@ -1,0 +1,85 @@
+{
+  "packet": "P03",
+  "state": "in_progress",
+  "owner": "local integration reviewer",
+  "base_sha": "cb7526c7745b7d6ae6b1446be64072f32b4f663c",
+  "head_sha": "109563722a4c03941b18e79d180a31c9225369fb",
+  "observed_utc": "2026-10-18T10:25:15+00:00",
+  "contract_version": "foundation/v1",
+  "changed_paths": [
+    "crates/admiralty-store/Cargo.toml",
+    "crates/admiralty-store/src/lib.rs",
+    "tests/integration/store_replay.rs"
+  ],
+  "sha256": {
+    "crates/admiralty-store/Cargo.toml": "08f952ec588c217eb67aec1646350eb987033853a6d3b0955017c3c0c60726dc",
+    "crates/admiralty-store/src/lib.rs": "a8e4fde8dcf14bbb09a5655aac4234418dcf6b8ed83e7b23667117cc2474f8a8",
+    "tests/integration/store_replay.rs": "ec5359fb117ae5999a412bb27d5c1da7a2d07371a701b808071f0a0e2e99e525"
+  },
+  "criteria": [
+    {
+      "name": "Implemented prototype compiles and passes offline invariants",
+      "result": "pass",
+      "evidence": [
+        "95 Rust tests pass across workspace; packet remains partial"
+      ]
+    },
+    {
+      "name": "Complete parent packet acceptance",
+      "result": "not_run",
+      "evidence": [
+        "Outbox, complete read projections and restore qualification remain pending."
+      ]
+    }
+  ],
+  "validation": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "-q"
+      ],
+      "cwd": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+      "env": {
+        "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target"
+      },
+      "exit_code": 0,
+      "artifact": null,
+      "observation": "Full output retained in implementation chat tool transcript; no standalone raw log saved."
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+      "env": {
+        "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target"
+      },
+      "exit_code": 0,
+      "artifact": null
+    }
+  ],
+  "environment": {
+    "platform": "macOS-15.7.5-arm64-arm-64bit-Mach-O",
+    "rust": "1.95.0",
+    "calls": "offline; no paid provider qualification"
+  },
+  "decisions": [
+    "Candidate import does not establish full packet acceptance.",
+    "No production scheduling or publication authority transferred."
+  ],
+  "limitations": [
+    "Outbox, complete read projections and restore qualification remain pending."
+  ],
+  "blockers": [],
+  "next_action": "Implement remaining packet steps and exact qualification before marking verified."
+}

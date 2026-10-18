@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import stat
 from urllib.parse import urlsplit
 
@@ -56,6 +57,37 @@ def _reference(value, required):
     result = {key: _text(value.get(key), 1000) for key in required}
     if not all(result.values()) or not _timestamp(result.get("observed_utc")):
         return None
+    return result
+
+
+def _activity(value):
+    """Carry bounded metadata observations without granting progress authority."""
+    if not isinstance(value, dict) or value.get("source") != "owned_worktree_metadata/v1":
+        return None
+    state = value.get("state")
+    observed = _timestamp(value.get("observed_utc"))
+    if state not in {"observed", "bounded", "unsafe", "unavailable", "deferred", "not_reported"} or observed is None:
+        return None
+    result = {"source": "owned_worktree_metadata/v1", "state": state,
+              "observed_utc": observed.isoformat(timespec="seconds"),
+              "assurance": "Metadata only; no agent liveness, task progress or acceptance established."}
+    for key, limit in (("owned_scope_files", 2000), ("scanned_entries", 2000),
+                       ("scope_paths", 64), ("skipped_entries", 4096)):
+        item = value.get(key)
+        if type(item) is int and 0 <= item <= limit:
+            result[key] = item
+    if type(value.get("bounded")) is bool:
+        result["bounded"] = value["bounded"]
+    head = value.get("head_sha")
+    if isinstance(head, str) and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", head):
+        result["head_sha"] = head
+        if type(value.get("reported_head_matches")) is bool:
+            result["reported_head_matches"] = value["reported_head_matches"]
+    latest = _timestamp(value.get("latest_owned_path_mtime_utc"))
+    if latest:
+        result["latest_owned_path_mtime_utc"] = latest.isoformat(timespec="seconds")
+    if value.get("head_state") == "unavailable":
+        result["head_state"] = "unavailable"
     return result
 
 
@@ -130,6 +162,9 @@ def _normalize(value, now, source):
         if not isinstance(lane, dict) or not _text(lane.get("id"), 200):
             raise ManifestError("Each lane requires a nonempty string id.")
         lanes.append({key: _text(lane.get(key), 200) for key in ("id", "owner", "node", "branch", "status")})
+        activity = _activity(lane.get("activity"))
+        if activity:
+            lanes[-1]["activity"] = activity
     if len({lane["id"] for lane in lanes}) != len(lanes):
         raise ManifestError("Lane ids must be unique.")
     threshold = value.get("stale_after_s", 300)

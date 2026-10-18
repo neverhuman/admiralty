@@ -1,0 +1,4 @@
+{"type":"step_start","sessionID":"synthetic-session","part":{"type":"step-start"}}
+{"type":"tool_use","sessionID":"synthetic-session","part":{"tool":"bash","state":{"status":"completed"}}}
+{"type":"step_finish","sessionID":"synthetic-session","part":{"reason":"stop","tokens":{"input":"9007199254740993","output":24,"reasoning":12,"cache":{"write":0}}}}
+{"type":"future_event","sessionID":"synthetic-session","part":{"unknown":true}}

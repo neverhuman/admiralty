@@ -135,8 +135,8 @@ impl ArtifactStore {
 
         let mut options = OpenOptions::new();
         options.read(true);
-        #[cfg(target_os = "linux")]
-        options.custom_flags(0x20000); // O_NOFOLLOW
+        #[cfg(unix)]
+        options.custom_flags(rustix::fs::OFlags::NOFOLLOW.bits() as i32);
         let mut file = options.open(path)?;
         let capacity = usize::try_from(size)
             .map_err(|_| StoreError::Invalid("artifact size exceeds platform limits".into()))?;
@@ -206,9 +206,9 @@ fn checked_root(path: &Path) -> Result<PathBuf> {
         }
     }
     let metadata = fs::symlink_metadata(&current)?;
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     {
-        let uid = current_uid()?;
+        let uid = rustix::process::geteuid().as_raw();
         let mode = metadata.permissions().mode();
         if metadata.uid() != uid || mode & 0o077 != 0 {
             return Err(StoreError::Invalid(format!(
@@ -224,52 +224,53 @@ fn checked_root(path: &Path) -> Result<PathBuf> {
             ));
         }
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(unix))]
     {
         let _ = metadata;
         return Err(StoreError::Invalid(
-            "artifact store requires Linux ownership and no-follow checks".into(),
+            "artifact store requires Unix ownership and no-follow checks".into(),
         ));
     }
     Ok(current)
 }
 
-#[cfg(target_os = "linux")]
-fn current_uid() -> Result<u32> {
-    let status = fs::read_to_string("/proc/self/status")?;
-    let line = status
-        .lines()
-        .find(|line| line.starts_with("Uid:"))
-        .ok_or_else(|| StoreError::Invalid("cannot determine effective user id".into()))?;
-    line.split_whitespace()
-        .nth(2)
-        .ok_or_else(|| StoreError::Invalid("cannot determine effective user id".into()))?
-        .parse()
-        .map_err(|_| StoreError::Invalid("cannot determine effective user id".into()))
-}
-
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
     use std::{os::unix::fs::symlink, sync::Arc, thread};
 
     fn store() -> (tempfile::TempDir, ArtifactStore) {
-        let directory = tempfile::tempdir().unwrap();
-        fs::set_permissions(directory.path(), fs::Permissions::from_mode(0o700)).unwrap();
-        let store = ArtifactStore::open(directory.path(), 1024).unwrap();
+        let directory = tempfile::tempdir().expect("artifact fixture operation succeeds");
+        fs::set_permissions(directory.path(), fs::Permissions::from_mode(0o700))
+            .expect("artifact fixture operation succeeds");
+        let store = ArtifactStore::open(
+            directory
+                .path()
+                .canonicalize()
+                .expect("canonical fixture root"),
+            1024,
+        )
+        .expect("artifact fixture operation succeeds");
         (directory, store)
     }
 
     #[test]
     fn round_trip_has_stable_sha256() {
         let (_directory, store) = store();
-        let reference = store.publish_bytes(b"hello").unwrap();
+        let reference = store
+            .publish_bytes(b"hello")
+            .expect("artifact fixture operation succeeds");
         assert_eq!(
             reference.sha256,
             "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
         );
         assert_eq!(reference.size_bytes, 5);
-        assert_eq!(store.read_verified(&reference).unwrap(), b"hello");
+        assert_eq!(
+            store
+                .read_verified(&reference)
+                .expect("artifact fixture operation succeeds"),
+            b"hello"
+        );
     }
 
     #[test]
@@ -280,39 +281,50 @@ mod tests {
             size_bytes: b"corrupt!".len() as u64,
         };
         fs::write(
-            directory
-                .path()
-                .join(parse_digest(&reference.sha256).unwrap()),
+            directory.path().join(
+                parse_digest(&reference.sha256).expect("artifact fixture operation succeeds"),
+            ),
             b"corrupt!",
         )
-        .unwrap();
+        .expect("artifact fixture operation succeeds");
         assert!(store.publish_bytes(b"expected").is_err());
         assert_eq!(
-            fs::read(
-                directory
-                    .path()
-                    .join(parse_digest(&reference.sha256).unwrap())
-            )
-            .unwrap(),
+            fs::read(directory.path().join(
+                parse_digest(&reference.sha256).expect("artifact fixture operation succeeds")
+            ))
+            .expect("artifact fixture operation succeeds"),
             b"corrupt!"
         );
     }
 
     #[test]
     fn rejects_oversized_input_before_publication() {
-        let directory = tempfile::tempdir().unwrap();
-        fs::set_permissions(directory.path(), fs::Permissions::from_mode(0o700)).unwrap();
-        let store = ArtifactStore::open(directory.path(), 4).unwrap();
+        let directory = tempfile::tempdir().expect("artifact fixture operation succeeds");
+        fs::set_permissions(directory.path(), fs::Permissions::from_mode(0o700))
+            .expect("artifact fixture operation succeeds");
+        let store = ArtifactStore::open(
+            directory
+                .path()
+                .canonicalize()
+                .expect("canonical fixture root"),
+            4,
+        )
+        .expect("artifact fixture operation succeeds");
         assert!(store.publish_bytes(b"12345").is_err());
-        assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 0);
+        assert_eq!(
+            fs::read_dir(directory.path())
+                .expect("artifact fixture operation succeeds")
+                .count(),
+            0
+        );
     }
 
     #[test]
     fn rejects_symlink_root_and_object() {
         let (directory, store) = store();
-        let outside = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().expect("artifact fixture operation succeeds");
         let root_link = directory.path().with_extension("link");
-        symlink(directory.path(), &root_link).unwrap();
+        symlink(directory.path(), &root_link).expect("artifact fixture operation succeeds");
         assert!(ArtifactStore::open(&root_link, 100).is_err());
 
         let reference = ArtifactRef {
@@ -321,11 +333,11 @@ mod tests {
         };
         symlink(
             outside.path().join("absent"),
-            directory
-                .path()
-                .join(parse_digest(&reference.sha256).unwrap()),
+            directory.path().join(
+                parse_digest(&reference.sha256).expect("artifact fixture operation succeeds"),
+            ),
         )
-        .unwrap();
+        .expect("artifact fixture operation succeeds");
         assert!(store.read_verified(&reference).is_err());
         assert!(
             store
@@ -343,7 +355,7 @@ mod tests {
                 })
                 .is_err()
         );
-        fs::remove_file(root_link).unwrap();
+        fs::remove_file(root_link).expect("artifact fixture operation succeeds");
     }
 
     #[test]
@@ -353,12 +365,20 @@ mod tests {
         let publishers: Vec<_> = (0..8)
             .map(|_| {
                 let store = Arc::clone(&store);
-                thread::spawn(move || store.publish_bytes(b"same immutable bytes").unwrap())
+                thread::spawn(move || {
+                    store
+                        .publish_bytes(b"same immutable bytes")
+                        .expect("artifact fixture operation succeeds")
+                })
             })
             .collect();
         let references: Vec<_> = publishers
             .into_iter()
-            .map(|publisher| publisher.join().unwrap())
+            .map(|publisher| {
+                publisher
+                    .join()
+                    .expect("artifact fixture operation succeeds")
+            })
             .collect();
         assert!(
             references
@@ -366,7 +386,9 @@ mod tests {
                 .all(|reference| reference == &references[0])
         );
         assert_eq!(
-            store.read_verified(&references[0]).unwrap(),
+            store
+                .read_verified(&references[0])
+                .expect("artifact fixture operation succeeds"),
             b"same immutable bytes"
         );
     }

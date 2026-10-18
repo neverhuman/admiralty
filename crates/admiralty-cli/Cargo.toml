@@ -9,6 +9,7 @@ name = "admiralty"
 path = "src/main.rs"
 [dependencies]
 admiralty-core.workspace = true
+admiralty-runtime.workspace = true
 admiralty-store.workspace = true
 admiralty-server.workspace = true
 serde_json.workspace = true

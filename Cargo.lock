@@ -7,6 +7,7 @@ name = "admiralty-cli"
 version = "0.1.0"
 dependencies = [
  "admiralty-core",
+ "admiralty-runtime",
  "admiralty-server",
  "admiralty-store",
  "chrono",
@@ -34,6 +35,8 @@ name = "admiralty-runtime"
 version = "0.1.0"
 dependencies = [
  "admiralty-core",
+ "fs2",
+ "rustix",
  "serde",
  "serde_json",
  "tempfile",
@@ -45,6 +48,7 @@ name = "admiralty-server"
 version = "0.1.0"
 dependencies = [
  "admiralty-core",
+ "admiralty-runtime",
  "admiralty-store",
  "axum",
  "clap",
@@ -62,6 +66,7 @@ dependencies = [
  "admiralty-core",
  "fs2",
  "rusqlite",
+ "rustix",
  "serde",
  "serde_json",
  "sha2",
@@ -76,6 +81,7 @@ name = "admiralty-testkit"
 version = "0.1.0"
 dependencies = [
  "admiralty-core",
+ "admiralty-runtime",
  "admiralty-server",
  "admiralty-store",
  "axum",

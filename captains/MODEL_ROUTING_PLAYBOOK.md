@@ -25,6 +25,35 @@ Safety and merge rules are unchanged: neverhumanbot approves the EXACT head, the
 - **Reasoning effort burns quota too.** Never use `max` or `ultra`, even though the picker offers them. `xhigh` is only for Tier 3.
 - OpenAI doesn't publish exact per-model Pro-quota ratios. These credit rates are the proxy, and they're good enough to route by.
 
+## Configured own-model tier before the Codex ladder
+
+For eligible new tasks, load the configured private model registry and call
+`admiralty models select --registry <private-models.json> --request <request.json>
+--capacity <capacity.json>`. The ordered tier numbers, model IDs, providers,
+capabilities, execution node and escalation links are configuration data. An
+eligible enabled self-hosted model may precede Luna without changing this code.
+The deployment profile can select Ornith through OpenCode on its inference node;
+that machine's paths and credentials belong in private configuration.
+
+Use one committed checkout per task on the execution node, with its complete
+contract and visible checks available inside that checkout. Observe the native
+model identity and verify immutable checks independently. A successful CLI exit
+or model completion is not a passing task. Preserve original usage/model segments
+when another tier takes over. A self-hosted model has unknown measured operating
+cost unless accounting supplies it; do not turn unknown into zero.
+
+A genuine failed check can follow the configured `escalate_to` link once the
+current tier's attempt cap is reached and escalation is authorized. Start each
+new eligible task at the configured lowest capable tier again. Capacity pressure
+waits unless explicit fallback policy permits it. Setup errors and blocked input
+pause for repair/input; they never grant wider permissions or trigger expensive
+model escalation. Existing in-flight work changes model only at a task boundary.
+
+The registry's deterministic route preview does not itself launch work or confer
+native execution qualification. Legacy captains may use an independently
+qualified CLI/helper under their existing task/workspace authority while the full
+managed execution path is completed.
+
 ## 1. The model ladder
 
 | Tier | Codex model + effort | Use for | Launch flags |

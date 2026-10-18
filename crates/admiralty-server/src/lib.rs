@@ -1,4 +1,6 @@
 //! Read-only fleet projection and durable event replay. Native provider control remains disabled.
+pub mod legacy;
+pub mod models;
 use admiralty_core::{Projection, SchedulingState, TaskView};
 use admiralty_store::{Cursor, Store};
 use axum::{
@@ -34,6 +36,8 @@ pub struct ServerConfig {
     pub simulated: bool,
     pub token: Option<String>,
     pub assets: Option<PathBuf>,
+    pub legacy: Option<legacy::LegacyConfig>,
+    pub models_file: Option<PathBuf>,
 }
 
 #[derive(Clone)]
@@ -42,6 +46,7 @@ struct AppState {
     config: ServerConfig,
     reads: Arc<Semaphore>,
     streams: Arc<Semaphore>,
+    models: Option<admiralty_runtime::models::RegistryFile>,
 }
 
 #[derive(Serialize)]
@@ -348,6 +353,99 @@ async fn events(
     ))
 }
 
+fn model_config(
+    state: &AppState,
+    headers: &HeaderMap,
+) -> Result<admiralty_runtime::models::RegistryFile, ApiError> {
+    authorized(state, headers)?;
+    state
+        .models
+        .clone()
+        .ok_or_else(|| error(StatusCode::NOT_FOUND, "model registry is not configured"))
+}
+async fn model_list(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, ApiError> {
+    let registry = model_config(&state, &headers)?;
+    let _permit = state
+        .reads
+        .acquire()
+        .await
+        .map_err(|_| error(StatusCode::SERVICE_UNAVAILABLE, "read capacity unavailable"))?;
+    models::list_models(registry).await
+}
+async fn model_update(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<models::ModelsUpdateRequest>,
+) -> Result<impl IntoResponse, ApiError> {
+    let registry = model_config(&state, &headers)?;
+    let _permit = state.reads.acquire().await.map_err(|_| {
+        error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "model capacity unavailable",
+        )
+    })?;
+    models::update_models(registry, request).await
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ModelSelectRequest {
+    request: admiralty_runtime::models::SelectionRequest,
+    capacity: admiralty_runtime::models::CapacitySnapshot,
+}
+async fn model_select(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<ModelSelectRequest>,
+) -> Result<impl IntoResponse, ApiError> {
+    let registry = model_config(&state, &headers)?;
+    let _permit = state.reads.acquire().await.map_err(|_| {
+        error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "model capacity unavailable",
+        )
+    })?;
+    models::select_model(registry, body.request, body.capacity).await
+}
+
+fn legacy_config(state: &AppState, headers: &HeaderMap) -> Result<legacy::LegacyConfig, ApiError> {
+    let config = state
+        .config
+        .legacy
+        .clone()
+        .ok_or_else(|| error(StatusCode::NOT_FOUND, "legacy bridge is not configured"))?;
+    if !config.public_read {
+        authorized(state, headers)?;
+    }
+    Ok(config)
+}
+async fn legacy_snapshot(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, ApiError> {
+    let config = legacy_config(&state, &headers)?;
+    let _permit = state
+        .reads
+        .acquire()
+        .await
+        .map_err(|_| error(StatusCode::SERVICE_UNAVAILABLE, "read capacity unavailable"))?;
+    legacy::snapshot(config).await
+}
+async fn legacy_index(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
+    let config = legacy_config(&state, &headers)?;
+    let _permit = state
+        .reads
+        .acquire()
+        .await
+        .map_err(|_| error(StatusCode::SERVICE_UNAVAILABLE, "read capacity unavailable"))?;
+    Ok(legacy::index(config).await)
+}
+
 async fn health() -> Json<serde_json::Value> {
     Json(
         serde_json::json!({"status":"ok","version":env!("CARGO_PKG_VERSION"),"native_execution_qualified":false}),
@@ -423,19 +521,36 @@ pub fn app(
     {
         return Err("refusing to expose private task state in public demo mode".into());
     }
+    if config.simulated && (config.legacy.is_some() || config.models_file.is_some()) {
+        return Err("synthetic demo cannot expose real legacy or model configuration state".into());
+    }
+    let models = config
+        .models_file
+        .clone()
+        .map(admiralty_runtime::models::RegistryFile::new)
+        .transpose()?;
     let state = AppState {
         store,
         config,
         reads: Arc::new(Semaphore::new(8)),
         streams: Arc::new(Semaphore::new(MAX_EVENT_STREAMS)),
+        models,
     };
     Ok(Router::new()
         .route("/healthz", get(health))
         .route("/v1/fleet", get(fleet))
+        .route("/v1/legacy", get(legacy_snapshot))
+        .route("/v1/models", get(model_list).put(model_update))
+        .route("/v1/models/select", axum::routing::post(model_select))
+        .route("/legacy/", get(legacy_index))
+        .route("/legacy/index.html", get(legacy_index))
+        .route("/legacy/status.json", get(legacy_snapshot))
+        .route("/legacy/{*path}", get(|| async { StatusCode::NOT_FOUND }))
         .route("/v1/events", get(events))
         .route("/v1/{*path}", get(|| async { StatusCode::NOT_FOUND }))
         .route("/", get(asset))
         .route("/{*path}", get(asset))
+        .layer(axum::extract::DefaultBodyLimit::max(1024 * 1024))
         .with_state(state))
 }
 

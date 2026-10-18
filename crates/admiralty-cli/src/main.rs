@@ -84,6 +84,11 @@ enum Command {
         #[command(subcommand)]
         command: ContractCommand,
     },
+    /// Configure model tiers and compute a route without launching a provider.
+    Models {
+        #[command(subcommand)]
+        command: ModelCommand,
+    },
     /// SQLite online backup of an exclusively owned offline database.
     Backup {
         #[arg(long)]
@@ -91,6 +96,30 @@ enum Command {
         /// New destination file; an existing destination is never overwritten.
         #[arg(long)]
         output: PathBuf,
+    },
+}
+
+#[derive(Subcommand)]
+enum ModelCommand {
+    List {
+        #[arg(long)]
+        registry: PathBuf,
+    },
+    Replace {
+        #[arg(long)]
+        registry: PathBuf,
+        #[arg(long)]
+        file: PathBuf,
+        #[arg(long)]
+        expected_revision: String,
+    },
+    Select {
+        #[arg(long)]
+        registry: PathBuf,
+        #[arg(long)]
+        request: PathBuf,
+        #[arg(long)]
+        capacity: PathBuf,
     },
 }
 
@@ -438,6 +467,8 @@ async fn run(cli: Cli) -> CliResult<()> {
                         simulated: true,
                         token: None,
                         assets,
+                        legacy: None,
+                        models_file: None,
                     },
                 )
                 .await?;
@@ -584,6 +615,46 @@ async fn run(cli: Cli) -> CliResult<()> {
                 )?;
             }
         },
+        Command::Models { command } => {
+            use admiralty_runtime::models::{
+                CapacitySnapshot, ModelRegistry, RegistryFile, SelectionRequest,
+            };
+            match command {
+                ModelCommand::List { registry } => {
+                    let value = RegistryFile::new(registry)?.read()?;
+                    print_json(serde_json::to_value(
+                        admiralty_server::models::public_models(value),
+                    )?)?;
+                }
+                ModelCommand::Replace {
+                    registry,
+                    file,
+                    expected_revision,
+                } => {
+                    let desired: ModelRegistry = serde_json::from_slice(&read_bounded(&file)?)?;
+                    desired.validate()?;
+                    let saved =
+                        RegistryFile::new(registry)?.replace(&expected_revision, desired.models)?;
+                    print_json(serde_json::to_value(
+                        admiralty_server::models::public_models(saved),
+                    )?)?;
+                }
+                ModelCommand::Select {
+                    registry,
+                    request,
+                    capacity,
+                } => {
+                    let request: SelectionRequest =
+                        serde_json::from_slice(&read_bounded(&request)?)?;
+                    let capacity: CapacitySnapshot =
+                        serde_json::from_slice(&read_bounded(&capacity)?)?;
+                    let value = RegistryFile::new(registry)?
+                        .read()?
+                        .select(&request, &capacity)?;
+                    print_json(serde_json::to_value(value)?)?;
+                }
+            }
+        }
         Command::Backup { database, output } => {
             let snapshot = open_existing(&database)?.backup(&output)?;
             print_json(

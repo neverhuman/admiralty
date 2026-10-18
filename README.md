@@ -1,6 +1,43 @@
-# admiralty — the command layer over the captains
+# Admiralty
 
-Code and standing orders for the overnight multi-agent build on **xbabe2**: a live dashboard, the captain briefs, the model-routing playbook, the super_captain overseer and the small screen helpers. Runtime data (status.json, history, tokens.db, ledgers, logs, decisions, nudges) is **not** in git.
+Coordinate complex engineering work across projects, coding agents and a fleet.
+The v2 implementation uses Rust for durable coordination and a React/Vite dashboard
+for visibility. Compact typed task capsules preserve scope, checks and authority;
+agent reports do not grant acceptance or publication authority.
+
+The existing captain dashboard remains operational during migration. Its private
+deployment history and standing orders are retained below. Runtime data,
+credentials, transcripts and databases stay outside Git.
+
+## Try the current prototype
+
+Requires Rust 1.95.0, Node 24+ and pnpm 11.15.1. This is a source-built development
+preview; install bundles and native fleet execution are still being implemented.
+
+```sh
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm demo
+```
+
+Open http://127.0.0.1:18891/. The supplied logo, read-only project/task views and
+coordination metrics use a clearly labeled isolated synthetic dataset. No provider
+calls or machine enrollment occur. Stop with Ctrl-C. The launcher builds the UI
+and keeps its Rust target directory in this checkout; `ADMIRALTY_TARGET_DIR`
+overrides it. The preview uses one SSE connection and snapshots on changes,
+without idle model turns or repeated idle snapshot requests.
+
+## Detailed fleet view and own models
+
+The React dashboard includes the dense fleet view: project tabs, task stages,
+blockers, captain and worker details, PR/CI/review, coordination logs, hierarchy,
+usage, resources and history. Admiralty's build is an ordinary project tab.
+An exact original dashboard remains available under `/legacy/` when configured.
+
+Models settings lets an operator add providers, native model IDs, tier order,
+capacity, capabilities, attempt caps and escalation links. A self-hosted model can
+run before Luna. Setup and permission blocks wait for repair; genuine failed
+checks can escalate under the configured budget. See [model setup](docs/operators/models.md)
+and [OpenCode SSH integration](docs/operators/opencode-ssh.md).
 
 ## Admiralty v2 implementation
 
@@ -13,7 +50,7 @@ cargo run -p admiralty-cli -- demo --snapshot-only
 cargo run -p admiralty-cli -- demo --listen 127.0.0.1:18891
 ```
 
-See [implementation plan](docs/plans/admiralty-v2/MASTER_PLAN.md), [work packets](docs/plans/admiralty-v2/WORK_PACKETS.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [bootstrap guide](docs/operators/bootstrap.md), and [live rollout bridge](docs/operators/rollout-dashboard.md). `scripts/check/all.sh` runs contributor checks without making paid provider calls.
+See [prototype operations](docs/operators/bootstrap.md), [implementation plan](docs/plans/admiralty-v2/MASTER_PLAN.md), [work packets](docs/plans/admiralty-v2/WORK_PACKETS.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [bootstrap guide](docs/operators/bootstrap.md), and [live rollout bridge](docs/operators/rollout-dashboard.md). `scripts/check/all.sh` runs contributor checks without making paid provider calls.
 
 ## Hierarchy
 ```

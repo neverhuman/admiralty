@@ -22,3 +22,5 @@ deletion, network transfer, authorization, or execution authority. In
 particular, it does not decide whether an object is safe to retire. Those
 responsibilities belong to higher layers and their separately reviewed
 lifecycle transactions.
+
+Integration extended UID/no-follow checks with rustix and passed the same file-boundary tests on macOS. Database availability, pins and retirement remain outside this file publication prototype.
