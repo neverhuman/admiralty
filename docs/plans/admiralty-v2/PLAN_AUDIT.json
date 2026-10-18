@@ -1,0 +1,84 @@
+{
+  "kind": "planning_artifact_audit",
+  "observed_at_utc": "2026-10-18T09:44:14Z",
+  "implementation_status": "not_started",
+  "repository_base_sha": "1e8ed17eff27ed3ab80dc6860fc8eda301406aee",
+  "branch": "codex/final-rollout-plan",
+  "checks": {
+    "local_markdown_links": "pass",
+    "fences_and_whitespace": "pass",
+    "packet_count": 32,
+    "dependency_records": 32,
+    "dependency_graph": "acyclic",
+    "planned_ledger_entries": 32
+  },
+  "topological_order": [
+    "P00",
+    "P01",
+    "P02",
+    "P03",
+    "P04",
+    "P05",
+    "P06",
+    "P07",
+    "P09",
+    "P08",
+    "P10",
+    "P11",
+    "P12",
+    "P13",
+    "P14",
+    "P15",
+    "P16",
+    "P17",
+    "P18",
+    "P19",
+    "P20",
+    "P21",
+    "P22",
+    "P23",
+    "P24",
+    "P25",
+    "P26",
+    "P27",
+    "P28",
+    "P29",
+    "P30",
+    "P31"
+  ],
+  "errors": [],
+  "artifacts": [
+    {
+      "path": "docs/plans/admiralty-v2/EXECUTION.md",
+      "sha256": "461b5e007a239944d85257be59cd1e1256fa1f695845f084ca678add7d461fdc",
+      "lines": 65,
+      "words": 613
+    },
+    {
+      "path": "docs/plans/admiralty-v2/MASTER_PLAN.md",
+      "sha256": "2acec83ab369efe0ed28f0768e9de6f21f50f255cb85e53e880b8e9708539662",
+      "lines": 649,
+      "words": 9385
+    },
+    {
+      "path": "docs/plans/admiralty-v2/SOURCE_REVIEW.md",
+      "sha256": "92175a4be3fe4fe35ab0504b13ffadea91c806072065a8df5cce196e2209f390",
+      "lines": 158,
+      "words": 2260
+    },
+    {
+      "path": "docs/plans/admiralty-v2/WORK_PACKETS.md",
+      "sha256": "af7c6a922de1006691e7be0a89042c261fa4967fd23429e149a7824943b3987b",
+      "lines": 522,
+      "words": 5248
+    }
+  ],
+  "not_executed": [
+    "implementation build/tests",
+    "provider inference",
+    "Jankurai qualification",
+    "runtime/load/soak tests",
+    "SSH/live fleet changes",
+    "publication/deployment"
+  ]
+}
