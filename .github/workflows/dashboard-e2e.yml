@@ -14,7 +14,7 @@ jobs:
     runs-on:
       group: neverhuman-lan
       labels: [self-hosted, Linux, X64, lan-ci, browser158]
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Record selected runner
         run: printf 'runner=%s os=%s arch=%s\n' "$RUNNER_NAME" "$RUNNER_OS" "$RUNNER_ARCH"
@@ -30,6 +30,27 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
+      - name: Install pinned Rust and build admiraltyd from exact checked-out source
+        run: |
+          export CARGO_HOME="$RUNNER_TEMP/admiralty-cargo"
+          export RUSTUP_HOME="$RUNNER_TEMP/admiralty-rustup"
+          installer_dir="$RUNNER_TEMP/admiralty-rustup-bootstrap"
+          install -d -m 700 "$CARGO_HOME" "$RUSTUP_HOME" "$installer_dir"
+          printf 'CARGO_HOME=%s\nRUSTUP_HOME=%s\n' "$CARGO_HOME" "$RUSTUP_HOME" >> "$GITHUB_ENV"
+          printf '%s\n' "$CARGO_HOME/bin" >> "$GITHUB_PATH"
+          installer="$installer_dir/rustup-init"
+          curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --silent --show-error --location \
+            --retry 3 --retry-delay 2 --retry-max-time 120 --connect-timeout 10 --max-time 90 --max-filesize 33554432 \
+            --output "$installer" https://static.rust-lang.org/rustup/archive/1.29.0/x86_64-unknown-linux-gnu/rustup-init
+          printf '%s  %s\n' 4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10 "$installer" | sha256sum --check --status
+          chmod u+x "$installer"
+          "$installer" -y --no-modify-path --profile minimal --default-toolchain none
+          export PATH="$CARGO_HOME/bin:$PATH"
+          rustup toolchain install 1.95.0 --profile minimal
+          cargo build --locked -p admiralty-server --bin admiraltyd
+          test -x "$GITHUB_WORKSPACE/target/debug/admiraltyd"
+          printf 'ADMIRALTY_E2E_ADMIRALTYD_BIN=%s\nADMIRALTYD_BINARY=%s\n' "$GITHUB_WORKSPACE/target/debug/admiraltyd" "$GITHUB_WORKSPACE/target/debug/admiraltyd" >> "$GITHUB_ENV"
+          sha256sum "$GITHUB_WORKSPACE/target/debug/admiraltyd"
       - name: Verify or provision qualified Chromium/Chrome binary in job scratch
         run: |
           set -euo pipefail
@@ -99,6 +120,9 @@ jobs:
           test "$actual_sha" = "$expected_sha"
       - run: pnpm --dir apps/dashboard typecheck
       - run: pnpm --dir apps/dashboard exec tsc -p e2e/tsconfig.json --noEmit
-      - run: pnpm --dir apps/dashboard build
+      - name: Build fresh dashboard bundle from exact checked-out source
+        run: |
+          rm -rf apps/dashboard/dist
+          NODE_ENV=production pnpm --dir apps/dashboard build
       - name: Run browser E2E and pinned axe-core 4.14.0 WCAG 2.1 AA qualification against built dashboard
         run: pnpm --dir apps/dashboard test --run --config e2e/vitest.config.ts

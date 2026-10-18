@@ -2946,6 +2946,13 @@ export function IntakeJourney({
               </tr>
             </thead>
             <tbody>
+              {preview.duplicates.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="muted">
+                    No duplicate or overlapping candidates detected.
+                  </td>
+                </tr>
+              )}
               {preview.duplicates.map(dup => (
                 <tr key={`${dup.task_id}:${dup.revision}:${dup.reason}`}>
                   <td>
@@ -4199,11 +4206,12 @@ export function CommandJourneys({
 
   return (
     <div className="command-journeys" data-connection={connection}>
-      <nav className="legacy-project-tabs" aria-label="Command UI journeys" style={{ marginBottom: 16 }}>
+      <div className="legacy-project-tabs" role="tablist" aria-label="Command UI journeys" style={{ marginBottom: 16 }}>
         {tabs.map(item => (
           <button
             key={item.id}
             type="button"
+            role="tab"
             aria-selected={tab === item.id}
             onClick={() => setTab(item.id)}
           >
@@ -4211,7 +4219,7 @@ export function CommandJourneys({
             {item.badge !== undefined ? ` (${item.badge})` : ''}
           </button>
         ))}
-      </nav>
+      </div>
 
       {error && (
         <div className="error-banner" role="alert">
