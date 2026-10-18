@@ -51,6 +51,10 @@ name = "context_fidelity"
 path = "../../tests/integration/context_fidelity.rs"
 
 [[test]]
+name = "codex_p13_p14_round8"
+path = "../../tests/integration/codex_p13_p14_round8.rs"
+
+[[test]]
 name = "coordination_delivery"
 path = "../../tests/integration/coordination_delivery.rs"
 
