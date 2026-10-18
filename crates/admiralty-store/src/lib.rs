@@ -3,12 +3,17 @@ pub mod artifacts;
 pub mod custody;
 pub mod outbox;
 pub mod questions;
-use admiralty_core::{DomainEvent, Projection, SourceIdentity, TransitionError, reduce};
+pub mod workplans;
+use admiralty_core::{
+    DomainEvent, ProjectId, Projection, SourceIdentity, TaskId, TransitionError, content_digest,
+    reduce,
+};
 use fs2::FileExt;
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
+    collections::BTreeMap,
     fs::{self, File, OpenOptions},
     path::{Path, PathBuf},
     sync::{Arc, Mutex, mpsc},
@@ -33,6 +38,8 @@ pub enum StoreError {
     Transition(#[from] TransitionError),
     #[error("outbox storage initialization failed: {0}")]
     Outbox(#[from] outbox::OutboxError),
+    #[error(transparent)]
+    Workplan(#[from] workplans::WorkplanStoreError),
     #[error("store already has an owner")]
     AlreadyOwned,
     #[error("store writer is unavailable")]
@@ -89,6 +96,22 @@ pub struct EventBatch {
 
 type Reply<T> = mpsc::Sender<Result<T>>;
 enum Request {
+    RegisterWorkplan {
+        request: Box<workplans::RegisterWorkplanRequest>,
+        reply: Reply<workplans::WorkplanReceipt>,
+    },
+    GetWorkplan {
+        project: ProjectId,
+        plan: String,
+        revision: Option<u32>,
+        reply: Reply<Option<workplans::RegisteredWorkplan>>,
+    },
+    ListWorkplans {
+        project: ProjectId,
+        after: Option<String>,
+        limit: usize,
+        reply: Reply<workplans::WorkplanPage>,
+    },
     Append {
         source: SourceIdentity,
         source_seq: i64,
@@ -272,6 +295,78 @@ impl Store {
 
     pub fn snapshot(&self) -> Result<Snapshot> {
         self.ask(Request::Snapshot)
+    }
+
+    /// Record an immutable offline plan through the existing single writer.
+    /// Registration never submits tasks, emits domain events, or grants execution.
+    pub fn register_workplan(
+        &self,
+        request: workplans::RegisterWorkplanRequest,
+    ) -> Result<workplans::WorkplanReceipt> {
+        // Bound memory before enqueueing. The registry performs full semantic
+        // and digest validation inside the writer's serialized operation.
+        if request.source.len() > admiralty_core::workplans::MAX_WORKPLAN_BYTES
+            || request.command_id.len() > 128
+            || request.plan_id.len() > 128
+            || request.expected_current_revision.len() > 10
+            || request.source_digest.len() != 71
+            || request.canonical_digest.len() != 71
+        {
+            return Err(StoreError::Invalid(
+                "workplan request exceeds admission bounds".into(),
+            ));
+        }
+        self.ask(|reply| Request::RegisterWorkplan {
+            request: Box::new(request),
+            reply,
+        })
+    }
+
+    pub fn workplan(
+        &self,
+        project: ProjectId,
+        plan: String,
+        revision: Option<u32>,
+    ) -> Result<Option<workplans::RegisteredWorkplan>> {
+        if plan.is_empty() || plan.len() > 128 {
+            return Err(StoreError::Invalid(
+                "workplan identifier exceeds admission bounds".into(),
+            ));
+        }
+        TaskId::new(plan.clone()).map_err(|error| StoreError::Invalid(error.to_string()))?;
+        self.ask(|reply| Request::GetWorkplan {
+            project,
+            plan,
+            revision,
+            reply,
+        })
+    }
+
+    pub fn workplans(
+        &self,
+        project: ProjectId,
+        after: Option<String>,
+        limit: usize,
+    ) -> Result<workplans::WorkplanPage> {
+        if let Some(after) = &after {
+            if after.is_empty() || after.len() > 128 {
+                return Err(StoreError::Invalid(
+                    "workplan cursor exceeds admission bounds".into(),
+                ));
+            }
+            TaskId::new(after.clone()).map_err(|error| StoreError::Invalid(error.to_string()))?;
+        }
+        if limit == 0 || limit > workplans::MAX_LIST_PAGE {
+            return Err(StoreError::Invalid(
+                "workplan list limit must be between 1 and 100".into(),
+            ));
+        }
+        self.ask(|reply| Request::ListWorkplans {
+            project,
+            after,
+            limit,
+            reply,
+        })
     }
 
     pub fn events_after(&self, seq: u64, limit: usize) -> Result<Vec<EventRecord>> {
@@ -669,6 +764,7 @@ impl Writer {
         let migration = Transaction::new_unchecked(&connection, TransactionBehavior::Immediate)?;
         migration.execute_batch(include_str!("../migrations/0003_atomic_effects.sql"))?;
         migration.commit()?;
+        workplans::initialize(&connection)?;
         let generation = connection
             .query_row(
                 "SELECT value FROM metadata WHERE key='recovery_generation'",
@@ -688,6 +784,10 @@ impl Writer {
             }
         };
         let projection = replay(&connection)?;
+        workplans::validate_task_contracts(
+            &connection,
+            projection.tasks.values().map(|task| &task.contract),
+        )?;
         Ok(Self {
             connection,
             projection,
@@ -699,6 +799,60 @@ impl Writer {
     fn run(&mut self, receiver: mpsc::Receiver<Request>, changes: tokio::sync::watch::Sender<()>) {
         while let Ok(request) = receiver.recv() {
             match request {
+                Request::RegisterWorkplan { request, reply } => {
+                    // Compare only incoming identities (core caps this at 1000),
+                    // rather than copying/hashing an arbitrarily large unrelated
+                    // projection or denying historical retries as it grows.
+                    let result = admiralty_core::workplans::preview_workplan(&request.source)
+                        .map_err(workplans::WorkplanStoreError::from)
+                        .map_err(StoreError::from)
+                        .and_then(|preview| {
+                            preview
+                                .task_digests
+                                .keys()
+                                .filter_map(|id| {
+                                    self.projection.tasks.get(id).map(|task| (id, task))
+                                })
+                                .map(|(id, task)| {
+                                    content_digest(&task.contract)
+                                        .map(|digest| (id.clone(), digest))
+                                })
+                                .collect::<std::result::Result<BTreeMap<_, _>, _>>()
+                                .map_err(StoreError::from)
+                        })
+                        .and_then(|existing| {
+                            workplans::register_with_existing(
+                                &mut self.connection,
+                                *request,
+                                &existing,
+                            )
+                            .map_err(StoreError::from)
+                        });
+                    // No domain cursor or domain-change hint for registry-only writes.
+                    let _ = reply.send(result);
+                }
+                Request::GetWorkplan {
+                    project,
+                    plan,
+                    revision,
+                    reply,
+                } => {
+                    let _ = reply.send(
+                        workplans::get(&mut self.connection, &project, &plan, revision)
+                            .map_err(StoreError::from),
+                    );
+                }
+                Request::ListWorkplans {
+                    project,
+                    after,
+                    limit,
+                    reply,
+                } => {
+                    let _ = reply.send(
+                        workplans::list(&mut self.connection, &project, after.as_deref(), limit)
+                            .map_err(StoreError::from),
+                    );
+                }
                 Request::Append {
                     source,
                     source_seq,
@@ -819,6 +973,9 @@ impl Writer {
                 source_contiguous_seq: contiguous.to_string(),
                 duplicate: true,
             });
+        }
+        if let DomainEvent::TaskSubmitted { contract } = &event {
+            workplans::validate_task_contract_in_transaction(&tx, contract)?;
         }
         let next_projection = reduce(&self.projection, &event)?;
         let mut associated_intent = None;
@@ -942,6 +1099,10 @@ impl Writer {
 
     fn rebuild(&mut self) -> Result<Snapshot> {
         let projection = replay(&self.connection)?;
+        workplans::validate_task_contracts(
+            &self.connection,
+            projection.tasks.values().map(|task| &task.contract),
+        )?;
         let generation = uuid::Uuid::new_v4().to_string();
         self.connection.execute(
             "UPDATE metadata SET value=?1 WHERE key='recovery_generation'",

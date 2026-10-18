@@ -60,6 +60,17 @@ cargo run -p admiralty-cli -- demo --listen 127.0.0.1:18892
 
 See [prototype operations](docs/operators/bootstrap.md), [implementation plan](docs/plans/admiralty-v2/MASTER_PLAN.md), [work packets](docs/plans/admiralty-v2/WORK_PACKETS.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [bootstrap guide](docs/operators/bootstrap.md), and [live rollout bridge](docs/operators/rollout-dashboard.md). `scripts/check/all.sh` runs contributor checks without making paid provider calls.
 
+Workplans can be previewed and recorded as immutable revisions in a separate,
+exclusively owned offline database. Registration preserves dependency order and
+task identity; it does not submit or launch tasks. See the
+[durable workplan guide](docs/architecture/durable-workplans.md).
+
+```sh
+cargo run -p admiralty-cli -- workplan preview --file /absolute/path/plan.json
+cargo run -p admiralty-cli -- workplan register --database /absolute/private/plans.sqlite --file /absolute/path/plan.json
+cargo run -p admiralty-cli -- workplan show --database /absolute/private/plans.sqlite --project my-project --plan my-plan
+```
+
 ## Hierarchy
 ```
 Jepson (owner; his own typed prompts override everyone)

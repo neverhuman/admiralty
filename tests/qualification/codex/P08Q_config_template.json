@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "registered_node_id": "REPLACE_REGISTERED_NODE",
+  "run_id": "REPLACE_UNIQUE_RUN_ID",
+  "scratch_parent": "/REPLACE/private/qualification-parent",
+  "codex_program": "/REPLACE/registered/canonical/codex-executable",
+  "git_program": "/usr/bin/git",
+  "env_program": "/usr/bin/env",
+  "registry_model_id": "REPLACE_REGISTRY_MODEL_ID",
+  "provider_model": "REPLACE_EXPLICIT_NATIVE_MODEL",
+  "effort": "medium",
+  "expected_cpu_affinity": "REPLACE_EXACT_PERMITTED_CPU_LIST",
+  "cli_probe_timeout_secs": 10,
+  "provider_timeout_secs": 120,
+  "overall_timeout_secs": 180,
+  "max_output_bytes": 262144,
+  "operator_transport_authorization": "controlled_exact_fixture_transport_only"
+}
