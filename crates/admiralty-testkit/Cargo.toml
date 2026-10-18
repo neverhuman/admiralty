@@ -161,7 +161,6 @@ path = "../../tests/integration/codex_round8_packaging.rs"
 [[test]]
 name = "codex_p27_round8"
 path = "../../tests/integration/codex_p27_round8.rs"
->>>>>>> fdf5a39 (test(integration): qualify round 8 P08 P09 P27 export orchestration)
 
 [[test]]
 name = "provider_matrix"
