@@ -1,5 +1,6 @@
 //! Offline domain operations and an isolated, read-only demo. No provider execution.
 mod diagnostics;
+pub mod native_recovery;
 mod workplans;
 use admiralty_core::{
     AcceptanceCriterion, AttemptId, CheckSpec, CoordinationMessage, DomainEvent, DomainEventV2,
@@ -107,6 +108,8 @@ enum Command {
         #[arg(long)]
         output: PathBuf,
     },
+    /// Create-only backups, isolated restore rehearsals and non-authorizing recovery proposals.
+    Recover(native_recovery::RecoveryArgs),
 }
 
 #[derive(Subcommand)]
@@ -741,6 +744,7 @@ async fn run(cli: Cli) -> CliResult<()> {
                 json!({"offline": true, "backup": output, "watermark": snapshot.cursor, "schema_version": snapshot.schema_version}),
             )?;
         }
+        Command::Recover(args) => print_json(native_recovery::run(args)?)?,
     }
     Ok(())
 }
@@ -777,6 +781,47 @@ mod tests {
                 "0"
             ])
             .is_err()
+        );
+    }
+
+    #[test]
+    fn recovery_help_exposes_only_explicit_local_operations_and_bounded_paths() {
+        let help = Cli::try_parse_from(["admiralty", "recover", "--help"])
+            .err()
+            .expect("help is returned before any file operation")
+            .to_string();
+        for name in ["backup", "verify", "rehearse", "restart-admission"] {
+            assert!(help.contains(name), "missing recovery operation {name}");
+        }
+        assert!(
+            Cli::try_parse_from([
+                "admiralty",
+                "recover",
+                "verify",
+                "--backup",
+                "relative.sqlite",
+                "--receipt",
+                "/unused/receipt.json",
+                "--objects",
+                "/unused/objects",
+            ])
+            .is_err()
+        );
+        assert!(
+            Cli::try_parse_from([
+                "admiralty",
+                "recover",
+                "restart-admission",
+                "--manifest",
+                "/unused/manifest.json",
+                "--observation",
+                "/unused/observed.json",
+                "--fence",
+                "/unused/fence.json",
+                "--externally-verified",
+            ])
+            .is_err(),
+            "a CLI flag cannot grant external authority"
         );
     }
 

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fleetTotals, formatUnknown, taskStateLabel, type Fleet } from '../api';
+import { fleetTotals, formatUnknown, type NativeFleet } from '../api';
 import { watchFleet, type ConnectionState } from '../events';
 import LegacyDetailed from './LegacyDetailed';
+import NativeTasks from './NativeTasks';
 import Models from './Models';
 import { useProfile } from '../profile';
 import { ProfileAvatar, ProfileSettings } from './Profile';
@@ -10,7 +11,7 @@ type View = 'Legacy detailed view' | 'Overview' | 'Workplans' | 'Coordination' |
 
 function App() {
   const [view, setView] = useState<View>('Legacy detailed view');
-  const [fleet, setFleet] = useState<Fleet | null>(null);
+  const [fleet, setFleet] = useState<NativeFleet | null>(null);
   const [error, setError] = useState('');
   const [updated, setUpdated] = useState<Date | null>(null);
   const [token, setToken] = useState('');
@@ -20,7 +21,6 @@ function App() {
   const profile = useProfile();
   const profileName = profile.displayName || 'Operator';
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [filter, setFilter] = useState('');
   const [connection, setConnection] = useState<ConnectionState>('connecting');
   const [retry, setRetry] = useState(0);
   const legacyView = view === 'Legacy detailed view';
@@ -37,7 +37,6 @@ function App() {
   }, [token, retry]);
 
   const totals = useMemo(() => fleet ? fleetTotals(fleet) : null, [fleet]);
-  const visibleTasks = fleet?.tasks.filter(({ contract }) => `${contract.title} ${contract.objective} ${contract.project_id}`.toLowerCase().includes(filter.toLowerCase())) ?? [];
 
   return <div className={`app theme-${theme} ${legacyView ? 'fleet-console' : ''}`}>
     <aside className="sidebar">
@@ -76,7 +75,7 @@ function App() {
         {!legacyView && !modelsView && error && <div className="error-banner" role="status"><span>{connection === 'paused' ? 'Updates paused' : 'Connection issue'}</span><span>{error}{connection === 'reconnecting' ? ' · Reconnecting automatically.' : ''}</span><button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry connection</button></div>}
         {!legacyView && !modelsView && !fleet && !error && <div className="loading-card">Connecting to the local native service…</div>}
         {fleet && view === 'Overview' && <Overview fleet={fleet} totals={totals!} onWorkplans={() => setView('Workplans')} />}
-        {fleet && view === 'Workplans' && <Workplans fleet={fleet} tasks={visibleTasks} filter={filter} setFilter={setFilter} />}
+        {view === 'Workplans' && <NativeTasks fleet={fleet} error={error} connection={connection} />}
         {fleet && view === 'Coordination' && <Coordination fleet={fleet} />}
         {view === 'Models' && <Models token={token || undefined} onAccess={() => setShowAccess(true)} />}
         <footer className="page-footer"><span>{modelsView ? 'MODEL POLICY CONFIGURATION' : `READ ONLY · SOURCE: ${legacyView ? 'LEGACY PRODUCER SNAPSHOT' : 'NATIVE FLEET API'}`}</span><span>{legacyView ? 'Source provenance and uncertainty preserved' : <>Native execution {fleet?.native_execution_qualified ? 'qualified' : 'not qualified'} <b>·</b> Usage {formatUnknown(fleet?.coordination.measured_tokens)}</>}</span></footer>
@@ -89,7 +88,7 @@ function App() {
   </div>;
 }
 
-function Overview({ fleet, totals, onWorkplans }: { fleet: Fleet; totals: ReturnType<typeof fleetTotals>; onWorkplans: () => void }) {
+function Overview({ fleet, totals, onWorkplans }: { fleet: NativeFleet; totals: ReturnType<typeof fleetTotals>; onWorkplans: () => void }) {
   const stageItems = [
     ['Accepted', totals.accepted, 'accepted'], ['Claimed or running', totals.running, 'running'], ['Awaiting verification', totals.verifying, 'verifying'], ['Blocked', totals.blocked, 'blocked'],
   ] as const;
@@ -117,12 +116,7 @@ function Metric({ label, value, detail, icon, tone = '' }: { label: string; valu
   return <article className="metric-card"><div className="metric-top"><span>{label}</span><span className={`metric-icon ${tone}`}>{icon}</span></div><strong>{value}</strong><small>{detail}</small><div className={`metric-baseline ${tone}`} /></article>;
 }
 
-function Workplans({ fleet, tasks, filter, setFilter }: { fleet: Fleet; tasks: Fleet['tasks']; filter: string; setFilter: (value: string) => void }) {
-  const projects = new Map(fleet.projects.map((project) => [project.id, project.name]));
-  return <section className="panel workplans-panel"><div className="panel-head"><div><div className="eyebrow">WORKPLANS / ALL PROJECTS</div><h2>Task stage table</h2></div><span className="tiny-badge">{tasks.length} TASKS</span></div><div className="table-toolbar"><label className="search"><span aria-hidden="true">⌕</span><input aria-label="Filter tasks" placeholder="Filter tasks or projects" value={filter} onChange={(event) => setFilter(event.target.value)} /></label><span>Read-only view</span></div><div className="table-scroll"><table><thead><tr><th>Task</th><th>Project</th><th>Stage</th><th>Owner</th><th>Attempt</th><th>Candidate</th></tr></thead><tbody>{tasks.map((task) => <tr key={`${task.contract.task_id}:${task.contract.revision}`}><td><strong>{task.contract.title}</strong><small>{task.contract.task_id} · rev {task.contract.revision}</small></td><td>{projects.get(task.contract.project_id) ?? task.contract.project_id}</td><td><span className={`state-pill ${task.state}`}>{taskStateLabel(task.state)}</span></td><td>{task.owner ?? <span className="muted">Unassigned</span>}</td><td>{task.attempt_id ?? <span className="muted">—</span>}</td><td>{task.candidate_ref ?? <span className="muted">—</span>}</td></tr>)}</tbody></table></div>{!tasks.length && <Empty message={filter ? 'No tasks match this filter.' : 'No task rows in the current snapshot.'} />}</section>;
-}
-
-function Coordination({ fleet }: { fleet: Fleet }) {
+function Coordination({ fleet }: { fleet: NativeFleet }) {
   const items = [
     { label: 'Recorded messages', value: fleet.coordination.queued_messages, detail: 'Message entries recorded', color: 'gold' },
     { label: 'Acknowledged messages', value: fleet.coordination.acknowledged_messages, detail: 'Acknowledgements recorded', color: 'blue' },

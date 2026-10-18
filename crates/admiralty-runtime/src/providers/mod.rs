@@ -9,3 +9,4 @@ pub mod agy;
 pub mod claude;
 pub mod grok;
 pub mod process;
+pub mod task_runner;
