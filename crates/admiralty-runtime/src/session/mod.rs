@@ -21,7 +21,8 @@ pub mod daemon;
 use admiralty_core::limits::bounded_json_size;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
+    ffi::OsString,
     fs::{self, File, OpenOptions},
     io::{self, Read, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
@@ -53,6 +54,53 @@ pub const MAX_LAUNCH_ARGV_BYTES: usize = 128 * 1024;
 pub const MAX_LAUNCH_ARGS: usize = 128;
 pub const MAX_LAUNCH_SPEC_BYTES: usize = 240 * 1024;
 pub const MAX_LAUNCH_REQUEST_BYTES: usize = 256 * 1024;
+pub const MAX_LAUNCH_ENV_VARS: usize = 128;
+pub const MAX_LAUNCH_ENV_BYTES: usize = 128 * 1024;
+
+fn validate_launch_environment(environment: &[(OsString, OsString)]) -> Result<(), SessionError> {
+    let invalid =
+        || SessionError::InvalidSpec("explicit launch environment is invalid or exceeds bounds");
+    if environment.len() > MAX_LAUNCH_ENV_VARS {
+        return Err(invalid());
+    }
+    let mut names = HashSet::new();
+    let mut total = 0_usize;
+    for (name, value) in environment {
+        let name_bytes = name.as_encoded_bytes();
+        let value_bytes = value.as_encoded_bytes();
+        if name_bytes.is_empty()
+            || name_bytes.contains(&0)
+            || name_bytes.contains(&b'=')
+            || value_bytes.contains(&0)
+        {
+            return Err(invalid());
+        }
+        total = total
+            .checked_add(name_bytes.len())
+            .and_then(|n| n.checked_add(value_bytes.len()))
+            .and_then(|n| n.checked_add(2))
+            .ok_or_else(invalid)?;
+        if total > MAX_LAUNCH_ENV_BYTES {
+            return Err(invalid());
+        }
+        // Windows environment names are case-insensitive. The explicit API
+        // conservatively supports ASCII names there instead of guessing Unicode
+        // equivalence. Unix names retain their exact native bytes.
+        #[cfg(windows)]
+        let identity = name
+            .to_str()
+            .filter(|name| name.is_ascii())
+            .ok_or_else(invalid)?
+            .to_ascii_uppercase()
+            .into_bytes();
+        #[cfg(not(windows))]
+        let identity = name_bytes.to_vec();
+        if !names.insert(identity) {
+            return Err(invalid());
+        }
+    }
+    Ok(())
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -560,6 +608,27 @@ impl SessionHost {
     /// Launches exactly `program` with the supplied argv. No shell command string
     /// is constructed. `spool_dir` must be a new directory whose parent exists.
     pub fn launch(&self, spec: LaunchSpec) -> Result<(), SessionError> {
+        self.launch_inner(spec, None)
+    }
+
+    /// Launch with only the explicitly supplied environment. No parent values
+    /// are inherited, and no environment names or values are recorded in the
+    /// launch manifest or validation errors. This is not a filesystem sandbox;
+    /// the supplied executable and environment remain trusted caller choices.
+    pub fn launch_with_environment(
+        &self,
+        spec: LaunchSpec,
+        environment: &[(OsString, OsString)],
+    ) -> Result<(), SessionError> {
+        validate_launch_environment(environment)?;
+        self.launch_inner(spec, Some(environment))
+    }
+
+    fn launch_inner(
+        &self,
+        spec: LaunchSpec,
+        environment: Option<&[(OsString, OsString)]>,
+    ) -> Result<(), SessionError> {
         validate_spec(&spec)?;
         let mut sessions = self.sessions.lock().map_err(|_| SessionError::Poisoned)?;
         if sessions.len() >= MAX_SESSIONS {
@@ -605,6 +674,10 @@ impl SessionHost {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        if let Some(environment) = environment {
+            command.env_clear();
+            command.envs(environment.iter().map(|(name, value)| (name, value)));
+        }
         #[cfg(unix)]
         {
             use std::os::unix::process::CommandExt;
@@ -1292,6 +1365,150 @@ mod tests {
             );
             thread::sleep(Duration::from_millis(5));
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn explicit_environment_clears_parent_and_passes_only_explicit_values()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use std::os::unix::fs::PermissionsExt;
+
+        const PARENT: &str = "ADMIRALTY_SESSION_PARENT_SENTINEL_2F074C";
+        const SENTINEL: &str = "synthetic-parent-only-2f074c";
+        const EXPLICIT: &str = "synthetic-explicit-only-609af1";
+        if std::env::var_os(PARENT).as_deref() != Some(std::ffi::OsStr::new(SENTINEL)) {
+            // Give only this separate test process a synthetic parent secret.
+            // No global environment mutation can race the parallel test suite.
+            let mut child = Command::new(std::env::current_exe()?)
+                .args([
+                    "--exact",
+                    "session::tests::explicit_environment_clears_parent_and_passes_only_explicit_values",
+                    "--test-threads=1",
+                ])
+                .env(PARENT, SENTINEL)
+                .stdin(Stdio::null())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()?;
+            let deadline = Instant::now() + Duration::from_secs(10);
+            while child.try_wait()?.is_none() {
+                if Instant::now() >= deadline {
+                    child.kill()?;
+                    child.wait()?;
+                    return Err("isolated environment fixture exceeded its deadline".into());
+                }
+                thread::sleep(Duration::from_millis(5));
+            }
+            let result = child.wait_with_output()?;
+            assert!(
+                result.status.success(),
+                "isolated environment fixture failed"
+            );
+            return Ok(());
+        }
+
+        let temporary = TempDir::new()?;
+        fs::set_permissions(temporary.path(), fs::Permissions::from_mode(0o700))?;
+        let root = temporary.path().canonicalize()?;
+        let host = SessionHost::new();
+        let mut launch = spec(
+            &temporary,
+            "explicit-env",
+            &[
+                "-c",
+                "test \"${ADMIRALTY_SESSION_PARENT_SENTINEL_2F074C+x}\" != x || exit 91; test \"${ADMIRALTY_SESSION_EXPLICIT_609AF1+x}\" = x || exit 92; printf '%s' \"$ADMIRALTY_SESSION_EXPLICIT_609AF1\"",
+            ],
+        );
+        launch.cwd = root.clone();
+        launch.spool_dir = root.join("spool-explicit-env");
+        let manifest_path = launch.spool_dir.join(MANIFEST_FILE);
+        host.launch_with_environment(
+            launch,
+            &[(
+                OsString::from("ADMIRALTY_SESSION_EXPLICIT_609AF1"),
+                OsString::from(EXPLICIT),
+            )],
+        )?;
+        assert!(host.wait("explicit-env")?.success());
+        assert_eq!(output(&host, "explicit-env"), EXPLICIT.as_bytes());
+        let manifest = fs::read_to_string(manifest_path)?;
+        assert!(!manifest.contains(SENTINEL));
+        assert!(!manifest.contains(EXPLICIT));
+
+        let mut legacy = spec(
+            &temporary,
+            "inherited-env",
+            &[
+                "-c",
+                "test \"${ADMIRALTY_SESSION_PARENT_SENTINEL_2F074C+x}\" = x || exit 93; printf legacy-kept",
+            ],
+        );
+        legacy.cwd = root.clone();
+        legacy.spool_dir = root.join("spool-inherited-env");
+        host.launch(legacy)?;
+        assert!(host.wait("inherited-env")?.success());
+        assert_eq!(output(&host, "inherited-env"), b"legacy-kept");
+        Ok(())
+    }
+
+    #[test]
+    fn explicit_environment_rejects_invalid_or_unbounded_input_before_reservation()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temporary = TempDir::new()?;
+        let launch = spec(&temporary, "invalid-env", &["-c", "true"]);
+        let host = SessionHost::new();
+        let pair = |name: &str, value: &str| (OsString::from(name), OsString::from(value));
+        let invalid = [
+            vec![pair("", "synthetic-private-value")],
+            vec![pair("invalid=name", "synthetic-private-value")],
+            vec![pair("invalid\0name", "synthetic-private-value")],
+            vec![pair("VALID", "synthetic\0private-value")],
+            vec![pair("DUPLICATE", "one"), pair("DUPLICATE", "two")],
+            vec![pair("COUNT", "value"); MAX_LAUNCH_ENV_VARS + 1],
+            vec![pair("SIZE", &"x".repeat(MAX_LAUNCH_ENV_BYTES))],
+        ];
+        for environment in invalid {
+            let error = host
+                .launch_with_environment(launch.clone(), &environment)
+                .expect_err("invalid environment must fail before launch");
+            assert!(matches!(error, SessionError::InvalidSpec(_)));
+            assert!(!format!("{error:?}").contains("synthetic-private-value"));
+            assert!(!launch.spool_dir.exists());
+            assert!(
+                !temporary
+                    .path()
+                    .join(".admiralty-run-invalid-env.lock")
+                    .exists()
+            );
+        }
+        assert!(validate_launch_environment(&[]).is_ok());
+        assert!(validate_launch_environment(&[pair("EMPTY", "")]).is_ok());
+        assert!(
+            validate_launch_environment(&[pair("K", &"x".repeat(MAX_LAUNCH_ENV_BYTES - 3))])
+                .is_ok()
+        );
+        assert!(
+            validate_launch_environment(
+                &(0..MAX_LAUNCH_ENV_VARS)
+                    .map(|i| pair(&format!("KEY_{i}"), ""))
+                    .collect::<Vec<_>>()
+            )
+            .is_ok()
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::ffi::OsStringExt;
+            assert!(
+                validate_launch_environment(&[(
+                    OsString::from("NATIVE_BYTES"),
+                    OsString::from_vec(vec![0xff, 0xfe]),
+                )])
+                .is_ok()
+            );
+        }
+        #[cfg(windows)]
+        assert!(validate_launch_environment(&[pair("Path", "one"), pair("PATH", "two")]).is_err());
+        Ok(())
     }
 
     #[test]
