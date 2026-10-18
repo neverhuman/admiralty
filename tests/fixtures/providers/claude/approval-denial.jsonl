@@ -1,0 +1,2 @@
+{"type":"system","subtype":"init","session_id":"fixture-session","claude_code_version":"2.1.302","model":"claude-sonnet-5-5","permissionMode":"default"}
+{"type":"result","subtype":"success","permission_denials":[{"tool_name":"Write","tool_use_id":"denied"}],"usage":{"input_tokens":1,"output_tokens":0}}
