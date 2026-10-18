@@ -374,9 +374,100 @@ def audit_joil():
         bad = [k for k in held if k in done]
         if bad: F('red', 'joil', 'DONE_BUT_AUDIT_HELD', f'validator AUDIT-HELD but ledger done: {" ".join(bad)}', 'joil validator LATEST.md')
         res['validator_audit_held'] = held
+        res['status_counts'] = dict(collections.Counter(s for s, e in sts.values()))
+        res['blocked'] = res['status_counts'].get('blocked', 0)
+        notes = {}
+        for pk in tasks['packets']:
+            st = rj(JOIL_WT + '/docs/v5-plan/progress/' + pk['id'] + '.json') or {'tasks': {}}
+            for t in pk['tasks']:
+                v = st['tasks'].get(t['id']) or {}
+                if v.get('status') == 'blocked': notes[t['id']] = v.get('note') or ''
+        res['blocked_reasons'] = notes
+        # done on origin/main (what is actually merged), read-only via git show
+        rc, out, _ = run(['git', '-C', REPOS['joil'], 'ls-tree', '--name-only', 'origin/main', 'docs/v5-plan/progress/'], timeout=15)
+        if rc == 0 and out.strip():
+            dm = 0
+            for f in out.split():
+                rc2, js, _ = run(['git', '-C', REPOS['joil'], 'show', 'origin/main:' + f], timeout=15)
+                try: dm += sum(1 for v in json.loads(js)['tasks'].values() if v.get('status') == 'done')
+                except Exception: pass
+            res['done_on_main'] = dm
     except Exception as e:
         F('amber', 'joil', 'LEDGER_UNREADABLE', str(e)[:200])
     return res
+
+# ---------------- progress accountability (Jepson 2026-10-18 04:59 MDT) ----------------
+# "The job of the super_captain is to hold captains accountable if they haven't made serious progress since the latest check-in."
+BLOCK_CAUSES = [
+    ('final_gate_or_ci', r'final (exact-head )?gate|exact-head|head CI|eight-suite|final source/head|full gate'),
+    ('defect_control', r'defect closure|defect control|\bD-\d\d'),
+    ('owner_decision', r'unsigned|unapproved|owner review|owner acceptance|disclosure|approval|spending|authority'),
+    ('external_measured_data', r'measur|metrology|specimen|fatigue data|wet loads|calibration data|accession|labels unavailable|carrier-field|manufacturing/load|as-built|scientific observations|interface dataset|process/material inputs'),
+    ('native_compute_or_lease_scope', r'native|GPU|CFD|solver|Blender|render|campaign|parity|benchmark|mutation|not run|have not run|unexecuted|not executed|frozen corpus|material partition|drills|browser|lease'),
+    ('upstream_admission_dependency', r'admission|admitted|observer|registry|DecisionProfile|accepted|qualif|preregistration|statistical|dependency'),
+]
+BOILERPLATE = re.compile(r'^(Integrated software checkpoint \w+; full gate/CI and acceptance pending\.|Software integrated with positive/negative controls; acceptance open:)\s*', re.I)
+def classify_block(note):
+    note = BOILERPLATE.sub('', note or '')
+    for name, rx in BLOCK_CAUSES:
+        if re.search(rx, note or '', re.I): return name
+    return 'other_or_unstated'
+
+BLOCKED_SHARE_RED = 0.25      # red when more than this share of a project's tasks are blocked
+WINDOW_MIN = 25               # compare against the newest snapshot at least this old (one check-in)
+
+def merged_since(project, since_iso):
+    rc, out, _ = run([GH, 'pr', 'list', '-R', GHREPO[project], '--state', 'merged', '--json', 'number,mergedAt', '-L', '20'], timeout=30)
+    try: prs = json.loads(out)
+    except Exception: return None
+    return [p['number'] for p in prs if (p.get('mergedAt') or '') >= since_iso.replace('+00:00', 'Z')[:19]]
+
+def progress_accountability(report, state, now, no_gh=False):
+    hist = state.setdefault('progress', {})
+    if not hist:   # seed done-history from audit.jsonl so the first run already has a baseline
+        try:
+            for l in open(os.path.join(os.path.dirname(state.get('_path', OUT_DEFAULT + '/x')), 'audit.jsonl')):
+                d = json.loads(l)
+                for p, v in (d.get('done') or {}).items():
+                    if isinstance(v, int): hist.setdefault(p, []).append({'utc': d['utc'], 'done': v, 'blocked': None})
+        except Exception: pass
+    cutoff = (now - datetime.timedelta(hours=8)).isoformat(timespec='seconds')
+    out = {}
+    for proj, r in report['projects'].items():
+        done, total = r.get('done_recomputed'), r.get('total')
+        blocked = r.get('blocked')
+        if blocked is None and isinstance(r.get('status_counts'), dict): blocked = r['status_counts'].get('blocked')
+        h = [x for x in hist.get(proj, []) if x['utc'] >= cutoff]
+        base = None
+        for x in h:
+            if x['utc'] <= (now - datetime.timedelta(minutes=WINDOW_MIN)).isoformat(timespec='seconds'): base = x
+        last_up = None   # last time done increased
+        for a, b in zip(h, h[1:]):
+            if isinstance(a.get('done'), int) and isinstance(b.get('done'), int) and b['done'] > a['done']: last_up = b['utc']
+        info = {'done': done, 'blocked': blocked, 'total': total, 'baseline_utc': base and base['utc'],
+                'baseline_done': base and base.get('done'), 'baseline_blocked': base and base.get('blocked'), 'last_done_increase_utc': last_up}
+        if base and isinstance(done, int):
+            merges = None if no_gh else merged_since(proj, base['utc'])
+            info['merged_prs_since_baseline'] = merges
+            if done <= (base.get('done') or 0) and not merges:
+                mins = int((now - datetime.datetime.fromisoformat(base['utc'])).total_seconds() / 60)
+                stuck_since = last_up or (h[0]['utc'] if h else base['utc'])
+                F('red', proj, 'NO_PROGRESS', f'done {base.get("done")} -> {done} over the last {mins} min and no PR merged to main; done has not increased since {stuck_since}. '
+                  f'super_captain: demand a concrete unblock plan + ETA from {CAPTAINS.get(proj, proj)} this check, decide reversible blockers yourself as owner, escalate only irreversible ones to Jepson')
+            if isinstance(blocked, int) and isinstance(base.get('blocked'), int) and blocked > base['blocked']:
+                F('red', proj, 'BLOCKED_ROSE', f'blocked {base["blocked"]} -> {blocked} since {base["utc"]}; every new blocker needs an owner, a cause and an unblock action this check')
+        if isinstance(blocked, int) and total and blocked / total > BLOCKED_SHARE_RED:
+            groups = collections.Counter(classify_block(n) for n in (r.get('blocked_reasons') or {}).values())
+            g = ', '.join(f'{k} {v}' for k, v in groups.most_common()) if groups else 'reasons not machine-readable; captain must list them'
+            info['blocked_by_cause'] = dict(groups)
+            F('red', proj, 'BLOCKED_SHARE', f'{blocked}/{total} tasks ({100 * blocked // total}%) are blocked (> {int(BLOCKED_SHARE_RED * 100)}%). By cause (keyword grouping): {g}. '
+              f'Captain owes a per-cause unblock plan; super_captain decides reversible causes (lease/compute scope, caps, lane launches, dependency order) as owner now')
+        if proj == 'joil' and isinstance(r.get('done_on_main'), int):
+            info['done_on_main'] = r['done_on_main']
+        h.append({'utc': report['utc'], 'done': done, 'blocked': blocked})
+        hist[proj] = h[-200:]
+        out[proj] = info
+    report['progress'] = out
 
 def open_prs(project):
     rc, out, _ = run([GH, 'pr', 'list', '-R', GHREPO[project], '--state', 'open', '--json',
@@ -530,6 +621,9 @@ def main():
         for proj in CAPTAINS:
             report['projects'][proj]['open_prs'] = open_prs(proj)
             report['projects'][proj]['main_ci'] = main_ci(proj)
+    state['_path'] = a.out + '/state.json'
+    progress_accountability(report, state, now, a.no_gh)
+    state.pop('_path', None)
 
     # 4. super_captain's own last report vs recomputed numbers
     scs = rj(KICK + '/super_captain_status.json') or {}
@@ -560,6 +654,11 @@ def main():
           '| Project | done (recomputed) / total | super_captain reported | captain claim | source |', '|---|---|---|---|---|']
     for p, r in report['projects'].items():
         md.append(f'| {p} | {r.get("done_recomputed")} / {r.get("total")} | {r.get("super_captain_reported_done")} | {r.get("captain_claim") or r.get("captain_claim_max_recent") or r.get("declared_counter") or ""} | {r.get("source", "")} |')
+    md += ['', '## Progress since last check-in (accountability)', '',
+           '| Project | done now (baseline) | blocked now (baseline) | PRs merged since baseline | done last increased | baseline |', '|---|---|---|---|---|---|']
+    for p, i in (report.get('progress') or {}).items():
+        md.append(f'| {p} | {i.get("done")} ({i.get("baseline_done")}) | {i.get("blocked")} ({i.get("baseline_blocked")}) | {i.get("merged_prs_since_baseline")} | {i.get("last_done_increase_utc")} | {i.get("baseline_utc")} |'
+                  + (f' done on origin/main: {i["done_on_main"]}' if 'done_on_main' in i else ''))
     md += ['', f'## Findings ({report["summary"]})', '']
     md += [f'- **{f["severity"]}** `{f["scope"]}` {f["code"]}: {f["text"]}' + (f' (evidence: `{f["evidence"]}`)' if f.get('evidence') else '') for f in findings] or ['- none']
     open(a.out + '/latest.md', 'w').write('\n'.join(md) + '\n')

@@ -201,3 +201,21 @@ Jepson: "You should not have to catch these, that is the goal of the super_capta
 - agy submits **every pasted line as a separate message**. A multi-line nudge file pasted with readbuf/paste becomes several messages: the first starts a turn, the rest sit as "user-queued messages", and the last line can stay unsent in the input box. That is how captains ended up with piles of undelivered queued messages tonight.
 - So write the full nudge to a file, but paste ONE line: `SUPER_CAPTAIN NUDGE <HHMM>: read /home/ubuntu/xbabe2_kicker/captains-20261017/sc_nudge_<x>_<HHMM>.txt and act on it now; reply ACK in the coordination log.` (no newlines inside), then CR.
 - After pasting, hardcopy again: if the prompt line still holds your text, send CR once more; if the screen shows `Press up to edit queued messages` and the item is red, send it immediately with alt+m: `screen -S <id> -X stuff $'\033m'` (agy hint: "alt+m to send immediately"). It joins the running turn; it does not cancel it. Never send Esc to a busy screen.
+
+## PROGRESS ACCOUNTABILITY DUTY (Jepson, 2026-10-18 04:59 MDT, overrides the hygiene score)
+
+Jepson: "The job of the super_captain is to hold captains accountable if they haven't made serious progress since the latest check-in."
+Hygiene (worktrees, trailers, target size) is NOT progress. A captain with 0 new done tasks is never "Exemplary"/100/A.
+
+Every check, read the "Progress since last check-in" table and these red findings in `sc_audit/latest.md`:
+- `NO_PROGRESS`: done did not increase since the previous check-in (>=25 min) and no PR merged to main.
+- `BLOCKED_ROSE`: the blocked count went up since the previous check-in.
+- `BLOCKED_SHARE`: more than 25% of a project's tasks are blocked (the finding groups the blocked reasons by cause).
+
+For each one, in the SAME check:
+1. Demand from that captain, as a one-line pointer to a file (alt+m), a concrete unblock plan: per blocked cause, the action, the owner (lane/screen/host), and an ETA in MDT. A plan that says "blocked pending acceptance" with no action is rejected.
+2. Decide reversible blockers yourself as owner and record them in super_captain_DECISIONS.md: dependency order, lane launches across xbabe1-4 (never xbabe0, never Jeryu), caps, lease/compute scope inside the host guards, reruns, splitting PRs, re-classifying a status that is wrong.
+3. Escalate to Jepson only irreversible items (merging Joil PRs, deleting evidence, spending money, external publication or disclosure, signing protocols) as one plain line in super_captain_INBOX.md.
+4. Next check, verify the plan moved: a done-count increase, a merge, or a launched lane with a live screen. If not, say so plainly in super_captain_LOG.md and escalate one level (re-plan, more lanes, a different model tier).
+
+Status rows report `done (delta since last check)` and `blocked (delta)`. They never report a hygiene grade on its own.
