@@ -44,6 +44,16 @@ describe('detailed project source adapters', () => {
     expect(projects).toHaveLength(4); expect(projects[0].name).toBe('Project alpha');
     expect(projects[0].sections.some(section => section.title === 'Work packets')).toBe(true);
   });
+  it('maps rollout screens to their project even when the old classifier says unassigned', () => {
+    const source = snapshot();
+    source.agents = [{ screen: 'custom_lane', project: 'unassigned', model: 'observed model', state: 'unknown' }];
+    source.rollout = { ...source.rollout as object, lanes: [{ id: 'lane-1', screen: 'custom_lane', node: 'arbitrary-node',
+      model: 'declared model', packet_id: 'P13A', status: 'stale; reported in_progress; screen present', source_updated_utc: 'original time' }] };
+    const project = projectDetails(source).at(-1)!;
+    expect(project.workers).toHaveLength(1);
+    expect(project.workers[0]).toMatchObject({ screen: 'custom_lane', model: 'observed model', task: 'P13A',
+      state: 'stale; reported in_progress; screen present', screen_changed_utc: 'original time' });
+  });
   it('preserves source counts and timestamps; unknown total remains unknown', () => {
     const source = snapshot(); delete source.projects.alpha.total;
     const project = projectDetails(source)[0];
