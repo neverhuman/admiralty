@@ -1,0 +1,40 @@
+{
+  "expected": {
+    "assign_all_to_latest_model": false,
+    "by_model": {
+      "synthetic-large": {
+        "input": 40,
+        "output": 4
+      },
+      "synthetic-small": {
+        "input": 100,
+        "output": 10
+      }
+    },
+    "total_input": 140,
+    "total_output": 14
+  },
+  "id": "mixed_model_attribution",
+  "input": {
+    "segments": [
+      {
+        "input": 100,
+        "model": "synthetic-small",
+        "output": 10
+      },
+      {
+        "input": 40,
+        "model": "synthetic-large",
+        "output": 4
+      }
+    ]
+  },
+  "provenance": {
+    "historical_exact_acceptances": null,
+    "historical_exact_attempts": null,
+    "kind": "synthetic_reconstruction",
+    "source_reference": "dashboard/token_yield.py:64-69; dashboard/extras.py:364-368"
+  },
+  "risk": "Latest model or max(model) incorrectly owns earlier model consumption.",
+  "schema_version": 1
+}

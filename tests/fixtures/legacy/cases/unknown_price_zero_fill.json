@@ -1,0 +1,32 @@
+{
+  "expected": {
+    "known_credits_est": 2,
+    "priced_coverage_pct": 66.66666666666667,
+    "priced_tokens": 1000,
+    "total_credits_est": null,
+    "unpriced_tokens": 500
+  },
+  "id": "unknown_price_zero_fill",
+  "input": {
+    "segments": [
+      {
+        "credits_est": 2,
+        "model": "synthetic-priced",
+        "tokens": 1000
+      },
+      {
+        "credits_est": null,
+        "model": "synthetic-unpriced",
+        "tokens": 500
+      }
+    ]
+  },
+  "provenance": {
+    "historical_exact_acceptances": null,
+    "historical_exact_attempts": null,
+    "kind": "synthetic_reconstruction",
+    "source_reference": "dashboard/token_yield.py:150; dashboard/extras.py:368"
+  },
+  "risk": "Null valuation becomes zero when added to aggregates.",
+  "schema_version": 1
+}

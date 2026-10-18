@@ -1,0 +1,338 @@
+{
+  "historical_attempt_acceptance_counts": null,
+  "historical_attempt_acceptance_note": "Routing events and self-reported outcomes do not prove independent attempts or accepted deliveries",
+  "older_proposal_baseline": {
+    "base_sha": "9dbbec4451008c73ec1c203fa56ad467abc18d56",
+    "claimed_records": {
+      "dashboard_history": 75,
+      "provider_sessions": 154,
+      "routing_ledger": 449
+    },
+    "local_object_available": false,
+    "must_not_merge_with_current_as_independent_events": true,
+    "sha256": null,
+    "time_bounds_utc": null,
+    "verification": "unverified_proposal_claims_only"
+  },
+  "purpose": "Pinned read-only legacy evidence, not runtime authority",
+  "relationships": [
+    {
+      "accounting": "Count canonical ledger once; mirror is not a second set of attempts",
+      "canonical": "data/history/ledger/model_usage_2026-10-18.jsonl",
+      "equality_fields": [
+        "ts",
+        "project",
+        "task",
+        "screen",
+        "host",
+        "tier",
+        "model",
+        "effort",
+        "outcome",
+        "escalated_to",
+        "reason",
+        "tokens",
+        "source_format",
+        "class",
+        "attempt",
+        "minutes"
+      ],
+      "kind": "representation_mirror",
+      "mirror": "data/history/ledger/model_usage.csv"
+    },
+    {
+      "accounting": "CSV is a lossy column projection; compare timestamps, count snapshots once",
+      "canonical": "data/history/timeseries/history_2026-10-18.jsonl",
+      "equality_fields": [
+        "ts_utc"
+      ],
+      "kind": "flattened_representation_mirror",
+      "mirror": "data/history/timeseries/history.csv"
+    },
+    {
+      "accounting": "Cumulative sessions, hourly categories and heuristic snapshots overlap; never sum them into native consumption",
+      "kind": "potential_usage_overlap",
+      "sources": [
+        "data/history/tokens/codex_sessions.csv",
+        "data/history/tokens/claude_hourly.csv",
+        "data/history/token_yield/token_yield_2026-10-18.jsonl",
+        "data/history/timeseries/history_2026-10-18.jsonl"
+      ]
+    }
+  ],
+  "repository": {
+    "base_sha": "1e8ed17eff27ed3ab80dc6860fc8eda301406aee",
+    "implementation_head_at_manifest_generation": "73b8184d9117b6d3e59f1ca4706a0f3698d556d5",
+    "origin": "https://github.com/neverhuman/admiralty",
+    "scope": "Local tracked sources at the planning and implementation baseline; deployed identity unknown"
+  },
+  "schema_version": 1,
+  "sources": [
+    {
+      "bytes": 4472,
+      "path": "README.md",
+      "physical_lines": 53,
+      "sha256": "874a2e59d287f90452219663d862352f05b08e695460d3c890efc083db85d0c9"
+    },
+    {
+      "bytes": 9884,
+      "path": "captains/COMMON.md",
+      "physical_lines": 56,
+      "sha256": "b55f834897c39c3092764d630eef58a079a6b8d835b3762af0f7f1906c65295e"
+    },
+    {
+      "bytes": 2200,
+      "path": "captains/CPU_SLICES.md",
+      "physical_lines": 32,
+      "sha256": "ae1f622946374ea601ff683638e1e4bb101fced717b671cc9746b8cbc6103d23"
+    },
+    {
+      "bytes": 30466,
+      "path": "captains/MODEL_ROUTING_PLAYBOOK.md",
+      "physical_lines": 344,
+      "sha256": "a864d422727938e395393a86f0472babd29afea49ce5fa3625b8a13254e97c98"
+    },
+    {
+      "bytes": 3589,
+      "path": "captains/rates/claude_rates_2026-10-17.json",
+      "physical_lines": 146,
+      "sha256": "4772e5336f8a3473d174ef9f9f2c074f10c224b30a25380663d84449d460a7b8"
+    },
+    {
+      "bytes": 2224,
+      "path": "captains/rates/codex_rates_2026-10-17.json",
+      "physical_lines": 93,
+      "sha256": "51308a63cfbebdd694ed75240c733a5f042dbfbec6e71d36a48d9f9b601896fb"
+    },
+    {
+      "bytes": 3077,
+      "path": "captains/rates/gemini_rates_2026-10-17.json",
+      "physical_lines": 112,
+      "sha256": "3abcdbc9774701dd60b8c885c9e6f6a8298220c889f7517e58f8f9d69002d20b"
+    },
+    {
+      "bytes": 3026,
+      "path": "captains/rates/grok_rates_2026-10-17.json",
+      "physical_lines": 106,
+      "sha256": "f12e0d0b39fb4fc425345eae12c21fd18042ce3395a340e1b966e07b428ef268"
+    },
+    {
+      "bytes": 27402,
+      "path": "captains/super_captain_BRIEF.md",
+      "physical_lines": 194,
+      "sha256": "6198580b81b2987def699b3eaf5f98077ce656d1835ab364c2df531910e6b0d9"
+    },
+    {
+      "bytes": 2118,
+      "path": "captains/super_captain_tick.sh",
+      "physical_lines": 34,
+      "sha256": "c8c0a4c82b87e328f929c7559fba97321ee52a4d05c1b0e5dbd33b09a120f588"
+    },
+    {
+      "bytes": 47726,
+      "path": "dashboard/collector.py",
+      "physical_lines": 910,
+      "sha256": "e14a6b239315161d82e555706628d20c929e2fd6c123ebb670f83f5623f1da1b"
+    },
+    {
+      "bytes": 34943,
+      "path": "dashboard/extras.py",
+      "physical_lines": 570,
+      "sha256": "d45224619d00142c2722509e17054c97dea09a5ad64f258c150ee1d8b6e119e7"
+    },
+    {
+      "bytes": 8105,
+      "path": "dashboard/globalres.py",
+      "physical_lines": 113,
+      "sha256": "f8d9ed49ed63826c1b24850e05e75938709634841745828633e4575785eb7bd4"
+    },
+    {
+      "bytes": 44680,
+      "path": "dashboard/index.html",
+      "physical_lines": 252,
+      "sha256": "56fcb4caadf2a65fca3df2b85d5f3002f399ef6c00f78af9b6970bcb00db8bac"
+    },
+    {
+      "bytes": 454,
+      "path": "dashboard/run.sh",
+      "physical_lines": 12,
+      "sha256": "631886b6c99e9d5836442a8219f178ba4e6348feb0ddf60a1de3c1304652f933"
+    },
+    {
+      "bytes": 1222,
+      "path": "dashboard/serve.py",
+      "physical_lines": 22,
+      "sha256": "97fd961f2ced83b8e9e2ef952d0eaeb48624dcb68bc317dec3856a245547d8a4"
+    },
+    {
+      "bytes": 13970,
+      "path": "dashboard/token_yield.py",
+      "physical_lines": 214,
+      "sha256": "ff120e24ec2d06f827b3b939a1f9d035f71a3aad18c1a8a2ff783c47394d7366"
+    },
+    {
+      "bytes": 10960,
+      "path": "data/history/README.md",
+      "physical_lines": 88,
+      "sha256": "83e30137e3b302971bab3f66e1ef411461666d39411fee598f0f05c29ff64f21"
+    },
+    {
+      "bytes": 101433,
+      "exact_duplicate_records": 0,
+      "observed_time_max_utc": "2026-10-18T08:19:27Z",
+      "observed_time_min_utc": "2026-10-18T02:50:00Z",
+      "path": "data/history/ledger/model_usage.csv",
+      "physical_lines": 504,
+      "records": 503,
+      "sha256": "85817ecc5c6c91ff118b2be0865b481f5d4e88a2a117350d89d0357f3120cd8e"
+    },
+    {
+      "bytes": 184668,
+      "exact_duplicate_records": 0,
+      "observed_time_max_utc": "2026-10-18T08:19:27Z",
+      "observed_time_min_utc": "2026-10-18T02:50:00Z",
+      "path": "data/history/ledger/model_usage_2026-10-18.jsonl",
+      "physical_lines": 503,
+      "records": 503,
+      "sha256": "4c91edc7c6234526bfa77affd3652bfc6f77b95d605220ea19144dee2be824ad"
+    },
+    {
+      "bytes": 18859,
+      "exact_duplicate_records": 0,
+      "observed_time_max_utc": "2026-10-18T08:21:56Z",
+      "observed_time_min_utc": "2026-10-18T03:51:29Z",
+      "path": "data/history/quota/codex_quota.csv",
+      "physical_lines": 363,
+      "records": 362,
+      "sha256": "07ad9d8d64409fd5379cfac84be4b929b4d4d2e1fcd6f45aa1ea3c778c830b71"
+    },
+    {
+      "bytes": 1581,
+      "path": "data/history/rates_index.json",
+      "physical_lines": 45,
+      "sha256": "72a1e44e7a6c6efcf06c96708fc1b5029202603f8dcdafad92540421f23bb9ed"
+    },
+    {
+      "bytes": 60731,
+      "exact_duplicate_records": 0,
+      "observed_time_max_utc": "2026-10-18T08:21:54Z",
+      "observed_time_min_utc": "2026-10-18T03:42:41Z",
+      "path": "data/history/resources/disk_used.csv",
+      "physical_lines": 1073,
+      "records": 1072,
+      "sha256": "6f37eb93f722867953ea588d4443f126d5d7f1d670d34b32fd9e7d04168b1942"
+    },
+    {
+      "bytes": 1102,
+      "exact_duplicate_records": 0,
+      "observed_time_max_utc": "2026-10-18T08:21:54Z",
+      "observed_time_min_utc": "2026-10-18T07:01:42Z",
+      "path": "data/history/resources/host_snapshots.csv",
+      "physical_lines": 13,
+      "records": 12,
+      "sha256": "5e912563b380d808cd4d71b45cfe4fc3fc02756f336b86c3539fecca412e63ba"
+    },
+    {
+      "bytes": 8472,
+      "exact_duplicate_records": 0,
+      "observed_time_max_utc": "2026-10-18T08:22:05Z",
+      "observed_time_min_utc": "2026-10-18T07:03:00Z",
+      "path": "data/history/snapshots/projects_2026-10-18.jsonl",
+      "physical_lines": 5,
+      "records": 5,
+      "sha256": "d028e6f5ace903e2da6a5908587c14593d118ba8acda68bfca56e0a7609807ea"
+    },
+    {
+      "bytes": 56448,
+      "exact_duplicate_records": 0,
+      "observed_time_max_utc": "2026-10-18T08:20:51Z",
+      "observed_time_min_utc": "2026-10-18T04:17:32Z",
+      "path": "data/history/timeseries/history.csv",
+      "physical_lines": 110,
+      "records": 109,
+      "sha256": "8284c73e918cd7d5c0ee84a41338a3ade2c9b35b54a437b3fdce1c533ac2a450"
+    },
+    {
+      "bytes": 117489,
+      "exact_duplicate_records": 0,
+      "observed_time_max_utc": "2026-10-18T08:20:51Z",
+      "observed_time_min_utc": "2026-10-18T04:17:32Z",
+      "path": "data/history/timeseries/history_2026-10-18.jsonl",
+      "physical_lines": 109,
+      "records": 109,
+      "sha256": "d91942d4125a3a225113d3907f38d783c4e7d789fc741a476fd16dc9ea224e46"
+    },
+    {
+      "bytes": 15656,
+      "exact_duplicate_records": 0,
+      "observed_time_max_utc": "2026-10-18T08:09:36Z",
+      "observed_time_min_utc": "2026-10-18T06:50:31Z",
+      "path": "data/history/token_yield/token_yield_2026-10-18.jsonl",
+      "physical_lines": 3,
+      "records": 3,
+      "sha256": "80eac34293498fcb9491f242bac9f52c44ad9bc402c297823e70b478b927ae3d"
+    },
+    {
+      "bytes": 16928,
+      "exact_duplicate_records": 0,
+      "observed_time_max_utc": "2026-10-18T08:00:00Z",
+      "observed_time_min_utc": "2026-10-09T18:00:00Z",
+      "path": "data/history/tokens/claude_hourly.csv",
+      "physical_lines": 254,
+      "records": 253,
+      "sha256": "ecc601c7c6c8d9821bf448fed6a5cfc5841fd168e6ebccb3caaa20a46e43f34e"
+    },
+    {
+      "bytes": 30560,
+      "exact_duplicate_records": 0,
+      "observed_time_max_utc": "2026-10-18T08:09:35Z",
+      "observed_time_min_utc": "2026-10-09T18:40:06Z",
+      "path": "data/history/tokens/codex_sessions.csv",
+      "physical_lines": 180,
+      "records": 179,
+      "sha256": "ef44146dbbaf101bade1a89b776795db9d4340a98e4e66345793c47461aea103"
+    },
+    {
+      "bytes": 12471,
+      "path": "tools/bin/classify_screen.py",
+      "physical_lines": 357,
+      "sha256": "f31eb1970be8a7ef23f60ecae3036bab366846884368a5654b3dfe14579edaf1"
+    },
+    {
+      "bytes": 11063,
+      "path": "tools/bin/kick",
+      "physical_lines": 333,
+      "sha256": "a5b6f5db20a67c5275c945a099bd876dc0d68b0b304d2972d453606fa020297b"
+    },
+    {
+      "bytes": 3475,
+      "path": "tools/bin/screen_send",
+      "physical_lines": 139,
+      "sha256": "ecb4ac61012617fd4cea77270315a8a3fd131843c5ada98710d0af65b3196246"
+    },
+    {
+      "bytes": 1674,
+      "path": "tools/bin/screen_snap",
+      "physical_lines": 56,
+      "sha256": "4619062799516900b707f943d643a68fde026e49b621e8b4bb8d7cd5da7f13c0"
+    },
+    {
+      "bytes": 19078,
+      "path": "tools/export_history.py",
+      "physical_lines": 316,
+      "sha256": "93ca2d89837023872942ec3cfeaf301a55ac143d17bb683144c28f6582c6270c"
+    },
+    {
+      "bytes": 2293,
+      "path": "tools/history_export_cron.sh",
+      "physical_lines": 30,
+      "sha256": "459d0acd6aa24162dac5e769e0462e439699f469daa88923de16f71d7aacb9c8"
+    },
+    {
+      "bytes": 34300,
+      "path": "tools/sc_audit.py",
+      "physical_lines": 534,
+      "sha256": "045204009fd0e27b6452c76fad8d7e16f323753ef9e37198599c34800a3a8b4c"
+    }
+  ]
+}

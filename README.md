@@ -2,6 +2,19 @@
 
 Code and standing orders for the overnight multi-agent build on **xbabe2**: a live dashboard, the captain briefs, the model-routing playbook, the super_captain overseer and the small screen helpers. Runtime data (status.json, history, tokens.db, ledgers, logs, decisions, nudges) is **not** in git.
 
+## Admiralty v2 implementation
+
+The fleet is building the Rust control plane and React dashboard on integration PR [#9](https://github.com/neverhuman/admiralty/pull/9). The existing dashboard now displays a separate **Admiralty v2 build** rollout panel. Packet claims, candidate review, verification and integration are distinct; worker reports do not create accepted work.
+
+The current Rust foundation provides durable scoped task/message state, context capsules, crash replay, backups, generated schemas/TypeScript and a read-only API/SSE demo. Native execution and fleet enrollment remain disabled pending their qualification gates.
+
+```sh
+cargo run -p admiralty-cli -- demo --snapshot-only
+cargo run -p admiralty-cli -- demo --listen 127.0.0.1:18891
+```
+
+See [implementation plan](docs/plans/admiralty-v2/MASTER_PLAN.md), [work packets](docs/plans/admiralty-v2/WORK_PACKETS.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [bootstrap guide](docs/operators/bootstrap.md), and [live rollout bridge](docs/operators/rollout-dashboard.md). `scripts/check/all.sh` runs contributor checks without making paid provider calls.
+
 ## Hierarchy
 ```
 Jepson (owner; his own typed prompts override everyone)

@@ -1,0 +1,27 @@
+{
+  "expected": {
+    "capture_state": "stale_or_failed",
+    "input_allowed": false
+  },
+  "id": "stale_capture",
+  "input": {
+    "capture": {
+      "command_exit": 1,
+      "observed_epoch": 1000,
+      "process_identity": "process-old",
+      "request_epoch": 1200,
+      "text": "Synthetic idle prompt >"
+    },
+    "current_epoch": 1201,
+    "current_process_identity": "process-new",
+    "max_age_s": 30
+  },
+  "provenance": {
+    "historical_exact_acceptances": null,
+    "historical_exact_attempts": null,
+    "kind": "synthetic_reconstruction",
+    "source_reference": "dashboard/collector.py:screen hardcopy; tools/bin/screen_snap"
+  },
+  "risk": "Existing capture text is not proof that the latest capture succeeded or belongs to the same process.",
+  "schema_version": 1
+}

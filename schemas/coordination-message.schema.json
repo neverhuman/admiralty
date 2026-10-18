@@ -1,0 +1,214 @@
+{
+  "$defs": {
+    "MessageId": {
+      "type": "string"
+    },
+    "MessagePayload": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "contract_digest": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "task_assigned",
+              "type": "string"
+            },
+            "revision": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            }
+          },
+          "required": [
+            "kind",
+            "task_id",
+            "revision",
+            "contract_digest"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "question",
+              "type": "string"
+            },
+            "options": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "question": {
+              "type": "string"
+            },
+            "requirement": {
+              "type": "string"
+            },
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            }
+          },
+          "required": [
+            "kind",
+            "task_id",
+            "requirement",
+            "question",
+            "options"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "type": "string"
+            },
+            "decision_ref": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "const": "answer",
+              "type": "string"
+            },
+            "question_id": {
+              "$ref": "#/$defs/MessageId"
+            }
+          },
+          "required": [
+            "kind",
+            "question_id",
+            "answer"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "artifact_ref": {
+              "type": "string"
+            },
+            "interface_revision": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "artifact_ready",
+              "type": "string"
+            },
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            }
+          },
+          "required": [
+            "kind",
+            "task_id",
+            "artifact_ref",
+            "interface_revision"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "candidate_ref": {
+              "type": "string"
+            },
+            "failed_check": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "const": "handoff",
+              "type": "string"
+            },
+            "next_action": {
+              "type": "string"
+            },
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            }
+          },
+          "required": [
+            "kind",
+            "task_id",
+            "candidate_ref",
+            "next_action"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "PrincipalId": {
+      "type": "string"
+    },
+    "ProjectId": {
+      "type": "string"
+    },
+    "TaskId": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "authority_ref": {
+      "type": "string"
+    },
+    "causation_id": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MessageId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "context_epoch": {
+      "type": "string"
+    },
+    "message_id": {
+      "$ref": "#/$defs/MessageId"
+    },
+    "payload": {
+      "$ref": "#/$defs/MessagePayload"
+    },
+    "project_id": {
+      "$ref": "#/$defs/ProjectId"
+    },
+    "recipient": {
+      "$ref": "#/$defs/PrincipalId"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "sender": {
+      "$ref": "#/$defs/PrincipalId"
+    }
+  },
+  "required": [
+    "schema_version",
+    "message_id",
+    "project_id",
+    "sender",
+    "recipient",
+    "context_epoch",
+    "authority_ref",
+    "payload"
+  ],
+  "title": "CoordinationMessage",
+  "type": "object"
+}

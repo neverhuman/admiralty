@@ -1,0 +1,46 @@
+[package]
+name = "admiralty-testkit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+[dependencies]
+admiralty-core.workspace = true
+admiralty-store.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tempfile.workspace = true
+uuid.workspace = true
+admiralty-server.workspace = true
+axum.workspace = true
+tokio.workspace = true
+tower = { version = "0.5", features = ["util"] }
+rusqlite.workspace = true
+futures-util.workspace = true
+[lints]
+workspace = true
+
+[[test]]
+name = "legacy_import"
+path = "../../tests/integration/legacy_import.rs"
+
+[[test]]
+name = "core_contracts"
+path = "../../tests/integration/core_contracts.rs"
+
+[[test]]
+name = "context_fidelity"
+path = "../../tests/integration/context_fidelity.rs"
+
+[[test]]
+name = "store_replay"
+path = "../../tests/integration/store_replay.rs"
+
+[[test]]
+name = "store_crash"
+path = "../../tests/integration/store_crash.rs"
+
+[[test]]
+name = "api_stream"
+path = "../../tests/integration/api_stream.rs"

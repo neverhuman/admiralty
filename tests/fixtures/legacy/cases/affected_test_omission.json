@@ -1,0 +1,33 @@
+{
+  "expected": {
+    "accepted": false,
+    "missing_tests": [
+      "consumer_roundtrip"
+    ],
+    "reason_code": "affected_test_evidence_missing"
+  },
+  "id": "affected_test_omission",
+  "input": {
+    "affected_tests": [
+      "codec_unit",
+      "consumer_roundtrip"
+    ],
+    "changed_paths": [
+      "src/codec.rs"
+    ],
+    "executed_tests": [
+      {
+        "exit_code": 0,
+        "name": "codec_unit"
+      }
+    ]
+  },
+  "provenance": {
+    "historical_exact_acceptances": null,
+    "historical_exact_attempts": null,
+    "kind": "synthetic_reconstruction",
+    "source_reference": "MASTER_PLAN:8.1; SOURCE_REVIEW:S6 packet linter"
+  },
+  "risk": "A successful narrow check cannot close a changed shared interface without its affected consumers.",
+  "schema_version": 1
+}

@@ -1,0 +1,33 @@
+{
+  "expected": {
+    "coverage_pct": 60,
+    "project_attributed_tokens": 60,
+    "tier_attributed_tokens": 60,
+    "total_tokens": 100
+  },
+  "id": "coverage_accumulator",
+  "input": {
+    "segments": [
+      {
+        "attributed": true,
+        "project": "sample-project",
+        "tier": "synthetic-tier",
+        "tokens": 60
+      },
+      {
+        "attributed": false,
+        "project": "sample-project",
+        "tier": "synthetic-tier",
+        "tokens": 40
+      }
+    ]
+  },
+  "provenance": {
+    "historical_exact_acceptances": null,
+    "historical_exact_attempts": null,
+    "kind": "synthetic_reconstruction",
+    "source_reference": "dashboard/token_yield.py:150-156,194-196"
+  },
+  "risk": "Project attribution numerator is accumulated while tier numerator may be absent.",
+  "schema_version": 1
+}
