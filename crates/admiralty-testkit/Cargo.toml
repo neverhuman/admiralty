@@ -264,6 +264,10 @@ name = "codex_round16_p23"
 path = "../../tests/integration/codex_round16_p23.rs"
 
 [[test]]
+name = "codex_round17_p08_p21_p22"
+path = "../../tests/integration/codex_round17_p08_p21_p22.rs"
+
+[[test]]
 name = "codex_round8_packaging"
 path = "../../tests/integration/codex_round8_packaging.rs"
 
