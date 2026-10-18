@@ -1,7 +1,7 @@
 {
   "provider": "agy",
   "version": "1.4.2",
-  "binary": "/home/ubuntu/.local/bin/agy",
+  "binary": "/fixture-bin/agy",
   "binary_sha256": "085f43e0d0628a8a8dabe1e547067818fa2c0adc86cfac98a3c4492918f455ef",
   "probe": ["agy", "--version"],
   "version_exit": 0,

@@ -44,3 +44,4 @@ mod codex_round20_p27;
 mod codex_round20_p28_p32;
 #[path = "../../../../tests/integration/support/recovery.rs"]
 mod recovery_fixture;
+mod codex_round21_p06_p13_p14;
