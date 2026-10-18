@@ -193,17 +193,20 @@ b) Switch every worker screen you own to the right tier: Luna for simple and in-
 c) Add the CHANGELOG and handoff logging to every lane (back-fill a one-entry CHANGELOG for lanes already running).
 d) Post a per-screen model table in the coordination log: `screen | task | class | tier | model effort (before -> after) | switched now / at boundary`.
 
-## 9. Central machine-readable model-usage ledger (Jepson, Oct 17 2026, 10:08 PM MDT) — REQUIRED
+## 9. Central machine-readable model-usage ledger (Jepson, Oct 17 2026, 10:08 PM MDT): REQUIRED. Schema unified 11:00 PM MDT
 
-The §4c `MODEL ...` text lines stay valid, but the dashboard now charts Luna failures, first-pass rate and the escalation funnel from ONE JSONL file. **Append one line per attempt AND per escalation** to:
+The §4c `MODEL ...` text lines stay valid, but the dashboard charts Luna failures, first-pass rate, the escalation funnel and cost from ONE JSONL file, in ONE canonical schema (the same as §4e). **Append one line per attempt event** (start, judged result, escalation, de-escalation) to:
 
 `/home/ubuntu/xbabe2_kicker/captains-20261017/model_usage.jsonl`
 
 ```
-{"utc":"2026-10-18T04:20:00Z","project":"dope","task":"C03","class":"simple","tier":"T0","model":"gpt-6-luna","effort":"medium","screen":"dope_lane_c03","host":"xbabe2","attempt":1,"outcome":"pass","minutes":22,"to_tier":null,"session":"<codex session id or null>","note":"cargo test -p x exit 0"}
+{"ts":"2026-10-18T04:20:00Z","project":"dope","task":"C03","screen":"dope_lane_c03","host":"xbabe2","tier":"T0","model":"gpt-6-luna","effort":"medium","outcome":"pass","escalated_to":null,"reason":"cargo test -p x exit 0","tokens":null}
 ```
-- `outcome`: `pass` (success criteria verified by the captain), `fail`, `loop`, `timeout`, or `escalated` (write this when you move the task up; set `to_tier`, e.g. "T2").
-- One JSON object per line, no pretty-printing. Append with `flock /home/ubuntu/xbabe2_kicker/captains-20261017/model_usage.lock -c 'printf "%s\n" "$LINE" >> .../model_usage.jsonl'`. Never rewrite the file.
+- Required fields: `ts` (UTC ISO 8601 with Z), `project`, `task`, `screen`, `host`, `tier`, `model`, `effort`, `outcome`, `escalated_to`, `reason`, `tokens`.
+- Optional extra fields are fine: `class`, `attempt`, `minutes`, `session`.
+- `outcome`: `started` | `pass` (success criteria verified by the captain) | `fail` | `escalated` (set `escalated_to` to the new model or tier, e.g. `"gpt-6.1-sol"`) | `deescalated`. Legacy `loop`/`timeout` are still accepted and count as failures.
+- **One lock file: `model_usage.jsonl.lock`.** Append with `flock -w 30 /home/ubuntu/xbabe2_kicker/captains-20261017/model_usage.jsonl.lock sh -c 'printf "%s\n" "$1" >> /home/ubuntu/xbabe2_kicker/captains-20261017/model_usage.jsonl' _ "$LINE"`. Never rewrite the file. Don't use the old `model_usage.lock`.
+- **Field mapping for the earlier draft of this section:** `utc` → `ts`, `to_tier` → `escalated_to`, `note` → `reason`. Old lines in that format stay valid; the dashboard collector maps them. Write all NEW lines in the canonical schema.
 - Back-fill one line for each attempt already judged tonight if you can do it truthfully; otherwise start now.
 
 ## 10. Commit trailers for token-yield tracking (Jepson, 10:08 PM MDT) — REQUIRED going forward

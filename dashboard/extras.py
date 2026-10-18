@@ -165,6 +165,17 @@ def tail_text(p, nbytes=600000):
         with open(p, 'rb') as f:
             f.seek(0, 2); s = f.tell(); f.seek(max(0, s - nbytes)); return f.read().decode('utf-8', 'replace')
     except Exception: return ''
+# Canonical ledger schema (playbook §4e/§9): ts, project, task, screen, host, tier, model, effort,
+# outcome (started|pass|fail|escalated|deescalated; legacy loop|timeout accepted), escalated_to, reason, tokens.
+# Legacy §9 lines (utc, to_tier, note, class, ...) are mapped so old lines still count.
+def norm_usage(d, project=None):
+    ts = d.get('ts') or d.get('utc')
+    esc = d.get('escalated_to') if d.get('escalated_to') is not None else d.get('to_tier')
+    return {'project': d.get('project') or project, 'utc': ts, 'ts': ts, 'task': d.get('task'), 'class': str(d.get('class', '') or '').lower(),
+            'tier': str(d.get('tier', '') or '').upper(), 'model': d.get('model'), 'effort': d.get('effort'),
+            'outcome': str(d.get('outcome', '') or '').lower(), 'screen': d.get('screen'), 'host': d.get('host'),
+            'escalated_to': esc, 'to_tier': esc, 'reason': d.get('reason') or d.get('note'), 'tokens': d.get('tokens')}
+
 def ledgers():
     lanes = {}; usage = []
     for k, p in COORD.items():
@@ -179,14 +190,12 @@ def ledgers():
                 try: d = json.loads(line)
                 except Exception: continue
                 if isinstance(d, dict):
-                    usage.append({'project': k, 'utc': d.get('utc') or d.get('ts'), 'task': d.get('task'), 'class': str(d.get('class', '')).lower(), 'tier': str(d.get('tier', '')).upper(),
-                                  'model': d.get('model'), 'outcome': str(d.get('outcome', '')).lower(), 'screen': d.get('screen')})
+                    usage.append(norm_usage(d, k))
     for line in tail_text(CENTRAL_LEDGER, 2000000).splitlines():
         try: d = json.loads(line)
         except Exception: continue
         if isinstance(d, dict):
-            usage.append({'project': d.get('project'), 'utc': d.get('utc') or d.get('ts'), 'task': d.get('task'), 'class': str(d.get('class', '')).lower(),
-                          'tier': str(d.get('tier', '')).upper(), 'model': d.get('model'), 'outcome': str(d.get('outcome', '')).lower(), 'screen': d.get('screen'), 'to_tier': d.get('to_tier')})
+            usage.append(norm_usage(d))
     return lanes, usage
 
 
@@ -474,7 +483,9 @@ def ledger_stats(usage):
             c += 1; cum.append([iso(datetime.datetime.fromtimestamp(ts, datetime.timezone.utc)), c])
             h = int((T - ts) // 3600)
             if 0 <= h < 24: hours[23 - h] += 1
-    luna_tasks = [v for v in by_task.values() if is_luna(v[0])]
+    JUDGED = ('pass', 'fail', 'loop', 'timeout', 'escalated')
+    judged = {k2: [x for x in v if x.get('outcome') in JUDGED] for k2, v in by_task.items()}
+    luna_tasks = [v for v in judged.values() if v and is_luna(v[0])]
     first_pass = sum(1 for v in luna_tasks if v[0].get('outcome') == 'pass')
     funnel = {'luna_tasks': len(luna_tasks),
               'luna_to_sol': sum(1 for v in by_task.values() if any(tier_rank(x) == 0 for x in v) and (any(tier_rank(x) >= 1 for x in v) or any(tier_rank(x) == 0 and x.get('outcome') == 'escalated' for x in v))),
