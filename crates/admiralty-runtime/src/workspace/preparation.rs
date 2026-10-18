@@ -104,6 +104,51 @@ impl PreparedWorkspace {
     pub fn forbidden_paths(&self) -> &[PathBuf] {
         &self.workspace.forbidden_paths
     }
+    /// Verify that the workspace and its managed parent on the filesystem still
+    /// resolve without symlinks to the exact original directory descriptors
+    /// retained when this [`PreparedWorkspace`] was materialized.
+    pub fn validate_current_custody(&self) -> Result<(), PreparationError> {
+        let parent_path = self
+            .workspace
+            .workspace
+            .parent()
+            .ok_or(PreparationError::UnsafeDestinationMetadata)?;
+        let destination_name = self
+            .workspace
+            .workspace
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or(PreparationError::UnsafeDestinationMetadata)?;
+        let revalidated = WorkspaceSpec {
+            node_id: self.workspace.node_id.clone(),
+            root_id: self.workspace.root_id.clone(),
+            project_id: self.workspace.project_id.clone(),
+            workspace: self.workspace.workspace.clone(),
+            owned_paths: self.workspace.owned_paths.clone(),
+            forbidden_paths: self.workspace.forbidden_paths.clone(),
+        }
+        .validate()
+        .map_err(|_| PreparationError::UnsafeDestinationMetadata)?;
+        if revalidated != self.workspace || revalidated.custody != Custody::RegisteredOnly {
+            return Err(PreparationError::UnsafeDestinationMetadata);
+        }
+        ensure_private_fd(&self._managed_parent)?;
+        ensure_private_fd(&self._workspace_dir)?;
+        ensure_path_points_to_fd(parent_path, &self._managed_parent)?;
+        ensure_path_points_to_fd(&self.workspace.workspace, &self._workspace_dir)?;
+        ensure_same_directory(
+            &self._managed_parent,
+            destination_name,
+            &self._workspace_dir,
+        )?;
+        Ok(())
+    }
+    pub(crate) fn managed_parent_fd(&self) -> std::os::fd::BorrowedFd<'_> {
+        self._managed_parent.as_fd()
+    }
+    pub(crate) fn workspace_dir_fd(&self) -> std::os::fd::BorrowedFd<'_> {
+        self._workspace_dir.as_fd()
+    }
 }
 
 #[derive(Debug, Error)]
