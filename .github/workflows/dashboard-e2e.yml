@@ -30,14 +30,64 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
+      - name: Verify or provision qualified Chromium/Chrome binary in job scratch
+        run: |
+          set -euo pipefail
+          browser_bin=""
+          for candidate in \
+            "${ADMIRALTY_BROWSER_BINARY:-}" \
+            /usr/bin/google-chrome-stable \
+            /usr/bin/google-chrome \
+            /usr/bin/chromium \
+            /usr/bin/chromium-browser \
+            "$HOME"/.cache/ms-playwright/chromium-*/chrome-linux64/chrome \
+            "$HOME"/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell; do
+            if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+              browser_bin="$candidate"
+              break
+            fi
+          done
+          if [ -z "$browser_bin" ]; then
+            install -d -m 700 "$RUNNER_TEMP/adm-chrome"
+            npx --yes @puppeteer/browsers@2.5.0 install chrome@stable --path "$RUNNER_TEMP/adm-chrome"
+            for candidate in "$RUNNER_TEMP"/adm-chrome/chrome/*/chrome-linux64/chrome; do
+              if [ -x "$candidate" ]; then
+                browser_bin="$candidate"
+                break
+              fi
+            done
+          fi
+          if [ -z "$browser_bin" ] || [ ! -x "$browser_bin" ]; then
+            echo "ERROR: No qualified Chromium/Chrome binary available on runner $RUNNER_NAME" >&2
+            exit 1
+          fi
+          version_out=$(timeout 10s "$browser_bin" --version)
+          printf 'verified_browser=%s version=%s\n' "$browser_bin" "$version_out"
+          case "$version_out" in
+            *Chrome*|*Chromium*) ;;
+            *)
+              echo "ERROR: Unexpected browser version output: $version_out" >&2
+              exit 1
+              ;;
+          esac
+          printf 'ADMIRALTY_BROWSER_BINARY=%s\n' "$browser_bin" >> "$GITHUB_ENV"
       - name: Prepare pinned pnpm in job scratch
         run: |
           install -d -m 700 "$RUNNER_TEMP/admiralty-pnpm"
           npm install --global --prefix "$RUNNER_TEMP/admiralty-pnpm" pnpm@11.15.1 --ignore-scripts --no-audit --no-fund
           printf '%s\n' "$RUNNER_TEMP/admiralty-pnpm/bin" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Ensure pinned axe-core 4.14.0 is installed and verified
+        run: |
+          if [ ! -f node_modules/axe-core/axe.min.js ]; then
+            pnpm add -D -w axe-core@4.14.0 --ignore-scripts
+            git checkout -- package.json pnpm-lock.yaml
+          fi
+          actual_sha=$(sha256sum node_modules/axe-core/axe.min.js | awk '{print $1}')
+          expected_sha="20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878"
+          test "$actual_sha" = "$expected_sha"
       - run: pnpm --dir apps/dashboard typecheck
       - run: pnpm --dir apps/dashboard exec tsc -p e2e/tsconfig.json --noEmit
       - run: pnpm --dir apps/dashboard build
-      - name: Run browser E2E and WCAG 2.1 AA axe accessibility qualification against built dashboard
+      - name: Run browser E2E and pinned axe-core 4.14.0 WCAG 2.1 AA qualification against built dashboard
         run: pnpm --dir apps/dashboard test --run --config e2e/vitest.config.ts
