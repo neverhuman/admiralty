@@ -508,6 +508,30 @@ def collect_dope(screens, do_hc):
 JE = HOME + '/jope-evidence/spec-integration-20261017'
 JP = JE + '/packet-v4-921643bc3ae0'
 
+def jope_receipts(statuses):
+    repo = HOME + '/JopeDime'
+    rc, main, _ = run(['git', '-C', repo, 'rev-parse', '--verify', '-q', 'origin/main^{commit}'], timeout=10)
+    main = main.strip() if rc == 0 else ''
+    ok, relabeled = [], []
+    if not main: return ok, relabeled
+    for f in sorted(glob.glob(JE + '/verify/I[0-9][0-9].json')):
+        tid = os.path.basename(f)[:-5]
+        r = rj(f) or {}
+        sha, csha = str(r.get('sha') or ''), str(r.get('checkout_sha') or '')
+        if tid not in statuses or str(r.get('status', '')).upper() != 'PASS' or not re.fullmatch(r'[0-9a-f]{40}', sha) or (csha and csha != sha):
+            continue
+        if not (sha == main or run(['git', '-C', repo, 'merge-base', '--is-ancestor', sha, main], timeout=15)[0] == 0):
+            continue
+        rc, ct, _ = run(['git', '-C', repo, 'log', '-1', '--format=%ct', sha], timeout=10)
+        try:
+            va = datetime.datetime.fromisoformat(str(r.get('verified_at_utc') or r.get('verified_at') or '').replace('Z', '+00:00')).timestamp()
+            if rc == 0 and va < int(ct.strip()):
+                relabeled.append(tid); continue
+        except ValueError:
+            pass
+        ok.append(tid)
+    return ok, relabeled
+
 def collect_jopedime(screens, do_hc):
     r = {'name': 'JopeDime', 'ledger_source': 'packet-v4 tasks.json (66 ids, immutable, all PROPOSED) overlaid with LIVE_STATUS.json verified/active + captain-state ASSIGNMENT_*.md'}
     try:
@@ -515,6 +539,11 @@ def collect_jopedime(screens, do_hc):
         statuses = {x['id']: 'open' for x in t['tasks']}
         titles = {x['id']: x.get('title') for x in t['tasks']}
         verified = [v.get('task_id') for v in live.get('verified_tasks') or []]
+        # also count per-task verify receipts (verify/Ixx.json) that are a genuine PASS on a commit contained in main
+        # and were verified after that commit existed (receipts relabeled to a newer sha are NOT counted)
+        rec_ok, rec_relabeled = jope_receipts(statuses)
+        verified = sorted(set(verified) | set(rec_ok))
+        r['receipts'] = {'genuine_on_main': len(rec_ok), 'relabeled_not_rerun': sorted(rec_relabeled)}
         for v in verified:
             if v in statuses: statuses[v] = 'done'
         at = live.get('active_task') or {}
@@ -546,7 +575,7 @@ def collect_jopedime(screens, do_hc):
         pp = live.get('programme_progress') or {}
         rm = live.get('receiving_main') or {}
         main_green = str(rm.get('main_guard_conclusion') or '').startswith('success') and str(rm.get('full_main_cpu_conclusion') or '').startswith('success')
-        r['_stage_sets'] = {'done': set(verified), 'on_main': set(pp.get('verified_task_ids') or []) - set(verified),
+        r['_stage_sets'] = {'done': set(verified), 'on_main': (set(pp.get('verified_task_ids') or []) | set(rec_relabeled)) - set(verified),
                             'lane_complete': set(pp.get('lane_complete_task_ids') or []), 'lane_complete_branch': pp.get('lane_complete_branch'),
                             'in_progress': set(pp.get('in_progress_code_task_ids') or []),
                             'main': {'sha': (rm.get('sha') or '')[:12], 'ci_green': main_green}}
@@ -789,7 +818,7 @@ def compute_stages(key, p, statuses, lanes, active_src):
         for t in ss.get('lane_complete', ()): promote(t, 'implemented', 'LIVE_STATUS lane_complete')
         if prn and ss.get('lane_complete_branch') and ss.get('lane_complete_branch') == pr.get('branch'):
             for t in ss.get('lane_complete', ()): promote(t, 'in_pr', 'lane_complete on PR #%s branch %s' % (prn, pr.get('branch')))
-        for t in ss.get('on_main', ()): promote(t, 'on_main', 'LIVE_STATUS verified_task_ids (main %s, CI %s; no verify receipt)' % (ss.get('main', {}).get('sha'), 'green' if ss.get('main', {}).get('ci_green') else 'not green'))
+        for t in ss.get('on_main', ()): promote(t, 'on_main', 'LIVE_STATUS verified_task_ids or relabeled receipt (main %s, CI %s; no genuine verify-on-main receipt yet)' % (ss.get('main', {}).get('sha'), 'green' if ss.get('main', {}).get('ci_green') else 'not green'))
     repo = REPO_DIR.get(key)
     main_sha = _rev(repo, 'origin/main') if repo else None
     pr_sha = pr.get('head') if prn else None
@@ -815,7 +844,7 @@ def compute_stages(key, p, statuses, lanes, active_src):
                        'main_ci_green': (ss.get('main') or {}).get('ci_green'), 'accepted_in_pr': accepted_in_pr,
                        'blocked_code_stage': dict(collections.Counter(held.values())),
                        'note': {'joil': 'Joil ledger lives on the PR #6 branch; origin/main has no V5 plan yet, so done-on-main is 0 and the 34 accepted + review tasks are counted as in PR #6 (merge is Jepson-only). Blocked = validator audit_held, even where code is integrated on the PR branch.',
-                                'jopedime': 'done = LIVE_STATUS verified_tasks (acceptance receipts); on main = verified_task_ids claimed on green main without verify receipts; in PR = lane_complete ids on the open integration PR branch.',
+                                'jopedime': 'done = LIVE_STATUS verified_tasks + verify/Ixx.json PASS receipts on a commit in main, verified after that commit existed (relabeled receipts stay on main); on main = verified_task_ids claimed on green main without verify receipts; in PR = lane_complete ids on the open integration PR branch.',
                                 'dope': 'done = packet-v2 tasks.json done; LANE lines + lane-branch ancestry (origin/main, PR head) refine the rest.',
                                 'jarambit': 'done = WORKPLAN.md DONE; LANE lines + lane-branch ancestry refine the rest.'}.get(key)}
     p['stage_by_task'] = {t: {'stage': stage[t], 'why': why.get(t)} for t in sorted(stage)}
