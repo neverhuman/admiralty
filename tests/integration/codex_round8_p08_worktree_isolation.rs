@@ -83,13 +83,15 @@ fn p04_p10_round8_p08_worktree_isolation_qualification() {
 
 #[test]
 fn p04_p10_round9_item3_lane_spawner_recovery_qualification() {
-    use admiralty_core::{AttemptId, PrincipalId, TaskId, placement::{
-        BudgetRequirement, Capacity, DecimalU64, Known, NodeId, NodeOffer, Observation,
-        PlacementPolicy, PlacementRequest, propose_placement,
-    }};
+    use admiralty_core::{
+        AttemptId, PrincipalId, TaskId,
+        placement::{
+            BudgetRequirement, Capacity, DecimalU64, Known, NodeId, NodeOffer, Observation,
+            PlacementPolicy, PlacementRequest, propose_placement,
+        },
+    };
     use admiralty_runtime::reservations::{
-        AccountId, CurrencyUnit, MinorUnits, ReservationScope, ReservationLedger,
-        reserve_budget,
+        AccountId, CurrencyUnit, MinorUnits, ReservationLedger, ReservationScope, reserve_budget,
     };
 
     // P04: registration scope is lexical, and traversal never owns a sibling.
@@ -138,22 +140,38 @@ fn p04_p10_round9_item3_lane_spawner_recovery_qualification() {
         unit: CurrencyUnit::new("USD", 2).expect("currency"),
     };
     let ledger = ReservationLedger::new();
-    assert!(reserve_budget(&ledger, "event", "reservation", scope, "correlation", MinorUnits::new(1)).is_err());
+    assert!(
+        reserve_budget(
+            &ledger,
+            "event",
+            "reservation",
+            scope,
+            "correlation",
+            MinorUnits::new(1)
+        )
+        .is_err()
+    );
     assert_eq!(ledger.revision, 0);
     assert!(ledger.reservations.is_empty());
 
     // P21/P26: a journal gap poisons a provider stream; replay cannot repair it.
     let mut stream = CodexNdjsonStream::new("model", CodexEffort::Low).expect("stream");
-    assert!(matches!(stream.push_chunk(&admiralty_runtime::session::OutputChunk {
-        offset: 1,
-        stream: admiralty_runtime::session::OutputStream::Stdout,
-        bytes: b"{}\n".to_vec(),
-    }), Err(CodexError::JournalGap)));
-    assert!(matches!(stream.push_chunk(&admiralty_runtime::session::OutputChunk {
-        offset: 0,
-        stream: admiralty_runtime::session::OutputStream::Stdout,
-        bytes: b"{}\n".to_vec(),
-    }), Err(CodexError::Failed)));
+    assert!(matches!(
+        stream.push_chunk(&admiralty_runtime::session::OutputChunk {
+            offset: 1,
+            stream: admiralty_runtime::session::OutputStream::Stdout,
+            bytes: b"{}\n".to_vec(),
+        }),
+        Err(CodexError::JournalGap)
+    ));
+    assert!(matches!(
+        stream.push_chunk(&admiralty_runtime::session::OutputChunk {
+            offset: 0,
+            stream: admiralty_runtime::session::OutputStream::Stdout,
+            bytes: b"{}\n".to_vec(),
+        }),
+        Err(CodexError::Failed)
+    ));
 
     // P24: disconnected nodes cannot start ordinary work without a bound permit.
     let now = DecimalU64::new(10);
@@ -165,25 +183,61 @@ fn p04_p10_round9_item3_lane_spawner_recovery_qualification() {
         authority_ref: "grant".into(),
         required_capabilities: vec!["rust".into()],
         locality_refs: vec!["src".into()],
-        budget_requirement: BudgetRequirement { account_pool: "pool".into(), amount: now.clone() },
+        budget_requirement: BudgetRequirement {
+            account_pool: "pool".into(),
+            amount: now.clone(),
+        },
     };
     let node = NodeOffer {
-        node_id: NodeId::new("node").expect("node"), boot_id: "boot".into(),
+        node_id: NodeId::new("node").expect("node"),
+        boot_id: "boot".into(),
         authority_generation: DecimalU64::new(1),
-        visible_scopes: Observation { value: vec!["p".into()], observed_at: now.clone() },
-        capabilities: Observation { value: vec!["rust".into()], observed_at: now.clone() },
-        account_pool: Observation { value: "pool".into(), observed_at: now.clone() },
-        capacity: Observation { value: Known::Known { value: Capacity { slots: DecimalU64::new(1), budget_remaining: DecimalU64::new(50) } }, observed_at: now.clone() },
-        current_pressure: Observation { value: Known::Known { value: DecimalU64::new(0) }, observed_at: now.clone() },
-        spool_free: Observation { value: Known::Known { value: DecimalU64::new(50) }, observed_at: now.clone() },
-        existing_active_roots: vec![], controller_connected: false,
-        locality_refs: vec!["src".into()], continuation_permit: None,
-        reconciliation_required: false, ownership_observed_at: Some(now.clone()),
+        visible_scopes: Observation {
+            value: vec!["p".into()],
+            observed_at: now.clone(),
+        },
+        capabilities: Observation {
+            value: vec!["rust".into()],
+            observed_at: now.clone(),
+        },
+        account_pool: Observation {
+            value: "pool".into(),
+            observed_at: now.clone(),
+        },
+        capacity: Observation {
+            value: Known::Known {
+                value: Capacity {
+                    slots: DecimalU64::new(1),
+                    budget_remaining: DecimalU64::new(50),
+                },
+            },
+            observed_at: now.clone(),
+        },
+        current_pressure: Observation {
+            value: Known::Known {
+                value: DecimalU64::new(0),
+            },
+            observed_at: now.clone(),
+        },
+        spool_free: Observation {
+            value: Known::Known {
+                value: DecimalU64::new(50),
+            },
+            observed_at: now.clone(),
+        },
+        existing_active_roots: vec![],
+        controller_connected: false,
+        locality_refs: vec!["src".into()],
+        continuation_permit: None,
+        reconciliation_required: false,
+        ownership_observed_at: Some(now.clone()),
         ownership_revision: Some(DecimalU64::new(1)),
     };
     let policy = PlacementPolicy {
-        max_observation_age: DecimalU64::new(10), maximum_pressure: DecimalU64::new(5),
-        minimum_spool_reserve: DecimalU64::new(2), disconnected_continuation_only: true,
+        max_observation_age: DecimalU64::new(10),
+        maximum_pressure: DecimalU64::new(5),
+        minimum_spool_reserve: DecimalU64::new(2),
+        disconnected_continuation_only: true,
         ownership_revision: Some(DecimalU64::new(1)),
     };
     let placement = propose_placement(&request, &[node], &policy, 10).expect("placement proposal");
@@ -193,7 +247,13 @@ fn p04_p10_round9_item3_lane_spawner_recovery_qualification() {
     // P25: unknown session custody blocks recovery even when artifacts match.
     let (manifest, mut observation, fence) = recovery_fixture::valid_recovery_evidence();
     observation.session_custody = SessionCustody::Unknown;
-    let recovery = plan_recovery(&manifest, &observation, Some(&fence)).expect("safe recovery plan");
+    let recovery =
+        plan_recovery(&manifest, &observation, Some(&fence)).expect("safe recovery plan");
     assert!(!recovery.restore_authorized());
-    assert!(recovery.blockers.iter().any(|blocker| matches!(blocker, Blocker::UnknownSessionCustody)));
+    assert!(
+        recovery
+            .blockers
+            .iter()
+            .any(|blocker| matches!(blocker, Blocker::UnknownSessionCustody))
+    );
 }
