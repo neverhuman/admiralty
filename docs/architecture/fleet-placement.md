@@ -1,0 +1,9 @@
+# Fleet placement proposals
+
+`admiralty-core::placement` is a pure decision component. It consumes a task's project, root, task, immutable contract digest, required capabilities, locality references and budget requirement, plus bounded node observations and an explicit decision time. It returns a deterministically ordered list of feasible candidate nodes and per-node rejection reasons. Locality score ranks first; validated node ID breaks ties. The component makes no clock, randomness, transport, process, filesystem or hardware calls.
+
+Placement requires fresh observations for project visibility, capabilities, account pool, capacity, pressure and spool reserve. Unknown or stale values are rejected. Serialized input is capped at 1 MiB; offers at 256; collections at 1,024; strings at 4,096 bytes; node IDs at 128 bytes. All externally serialized u64 values use canonical decimal strings and checked parsing.
+
+Any observed ordinary active root blocks another placement, including evidence from a disconnected node. Candidate selection does not settle conflicts in ownership reports: duplicate active-root evidence is an explicit error. The same disconnected node can only be proposed to continue its own active root under an existing immutable isolated permit bound to the same root/contract, boot identity and authority generation, with sufficient remaining budget and spool reserve. Reboot, generation change or an explicit reconciliation requirement rejects it.
+
+Every proposal sets `execution_granted`, `publication_granted` and `authority_granted` to false. A candidate is not an admission or execution permit. This pure component does not implement node enrollment, partition transport, reconciliation, publication, shutdown, runner isolation, or hardware qualification. Qualification remains pending actual partition transport and integration with authoritative grant/custody services.
