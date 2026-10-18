@@ -38,6 +38,8 @@ The React dashboard includes the dense fleet view: project tabs, task stages,
 blockers, captain and worker details, PR/CI/review, coordination logs, hierarchy,
 usage, resources and history. Admiralty's build is an ordinary project tab.
 An exact original dashboard remains available under `/legacy/` when configured.
+See the [live console guide](docs/operators/live-console.md) for the complete
+chart strip, hierarchy, source accounting and view controls.
 
 Models settings lets an operator add providers, native model IDs, tier order,
 capacity, capabilities, attempt caps and escalation links. A self-hosted model can
