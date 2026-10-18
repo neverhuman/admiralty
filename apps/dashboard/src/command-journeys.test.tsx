@@ -1258,7 +1258,7 @@ describe('PR #71 review repairs: Rust BTreeMap TaskView golden digests, full-con
     }
   });
 
-  it('preserves all criteria, all checks, and comma-containing values when revising a multi-criterion/multi-check contract', () => {
+  it('preserves all criteria, all checks, reverse/mixed check_ids, and comma-containing values on revision roundtrip and first-check rename', () => {
     const multiTask: AnyFleetTask = {
       contract: sampleContract({
         task_id: 'task-multi-rev',
@@ -1271,25 +1271,25 @@ describe('PR #71 review repairs: Rust BTreeMap TaskView golden digests, full-con
         criteria: [
           {
             id: 'crit-1',
-            text: 'First criterion, with commas, preserved',
-            check_ids: ['chk-1', 'chk-2'],
+            text: 'First criterion binds ONLY second check chk-b, with commas, preserved',
+            check_ids: ['chk-b'],
           },
           {
             id: 'crit-2',
-            text: 'Second criterion must never be dropped on revision',
-            check_ids: ['chk-2'],
+            text: 'Second criterion binds mixed/duplicate order [chk-b, chk-a, chk-b]',
+            check_ids: ['chk-b', 'chk-a', 'chk-b'],
           },
         ],
         checks: [
           {
-            id: 'chk-1',
+            id: 'chk-a',
             program: 'pnpm',
             args: ['--filter', 'a,b', 'test'],
             cwd: 'apps/dashboard',
             timeout_secs: 90,
           },
           {
-            id: 'chk-2',
+            id: 'chk-b',
             program: 'cargo',
             args: ['test', '--', '--exact', 'case_a,case_b'],
             cwd: '.',
@@ -1303,10 +1303,14 @@ describe('PR #71 review repairs: Rust BTreeMap TaskView golden digests, full-con
       candidate_ref: null,
     };
 
+    // 1. No-edit roundtrip (plus title edit) preserves criteria[0].check_ids = ['chk-b'] without rewriting to ['chk-a']
     const revDraft = draftFromTaskForRevision(multiTask);
     expect(revDraft.revision).toBe('2');
-    revDraft.title = 'Revised multi-check contract title';
+    const noEditCandidate = draftToContractCandidate(revDraft) as TaskContract;
+    expect(noEditCandidate.criteria[0].check_ids).toEqual(['chk-b']);
+    expect(noEditCandidate.criteria[1].check_ids).toEqual(['chk-b', 'chk-a', 'chk-b']);
 
+    revDraft.title = 'Revised multi-check contract title';
     const candidate = draftToContractCandidate(revDraft) as TaskContract;
     expect(candidate.revision).toBe(2);
     expect(candidate.title).toBe('Revised multi-check contract title');
@@ -1319,9 +1323,18 @@ describe('PR #71 review repairs: Rust BTreeMap TaskView golden digests, full-con
     const preview = buildIntakePreview(revDraft, [multiTask]);
     expect(preview.valid).toBe(true);
     expect(preview.operation).toBe('revise_contract');
-    expect(preview.contract?.criteria).toHaveLength(2);
-    expect(preview.contract?.checks).toHaveLength(2);
+    expect(preview.contract?.criteria).toEqual(multiTask.contract.criteria);
+    expect(preview.contract?.checks).toEqual(multiTask.contract.checks);
     expect(preview.contract?.non_goals).toEqual(multiTask.contract.non_goals);
+
+    // 2. Renaming the first check ID ('chk-a' -> 'chk-a-renamed') replaces only exact 'chk-a' occurrences across all criteria
+    const renamedCheckDraft = draftFromTaskForRevision(multiTask);
+    renamedCheckDraft.check_id = 'chk-a-renamed';
+    const renamedPreview = buildIntakePreview(renamedCheckDraft, [multiTask]);
+    expect(renamedPreview.valid).toBe(true);
+    expect(renamedPreview.contract?.checks.map(c => c.id)).toEqual(['chk-a-renamed', 'chk-b']);
+    expect(renamedPreview.contract?.criteria[0].check_ids).toEqual(['chk-b']);
+    expect(renamedPreview.contract?.criteria[1].check_ids).toEqual(['chk-b', 'chk-a-renamed', 'chk-b']);
   });
 
   it('retries retained create, cancel_pending, and revise_contract envelopes with unchanged UUID and body after server commit + lost reply + snapshot advancement', async () => {
@@ -1525,6 +1538,9 @@ describe('PR #71 review repairs: Rust BTreeMap TaskView golden digests, full-con
       reviseObjective: 'Revised objective rev 2',
       token: 'owner-token',
       fetcher: reviseFetcher,
+      onRefreshSnapshot: () => {
+        throw new Error('Transient post-commit snapshot refresh failure');
+      },
     });
     expect(reviseRetryReceipt.duplicate).toBe(true);
     expect(reviseBodies).toHaveLength(2);
@@ -1532,6 +1548,21 @@ describe('PR #71 review repairs: Rust BTreeMap TaskView golden digests, full-con
     expect(JSON.parse(reviseBodies[1]).action.contract.revision).toBe(2);
     expect(JSON.parse(reviseBodies[1]).expected_task_digest).toBe(initialDetail.taskDigest);
     expect(reviseRetainedRef.current).toBeNull();
+
+    // 4. Post-receipt onRefreshSnapshot throwing in executeIntakeCommand also resolves receipt cleanly
+    const freshRetainedRef: { current: RetainedCommandEnvelope | null } = { current: null };
+    const refreshThrowReceipt = await executeIntakeCommand({
+      retainedRef: freshRetainedRef,
+      preview: initialCreatePreview,
+      effectiveCasDigest: null,
+      token: 'owner-token',
+      fetcher: createFetcher,
+      onRefreshSnapshot: async () => {
+        throw new Error('Post-commit fleet refresh error');
+      },
+    });
+    expect(refreshThrowReceipt.event_seq).toBe('21');
+    expect(freshRetainedRef.current).toBeNull();
   });
 });
 
