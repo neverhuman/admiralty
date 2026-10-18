@@ -1,25 +1,25 @@
 # Admiralty execution ledger
 
-Planning baseline: `1e8ed17eff27ed3ab80dc6860fc8eda301406aee`. Implementation started on 18 October 2026. PR #9 carries the integration branch. A tested read-only rollout panel is running on the existing dashboard as an immutable PR canary; only its exact collector child was restarted. Existing coding projects retain their lanes and ownership. Native v2 execution remains disabled pending qualification.
+Planning baseline: `1e8ed17eff27ed3ab80dc6860fc8eda301406aee`. Implementation started on 18 October 2026. PR #9 was merged by the owner at head `9debe5dd` on 18 October at 13:58 UTC. Subsequent main commits contain the offline workplan registry, controlled Codex harness and private scratch correction. The read-only dashboard still runs its separately pinned binary/assets; merging source does not deploy it. Existing coding projects retain their lanes and ownership. Native v2 execution remains disabled pending qualification.
 
 Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). Integrator assigns one current base/interface version and exact write scope per packet. Update this table from evidence; do not infer completion from agent messages.
 
 | Packet | State | Owner | Integrated commit or candidate | Evidence and next action |
 | --- | --- | --- | --- | --- |
-| P00 | review | local evidence agent | candidate, not integrated | 13 legacy tests and 37-source hash verifier pass; integration receipt pending |
-| P01 | in_progress | local integrator + remote fixture lane | candidate, not integrated | Six crates, pinned tools, CI and fake-process lane; native qualification pending |
-| P02 | in_progress | local integrator | candidate, not integrated | Typed contracts/reducer/schema/TS pipeline with core scope tests; complete policy model pending |
+| P00 | review | evidence lane + integration review | independently checked at `a9ba930e` | 37 pinned hashes, 11 synthetic cases, distinct 449/503 baselines and unknown-explicit inventory worksheet satisfy inspected artifact criteria; hashed current execution evidence recorded, authorized engineering receipt closeout pending |
+| P01 | in_progress | integration + quality review | combined source `661bf36f` | All 30 named integration targets registered; Mac 558 and clean Linux 560 Rust checks plus strict gates pass; hosted run cancelled before steps; full fault/simulator matrix pending |
+| P02 | in_progress | domain + integration review | reviewed `03772f94` | Typed contracts, pure reducers and schema/TS checks are integrated; complete authority/policy negotiation remains pending |
 | P03 | in_progress | local store agent + integration reviewer | reviewed `29acc013` | Atomic domain/outbox admission, immutable request/effect associations, replay and receive-time retry compatibility tested; durable executor admission loop pending |
 | P04 | in_progress | artifact + custody lanes + strong review | reviewed `29acc013` | Transactional asset/pin catalog with full observation binding, fixed clock policy and receipt closure; trusted filesystem observation/startup activation pending |
-| P05 | in_progress | local coordination team + strong review | reviewed `29acc013` | Durable scoped messages/ACK and question journal with canonical receipt/task-scope checks; delivery service/subscriptions pending |
+| P05 | in_progress | local coordination team + strong review | Store reviewed `29acc013`; later main `429595d` requires fixes | Durable scoped Store messages/ACK and question journal retained; new in-memory mailbox has collision/retention/validation blockers; durable delivery/subscriptions pending |
 | P06 | in_progress | local context team | PR prototype | Constraint-preserving capsules, epochs and bounded attention governor; durable governor/outbox activation and retrieval pending |
-| P07 | in_progress | remote session lane + local reviewer | reviewed `e2b540fb` | Independent private Unix-socket host, reconnect continuity, compatible launch envelope, final capture watermark and native owned-group cleanup; restart adoption and admitted fleet activation unqualified |
-| P08 | in_progress | Luna candidate + strong review | reviewed `e2b540fb` | Literal bounded Codex launch builder, NDJSON/usage decoding and consumer-drain EOF checks; real managed provider execution qualification pending |
+| P07 | in_progress | remote session lane + local reviewer | runtime `e2b540fb`; fixture `661bf36f` | Private socket fixture now bounds framing, connect, I/O and owned-child cleanup; same-daemon client reconnect passes; control-service restart adoption and admitted fleet activation unqualified |
+| P08 | in_progress | provider + integration review | reviewed `455ee5f4` | Adds opt-in controlled exact-fixture Codex transport harness with offline CI tests and executable hashes; no real run or native qualification |
 | P09 | in_progress | remote workspace lane + local reviewer | candidate `f0d15a82`, imported `d637bfe` | Read-only custody registration; real runner/resource isolation pending |
 | P10 | in_progress | usage/reservation lanes + strong review | candidate `99f05b0`, imported `61e888b` | Segmented usage plus conservative scoped reservations reviewed; runtime reservation activation pending |
-| P11 | in_progress | local API team | candidate, not integrated | Read-only authenticated API/SSE, generation/precision/security tests; commands pending |
-| P12 | in_progress | remote UI lane + local refinement | candidate `ae57d6d`, imported as `6a62db2` | React/Vite shell, single SSE stream, runtime guards and branding; read-only parity/qualification still pending |
-| P13 | in_progress | remote workplan lane + local reviewer | candidate `d54ea23a`, imported `d0275c5` | Bounded dependency preview and CLI entry point; durable plan submission/revision service pending |
+| P11 | in_progress | API + integration review | reviewed `17c7a76d` | Authenticated bounded read API/SSE and offline CLI are tested; live command envelopes, terminal input and agent tools pending |
+| P12 | in_progress | frontend + integration review | live assets `9debe5dd` | Dense real-data console, 13 temporal metrics, observed manager selection and centered owner deployed; 75 React tests/build pass; full scale/accessibility qualification pending |
+| P13 | in_progress | store + integration review | reviewed `455ee5f4` | Durable immutable JSON revisions, CAS/retry, reciprocal task identity, writer/CLI and backup/rebuild tests; TOML/Markdown, import UI and live admission pending |
 | P14 | in_progress | scheduler lane + strong review | candidate `4aa3abe`, imported `2ef27f4` | Pure scheduler independently hardened at `03772f94`; durable scheduling and launches remain pending |
 | P15 | in_progress | verifier lane + strong review | candidate `a4c358`, imported `1f8b32c` | Scoped evidence consistency hardened at `03772f94`; trusted independent verifier execution pending |
 | P16 | in_progress | Luna audit lane + strong review | candidate `e8b9321`, imported `10fe48e` | Staged audit candidate under independent review; no Jankurai execution qualification |
@@ -27,17 +27,17 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). In
 | P18 | in_progress | Luna conflict lane + strong review | candidate `54d57e0`, imported `03d42fe` | Bounded conservative conflict graph reviewed; merge train/runtime integration pending |
 | P19 | in_progress | Luna publication lane + strong review | candidate `c3e3289`, imported `4a7eee0` | Frozen request/receipt publication fences reviewed; credential gateway/forge qualification pending |
 | P20 | in_progress | Luna retirement lane + strong review | candidate `164aee7`, imported `94336b5` | Scope/pin/identity/replay retirement proposals reviewed; no destructive executor or permission |
-| P21 | planned | unassigned | — | Qualify second provider |
-| P22 | planned | unassigned | — | Qualify remaining current pathways |
+| P21 | in_progress | provider implementation + independent cross-review | PR26 `661bf36f`, offline compiled/tested | 22 registered tests and shared strict decoder address offline counterexamples; unadmitted launch/configuration/journal/real transport and nested usage qualification remain pending |
+| P22 | in_progress | provider implementation + independent cross-review | PR26 `661bf36f`, offline compiled/tested | 12 registered matrix tests cover portable fixtures, truthful identity hints, strict incremental framing and shared launch envelopes; native identity/journal/transport qualification remains pending |
 | P23 | in_progress | Luna enrollment lane + strong review | candidate `e3a9125`, imported `a6637a6` | Scope/clock/revocation enrollment contracts reviewed; real enrollment/replay transport pending |
 | P24 | in_progress | Luna placement lane + strong review | candidate `a791470`, imported `08c3a38` | Scoped fresh ownership/continuation placement proposals reviewed; real partition qualification pending |
 | P25 | in_progress | Luna recovery lane + strong review | candidate `fa77ebd`, imported `4494af9` | Snapshot/fence/closure recovery bindings reviewed; executor restore/cutover qualification pending |
 | P26 | in_progress | Luna economics lane + strong review | candidate `4aec329`, imported `78688d4` | Exact scoped usage/correction/coverage economics reviewed; explorer/service integration pending |
 | P27 | in_progress | Luna excursions lane + strong review | candidate `c3a1895`, imported `1fe0bb2` | Canonical bounded scoped excursion state reviewed; durable proposal loop activation pending |
 | P28 | in_progress | Luna trials lane + strong review | candidate `142bd2a`, imported `87b0a94` | Fixed cohort/seed/oracle trial analysis reviewed; independent live trials pending |
-| P29 | in_progress | Luna diagnostics lane + strong review | candidate `816822a`, imported `20343f8` | Recorded status diagnostics under review; bounded CLI explain integration underway |
-| P30 | in_progress | Luna package lane + strong review | candidate `a6ae21c`, imported `f38152a` | Deterministic explicit-input archive builder under review; installers/signed release pending |
-| P31 | in_progress | Luna canary lane + strong review | candidate `a9cd4ce`, imported `4a0e7a1` | Bounded isolated HTTP smoke harness under review; full fleet rollout closure remains false |
+| P29 | in_progress | diagnostics + frontend review | reviewed `17c7a76d` | Bounded recorded diagnostic CLI tested; durable action/job, assets/fleet UX and named accessibility/E2E gates pending |
+| P30 | in_progress | release + integration review | reviewed `17c7a76d` | Explicit-input archive builder passes 10 checks; clean-install, signed distribution, rights and complete operator paths pending |
+| P31 | in_progress | integration + qualification review | reviewed `455ee5f4` | Isolated binary smoke and offline controlled provider harness are integrated; real provider, soak, savings, restore and fleet cutover gates remain open |
 
 ## Receipt template
 
@@ -69,8 +69,8 @@ The receipt is engineering evidence, not product acceptance. Integrator verifies
 The existing legacy dashboard has a generic rollout summary and expanded agent
 table. Rust and React now serve real producer observations on loopback18891;
 the original dashboard stays available on18890 and under `/legacy/`. React assets
-are pinned to `0b8b8cb2`; the legacy roster bridge is `b2523eb2` and the running Rust
-binary is `17c7a76d`. These are unmerged PR canaries. The default page
+are pinned to `9debe5dd`; the legacy roster bridge is `b2523eb2` and the running Rust
+binary is `17c7a76d`. These are immutable, separately deployed canary revisions, now represented in merged source. The default page
 is the detailed real fleet; synthetic demo now defaults to18892.
 
 A bounded observer joins captain reports into runtime JSON every15 seconds
@@ -153,7 +153,7 @@ At code `17c7a76d`,357 Rust checks (including two compile-fail doctests),
 strict workspace Clippy,66 React tests/typecheck/build,73 legacy Python tests
 (one platform skip), five contract runtime checks and both contract/schema drift
 checks pass. The package builder passes10 self-tests; the bounded smoke harness
-passes16 self-tests and15 actual isolated binary HTTP/CLI checks. The latter
+passes16 self-tests and 15 actual isolated binary HTTP/CLI checks. The latter
 caught and fixed model endpoint authentication occurring after JSON extraction.
 Partial receipts for16 component packets and an aggregate integration receipt
 record remaining activation and qualification gaps. GitHub jobs were queued at
@@ -186,12 +186,12 @@ photo upload are deployed. These are display/selection changes, not model-name
 substitution or native provider qualification.
 
 Smoke harness `5e1bc679` fixes deadline shutdown appearing as successful EOF and
-rejects truncated HTTP bodies. All18 harness checks and15 actual isolated binary
+rejects truncated HTTP bodies. All18 harness checks and 15 actual isolated binary
 HTTP/CLI checks pass. The native canary remains read-only; no complete packet,
 production execution or hosted CI success is inferred from these checks.
 
 At source `997513f6`, the Mac combined tree passes 439 Rust checks (including
-two compile-fail doctests), strict workspace Clippy, formatting and15 actual
+two compile-fail doctests), strict workspace Clippy, formatting and 15 actual
 isolated binary HTTP/CLI smoke checks. Raw local logs and hashes are retained in
 `target/quality/997513f6a0ad832b810864807fdc961070dc0974/`.
 The unchanged React source passes 75 tests/typecheck/build; legacy Python has 73
@@ -205,3 +205,218 @@ Linux runtime passes all 125 checks (123 library, one binary and one doctest),
 including all four earlier failures. Both raw failure and passing evidence are
 retained; the aggregate receipt and partial P07/P08 receipts name the tested
 source. GitHub jobs remain queued at the last observation.
+
+
+## Thirty-minute implementation and quality checkpoint
+
+At code `ebec880b`, durable offline JSON workplan registration now goes through
+one owned Store writer with immutable revisions, command replay, CAS, retained
+task identities and reciprocal submission guards. Batched startup/rebuild checks
+validate shared plan history once and reject corrupt bindings before changing a
+recovery generation. Offline CLI preview/register/show/list preserves the original
+preview syntax. TOML/Markdown adapters, import UI, live commands and task admission
+remain open P13 work.
+
+The same commit adds P08Q's opt-in controlled exact-fixture Codex transport harness.
+It uses the existing prepared launch, owned session, fenced EOF, journal decoder
+and fixed capture watermark. Raw executable hashes, protected fixture checks and
+failed cleanup evidence are retained. Its offline example tests are registered
+in ordinary workspace CI. No paid provider run or native qualification occurred.
+
+Exact-source Linux validation caught default temporary directory permissions
+inheriting umask `0002`, correctly rejected by Store custody. The failed `ebec880b`
+receipt/log is preserved. Correction `455ee5f4` requests private mode `0700` at
+creation for the demo and affected fixtures; an owned child regression exercises
+that umask without changing the test process globally. The Mac combined tree
+passes 464 Rust checks, strict workspace Clippy, formatting, schemas and 15 actual
+isolated binary smoke checks under umask `0002`. Linux passes 466 Rust checks (including all six offline
+fake-provider example checks), binary build, schemas and 15 isolated binary smoke checks at that same
+source. The global `/tmp/.git` directory caused an additional retained environment
+failure; the passing run uses a fresh owned 0700 temporary root outside Git.
+Neither the custody rule nor the foreign checkout was changed.
+
+At that review baseline, P21 candidate `9cbd0210` and P22 candidate `f5a34805`
+were not imported. Subsequent main imports retain them as unregistered, inactive
+source prototypes, with the same review blockers. Strong review reproduces 14 P21 counterexamples despite all four original
+tests passing; P22 static review identifies test registration, identity, framing
+and launch-envelope gaps. Their review receipts name exact source and next fixes.
+All 32 parent contracts are reconciled in `receipts/reconciliation/`; none is fully
+accepted by component counts. At the initial fleet snapshot, fifteen idle
+Luna processes held registered lanes; no new overlapping process or terminal input was introduced.
+Three scoped local subagents advanced implementation/review within this chat.
+
+The live canary remains binary `17c7a76d` with UI assets `9debe5dd`, real data,
+Admiral/Commodore labels, the observed Gemini manager, profile and temporal plots.
+No production checkout, other project, native execution or merge scope changed.
+Hosted CI's unassigned queue is distinct from these independent source checks.
+
+A fresh 14:03:49 UTC observation finds 15 owned Luna processes/Screens: six active
+and nine idle, determined from provider-session task boundaries. The configured
+Gemini 4 Argon Commodore is observed again; /healthz is 200 with native qualification
+false. The 14:01:57 producer timestamp and stale 13:51:31 manifest timestamp remain
+explicit in the receipt. No idle lane is treated as released capacity.
+
+
+## Main reconciliation and conservative progress checks
+
+Main `9227e8b` now contains the offline registry/harness and private scratch fix
+through rebased commits `0b20ea7`/`9227e8b`. All 18 implementation paths match the
+independently tested `455ee5f4` blobs exactly. Historical tested SHAs are not
+ancestors of rebased main; the new reconciliation records actual ancestry and
+explicit blob equivalence instead of carrying those earlier ancestry claims
+forward. Registered Rust inputs, UI/contracts and packaging/smoke sources are
+unchanged. The six newly imported provider module/test source files are dormant;
+their modules and test targets remain unregistered. Their retained review findings
+still require fixes. No full new-head Rust test pass is inferred from import.
+
+At source `b6622f8`, the collector and audit no longer promote bare or inconsistent
+receipt claims, override blocked holds with activity/main observations, or treat
+`unverified` as a closed lane. Real failure verdicts remain visible. Fourteen new
+collector regressions and eleven audit regressions receive separate independent
+review. macOS discovers 88 legacy tests (87 pass, one platform skip) and passes
+44 audit tests; clean Linux passes all 88 legacy and 44 audit tests.
+
+The first Linux fixture step failed because the verifier invoked the local `rtk`
+helper absent from a minimal CI environment. That failed receipt/log is retained.
+Source `3312ba0` invokes Git directly; its clean Linux verifier passes all 37 pinned
+sources and 11 synthetic cases, explicitly reporting 18 current drift paths.
+Unchanged passing Python tests are reused with exact object/log hashes rather
+than rerun. CI now includes the audit regression suite and creates private scratch
+outside the checkout. Preexisting test-fixture ResourceWarnings are retained.
+
+The successor review branch is `codex/admiralty-quality-checkpoint`. Detailed
+current evidence is in `receipts/integration/3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d.json`
+and `receipts/reconciliation/2026-10-18T1425Z-3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d.json`.
+All 32 parent contracts still have remaining gates, with zero full acceptance.
+Main GitHub run 39134086804 was queued without assigned runners at observation;
+independent source checks do not substitute for hosted checks or exact-head review.
+No new production binary, provider activation, native execution or fleet cutover
+occurred. The pinned real-data dashboard, manager identity and other projects stay
+intact. Next ready work is scoped provider hardening, resource-permit reconciliation
+and live workplan command authority/import UI; complete those before activation.
+
+
+## Registered offline providers and independent claim reconciliation
+
+PR26 source `a9ba930e` compiles the Claude, AGY, Grok and generic-process
+prototypes and registers the two provider integration targets in ordinary Cargo
+workspace checks. No server provider route or model-selection enum was added.
+A shared bounded incremental JSONL decoder rejects recursive duplicate keys,
+scalar roots, partial final frames and sticky failures. Four decoder tests,
+22 Claude tests and 12 provider-matrix tests pass and receive independent review.
+The four new synthetic Claude JSONL fixtures are explicitly tracked, so clean
+checkout checks exercise the same inputs. See
+[offline provider observations](../../architecture/provider-observations.md).
+
+Claude now requires one initialized, session-matched complete parent turn and
+keeps malformed/absent terminal usage distinct from earlier parent/opaque-child
+observations. Multiline user input stays inside the session's encoded 4096-byte
+wire bound. Launch proposals explicitly remain unadmitted, with configuration,
+resume, nested accounting and native qualification flags false. AGY/Grok wrappers
+keep semantic failures sticky; generic argv/model hints never become observed
+identity. Complete launch envelopes enforce shared total/serialized bounds and
+reject option-like requested values. Real CLI transport, trusted identity,
+journal/watermark binding and native admission remain pending P21/P22 gates.
+
+The frozen macOS combined tree passes 502 Rust checks, strict workspace Clippy,
+formatting, build, schemas and 15 actual isolated binary smoke checks. Its first
+smoke attempt refused the macOS `/var` symlink alias; the failed log is retained.
+The same source passes with the canonical `/private/var` scratch path, without
+changing the guard or repeating passing Rust suites. Clean Linux at exact commit
+`a9ba930e` independently passes 504 Rust checks (including all six fake Codex
+example checks), strict workspace Clippy, formatting, build, schemas and 15 actual
+isolated smoke checks. Both smoke runs terminated their two owned children.
+Unchanged Python/UI/contracts/package/harness checks are reused through explicit
+Git-object identity, with source/log hashes, not presented as fresh executions.
+
+The 14:40 UTC independent fleet receipt observes 15 owned workers with reported
+open task boundaries, not proven useful progress. Declared candidate receipts
+and SHAs had not advanced since 14:03. P21/P22 worktree declarations still resolve
+to older scheduler/verifier candidates, so no dispatch/adoption was made through
+those pointers. CPU/conversation reservations remain retained; native permit
+configuration is distinct from the legacy pool. The actual configured manager
+is again visibly Gemini 4 Argon; native execution attestation remains unavailable.
+
+Six new legacy whole-packet claims were independently inspected. P00's artifact
+criteria are technically satisfied; a complete live inventory or native provider
+qualification is not an additional P00 requirement. Its current receipt now names
+a hashed independent execution log, leaving authorized engineering closeout
+separate from this observation. P01/P02/P03/P06/P11 have genuine component test
+logs but specific complete-contract gaps; they do not close from passing those
+subsets. The dashboard projection quarantines the self-claims. All 32 contracts
+are reconciled again without issuing native acceptance or silently promoting
+parent status. Missing P01 fake-clock/fault/forge/cumulative-reset harness work,
+live command/coordination authority and provider admission remain ready follow-ups.
+
+Current evidence: `receipts/integration/a9ba930e6eb3b46b76797582427cce6bacefdaab.json`,
+P00/P21/P22 partial receipts at that source, and
+`receipts/reconciliation/2026-10-18T1450Z-a9ba930e6eb3b46b76797582427cce6bacefdaab.json`.
+Hosted checks and configured exact-head review remain pending independently of
+these source checks. No merge, production deployment, native activation or
+other-project dispatch occurred.
+
+
+## Combined packet harness checkpoint and later-main review
+
+Frozen source `661bf36f` integrates main's `8366b581` registration of all 30 named
+packet harnesses with the independently hardened provider implementations. The
+three wiring conflicts were resolved without losing registered targets or
+reverting the strict shared decoder. Five newly active fixtures needed repairs:
+canonical private directories created with mode 0700; bounded response framing,
+connection and I/O deadlines; short portable Unix-socket names; and owned child
+cleanup. The package self-test child now has a 30-second deadline and 64 KiB
+output caps. An exceptional unreaped child is reported explicitly and handed to
+an eventual reaper; foreground cleanup does not claim guaranteed descendant
+termination. The session fixture exercises client reconnects to the same daemon
+and child, not a control-service restart. Independent cross-review cleared the
+five scoped repairs after identifying and correcting the last two deadline gaps.
+
+At exact source `661bf36f`, macOS passes 558 Rust checks and clean Linux passes
+560, including doctests and all 30 registered integration targets. Both pass
+formatting, strict workspace Clippy, binary build, schemas, the 37-source/11-case
+legacy fixture verifier, and 15 actual isolated HTTP/CLI smoke checks. Both smoke
+children terminate. Tests inherit umask 0002 and use canonical owned private
+scratch outside Git. The ignored session worker helper is explicitly spawned by
+its owning continuity test. Earlier failed preflight output is retained; one
+initial failure survives only as an explicitly labelled excerpt, and earlier
+session EINVAL failures have transcript references but no saved raw-file hash.
+Unchanged React, contracts, legacy/audit Python, packaging and smoke-harness
+checks are reused through exact Git-object identity. No repeat of those passing
+suites or fresh Node run is claimed.
+
+The 15:12–15:13 UTC fleet observation finds 15 retained owned workers: 11 reported
+completed turns and four open turns with recent tool calls/results. No candidate
+HEAD or receipt advanced since 14:40. No confirmed stalled worker was found.
+Three task/worktree bindings and the stale workqueue need owner reconciliation
+before reuse; idle processes do not release their retained CPU/conversation
+reservations. The configured manager remains visibly Gemini 4 Argon. Its new
+32/32 integrated claim lacks verification/integration provenance; the live
+collector correctly displays 32 claimed and zero integrated. Root sent the
+manager the contradictory evidence and remaining contract gates. This checkpoint
+reconciles all 32 parents again and issues no whole-packet or native acceptance.
+P00's technically verified artifact criteria stay distinct from engineering
+closeout; native provider qualification is not an extra P00 prerequisite.
+
+After the frozen checkpoint, another lane merged main `429595d` (P05 helpers)
+and `a73fc557` (audit changes). They are excluded from the 661 proof. Independent
+static review of exact P05 objects finds silent changed-payload ID/sequence
+collision suppression, unbounded ACKed history, sequence-zero/overflow hazards,
+missing complete-envelope validation, unbounded insufficiently authorized topic
+routing, and an unpaged global-snapshot wrapper. Existing durable Store checks
+remain intact; the new wrappers do not activate durable subscription/replay,
+delivery/expiry or authenticated commands. Repair those bounded components with
+negative regressions before accepting P05 or integrating that later source here.
+Do not infer full packet acceptance from a harness with the packet's name.
+
+GitHub PR26 run 39138996888 was cancelled by the owner account before any test
+steps. No hosted success or exact-head configured review is recorded. Root has
+not merged a PR, deployed a new binary/UI, changed other projects or enabled
+native execution. The browser still shows real data, 13 temporal plots, bright
+models, the ordinary Admiralty tab, owner profile and Admiral/Commodore hierarchy.
+
+Evidence: `receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json`,
+`receipts/reconciliation/2026-10-18T1515Z-661bf36f0a401c79c87e2166fd75be325984e09c.json`
+and `receipts/reviews/429595d196fcb6b730d5683e04d479faa1ec968c-P05.json`.
+Next ready work is the scoped P05 repair, stale lane/permit reconciliation,
+missing P01 deterministic fault/clock/forge/reset harnesses, and live command
+admission. Hosted CI and exact-head review remain separate merge gates.

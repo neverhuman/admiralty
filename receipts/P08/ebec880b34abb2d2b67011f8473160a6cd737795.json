@@ -1,0 +1,150 @@
+{
+  "head_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+  "base_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+  "observed_utc": "2026-10-18T13:48:26.697562+00:00",
+  "state": "partial_review",
+  "packet_accepted": false,
+  "native_execution_qualified": false,
+  "packet": "P08",
+  "owner": "runtime and integration reviewers",
+  "implemented": [
+    "Opt-in controlled exact-fixture transport example using existing prepared Codex launch/session/decoder",
+    "Explicit requested-versus-observed metadata, private fresh scratch and protected exact-source verifier",
+    "Raw executable SHA-256 before launch/after capture, bounded helpers/output/deadlines and owned cleanup",
+    "Registered test=true example: offline tests run in workspace CI with no inference"
+  ],
+  "validation": [
+    {
+      "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "started_utc": "2026-10-18T13:45:06.587623+00:00",
+      "duration_s": 0.55,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/ebec880b34abb2d2b67011f8473160a6cd737795/fmt.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started_utc": "2026-10-18T13:45:07.138218+00:00",
+      "duration_s": 2.85,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/ebec880b34abb2d2b67011f8473160a6cd737795/clippy.log",
+      "log_sha256": "042459c8c3cbbb697800f9b9a945c701d150ef0c07821b5395d03d88ab7932a6"
+    },
+    {
+      "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "-q"
+      ],
+      "started_utc": "2026-10-18T13:45:09.988093+00:00",
+      "duration_s": 19.215,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/ebec880b34abb2d2b67011f8473160a6cd737795/rust.log",
+      "log_sha256": "7ec37e7ce893245958c93a523a5d462f41e01f92cb745a83cbd8ed4d884f60a8",
+      "checks_passed": 463
+    },
+    {
+      "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+      "argv": [
+        "cargo",
+        "build",
+        "-p",
+        "admiralty-cli",
+        "-p",
+        "admiralty-server",
+        "--locked"
+      ],
+      "started_utc": "2026-10-18T13:45:29.204054+00:00",
+      "duration_s": 0.142,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/ebec880b34abb2d2b67011f8473160a6cd737795/build.log",
+      "log_sha256": "4cf86278c1e6d659943a46a3d7e3da429ac15be90f0f17742e24ef85228e7d3e"
+    },
+    {
+      "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+      "argv": [
+        "python3",
+        "scripts/check/canary-smoke.py",
+        "--admiraltyd-binary",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd",
+        "--admiralty-binary",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty",
+        "--scratch-root",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/ebec880b34abb2d2b67011f8473160a6cd737795/smoke-root"
+      ],
+      "started_utc": "2026-10-18T13:45:29.346417+00:00",
+      "duration_s": 0.708,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/ebec880b34abb2d2b67011f8473160a6cd737795/binary-smoke.log",
+      "log_sha256": "bc869713af7299dd6e16cfb25660e98ab076b76c3f95dbc5f1f9989ed2605058"
+    },
+    {
+      "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+      "argv": [
+        "cargo",
+        "run",
+        "-p",
+        "admiralty-cli",
+        "--locked",
+        "--",
+        "contracts",
+        "check"
+      ],
+      "started_utc": "2026-10-18T13:45:30.054825+00:00",
+      "duration_s": 0.374,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/ebec880b34abb2d2b67011f8473160a6cd737795/schema.log",
+      "log_sha256": "8484fffdfcbf87b7e980d19dc3e00694df7cbea204ddbb676892ccf7e69dc9d5"
+    }
+  ],
+  "focused_checks": {
+    "mac_offline_example_tests": 5,
+    "linux_fake_end_to_end": "not_reached_due_prior_CLI_permissions_failure"
+  },
+  "limitations": [
+    "No real provider invocation in this checkpoint",
+    "Controlled exact-fixture transport conformance is not open-ended coding-quality or full P08 qualification",
+    "No native domain admission, runtime route activation, task acceptance or fleet execution",
+    "Real run requires separately reviewed concrete config and released owned resource slot"
+  ],
+  "next_action": "Complete exact-source Linux fake harness gate; reconcile current lane permits before reviewing one bounded real transport config.",
+  "linux_gate": {
+    "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+    "state": "failed",
+    "failed_step": "workspace-tests",
+    "failed_test": "admiralty-cli tests::isolated_demo_has_bounded_coordination_and_no_acceptance",
+    "reason": "Default tempfile permissions inherited observed Linux umask0002, making the database parent group writable. Custody guard correctly rejected it.",
+    "partial_results": {
+      "fmt": "pass",
+      "strict_workspace_clippy": "pass",
+      "cli_tests_passed_before_stop": 16,
+      "cli_tests_failed": 1,
+      "later_rust_suites": "not_reached"
+    },
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/ebec880b34abb2d2b67011f8473160a6cd737795/da29b7ab879d449193a5b5a22cd235e8-integrated-rust.json",
+    "receipt_sha256": "b36250b1c9bda6408553fb3d73439e5fe764fa29e7b0baf265d5e461ea031959",
+    "log_sha256": "e0f19a6f9ff84ff8abdc1393b3edfa12f3087881a6179dffaa1df7e6802aee34",
+    "correction_source_sha": "455ee5f4867886752d168fa4d2a651c531101640",
+    "correction": "Explicit0700 at private directory creation; owned-child umask0002 regression; corrected affected Store/harness fixtures. Never loosened the Store guard."
+  }
+}

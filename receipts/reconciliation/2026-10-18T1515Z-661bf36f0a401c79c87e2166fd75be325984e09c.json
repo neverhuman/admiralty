@@ -1,0 +1,1212 @@
+{
+  "acceptance_claim_review": {
+    "accepted_in_projection": 0,
+    "native_acceptance_issued": false,
+    "reason": "Latest legacy producer claims every packet integrated without verification/integration provenance; independent contract gaps retained.",
+    "reported_integrated": [
+      "P00",
+      "P01",
+      "P02",
+      "P03",
+      "P04",
+      "P05",
+      "P06",
+      "P07",
+      "P08",
+      "P09",
+      "P10",
+      "P11",
+      "P12",
+      "P13",
+      "P14",
+      "P15",
+      "P16",
+      "P17",
+      "P18",
+      "P19",
+      "P20",
+      "P21",
+      "P22",
+      "P23",
+      "P24",
+      "P25",
+      "P26",
+      "P27",
+      "P28",
+      "P29",
+      "P30",
+      "P31"
+    ]
+  },
+  "accepted_parents": 0,
+  "current_quality_receipt": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+  "current_quality_receipt_sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021",
+  "fleet_observation": {
+    "activity_counts": {
+      "completed_reported_turn": 11,
+      "open_reported_turn": 4
+    },
+    "candidate_receipts_advanced": false,
+    "observed_manager": {
+      "bytes": 1342,
+      "capture_sha256": "d4f9548641db0ae8e3ce6215883ef840f0245a1193fd4e3ad27d6f8045aee8bd",
+      "configured_id": "2062267.agy_captain_admiralty",
+      "execution_model_attestation": "not_available",
+      "explicit_idle_marker_visible": false,
+      "screen_exists": true,
+      "trust_prompt_visible": false,
+      "visible_model_labels": [
+        "Gemini 4 Argon"
+      ],
+      "working_marker_visible": false
+    },
+    "productive_completion_not_inferred": true,
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/fleet-observations/92f97c4f82504d39bbfafdcb651880e1/snapshot-frozen.json",
+    "retained_affinity_occupancy": {
+      "104": 3,
+      "105": 3,
+      "106": 3,
+      "107": 3,
+      "108": 3,
+      "109": 3
+    },
+    "sha256": "e1600a6feaf687d90743e3b689c61486cbc7f8cd0660f573209e884eab8ab996",
+    "stale_bindings": [
+      "P21 declared provider vs actual scheduler",
+      "P22 declared matrix vs actual verifier",
+      "P04B custody vs detached UI"
+    ],
+    "window": {
+      "last_session_metadata_observed_utc": "2026-10-18T15:13:16.351Z",
+      "receipt_finalized_utc": "2026-10-18T15:13:54.270843+00:00",
+      "started_utc": "2026-10-18T15:12:04.024272+00:00"
+    },
+    "worktree_heads_advanced": false
+  },
+  "historical_reconciliation": "receipts/reconciliation/2026-10-18T1450Z-a9ba930e6eb3b46b76797582427cce6bacefdaab.json",
+  "later_main_review": {
+    "path": "receipts/reviews/429595d196fcb6b730d5683e04d479faa1ec968c-P05.json",
+    "sha256": "f24d4a4732aa6e4e69ec6000547b360cca00fb3a408e2b9538c9870fa8637d03"
+  },
+  "next_ready_actions": [
+    "Repair new main P05 collision/bounds/validation findings with negative regressions and independent review.",
+    "Reconcile stale lane pointers and retained legacy permits before reuse; do not reset or dispatch through mismatched directories.",
+    "Implement missing P01 fake-clock/fault/forge/reset tests and live coordination/task command activation as disjoint scoped packets.",
+    "Review and test combined later-main source separately before accepting that integration."
+  ],
+  "observed_utc": "2026-10-18T15:16:22.310717+00:00",
+  "packet_count": 32,
+  "packets": [
+    {
+      "acceptance_contract": "**Validate:** P01's eventual `rtk cargo test -p admiralty-testkit --test legacy_import`; before P01, parse fixture JSON/NDJSON and reconcile counts/hashes with a read-only script. **Pass:** idempotent expected inputs, no private transcripts/keys, no invented exact attempts/acceptances. **Stop:** mismatched source identity or secret scan finding.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_reporting_regression_evidence": {
+        "path": "receipts/integration/3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d.json",
+        "scope": "legacy/dashboard reporting and CI regressions only; parent acceptance remains false",
+        "sha256": "9c486c37a240b8643c0429747caf64e78e80b831736e5ebc3d31584eb2fcf737"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Legacy MAIN-ACCEPTANCE reference lacked a hashed log; the new source-bound partial engineering receipt supplies one. Authorized issuer closeout remains separate from observational checking."
+      ],
+      "owner": "evidence lane + integration review",
+      "packet": "P00",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P00/455ee5f4867886752d168fa4d2a651c531101640.json",
+          "recorded_state": "partial_review",
+          "sha256": "aff72d96a4cfdd0db1b0f2e67c96b6ccf8d1a3bccb3ce71bebee8beb6d038347",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "455ee5f4867886752d168fa4d2a651c531101640"
+        },
+        {
+          "path": "receipts/P00/a9ba930e6eb3b46b76797582427cce6bacefdaab.json",
+          "recorded_state": "partial_review",
+          "sha256": "38fff465a95519a7fe2132147aa5ed66d38db2424a16017c78299c291578cc71",
+          "source_on_integrated_ancestry": true,
+          "source_sha": "a9ba930e6eb3b46b76797582427cce6bacefdaab"
+        }
+      ],
+      "remaining_or_next_gate": "Review engineering closeout with the authorized issuer; no additional live inventory fill-in or native provider qualification is a P00 criterion. This observational receipt does not issue domain acceptance.",
+      "source_or_candidate": "integrated fixture baseline",
+      "state": "review",
+      "technical_artifact_criteria_verified": true
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test --workspace --locked`; `rtk cargo run -p admiralty-cli -- --help`; deterministic fake-provider replay. **Pass:** clean clone builds, synthetic results reproducible, all generated/runtime zones explicitly ignored. **Artifact:** pinned toolchain and fixture seed.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_reporting_regression_evidence": {
+        "path": "receipts/integration/3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d.json",
+        "scope": "legacy/dashboard reporting and CI regressions only; parent acceptance remains false",
+        "sha256": "9c486c37a240b8643c0429747caf64e78e80b831736e5ebc3d31584eb2fcf737"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "FakeProviderSpec has six modes but no cumulative/reset mode. Exact main contains no FakeClock, FaultPlan or ForgeSimulator implementation required by step2. Workspace/help pass alone does not establish whole P01."
+      ],
+      "owner": "integration + quality review",
+      "packet": "P01",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P01/455ee5f4867886752d168fa4d2a651c531101640.json",
+          "recorded_state": "partial_review",
+          "sha256": "e44ba2a98f2c68dd952ef6e8b45111eac2aafa9d55938857ff8820da860dbec3",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "455ee5f4867886752d168fa4d2a651c531101640"
+        }
+      ],
+      "remaining_or_next_gate": "Six crates, pinned tools and independent Linux CI-equivalent gate pass; hosted runner jobs remain unassigned; full fault/simulator matrix pending",
+      "source_or_candidate": "reviewed `9debe5d`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-core contracts`; `rtk cargo run -p admiralty-cli -- contracts check`; schema round-trip/unknown-required-field/large-integer fixtures. **Pass:** deterministic reducer hash, no production host constants, consumers agree on one versioned contract.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Public generated schemas cover only TaskContract, CoordinationMessage and DomainEvent; P02 requires the wider PlanRevision/AuthorityRef/CoordinationEnvelope/InterfaceContract/VerificationReceipt/native-usage contract pipeline. Pure structs/proposals do not close cross-consumer contract agreement."
+      ],
+      "owner": "domain + integration review",
+      "packet": "P02",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P02/03772f946706ad9835f7c711d1de78a6af021e3d.json",
+          "recorded_state": "partial_review",
+          "sha256": "0c9df5ba6b026ff49a33e6114d1203facefc7c4753c0dc55f18d5ef01a256b02",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "03772f946706ad9835f7c711d1de78a6af021e3d"
+        },
+        {
+          "path": "receipts/P02/109563722a4c03941b18e79d180a31c9225369fb.json",
+          "recorded_state": "in_progress",
+          "sha256": "e2c481ce2d979b37ad8ed7efbee7054e5c0d47358d1acd38dc533174bfe3b518",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "109563722a4c03941b18e79d180a31c9225369fb"
+        }
+      ],
+      "remaining_or_next_gate": "Typed contracts, pure reducers and schema/TS checks are integrated; complete authority/policy negotiation remains pending",
+      "source_or_candidate": "reviewed `03772f94`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test store_replay`; `... --test store_crash`. **Pass:** crash-point matrix loses no acknowledged control/usage fact, identical replay preserves projection hash, changed-payload ID reuse is rejected. **Stop:** linked SQLite lacks qualified WAL fix.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Store exposes append/append_with_intent/replay/snapshot/workplan/backup. Full observation/usage ingestion, collision quarantine and writer-depth/transaction-latency/WAL-reader health interfaces required by steps2\u20133 are not established by the two named integration targets."
+      ],
+      "owner": "local store agent + integration reviewer",
+      "packet": "P03",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P03/109563722a4c03941b18e79d180a31c9225369fb.json",
+          "recorded_state": "in_progress",
+          "sha256": "59799651c4eab7efe599674ae8f4341c14bfa7cb4d3ce0ffb10beeac861e3f6d",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "109563722a4c03941b18e79d180a31c9225369fb"
+        },
+        {
+          "path": "receipts/P03/29acc013bfc39b6d88724f33bd4ae76808a08e9c.json",
+          "recorded_state": "in_progress",
+          "sha256": "27de25b15692b557968c1219b91947a3d113407059f1ec336ac4e07793e0dfe9",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "29acc013bfc39b6d88724f33bd4ae76808a08e9c"
+        },
+        {
+          "path": "receipts/P03/617e912744fa35d955026e2fd39fe06d9cb90eb3.json",
+          "recorded_state": "partial_review",
+          "sha256": "ee11c13e35006ae029179b74a9cf07bfde85ee70b8775858a832781f67edb45b",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "617e912744fa35d955026e2fd39fe06d9cb90eb3"
+        }
+      ],
+      "remaining_or_next_gate": "Atomic domain/outbox admission, immutable request/effect associations, replay and receive-time retry compatibility tested; durable executor admission loop pending",
+      "source_or_candidate": "reviewed `29acc013`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test artifact_custody`. **Pass:** crash between each publication boundary and concurrent pin/retirement cannot produce missing acknowledged evidence or delete a live reference.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "artifact + custody lanes + strong review",
+      "packet": "P04",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P04/29acc013bfc39b6d88724f33bd4ae76808a08e9c.json",
+          "recorded_state": "in_progress",
+          "sha256": "a22d6d2cc2249c68fb553661aa01e301421e614c670e452cd279d01595ef5f2f",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "29acc013bfc39b6d88724f33bd4ae76808a08e9c"
+        }
+      ],
+      "remaining_or_next_gate": "Transactional asset/pin catalog with full observation binding, fixed clock policy and receipt closure; trusted filesystem observation/startup activation pending",
+      "source_or_candidate": "reviewed `29acc013`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test coordination_delivery`. **Pass:** loss/reorder/duplicate/storm/restart scenarios converge or visibly require resnapshot; no cross-project leakage, silent decision or broadcast storm.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed.",
+        "Later main429595d in-memory mailbox has collision, retention, sequence and validation blockers; convenience wrappers do not activate durable delivery. See separate source-bound review."
+      ],
+      "owner": "local coordination team + strong review",
+      "packet": "P05",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P05/109563722a4c03941b18e79d180a31c9225369fb.json",
+          "recorded_state": "in_progress",
+          "sha256": "cd7adaa0c138812cf9fe1e19ec5e95e5d488643e2b532a86702f4bf398c8b1f5",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "109563722a4c03941b18e79d180a31c9225369fb"
+        },
+        {
+          "path": "receipts/P05/29acc013bfc39b6d88724f33bd4ae76808a08e9c.json",
+          "recorded_state": "in_progress",
+          "sha256": "f25aa017ea3e9369d0670cf5327805ae295bf16e6abddf1e09f5c726f649bf56",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "29acc013bfc39b6d88724f33bd4ae76808a08e9c"
+        },
+        {
+          "path": "receipts/P05/617e912744fa35d955026e2fd39fe06d9cb90eb3.json",
+          "recorded_state": "partial_review",
+          "sha256": "2542a18a5bbc81deca1c295ddce34580ad98ab9fb271a67b66b736cab03e9383",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "617e912744fa35d955026e2fd39fe06d9cb90eb3"
+        }
+      ],
+      "remaining_or_next_gate": "Durable scoped messages/ACK and question journal with canonical receipt/task-scope checks; delivery service/subscriptions pending",
+      "source_or_candidate": "reviewed `29acc013`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test context_fidelity`. **Pass:** render/parse fact round-trip and mutation suite; missing negation/unit/authority/revision fails; compaction/lost-baseline requests fresh capsule; no savings claim from bytes alone.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Only compile_task_capsule is exported; the four decision/handoff/project/fleet compilers required by step1 are absent. Full rendered-text/fact persistence and structured-tool/repeated-diagnostic/failed-approach memory are not established. P04/P05 prerequisites remain review."
+      ],
+      "owner": "local context team",
+      "packet": "P06",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P06/109563722a4c03941b18e79d180a31c9225369fb.json",
+          "recorded_state": "in_progress",
+          "sha256": "91562e6b500389de93abfe29445dca3e4b9f56ab6b40b187c684896bf610ea0b",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "109563722a4c03941b18e79d180a31c9225369fb"
+        },
+        {
+          "path": "receipts/P06/617e912744fa35d955026e2fd39fe06d9cb90eb3.json",
+          "recorded_state": "partial_review",
+          "sha256": "360828568484de930919784008b9328f08bb0460611fe932579af4500837b44b",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "617e912744fa35d955026e2fd39fe06d9cb90eb3"
+        }
+      ],
+      "remaining_or_next_gate": "Constraint-preserving capsules, epochs and bounded attention governor; durable governor/outbox activation and retrieval pending",
+      "source_or_candidate": "PR prototype",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test session_continuity`; `... --test input_uncertainty`. **Pass:** same physical child and continuous output offsets survive supported control-service restarts; unreconciled launch cannot spawn duplicate ordinary work.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed.",
+        "661 continuity fixture uses same daemon and child through client reconnect, not a service restart; no restart adoption qualification inferred."
+      ],
+      "owner": "remote session lane + local reviewer",
+      "packet": "P07",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P07/109563722a4c03941b18e79d180a31c9225369fb.json",
+          "recorded_state": "in_progress",
+          "sha256": "60668f76202f76c42aeb7a23197d8f1563dfa7ebcbc74f034cbe04761e8db589",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "109563722a4c03941b18e79d180a31c9225369fb"
+        },
+        {
+          "path": "receipts/P07/997513f6a0ad832b810864807fdc961070dc0974.json",
+          "recorded_state": "in_progress",
+          "sha256": "11c77509916b419873dcbca7ee364f8261c18a124583f1a62030a48a19220aa6",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "997513f6a0ad832b810864807fdc961070dc0974"
+        },
+        {
+          "path": "receipts/P07/e2b540fb35fc2ae629995abdb4171bd6e16c3121.json",
+          "recorded_state": "in_progress",
+          "sha256": "cb98914cb1baedf9b91276aa0f1373b899b02bd4f0701d7803d64c98f32d7337",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121"
+        }
+      ],
+      "remaining_or_next_gate": "Independent private Unix-socket host, reconnect continuity, compatible launch envelope, final capture watermark and native owned-group cleanup; restart adoption and admitted fleet activation unqualified",
+      "source_or_candidate": "reviewed `e2b540fb`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test provider_codex`. **Pass:** supported tuple declared precisely; quiet compiler, spinner, quoted permission and provider wait classify conservatively; no silent model fallback. **Artifact:** capability matrix and real-task receipt.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "provider + integration review",
+      "packet": "P08",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P08/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "70d5705d89a107dc15a35ed57a4b4db80a133f22f3490b98e4ac340990140266",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        },
+        {
+          "path": "receipts/P08/455ee5f4867886752d168fa4d2a651c531101640.json",
+          "recorded_state": "partial_review",
+          "sha256": "d18d9d70e85a727513108a98dbc783522de06dc8e918c9ddddd49258bad36fa2",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "455ee5f4867886752d168fa4d2a651c531101640"
+        },
+        {
+          "path": "receipts/P08/997513f6a0ad832b810864807fdc961070dc0974.json",
+          "recorded_state": "in_progress",
+          "sha256": "f62ec5b0a852e20607d85207edb77eb625d09d38052c01070be37b56b6408ff2",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "997513f6a0ad832b810864807fdc961070dc0974"
+        },
+        {
+          "path": "receipts/P08/e2b540fb35fc2ae629995abdb4171bd6e16c3121.json",
+          "recorded_state": "in_progress",
+          "sha256": "f2886a58c4eedfe5d275818630a860a65a9548b72e2a2bcb8aa16330619e8dd4",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121"
+        },
+        {
+          "path": "receipts/P08/ebec880b34abb2d2b67011f8473160a6cd737795.json",
+          "recorded_state": "partial_review",
+          "sha256": "870829bae79d53ea717eaac72974402cc92f9a6e1627b0af20c595aaddc1cdec",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795"
+        }
+      ],
+      "remaining_or_next_gate": "Offline Linux fake harness passed; reconcile resources and review a bounded real-run tuple separately from native execution admission and full qualification.",
+      "source_or_candidate": "reviewed `455ee5f4`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test runner_isolation`. **Pass:** sibling refs/hooks/secrets/host mounts cannot be changed under isolated mode; actual OOM/throttling and private CPU exclusions observed. **Stop:** runner cannot enforce its advertised boundary.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "remote workspace lane + local reviewer",
+      "packet": "P09",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P09/617e912744fa35d955026e2fd39fe06d9cb90eb3.json",
+          "recorded_state": "partial_review",
+          "sha256": "bde32aaf699a9bcb4c0959298fe7457611a243a578339e0904b31add573e4435",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "617e912744fa35d955026e2fd39fe06d9cb90eb3"
+        }
+      ],
+      "remaining_or_next_gate": "Read-only custody registration; real runner/resource isolation pending",
+      "source_or_candidate": "candidate `f0d15a82`, imported `d637bfe`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test economic_conservation`. **Pass:** allocation sums and reservation conservation across duplicate/reset/model-change/late-correction/zero-success/tiny-price fixtures; no unknown becomes zero.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "usage/reservation lanes + strong review",
+      "packet": "P10",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P10/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "c240d35214be49b5c0f626f50ec9fda6b0c8fed2a3b30800286e8ce8fc9525f4",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        }
+      ],
+      "remaining_or_next_gate": "Segmented usage plus conservative scoped reservations reviewed; runtime reservation activation pending",
+      "source_or_candidate": "candidate `99f05b0`, imported `61e888b`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test api_stream`. **Pass:** no gap between snapshot and subscription; stale cursor/access revocation resyncs; slow viewer cannot block capture or DB checkpoints; auth failures deny artifacts.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Server routes expose reads/SSE/models proposals, not scoped task-command envelopes/durable job IDs or terminal WS/input lease. P04/P05 prerequisites remain review; P07/P17 conditional wiring remains incomplete. API-stream unit target cannot establish all parent behavior."
+      ],
+      "owner": "API + integration review",
+      "packet": "P11",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P11/109563722a4c03941b18e79d180a31c9225369fb.json",
+          "recorded_state": "in_progress",
+          "sha256": "2c37e0a988a0ebd0a94f76f1c96ed41ca59c830ae5473f180b010d19387f9d08",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "109563722a4c03941b18e79d180a31c9225369fb"
+        }
+      ],
+      "remaining_or_next_gate": "Authenticated bounded read API/SSE and offline CLI are tested; live command envelopes, terminal input and agent tools pending",
+      "source_or_candidate": "reviewed `17c7a76d`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** frontend lint/typecheck/Vitest/build; Playwright `overview.spec.ts`, `stream-reconnect.spec.ts`. **Pass:** 4, 20 and 100 project fixtures remain readable/interactive; source meanings match legacy or show explicit changed definition; no polling full status every 15 seconds.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_reporting_regression_evidence": {
+        "path": "receipts/integration/3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d.json",
+        "scope": "legacy/dashboard reporting and CI regressions only; parent acceptance remains false",
+        "sha256": "9c486c37a240b8643c0429747caf64e78e80b831736e5ebc3d31584eb2fcf737"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "frontend + integration review",
+      "packet": "P12",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P12/8474dec9227ae751772a96f5f7289791959bddaa.json",
+          "recorded_state": "partial_review",
+          "sha256": "bb0996281e8e8dc5d11ff952c3bb01b428196e773dae511f08449207f27b425e",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "8474dec9227ae751772a96f5f7289791959bddaa"
+        },
+        {
+          "path": "receipts/P12/997513f6a0ad832b810864807fdc961070dc0974.json",
+          "recorded_state": "in_progress",
+          "sha256": "2ddac22c0e1cfe142db73e68b5846cbc2065b096c7589d01a002ece5a1384ca9",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "997513f6a0ad832b810864807fdc961070dc0974"
+        }
+      ],
+      "remaining_or_next_gate": "Dense real-data console, 13 temporal metrics, observed manager selection and centered owner deployed; 75 React tests/build pass; full scale/accessibility qualification pending",
+      "source_or_candidate": "live assets `9debe5dd`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test plan_import`; Playwright `workplan-import.spec.ts`. **Pass:** repeated import is idempotent, checkboxes/legacy PASS cannot become trusted acceptance, ambiguous scope is reviewable before admission.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "store + integration review",
+      "packet": "P13",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P13/455ee5f4867886752d168fa4d2a651c531101640.json",
+          "recorded_state": "partial_review",
+          "sha256": "686c72161c0ba3d799f53c2dc4755f1b37a839b20d90ae50a7f6d36355b3f1c1",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "455ee5f4867886752d168fa4d2a651c531101640"
+        },
+        {
+          "path": "receipts/P13/617e912744fa35d955026e2fd39fe06d9cb90eb3.json",
+          "recorded_state": "partial_review",
+          "sha256": "fe651385695dafd740f8a95d385de65bc8d250099dd0116679e6a36306d83555",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "617e912744fa35d955026e2fd39fe06d9cb90eb3"
+        },
+        {
+          "path": "receipts/P13/ebec880b34abb2d2b67011f8473160a6cd737795.json",
+          "recorded_state": "partial_review",
+          "sha256": "36323c79d3e0818ec67443376ff93cb41234549a037daaa3516642479a232265",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795"
+        }
+      ],
+      "remaining_or_next_gate": "Durable immutable JSON revisions, CAS/retry, reciprocal task identity, writer/CLI and backup/rebuild tests; TOML/Markdown, import UI and live admission pending",
+      "source_or_candidate": "reviewed `455ee5f4`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test scheduler_admission`. **Pass:** racing admissions cannot overspend/double-claim; unknown process holds ownership; env/scope failure does not blindly escalate; project starvation and blocked-integration fixtures pass.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "scheduler lane + strong review",
+      "packet": "P14",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P14/03772f946706ad9835f7c711d1de78a6af021e3d.json",
+          "recorded_state": "partial_review",
+          "sha256": "aefbfbca4576d73d4765be93e296af7033741d75cf3ea09ea1fe94eb8321b31b",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "03772f946706ad9835f7c711d1de78a6af021e3d"
+        }
+      ],
+      "remaining_or_next_gate": "Pure scheduler independently hardened at `03772f94`; durable scheduling and launches remain pending",
+      "source_or_candidate": "candidate `4aa3abe`, imported `2ef27f4`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test exact_candidate`. **Pass:** self-report, forged issuer, wrong checkout, stale policy/env and changed oracle fail; correct fixture produces reproducible receipt.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "verifier lane + strong review",
+      "packet": "P15",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P15/03772f946706ad9835f7c711d1de78a6af021e3d.json",
+          "recorded_state": "partial_review",
+          "sha256": "6e7d89896773f945cee8e4004944efa4eb7cc3c469bafe4c870c984dba9c8cd7",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "03772f946706ad9835f7c711d1de78a6af021e3d"
+        }
+      ],
+      "remaining_or_next_gate": "Scoped evidence consistency hardened at `03772f94`; trusted independent verifier execution pending",
+      "source_or_candidate": "candidate `a4c358`, imported `1f8b32c`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test jankurai_staged`. **Pass:** partial stage, alternate index, unborn HEAD, linked tree, hooksPath, rename/binary and oracle-change matrix passes. **Stop:** profile cannot audit the claimed stack.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "Luna audit lane + strong review",
+      "packet": "P16",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P16/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "f371def555ac37ecdb1977b1422eb761e30cd61a18c168e7d60cfb1ed4127f70",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        }
+      ],
+      "remaining_or_next_gate": "Staged audit candidate under independent review; no Jankurai execution qualification",
+      "source_or_candidate": "candidate `e8b9321`, imported `10fe48e`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test peer_handoff`; Playwright `coordination.spec.ts`. **Pass:** API producer/UI consumer exchange immutable schema without manager relay; stale dependency invalidates; access/storm/compaction fixtures pass; no broad shell/SQL tools exposed for status.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "Luna interface lane + strong review",
+      "packet": "P17",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P17/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "7e6be9a4ff3320bc1628c163b0c145f46d6ce3328428fb6772cef51e67e19502",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        }
+      ],
+      "remaining_or_next_gate": "Scoped interface reducer reviewed; peer tools/durable transport pending",
+      "source_or_candidate": "candidate `fb366ab`, imported `3df778c`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test integration_train`. **Pass:** same-tree/different-ancestry, three-candidate interaction, hot lockfile and stale-base cases do not reuse invalid proof; no concurrent target writer.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "Luna conflict lane + strong review",
+      "packet": "P18",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P18/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "1292986dd2a2f354450adfcd8b915fce16208be50fd0c8d40e38a0552c2be9ab",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        }
+      ],
+      "remaining_or_next_gate": "Bounded conservative conflict graph reviewed; merge train/runtime integration pending",
+      "source_or_candidate": "candidate `54d57e0`, imported `03d42fe`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test publication_gate`. **Pass:** wrong/dismissed reviewer, new head, pending check, stale executor and ambiguous merge produce no unauthorized/duplicate effect. **Artifact:** exact-head policy and reconciliation receipts.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "Luna publication lane + strong review",
+      "packet": "P19",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P19/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "2b906ec0cc1c51015f3c49f163c7fcc8d15f4766c870bd4880ae8bfa378ce0d4",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        }
+      ],
+      "remaining_or_next_gate": "Frozen request/receipt publication fences reviewed; credential gateway/forge qualification pending",
+      "source_or_candidate": "candidate `c3e3289`, imported `4a7eee0`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test cleanup_custody`. **Pass:** pin race/mount swap/symlink/active PID/ignored data/foreign root fixtures preserve unique work. Tests use disposable roots only.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "Luna retirement lane + strong review",
+      "packet": "P20",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P20/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "42493a2db346718a5acac083c60904fa7ea2ff9ef2d3cca21cea88e1988a9a8a",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        }
+      ],
+      "remaining_or_next_gate": "Scope/pin/identity/replay retirement proposals reviewed; no destructive executor or permission",
+      "source_or_candidate": "candidate `164aee7`, imported `94336b5`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test provider_claude`. **Pass:** capability and economic matrix honest; coordination tools work or have declared fallback; same core invariants pass as first adapter.",
+      "candidate_review": {
+        "candidate_sha": "9cbd02104b6d8c9770b43d55e84e3c74c2e77b3d",
+        "current_review_source_sha": "a9ba930e6eb3b46b76797582427cce6bacefdaab",
+        "disposition": "offline_hardening_reviewed_native_qualification_pending",
+        "historical_review_disposition": "changes_required",
+        "modules_registered": true,
+        "native_execution_qualified": false,
+        "offline_counterexample_probes": 14,
+        "original_tests": 4,
+        "review": "receipts/reviews/p21-9cbd02104b6d8c9770b43d55e84e3c74c2e77b3d.md",
+        "runtime_active": false,
+        "source_imported": true,
+        "test_targets_registered": true
+      },
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Original manifest/worktree pointers stale; current offline source reviewed at a9ba930e6eb3b46b76797582427cce6bacefdaab",
+        "Immutable prepared-launch task/configuration/custody/resource/credential binding; Trusted executable, session journal/EOF/watermark and actual observed execution identity; Bounded real continuity and parent/child usage qualification"
+      ],
+      "owner": "provider candidate + strong review",
+      "packet": "P21",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P21/a9ba930e6eb3b46b76797582427cce6bacefdaab.json",
+          "recorded_state": "partial_review",
+          "sha256": "824c645138305a440b301b20024c5b8e0753ca489534572e4a2ee1b1aae0b0c6",
+          "source_on_integrated_ancestry": true,
+          "source_sha": "a9ba930e6eb3b46b76797582427cce6bacefdaab"
+        }
+      ],
+      "remaining_or_next_gate": "Immutable prepared-launch task/configuration/custody/resource/credential binding; Trusted executable, session journal/EOF/watermark and actual observed execution identity; Bounded real continuity and parent/child usage qualification",
+      "source_or_candidate": "reviewed a9ba930e6eb3b46b76797582427cce6bacefdaab; modules and offline Cargo targets registered; server routing inactive",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test provider_matrix`. **Pass:** each claimed feature has evidence; missing auth/usage/resume yields specific unsupported status. Unavailable real qualification blocks that capability claim, not the offline demo or qualified providers.",
+      "candidate_review": {
+        "candidate_sha": "f5a34805196d4b9d87ccbf5c7be705e684104d55",
+        "current_review_source_sha": "a9ba930e6eb3b46b76797582427cce6bacefdaab",
+        "disposition": "offline_hardening_reviewed_native_qualification_pending",
+        "historical_review_disposition": "changes_required_static_review",
+        "modules_registered": true,
+        "native_execution_qualified": false,
+        "review": "receipts/reviews/p22-f5a34805196d4b9d87ccbf5c7be705e684104d55.json",
+        "runtime_active": false,
+        "source_imported": true,
+        "test_targets_registered": true
+      },
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Original manifest/worktree pointers stale; current offline source reviewed at a9ba930e6eb3b46b76797582427cce6bacefdaab",
+        "Trusted executable/configuration identity and actual launch/permission behavior; Managed session/journal/watermark and replay binding; Bounded real transport, resume and usage qualification"
+      ],
+      "owner": "provider candidate + integration review",
+      "packet": "P22",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P22/a9ba930e6eb3b46b76797582427cce6bacefdaab.json",
+          "recorded_state": "partial_review",
+          "sha256": "228b9d15e073768d18c9f442bd76d9f4cad299eb09d908d9bfb0e7c6842c252f",
+          "source_on_integrated_ancestry": true,
+          "source_sha": "a9ba930e6eb3b46b76797582427cce6bacefdaab"
+        }
+      ],
+      "remaining_or_next_gate": "Trusted executable/configuration identity and actual launch/permission behavior; Managed session/journal/watermark and replay binding; Bounded real transport, resume and usage qualification",
+      "source_or_candidate": "reviewed a9ba930e6eb3b46b76797582427cce6bacefdaab; modules and offline Cargo targets registered; server routing inactive",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test fleet_transport`. **Pass:** duplicate enrollment, replay, partial transfer, certificate revoke, node reboot and sequence-gap fixtures fail closed or reconcile without lost acknowledged events.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "Luna enrollment lane + strong review",
+      "packet": "P23",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P23/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "a16f52f1a7d1b0cc764eb64983dd3fc3685d3c4eb3e4c74a111c2a8983f01273",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        }
+      ],
+      "remaining_or_next_gate": "Scope/clock/revocation enrollment contracts reviewed; real enrollment/replay transport pending",
+      "source_or_candidate": "candidate `e3a9125`, imported `a6637a6`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test fleet_partition`. **Pass:** no duplicate writer, stale publication, lost contiguous ACK or released unknown liability under partitions/clock skew/controller disconnect.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "Luna placement lane + strong review",
+      "packet": "P24",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P24/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "c44ff31566968384f080e5ce4d86a9c73b8819f3dfe1da7e51ce90debbdb68ce",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        }
+      ],
+      "remaining_or_next_gate": "Scoped fresh ownership/continuation placement proposals reviewed; real partition qualification pending",
+      "source_or_candidate": "candidate `a791470`, imported `08c3a38`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test upgrade_continuity`; `... --test disaster_restore`. **Pass:** long structured/PTY fixture jobs survive supported ordinary upgrades; missing blob, old publisher or incompatible matrix blocks activation/effects honestly.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "Luna recovery lane + strong review",
+      "packet": "P25",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P25/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "d98eb7b4b76964bb44cad0476f8af637b2e7b0e2ff352768ed6c9dfd10df1bf5",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        }
+      ],
+      "remaining_or_next_gate": "Snapshot/fence/closure recovery bindings reviewed; executor restore/cutover qualification pending",
+      "source_or_candidate": "candidate `fa77ebd`, imported `4494af9`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** frontend typecheck/Vitest and named Playwright spec. **Pass:** huge counters exact, missing costs unavailable, all-in versus coordination savings explicit, legacy series visibly distinct.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "Luna economics lane + strong review",
+      "packet": "P26",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P26/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "a917cfe2017c89fb1a59c6d51a4cd57d213d967554b2ea1d96f47ca509a1e92d",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        }
+      ],
+      "remaining_or_next_gate": "Exact scoped usage/correction/coverage economics reviewed; explorer/service integration pending",
+      "source_or_candidate": "candidate `4aec329`, imported `78688d4`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test excursion_lineage`; incident UI tests. **Pass:** duplicates, recurrence, unknown attribution, secret-bearing evidence and ambiguous publication handled without leaking or fabricating root cause.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "Luna excursions lane + strong review",
+      "packet": "P27",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P27/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "8f74390a32a76667a2cc8bd9d2fa00142121ec9b9772d9844cae77ec3517d07d",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        }
+      ],
+      "remaining_or_next_gate": "Canonical bounded scoped excursion state reviewed; durable proposal loop activation pending",
+      "source_or_candidate": "candidate `c3a1895`, imported `1fe0bb2`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** `rtk cargo test -p admiralty-testkit --test experiment_validity`. **Pass:** leakage/invalid propensity/repeated peeking/shared-manager/immature-label fixtures cannot auto-promote; one bounded candidate can be honestly accepted or rejected and rolled back.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "Luna trials lane + strong review",
+      "packet": "P28",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P28/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "920a295809426c77a2fc89e5b3e325eda13fa863c6f5c815a6fd3d59a31d95d6",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        }
+      ],
+      "remaining_or_next_gate": "Fixed cohort/seed/oracle trial analysis reviewed; independent live trials pending",
+      "source_or_candidate": "candidate `142bd2a`, imported `87b0a94`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** frontend checks; Playwright integration/quality/assets/settings specs; automated accessibility plus manual keyboard checks on named browsers. **Pass:** user can find blocker/evidence and resolve an authorized action without reading terminals.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "diagnostics + frontend review",
+      "packet": "P29",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P29/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "9c2e5bdd6da30f9d19ae222fa0d22846d63f05b6610bf6d07f851f21fb17f85d",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        }
+      ],
+      "remaining_or_next_gate": "Bounded recorded diagnostic CLI tested; durable action/job, assets/fleet UX and named accessibility/E2E gates pending",
+      "source_or_candidate": "reviewed `17c7a76d`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** clean-machine archive install; `admiralty demo` offline; `doctor` missing-tool flows; reproducible package/assets compatibility and secret/dependency/license checks. **Pass:** no mandatory account/telemetry/Node server, useful demo, truthful support matrix. **Stop:** unresolved rights block public distribution, not private implementation progress.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "release + integration review",
+      "packet": "P30",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P30/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "fa691e4f7393a5927e743c87ae14b1d5ad35f00a16ae5daf45cc038cb95b5e1b",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        }
+      ],
+      "remaining_or_next_gate": "Explicit-input archive builder passes 10 checks; clean-install, signed distribution, rights and complete operator paths pending",
+      "source_or_candidate": "reviewed `17c7a76d`",
+      "state": "in_progress"
+    },
+    {
+      "acceptance_contract": "**Validate:** all MASTER_PLAN \u00a713 commands and release evidence bundle. **Pass:** full completion contract, all core capabilities evidenced, no protected live job interrupted, no unowned scope adopted. Economic target misses prevent a savings claim; invariant misses block affected rollout.",
+      "current_combined_quality_evidence": {
+        "path": "receipts/integration/661bf36f0a401c79c87e2166fd75be325984e09c.json",
+        "scope": "Registered harnesses, provider hardening and fixture ownership/deadline fixes; full contract gaps remain.",
+        "sha256": "ca3e58a6eb455496efbf8af43c3015c9425ed7c7d8e5cc9a332e023b697d6021"
+      },
+      "current_reporting_regression_evidence": {
+        "path": "receipts/integration/3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d.json",
+        "scope": "legacy/dashboard reporting and CI regressions only; parent acceptance remains false",
+        "sha256": "9c486c37a240b8643c0429747caf64e78e80b831736e5ebc3d31584eb2fcf737"
+      },
+      "current_review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+      "native_execution_qualified": false,
+      "observed_legacy_reported_status": "integrated",
+      "observed_remaining_gaps": [
+        "Existing receipts establish component/source tests only; full packet activation/qualification criteria remain to be reviewed."
+      ],
+      "owner": "integration + qualification review",
+      "packet": "P31",
+      "parent_accepted": false,
+      "receipt_evidence": [
+        {
+          "path": "receipts/P31/17c7a76d626f4870710bf61c2fe30aeed4a6b9e4.json",
+          "recorded_state": "partial_review",
+          "sha256": "89a56044bedb8a5c019e5d0f48720cafc72b56ed9011b276a3df8c161a3c76da",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4"
+        },
+        {
+          "path": "receipts/P31/455ee5f4867886752d168fa4d2a651c531101640.json",
+          "recorded_state": "partial_review",
+          "sha256": "ab3f7f6cc26dc839b523f93be1b47a8b460a284916b1e7eff06e13ca4cb4ddfb",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "455ee5f4867886752d168fa4d2a651c531101640"
+        },
+        {
+          "path": "receipts/P31/997513f6a0ad832b810864807fdc961070dc0974.json",
+          "recorded_state": "in_progress",
+          "sha256": "bad6cfc09603518a7a1f324881b7d16e292f65d5c7e71d0de6e511839a453a0e",
+          "source_on_integrated_ancestry": false,
+          "source_sha": "997513f6a0ad832b810864807fdc961070dc0974"
+        }
+      ],
+      "remaining_or_next_gate": "Isolated binary smoke and offline controlled provider harness are integrated; real provider, soak, savings, restore and fleet cutover gates remain open",
+      "source_or_candidate": "reviewed `455ee5f4`",
+      "state": "in_progress"
+    }
+  ],
+  "planning_baseline": "1e8ed17eff27ed3ab80dc6860fc8eda301406aee",
+  "review_source_sha": "661bf36f0a401c79c87e2166fd75be325984e09c",
+  "technical_artifact_criteria_verified": [
+    "P00"
+  ],
+  "work_packets_sha256": "ec0b2dcd6d5457cfd081ee49a779e069b17ee452aa14f5f34372d83018989245"
+}

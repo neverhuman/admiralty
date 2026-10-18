@@ -1,0 +1,186 @@
+{
+  "observed_utc": "2026-10-18T14:24:04.001007+00:00",
+  "review_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+  "main_baseline_sha": "9227e8b99f69d688f92c9a727a33ba247568d0b4",
+  "tested_implementation_sha": "455ee5f4867886752d168fa4d2a651c531101640",
+  "implementation_paths": [
+    {
+      "path": "Cargo.lock",
+      "tested_git_entry": "100644 blob ece8dbd8e21a9cd052cf3fc9e5751883e180f09c\tCargo.lock",
+      "current_git_entry": "100644 blob ece8dbd8e21a9cd052cf3fc9e5751883e180f09c\tCargo.lock",
+      "identical": true
+    },
+    {
+      "path": "README.md",
+      "tested_git_entry": "100644 blob b27b80fea8197075a96bf8498db89eb218e4cae7\tREADME.md",
+      "current_git_entry": "100644 blob b27b80fea8197075a96bf8498db89eb218e4cae7\tREADME.md",
+      "identical": true
+    },
+    {
+      "path": "crates/admiralty-cli/src/main.rs",
+      "tested_git_entry": "100644 blob b25b7047f1f2e70a9d8169842f85ff4e0bf6fd31\tcrates/admiralty-cli/src/main.rs",
+      "current_git_entry": "100644 blob b25b7047f1f2e70a9d8169842f85ff4e0bf6fd31\tcrates/admiralty-cli/src/main.rs",
+      "identical": true
+    },
+    {
+      "path": "crates/admiralty-cli/src/workplans.rs",
+      "tested_git_entry": "100644 blob 0e0ed06c425e2dd770e3c01a9e20e0d77a3472bb\tcrates/admiralty-cli/src/workplans.rs",
+      "current_git_entry": "100644 blob 0e0ed06c425e2dd770e3c01a9e20e0d77a3472bb\tcrates/admiralty-cli/src/workplans.rs",
+      "identical": true
+    },
+    {
+      "path": "crates/admiralty-cli/tests/offline_roundtrip.rs",
+      "tested_git_entry": "100644 blob 8d09a74bb069bbb97e4712c8c2468c87208ae46b\tcrates/admiralty-cli/tests/offline_roundtrip.rs",
+      "current_git_entry": "100644 blob 8d09a74bb069bbb97e4712c8c2468c87208ae46b\tcrates/admiralty-cli/tests/offline_roundtrip.rs",
+      "identical": true
+    },
+    {
+      "path": "crates/admiralty-runtime/Cargo.toml",
+      "tested_git_entry": "100644 blob 363c6d44f2449326a534da7c9d42b70fa0a7f60b\tcrates/admiralty-runtime/Cargo.toml",
+      "current_git_entry": "100644 blob 363c6d44f2449326a534da7c9d42b70fa0a7f60b\tcrates/admiralty-runtime/Cargo.toml",
+      "identical": true
+    },
+    {
+      "path": "crates/admiralty-runtime/examples/codex_qualification.rs",
+      "tested_git_entry": "100644 blob 1ffac19d9034a0c14e03f79f3755891bd8c79184\tcrates/admiralty-runtime/examples/codex_qualification.rs",
+      "current_git_entry": "100644 blob 1ffac19d9034a0c14e03f79f3755891bd8c79184\tcrates/admiralty-runtime/examples/codex_qualification.rs",
+      "identical": true
+    },
+    {
+      "path": "crates/admiralty-store/src/lib.rs",
+      "tested_git_entry": "100644 blob 0b7a30a7fe5af373d2a5d7730eed898d76da675d\tcrates/admiralty-store/src/lib.rs",
+      "current_git_entry": "100644 blob 0b7a30a7fe5af373d2a5d7730eed898d76da675d\tcrates/admiralty-store/src/lib.rs",
+      "identical": true
+    },
+    {
+      "path": "crates/admiralty-store/src/workplans.rs",
+      "tested_git_entry": "100644 blob 900aba8beaee78cb49e6331b7d3c5b742c0485c5\tcrates/admiralty-store/src/workplans.rs",
+      "current_git_entry": "100644 blob 900aba8beaee78cb49e6331b7d3c5b742c0485c5\tcrates/admiralty-store/src/workplans.rs",
+      "identical": true
+    },
+    {
+      "path": "crates/admiralty-store/tests/workplan_registry.rs",
+      "tested_git_entry": "100644 blob 971fd0b3f0923921765c4d7c6f9949a5130d232d\tcrates/admiralty-store/tests/workplan_registry.rs",
+      "current_git_entry": "100644 blob 971fd0b3f0923921765c4d7c6f9949a5130d232d\tcrates/admiralty-store/tests/workplan_registry.rs",
+      "identical": true
+    },
+    {
+      "path": "docs/architecture/durable-workplans.md",
+      "tested_git_entry": "100644 blob 96b0cfc1415c573a6165b9ddc5c906807754adbd\tdocs/architecture/durable-workplans.md",
+      "current_git_entry": "100644 blob 96b0cfc1415c573a6165b9ddc5c906807754adbd\tdocs/architecture/durable-workplans.md",
+      "identical": true
+    },
+    {
+      "path": "docs/operators/codex-qualification.md",
+      "tested_git_entry": "100644 blob 7677f20e125f2252b13d463d2734b3b7cf4d37bf\tdocs/operators/codex-qualification.md",
+      "current_git_entry": "100644 blob 7677f20e125f2252b13d463d2734b3b7cf4d37bf\tdocs/operators/codex-qualification.md",
+      "identical": true
+    },
+    {
+      "path": "tests/integration/api_stream.rs",
+      "tested_git_entry": "100644 blob 4e55085f57b062c8cb345b9d9faf6e30d045a67a\ttests/integration/api_stream.rs",
+      "current_git_entry": "100644 blob 4e55085f57b062c8cb345b9d9faf6e30d045a67a\ttests/integration/api_stream.rs",
+      "identical": true
+    },
+    {
+      "path": "tests/integration/store_crash.rs",
+      "tested_git_entry": "100644 blob a524491c1ff62917ad4f9f42edc2c9ef741dc4b8\ttests/integration/store_crash.rs",
+      "current_git_entry": "100644 blob a524491c1ff62917ad4f9f42edc2c9ef741dc4b8\ttests/integration/store_crash.rs",
+      "identical": true
+    },
+    {
+      "path": "tests/integration/store_replay.rs",
+      "tested_git_entry": "100644 blob c51acdce90548bd33dd269b93c51e8b8786e1963\ttests/integration/store_replay.rs",
+      "current_git_entry": "100644 blob c51acdce90548bd33dd269b93c51e8b8786e1963\ttests/integration/store_replay.rs",
+      "identical": true
+    },
+    {
+      "path": "tests/qualification/codex/P08Q_config_template.json",
+      "tested_git_entry": "100644 blob a990612254bcff65bb158caa35085991b9d6db8f\ttests/qualification/codex/P08Q_config_template.json",
+      "current_git_entry": "100644 blob a990612254bcff65bb158caa35085991b9d6db8f\ttests/qualification/codex/P08Q_config_template.json",
+      "identical": true
+    },
+    {
+      "path": "tests/qualification/codex/P08Q_expected_saturating_increment.rs",
+      "tested_git_entry": "100644 blob a710f1cec1ad442576f681287f97f4c95ce25715\ttests/qualification/codex/P08Q_expected_saturating_increment.rs",
+      "current_git_entry": "100644 blob a710f1cec1ad442576f681287f97f4c95ce25715\ttests/qualification/codex/P08Q_expected_saturating_increment.rs",
+      "identical": true
+    },
+    {
+      "path": "tests/qualification/codex/P08Q_fake_codex.sh",
+      "tested_git_entry": "100644 blob d5dab0f991d1e2e525e78ee438463c68835a467d\ttests/qualification/codex/P08Q_fake_codex.sh",
+      "current_git_entry": "100644 blob d5dab0f991d1e2e525e78ee438463c68835a467d\ttests/qualification/codex/P08Q_fake_codex.sh",
+      "identical": true
+    }
+  ],
+  "implementation_path_count": 18,
+  "other_registered_rust_inputs": "unchanged; only six dormant provider module/test source files differ in crates/tests-integration/Cargo/toolchain inputs",
+  "dormant_provider_paths": [
+    "crates/admiralty-runtime/src/providers/agy.rs",
+    "crates/admiralty-runtime/src/providers/claude.rs",
+    "crates/admiralty-runtime/src/providers/grok.rs",
+    "crates/admiralty-runtime/src/providers/process.rs",
+    "tests/integration/provider_claude.rs",
+    "tests/integration/provider_matrix.rs"
+  ],
+  "registration_evidence": [
+    "crates/admiralty-runtime/src/providers/mod.rs exports opencode_ssh, supervision, usage, codex only",
+    "crates/admiralty-testkit/Cargo.toml registers six existing integration targets only; provider_claude/provider_matrix are absent"
+  ],
+  "unchanged_other_sources": [
+    {
+      "path": "apps/dashboard",
+      "prior_object": "3488f6bf7cd14f506bdc018657ad4908a3b672d5",
+      "current_object": "3488f6bf7cd14f506bdc018657ad4908a3b672d5",
+      "identical": true
+    },
+    {
+      "path": "packages/contracts",
+      "prior_object": "c1b85bc834151b86919bda4b5c0fcbc8d3a476a1",
+      "current_object": "c1b85bc834151b86919bda4b5c0fcbc8d3a476a1",
+      "identical": true
+    },
+    {
+      "path": "schemas",
+      "prior_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "current_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "identical": true
+    },
+    {
+      "path": "package.json",
+      "prior_object": "11db476204136b8f180828c6ebc1a02878fb6b59",
+      "current_object": "11db476204136b8f180828c6ebc1a02878fb6b59",
+      "identical": true
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "prior_object": "7681223a6442bb9dd3ed8646f6fecdbbf8abc26f",
+      "current_object": "7681223a6442bb9dd3ed8646f6fecdbbf8abc26f",
+      "identical": true
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "prior_object": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+      "current_object": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+      "identical": true
+    },
+    {
+      "path": "scripts/release/package.py",
+      "prior_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "current_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "identical": true
+    },
+    {
+      "path": "scripts/check/canary-smoke.py",
+      "prior_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "current_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "identical": true
+    }
+  ],
+  "whole_tree_equivalence": false,
+  "original_sha_is_main_ancestor": false,
+  "rebased_main_commits": [
+    "0b20ea7b19b8fa7a7d43a65a514f35fd65771668",
+    "9227e8b99f69d688f92c9a727a33ba247568d0b4"
+  ]
+}

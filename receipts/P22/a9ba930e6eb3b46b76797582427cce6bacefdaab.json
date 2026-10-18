@@ -1,0 +1,29 @@
+{
+  "head_sha": "a9ba930e6eb3b46b76797582427cce6bacefdaab",
+  "base_sha": "47fc27da1c00a1c1295f53dcce064d3af1c9b875",
+  "observed_utc": "2026-10-18T14:49:17.351273+00:00",
+  "state": "partial_review",
+  "packet_accepted": false,
+  "native_execution_qualified": false,
+  "paid_provider_calls": 0,
+  "packet": "P22",
+  "changes": [
+    "Registered portable matrix fixtures and strict incremental AGY/Grok observation wrappers",
+    "Executable/model hints separate from unknown observed identity; screen/transcript hints do not fabricate identity",
+    "Complete shared LaunchSpec aggregate/serialized envelope validation and option-like data refusal"
+  ],
+  "offline_registered_tests_passed": 12,
+  "review": {
+    "method": "Independent read-only cross-review of frozen diff, retained findings and adversarial/positive tests",
+    "disposition": "no_scoped_blocker"
+  },
+  "modules_registered": true,
+  "cargo_tests_registered": true,
+  "server_provider_routing_enabled": false,
+  "remaining": [
+    "Trusted executable/configuration identity and actual launch/permission behavior",
+    "Managed session/journal/watermark and replay binding",
+    "Bounded real transport, resume and usage qualification"
+  ],
+  "validation_evidence": "receipts/integration/a9ba930e6eb3b46b76797582427cce6bacefdaab.json"
+}

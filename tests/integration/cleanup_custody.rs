@@ -12,8 +12,39 @@ use admiralty_store::custody::{
     CustodyObservation, RegisterAssetRequest, ReleasePinRequest,
 };
 use rusqlite::Connection;
-use std::{fs, path::PathBuf};
-use tempfile::tempdir;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
+fn private_fixture() -> tempfile::TempDir {
+    // Resolve platform aliases such as macOS /var before creating the fixture:
+    // the workspace registry deliberately rejects symlinked path components.
+    let base = fs::canonicalize(std::env::temp_dir()).expect("canonical temporary base");
+    let mut builder = tempfile::Builder::new();
+    builder.prefix("admiralty-cleanup-");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        builder.permissions(fs::Permissions::from_mode(0o700));
+    }
+    builder
+        .tempdir_in(base)
+        .expect("create owner-only disposable fixture")
+}
+
+fn private_directory(path: &Path) {
+    let mut builder = fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder
+        .create(path)
+        .expect("create private fixture directory");
+}
 
 fn binding() -> AssetBinding {
     AssetBinding {
@@ -45,12 +76,13 @@ fn observation(binding: &AssetBinding, registered: bool, at: u64) -> CustodyObse
 
 #[test]
 fn workspace_registry_excludes_forbidden_foreign_and_symlinked_paths() {
-    let fixture = tempdir().expect("create disposable workspace fixture");
-    let source = fixture.path().join("src");
+    let fixture = private_fixture();
+    let root = fs::canonicalize(fixture.path()).expect("canonical workspace fixture root");
+    let source = root.join("src");
     let ignored = source.join("ignored");
-    let foreign = fixture.path().join("foreign");
-    fs::create_dir_all(&ignored).expect("create owned and ignored fixtures");
-    fs::create_dir_all(&foreign).expect("create foreign fixture");
+    let foreign = root.join("foreign");
+    private_directory(&ignored);
+    private_directory(&foreign);
     fs::write(source.join("keep.txt"), b"owned bytes").expect("write owned fixture bytes");
     fs::write(ignored.join("keep.txt"), b"ignored bytes").expect("write ignored fixture bytes");
     fs::write(foreign.join("keep.txt"), b"foreign bytes").expect("write foreign fixture bytes");
@@ -62,7 +94,7 @@ fn workspace_registry_excludes_forbidden_foreign_and_symlinked_paths() {
         node_id: NodeRef::new("node-1").expect("valid fixture node"),
         root_id: RootId::new("root-1").expect("valid fixture root"),
         project_id: ProjectId::new("project-1").expect("valid fixture project"),
-        workspace: fixture.path().to_path_buf(),
+        workspace: root,
         owned_paths: vec![PathBuf::from("src")],
         forbidden_paths: vec![PathBuf::from("src/ignored")],
     };
@@ -91,7 +123,7 @@ fn workspace_registry_excludes_forbidden_foreign_and_symlinked_paths() {
 
 #[test]
 fn durable_active_pin_blocks_retirement_claim_until_release() {
-    let fixture = tempdir().expect("create disposable custody fixture");
+    let fixture = private_fixture();
     let path = fixture.path().join("custody.sqlite");
     let mut connection = Connection::open(path).expect("open fixture database");
     custody::initialize(&connection).expect("initialize custody schema");

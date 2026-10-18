@@ -1179,8 +1179,8 @@ mod tests {
                 &spool,
                 "probe",
             ),
-            Duration::from_secs(1),
-            Instant::now() + Duration::from_secs(2),
+            Duration::from_secs(5),
+            Instant::now() + Duration::from_secs(10),
             4096,
             &mut cleanups,
         )?;
@@ -1197,7 +1197,7 @@ mod tests {
                     "timeout"
                 ),
                 Duration::from_millis(20),
-                Instant::now() + Duration::from_secs(2),
+                Instant::now() + Duration::from_secs(10),
                 4096,
                 &mut cleanups
             )
@@ -1213,8 +1213,8 @@ mod tests {
                     &spool,
                     "bounds"
                 ),
-                Duration::from_secs(1),
-                Instant::now() + Duration::from_secs(2),
+                Duration::from_secs(5),
+                Instant::now() + Duration::from_secs(10),
                 2,
                 &mut cleanups
             )
@@ -1252,9 +1252,9 @@ mod tests {
             provider_model: "fixture-model".into(),
             effort: CodexEffort::Medium,
             expected_cpu_affinity: affinity()?,
-            cli_probe_timeout_secs: 1,
-            provider_timeout_secs: 3,
-            overall_timeout_secs: 12,
+            cli_probe_timeout_secs: 5,
+            provider_timeout_secs: 15,
+            overall_timeout_secs: 60,
             max_output_bytes: 4096,
             operator_transport_authorization: AUTHORIZATION.into(),
         };

@@ -1,0 +1,127 @@
+{
+  "head_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+  "base_sha": "9227e8b99f69d688f92c9a727a33ba247568d0b4",
+  "observed_utc": "2026-10-18T14:24:04.001007+00:00",
+  "state": "partial_review",
+  "packet_accepted": false,
+  "native_execution_qualified": false,
+  "changes": [
+    "Conservative collector receipt/log and blocked-state evidence",
+    "Strict recorded rollout provenance and exact lane terminal states",
+    "CI registers audit regressions and private scratch outside checkout",
+    "Portable pinned-source verifier uses Git directly, avoiding absent local rtk dependency"
+  ],
+  "local_validation": {
+    "observed_utc": "2026-10-18T14:21:25.845945+00:00",
+    "source_files": {
+      ".github/workflows/ci.yml": "757ccda774ed5ea54e6edb32bcc8f57049b1ad6b9f2fe512179231549756e24b",
+      "dashboard/collector.py": "f73330db3851608bafe946115ef38c5ea62d617befb559a6407b1de44e9bb3ae",
+      "tools/sc_audit.py": "4fe3e116d1864ff71eeefa058b4bfa2c57bc6075004e50bd061292796c950544",
+      "tests/legacy/test_stage_evidence_regressions.py": "c4ff15b1f8598b996f25ab759e68557b6208b963d02c80426a3462fc6cc88905",
+      "tests/test_sc_audit_integrity.py": "9fae00b35a9bcd60ad5f93cdfdb09ba147927910cb16d606779f47450b2ea2ff"
+    },
+    "commands": [
+      {
+        "name": "legacy-tests",
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests/legacy",
+          "-v"
+        ],
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/reporting-checkpoint/legacy-tests.log",
+        "sha256": "330fd7d1c1c0986c3e01ea25edcb1e8033b9a382a59c44990c9d62d02204aaa3"
+      },
+      {
+        "name": "audit-tests",
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests",
+          "-p",
+          "test_sc_audit*.py",
+          "-v"
+        ],
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/reporting-checkpoint/audit-tests.log",
+        "sha256": "b79b0c0cf99ae2045c0b0728990619af23ec77857c2de89b3e87c7bd8656b0db"
+      },
+      {
+        "name": "legacy-fixtures",
+        "argv": [
+          "python3",
+          "tests/fixtures/legacy/verify.py"
+        ],
+        "exit_code": 0,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/reporting-checkpoint/legacy-fixtures.log",
+        "sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12"
+      }
+    ],
+    "platform": "macOS",
+    "legacy_tests": {
+      "discovered": 88,
+      "passed": 87,
+      "platform_skipped": 1
+    },
+    "audit_tests_passed": 44
+  },
+  "linux_validation": {
+    "source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+    "state": "pass_with_explicit_unchanged_test_reuse",
+    "legacy_tests": 88,
+    "audit_tests": 44,
+    "pinned_sources": 37,
+    "synthetic_cases": 11,
+    "working_tree_drift_paths": 18,
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d/4d8e5a7ca8204445b087afb438fb999a/reporting-gate.json",
+    "receipt_sha256": "8bd14acf311e55a95077dee07abb9231621ee1466648b65b0918df13aef6126a",
+    "test_source_sha": "b6622f8ef728548f5c22475246373a120e611c22",
+    "fixture_verifier_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+    "worktree_clean": true,
+    "paid_provider_calls": 0
+  },
+  "retained_failure": {
+    "source_sha": "b6622f8ef728548f5c22475246373a120e611c22",
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/b6622f8ef728548f5c22475246373a120e611c22/6eb068322f79454fa28b69c41896e12e/reporting-gate.json",
+    "receipt_sha256": "748a289d2179e1fe87098f7c8aab976fe160d519d424bae5359c83e74b28bac0",
+    "failed_step": "legacy-fixtures",
+    "reason": "GitHub/Linux minimal PATH has no rtk; portable verifier correction removes the helper dependency",
+    "passing_prior_commands": [
+      "88 legacy tests",
+      "44 audit tests"
+    ]
+  },
+  "independent_review": {
+    "collector_regressions": 14,
+    "audit_regressions": 11,
+    "frozen_file_hashes": {
+      ".github/workflows/ci.yml": "757ccda774ed5ea54e6edb32bcc8f57049b1ad6b9f2fe512179231549756e24b",
+      "dashboard/collector.py": "f73330db3851608bafe946115ef38c5ea62d617befb559a6407b1de44e9bb3ae",
+      "tools/sc_audit.py": "4fe3e116d1864ff71eeefa058b4bfa2c57bc6075004e50bd061292796c950544",
+      "tests/legacy/test_stage_evidence_regressions.py": "c4ff15b1f8598b996f25ab759e68557b6208b963d02c80426a3462fc6cc88905",
+      "tests/test_sc_audit_integrity.py": "9fae00b35a9bcd60ad5f93cdfdb09ba147927910cb16d606779f47450b2ea2ff"
+    },
+    "disposition": "no scoped blocker"
+  },
+  "source_identity_proof": "receipts/reconciliation/main-9227e8b-source-identity.json",
+  "prior_rust_and_smoke_gate": "Historical 455ee5f4: Mac464/Linux466 Rust checks, fmt/Clippy/build/schemas and15 real isolated smoke checks. Registered Rust inputs are unchanged by blob proof; no full new-head Rust execution claimed.",
+  "hosted_ci": {
+    "main_run": 39134086804,
+    "main_sha": "9227e8b99f69d688f92c9a727a33ba247568d0b4",
+    "observed_state": "queued_unassigned",
+    "success_claimed": false
+  },
+  "limitations": [
+    "All32 parent packets remain partial; no paid provider execution, native activation, cutover or savings claim.",
+    "Legacy verification reports recorded evidence consistency; it is not native trusted verifier admission.",
+    "P21/P22 source is imported but modules/test targets remain unregistered and inactive.",
+    "Preexisting DOPE test fixture ResourceWarnings remain visible; all44 audit tests pass."
+  ]
+}

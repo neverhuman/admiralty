@@ -1,0 +1,825 @@
+{
+  "head_sha": "a9ba930e6eb3b46b76797582427cce6bacefdaab",
+  "base_sha": "47fc27da1c00a1c1295f53dcce064d3af1c9b875",
+  "observed_utc": "2026-10-18T14:49:17.351273+00:00",
+  "state": "partial_review",
+  "packet_accepted": false,
+  "native_execution_qualified": false,
+  "paid_provider_calls": 0,
+  "mac_validation": {
+    "source_kind": "Frozen working tree represented by code commit; clean Linux verifies exact commit independently",
+    "rust_checks_passed": 502,
+    "strict_clippy": "pass",
+    "fmt": "pass",
+    "build": "pass",
+    "schemas": "pass",
+    "actual_isolated_binary_smoke_checks": 15,
+    "receipt": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/provider-checkpoint/mac-repaired-smoke-gate.json",
+    "receipt_sha256": "65d4f819c70eba630d5d2408eeb9e5c748499e318bc5434b344d13b8903f8074",
+    "reused_passing_commands": [
+      {
+        "name": "fmt",
+        "argv": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "started_utc": "2026-10-18T14:41:21.775952+00:00",
+        "exit_code": 0,
+        "elapsed_s": 0.357,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/provider-checkpoint/fmt.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "rust_checks_passed": 0
+      },
+      {
+        "name": "clippy",
+        "argv": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "started_utc": "2026-10-18T14:41:22.133614+00:00",
+        "exit_code": 0,
+        "elapsed_s": 5.233,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/provider-checkpoint/clippy.log",
+        "log_sha256": "54c537b10e8d8ffb9608b4bbb68717a89cf39129a70e28632b1f2eec03d810df",
+        "rust_checks_passed": 0
+      },
+      {
+        "name": "rust",
+        "argv": [
+          "cargo",
+          "test",
+          "--workspace",
+          "--locked"
+        ],
+        "started_utc": "2026-10-18T14:41:27.366552+00:00",
+        "exit_code": 0,
+        "elapsed_s": 20.104,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/provider-checkpoint/rust.log",
+        "log_sha256": "714549bdbeb3299199c2dff4aa20ec31900c6072616699f0b1d935d8a980f191",
+        "rust_checks_passed": 502
+      },
+      {
+        "name": "build",
+        "argv": [
+          "cargo",
+          "build",
+          "-p",
+          "admiralty-server",
+          "-p",
+          "admiralty-cli",
+          "--locked"
+        ],
+        "started_utc": "2026-10-18T14:41:47.470502+00:00",
+        "exit_code": 0,
+        "elapsed_s": 0.082,
+        "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/provider-checkpoint/build.log",
+        "log_sha256": "99f71393b9903dca098310bb446022a4bdee195ea9996f351a787195555210a6",
+        "rust_checks_passed": 0
+      }
+    ],
+    "smoke": {
+      "acceptance": false,
+      "binaries": {
+        "admiralty_sha256": "sha256:8de740f9f4eedd68256368d8ad1a27ebef79584e84324b0702848a7e0702890a",
+        "admiraltyd_sha256": "sha256:de68a2e908916a3f18325a2246eea324b3a3ac8847bc88304ce97ee2f5662e1c"
+      },
+      "checks": [
+        {
+          "duration_ms": 231,
+          "name": "real_server_startup",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 3,
+          "name": "real_health_native_unqualified",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "unauthorized_real_fleet_rejected",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 0,
+          "name": "unauthorized_real_models_rejected",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 0,
+          "name": "model_auth_precedes_body_validation",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "authorized_real_fleet",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "authorized_models_policy",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "model_selection_proposal_only",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 253,
+          "name": "demo_startup",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 2,
+          "name": "demo_fleet_simulated",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "demo_no_models",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 0,
+          "name": "demo_no_model_policy_write",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "demo_no_legacy_policy",
+          "state": "pass"
+        },
+        {
+          "name": "doctor_read_only_capability",
+          "state": "pass"
+        },
+        {
+          "name": "demo_cli_has_no_real_policy_flags",
+          "state": "pass"
+        }
+      ],
+      "cleanup": {
+        "admiraltyd": "terminated",
+        "demo": "terminated"
+      },
+      "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+      "duration_ms": 551,
+      "fleet_rollout_closure": false,
+      "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+      "started_at_utc": "2026-10-18T14:42:48.916663+00:00",
+      "status": "pass",
+      "synthetic": false
+    },
+    "retained_failed_scratch_gate": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/provider-checkpoint/mac-gate.json",
+    "retained_failed_scratch_gate_sha256": "48a654bd59e43207faaced673a50c5979f8a19a2f48615e68d07bd73fdf1c4a1",
+    "environment_correction": "Use canonical /private/var scratch path instead of macOS /var symlink alias; source/guard unchanged"
+  },
+  "linux_validation": {
+    "source_sha": "a9ba930e6eb3b46b76797582427cce6bacefdaab",
+    "rust_checks_passed": 504,
+    "strict_clippy": "pass",
+    "fmt": "pass",
+    "build": "pass",
+    "schemas": "pass",
+    "actual_isolated_binary_smoke_checks": 15,
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/a9ba930e6eb3b46b76797582427cce6bacefdaab/03ee94f304f14d86811a72343307692c-provider-gate.json",
+    "receipt_sha256": "185aed889552eb6baf9e591044c0b7863c5b04c110a2d67348ff22cc5c2f5795",
+    "worktree_clean": true,
+    "commands": [
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/a9ba930e6eb3b46b76797582427cce6bacefdaab",
+        "elapsed_s": 0.602,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T14:42:27.457258Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/a9ba930e6eb3b46b76797582427cce6bacefdaab/03ee94f304f14d86811a72343307692c-fmt.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "name": "fmt",
+        "output_tail": [],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "started_utc": "2026-10-18T14:42:26.855550Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/a9ba930e6eb3b46b76797582427cce6bacefdaab",
+        "elapsed_s": 31.424,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T14:42:58.881638Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/a9ba930e6eb3b46b76797582427cce6bacefdaab/03ee94f304f14d86811a72343307692c-clippy.log",
+        "log_sha256": "2a2e699726f887c434038e7801699ab1aeb102148d999c25e926240612bb12e1",
+        "name": "clippy",
+        "output_tail": [
+          "    Checking admiralty-core v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/a9ba930e6eb3b46b76797582427cce6bacefdaab/crates/admiralty-core)",
+          "    Checking admiralty-runtime v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/a9ba930e6eb3b46b76797582427cce6bacefdaab/crates/admiralty-runtime)",
+          "    Checking admiralty-store v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/a9ba930e6eb3b46b76797582427cce6bacefdaab/crates/admiralty-store)",
+          "    Checking admiralty-server v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/a9ba930e6eb3b46b76797582427cce6bacefdaab/crates/admiralty-server)",
+          "    Checking admiralty-testkit v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/a9ba930e6eb3b46b76797582427cce6bacefdaab/crates/admiralty-testkit)",
+          "    Checking admiralty-cli v0.1.0 (/home/ubuntu/admiralty-v2-build/quality-builds/a9ba930e6eb3b46b76797582427cce6bacefdaab/crates/admiralty-cli)",
+          "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 31.30s"
+        ],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "started_utc": "2026-10-18T14:42:27.457857Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "test",
+          "--workspace",
+          "--locked"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/a9ba930e6eb3b46b76797582427cce6bacefdaab",
+        "elapsed_s": 173.134,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T14:45:52.016351Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/a9ba930e6eb3b46b76797582427cce6bacefdaab/03ee94f304f14d86811a72343307692c-workspace-tests.log",
+        "log_sha256": "b47f63e908714853c717ddc83e2147d4d7bf5cecc62ab19ac27ed95e7b480b1a",
+        "name": "workspace-tests",
+        "output_tail": [
+          "",
+          "   Doc-tests admiralty_runtime",
+          "",
+          "running 1 test",
+          "test crates/admiralty-runtime/src/audits.rs - audits::AuditProposal (line 197) - compile fail ... ok",
+          "",
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s",
+          "",
+          "   Doc-tests admiralty_server",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "",
+          "   Doc-tests admiralty_store",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "",
+          "   Doc-tests admiralty_testkit",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          ""
+        ],
+        "oversized_output": false,
+        "rust_test_results": [
+          {
+            "failed": 0,
+            "passed": 17,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 157,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 127,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 63,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 5,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 4,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 3,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 19,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 6,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 14,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 13,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 22,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 12,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 2,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 11,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 1,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          },
+          {
+            "failed": 0,
+            "passed": 0,
+            "result": "ok"
+          }
+        ],
+        "started_utc": "2026-10-18T14:42:58.882207Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "build",
+          "-p",
+          "admiralty-server",
+          "-p",
+          "admiralty-cli",
+          "--locked"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/a9ba930e6eb3b46b76797582427cce6bacefdaab",
+        "elapsed_s": 0.601,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T14:45:52.618567Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/a9ba930e6eb3b46b76797582427cce6bacefdaab/03ee94f304f14d86811a72343307692c-isolated-binary-build.log",
+        "log_sha256": "bcb74884a78099501f6bfc31de29d15aae4eb48dcd18d5c99bdde44d75b90089",
+        "name": "isolated-binary-build",
+        "output_tail": [
+          "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.39s"
+        ],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "started_utc": "2026-10-18T14:45:52.017216Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "python3",
+          "scripts/check/canary-smoke.py",
+          "--admiraltyd-binary",
+          "/home/ubuntu/admiralty-v2-build/targets/quality-review/debug/admiraltyd",
+          "--admiralty-binary",
+          "/home/ubuntu/admiralty-v2-build/targets/quality-review/debug/admiralty",
+          "--scratch-root",
+          "/home/ubuntu/admiralty-v2-build/quality-smoke/03ee94f304f14d86811a72343307692c"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/a9ba930e6eb3b46b76797582427cce6bacefdaab",
+        "elapsed_s": 1.402,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T14:45:54.021804Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/a9ba930e6eb3b46b76797582427cce6bacefdaab/03ee94f304f14d86811a72343307692c-actual-isolated-smoke.log",
+        "log_sha256": "90b770d3bd62a452a2f7f6c1c742f9f2a0839430a89549b0e9ad88c21901dd85",
+        "name": "actual-isolated-smoke",
+        "output_tail": [
+          "{\"acceptance\":false,\"binaries\":{\"admiralty_sha256\":\"sha256:5abd7607472595916d7da9c62a777a136c2be2d3dd1a13f53c164640ce2b47bc\",\"admiraltyd_sha256\":\"sha256:17d96881e3a98ada4cc9a3bf1da63e93f37e6c4f9a04e82edd056950adfa9bf3\"},\"checks\":[{\"duration_ms\":301,\"name\":\"real_server_startup\",\"state\":\"pass\"},{\"duration_ms\":3,\"name\":\"real_health_native_unqualified\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"unauthorized_real_fleet_rejected\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"unauthorized_real_models_rejected\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"model_auth_precedes_body_validation\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"authorized_real_fleet\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"authorized_models_policy\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"model_selection_proposal_only\",\"state\":\"pass\"},{\"duration_ms\":804,\"name\":\"demo_startup\",\"state\":\"pass\"},{\"duration_ms\":2,\"name\":\"demo_fleet_simulated\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"demo_no_models\",\"state\":\"pass\"},{\"duration_ms\":0,\"name\":\"demo_no_model_policy_write\",\"state\":\"pass\"},{\"duration_ms\":1,\"name\":\"demo_no_legacy_policy\",\"state\":\"pass\"},{\"name\":\"doctor_read_only_capability\",\"state\":\"pass\"},{\"name\":\"demo_cli_has_no_real_policy_flags\",\"state\":\"pass\"}],\"cleanup\":{\"admiraltyd\":\"terminated\",\"demo\":\"terminated\"},\"clock\":\"UTC start timestamp plus monotonic elapsed/deadline measurements\",\"duration_ms\":1160,\"fleet_rollout_closure\":false,\"randomness\":\"ephemeral token from OS CSPRNG; token value not recorded\",\"started_at_utc\":\"2026-10-18T14:45:52.692177+00:00\",\"status\":\"pass\",\"synthetic\":false}"
+        ],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "smoke_receipt": {
+          "acceptance": false,
+          "binaries": {
+            "admiralty_sha256": "sha256:5abd7607472595916d7da9c62a777a136c2be2d3dd1a13f53c164640ce2b47bc",
+            "admiraltyd_sha256": "sha256:17d96881e3a98ada4cc9a3bf1da63e93f37e6c4f9a04e82edd056950adfa9bf3"
+          },
+          "checks": [
+            {
+              "duration_ms": 301,
+              "name": "real_server_startup",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 3,
+              "name": "real_health_native_unqualified",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "unauthorized_real_fleet_rejected",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "unauthorized_real_models_rejected",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "model_auth_precedes_body_validation",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "authorized_real_fleet",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "authorized_models_policy",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "model_selection_proposal_only",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 804,
+              "name": "demo_startup",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 2,
+              "name": "demo_fleet_simulated",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "demo_no_models",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 0,
+              "name": "demo_no_model_policy_write",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "demo_no_legacy_policy",
+              "state": "pass"
+            },
+            {
+              "name": "doctor_read_only_capability",
+              "state": "pass"
+            },
+            {
+              "name": "demo_cli_has_no_real_policy_flags",
+              "state": "pass"
+            }
+          ],
+          "cleanup": {
+            "admiraltyd": "terminated",
+            "demo": "terminated"
+          },
+          "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+          "duration_ms": 1160,
+          "fleet_rollout_closure": false,
+          "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+          "started_at_utc": "2026-10-18T14:45:52.692177+00:00",
+          "status": "pass",
+          "synthetic": false
+        },
+        "started_utc": "2026-10-18T14:45:52.619831Z",
+        "timed_out": false
+      },
+      {
+        "argv": [
+          "taskset",
+          "-c",
+          "102,103",
+          "/home/ubuntu/.cargo/bin/cargo",
+          "run",
+          "-p",
+          "admiralty-cli",
+          "--locked",
+          "--",
+          "contracts",
+          "check"
+        ],
+        "cwd": "/home/ubuntu/admiralty-v2-build/quality-builds/a9ba930e6eb3b46b76797582427cce6bacefdaab",
+        "elapsed_s": 0.402,
+        "exit_code": 0,
+        "finished_utc": "2026-10-18T14:45:54.424389Z",
+        "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/a9ba930e6eb3b46b76797582427cce6bacefdaab/03ee94f304f14d86811a72343307692c-schemas-check.log",
+        "log_sha256": "ce8d93d6e154ba86166d598faac3899fb3743b145786498c291bd8454e44a56a",
+        "name": "schemas-check",
+        "output_tail": [
+          "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s",
+          "     Running `/home/ubuntu/admiralty-v2-build/targets/quality-review/debug/admiralty contracts check`",
+          "{",
+          "  \"checked\": [",
+          "    \"task-contract.schema.json\",",
+          "    \"coordination-message.schema.json\",",
+          "    \"domain-event.schema.json\"",
+          "  ],",
+          "  \"directory\": \"schemas\",",
+          "  \"drift\": false",
+          "}"
+        ],
+        "oversized_output": false,
+        "rust_test_results": [],
+        "started_utc": "2026-10-18T14:45:54.022703Z",
+        "timed_out": false
+      }
+    ]
+  },
+  "provider_targets": {
+    "claude": 22,
+    "matrix": 12,
+    "shared_decoder": 4,
+    "compiled": true,
+    "native_routing": false
+  },
+  "unchanged_source_reuse": [
+    {
+      "path": "apps/dashboard",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "3488f6bf7cd14f506bdc018657ad4908a3b672d5",
+      "current_object": "3488f6bf7cd14f506bdc018657ad4908a3b672d5",
+      "identical": true
+    },
+    {
+      "path": "packages/contracts",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "c1b85bc834151b86919bda4b5c0fcbc8d3a476a1",
+      "current_object": "c1b85bc834151b86919bda4b5c0fcbc8d3a476a1",
+      "identical": true
+    },
+    {
+      "path": "schemas",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "current_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "identical": true
+    },
+    {
+      "path": "package.json",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "11db476204136b8f180828c6ebc1a02878fb6b59",
+      "current_object": "11db476204136b8f180828c6ebc1a02878fb6b59",
+      "identical": true
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "7681223a6442bb9dd3ed8646f6fecdbbf8abc26f",
+      "current_object": "7681223a6442bb9dd3ed8646f6fecdbbf8abc26f",
+      "identical": true
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+      "current_object": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+      "identical": true
+    },
+    {
+      "path": "dashboard",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "ea3b037689095581c785531a76967799b3a345db",
+      "current_object": "ea3b037689095581c785531a76967799b3a345db",
+      "identical": true
+    },
+    {
+      "path": "tools",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "fd3e27bdaad73c8ab90c6366a0d24513029b6f1f",
+      "current_object": "fd3e27bdaad73c8ab90c6366a0d24513029b6f1f",
+      "identical": true
+    },
+    {
+      "path": "tests/legacy",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "1e8129387baaf7a43c44f5fa1be5ab461c47713d",
+      "current_object": "1e8129387baaf7a43c44f5fa1be5ab461c47713d",
+      "identical": true
+    },
+    {
+      "path": "tests/fixtures/legacy",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "9627e43e8d8cb129d4daf38c84fc5cce39e4226e",
+      "current_object": "9627e43e8d8cb129d4daf38c84fc5cce39e4226e",
+      "identical": true
+    },
+    {
+      "path": "tests/test_sc_audit_integrity.py",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "891e26490a36557700905e10f46a2a028efbe27b",
+      "current_object": "891e26490a36557700905e10f46a2a028efbe27b",
+      "identical": true
+    },
+    {
+      "path": "tests/test_sc_audit_dope.py",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "63f664d4a5112e7e685db50245a8958e67b798eb",
+      "current_object": "63f664d4a5112e7e685db50245a8958e67b798eb",
+      "identical": true
+    },
+    {
+      "path": "tests/test_sc_audit_ci_queue.py",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "60027b4bd5e565c648b7e1a54381693f49c9a255",
+      "current_object": "60027b4bd5e565c648b7e1a54381693f49c9a255",
+      "identical": true
+    },
+    {
+      "path": "tests/test_sc_audit_survey.py",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "6825113da45e3a90ee6d4c91262a65515d1e0c8c",
+      "current_object": "6825113da45e3a90ee6d4c91262a65515d1e0c8c",
+      "identical": true
+    },
+    {
+      "path": "scripts/release/package.py",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "current_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "identical": true
+    },
+    {
+      "path": "scripts/check/canary-smoke.py",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "current_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "identical": true
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "prior_source_sha": "3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d",
+      "prior_object": "3010e0a8d4ff76c213b890e7052fb4a8fc21f06d",
+      "current_object": "3010e0a8d4ff76c213b890e7052fb4a8fc21f06d",
+      "identical": true
+    }
+  ],
+  "reused_checks": {
+    "legacy_linux_tests": 88,
+    "audit_tests": 44,
+    "pinned_sources": 37,
+    "synthetic_cases": 11,
+    "reported_working_tree_drift_paths": 18,
+    "react_tests": 75,
+    "typecheck": "pass",
+    "react_build": "pass",
+    "contract_checks": 5,
+    "package_checks": 10,
+    "smoke_harness_checks": 18,
+    "reference_receipt": "receipts/integration/3312ba03b5ddaaed6818f68c5b0fe4febac3ac5d.json",
+    "reference_receipt_sha256": "9c486c37a240b8643c0429747caf64e78e80b831736e5ebc3d31584eb2fcf737",
+    "note": "Explicit object identity reuses unchanged suites; no new Node/legacy/package execution claimed."
+  },
+  "fleet_observation": {
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/fleet-observations/909b3942875c4a43a3271e2ac9a3497a/reconciliation-frozen.json",
+    "sha256": "509cf90a37a9a83214994a884833b29d6a44346f5d7c7eb3abba0eb4829b5a67",
+    "observed_utc": "2026-10-18T14:40:02.112996+00:00",
+    "owned_worker_count": 15,
+    "reported_open_turns": 15,
+    "productive_progress_not_inferred": true,
+    "candidate_receipts_advanced": false,
+    "declared_P21_P22_worktree_pointers": "stale mismatch; no dispatch or adoption",
+    "observed_manager": "2062267.agy_captain_admiralty",
+    "visible_model": "Gemini 4 Argon",
+    "native_execution_attestation": false
+  },
+  "acceptance_claim_review": {
+    "reported_integrated": [
+      "P00",
+      "P01",
+      "P02",
+      "P03",
+      "P06",
+      "P11"
+    ],
+    "P00": "Artifact criteria independently corroborated; authorized receipt closeout remains distinct.",
+    "other_five": "Genuine component logs; full packet features still missing. Dashboard projection quarantines the self-claims.",
+    "native_acceptance_issued": false
+  },
+  "limitations": [
+    "P21 immutable native launch admission remains deferred, despite offline R2\u2013R6 fixes.",
+    "P22 real protocols/CLI transport, continuity, identity and usage remain unqualified.",
+    "Hosted CI and exact-head configured reviewer remain separate pending gates.",
+    "No new legacy worker dispatch, production deployment, merge, cutover or model invocation."
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "findings": [
+    {
+      "finding": "Reused message ID or sequence returns Duplicate without comparing immutable content and sequence binding.",
+      "line": 44,
+      "path": "crates/admiralty-core/src/coordination/mailbox.rs",
+      "priority": "high",
+      "regressions": [
+        "same ID changed payload",
+        "same ID changed seq",
+        "same seq different ID",
+        "exact replay after ACK"
+      ],
+      "source_blob": "351ff4e1c4cac729ef755c95799935d37c5625c7"
+    },
+    {
+      "finding": "Only pending count is capped. ACKed entries, seen IDs and ACK set grow indefinitely even with capacity one.",
+      "line": 47,
+      "path": "crates/admiralty-core/src/coordination/mailbox.rs",
+      "priority": "high",
+      "regressions": [
+        "bounded retained state through long enqueue/ACK cycles",
+        "explicit resnapshot when retained collision evidence reaches cap"
+      ],
+      "source_blob": "351ff4e1c4cac729ef755c95799935d37c5625c7"
+    },
+    {
+      "finding": "Public watermark/capacity permit invariant mutation; unchecked increment can overflow, and sequence zero is accepted.",
+      "line": 57,
+      "path": "crates/admiralty-core/src/coordination/mailbox.rs",
+      "priority": "high",
+      "regressions": [
+        "zero seq rejected unchanged",
+        "MAX boundary uses checked arithmetic",
+        "private invariants"
+      ],
+      "source_blob": "351ff4e1c4cac729ef755c95799935d37c5625c7"
+    },
+    {
+      "finding": "Scoped helper omits CoordinationMessage::validate(); mailbox bypasses helper too. Version and payload limits can be bypassed.",
+      "line": 19,
+      "path": "crates/admiralty-core/src/coordination/message.rs",
+      "priority": "high",
+      "regressions": [
+        "unsupported schema",
+        "oversized envelope",
+        "invalid epoch/authority",
+        "no state mutation on invalid input"
+      ],
+      "source_blob": "c80f8a3dca85d3ad6d7c30b69be2ae8ceeae0c74"
+    },
+    {
+      "finding": "Project-label equality alone does not authorize subscriber/task membership; channel/subscription counts and resolved pages are unbounded.",
+      "line": 24,
+      "path": "crates/admiralty-core/src/coordination/topics.rs",
+      "priority": "high",
+      "regressions": [
+        "unauthorized subscriber/task",
+        "bounded channel bytes",
+        "bounded directory capacity",
+        "bounded cursor pages"
+      ],
+      "source_blob": "767d1e8259fc841a318d831c382a073eaa955a7d"
+    },
+    {
+      "finding": "Clones global snapshot then an unpaged project list; no durable subscription/replay/delivery loop or authenticated command activation is introduced.",
+      "line": 54,
+      "path": "crates/admiralty-server/src/services/coordination.rs",
+      "priority": "medium",
+      "regressions": [
+        "bounded authorized indexed read",
+        "durable recipient ACK/replay/expiry integration before activation"
+      ],
+      "source_blob": "17ef75d44232104eecd04f5932ce822ecd7d1e6a"
+    }
+  ],
+  "kind": "independent_static_source_review",
+  "limitations": [
+    "Existing Store append/reducer validation is retained; these findings do not allege that the durable Store path lost its checks.",
+    "Convenience wrappers and in-memory topics/mailboxes do not complete P05 acceptance."
+  ],
+  "native_execution_qualified": false,
+  "next_action": "Assign disjoint bounded mailbox/envelope repair first; pin topic authority/persistence interface before separate implementation. Keep P05 partial and preserve current production.",
+  "observed_utc": "2026-10-18T15:16:22.310717+00:00",
+  "packet": "P05",
+  "parent_accepted": false,
+  "result": "requires_changes",
+  "source_in_frozen_checkpoint": false,
+  "source_sha": "429595d196fcb6b730d5683e04d479faa1ec968c",
+  "validation": "Root inspected exact Git objects independently after subagent review; no tests on this later source claimed."
+}

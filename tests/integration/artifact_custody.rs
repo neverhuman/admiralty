@@ -9,13 +9,23 @@ use admiralty_store::{
 use rusqlite::Connection;
 use std::{
     fs,
-    os::unix::fs::PermissionsExt,
+    os::unix::fs::{DirBuilderExt, PermissionsExt},
     path::Path,
     sync::{Arc, Barrier},
     thread,
     time::Duration,
 };
 use tempfile::TempDir;
+
+fn private_fixture() -> TempDir {
+    // Resolve aliases such as macOS /var before exercising strict custody paths.
+    let base = fs::canonicalize(std::env::temp_dir()).expect("canonical temporary base");
+    tempfile::Builder::new()
+        .prefix("admiralty-artifact-")
+        .permissions(fs::Permissions::from_mode(0o700))
+        .tempdir_in(base)
+        .expect("create owner-only disposable fixture")
+}
 
 fn binding(reference_sha256: &str) -> AssetBinding {
     AssetBinding {
@@ -60,11 +70,12 @@ fn connection(path: &Path) -> Connection {
 
 #[test]
 fn publication_replay_and_pin_retirement_race_preserve_artifact_bytes() {
-    let fixture = TempDir::new().expect("create disposable fixture root");
+    let fixture = private_fixture();
     let artifact_root = fixture.path().join("objects");
-    fs::create_dir(&artifact_root).expect("create artifact root");
-    fs::set_permissions(&artifact_root, fs::Permissions::from_mode(0o700))
-        .expect("make artifact root owner-only");
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&artifact_root)
+        .expect("create owner-only artifact root");
 
     let bytes = b"immutable candidate evidence";
     let artifacts = ArtifactStore::open(&artifact_root, 1024).expect("open artifact store");
