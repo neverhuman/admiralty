@@ -200,50 +200,59 @@ export function createLegacyFixture(projectCount = 4): Record<string, unknown> {
     const inProgress = (i % 4) + 1;
     const blocked = i % 2;
     const total = done + inPr + inProgress + blocked;
-    projects[id] = {
-      name,
-      total,
-      ledger_source: 'producer ledger',
-      stages: { done, in_pr: inPr, in_progress: inProgress, blocked },
-      stage_labels: { done: 'accepted on main' },
-      flags: i === 0 ? ['Independent audit required'] : [],
-      recent: [
-        {
-          task: `P${String(i + 1).padStart(2, '0')}`,
-          old: 'in_progress',
-          new: 'in_pr',
-          at: '2026-10-18T20:00:00Z',
-          source: 'ledger commit',
-        },
-      ],
-      captain: {
-        name: `captain_${id}`,
-        model: 'Gemini 4 Argon',
-        agent_running: true,
-        tail: [`Commodore ${id} observing worker progress`],
-      },
-      workers: [
-        {
-          name: `worker_${id}_1`,
-          model: 'gpt-6-luna',
-          effort: 'high',
-          tier: 'T0',
-          host: 'xbabe2',
-          task: `P${String(i + 1).padStart(2, '0')}`,
+    if (i < 4) {
+      projects[id] = {
+        name,
+        total,
+        ledger_source: 'producer ledger',
+        stages: { done, in_pr: inPr, in_progress: inProgress, blocked },
+        stage_labels: { done: 'accepted on main' },
+        flags: i === 0 ? ['Independent audit required'] : [],
+        recent: [
+          {
+            task: `P${String(i + 1).padStart(2, '0')}`,
+            old: 'in_progress',
+            new: 'in_pr',
+            at: '2026-10-18T20:00:00Z',
+            source: 'ledger commit',
+          },
+        ],
+        captain: {
+          name: `captain_${id}`,
+          model: 'Gemini 4 Argon',
           agent_running: true,
-          tail: ['Running qualification checks'],
+          tail: [`Commodore ${id} observing worker progress`],
         },
-      ],
-      pr: {
-        number: 100 + i,
-        url: `https://example.com/admiralty/pull/${100 + i}`,
-        state: 'OPEN',
-        head: `sha-${i + 1}`,
-        branch: `feat/${id}`,
-        ci: { state: i % 2 === 0 ? 'success' : 'pending' },
-        exact_head_approved: i % 2 === 0,
-      },
-    };
+        workers: [
+          {
+            name: `worker_${id}_1`,
+            model: 'gpt-6-luna',
+            effort: 'high',
+            tier: 'T0',
+            host: 'xbabe2',
+            task: `P${String(i + 1).padStart(2, '0')}`,
+            agent_running: true,
+            tail: ['Running qualification checks'],
+          },
+        ],
+        pr: {
+          number: 100 + i,
+          url: `https://example.com/admiralty/pull/${100 + i}`,
+          state: 'OPEN',
+          head: `sha-${i + 1}`,
+          branch: `feat/${id}`,
+          ci: { state: i % 2 === 0 ? 'success' : 'pending' },
+          exact_head_approved: i % 2 === 0,
+        },
+      };
+    } else {
+      projects[id] = {
+        name,
+        total,
+        ledger_source: 'producer ledger',
+        stages: { done, in_pr: inPr, in_progress: inProgress, blocked },
+      };
+    }
     projHistory[id] = { done, total, ip: inProgress, ci: i % 2 === 0 ? 'success' : 'pending' };
     hygieneHistory[id] = 92 - (i % 10);
   }
