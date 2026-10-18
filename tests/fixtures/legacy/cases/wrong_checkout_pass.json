@@ -1,0 +1,30 @@
+{
+  "expected": {
+    "accepted": false,
+    "matching_accepted": true,
+    "reason_code": "checkout_sha_mismatch"
+  },
+  "id": "wrong_checkout_pass",
+  "input": {
+    "matching_receipt": {
+      "checkout_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "command_exit": 0,
+      "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "status": "PASS"
+    },
+    "receipt": {
+      "checkout_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "command_exit": 0,
+      "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "status": "PASS"
+    }
+  },
+  "provenance": {
+    "historical_exact_acceptances": null,
+    "historical_exact_attempts": null,
+    "kind": "synthetic_reconstruction",
+    "source_reference": "tools/sc_audit.py:audit_jopedime; baseline commit regression"
+  },
+  "risk": "PASS naming one commit but executed on another commit must remain unaccepted.",
+  "schema_version": 1
+}

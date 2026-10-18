@@ -1,0 +1,28 @@
+{
+  "expected": {
+    "admission": "reject",
+    "reason_code": "missing_write_scope"
+  },
+  "id": "missing_scope",
+  "input": {
+    "task": {
+      "acceptance": [
+        "Parser handles empty input"
+      ],
+      "forbidden_paths": [
+        "private/"
+      ],
+      "id": "SYNTHETIC-SCOPE",
+      "objective": "Add deterministic parser behavior",
+      "write_scope": null
+    }
+  },
+  "provenance": {
+    "historical_exact_acceptances": null,
+    "historical_exact_attempts": null,
+    "kind": "synthetic_reconstruction",
+    "source_reference": "captains/MODEL_ROUTING_PLAYBOOK.md:packet requirements; MASTER_PLAN:8.1"
+  },
+  "risk": "A task without explicit write scope cannot safely be dispatched.",
+  "schema_version": 1
+}

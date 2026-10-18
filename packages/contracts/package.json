@@ -1,0 +1,21 @@
+{
+  "name": "@admiralty/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts"
+    },
+    "./task-contract": {
+      "types": "./generated/task-contract.ts"
+    },
+    "./coordination-message": {
+      "types": "./generated/coordination-message.ts"
+    },
+    "./domain-event": {
+      "types": "./generated/domain-event.ts"
+    }
+  }
+}

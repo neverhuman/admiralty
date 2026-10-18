@@ -1,0 +1,31 @@
+{
+  "expected": {
+    "accepted": false,
+    "reason_code": "implementation_evidence_missing"
+  },
+  "id": "docs_only_implementation",
+  "input": {
+    "changed_paths": [
+      "docs/parser.md"
+    ],
+    "contract": {
+      "required_behavior_test": "parser_empty_input",
+      "required_change_kind": "runtime_behavior"
+    },
+    "verification": {
+      "claims": [
+        "Implemented parser fix"
+      ],
+      "commands": [],
+      "receipt_kind": "self_report"
+    }
+  },
+  "provenance": {
+    "historical_exact_acceptances": null,
+    "historical_exact_attempts": null,
+    "kind": "synthetic_reconstruction",
+    "source_reference": "tools/sc_audit.py:EXEC,MEASURE,EXEC_CRIT; MASTER_PLAN:8"
+  },
+  "risk": "Documentation claims cannot satisfy a behavior-changing implementation contract.",
+  "schema_version": 1
+}

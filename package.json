@@ -1,0 +1,13 @@
+{
+  "name": "admiralty-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.15.1",
+  "scripts": {
+    "contracts:generate": "node scripts/contracts/generate.mjs",
+    "contracts:check": "node scripts/contracts/generate.mjs --check"
+  },
+  "devDependencies": {
+    "json-schema-to-typescript": "16.0.0"
+  }
+}

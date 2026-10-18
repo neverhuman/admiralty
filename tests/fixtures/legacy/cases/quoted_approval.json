@@ -1,0 +1,25 @@
+{
+  "expected": {
+    "approval_required": false,
+    "input_allowed": false,
+    "state": "tool_running"
+  },
+  "id": "quoted_approval",
+  "input": {
+    "output_lines": [
+      "Synthetic compiler log:",
+      "Example from documentation: \"Do you want to proceed? (y/n)\"",
+      "Compiling synthetic-crate..."
+    ],
+    "structured_permission_request": null,
+    "turn_state": "tool_running"
+  },
+  "provenance": {
+    "historical_exact_acceptances": null,
+    "historical_exact_attempts": null,
+    "kind": "synthetic_reconstruction",
+    "source_reference": "tools/bin/classify_screen.py:classify_state; tools/bin/kick:needs_approval"
+  },
+  "risk": "Quoted terminal text can contain permission keywords without a current permission UI.",
+  "schema_version": 1
+}

@@ -17,6 +17,11 @@ global_resources.json
 token_yield.json
 token_yield.err
 __pycache__/
+target/
+node_modules/
+apps/dashboard/dist/
+.admiralty-state/
+.rollout/
 *_LOG.md
 *_DECISIONS.md
 *_INBOX.md

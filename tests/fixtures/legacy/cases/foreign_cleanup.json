@@ -1,0 +1,26 @@
+{
+  "expected": {
+    "action": "inventory_only",
+    "cleanup_allowed": false,
+    "reason_code": "custody_unknown"
+  },
+  "id": "foreign_cleanup",
+  "input": {
+    "asset": {
+      "active_processes": [],
+      "dirty": false,
+      "path": "scratch/foreign-example",
+      "registered_owner": null,
+      "symlink": false
+    },
+    "requesting_owner": "sample-project"
+  },
+  "provenance": {
+    "historical_exact_acceptances": null,
+    "historical_exact_attempts": null,
+    "kind": "synthetic_reconstruction",
+    "source_reference": "captains/COMMON.md:hygiene and custody; MASTER_PLAN:9.2"
+  },
+  "risk": "Discovered folders do not establish exclusive ownership or deletion authority.",
+  "schema_version": 1
+}

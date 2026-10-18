@@ -1,0 +1,34 @@
+{
+  "expected": {
+    "baseline_status": "exact",
+    "legacy_lifetime_tokens": 1100,
+    "window_input": 100,
+    "window_output": 10,
+    "window_tokens": 110
+  },
+  "id": "lifetime_window_leakage",
+  "input": {
+    "samples": [
+      {
+        "epoch": 1999,
+        "input": 900,
+        "output": 90
+      },
+      {
+        "epoch": 2500,
+        "input": 1000,
+        "output": 100
+      }
+    ],
+    "window_end_epoch": 3000,
+    "window_start_epoch": 2000
+  },
+  "provenance": {
+    "historical_exact_acceptances": null,
+    "historical_exact_attempts": null,
+    "kind": "synthetic_reconstruction",
+    "source_reference": "dashboard/token_yield.py:144-150"
+  },
+  "risk": "A session active within a window contributes its whole lifetime counters.",
+  "schema_version": 1
+}
