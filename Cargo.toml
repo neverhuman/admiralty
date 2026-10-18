@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 publish = false
 autolib = false
+autotests = false
 
 [dependencies]
 admiralty-core.workspace = true
