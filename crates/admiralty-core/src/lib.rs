@@ -29,6 +29,9 @@ pub fn content_digest<T: serde::Serialize>(value: &T) -> Result<String, serde_js
     serde_json::to_writer(&mut writer, value)?;
     Ok(format!("sha256:{:x}", writer.0.finalize()))
 }
+pub mod config;
 pub mod coordination;
 pub mod governor;
+pub mod scheduler;
+pub mod verification;
 pub mod workplans;
