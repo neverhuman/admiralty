@@ -686,10 +686,14 @@ pub async fn serve_with_native_routes(
     let native_commands = native_routes.is_some();
     let app = app_with_native_routes(store, config, native_routes)?;
     let listener = tokio::net::TcpListener::bind(listen).await?;
+    let mode = if native_commands {
+        "native commands enabled; execution requires admitted controller"
+    } else {
+        "read-only; native execution disabled"
+    };
     eprintln!(
-        "Admiralty listening on http://{} (native commands: {}; execution requires admitted controller)",
-        listener.local_addr()?,
-        native_commands
+        "Admiralty listening on http://{} ({mode})",
+        listener.local_addr()?
     );
     axum::serve(listener, app)
         .with_graceful_shutdown(async {
