@@ -1,7 +1,7 @@
 //! Round 11 P06/P13/P14 end-to-end final validation gate.
 
 use admiralty_core::{
-    ProjectId, TaskId, content_digest,
+    content_digest,
     context::compile_task_capsule,
     scheduler::{
         Knowledge, LeaseObservation, ScheduledTask, SchedulerSnapshot, SchedulingScope,
