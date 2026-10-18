@@ -169,6 +169,10 @@ name = "codex_round16_p11_p12_p18"
 path = "../../tests/integration/codex_round16_p11_p12_p18.rs"
 
 [[test]]
+name = "codex_round17_p11_p12_p18"
+path = "../../tests/integration/codex_round17_p11_p12_p18.rs"
+
+[[test]]
 name = "jankurai_staged"
 path = "../../tests/integration/jankurai_staged.rs"
 
