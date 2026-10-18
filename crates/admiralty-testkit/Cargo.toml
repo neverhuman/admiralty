@@ -218,3 +218,7 @@ path = "../../tests/integration/codex_round13.rs"
 [[test]]
 name = "integration"
 path = "tests/integration.rs"
+
+[[test]]
+name = "codex_round16_p26_p31"
+path = "../../tests/integration/codex_round16_p26_p31.rs"
