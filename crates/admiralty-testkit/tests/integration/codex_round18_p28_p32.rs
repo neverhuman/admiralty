@@ -2,7 +2,7 @@ use admiralty_core::conflicts::{CandidateChange, ConflictError, FileChange, anal
 use admiralty_core::trials::{
     AnalysisReceipt, AnalysisRecommendation, ClusterAssignment, ClusterId, ClusterMember,
     DecimalU64, DecisionPhase, FeatureId, FeatureManifest, Missingness, Outcome, OutcomeLabel,
-    TrialDecision, TrialEvidence, TrialId, TrialSpec, VariantId, assign_trial,
+    TrialDecision, TrialError, TrialEvidence, TrialId, TrialSpec, VariantId, assign_trial,
     propose_trial_decision, trial_evidence_digest, validate_trial,
 };
 use admiralty_core::{PrincipalId, ProjectId, RootId, TaskId};
@@ -153,6 +153,7 @@ fn codex_round18_p28_p32() -> Result<(), Box<dyn Error>> {
                 rollback,
                 ..
             } if rollback.applies_to_new_work_only
+                && rollback.champion_bundle_digests == vec![digest('b')]
         ));
         let decision_schema = serde_json::to_value(&decision)?;
         assert_eq!(decision_schema["decision"], "promotable_proposal");
@@ -204,6 +205,11 @@ fn codex_round18_p28_p32() -> Result<(), Box<dyn Error>> {
             expected_conflicts = Some(generation);
         }
     }
+
+    assert!(matches!(
+        propose_trial_decision(&evidence, vec![digest('z')]),
+        Err(TrialError::Invalid(_))
+    ));
 
     // A stale analysis receipt and incomplete canary evidence remain
     // fail-closed even after all replay steps have completed.
