@@ -10,6 +10,7 @@ use admiralty_runtime::{
         validate_launch_envelope,
     },
 };
+use admiralty_testkit::faults::{FaultEffect, FaultPlan, FaultRule};
 use std::{fs, path::PathBuf};
 
 fn fixture(path: &str) -> String {
@@ -521,4 +522,25 @@ fn grok_rejects_invalid_utf8_split_across_stream_chunks() {
     assert!(decoder.push(&corrupted[..split + 1]).is_ok());
     assert!(decoder.push(&corrupted[split + 1..]).is_err());
     assert!(decoder.finish().is_err());
+}
+
+#[test]
+fn injected_loss_of_grok_final_lf_is_reported_as_incomplete_framing() {
+    let stream = fixture("fixtures/providers/grok/1.0.62/stream.jsonl");
+    let bytes = stream.as_bytes();
+    assert!(bytes.ends_with(b"\n"));
+    let mut faults = FaultPlan::new(vec![FaultRule {
+        point: "grok-read".into(),
+        occurrence: 2,
+        effect: FaultEffect::Drop,
+    }])
+    .expect("bounded deterministic fault schedule");
+    let mut decoder = grok::StreamDecoder::new();
+    assert_eq!(faults.hit("grok-read"), Ok(None));
+    assert!(decoder.push(&bytes[..bytes.len() - 1]).is_ok());
+    assert_eq!(faults.hit("grok-read"), Ok(Some(FaultEffect::Drop)));
+    assert!(matches!(
+        decoder.finish(),
+        Err(grok::GrokError::Stream(ObservationError::Framing))
+    ));
 }
