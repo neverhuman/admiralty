@@ -1,0 +1,9 @@
+# Durable task lifecycle test slice
+
+This integration test drives the existing public `admiralty_store::Store` API against owned temporary SQLite databases with explicit source identities and observation timestamps. It covers task submission, claim, start, candidate submission, close/reopen, snapshot and event-cursor reads, event replay, projection rebuild, source-sequence gaps, collision recording, rejected transitions, and serialized competing claims.
+
+The current reducer projects a submitted task as `Ready`, a successful claim as `Claimed`, start as `Running`, and candidate submission as `AwaitingVerification`. The test verifies that this projection and event cursor survive closing and reopening. A rebuild recreates the same semantic projection without executing effects and changes the recovery generation, so cursors from the prior generation are rejected.
+
+Identical producer/incarnation/sequence plus identical event bytes returns a duplicate receipt. Reusing that source identity with different event bytes records an integrity incident and returns `SourceCollision`; it does not advance the event sequence or change the projection. Invalid stale-revision, foreign-task, and candidate-before-start events return transition errors without partial domain-event state. A missing source sequence keeps the contiguous watermark behind until the gap is filled. Competing claims through the serialized writer produce one claim transition and one rejected transition.
+
+The store currently has no activation, verification, delivery, acceptance, or live process-launch transition in this API. `AwaitingVerification` is not acceptance. This slice does not qualify crash points, provider activation, external effects, linked SQLite WAL behavior, or fleet operation, and it grants no acceptance or merge authority.
