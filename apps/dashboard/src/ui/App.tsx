@@ -1,0 +1,127 @@
+import { useEffect, useMemo, useState } from 'react';
+import { fleetTotals, formatUnknown, getFleet, taskStateLabel, type Fleet } from '../api';
+
+type View = 'Overview' | 'Workplans' | 'Coordination';
+
+function App() {
+  const [view, setView] = useState<View>('Overview');
+  const [fleet, setFleet] = useState<Fleet | null>(null);
+  const [error, setError] = useState('');
+  const [updated, setUpdated] = useState<Date | null>(null);
+  const [token, setToken] = useState('');
+  const [tokenDraft, setTokenDraft] = useState('');
+  const [showAccess, setShowAccess] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [filter, setFilter] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const refresh = async () => {
+      try {
+        const result = await getFleet(token || undefined, controller.signal);
+        setFleet(result);
+        setError('');
+        setUpdated(new Date());
+      } catch (reason) {
+        if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Fleet unavailable');
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 15000);
+    return () => { controller.abort(); window.clearInterval(timer); };
+  }, [token]);
+
+  const totals = useMemo(() => fleet ? fleetTotals(fleet) : null, [fleet]);
+  const visibleTasks = fleet?.tasks.filter(({ contract }) => `${contract.title} ${contract.objective} ${contract.project_id}`.toLowerCase().includes(filter.toLowerCase())) ?? [];
+
+  return <div className={`app theme-${theme}`}>
+    <aside className="sidebar">
+      <a className="brand" href="#overview" aria-label="Admiralty home" onClick={() => setView('Overview')}>
+        <span className="brand-mark" aria-hidden="true" /><span><strong>ADMIRALTY</strong><small>FLEET CONTROL</small></span>
+      </a>
+      <div className="workspace-label">WORKSPACE</div>
+      <div className="workspace"><span className="workspace-dot" /> Fleet overview <span className="chevron">⌄</span></div>
+      <nav aria-label="Main navigation">
+        <div className="nav-label">MONITOR</div>
+        {(['Overview', 'Workplans', 'Coordination'] as View[]).map((item, index) => <button key={item} className={`nav-item ${view === item ? 'active' : ''}`} onClick={() => setView(item)}>
+          <span className="nav-icon" aria-hidden="true">{['◫', '≡', '◉'][index]}</span>{item}
+          {item === 'Coordination' && fleet && <span className="nav-count">{fleet.coordination.queued_messages}</span>}
+        </button>)}
+      </nav>
+      <div className="sidebar-spacer" />
+      <div className="brand-slot"><span className="brand-slot-mark" aria-hidden="true" /><span>Brand mark<br /><small>source asset pending</small></span></div>
+      <div className="sidebar-footer"><span className="avatar">A</span><span><b>Local operator</b><small>Read only access</small></span><button aria-label="Access settings" onClick={() => setShowAccess(true)}>···</button></div>
+    </aside>
+
+    <main className="main-area">
+      <header className="topbar">
+        <div className="breadcrumbs">Fleet <span>/</span> <strong>{view}</strong></div>
+        <div className="top-actions"><span className={`connection ${error ? 'offline' : fleet ? 'online' : ''}`}><i />{error ? 'Disconnected' : fleet ? 'Connected' : 'Connecting'}</span>
+          <button className="icon-button" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? '☼' : '◐'}</button>
+          <button className="operator-button" onClick={() => setShowAccess(true)}><span className="avatar small">A</span><span>Operator</span><span>⌄</span></button>
+        </div>
+      </header>
+
+      <div className="content">
+        <section className="page-heading"><div><div className="eyebrow">ADMIRALTY / LOCAL FLEET</div><h1>{view}</h1><p>{view === 'Overview' ? 'A clear picture of delivery, blockers and fleet activity.' : view === 'Workplans' ? 'Task stages and current ownership across the fleet.' : 'Compact coordination activity and message acknowledgements.'}</p></div>
+          <div className="heading-meta"><span className={`mode-pill ${fleet?.simulated ? 'simulation' : ''}`}>{fleet?.simulated ? 'SIMULATION' : fleet ? 'LIVE SNAPSHOT' : 'AWAITING DATA'}</span><span className="freshness"><i />{updated ? `Updated ${updated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No snapshot yet'}</span></div>
+        </section>
+        {error && <div className="error-banner" role="status"><span>Connection issue</span><span>{error}. Retrying automatically.</span></div>}
+        {!fleet && !error && <div className="loading-card">Connecting to the local fleet service…</div>}
+        {fleet && view === 'Overview' && <Overview fleet={fleet} totals={totals!} onWorkplans={() => setView('Workplans')} />}
+        {fleet && view === 'Workplans' && <Workplans fleet={fleet} tasks={visibleTasks} filter={filter} setFilter={setFilter} />}
+        {fleet && view === 'Coordination' && <Coordination fleet={fleet} />}
+        <footer className="page-footer"><span>READ ONLY · SOURCE: LOCAL FLEET API</span><span>Native execution {fleet?.native_execution_qualified ? 'qualified' : 'not qualified'} <b>·</b> Usage {formatUnknown(fleet?.coordination.measured_tokens)}</span></footer>
+      </div>
+    </main>
+    {showAccess && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAccess(false); }}>
+      <section className="access-modal" role="dialog" aria-modal="true" aria-labelledby="access-title"><button className="modal-close" onClick={() => setShowAccess(false)} aria-label="Close access settings">×</button><div className="eyebrow">PRIVATE MODE</div><h2 id="access-title">Session access</h2><p>Bearer token stays in this page's memory and is sent only as an authorization header. It is never stored in the URL.</p><label htmlFor="bearer-token">Bearer token</label><input id="bearer-token" type="password" autoComplete="off" value={tokenDraft} onChange={(event) => setTokenDraft(event.target.value)} placeholder="Paste token" onKeyDown={(event) => { if (event.key === 'Enter') { setToken(tokenDraft.trim()); setShowAccess(false); } }} /><div className="modal-actions"><button className="secondary-button" onClick={() => { setToken(''); setTokenDraft(''); setShowAccess(false); }}>Clear session</button><button className="primary-button" onClick={() => { setToken(tokenDraft.trim()); setShowAccess(false); }}>Apply token</button></div></section>
+    </div>}
+  </div>;
+}
+
+function Overview({ fleet, totals, onWorkplans }: { fleet: Fleet; totals: ReturnType<typeof fleetTotals>; onWorkplans: () => void }) {
+  const stageItems = [
+    ['Accepted', totals.accepted, 'accepted'], ['In progress', totals.running, 'running'], ['Awaiting verification', totals.verifying, 'verifying'], ['Blocked', totals.blocked, 'blocked'],
+  ] as const;
+  return <>
+    <section className="metric-grid" aria-label="Fleet summary">
+      <Metric label="Active projects" value={totals.projects} detail="Across current fleet" icon="⌘" />
+      <Metric label="Tasks in scope" value={totals.tasks} detail="Tracked work items" icon="▤" />
+      <Metric label="Running" value={totals.running} detail="Execution observed" icon="◷" tone="blue" />
+      <Metric label="Blocked" value={totals.blocked} detail="Needs attention" icon="⏸" tone="gold" />
+    </section>
+    <section className="overview-grid">
+      <div className="panel project-panel"><div className="panel-head"><div><div className="eyebrow">PROJECTS</div><h2>Fleet at a glance</h2></div><button className="text-button" onClick={onWorkplans}>View workplans <span>→</span></button></div>
+        <div className="project-list">{fleet.projects.length ? fleet.projects.map((project) => {
+          const progress = project.total ? Math.min(100, Math.round((project.accepted / project.total) * 100)) : 0;
+          return <article className="project-card" key={project.id}><div className="project-card-top"><span className="project-avatar">{project.name.slice(0, 1).toUpperCase()}</span><div className="project-name"><h3>{project.name}</h3><small>{project.id}</small></div><span className="project-total">{project.total} <small>tasks</small></span></div><div className="progress-track" role="progressbar" aria-label={`${project.name} accepted tasks`} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${progress}%` }} /></div><div className="project-stages"><span><i className="dot accepted" />{project.accepted} accepted</span><span><i className="dot running" />{project.running} running</span><span><i className="dot blocked" />{project.blocked} blocked</span><span><i className="dot verifying" />{project.awaiting_verification} verifying</span></div></article>;
+        }) : <Empty message="No projects in the current snapshot." />}</div>
+      </div>
+      <div className="panel delivery-panel"><div className="panel-head"><div><div className="eyebrow">DELIVERY</div><h2>Task stages</h2></div><span className="tiny-badge">{totals.tasks} TOTAL</span></div><div className="stage-list">{stageItems.map(([label, count, kind]) => <div className="stage-row" key={label}><span className={`stage-icon ${kind}`}>{kind === 'accepted' ? '✓' : kind === 'running' ? '↗' : kind === 'blocked' ? '!' : '◷'}</span><span className="stage-label">{label}</span><strong>{count}</strong><span className="stage-track"><i className={kind} style={{ width: `${totals.tasks ? Math.max(count ? 3 : 0, count / totals.tasks * 100) : 0}%` }} /></span></div>)}</div><div className="delivery-note"><span>Quality gate</span><b>Managed verification</b><small>Accepted counts come from the fleet snapshot.</small></div></div>
+    </section>
+    <section className="panel activity-panel"><div className="panel-head"><div><div className="eyebrow">COORDINATION</div><h2>Message pulse</h2></div><span className="panel-caption">No routine model turns</span></div><div className="coord-stats"><div><span className="stat-label">Queued messages</span><strong>{fleet.coordination.queued_messages}</strong><small>Awaiting acknowledgement</small></div><div><span className="stat-label">Acknowledged</span><strong>{fleet.coordination.acknowledged_messages}</strong><small>Recorded in snapshot</small></div><div><span className="stat-label">Routine turns</span><strong>{fleet.coordination.routine_model_turns}</strong><small>Current API contract</small></div><div><span className="stat-label">Measured tokens</span><strong>{formatUnknown(fleet.coordination.measured_tokens)}</strong><small>Unknown is distinct from zero</small></div></div></section>
+  </>;
+}
+
+function Metric({ label, value, detail, icon, tone = '' }: { label: string; value: number; detail: string; icon: string; tone?: string }) {
+  return <article className="metric-card"><div className="metric-top"><span>{label}</span><span className={`metric-icon ${tone}`}>{icon}</span></div><strong>{value}</strong><small>{detail}</small><div className={`metric-baseline ${tone}`} /></article>;
+}
+
+function Workplans({ fleet, tasks, filter, setFilter }: { fleet: Fleet; tasks: Fleet['tasks']; filter: string; setFilter: (value: string) => void }) {
+  const projects = new Map(fleet.projects.map((project) => [project.id, project.name]));
+  return <section className="panel workplans-panel"><div className="panel-head"><div><div className="eyebrow">WORKPLANS / ALL PROJECTS</div><h2>Task stage table</h2></div><span className="tiny-badge">{tasks.length} TASKS</span></div><div className="table-toolbar"><label className="search"><span aria-hidden="true">⌕</span><input aria-label="Filter tasks" placeholder="Filter tasks or projects" value={filter} onChange={(event) => setFilter(event.target.value)} /></label><span>Read-only view</span></div><div className="table-scroll"><table><thead><tr><th>Task</th><th>Project</th><th>Stage</th><th>Owner</th><th>Attempt</th><th>Candidate</th></tr></thead><tbody>{tasks.map((task) => <tr key={`${task.contract.task_id}:${task.contract.revision}`}><td><strong>{task.contract.title}</strong><small>{task.contract.task_id} · rev {task.contract.revision}</small></td><td>{projects.get(task.contract.project_id) ?? task.contract.project_id}</td><td><span className={`state-pill ${task.state}`}>{taskStateLabel(task.state)}</span></td><td>{task.owner ?? <span className="muted">Unassigned</span>}</td><td>{task.attempt_id ?? <span className="muted">—</span>}</td><td>{task.candidate_ref ?? <span className="muted">—</span>}</td></tr>)}</tbody></table></div>{!tasks.length && <Empty message={filter ? 'No tasks match this filter.' : 'No task rows in the current snapshot.'} />}</section>;
+}
+
+function Coordination({ fleet }: { fleet: Fleet }) {
+  const items = [
+    { label: 'Queued messages', value: fleet.coordination.queued_messages, detail: 'Waiting for a response', color: 'gold' },
+    { label: 'Acknowledged messages', value: fleet.coordination.acknowledged_messages, detail: 'Acknowledgements recorded', color: 'blue' },
+    { label: 'Routine model turns', value: fleet.coordination.routine_model_turns, detail: 'No routine turns observed', color: 'green' },
+  ];
+  return <div className="coordination-layout"><section className="panel coordination-summary"><div className="panel-head"><div><div className="eyebrow">COORDINATION / SNAPSHOT</div><h2>Message statistics</h2></div><span className="tiny-badge">CURRENT</span></div><div className="coordination-cards">{items.map((item) => <article className="coordination-card" key={item.label}><span className={`coordination-icon ${item.color}`}>{item.color === 'gold' ? '◌' : item.color === 'blue' ? '✓' : '↔'}</span><div><span>{item.label}</span><strong>{item.value}</strong><small>{item.detail}</small></div></article>)}</div></section><section className="panel accounting-panel"><div className="eyebrow">USAGE ACCOUNTING</div><h2>Measured usage</h2><div className="accounting-value">{formatUnknown(fleet.coordination.measured_tokens)} <span>tokens</span></div><p>The API reports measured token usage when available. Missing usage remains unknown; it is not treated as zero.</p></section><div className="read-only-note"><span className="lock-icon">⌑</span><div><b>Coordination is read only</b><span>This dashboard displays observed message counts. Sending, replying and changing task state are not available here.</span></div></div></div>;
+}
+
+function Empty({ message }: { message: string }) { return <div className="empty-state"><span>⌁</span>{message}</div>; }
+
+export default App;
