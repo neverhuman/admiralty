@@ -1,7 +1,8 @@
-import { validateDomainEvent, validateTaskContract, type DomainEvent } from '../../../packages/contracts/index';
-import type { Cursor, Fleet, NativeFleet } from './api';
+import { validateDomainEvent, validateDomainEventV2, validateTaskContract, type DomainEvent, type DomainEventV2 } from '../../../packages/contracts/index';
+import type { Cursor, Fleet, NativeFleet, NativeTaskLifecycle } from './api';
 
 export type DomainRecord = { seq: string; observed_utc: string; event: DomainEvent };
+export type DomainRecordV2 = { seq: string; observed_utc: string; event: DomainEventV2 };
 function object(value: unknown): Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('Unsupported API response: expected object');
   return value as Record<string, unknown>;
@@ -72,7 +73,7 @@ function parseFleetEnvelope(value: unknown, version: 1 | 2): Record<string, unkn
     assert(states.includes(String(task.state))
       && nullableText(task.attempt_id) && nullableText(task.owner) && nullableText(task.candidate_ref), 'invalid task projection');
     if (version === 1) assert(!Object.hasOwn(task, 'lifecycle'), 'v1 task projection cannot contain lifecycle metadata');
-    if (version === 2 && Object.hasOwn(task, 'lifecycle')) object(task.lifecycle);
+    if (version === 2 && Object.hasOwn(task, 'lifecycle')) parseLifecycle(task.lifecycle);
   }
   const coordination = object(fleet.coordination);
   assert(count(coordination.queued_messages) && count(coordination.acknowledged_messages) && coordination.routine_model_turns === 0
@@ -86,10 +87,31 @@ export function parseFleet(value: unknown): Fleet {
 export function parseNativeFleet(value: unknown): NativeFleet {
   return parseFleetEnvelope(value, 2) as unknown as NativeFleet;
 }
+function parseLifecycle(value: unknown): NativeTaskLifecycle {
+  const lifecycle = object(value);
+  const lifecycleKeys = ['revision', 'attempts', 'closure_digest', 'decision', 'reason'];
+  assert(Object.keys(lifecycle).length === lifecycleKeys.length && lifecycleKeys.every(key => Object.hasOwn(lifecycle, key)), 'invalid lifecycle projection fields');
+  assert(Number.isSafeInteger(lifecycle.revision) && Number(lifecycle.revision) >= 0 && Number(lifecycle.revision) <= 0xffff_ffff, 'invalid lifecycle revision');
+  const attempts = object(lifecycle.attempts);
+  assert(Object.values(attempts).every(text) && nullableText(lifecycle.closure_digest) && nullableText(lifecycle.reason), 'invalid lifecycle projection');
+  if (lifecycle.decision !== null) {
+    const decision = object(lifecycle.decision);
+    const keys = ['closure_digest', 'contract_digest', 'custody_digest', 'receipt_digest', 'source_commit_sha', 'source_tree_sha', 'verification_policy_digest', 'verifier'];
+    assert(Object.keys(decision).length === keys.length && keys.every(key => text(decision[key])), 'invalid lifecycle decision');
+  }
+  return lifecycle as unknown as NativeTaskLifecycle;
+}
 export function parseDomainRecord(value: unknown): DomainRecord {
   assertBoundedJson(value);
   const record = object(value);
   assert(decimal(record.seq) && record.seq !== '0' && text(record.observed_utc), 'invalid domain record');
   assert(validateDomainEvent(record.event), 'invalid or unknown domain event schema or version');
   return record as DomainRecord;
+}
+export function parseDomainRecordV2(value: unknown): DomainRecordV2 {
+  assertBoundedJson(value);
+  const record = object(value);
+  assert(decimal(record.seq) && record.seq !== '0' && text(record.observed_utc), 'invalid domain record');
+  assert(validateDomainEventV2(record.event), 'invalid or unknown domain event schema or version');
+  return record as DomainRecordV2;
 }

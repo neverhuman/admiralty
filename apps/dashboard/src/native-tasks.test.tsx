@@ -63,11 +63,22 @@ describe('native task inspection panel', () => {
 
   it('validates v2 lifecycle projections and terminal task states without interpreting claims', () => {
     const snapshot = fleet({ tasks: [task({ state: 'accepted', lifecycle: {
-      revision: 3, attempts: { 'attempt-a': { outcome: 'accepted' } }, closure_digest: 'sha256:abc', decision: 'accepted', reason: null,
+      revision: 3, attempts: { 'attempt-a': 'worker-a' }, closure_digest: 'sha256:abc', decision: null, reason: null,
     } })] });
     expect(parseNativeFleet(snapshot).tasks[0].state).toBe('accepted');
     expect(() => parseNativeFleet({ ...snapshot, schema_version: 1 })).toThrow('fleet envelope');
     expect(() => parseNativeFleet({ ...snapshot, tasks: [{ ...snapshot.tasks[0], lifecycle: [] }] })).toThrow('expected object');
     expect(() => parseNativeFleet({ ...snapshot, tasks: [{ ...snapshot.tasks[0], state: 'self_accepted' }] })).toThrow('task projection');
+  });
+
+  it('shows closure and rejection reason exactly as reported by the lifecycle projection', () => {
+    const snapshot = fleet({ tasks: [task({ state: 'failed', lifecycle: {
+      revision: 4, attempts: { 'attempt-a': 'worker-a' }, closure_digest: 'sha256:closure', decision: null, reason: 'verification rejected',
+    } })] });
+    const html = renderToStaticMarkup(<NativeTasks fleet={snapshot} error="" connection="connected" />);
+    expect(html).toContain('failed');
+    expect(html).toContain('Closure: sha256:closure');
+    expect(html).toContain('Lifecycle reason: verification rejected');
+    expect(html).toContain('EXECUTION NOT QUALIFIED');
   });
 });

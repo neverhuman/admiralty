@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSseParser, cursorFromId, retryDelayMs, watchFleet, type StreamFrame } from './events';
-import { parseDomainRecord, parseFleet } from './validation';
+import { parseDomainRecord, parseNativeFleet } from './validation';
 
-const fixture = () => ({ schema_version: 1, simulated: true, cursor: { recovery_generation: 'generation-1', event_seq: '0' },
+const fixture = () => ({ schema_version: 2, simulated: true, cursor: { recovery_generation: 'generation-1', event_seq: '0' },
   projects: [], tasks: [], coordination: { queued_messages: 0, acknowledged_messages: 0, routine_model_turns: 0, measured_tokens: null },
   sqlite_version: '3.51.3', native_execution_qualified: false });
 const domain = (seq: string, generation = 'generation-1') => `event: domain\nid: ${generation}:${seq}\ndata: ${JSON.stringify({
@@ -29,11 +29,11 @@ describe('bounded SSE framing and API envelopes', () => {
     for (const id of [undefined, 'bad', 'generation:01', 'generation:-1', 'generation:9223372036854775808']) expect(() => cursorFromId(id)).toThrow();
   });
   it('rejects unsupported envelopes, negative counters and unknown domain variants', () => {
-    expect(parseFleet(fixture()).cursor.event_seq).toBe('0');
-    for (const patch of [{ schema_version: 2 }, { native_execution_qualified: true }, { tasks: null },
+    expect(parseNativeFleet(fixture()).cursor.event_seq).toBe('0');
+    for (const patch of [{ schema_version: 1 }, { native_execution_qualified: true }, { tasks: null },
       { projects: [{ id: 'x', name: 'x', total: -1, running: 0, blocked: 0, accepted: 0, awaiting_verification: 0 }] },
       { cursor: { recovery_generation: 'generation', event_seq: 9007199254740992 } }]) {
-      expect(() => parseFleet({ ...fixture(), ...patch })).toThrow('Unsupported API response');
+      expect(() => parseNativeFleet({ ...fixture(), ...patch })).toThrow('Unsupported API response');
     }
     expect(() => parseDomainRecord({ seq: '1', observed_utc: 'now', event: { kind: 'self_accepted' } })).toThrow('unknown domain event');
   });
@@ -47,7 +47,7 @@ describe('event driven fleet subscription', () => {
     let snapshot = fixture(), active = 0, maximum = 0;
     const channels: ReadableStreamDefaultController<Uint8Array>[] = [];
     const fetcher = vi.fn<typeof fetch>(async (url, init) => {
-      if (String(url) === '/v1/fleet') return Response.json(snapshot);
+      if (String(url) === '/v2/fleet') return Response.json(snapshot);
       let ended = false;
       const end = () => { if (!ended) { ended = true; active--; } };
       active++; maximum = Math.max(maximum, active);
@@ -61,8 +61,8 @@ describe('event driven fleet subscription', () => {
     const start = () => { const stop = watchFleet({ token: 'private-token', fetcher, onFleet, onState, onError }); stops.push(stop); return stop; };
     return { fetcher, onFleet, onState, onError, start, send: (data: string) => channels.at(-1)!.enqueue(new TextEncoder().encode(data)),
       setSnapshot: (next: ReturnType<typeof fixture>) => { snapshot = next; }, maximum: () => maximum,
-      fleetCalls: () => fetcher.mock.calls.filter(([url]) => url === '/v1/fleet').length,
-      streamCalls: () => fetcher.mock.calls.filter(([url]) => String(url).startsWith('/v1/events')).length };
+      fleetCalls: () => fetcher.mock.calls.filter(([url]) => url === '/v2/fleet').length,
+      streamCalls: () => fetcher.mock.calls.filter(([url]) => String(url).startsWith('/v2/events')).length };
   }
   it('uses one authenticated stream and makes no idle snapshot polls', async () => {
     const server = service(); server.start(); await vi.advanceTimersByTimeAsync(0);
@@ -123,7 +123,7 @@ describe('event driven fleet subscription', () => {
   it('refetches a snapshot after the server rejects a stale cursor with HTTP 409', async () => {
     let snapshots = 0, streams = 0;
     const fetcher = vi.fn<typeof fetch>(async (url, init) => {
-      if (url === '/v1/fleet') {
+      if (url === '/v2/fleet') {
         const snapshot = fixture(); snapshot.cursor.recovery_generation = `generation-${++snapshots}`;
         return Response.json(snapshot);
       }

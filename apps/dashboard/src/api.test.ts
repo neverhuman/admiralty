@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fleetTotals, formatUnknown, taskStateLabel, type Fleet } from './api';
+import { fleetTotals, formatUnknown, getNativeFleet, taskStateLabel, type Fleet } from './api';
 
 const fleet = {
   schema_version: 1,
@@ -16,6 +16,18 @@ const fleet = {
 } as Fleet;
 
 describe('fleet display semantics', () => {
+  it('fetches and validates the authenticated v2 fleet snapshot', async () => {
+    const snapshot = { ...fleet, schema_version: 2 };
+    let requested = '';
+    const result = await getNativeFleet('session-token', undefined, async (input, init) => {
+      requested = String(input);
+      expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer session-token');
+      return Response.json(snapshot);
+    });
+    expect(requested).toBe('/v2/fleet');
+    expect(result.schema_version).toBe(2);
+  });
+
   it('keeps unknown usage distinct from zero', () => {
     expect(formatUnknown(null)).toBe('Unknown');
     expect(formatUnknown(0)).toBe('0');

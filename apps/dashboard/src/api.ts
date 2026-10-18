@@ -1,5 +1,5 @@
-import type { TaskContract } from '../../../packages/contracts/index';
-import { parseFleet } from './validation';
+import type { CandidateDecisionEvidence as I1CandidateDecisionEvidence, TaskContract } from '../../../packages/contracts/index';
+import { parseFleet, parseNativeFleet } from './validation';
 
 export type Cursor = { recovery_generation: string; event_seq: string };
 export class ApiError extends Error {
@@ -69,10 +69,17 @@ export type Fleet = {
 };
 
 export type NativeTaskState = Fleet['tasks'][number]['state'] | 'accepted' | 'failed' | 'cancelled';
-export type NativeTaskLifecycle = Readonly<Record<string, unknown>>;
+export type CandidateDecisionEvidence = I1CandidateDecisionEvidence;
+export type NativeTaskLifecycle = {
+  revision: number;
+  attempts: Record<string, string>;
+  closure_digest: string | null;
+  decision: CandidateDecisionEvidence | null;
+  reason: string | null;
+};
 export type NativeTaskView = Omit<Fleet['tasks'][number], 'state'> & {
   state: NativeTaskState;
-  /** I1 lifecycle metadata is validated as a bounded object and stays opaque to this read-only panel. */
+  /** Exact read-only lifecycle projection published by I1. */
   lifecycle?: NativeTaskLifecycle;
 };
 export type NativeFleet = Omit<Fleet, 'schema_version' | 'tasks'> & {
@@ -89,11 +96,20 @@ export async function getFleet(token?: string, signal?: AbortSignal, fetcher: ty
   return parseFleet(await readBoundedJson(response));
 }
 
+export async function getNativeFleet(token?: string, signal?: AbortSignal, fetcher: typeof fetch = fetch): Promise<NativeFleet> {
+  const response = await fetcher('/v2/fleet', {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    signal, cache: 'no-store',
+  });
+  if (!response.ok) throw new ApiError(`Fleet request failed (${response.status})`, response.status);
+  return parseNativeFleet(await readBoundedJson(response));
+}
+
 export function formatUnknown(value: number | string | null | undefined): string {
   return value === null || value === undefined || value === '' ? 'Unknown' : String(value);
 }
 
-export function fleetTotals(fleet: Fleet) {
+export function fleetTotals(fleet: Pick<NativeFleet, 'projects'>) {
   return fleet.projects.reduce((total, project) => ({
     projects: total.projects + 1,
     tasks: total.tasks + project.total,

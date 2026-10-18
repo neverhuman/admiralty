@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fleetTotals, formatUnknown, type Fleet } from '../api';
+import { fleetTotals, formatUnknown, type NativeFleet } from '../api';
 import { watchFleet, type ConnectionState } from '../events';
 import LegacyDetailed from './LegacyDetailed';
 import NativeTasks from './NativeTasks';
@@ -11,7 +11,7 @@ type View = 'Legacy detailed view' | 'Overview' | 'Workplans' | 'Coordination' |
 
 function App() {
   const [view, setView] = useState<View>('Legacy detailed view');
-  const [fleet, setFleet] = useState<Fleet | null>(null);
+  const [fleet, setFleet] = useState<NativeFleet | null>(null);
   const [error, setError] = useState('');
   const [updated, setUpdated] = useState<Date | null>(null);
   const [token, setToken] = useState('');
@@ -75,9 +75,7 @@ function App() {
         {!legacyView && !modelsView && error && <div className="error-banner" role="status"><span>{connection === 'paused' ? 'Updates paused' : 'Connection issue'}</span><span>{error}{connection === 'reconnecting' ? ' · Reconnecting automatically.' : ''}</span><button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry connection</button></div>}
         {!legacyView && !modelsView && !fleet && !error && <div className="loading-card">Connecting to the local native service…</div>}
         {fleet && view === 'Overview' && <Overview fleet={fleet} totals={totals!} onWorkplans={() => setView('Workplans')} />}
-        {view === 'Workplans' && <NativeTasks fleet={null}
-          error="The authenticated v2 fleet adapter is not available on this server yet."
-          connection={connection} />}
+        {view === 'Workplans' && <NativeTasks fleet={fleet} error={error} connection={connection} />}
         {fleet && view === 'Coordination' && <Coordination fleet={fleet} />}
         {view === 'Models' && <Models token={token || undefined} onAccess={() => setShowAccess(true)} />}
         <footer className="page-footer"><span>{modelsView ? 'MODEL POLICY CONFIGURATION' : `READ ONLY · SOURCE: ${legacyView ? 'LEGACY PRODUCER SNAPSHOT' : 'NATIVE FLEET API'}`}</span><span>{legacyView ? 'Source provenance and uncertainty preserved' : <>Native execution {fleet?.native_execution_qualified ? 'qualified' : 'not qualified'} <b>·</b> Usage {formatUnknown(fleet?.coordination.measured_tokens)}</>}</span></footer>
@@ -90,7 +88,7 @@ function App() {
   </div>;
 }
 
-function Overview({ fleet, totals, onWorkplans }: { fleet: Fleet; totals: ReturnType<typeof fleetTotals>; onWorkplans: () => void }) {
+function Overview({ fleet, totals, onWorkplans }: { fleet: NativeFleet; totals: ReturnType<typeof fleetTotals>; onWorkplans: () => void }) {
   const stageItems = [
     ['Accepted', totals.accepted, 'accepted'], ['Claimed or running', totals.running, 'running'], ['Awaiting verification', totals.verifying, 'verifying'], ['Blocked', totals.blocked, 'blocked'],
   ] as const;
@@ -118,7 +116,7 @@ function Metric({ label, value, detail, icon, tone = '' }: { label: string; valu
   return <article className="metric-card"><div className="metric-top"><span>{label}</span><span className={`metric-icon ${tone}`}>{icon}</span></div><strong>{value}</strong><small>{detail}</small><div className={`metric-baseline ${tone}`} /></article>;
 }
 
-function Coordination({ fleet }: { fleet: Fleet }) {
+function Coordination({ fleet }: { fleet: NativeFleet }) {
   const items = [
     { label: 'Recorded messages', value: fleet.coordination.queued_messages, detail: 'Message entries recorded', color: 'gold' },
     { label: 'Acknowledged messages', value: fleet.coordination.acknowledged_messages, detail: 'Acknowledgements recorded', color: 'blue' },

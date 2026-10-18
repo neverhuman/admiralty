@@ -7,7 +7,7 @@ type Task = NativeFleet['tasks'][number];
 type TaskState = NativeTaskState;
 type TaskFilters = { query?: string; projectId?: string; state?: TaskState | '' };
 
-const taskStates: TaskState[] = ['ready', 'blocked', 'claimed', 'running', 'awaiting_verification'];
+const taskStates: TaskState[] = ['ready', 'blocked', 'claimed', 'running', 'awaiting_verification', 'accepted', 'failed', 'cancelled'];
 
 export function filterNativeTasks(tasks: Task[], filters: TaskFilters = {}): Task[] {
   const query = filters.query?.trim().toLowerCase() ?? '';
@@ -39,7 +39,7 @@ export default function NativeTasks({ fleet, error, connection }: {
     </div>
     {!fleet ? <div className="native-task-unavailable" role="status">
       <strong>Task snapshot unavailable</strong>
-      <p>{error || `Waiting for the /v1/fleet snapshot (${connection}). No task records have been received.`}</p>
+      <p>{error || `Waiting for the /v2/fleet snapshot (${connection}). No task records have been received.`}</p>
     </div> : <>
       {error && <p className="native-task-refresh-error" role="status">Snapshot refresh issue: {error}. The last received snapshot remains visible.</p>}
       {fleet.simulated && <p className="native-task-simulation">Demo data only. These task rows are synthetic and do not represent native acceptance or execution.</p>}
@@ -61,7 +61,10 @@ export default function NativeTasks({ fleet, error, connection }: {
           <td>{projects.get(task.contract.project_id) ?? task.contract.project_id}</td>
           <td><span className={`state-pill ${task.state}`}>{taskStateLabel(task.state)}</span></td>
           <td>{task.attempt_id ?? <span className="muted">No active attempt</span>}{task.owner && <small>Owner: {task.owner}</small>}</td>
-          <td>{task.candidate_ref ?? <span className="muted">No candidate reference</span>}</td>
+          <td>{task.candidate_ref ?? <span className="muted">No candidate reference</span>}
+            {task.lifecycle?.closure_digest && <small>Closure: {task.lifecycle.closure_digest}</small>}
+            {task.lifecycle?.reason && <small>Lifecycle reason: {task.lifecycle.reason}</small>}
+          </td>
         </tr>)}
       </tbody></table></div>
       {!visibleTasks.length && <div className="empty-state"><span>⌁</span>{fleet.tasks.length && (query || projectId || state)
