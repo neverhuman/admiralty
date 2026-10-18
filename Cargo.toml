@@ -19,6 +19,10 @@ workspace = true
 name = "codex_round16_p05_p15"
 path = "tests/integration/codex_round16_p05_p15.rs"
 
+[[test]]
+name = "codex_round17_p05_p15"
+path = "tests/integration/codex_round17_p05_p15.rs"
+
 [workspace]
 members = ["crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests"]
 resolver = "2"
