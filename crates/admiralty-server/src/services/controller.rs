@@ -84,6 +84,31 @@ pub trait NativeRuntimeExecutor {
     fn execute(&self, task: &TaskView, intent: &DispatchIntent) -> Result<RuntimeReceipt, String>;
 }
 
+/// Trusted service-local time source, never supplied by a launch payload or an
+/// agent HTTP request. Unknown/out-of-range samples cannot admit or complete a
+/// dispatch. Implementations return Unix seconds, matching Store lease units.
+pub trait DispatchClock {
+    fn now_unix_seconds(&self) -> Option<u64>;
+}
+
+pub struct WallClock;
+
+impl DispatchClock for WallClock {
+    fn now_unix_seconds(&self) -> Option<u64> {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()
+            .map(|duration| duration.as_secs())
+            .filter(|seconds| *seconds <= i64::MAX as u64)
+    }
+}
+
+fn dispatch_now(clock: &impl DispatchClock) -> Option<u64> {
+    clock
+        .now_unix_seconds()
+        .filter(|seconds| *seconds <= i64::MAX as u64)
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DispatchOutcome {
     Idle,
@@ -112,6 +137,7 @@ pub enum ControllerError {
     InvalidRequest,
     Digest,
     DispatchInvalid,
+    ClockUnavailable,
 }
 
 /// Apply a frozen I1 lifecycle command through the Store's configured writer
@@ -164,6 +190,9 @@ impl std::fmt::Display for ControllerError {
             Self::DispatchInvalid => {
                 formatter.write_str("claimed launch intent failed current binding checks")
             }
+            Self::ClockUnavailable => {
+                formatter.write_str("trusted dispatch clock is unavailable or outside bounds")
+            }
         }
     }
 }
@@ -181,18 +210,28 @@ impl From<StoreError> for ControllerError {
 /// claimed intents become durable `unknown` and are never silently retried.
 pub fn dispatch_one(
     store: &Store,
-    now: u64,
+    clock: &impl DispatchClock,
     owner: String,
     lease_secs: u64,
     admission: &impl DispatchAdmission,
     runtime: &impl NativeRuntimeExecutor,
 ) -> Result<DispatchOutcome, ControllerError> {
+    let now = dispatch_now(clock).ok_or(ControllerError::ClockUnavailable)?;
     let Some(claim) = store.claim_outbox_due(Some(now), owner, lease_secs)? else {
         return Ok(DispatchOutcome::Idle);
     };
     let claimed_unknown = |reason: String| -> Result<DispatchOutcome, ControllerError> {
+        let reason = if valid_identity(&reason, 1024) {
+            reason
+        } else {
+            "dispatch outcome requires reconciliation".into()
+        };
         store.fail_outbox_unknown(claim.token.clone(), reason.clone())?;
         Ok(DispatchOutcome::Unknown { reason })
+    };
+    let deadline = match claim.lease_deadline.parse::<u64>() {
+        Ok(deadline) if deadline <= i64::MAX as u64 && deadline > now => deadline,
+        _ => return claimed_unknown("invalid durable dispatch deadline".into()),
     };
     let intent: DispatchIntent = match serde_json::from_value(claim.payload.clone()) {
         Ok(intent) => intent,
@@ -241,7 +280,30 @@ pub fn dispatch_one(
     if let Err(reason) = admission.authorize_dispatch(task, &intent) {
         return claimed_unknown(format!("current dispatch admission denied: {reason}"));
     }
-    let receipt = match runtime.execute(task, &intent) {
+    // Validation/admission may consume the lease. Never start a runtime using
+    // authority that expired while the controller was preparing its dispatch.
+    let Some(execution_now) = dispatch_now(clock) else {
+        return claimed_unknown("dispatch clock unavailable before execution".into());
+    };
+    if execution_now < now {
+        return claimed_unknown("dispatch clock moved backwards before execution".into());
+    }
+    if execution_now >= deadline {
+        return claimed_unknown("dispatch lease expired before execution".into());
+    }
+    let runtime_result = runtime.execute(task, &intent);
+    // A runtime may block for longer than the claim lease. The pre-execution
+    // timestamp is never reused to acknowledge a later effect.
+    let Some(completion_now) = dispatch_now(clock) else {
+        return claimed_unknown("dispatch clock unavailable after execution".into());
+    };
+    if completion_now < execution_now {
+        return claimed_unknown("dispatch clock moved backwards after execution".into());
+    }
+    if completion_now >= deadline {
+        return claimed_unknown("dispatch lease expired after execution".into());
+    }
+    let receipt = match runtime_result {
         Ok(receipt) => receipt,
         Err(reason) => {
             return claimed_unknown(format!("runtime outcome requires reconciliation: {reason}"));
@@ -259,7 +321,11 @@ pub fn dispatch_one(
             if !valid_sha256(&candidate_digest) {
                 return claimed_unknown("runtime candidate digest is invalid".into());
             }
-            store.complete_outbox(claim.token, receipt.receipt_ref.clone(), Some(now))?;
+            store.complete_outbox(
+                claim.token,
+                receipt.receipt_ref.clone(),
+                Some(completion_now),
+            )?;
             Ok(DispatchOutcome::Completed {
                 task_id,
                 attempt_id,
@@ -270,7 +336,11 @@ pub fn dispatch_one(
             if !valid_identity(&evidence_ref, 1024) {
                 return claimed_unknown("runtime failure evidence reference is invalid".into());
             }
-            store.complete_outbox(claim.token, receipt.receipt_ref.clone(), Some(now))?;
+            store.complete_outbox(
+                claim.token,
+                receipt.receipt_ref.clone(),
+                Some(completion_now),
+            )?;
             Ok(DispatchOutcome::Failed {
                 task_id,
                 attempt_id,
@@ -424,10 +494,62 @@ mod tests {
         TaskContract,
     };
     use admiralty_store::{LifecycleAuthority, LifecycleEffect};
+    use std::cell::Cell;
     #[cfg(unix)]
     use std::os::unix::fs::PermissionsExt;
     use std::sync::Arc;
     use std::{fs, path::PathBuf};
+
+    struct FixedClock(u64);
+    impl DispatchClock for FixedClock {
+        fn now_unix_seconds(&self) -> Option<u64> {
+            Some(self.0)
+        }
+    }
+
+    struct TestClock(Cell<Option<u64>>);
+    impl DispatchClock for TestClock {
+        fn now_unix_seconds(&self) -> Option<u64> {
+            self.0.get()
+        }
+    }
+
+    struct ClockAdvancingRuntime<'a> {
+        clock: &'a TestClock,
+        after: Option<u64>,
+        calls: &'a Cell<usize>,
+        disposition: RuntimeDisposition,
+    }
+    impl NativeRuntimeExecutor for ClockAdvancingRuntime<'_> {
+        fn execute(
+            &self,
+            task: &TaskView,
+            intent: &DispatchIntent,
+        ) -> Result<RuntimeReceipt, String> {
+            self.calls.set(self.calls.get() + 1);
+            self.clock.0.set(self.after);
+            FakeRuntime {
+                disposition: self.disposition.clone(),
+            }
+            .execute(task, intent)
+        }
+    }
+
+    struct ClockAdvancingAdmission<'a> {
+        clock: &'a TestClock,
+        after: Option<u64>,
+    }
+    impl DispatchAdmission for ClockAdvancingAdmission<'_> {
+        fn authorize_dispatch(
+            &self,
+            task: &TaskView,
+            intent: &DispatchIntent,
+        ) -> Result<(), String> {
+            DispatchPermit.authorize_dispatch(task, intent)?;
+            self.clock.0.set(self.after);
+            Ok(())
+        }
+    }
 
     struct PermitAdmission;
     impl CurrentAdmission for PermitAdmission {
@@ -708,7 +830,7 @@ mod tests {
         admit_one(&store, &PermitAdmission, &request).expect("durable admission");
         let result = dispatch_one(
             &store,
-            10,
+            &FixedClock(10),
             "controller-worker".into(),
             30,
             &DispatchPermit,
@@ -743,7 +865,7 @@ mod tests {
         assert_eq!(
             dispatch_one(
                 &store,
-                11,
+                &FixedClock(11),
                 "next-worker".into(),
                 30,
                 &DispatchPermit,
@@ -768,7 +890,7 @@ mod tests {
         admit_one(&store, &PermitAdmission, &request).expect("durable admission");
         let result = dispatch_one(
             &store,
-            10,
+            &FixedClock(10),
             "controller-worker".into(),
             30,
             &DenyDispatch,
@@ -783,7 +905,7 @@ mod tests {
         assert_eq!(
             dispatch_one(
                 &store,
-                11,
+                &FixedClock(11),
                 "next-worker".into(),
                 30,
                 &DispatchPermit,
@@ -809,6 +931,178 @@ mod tests {
         );
         drop(store);
         remove_database(&path);
+    }
+
+    fn candidate_disposition() -> RuntimeDisposition {
+        RuntimeDisposition::Candidate {
+            candidate_digest: format!("sha256:{}", "e".repeat(64)),
+        }
+    }
+
+    #[test]
+    fn unavailable_clock_before_claim_leaves_intent_pending_and_never_launches() {
+        let path = database();
+        let store = store_with_task(&path);
+        admit_one(&store, &PermitAdmission, &request()).expect("durable admission");
+        let clock = TestClock(Cell::new(None));
+        let calls = Cell::new(0);
+        let runtime = ClockAdvancingRuntime {
+            clock: &clock,
+            after: Some(11),
+            calls: &calls,
+            disposition: candidate_disposition(),
+        };
+        for invalid in [None, Some(u64::MAX)] {
+            clock.0.set(invalid);
+            assert!(matches!(
+                dispatch_one(
+                    &store,
+                    &clock,
+                    "controller-worker".into(),
+                    30,
+                    &DispatchPermit,
+                    &runtime,
+                ),
+                Err(ControllerError::ClockUnavailable)
+            ));
+            assert_eq!(calls.get(), 0);
+        }
+        clock.0.set(Some(10));
+        assert!(matches!(
+            dispatch_one(
+                &store,
+                &clock,
+                "controller-worker".into(),
+                30,
+                &DispatchPermit,
+                &runtime,
+            )
+            .expect("the unclaimed intent is still pending"),
+            DispatchOutcome::Completed { .. }
+        ));
+        assert_eq!(calls.get(), 1);
+        assert!(
+            matches!(
+                store.claim_outbox_due(Some(10), "retroactive-worker".into(), 30),
+                Err(StoreError::Outbox(
+                    admiralty_store::outbox::OutboxError::ClockRollback
+                ))
+            ),
+            "completion records the fresh post-runtime clock, not the claim timestamp"
+        );
+        drop(store);
+        remove_database(&path);
+    }
+
+    #[test]
+    fn expired_or_uncertain_clock_after_admission_never_starts_runtime() {
+        for after in [Some(40), Some(41), Some(9), None, Some(u64::MAX)] {
+            let path = database();
+            let store = store_with_task(&path);
+            admit_one(&store, &PermitAdmission, &request()).expect("durable admission");
+            let clock = TestClock(Cell::new(Some(10)));
+            let calls = Cell::new(0);
+            let runtime = ClockAdvancingRuntime {
+                clock: &clock,
+                after: Some(11),
+                calls: &calls,
+                disposition: candidate_disposition(),
+            };
+            let admission = ClockAdvancingAdmission {
+                clock: &clock,
+                after,
+            };
+            assert!(matches!(
+                dispatch_one(
+                    &store,
+                    &clock,
+                    "controller-worker".into(),
+                    30,
+                    &admission,
+                    &runtime,
+                )
+                .expect("uncertain claim is held"),
+                DispatchOutcome::Unknown { .. }
+            ));
+            assert_eq!(calls.get(), 0, "expired admission cannot start a child");
+            clock.0.set(Some(100));
+            assert_eq!(
+                dispatch_one(
+                    &store,
+                    &clock,
+                    "next-worker".into(),
+                    30,
+                    &DispatchPermit,
+                    &runtime,
+                )
+                .expect("held claim is not automatically retried"),
+                DispatchOutcome::Idle
+            );
+            assert_eq!(calls.get(), 0);
+            drop(store);
+            remove_database(&path);
+        }
+    }
+
+    #[test]
+    fn runtime_cannot_complete_with_expired_backwards_or_unknown_fresh_clock() {
+        for disposition in [
+            candidate_disposition(),
+            RuntimeDisposition::Failed {
+                evidence_ref: "evidence:failed-child".into(),
+            },
+        ] {
+            for after in [Some(40), Some(41), Some(9), None, Some(u64::MAX)] {
+                let path = database();
+                let store = store_with_task(&path);
+                let request = request();
+                admit_one(&store, &PermitAdmission, &request).expect("durable admission");
+                let clock = TestClock(Cell::new(Some(10)));
+                let calls = Cell::new(0);
+                let runtime = ClockAdvancingRuntime {
+                    clock: &clock,
+                    after,
+                    calls: &calls,
+                    disposition: disposition.clone(),
+                };
+                assert!(matches!(
+                    dispatch_one(
+                        &store,
+                        &clock,
+                        "controller-worker".into(),
+                        30,
+                        &DispatchPermit,
+                        &runtime,
+                    )
+                    .expect("ambiguous completion becomes durable unknown"),
+                    DispatchOutcome::Unknown { .. }
+                ));
+                assert_eq!(calls.get(), 1);
+                let task = store.snapshot().expect("retained task projection");
+                assert_eq!(
+                    task.projection.tasks[&request.task_id].state,
+                    SchedulingState::Claimed
+                );
+                drop(store);
+                let reopened = Store::open(&path).expect("reopen held claim");
+                clock.0.set(Some(100));
+                assert_eq!(
+                    dispatch_one(
+                        &reopened,
+                        &clock,
+                        "next-worker".into(),
+                        30,
+                        &DispatchPermit,
+                        &runtime,
+                    )
+                    .expect("unknown survives restart without redelivery"),
+                    DispatchOutcome::Idle
+                );
+                assert_eq!(calls.get(), 1, "uncertainty cannot launch a second child");
+                drop(reopened);
+                remove_database(&path);
+            }
+        }
     }
 
     #[test]
