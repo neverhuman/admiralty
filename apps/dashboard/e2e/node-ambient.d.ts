@@ -10,12 +10,30 @@ declare var Buffer: {
   concat(list: ReadonlyArray<Uint8Array>): Buffer;
 };
 
+declare module 'node:crypto' {
+  export interface Hash {
+    update(data: Buffer | string): this;
+    digest(encoding: 'hex'): string;
+  }
+  export function createHash(algorithm: 'sha256'): Hash;
+}
+
+declare module 'node:module' {
+  export interface NodeRequire {
+    resolve(id: string): string;
+  }
+  export function createRequire(filename: string | URL): NodeRequire;
+}
+
 declare module 'node:stream' {
   export interface Readable {
     on(event: 'data', listener: (chunk: Buffer) => void): this;
+    once(event: 'close', listener: () => void): this;
+    once(event: 'error', listener: (err: Error) => void): this;
   }
   export interface Writable {
     write(chunk: string): boolean;
+    once(event: 'error', listener: (err: Error) => void): this;
   }
   export interface Duplex extends Readable, Writable {}
 }
@@ -23,6 +41,7 @@ declare module 'node:stream' {
 declare module 'node:child_process' {
   import type { Duplex, Readable, Writable } from 'node:stream';
   export interface ChildProcess {
+    stderr?: Readable | null;
     stdio: [
       Writable | null,
       Readable | null,
@@ -31,7 +50,8 @@ declare module 'node:child_process' {
       Writable | Readable | Duplex | null | undefined,
     ];
     kill(signal?: string): boolean;
-    once(event: 'exit', listener: () => void): this;
+    once(event: 'error', listener: (err: Error) => void): this;
+    once(event: 'exit', listener: (code?: number | null, signal?: string | null) => void): this;
   }
   export function spawn(
     command: string,
@@ -83,6 +103,7 @@ declare module 'node:os' {
 }
 
 declare module 'node:path' {
+  export function dirname(path: string): string;
   export function extname(path: string): string;
   export function join(...paths: string[]): string;
   export function normalize(path: string): string;

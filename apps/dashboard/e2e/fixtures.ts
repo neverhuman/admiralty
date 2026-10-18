@@ -1,4 +1,24 @@
 export type TaskStage = 'ready' | 'blocked' | 'claimed' | 'running' | 'awaiting_verification';
+export type NativeTaskStateV2 = TaskStage | 'accepted' | 'failed' | 'cancelled';
+
+export interface CandidateDecisionEvidenceFixture {
+  closure_digest: string;
+  contract_digest: string;
+  custody_digest: string;
+  receipt_digest: string;
+  source_commit_sha: string;
+  source_tree_sha: string;
+  verification_policy_digest: string;
+  verifier: string;
+}
+
+export interface NativeTaskLifecycleFixture {
+  revision: number;
+  attempts: Record<string, string>;
+  closure_digest: string | null;
+  decision: CandidateDecisionEvidenceFixture | null;
+  reason: string | null;
+}
 
 export interface FleetFixture {
   schema_version: 1;
@@ -48,6 +68,16 @@ export interface FleetFixture {
   native_execution_qualified: false;
 }
 
+export interface NativeFleetV2Fixture extends Omit<FleetFixture, 'schema_version' | 'tasks'> {
+  schema_version: 2;
+  tasks: Array<
+    Omit<FleetFixture['tasks'][number], 'state'> & {
+      state: NativeTaskStateV2;
+      lifecycle?: NativeTaskLifecycleFixture;
+    }
+  >;
+}
+
 export interface ModelsFixture {
   schema_version: 1;
   revision: string;
@@ -75,6 +105,20 @@ const STATES: TaskStage[] = [
   'awaiting_verification',
   'blocked',
 ];
+
+export function createCandidateDecisionEvidenceFixture(seed = 'a'): CandidateDecisionEvidenceFixture {
+  const hex = seed.repeat(64).slice(0, 64);
+  return {
+    closure_digest: `sha256:${hex}`,
+    contract_digest: `sha256:${'b'.repeat(64)}`,
+    custody_digest: `sha256:${'c'.repeat(64)}`,
+    receipt_digest: `sha256:${'d'.repeat(64)}`,
+    source_commit_sha: '1'.repeat(40),
+    source_tree_sha: '2'.repeat(40),
+    verification_policy_digest: `sha256:${'e'.repeat(64)}`,
+    verifier: 'verifier-trusted-supervisor',
+  };
+}
 
 export function createFleetFixture(
   projectCount = 4,
@@ -178,6 +222,89 @@ export function createFleetFixture(
   };
 }
 
+export function fleetV1ToV2(
+  v1: FleetFixture,
+  options: { includeTerminalLifecycleTasks?: boolean } = {},
+): NativeFleetV2Fixture {
+  const tasks: NativeFleetV2Fixture['tasks'] = v1.tasks.map(
+    (task, idx): NativeFleetV2Fixture['tasks'][number] => {
+      if (options.includeTerminalLifecycleTasks && idx === 0) {
+      const evidence = createCandidateDecisionEvidenceFixture('a');
+      return {
+        ...task,
+        state: 'accepted',
+        attempt_id: 'attempt-1',
+        owner: 'worker-1',
+        candidate_ref: 'artifact:sha256:cand-001',
+        lifecycle: {
+          revision: 3,
+          attempts: { 'attempt-1': 'worker-1' },
+          closure_digest: evidence.closure_digest,
+          decision: evidence,
+          reason: null,
+        },
+      };
+    }
+    if (options.includeTerminalLifecycleTasks && idx === 1) {
+      return {
+        ...task,
+        state: 'failed',
+        attempt_id: 'attempt-2',
+        owner: 'worker-2',
+        candidate_ref: 'artifact:sha256:cand-002',
+        lifecycle: {
+          revision: 4,
+          attempts: { 'attempt-2': 'worker-2' },
+          closure_digest: `sha256:${'f'.repeat(64)}`,
+          decision: null,
+          reason: 'verification rejected',
+        },
+      };
+    }
+    if (options.includeTerminalLifecycleTasks && idx === 2) {
+      return {
+        ...task,
+        state: 'cancelled',
+        attempt_id: null,
+        owner: null,
+        candidate_ref: null,
+        lifecycle: {
+          revision: 2,
+          attempts: {},
+          closure_digest: null,
+          decision: null,
+          reason: 'superseded by operator',
+        },
+      };
+    }
+    return { ...task };
+  });
+
+  return {
+    ...v1,
+    schema_version: 2,
+    tasks,
+  };
+}
+
+export function createNativeFleetV2Fixture(
+  projectCount = 4,
+  options: {
+    simulated?: boolean;
+    recoveryGeneration?: string;
+    eventSeq?: string;
+    queuedMessages?: number;
+    acknowledgedMessages?: number;
+    measuredTokens?: string | null;
+    includeTerminalLifecycleTasks?: boolean;
+  } = {},
+): NativeFleetV2Fixture {
+  const v1 = createFleetFixture(projectCount, options);
+  return fleetV1ToV2(v1, {
+    includeTerminalLifecycleTasks: options.includeTerminalLifecycleTasks ?? true,
+  });
+}
+
 export function createLegacyFixture(projectCount = 4): Record<string, unknown> {
   const order: string[] = [];
   const projects: Record<string, unknown> = {};
@@ -272,7 +399,17 @@ export function createLegacyFixture(projectCount = 4): Record<string, unknown> {
         { id: 'P12', title: 'React parity and browser E2E', status: 'in_progress' },
         { id: 'P29', title: 'Operator UX and accessibility', status: 'in_progress' },
       ],
-      lanes: [],
+      lanes: [
+        {
+          name: 'adm_surge_2',
+          model: 'gpt-6-luna',
+          effort: 'high',
+          tier: 'T0',
+          host: 'xbabe2',
+          task: 'P12/P29',
+          agent_running: true,
+        },
+      ],
       source: { sha256: '7bb2784dc740faa3c07dd8c0ad72769dfa344927' },
       freshness: { state: 'fresh' },
     },
@@ -461,6 +598,43 @@ export function createDomainSseFrame(
       kind: 'task_started',
       task_id: taskId,
       attempt_id: `attempt-live-${seq}`,
+    },
+  };
+  return `event: domain\nid: ${generation}:${seq}\ndata: ${JSON.stringify(payload)}\n\n`;
+}
+
+export function createLifecycleSseFrameV2(
+  seq: string,
+  generation = 'gen-qual-1',
+  options: {
+    taskId?: string;
+    accepted?: boolean;
+    attemptId?: string;
+    candidateRef?: string;
+  } = {},
+): string {
+  const taskId = options.taskId ?? 'task-001';
+  const attemptId = options.attemptId ?? 'attempt-1';
+  const candidateRef = options.candidateRef ?? 'artifact:sha256:cand-001';
+  const accepted = options.accepted ?? true;
+  const payload = {
+    seq,
+    observed_utc: '2026-10-18T20:27:00Z',
+    event: {
+      kind: 'task_lifecycle',
+      command: {
+        protocol_version: 2,
+        task_id: taskId,
+        expected_task_digest: `sha256:${'9'.repeat(64)}`,
+        actor: 'verifier-trusted-supervisor',
+        action: {
+          action: 'decide_candidate',
+          attempt_id: attemptId,
+          candidate_ref: candidateRef,
+          evidence: createCandidateDecisionEvidenceFixture('a'),
+          accepted,
+        },
+      },
     },
   };
   return `event: domain\nid: ${generation}:${seq}\ndata: ${JSON.stringify(payload)}\n\n`;

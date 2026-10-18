@@ -6,18 +6,30 @@ import { extname, join, normalize, resolve } from 'node:path';
 import type { Duplex, Readable, Writable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
-import { IN_PAGE_AXE_SCRIPT, type AxeAuditReport } from './axe-audit';
+import {
+  buildAxeRunExpression,
+  loadPinnedAxeCoreBundle,
+  WCAG21_AA_TAGS,
+  type AxeAuditReport,
+  type CustomAxTreeSmokeSummary,
+} from './axe-audit';
 import {
   createFleetFixture,
   createLegacyFixture,
   createModelsFixture,
+  createNativeFleetV2Fixture,
+  fleetV1ToV2,
   type FleetFixture,
   type ModelsFixture,
+  type NativeFleetV2Fixture,
 } from './fixtures';
 
 const E2E_DIR = fileURLToPath(new URL('.', import.meta.url));
 export const DASHBOARD_ROOT = resolve(E2E_DIR, '..');
 export const DIST_DIR = resolve(DASHBOARD_ROOT, 'dist');
+
+const CDP_COMMAND_TIMEOUT_MS = 10_000;
+const BROWSER_STARTUP_TIMEOUT_MS = 15_000;
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -55,7 +67,8 @@ export interface DashboardTestServer {
   baseUrl: string;
   requests: RecordedRequest[];
   clearRequests(): void;
-  setFleet(fleet: FleetFixture): void;
+  setFleet(fleet: FleetFixture, includeTerminalV2Tasks?: boolean): void;
+  setFleetV2(fleetV2: NativeFleetV2Fixture | Record<string, unknown>): void;
   setFleetStatus(status: number, errorDetail?: string): void;
   setLegacy(legacy: Record<string, unknown> | null, status?: number): void;
   setModels(models: ModelsFixture, status?: number): void;
@@ -71,6 +84,9 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
   await ensureBuiltDashboard();
 
   let fleet = createFleetFixture(4);
+  let fleetV2: NativeFleetV2Fixture | Record<string, unknown> = createNativeFleetV2Fixture(4, {
+    includeTerminalLifecycleTasks: true,
+  });
   let fleetStatus = 200;
   let fleetErrorDetail = 'Service unavailable';
   let legacy: Record<string, unknown> | null = createLegacyFixture(4);
@@ -110,7 +126,7 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
         timestampMs: Date.now(),
       });
 
-      if (parsedUrl.pathname === '/v1/fleet') {
+      if (parsedUrl.pathname === '/v1/fleet' || parsedUrl.pathname === '/v2/fleet') {
         if (!checkAuthorized(req, res)) return;
         if (fleetStatus !== 200) {
           res.writeHead(fleetStatus, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -118,11 +134,11 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
           return;
         }
         res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-        res.end(JSON.stringify(fleet));
+        res.end(JSON.stringify(parsedUrl.pathname === '/v2/fleet' ? fleetV2 : fleet));
         return;
       }
 
-      if (parsedUrl.pathname === '/v1/events') {
+      if (parsedUrl.pathname === '/v1/events' || parsedUrl.pathname === '/v2/events') {
         if (!checkAuthorized(req, res)) return;
         res.writeHead(200, {
           'Content-Type': 'text/event-stream',
@@ -204,7 +220,7 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
       const safeRelPath = normalize(parsedUrl.pathname).replace(/^(\.\.(\/|\\|$))+/, '');
       let filePath = join(DIST_DIR, safeRelPath === '/' ? 'index.html' : safeRelPath);
       if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
-        if (parsedUrl.pathname.startsWith('/v1/')) {
+        if (parsedUrl.pathname.startsWith('/v1/') || parsedUrl.pathname.startsWith('/v2/')) {
           res.writeHead(404, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Not found' }));
           return;
@@ -233,8 +249,13 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
     clearRequests() {
       requests.length = 0;
     },
-    setFleet(next) {
+    setFleet(next, includeTerminalV2Tasks = true) {
       fleet = next;
+      fleetV2 = fleetV1ToV2(next, { includeTerminalLifecycleTasks: includeTerminalV2Tasks });
+      fleetStatus = 200;
+    },
+    setFleetV2(next) {
+      fleetV2 = next;
       fleetStatus = 200;
     },
     setFleetStatus(status, errorDetail = 'Service unavailable') {
@@ -280,9 +301,24 @@ export async function startDashboardTestServer(): Promise<DashboardTestServer> {
 }
 
 export function discoverChromiumBinary(): string {
-  if (process.env.ADMIRALTY_BROWSER_BINARY && existsSync(process.env.ADMIRALTY_BROWSER_BINARY)) {
+  if (process.env.ADMIRALTY_BROWSER_BINARY) {
+    if (!existsSync(process.env.ADMIRALTY_BROWSER_BINARY)) {
+      throw new Error(
+        `Configured ADMIRALTY_BROWSER_BINARY does not exist: ${process.env.ADMIRALTY_BROWSER_BINARY}`,
+      );
+    }
     return process.env.ADMIRALTY_BROWSER_BINARY;
   }
+
+  for (const candidate of [
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+  ]) {
+    if (existsSync(candidate)) return candidate;
+  }
+
   const playwrightCacheRoots = [
     process.env.PLAYWRIGHT_BROWSERS_PATH,
     join(homedir(), '.cache', 'ms-playwright'),
@@ -302,20 +338,15 @@ export function discoverChromiumBinary(): string {
     }
   }
 
-  for (const candidate of [
-    '/usr/bin/google-chrome',
-    '/usr/bin/google-chrome-stable',
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-  ]) {
-    if (existsSync(candidate)) return candidate;
-  }
-
-  throw new Error('No Chromium or Chrome binary found for dashboard E2E qualification');
+  throw new Error(
+    'No qualified Chromium or Chrome binary found for dashboard E2E qualification. ' +
+      'Set ADMIRALTY_BROWSER_BINARY or install Chromium before running browser qualification.',
+  );
 }
 
 export interface BrowserHarness {
   binaryPath: string;
+  browserVersion: { product: string; revision: string; protocolVersion: string };
   resetPage(): Promise<void>;
   goto(url: string): Promise<void>;
   setViewportSize(width: number, height: number): Promise<void>;
@@ -330,6 +361,7 @@ export interface BrowserHarness {
   selectByLabel(labelText: string, value: string): Promise<void>;
   pressKey(key: string): Promise<void>;
   runAxeAudit(): Promise<AxeAuditReport>;
+  runCustomAxTreeSmokeChecks(): Promise<CustomAxTreeSmokeSummary>;
   close(): Promise<void>;
 }
 
@@ -339,12 +371,11 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
   mkdirSync(baseTmp, { recursive: true, mode: 0o700 });
   const profileDir = mkdtempSync(join(baseTmp, 'adm-e2e-browser-'));
 
+  // Launch with OS sandbox intact (no --no-sandbox or --disable-setuid-sandbox bypass)
   const child: ChildProcess = spawn(
     binaryPath,
     [
       '--headless=new',
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
       '--disable-gpu',
       '--disable-dev-shm-usage',
       '--disable-background-networking',
@@ -364,10 +395,48 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
 
   let nextId = 1;
   let buffer = '';
+  let closedReason: string | null = null;
+  let stderrTail = '';
+
+  child.stderr?.on('data', (chunk: Buffer) => {
+    stderrTail = (stderrTail + chunk.toString('utf8')).slice(-2_000);
+  });
+
   const pending = new Map<
     number,
-    { resolve: (value: Record<string, unknown>) => void; reject: (err: Error) => void }
+    {
+      resolve: (value: Record<string, unknown>) => void;
+      reject: (err: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
   >();
+
+  function rejectAllPending(reason: string) {
+    if (!closedReason) closedReason = reason;
+    for (const [id, entry] of pending.entries()) {
+      clearTimeout(entry.timer);
+      pending.delete(id);
+      entry.reject(new Error(`${reason}${stderrTail ? ` (stderr: ${stderrTail.trim()})` : ''}`));
+    }
+  }
+
+  child.once('error', (err) => {
+    rejectAllPending(`Browser process error (${binaryPath}): ${err.message}`);
+  });
+  child.once('exit', (code, signal) => {
+    rejectAllPending(
+      `Browser process exited unexpectedly (code=${String(code)}, signal=${String(signal)})`,
+    );
+  });
+  cdpRead.once('close', () => {
+    rejectAllPending('CDP read pipe closed');
+  });
+  cdpRead.once('error', (err) => {
+    rejectAllPending(`CDP read pipe error: ${err.message}`);
+  });
+  cdpWrite.once('error', (err) => {
+    rejectAllPending(`CDP write pipe error: ${err.message}`);
+  });
 
   cdpRead.on('data', (chunk: Buffer) => {
     buffer += chunk.toString('utf8');
@@ -383,6 +452,7 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
       };
       if (msg.id !== undefined && pending.has(msg.id)) {
         const entry = pending.get(msg.id)!;
+        clearTimeout(entry.timer);
         pending.delete(msg.id);
         if (msg.error) {
           entry.reject(new Error(msg.error.message ?? 'CDP command failed'));
@@ -397,29 +467,85 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
     method: string,
     params: Record<string, unknown> = {},
     sessionId?: string,
+    timeoutMs = CDP_COMMAND_TIMEOUT_MS,
   ): Promise<Record<string, unknown>> {
+    if (closedReason) {
+      return Promise.reject(new Error(`Cannot send CDP ${method}: ${closedReason}`));
+    }
     const id = nextId++;
     return new Promise((resolveCmd, rejectCmd) => {
-      pending.set(id, { resolve: resolveCmd, reject: rejectCmd });
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        rejectCmd(new Error(`CDP command timed out after ${timeoutMs}ms: ${method}`));
+      }, timeoutMs);
+      pending.set(id, { resolve: resolveCmd, reject: rejectCmd, timer });
       const payload = sessionId ? { id, method, params, sessionId } : { id, method, params };
       cdpWrite.write(`${JSON.stringify(payload)}\0`);
     });
   }
 
-  const created = await sendCdp('Target.createTarget', { url: 'about:blank' });
-  const targetId = String(created.targetId);
-  const attached = await sendCdp('Target.attachToTarget', { targetId, flatten: true });
-  const sessionId = String(attached.sessionId);
+  let browserVersion = { product: '', revision: '', protocolVersion: '' };
+  let sessionId = '';
 
-  await sendCdp('Page.enable', {}, sessionId);
-  await sendCdp('Runtime.enable', {}, sessionId);
-  await sendCdp('DOM.enable', {}, sessionId);
-  await sendCdp('Accessibility.enable', {}, sessionId);
-  await sendCdp(
-    'Emulation.setDeviceMetricsOverride',
-    { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false },
-    sessionId,
-  );
+  const startupPromise = (async () => {
+    const versionInfo = await sendCdp('Browser.getVersion');
+    browserVersion = {
+      product: String(versionInfo.product ?? ''),
+      revision: String(versionInfo.revision ?? ''),
+      protocolVersion: String(versionInfo.protocolVersion ?? ''),
+    };
+    if (!browserVersion.product) {
+      throw new Error(`Qualified browser check failed: empty Browser.getVersion product from ${binaryPath}`);
+    }
+
+    const existingTargets = await sendCdp('Target.getTargets');
+    const initialTargetIds = Array.isArray(existingTargets.targetInfos)
+      ? (existingTargets.targetInfos as Array<{ targetId?: string; type?: string }>)
+          .filter((t) => t.type === 'page' && t.targetId)
+          .map((t) => String(t.targetId))
+      : [];
+
+    const created = await sendCdp('Target.createTarget', { url: 'about:blank' });
+    const targetId = String(created.targetId);
+    const attached = await sendCdp('Target.attachToTarget', { targetId, flatten: true });
+    sessionId = String(attached.sessionId);
+
+    // Close any inherited initial pages so only the isolated fixture page target remains
+    for (const inheritedId of initialTargetIds) {
+      if (inheritedId !== targetId) {
+        await sendCdp('Target.closeTarget', { targetId: inheritedId }).catch(() => undefined);
+      }
+    }
+
+    await sendCdp('Page.enable', {}, sessionId);
+    await sendCdp('Runtime.enable', {}, sessionId);
+    await sendCdp('DOM.enable', {}, sessionId);
+    await sendCdp('Accessibility.enable', {}, sessionId);
+    await sendCdp(
+      'Emulation.setDeviceMetricsOverride',
+      { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false },
+      sessionId,
+    );
+  })();
+
+  let startupTimer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      startupPromise,
+      new Promise<never>((_, rejectStartup) => {
+        startupTimer = setTimeout(
+          () => rejectStartup(new Error(`Browser startup timed out after ${BROWSER_STARTUP_TIMEOUT_MS}ms`)),
+          BROWSER_STARTUP_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } catch (err) {
+    child.kill('SIGKILL');
+    rmSync(profileDir, { recursive: true, force: true });
+    throw err;
+  } finally {
+    clearTimeout(startupTimer);
+  }
 
   async function evaluate<T>(expression: string): Promise<T> {
     const res = await sendCdp(
@@ -460,6 +586,7 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
 
   return {
     binaryPath,
+    browserVersion,
     async resetPage() {
       await sendCdp('Page.navigate', { url: 'about:blank' }, sessionId);
       await waitForCondition(
@@ -468,6 +595,10 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
       );
     },
     async goto(url: string) {
+      const parsed = new URL(url);
+      if (parsed.hostname !== '127.0.0.1' && parsed.hostname !== 'localhost') {
+        throw new Error(`Refusing non-loopback navigation in E2E harness: ${url}`);
+      }
       await sendCdp('Page.navigate', { url }, sessionId);
       await waitForCondition(
         `document.readyState === 'complete' && document.querySelector('#root')?.children.length > 0`,
@@ -587,7 +718,17 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
       await sendCdp('Input.dispatchKeyEvent', { type: 'keyUp', key }, sessionId);
     },
     async runAxeAudit(): Promise<AxeAuditReport> {
-      const report = await evaluate<AxeAuditReport>(IN_PAGE_AXE_SCRIPT);
+      const axeBundle = loadPinnedAxeCoreBundle();
+      const alreadyLoaded = await evaluate<boolean>(`typeof window.axe?.run === 'function'`);
+      if (!alreadyLoaded) {
+        await evaluate<void>(`${axeBundle.source}\nundefined;`);
+      }
+      const report = await evaluate<AxeAuditReport>(
+        buildAxeRunExpression(WCAG21_AA_TAGS, axeBundle.sha256),
+      );
+      return report;
+    },
+    async runCustomAxTreeSmokeChecks(): Promise<CustomAxTreeSmokeSummary> {
       const axTree = await sendCdp('Accessibility.getFullAXTree', {}, sessionId);
       const nodes = Array.isArray(axTree.nodes)
         ? (axTree.nodes as Array<{
@@ -607,15 +748,14 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
           unlabeledInputs.push(role);
         }
       }
-      report.axTreeSummary = {
+      return {
         totalNodes: nodes.length,
         unlabeledButtons,
         unlabeledInputs,
       };
-      return report;
     },
     async close() {
-      pending.clear();
+      rejectAllPending('Browser harness closing');
       child.kill('SIGTERM');
       await new Promise<void>((resolveExit) => {
         const timer = setTimeout(() => {
