@@ -6,7 +6,7 @@ From the repository root:
 
 ```sh
 rtk proxy env CARGO_TARGET_DIR="$PWD/target" cargo run -p admiralty-cli -- demo --snapshot-only
-rtk proxy env CARGO_TARGET_DIR="$PWD/target" cargo run -p admiralty-cli -- demo --listen 127.0.0.1:18891
+rtk proxy env CARGO_TARGET_DIR="$PWD/target" cargo run -p admiralty-cli -- demo --listen 127.0.0.1:18892
 rtk proxy env CARGO_TARGET_DIR="$PWD/target" cargo run -p admiralty-cli -- doctor
 rtk proxy bash scripts/check/all.sh
 ```
@@ -25,7 +25,7 @@ Track complete packets separately from prototype substeps. A passing candidate o
 ## Current UI and bounded read path
 
 `pnpm install --frozen-lockfile --ignore-scripts && pnpm demo` builds the React
-preview and starts Rust's isolated synthetic server on 127.0.0.1:18891. The shell
+preview and starts Rust's isolated synthetic server on 127.0.0.1:18892. The shell
 launcher keeps Cargo artifacts in the checkout unless ADMIRALTY_TARGET_DIR is set.
 Production build assets are served by Rust; Vite is a development dependency.
 The browser keeps authentication in memory, validates versioned envelopes, uses

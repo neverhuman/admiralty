@@ -9,19 +9,25 @@ The existing captain dashboard remains operational during migration. Its private
 deployment history and standing orders are retained below. Runtime data,
 credentials, transcripts and databases stay outside Git.
 
-## Try the current prototype
+## Run the current preview
 
 Requires Rust 1.95.0, Node 24+ and pnpm 11.15.1. This is a source-built development
 preview; install bundles and native fleet execution are still being implemented.
 
 ```sh
 pnpm install --frozen-lockfile --ignore-scripts
-pnpm demo
+pnpm live --status /absolute/path/status.json --index /absolute/path/index.html
 ```
 
-Open http://127.0.0.1:18891/. The supplied logo, read-only project/task views and
-coordination metrics use a clearly labeled isolated synthetic dataset. No provider
-calls or machine enrollment occur. Stop with Ctrl-C. The launcher builds the UI
+Open http://127.0.0.1:18891/ for real observations from your existing collector.
+The launcher creates private preview state and a dashboard access token, whose
+file path is printed without displaying its value. The dense fleet page opens
+first. Add `--models /absolute/private/models.json` for model settings; use the
+token through Session access to edit them. Stop with Ctrl-C.
+
+For an isolated synthetic demo, run `pnpm demo` and open
+http://127.0.0.1:18892/. Demo and real observation use separate default ports.
+Neither launcher makes provider calls or enrolls machines. The launcher builds the UI
 and keeps its Rust target directory in this checkout; `ADMIRALTY_TARGET_DIR`
 overrides it. The preview uses one SSE connection and snapshots on changes,
 without idle model turns or repeated idle snapshot requests.
@@ -41,13 +47,13 @@ and [OpenCode SSH integration](docs/operators/opencode-ssh.md).
 
 ## Admiralty v2 implementation
 
-The fleet is building the Rust control plane and React dashboard on integration PR [#9](https://github.com/neverhuman/admiralty/pull/9). The existing dashboard now displays a separate **Admiralty v2 build** rollout panel. Packet claims, candidate review, verification and integration are distinct; worker reports do not create accepted work.
+The fleet is building the Rust control plane and React dashboard on integration PR [#9](https://github.com/neverhuman/admiralty/pull/9). Admiralty appears as an ordinary project in the detailed React view, with its worker lanes and work packets. Packet claims, candidate review, verification and integration are distinct; worker reports do not create accepted work.
 
 The current Rust foundation provides durable scoped task/message state, context capsules, crash replay, backups, generated schemas/TypeScript and a read-only API/SSE demo. Native execution and fleet enrollment remain disabled pending their qualification gates.
 
 ```sh
 cargo run -p admiralty-cli -- demo --snapshot-only
-cargo run -p admiralty-cli -- demo --listen 127.0.0.1:18891
+cargo run -p admiralty-cli -- demo --listen 127.0.0.1:18892
 ```
 
 See [prototype operations](docs/operators/bootstrap.md), [implementation plan](docs/plans/admiralty-v2/MASTER_PLAN.md), [work packets](docs/plans/admiralty-v2/WORK_PACKETS.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [bootstrap guide](docs/operators/bootstrap.md), and [live rollout bridge](docs/operators/rollout-dashboard.md). `scripts/check/all.sh` runs contributor checks without making paid provider calls.

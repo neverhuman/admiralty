@@ -7,4 +7,4 @@ run() {
   if command -v rtk >/dev/null 2>&1; then rtk proxy "$@"; else "$@"; fi
 }
 run pnpm --dir apps/dashboard build
-run cargo run -p admiralty-cli --locked -- demo --listen "${ADMIRALTY_DEMO_LISTEN:-127.0.0.1:18891}" --assets "$task_root/apps/dashboard/dist"
+run cargo run -p admiralty-cli --locked -- demo --listen "${ADMIRALTY_DEMO_LISTEN:-127.0.0.1:18892}" --assets "$task_root/apps/dashboard/dist"

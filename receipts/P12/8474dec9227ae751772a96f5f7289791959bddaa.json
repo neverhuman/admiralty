@@ -1,0 +1,56 @@
+{
+  "packet": "P12",
+  "state": "partial_review",
+  "head_sha": "8474dec9227ae751772a96f5f7289791959bddaa",
+  "observed_utc": "2026-10-18T11:13:14.053752+00:00",
+  "validation": [
+    {
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "typecheck"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "test",
+        "--run"
+      ],
+      "exit_code": 0,
+      "passed_tests": 65
+    },
+    {
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "build"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "assets": {
+    "index.html": "851262057d58bd70070ce39841f74a020fb923b732c34b923719ad11786a5427",
+    "brand/admiralty-source.png": "86f3f016a3d2562cc82da3191ce472e77e81726a65f69ccb4a840145e89aaef9",
+    "assets/index-C8yI3P6R.css": "65ea7cb91aafe579c74f442bd0bb662cdfa18dc72912a16cdb3d69c6cc5a1e7e",
+    "assets/index-BznvNEq8.js": "14ec019e86a66673a907043b9e120185a2f760705515e625bfda55f36f866222"
+  },
+  "deployment": {
+    "port": 18891,
+    "assets_revision": "8474dec9227ae751772a96f5f7289791959bddaa",
+    "binary_revision": "7277293fd25de3524e7bb8024962ea21e74f9b29",
+    "real_producer_data": true,
+    "temporal_metrics": 13,
+    "expand_collapse_browser_verified": true
+  },
+  "limitations": [
+    "Read-only fleet observation; native execution/commands/enrollment remain unqualified.",
+    "Browser proof saved privately outside Git; deployment remains an unmerged PR canary."
+  ],
+  "packet_accepted": false
+}
