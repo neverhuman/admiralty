@@ -10,6 +10,7 @@ pub const QUALIFIED_CLI_VERSION: &str = "2.1.302";
 pub const MAX_EVENT_BYTES: usize = 256 * 1024;
 pub const MAX_STREAM_BYTES: usize = 8 * 1024 * 1024;
 const MAX_EVENTS: usize = 8192;
+const MAX_PROMPT_BYTES: usize = 64 * 1024;
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum ClaudeError {
@@ -111,6 +112,25 @@ impl ClaudeLaunch {
             a.push(id.clone());
         }
         Ok(a)
+    }
+
+    /// Encode one bounded user turn for `--input-format stream-json`.
+    pub fn input_frame(prompt: &str) -> Result<Vec<u8>, ClaudeError> {
+        if prompt.is_empty()
+            || prompt.len() > MAX_PROMPT_BYTES
+            || prompt.chars().any(char::is_control)
+        {
+            return Err(ClaudeError::Invalid(
+                "prompt must be bounded and control-free",
+            ));
+        }
+        let mut frame = serde_json::to_vec(&serde_json::json!({
+            "type": "user",
+            "message": { "role": "user", "content": prompt }
+        }))
+        .map_err(|_| ClaudeError::Invalid("cannot encode user frame"))?;
+        frame.push(b'\n');
+        Ok(frame)
     }
 }
 

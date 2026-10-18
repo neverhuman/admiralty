@@ -67,6 +67,12 @@ fn launch_is_bound_and_shell_free_and_capability_claims_are_limited() {
         resume: true,
     };
     let args = launch.args().expect("valid fixture or launch");
+    let frame = ClaudeLaunch::input_frame("Continue the bounded task.").expect("valid prompt");
+    let frame: serde_json::Value = serde_json::from_slice(&frame).expect("JSON user frame");
+    assert_eq!(frame["type"], "user");
+    assert_eq!(frame["message"]["role"], "user");
+    assert_eq!(frame["message"]["content"], "Continue the bounded task.");
+    assert!(ClaudeLaunch::input_frame("bad\nprompt").is_err());
     assert!(
         args.windows(2)
             .any(|p| p == ["--resume", "fixture-session"])
