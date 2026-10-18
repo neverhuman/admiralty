@@ -21,9 +21,9 @@ fn p19_round13_wo_merge_install_running_release_evidence() {
     let candidate = "b".repeat(40);
     let generation = DecimalU64::new(13);
     let scope = PublicationScope {
-        project_id: ProjectId::new("round13-workorder").unwrap(),
-        root_id: RootId::new("round13-root").unwrap(),
-        task_id: TaskId::new("wo-merge-install-running").unwrap(),
+        project_id: ProjectId::new("round13-workorder").expect("project ID"),
+        root_id: RootId::new("round13-root").expect("root ID"),
+        task_id: TaskId::new("wo-merge-install-running").expect("task ID"),
         target_ref: "refs/heads/main".into(),
         authority_generation: generation.clone(),
     };
@@ -50,7 +50,8 @@ fn p19_round13_wo_merge_install_running_release_evidence() {
         caller_is_owner: false,
         unresolved_intent: false,
     };
-    let digest = publication_request_digest(&scope, &snapshot, &candidate, &generation).unwrap();
+    let digest = publication_request_digest(&scope, &snapshot, &candidate, &generation)
+        .expect("publication request digest");
     let proposal = propose_publication(&scope, &snapshot, &candidate, &digest, &generation);
     assert!(
         proposal.eligible,
@@ -58,7 +59,7 @@ fn p19_round13_wo_merge_install_running_release_evidence() {
         proposal.reasons
     );
     assert!(!proposal.execution_granted());
-    let intent = proposal.intent.unwrap();
+    let intent = proposal.intent.expect("eligible proposal carries intent");
     assert_eq!(intent.scope, scope);
     assert_eq!(intent.expected_head, head);
     assert_eq!(
@@ -76,7 +77,7 @@ fn p19_round13_wo_merge_install_running_release_evidence() {
     let (manifest, mut observation, fence) = recovery_fixture::valid_recovery_evidence();
     observation.observed_bundle_digests.clear();
     observation.session_custody = SessionCustody::Unknown;
-    let blocked = plan_recovery(&manifest, &observation, Some(&fence)).unwrap();
+    let blocked = plan_recovery(&manifest, &observation, Some(&fence)).expect("recovery decision");
     assert!(!blocked.resume_proposed);
     assert!(!blocked.restore_authorized());
     assert!(!blocked.effects_authorized());
@@ -84,7 +85,8 @@ fn p19_round13_wo_merge_install_running_release_evidence() {
     assert!(blocked.blockers.contains(&Blocker::UnknownSessionCustody));
 
     let (manifest, observation, fence) = recovery_fixture::valid_recovery_evidence();
-    let reconciled = plan_recovery(&manifest, &observation, Some(&fence)).unwrap();
+    let reconciled =
+        plan_recovery(&manifest, &observation, Some(&fence)).expect("recovery decision");
     assert!(reconciled.resume_proposed);
     assert!(!reconciled.restore_authorized());
     assert!(!reconciled.effects_authorized());

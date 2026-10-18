@@ -16,8 +16,8 @@ use admiralty_core::{
     },
     publication::{
         ApprovalEvidence, CheckEvidence, CheckState, DecimalU64, PublicationBlock,
-        PublicationIntent, PublicationScope, PublicationSnapshot,
-        propose_publication, publication_request_digest,
+        PublicationIntent, PublicationScope, PublicationSnapshot, propose_publication,
+        publication_request_digest,
     },
 };
 use admiralty_runtime::{
