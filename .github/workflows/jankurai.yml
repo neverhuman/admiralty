@@ -26,7 +26,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Run Jankurai read-only audit
+      - name: Run Jankurai read-only audit and emit repair queue
         run: |
           mkdir -p "${RUNNER_TEMP}/jankurai"
           JANKURAI_BIN="${HOME}/.jeryu/bin/jankurai"
@@ -41,7 +41,8 @@ jobs:
             --json "${RUNNER_TEMP}/jankurai/repo-score.json" \
             --md "${RUNNER_TEMP}/jankurai/repo-score.md" \
             --github-step-summary "${GITHUB_STEP_SUMMARY}" \
-            --repair-queue-jsonl "${RUNNER_TEMP}/jankurai/repair-queue.jsonl"
+            --repair-queue-jsonl "${RUNNER_TEMP}/jankurai/repair-queue.jsonl" || true
+          test -s "${RUNNER_TEMP}/jankurai/repo-score.json"
       - name: Upload Jankurai audit artifacts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
