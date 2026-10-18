@@ -113,3 +113,15 @@ export function projectDetails(snapshot: LegacySnapshot): ProjectDetailModel[] {
   }
   return projects;
 }
+
+export function hierarchyCaptains(snapshot: LegacySnapshot): Data[] {
+  const captains = list(data(snapshot.hierarchy).captains).map(data);
+  const known = new Set(captains.map(captain => text(captain.key ?? captain.project ?? captain.id)));
+  for (const project of projectDetails(snapshot)) {
+    if (!known.has(project.id) && Object.keys(project.captain).length) {
+      captains.push({ ...project.captain, key: project.id, name: project.name, workers: project.workers });
+      known.add(project.id);
+    }
+  }
+  return captains;
+}

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { freshness, getLegacy, parseLegacy, projectDetails, safeHref, watchLegacy } from './legacy';
+import { freshness, getLegacy, parseLegacy, projectDetails, hierarchyCaptains, safeHref, watchLegacy } from './legacy';
 import { LegacyFleetView } from './ui/LegacyDetailed';
 
 const snapshot = () => parseLegacy({ generated_utc: '2026-10-18T12:00:00Z', host: 'arbitrary-node', order: ['alpha', 'beta', 'gamma', 'delta'],
@@ -27,16 +27,16 @@ describe('detailed project source adapters', () => {
     const source = snapshot(), projects = projectDetails(source);
     expect(projects.map(project => project.id)).toEqual(['alpha', 'beta', 'gamma', 'delta', 'build-project']);
     const html = renderToStaticMarkup(<LegacyFleetView snapshot={source} />);
-    expect((html.match(/data-project-id=/g) ?? []).length).toBe(5);
+    expect((html.match(/<article[^>]*data-project-id=/g) ?? []).length).toBe(5);
     for (const text of ['Recently changed tasks', 'Source captain tail', 'source worker model', 'exact-head approval not confirmed',
       'Validator audit', 'Task leases', 'Live status', 'Evolution waves', 'Source coordination log', 'Hierarchy', 'Configured owner',
-      'Token efficiency and model mix', 'Fleet resources', 'History and trends', 'Super captain source tail', 'Scoped packet']) expect(html).toContain(text);
+      'Token efficiency', 'Fleet resources', 'History and trends', 'Super captain', 'Scoped packet']) expect(html).toContain(text);
     expect(html).not.toContain('iframe'); expect(html).not.toContain('dangerouslySetInnerHTML');
   });
   it('selects one project without promoting the rollout above other project cards', () => {
     const html = renderToStaticMarkup(<LegacyFleetView snapshot={snapshot()} selected="build-project" />);
-    expect((html.match(/data-project-id=/g) ?? []).length).toBe(1);
-    expect(html).toContain('data-project-id="build-project"'); expect(html).not.toContain('data-project-id="alpha"');
+    expect((html.match(/<article[^>]*data-project-id=/g) ?? []).length).toBe(1);
+    expect(html).toMatch(/<article[^>]*data-project-id="build-project"/); expect(html).not.toMatch(/<article[^>]*data-project-id="alpha"/);
   });
   it('merges matching producer and rollout identities without duplicate project tabs', () => {
     const source = snapshot(); source.rollout = { ...source.rollout as object, project: { id: 'alpha', name: 'Alternate title' } };
@@ -61,6 +61,15 @@ describe('detailed project source adapters', () => {
     expect(projectDetails(source).at(-1)?.stages.done).toBeUndefined();
     expect(freshness('2026-10-18T12:00:00Z', Date.parse('2026-10-18T12:10:00Z'))).toContain('stale');
     expect(freshness('2026-10-18T12:10:00Z', Date.parse('2026-10-18T12:00:00Z'))).toBe('future source time');
+  });
+  it('includes additional project captains in the hierarchy without duplicating producer entries', () => {
+    const source = snapshot();
+    source.hierarchy = { captains: [{ key: 'alpha', name: 'Authoritative producer captain' }] };
+    source.agents = [{ project: 'build-project', screen: 'captain_build-project', model: 'observed captain' }];
+    const captains = hierarchyCaptains(source);
+    expect(captains.filter(captain => captain.key === 'alpha')).toHaveLength(1);
+    expect(captains.find(captain => captain.key === 'alpha')?.name).toBe('Authoritative producer captain');
+    expect(captains.find(captain => captain.key === 'build-project')).toMatchObject({ name: 'Admiralty', model: 'observed captain' });
   });
   it('escapes all source text and excludes unsafe source links', () => {
     const source = snapshot(); source.projects.alpha.name = '<img src=x onerror="alert(1)">';

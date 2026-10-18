@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { data, list, text, label, number, freshness, safeHref, projectDetails, watchLegacy, type LegacySnapshot, type ProjectDetailModel } from '../legacy';
+import { data, list, text, label, freshness, safeHref, projectDetails, watchLegacy, type LegacySnapshot, type ProjectDetailModel } from '../legacy';
+import { TemporalPlots } from './TemporalPlots';
+import { LegacyHierarchy } from './LegacyHierarchy';
+import { TokenEfficiency } from './TokenEfficiency';
+import { ModelBadge } from './ModelBadge';
 
 /** Semantic React views of producer facts. Unknown values never become zeros. */
 export function DataValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
@@ -13,17 +17,21 @@ export function DataValue({ value, depth = 0 }: { value: unknown; depth?: number
 }
 function SourceSection({ title, value, open = false }: { title: string; value: unknown; open?: boolean }) {
   const [expanded, setExpanded] = useState(open);
-  return <details className="legacy-section" open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}><summary>{title}</summary>{expanded && <DataValue value={value} />}</details>;
+  return <details className="legacy-section" open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}><summary>{title}</summary>{expanded && (title === 'Work packets' ? <PacketTable values={list(value)} /> : title === 'Coordination log' && Array.isArray(data(value).tail) ? <><div className="legacy-provenance">{text(data(value).mtime_utc)}</div><pre>{list(data(value).tail).map(text).join('\n')}</pre></> : <DataValue value={value} />)}</details>;
+}
+function PacketTable({ values }: { values: unknown[] }) {
+  const [shown, setShown] = useState(12);
+  return <><div className="legacy-table-scroll"><table><thead><tr><th>Packet</th><th>Work</th><th>Stage</th></tr></thead><tbody>{values.slice(0,shown).map((value,index) => {const packet=data(value); return <tr key={text(packet.id)||index}><td><b>{text(packet.id)}</b></td><td>{text(packet.title)}<details><summary>Evidence and scope</summary><DataValue value={packet}/></details></td><td>{label(text(packet.status))}</td></tr>;})}</tbody></table></div>{values.length>shown && <button className="text-button" onClick={()=>setShown(values.length)}>Show all {values.length} packets</button>}</>;
 }
 function Screen({ value }: { value: unknown }) {
   const screen = data(value);
   if (!Object.keys(screen).length) return <div className="muted">No captain reported by producer.</div>;
-  return <div className="legacy-screen"><div><b>{text(screen.name ?? screen.screen ?? screen.id) || 'Captain'}</b> <span className={`source-state ${screen.agent_running === true || screen.state === 'active' ? 'active' : ''}`}>{screen.agent_running === true ? 'agent running' : text(screen.state) || (screen.alive === true ? 'screen alive; agent unconfirmed' : 'unknown')}</span></div><div>{text(screen.model) || 'Model unknown'} {text(screen.effort)} · {text(screen.screen_changed_utc) || 'Activity time unknown'}</div>{list(screen.tail).length > 0 && <pre>{list(screen.tail).map(text).join('\n')}</pre>}</div>;
+  return <div className="legacy-screen"><div><b>{text(screen.name ?? screen.screen ?? screen.id) || 'Captain'}</b> <span className={`source-state ${screen.agent_running === true || screen.state === 'active' ? 'active' : ''}`}>{screen.agent_running === true ? 'agent running' : text(screen.state) || (screen.alive === true ? 'screen alive; agent unconfirmed' : 'unknown')}</span></div><div><ModelBadge model={text(screen.model) || 'Unknown'} effort={text(screen.effort)} /> · {text(screen.screen_changed_utc ?? screen.last_token_utc) || 'Activity time unknown'}</div>{list(screen.tail).length > 0 && <pre>{list(screen.tail).map(text).join('\n')}</pre>}</div>;
 }
 function Workers({ values }: { values: unknown[] }) {
   return <div className="legacy-table-scroll"><table><thead><tr><th>Screen / node</th><th>Model / effort</th><th>Task</th><th>Observed state</th></tr></thead><tbody>{values.map((value, index) => {
     const worker = data(value);
-    return <tr key={`${text(worker.id ?? worker.screen ?? worker.name)}:${index}`}><td>{text(worker.name ?? worker.screen ?? worker.id) || 'Unknown'}<small>{text(worker.host ?? worker.node) || 'Node not reported'}</small></td><td>{text(worker.model) || 'Unknown'}<small>{text(worker.effort)} {text(worker.tier)}</small></td><td>{text(worker.task) || 'Unassigned'}{worker.tail !== undefined && <details><summary>Screen tail</summary><pre>{list(worker.tail).map(text).join('\n')}</pre></details>}</td><td>{text(worker.state) || (worker.agent_running === true ? 'agent running' : worker.agent_running === false ? 'agent not running' : 'unknown')}<small>{text(worker.screen_changed_utc)}</small></td></tr>;
+    return <tr key={`${text(worker.id ?? worker.screen ?? worker.name)}:${index}`}><td>{text(worker.name ?? worker.screen ?? worker.id) || 'Unknown'}<small>{text(worker.host ?? worker.node) || 'Node not reported'}</small></td><td><ModelBadge model={text(worker.model) || 'Unknown'} effort={text(worker.effort)} tier={text(worker.tier)} /></td><td>{text(worker.task) || 'Unassigned'}{worker.tail !== undefined && <details><summary>Screen tail</summary><pre>{list(worker.tail).map(text).join('\n')}</pre></details>}</td><td>{text(worker.state) || (worker.agent_running === true ? 'agent running' : worker.agent_running === false ? 'agent not running' : 'unknown')}<small>{text(worker.screen_changed_utc)}</small></td></tr>;
   })}</tbody></table>{!values.length && <div className="muted">No workers reported.</div>}</div>;
 }
 function PullRequest({ value }: { value: unknown }) {
@@ -48,24 +56,27 @@ export function ProjectDetail({ project, compact = false }: { project: ProjectDe
     <SourceSection title="Complete producer project record" value={project.raw} />
   </article>;
 }
-function Hierarchy({ snapshot }: { snapshot: LegacySnapshot }) {
-  const hierarchy = data(snapshot.hierarchy), captains = list(hierarchy.captains);
-  return <section className="legacy-side-panel panel"><h2>Hierarchy</h2><div className="legacy-command-chain"><span>{text(hierarchy.jepson ?? hierarchy.owner) || 'Owner not reported'}</span><span>→ {text(data(hierarchy.grokbot).name) || 'Watcher not reported'}</span><span>→ {text(data(hierarchy.super_captain).screen) || 'Super captain not reported'}</span></div><div className="legacy-captain-columns">{captains.map((value, index) => { const captain = data(value); return <div key={index}><b>{text(captain.name ?? captain.key)}</b><div>{text(captain.model)}</div><span>{text(captain.state)}</span><Workers values={list(captain.workers)} /></div>; })}</div><SourceSection title="Full hierarchy source" value={snapshot.hierarchy} /></section>;
-}
-function Trends({ snapshot }: { snapshot: LegacySnapshot }) {
-  const rows = list(data(snapshot.history).rows).map(data), metrics = ['cost_index', 'quota_pct', 'credits_h', 'luna_fail_total', 'luna_fp_rate'];
-  return <section className="legacy-side-panel panel"><h2>History and trends</h2><div className="legacy-trends">{metrics.map(key => {
-    const values = rows.map(row => number(row[key])).filter((value): value is number => value !== null);
-    const max = Math.max(...values, 1), min = Math.min(...values, 0);
-    const points = values.map((value, index) => `${index / Math.max(1, values.length - 1) * 200},${38 - (value - min) / Math.max(1, max - min) * 34}`).join(' ');
-    return <div key={key}><span>{label(key)}</span><b>{values.length ? values.at(-1) : 'Unknown'}</b><svg viewBox="0 0 200 42" role="img" aria-label={`${label(key)} source history`}><polyline points={points} fill="none" stroke="currentColor" strokeWidth="2" /></svg></div>;
-  })}</div><SourceSection title={`History source rows (${rows.length})`} value={snapshot.history} /></section>;
-}
 export function LegacyFleetView({ snapshot, selected = 'all' }: { snapshot: LegacySnapshot; selected?: string }) {
   const projects = projectDetails(snapshot), visible = selected === 'all' ? projects : projects.filter(project => project.id === selected);
-  return <><div className="legacy-source-status">Source host: <b>{text(snapshot.host) || 'Unknown'}</b> · Produced {snapshot.generated_utc} ({freshness(snapshot.generated_utc)}) · Read-only observation every 15 seconds</div>
-    <div className="legacy-layout"><div className="legacy-project-grid">{visible.map(project => <ProjectDetail key={project.id} project={project} compact={selected === 'all'} />)}{!visible.length && <div className="loading-card">Selected project is no longer present in this snapshot.</div>}</div>
-    <aside className="legacy-side"><Hierarchy snapshot={snapshot} /><section className="legacy-side-panel panel"><h2>Token efficiency and model mix</h2><DataValue value={snapshot.token_efficiency} /></section><section className="legacy-side-panel panel"><h2>Token yield and coverage</h2><DataValue value={snapshot.token_yield} /></section><section className="legacy-side-panel panel"><h2>Fleet resources</h2><DataValue value={snapshot.global_resources} /></section><Trends snapshot={snapshot} /><section className="legacy-side-panel panel"><h2>Super captain</h2><DataValue value={snapshot.super_captain} /></section><SourceSection title="All agent observations" value={snapshot.agents} /><SourceSection title="Remote screens" value={snapshot.remote_screens} /></aside></div></>;
+  return <>
+    <TemporalPlots snapshot={snapshot} />
+    <div className="legacy-source-status">Source host: <b>{text(snapshot.host) || 'Unknown'}</b> · Produced {snapshot.generated_utc} ({freshness(snapshot.generated_utc)}) · Read-only observation every 15 seconds</div>
+    <div className="legacy-layout">
+      <div className="legacy-project-grid">{visible.map(project => <ProjectDetail key={project.id} project={project} compact={selected === 'all'} />)}{!visible.length && <div className="loading-card">Selected project is no longer present in this snapshot.</div>}</div>
+      <aside className="legacy-side">
+        <LegacyHierarchy snapshot={snapshot} />
+        <TokenEfficiency snapshot={snapshot} />
+        <div className="legacy-auxiliary panel legacy-side-panel">
+          <SourceSection title="Fleet resources" value={snapshot.global_resources} />
+          <SourceSection title="Super captain" value={snapshot.super_captain} />
+          <SourceSection title="Token yield source and coverage" value={snapshot.token_yield} />
+          <SourceSection title="Complete history source" value={snapshot.history} />
+          <SourceSection title="All agent observations" value={snapshot.agents} />
+          <SourceSection title="Remote screens" value={snapshot.remote_screens} />
+        </div>
+      </aside>
+    </div>
+  </>;
 }
 export default function LegacyDetailed({ token }: { token?: string }) {
   const [snapshot, setSnapshot] = useState<LegacySnapshot | null>(null), [error, setError] = useState('');
@@ -73,7 +84,7 @@ export default function LegacyDetailed({ token }: { token?: string }) {
   const [retry, setRetry] = useState(0);
   useEffect(() => { setSnapshot(null); setLoaded(false); setError(''); return watchLegacy({ token, onSnapshot: value => { setSnapshot(value); setLoaded(true); }, onError: value => { setError(value); if (value) setLoaded(true); } }); }, [token, retry]);
   const projects = useMemo(() => snapshot ? projectDetails(snapshot) : [], [snapshot]);
-  return <div className={`legacy-detailed density-${density}`}><div className="legacy-toolbar"><div className="legacy-project-tabs" role="tablist" aria-label="Observed projects"><button role="tab" aria-selected={selected === 'all'} onClick={() => setSelected('all')}>All projects</button>{projects.map(project => <button role="tab" key={project.id} aria-selected={selected === project.id} onClick={() => setSelected(project.id)}>{project.name}</button>)}</div><label>Density <select value={density} onChange={event => setDensity(event.target.value as 'dense' | 'comfortable')}><option value="dense">Dense</option><option value="comfortable">Comfortable</option></select></label><button className="text-button" onClick={() => setRetry(value => value + 1)}>Refresh source</button><a href="/legacy/" target="_blank" rel="noopener noreferrer">Original detailed dashboard ↗</a></div>
+  return <div className={`legacy-detailed density-${density}`}><div className="legacy-toolbar"><div className="legacy-project-tabs" role="tablist" aria-label="Observed projects"><button role="tab" aria-selected={selected === 'all'} onClick={() => setSelected('all')}>All projects</button>{projects.map(project => <button role="tab" aria-label={project.name} key={project.id} aria-selected={selected === project.id} onClick={() => setSelected(project.id)}><span className="legacy-tab-title">{project.name}<small>{project.total === null ? 'Unknown total' : `${project.total} tasks`}</small></span><span className="legacy-tab-metrics">{Object.entries(project.stages).filter(([stage, count]) => count > 0 && ['done', 'in_progress', 'in_pr', 'blocked', 'review'].includes(stage)).map(([stage, count]) => <span key={stage}><b>{count}</b> {label(stage)}</span>)}</span><span className="legacy-stage-bar" aria-hidden="true">{Object.entries(project.stages).map(([stage, count]) => <span key={stage} className={`stage-${stage}`} style={{width:`${project.total ? Math.min(100,count/project.total*100) : 0}%`}} />)}</span></button>)}</div><label>Density <select value={density} onChange={event => setDensity(event.target.value as 'dense' | 'comfortable')}><option value="dense">Dense</option><option value="comfortable">Comfortable</option></select></label><button className="text-button" onClick={() => setRetry(value => value + 1)}>Refresh source</button><a href="/legacy/" target="_blank" rel="noopener noreferrer">Original detailed dashboard ↗</a></div>
     {error && <div className="error-banner" role="status">{error}. Existing snapshot remains visible when available; source age is preserved.</div>}
     {!loaded && <div className="loading-card">Loading detailed producer snapshot…</div>}
     {loaded && !snapshot && <div className="loading-card">Detailed producer data unavailable on this server. Native simulation and its synthetic projects remain separate in the overview.</div>}
