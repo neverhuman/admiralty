@@ -85,8 +85,23 @@ export function projectDetails(snapshot: LegacySnapshot): ProjectDetailModel[] {
   const rollout = data(snapshot.rollout), identity = data(rollout.project);
   if (text(identity.id)) {
     const id = text(identity.id), existing = projects.find(project => project.id === id);
-    const agents = list(snapshot.agents).map(data).filter(agent => agent.project === id);
+    const allAgents = list(snapshot.agents).map(data);
+    const agents = allAgents.filter(agent => agent.project === id);
     const captain = agents.find(agent => agent.screen === `captain_${id}`) ?? {};
+    // Rollout lanes own the project-to-screen mapping. The legacy process
+    // classifier can still call a newly named screen "unassigned".
+    const lanes = list(rollout.lanes).map(data);
+    const workers: Data[] = lanes.map(lane => {
+      const agent = allAgents.find(value => text(lane.screen) && value.screen === lane.screen) ?? {};
+      return { ...agent, id: lane.id, screen: lane.screen ?? agent.screen ?? lane.id,
+        node: lane.node ?? agent.host, model: agent.model ?? lane.model, effort: agent.effort ?? lane.effort,
+        tier: agent.tier ?? lane.tier, task: lane.packet_id ?? agent.task,
+        state: lane.status, screen_changed_utc: agent.last_token_utc ?? lane.source_updated_utc,
+      };
+    });
+    for (const agent of agents.filter(agent => agent !== captain)) {
+      if (!workers.some(worker => worker.screen === agent.screen)) workers.push(agent);
+    }
     const extra: DetailSection[] = [{ title: 'Work packets', value: rollout.packets, open: true }, { title: 'Execution lanes', value: rollout.lanes, open: true },
       { title: 'Manifest provenance', value: { source: rollout.source, producer: rollout.producer, freshness: rollout.freshness, assurance: rollout.assurance }, open: false }];
     if (existing) { existing.sections.push(...extra); }
@@ -94,7 +109,7 @@ export function projectDetails(snapshot: LegacySnapshot): ProjectDetailModel[] {
       total: number(rollout.total) ?? list(rollout.packets).length, stages: counts(rollout.counts), labels: { verified: 'verification recorded', integrated: 'integration recorded' },
       alerts: [rollout.error, data(rollout.freshness).state === 'stale' ? 'Rollout source is stale; producer age is preserved.' : '',
         ...list(rollout.packets).flatMap(packet => list(data(packet).warnings))].map(text).filter(Boolean), recent: [], captain,
-      workers: agents.filter(agent => agent !== captain), pr: data(rollout.pr), sections: extra, raw: rollout });
+      workers, pr: data(rollout.pr), sections: extra, raw: rollout });
   }
   return projects;
 }
