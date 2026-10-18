@@ -914,4 +914,91 @@ mod tests {
             expected
         );
     }
+
+    #[test]
+    fn late_sql_failure_rolls_back_queue_and_ack_index_changes_in_the_live_writer() {
+        use crate::Store;
+        use admiralty_core::SourceIdentity;
+        let directory = tempfile::tempdir().expect("private fixture");
+        let database = directory.path().join("late-fault.sqlite");
+        let source = |sequence: u64| SourceIdentity {
+            producer_id: "late-fault".into(),
+            incarnation: "boot-one".into(),
+            sequence: sequence.to_string(),
+        };
+        let observed = || "2026-10-18T00:00:00Z".to_owned();
+        let store = Store::open(&database).expect("writer");
+        store
+            .append(source(1), task_event(), observed())
+            .expect("task");
+        store
+            .append(
+                source(2),
+                DomainEvent::MessageQueued {
+                    message: message("one"),
+                },
+                observed(),
+            )
+            .expect("queued message");
+        let before = store.snapshot().expect("before fault");
+        let pending = store
+            .pending_messages(scope(), None, 16)
+            .expect("before fault pending");
+        let fault = rusqlite::Connection::open(&database).expect("owned fixture fault connection");
+        fault.execute_batch("CREATE TRIGGER reject_request_binding BEFORE INSERT ON event_request_bindings BEGIN SELECT RAISE(ABORT,'fixture late binding failure'); END;").expect("install fault after domain insert");
+        assert!(matches!(
+            store.append(
+                source(3),
+                DomainEvent::MessageQueued {
+                    message: message("two")
+                },
+                observed()
+            ),
+            Err(crate::StoreError::Sqlite(_))
+        ));
+        assert!(matches!(
+            store.acknowledge_scoped_message(
+                source(4),
+                scope(),
+                message("one").message_id,
+                observed()
+            ),
+            Err(crate::StoreError::Sqlite(_))
+        ));
+        assert_eq!(store.snapshot().expect("live facts after rollback"), before);
+        assert_eq!(
+            store
+                .pending_messages(scope(), None, 16)
+                .expect("live index after rollback"),
+            pending
+        );
+        fault
+            .execute_batch("DROP TRIGGER reject_request_binding;")
+            .expect("remove owned fixture fault");
+        drop(fault);
+        store
+            .append(
+                source(3),
+                DomainEvent::MessageQueued {
+                    message: message("two"),
+                },
+                observed(),
+            )
+            .expect("same queue succeeds without fault");
+        store
+            .acknowledge_scoped_message(source(4), scope(), message("one").message_id, observed())
+            .expect("same ACK succeeds without fault");
+        let committed = store
+            .pending_messages(scope(), None, 16)
+            .expect("committed index");
+        assert_eq!(committed.messages, vec![message("two")]);
+        drop(store);
+        let reopened = Store::open(&database).expect("replay after faults");
+        assert_eq!(
+            reopened
+                .pending_messages(scope(), None, 16)
+                .expect("replayed index"),
+            committed
+        );
+    }
 }
