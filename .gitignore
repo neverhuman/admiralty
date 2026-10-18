@@ -25,3 +25,6 @@ sc_nudge_*
 sc_note_*
 sc_disk_receipt_*
 sc_disk_archive_*
+
+# the exported history dataset IS tracked (see data/history/README.md)
+!data/history/**

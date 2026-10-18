@@ -1,0 +1,45 @@
+{
+ "note": "Rate files live in captains/rates/ (single source of truth). Vendors use different currencies; never compare across files.",
+ "files": [
+  {
+   "file": "captains/rates/claude_rates_2026-10-17.json",
+   "vendor": "anthropic",
+   "as_of": "2026-10-17",
+   "unit": "USD per 1M tokens (API list price, used as quota proxy)",
+   "currency": "USD",
+   "baseline_model": "claude-haiku-5-5 (prompt <=100K)",
+   "models": 14,
+   "sha256": "4772e5336f8a3473d174ef9f9f2c074f10c224b30a25380663d84449d460a7b8"
+  },
+  {
+   "file": "captains/rates/codex_rates_2026-10-17.json",
+   "vendor": "openai",
+   "as_of": "2026-10-17",
+   "unit": "ChatGPT credits per 1M tokens",
+   "currency": "ChatGPT credits (NOT USD; do not compare with other vendors)",
+   "baseline_model": "gpt-6-luna",
+   "models": 7,
+   "sha256": "51308a63cfbebdd694ed75240c733a5f042dbfbec6e71d36a48d9f9b601896fb"
+  },
+  {
+   "file": "captains/rates/gemini_rates_2026-10-17.json",
+   "vendor": "google",
+   "as_of": "2026-10-17",
+   "unit": "USD per 1M tokens (Gemini API list price, used as quota proxy)",
+   "currency": "USD",
+   "baseline_model": "gemini-3.1-flash-lite",
+   "models": 7,
+   "sha256": "3abcdbc9774701dd60b8c885c9e6f6a8298220c889f7517e58f8f9d69002d20b"
+  },
+  {
+   "file": "captains/rates/grok_rates_2026-10-17.json",
+   "vendor": "xai",
+   "as_of": "2026-10-17",
+   "unit": "USD per 1M tokens (API list price, used as quota proxy)",
+   "currency": "USD",
+   "baseline_model": "grok-build-0.1",
+   "models": 7,
+   "sha256": "f12e0d0b39fb4fc425345eae12c21fd18042ce3395a340e1b966e07b428ef268"
+  }
+ ]
+}

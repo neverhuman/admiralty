@@ -1,0 +1,450 @@
+ts,project,task,screen,host,tier,model,effort,outcome,escalated_to,reason,tokens,source_format,class,attempt,minutes
+2026-10-18T02:50:00Z,dope,C01,2403925.dope_w1_c01_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on C01 paired query-level T90 and loss-validity floors,,canonical,,,
+2026-10-18T02:50:00Z,dope,D00,2403930.dope_w1_d00_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on D00 prepared-view contract,,canonical,,,
+2026-10-18T02:50:00Z,dope,I01,2641266.dope_fb_codex_2,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on I01 interaction fitting and frontier compatibility,,canonical,,,
+2026-10-18T02:50:00Z,dope,S00,2403938.dope_w1_s00_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on S00 utility/empirical/DP/release separation,,canonical,,,
+2026-10-18T03:03:06Z,jarambit,AUTO-03,1013411.codex_jarambit_auto03,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on AUTO-03 search targeting + G16-15 diagnosis,,canonical,,,
+2026-10-18T03:05:58Z,jarambit,G16-12-RSV2-04,1242467.codex_jarambit_gate_diag,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on gate feasibility bound + compound-bevel study,,canonical,,,
+2026-10-18T03:08:00Z,dope,C01,2403925.dope_w1_c01_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/C01 32b376e and wrote 0444 receipt dope_w1_c01_codex_receipt_20261018.json,,canonical,,,
+2026-10-18T03:09:00Z,dope,S00,2403938.dope_w1_s00_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/S00 d92c60f and wrote 0444 receipt dope_w1_s00_codex_receipt_20261018.json,,canonical,,,
+2026-10-18T03:16:00Z,dope,D00,2403930.dope_w1_d00_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/D00 049fca2 and wrote 0444 receipt dope_w1_d00_codex_receipt_20261018.json,,canonical,,,
+2026-10-18T03:18:00Z,dope,C02,2403925.dope_w1_c01_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on C02 statistical inference and power protocol,,canonical,,,
+2026-10-18T03:18:00Z,dope,W00,2641262.dope_fb_codex_1,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on W00 worker ABI and adapter admission,,canonical,,,
+2026-10-18T03:20:00Z,dope,I01,2641266.dope_fb_codex_2,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/I01 4cfa59d and wrote 0444 receipt dope_fb_codex_2_i01_receipt_20261018.json,,canonical,,,
+2026-10-18T03:20:00Z,dope,D01,2403930.dope_w1_d00_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on D01 fit-only transforms and original-unit replay,,canonical,,,
+2026-10-18T03:20:00Z,dope,D02,2403938.dope_w1_s00_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on D02 poison-row and split hygiene,,canonical,,,
+2026-10-18T03:23:00Z,dope,B00,2641266.dope_fb_codex_2,xbabe2,T3,gpt-6.1-sol,xhigh,started,,Wave-1 super-merge + B00 bundle closure security,,canonical,,,
+2026-10-18T03:33:49Z,dope,Q00,3268252.dope_lane_q00,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on Q00 claim ledger and public-language linter,,canonical,,,
+2026-10-18T03:34:53Z,dope,C03,3340069.dope_lane_c03,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on C03 paired D80 driver agreement,,canonical,,,
+2026-10-18T03:35:49Z,dope,D01,2403930.dope_w1_d00_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/D01 7ab1012 and wrote 0444 receipt dope_w2_d01_codex_receipt_20261018.json,,canonical,,,
+2026-10-18T03:35:50Z,dope,D02,2403938.dope_w1_s00_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/D02 d1d4876 and wrote 0444 receipt dope_w2_d02_codex_receipt_20261018.json,,canonical,,,
+2026-10-18T03:35:57Z,dope,B01,3419250.dope_lane_b01,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on B01 seccomp/sandbox bundle isolation,,canonical,,,
+2026-10-18T03:37:00Z,dope,S02,3484467.dope_lane_s02,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on S02 formal-DP accountant and profile schema,,canonical,,,
+2026-10-18T03:38:04Z,dope,F00,3616667.dope_lane_f00,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on F00 codec/compiler bit anatomy,,canonical,,,
+2026-10-18T03:39:09Z,dope,U00,3697213.dope_lane_u00,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on U00 CLI facade and redacted error output,,canonical,,,
+2026-10-18T03:41:00Z,jopedime,I27,1616403.jope_i27_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on T3,,legacy_s9,medium,1,0
+2026-10-18T03:41:30Z,jopedime,I04,3473045.jope_i04_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on T3,,legacy_s9,hard,1,0
+2026-10-18T03:42:00Z,jopedime,I09,2224621.jope_i09_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on T3,,legacy_s9,hard,1,0
+2026-10-18T03:42:30Z,jopedime,I05,3648365.jope_i05_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on T3,,legacy_s9,medium,1,0
+2026-10-18T03:42:47Z,dope,S01,2403938.dope_w1_s00_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on S01 empirical privacy screening confidence bounds,,canonical,,,
+2026-10-18T03:42:47Z,dope,W04,2403930.dope_w1_d00_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on W04 conventional auditor CPU smoke lock,,canonical,,,
+2026-10-18T03:43:00Z,jopedime,I16,3266828.jope_i16_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on T3,,legacy_s9,simple,1,0
+2026-10-18T03:43:30Z,jopedime,I11,3360075.jope_i11_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on T3,,legacy_s9,hard,1,0
+2026-10-18T03:43:46Z,dope,W02,4027529.dope_lane_w02,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on W02 conventional auditor/challenger locks,,canonical,,,
+2026-10-18T03:44:32Z,jarambit,PR-100-REVIEW,2132048.codex_jarambit,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing exact-head review of PR #100 d1ecef96,,canonical,,,
+2026-10-18T03:44:50Z,dope,C04,4084540.dope_lane_c04,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on C04 paired query-level calibration follow-up,,canonical,,,
+2026-10-18T03:45:00Z,jopedime,I03,1520508.jope_i03_codex,xbabe2,T0,gpt-6-luna,medium,started,,wave 1 lane launch on T0,,legacy_s9,medium,1,0
+2026-10-18T03:45:00Z,jopedime,I07,966812.jope_i07_codex,xbabe2,T0,gpt-6-luna,medium,started,,wave 1 lane launch on T0,,legacy_s9,medium,1,0
+2026-10-18T03:45:53Z,dope,F01,4166123.dope_lane_f01,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on F01 frontier interaction and codec wiring,,canonical,,,
+2026-10-18T03:46:00Z,jopedime,I08,1451217.jope_i06_codex,xbabe2,T0,gpt-6-luna,medium,pass,,cargo test passed; integrated on PR #358 (59b5080e3),,legacy_s9,hard,1,14
+2026-10-18T03:46:58Z,dope,M00,26277.dope_lane_m00,xbabe2,T3,gpt-6.1-sol,xhigh,started,,pre-routing launch on M00 marginal/transform mechanism fitting,,canonical,,,
+2026-10-18T03:47:00Z,jopedime,I21,70727.jope_i21_codex,xbabe2,T0,gpt-6-luna,medium,started,,wave 1 lane launch on T0,,legacy_s9,medium,1,0
+2026-10-18T03:47:40Z,dope,W00,2641262.dope_fb_codex_1,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/W00 5967691 and wrote 0444 receipt dope_w2_w00_codex_1_receipt_20261018.json,,canonical,,,
+2026-10-18T03:52:00Z,super_captain,DISK-XBABE3,sc_disk_luna_xbabe3,xbabe3,T0,gpt-6-luna,medium,fail,,Halted at 03:52Z by Grok Bot for out-of-scope Jeryu target/ deletion before HARD SCOPE LIMIT added,,legacy_s9,simple,1,4
+2026-10-18T03:52:19Z,dope,E02,743344.dope_fb_codex_1,xbabe2,T0,gpt-6-luna,medium,deescalated,,switched screen from gpt-6.1-sol xhigh to gpt-6-luna medium at W00->E02 task boundary,,canonical,,,
+2026-10-18T03:52:19Z,dope,E02,743344.dope_fb_codex_1,xbabe2,T0,gpt-6-luna,medium,started,,"E02 campaign scheduler, lineage, and evidence on T0 gpt-6-luna medium",,canonical,,,
+2026-10-18T03:53:07Z,jarambit,PR-100-REVIEW,2132048.codex_jarambit,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,completed receipt 2026-10-18T0343Z-pr100-d1ecef96/README.md,,canonical,,,
+2026-10-18T03:54:00Z,jopedime,I07,966812.jope_i07_codex,xbabe2,T0,gpt-6-luna,medium,pass,,cargo test passed; integrated on PR #358 (d0bcc9631),,legacy_s9,medium,1,9
+2026-10-18T03:54:00Z,dope,C03,3340069.dope_lane_c03,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/C03 26f21a6 and wrote 0444 receipt dope_lane_c03_receipt_20261018.json,,canonical,,,
+2026-10-18T03:54:07Z,jopedime,I14,868331.jope_prep2_codex,xbabe2,T0,gpt-6-luna,medium,started,,lane launch on T0,,legacy_s9,hard,1,0
+2026-10-18T03:55:00Z,dope,S02,3484467.dope_lane_s02,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/S02 2a0e649 and wrote 0444 receipt dope_lane_s02_receipt_20261018.json,,canonical,,,
+2026-10-18T03:55:11Z,jarambit,AUTO-03,1013411.codex_jarambit_auto03,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,19/19 unit + 2/2 integration tests pass; GCI_DIAGNOSIS.md verified,,canonical,,,
+2026-10-18T03:57:00Z,dope,Q00,3268252.dope_lane_q00,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/Q00 956b29b and wrote 0444 receipt dope_lane_q00_receipt_20261018.json,,canonical,,,
+2026-10-18T03:58:00Z,jopedime,I10,3473054.jope_i10_codex,xbabe2,T2,gpt-6.1-sol,high,started,,pre-routing launch on T2,,legacy_s9,hard,1,0
+2026-10-18T03:58:00Z,dope,F00,3616667.dope_lane_f00,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/F00 7f31a11 and wrote 0444 receipt dope_lane_f00_receipt_20261018.json,,canonical,,,
+2026-10-18T03:58:10Z,jarambit,PR-100-RECHECK,2132048.codex_jarambit,xbabe2,T0,gpt-6-luna,medium,deescalated,,switched reviewer screen to gpt-6-luna medium at task boundary,,canonical,,,
+2026-10-18T03:58:10Z,jarambit,G16-15,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,deescalated,,switched screen from gpt-6.1-sol xhigh to gpt-6-luna medium at task boundary,,canonical,,,
+2026-10-18T03:59:06Z,dope,C02,2403925.dope_w1_c01_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/C02 045faed and wrote 0444 receipt dope_w2_c02_codex_receipt_20261018.json,,canonical,,,
+2026-10-18T03:59:12Z,jarambit,G16-15,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,started,,G16-15 handoff + WORKPLAN R1-R3 fix + gci.rs unit test,,canonical,,,
+2026-10-18T03:59:12Z,jarambit,PR-100-RECHECK,2132048.codex_jarambit,xbabe2,T0,gpt-6-luna,medium,started,,delta verification on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:01:00Z,jopedime,I03,1520508.jope_i03_codex,xbabe2,T0,gpt-6-luna,medium,pass,,cargo test passed; integrated on PR #358 (31de3350c),,legacy_s9,medium,1,16
+2026-10-18T04:01:00Z,dope,W02,4027529.dope_lane_w02,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/W02 fa09e5a and wrote 0444 receipt dope_lane_w02_receipt_20261018.json,,canonical,,,
+2026-10-18T04:01:30Z,jopedime,I21,70727.jope_i21_codex,xbabe2,T0,gpt-6-luna,medium,pass,,cargo test passed; integrated on PR #358 (912a1fe7a),,legacy_s9,medium,1,14
+2026-10-18T04:02:00Z,jopedime,I45,70727.jope_i21_codex,xbabe2,T0,gpt-6-luna,medium,started,,lane launch on T0,,legacy_s9,simple,1,0
+2026-10-18T04:02:16Z,dope,C05,1447085.dope_lane_c05,xbabe2,T0,gpt-6-luna,medium,deescalated,,"switched CPUs 80,81 from gpt-6.1-sol xhigh to gpt-6-luna medium at C03->C05 boundary",,canonical,,,
+2026-10-18T04:02:16Z,dope,C05,1447085.dope_lane_c05,xbabe2,T0,gpt-6-luna,medium,started,,C05 Python verification and report schema parity on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:02:30Z,dope,B01,3419250.dope_lane_b01,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/B01 423b3dd and wrote 0444 receipt dope_lane_b01_receipt_20261018.json,,canonical,,,
+2026-10-18T04:03:00Z,dope,W04,2403930.dope_w1_d00_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/W04 755e65c and wrote 0444 receipt dope_lane_w04_receipt_20261018.json,,canonical,,,
+2026-10-18T04:03:20Z,dope,S03,1495063.dope_lane_s03,xbabe2,T0,gpt-6-luna,medium,deescalated,,"switched CPUs 84,85 from gpt-6.1-sol xhigh to gpt-6-luna medium at S02->S03 boundary",,canonical,,,
+2026-10-18T04:03:20Z,dope,S03,1495063.dope_lane_s03,xbabe2,T0,gpt-6-luna,medium,started,,S03 release profile schema and docs on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:04:00Z,jopedime,I27,1616403.jope_i27_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,cargo test passed; integrated on PR #358 (4972c5cb2),,legacy_s9,medium,1,23
+2026-10-18T04:04:25Z,dope,U03,1550752.dope_lane_u03,xbabe2,T0,gpt-6-luna,medium,started,,U03 healthcare-sim example and CLI docs on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:04:30Z,dope,F01,4166123.dope_lane_f01,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/F01 22b407f and wrote 0444 receipt dope_lane_f01_receipt_20261018.json,,canonical,,,
+2026-10-18T04:04:30Z,dope,U00,3697213.dope_lane_u00,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/U00 7f6cb92 and wrote 0444 receipt dope_lane_u00_receipt_20261018.json,,canonical,,,
+2026-10-18T04:04:55Z,jarambit,G16-06-RSV2-08,jarambit_lane_lat_fat,xbabe2,T2,gpt-6.1-sol,high,started,,"hard coupled structural task (lat_rob >= 358 N + seq_ratio >= 1.20) on CPUs 12,13",,canonical,,,
+2026-10-18T04:04:55Z,jarambit,RSV2-07,jarambit_lane_hm_seq,xbabe2,T2,gpt-6.1-sol,high,started,,"hard coupled torsion/spine task (hm_twist_sf >= 1.0 + hm_spine_sf >= 1.0) on CPUs 14,15",,canonical,,,
+2026-10-18T04:05:00Z,jarambit,WP-01-R123,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,pass,,G16-15.md handoff + CHANGELOG.md + /tmp/WORKPLAN_r123_fixed.md verified,,canonical,,,
+2026-10-18T04:05:19Z,dope,F02,1595358.dope_lane_f02,xbabe2,T0,gpt-6-luna,medium,deescalated,,"switched CPUs 86,87 from gpt-6.1-sol xhigh to gpt-6-luna medium at F00->F02 boundary",,canonical,,,
+2026-10-18T04:05:19Z,dope,F02,1595358.dope_lane_f02,xbabe2,T0,gpt-6-luna,medium,started,,F02 progressive packet-boundary sampling on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:05:40Z,jopedime,I27,1616403.jope_i27_codex,xbabe2,T0,gpt-6-luna,medium,deescalated,gpt-6-luna,rotated jope_i27_codex from T3 gpt-6.1-sol xhigh to T0 gpt-6-luna medium at task boundary,,legacy_s9,medium,1,0
+2026-10-18T04:06:00Z,dope,S01,2403938.dope_w1_s00_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/S01 f582d38 and wrote 0444 receipt dope_lane_s01_receipt_20261018.json,,canonical,,,
+2026-10-18T04:06:24Z,dope,E00,1649551.dope_lane_e00,xbabe2,T0,gpt-6-luna,medium,deescalated,,"switched CPUs 0,1 from gpt-6.1-sol xhigh to gpt-6-luna medium at C02->E00 boundary",,canonical,,,
+2026-10-18T04:06:24Z,dope,E00,1649551.dope_lane_e00,xbabe2,T0,gpt-6-luna,medium,started,,E00 dataset and manifest provenance on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:07:00Z,jopedime,I14,868331.jope_prep2_codex,xbabe2,T0,gpt-6-luna,medium,pass,,cargo test passed; integrated on PR #358 (1a2a5c943),,legacy_s9,hard,1,13
+2026-10-18T04:08:47Z,dope,Q01,1756731.dope_lane_q01,xbabe2,T0,gpt-6-luna,medium,deescalated,,"switched CPUs 78,79 from gpt-6.1-sol xhigh to gpt-6-luna medium at Q00->Q01 boundary",,canonical,,,
+2026-10-18T04:08:47Z,dope,Q01,1756731.dope_lane_q01,xbabe2,T0,gpt-6-luna,medium,started,,Q01 Figure 1 coverage-versus-bytes generator on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:10:00Z,jopedime,I45,70727.jope_i21_codex,xbabe2,T0,gpt-6-luna,medium,pass,,cargo test passed; integrated on PR #358 (6adb5ebf7),,legacy_s9,simple,1,8
+2026-10-18T04:12:56Z,joil,V5-09,joil_v5_codex_lane2,xbabe2,T2,gpt-6.1-sol,xhigh,pass,,bounded check; argv/log/resource evidence in lane logs; xhigh follows direct lane assignment,,legacy_s9,hard,format-initial,0.017381112900329752
+2026-10-18T04:13:38Z,joil,V5-09,joil_v5_codex_lane2,xbabe2,T2,gpt-6.1-sol,xhigh,pass,,bounded check; argv/log/resource evidence in lane logs; xhigh follows direct lane assignment,,legacy_s9,hard,observers-initial,0.516753754200181
+2026-10-18T04:13:58Z,joil,V5-09,joil_v5_codex_lane2,xbabe2,T2,gpt-6.1-sol,xhigh,pass,,bounded check; argv/log/resource evidence in lane logs; xhigh follows direct lane assignment,,legacy_s9,hard,clippy-initial,0.2114979519993843
+2026-10-18T04:14:11Z,dope,E02,743344.dope_fb_codex_1,xbabe2,T0,gpt-6-luna,medium,pass,,T0 gpt-6-luna medium PASS: pushed lane/E02 1b9ba63 and wrote 0444 receipt dope_lane_e02_receipt_20261018.json,,canonical,,,
+2026-10-18T04:14:11Z,dope,C04,4084540.dope_lane_c04,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/C04 ba53585 and wrote 0444 receipt dope_lane_c04_receipt_20261018.json,,canonical,,,
+2026-10-18T04:14:11Z,dope,M00,26277.dope_lane_m00,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,pushed lane/M00 11b2329 and wrote 0444 receipt dope_lane_m00_receipt_20261018.json,,canonical,,,
+2026-10-18T04:14:19Z,joil,V5-09,joil_v5_codex_lane2,xbabe2,T2,gpt-6.1-sol,xhigh,pass,,bounded check; argv/log/resource evidence in lane logs; xhigh follows direct lane assignment,,legacy_s9,hard,public-initial,0.06886205961636734
+2026-10-18T04:14:55Z,dope,E01,743344.dope_fb_codex_1,xbabe2,T0,gpt-6-luna,medium,started,,launched E01 (medium) on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:15:00Z,jopedime,I13,1589155.jope_i13_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I13 on T0 gpt-6-luna medium,,legacy_s9,hard,1,0
+2026-10-18T04:15:00Z,jopedime,I06,1451217.jope_i06_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I06 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I12,1543967.jope_i12_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I12 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I15,966812.jope_i07_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I15 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I17,1400848.jope_i17_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I17 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I19,1447344.jope_prep_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I19 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I20,1451217.jope_i06_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I20 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I23,1400848.jope_i17_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I23 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I24,295120.jope_i28_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I24 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I25,1616403.jope_i27_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I25 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I26,18541.jope_i26_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I26 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I28,295120.jope_i28_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I28 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I29,966812.jope_i07_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I29 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I30,966812.jope_i07_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I30 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I31,1589155.jope_i13_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I31 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I33,868331.jope_prep2_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I33 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I34,868331.jope_prep2_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I34 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I35,1589155.jope_i13_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I35 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I39,1447344.jope_prep_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I39 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I40,868331.jope_prep2_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I40 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I54,1616403.jope_i27_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I54 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I55,1616403.jope_i27_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I55 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:15:00Z,jopedime,I18,2224621.jope_i09_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I18 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I22,2224621.jope_i09_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I22 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I36,3473045.jope_i04_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I36 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I37,3360075.jope_i11_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I37 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I38,1543967.jope_i12_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I38 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I41,3473054.jope_i10_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I41 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I42,295120.jope_i28_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I42 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I43,1451217.jope_i06_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I43 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I44,70727.jope_i21_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I44 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I47,1520508.jope_i03_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I47 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I49,1616403.jope_i27_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I49 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I50,1520508.jope_i03_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I50 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I51,1520508.jope_i03_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I51 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I52,1520508.jope_i03_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I52 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I56,1400848.jope_i17_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I56 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I57,3266828.jope_i16_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I57 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I58,2224621.jope_i09_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I58 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I59,2224621.jope_i09_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I59 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I60,1589155.jope_i13_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I60 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I61,3648365.jope_i05_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I61 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:00Z,jopedime,I66,70727.jope_i21_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I66 on T0 gpt-6-luna medium,,legacy_s9,simple,1,0
+2026-10-18T04:15:04Z,joil,V5-09,joil_v5_codex_lane2,xbabe2,T2,gpt-6.1-sol,xhigh,pass,,bounded check; argv/log/resource evidence in lane logs; xhigh follows direct lane assignment,,legacy_s9,hard,observers-final,0.08614032705081627
+2026-10-18T04:15:23Z,joil,V5-09,joil_v5_codex_lane2,xbabe2,T2,gpt-6.1-sol,xhigh,pass,,bounded check; argv/log/resource evidence in lane logs; xhigh follows direct lane assignment,,legacy_s9,hard,clippy-final,0.017335445949962985
+2026-10-18T04:16:08Z,dope,W03,2129037.dope_lane_w03,xbabe2,T0,gpt-6-luna,medium,started,,launched W03 (simple) on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:17:12Z,dope,W01,2182942.dope_lane_w01,xbabe2,T0,gpt-6-luna,medium,started,,launched W01 (medium) on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:17:30Z,jopedime,I09,2224621.jope_i09_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,cargo test passed (5de921a55); integrated on PR #358 (b61c29d46),,legacy_s9,hard,1,35
+2026-10-18T04:18:01Z,jopedime,I09,2224621.jope_i09_codex,xbabe2,T0,gpt-6-luna,medium,deescalated,gpt-6-luna,relaunched jope_i09_codex on T0 gpt-6-luna medium at task boundary,,legacy_s9,simple,1,0
+2026-10-18T04:18:02Z,joil,V5-09,joil_v5_codex_lane2,xbabe2,T2,gpt-6.1-sol,xhigh,fail,,bounded check; argv/log/resource evidence in lane logs; xhigh follows direct lane assignment,,legacy_s9,hard,foundation-source,2.5740679239834816
+2026-10-18T04:18:26Z,dope,C05,1447085.dope_lane_c05,xbabe2,T0,gpt-6-luna,medium,pass,,T0 gpt-6-luna medium PASS: pushed lane/C05 8b199fe and wrote 0444 receipt dope_lane_c05_receipt_20261018.json,,canonical,,,
+2026-10-18T04:18:26Z,dope,R02,1447085.dope_lane_c05,xbabe2,T0,gpt-6-luna,medium,started,,launched R02 (medium) on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:18:26Z,dope,B00,2641266.dope_fb_codex_2,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,completed B00 and wrote 0444 receipt dope_w2_b00_codex_2_receipt_20261018.json,,canonical,,,
+2026-10-18T04:21:00Z,jarambit,G16-12-RSV2-04,1242467.codex_jarambit_gate_diag,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,COMPOUND_BEVEL_REPORT.md completed and verified (SHA256 7506d5f2...),,canonical,,,
+2026-10-18T04:22:18Z,joil,V5-04,joil_v5_claude,xbabe2,T3,claude-opus-4-7,high,pass,,800be73 + 6f5f178 V5-04-01..05 33 crucible-stats + 38 regression pass,,legacy_s9,hard,1,48
+2026-10-18T04:22:18Z,joil,C006-F1,joil_v5_claude,xbabe2,T3,claude-opus-4-7,xhigh,pass,,d312a614 C006-F1 22/22 controls pass receipt 227f4ebc,,legacy_s9,hard,1,12
+2026-10-18T04:22:18Z,joil,G006-integration,joil_v5_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,ff4d9d8d 8-suite gate 8/8 (10/10 steps) exit 0 receipt a33f1b8d,,legacy_s9,hard,1,128
+2026-10-18T04:22:18Z,joil,L1-001,joil_v5_codex_lane1,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,42/42 staged V5-08/09/11 tests pass log 2f8cf8d0 handoff e0b5a090,,legacy_s9,hard,1,21
+2026-10-18T04:23:19Z,joil,V5-08,1052075.joil_v5_codex,xbabe2,T3,gpt-6.1-sol,xhigh,fail,,Initial all-target check101: ambiguous test float; retained1acb128b log. Fixture annotation corrected.,,legacy_s9,hard,1,0.16
+2026-10-18T04:23:19Z,joil,V5-08,1052075.joil_v5_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,Actual pinned candidate+kernel15tests0 log01eb04b8. Not integrated task acceptance.,,legacy_s9,hard,2,1.41
+2026-10-18T04:23:57Z,joil,V5-09,joil_v5_codex_lane2,xbabe2,T2,gpt-6.1-sol,xhigh,loop,,"One model packet attempt, not one per check. Lane-complete local: observers15/15, clippy/public/diff0; awaiting captain verification/integration. Full repo gate and unchanged CLI recheck failed60s child limit; push withheld. Elapsed minutes include guard wait; xhigh follows direct assignment. Captain to confirm verdict before global append.",,legacy_s9,hard,1,35.692
+2026-10-18T04:24:19Z,dope,E00,1649551.dope_lane_e00,xbabe2,T0,gpt-6-luna,medium,pass,,T0 gpt-6-luna medium PASS: pushed lane/E00 1232bd3 and wrote 0444 receipt dope_lane_e00_receipt_20261018.json,,canonical,,,
+2026-10-18T04:24:19Z,dope,R03,1649551.dope_lane_e00,xbabe2,T0,gpt-6-luna,medium,started,,launched R03 (medium) on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:24:30Z,jarambit,G16-12-RSV2-04,1242467.codex_jarambit_gate_diag,xbabe2,T2,gpt-6.1-sol,high,deescalated,,switched 1242467.codex_jarambit_gate_diag from T3 xhigh to T2 high at task boundary,,canonical,,,
+2026-10-18T04:24:35Z,jarambit,G16-12-RSV2-04-p3,1242467.codex_jarambit_gate_diag,xbabe2,T2,gpt-6.1-sol,high,started,,"Phase-3 micro-bevel + wide-tip chord torsion study on T2 high (CPUs 10,11)",,canonical,,,
+2026-10-18T04:26:20Z,dope,E01,743344.dope_fb_codex_1,xbabe2,T0,gpt-6-luna,medium,pass,,T0 gpt-6-luna medium PASS: pushed lane/E01 11d6cf3 and wrote 0444 receipt dope_lane_e01_receipt_20261018.json,,canonical,,,
+2026-10-18T04:26:20Z,dope,F02,1595358.dope_lane_f02,xbabe2,T0,gpt-6-luna,medium,pass,,T0 gpt-6-luna medium PASS: pushed lane/F02 8d42191 and wrote 0444 receipt dope_lane_f02_receipt_20261018.json,,canonical,,,
+2026-10-18T04:26:20Z,dope,U03,1550752.dope_lane_u03,xbabe2,T0,gpt-6-luna,medium,pass,,T0 gpt-6-luna medium PASS: pushed lane/U03 89ccacd and wrote 0444 receipt dope_lane_u03_receipt_20261018.json,,canonical,,,
+2026-10-18T04:26:20Z,dope,R04,743344.dope_fb_codex_1,xbabe2,T0,gpt-6-luna,medium,started,,launched R04 (medium) on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:26:20Z,dope,R05,1550752.dope_lane_u03,xbabe2,T0,gpt-6-luna,medium,started,,launched R05 (medium) on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:26:20Z,dope,R06,1595358.dope_lane_f02,xbabe2,T0,gpt-6-luna,medium,started,,launched R06 (medium) on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:26:29Z,dope,F03,2671347.dope_lane_f03,xbabe2,T0,gpt-6-luna,medium,started,,launched F03 (simple) on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:26:49Z,dope,E07,2660394.dope_lane_e07,xbabe2,T0,gpt-6-luna,medium,started,,launched E07 (simple) on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:27:33Z,dope,U02,2750399.dope_lane_u02,xbabe2,T0,gpt-6-luna,medium,started,,launched U02 (simple) on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:28:00Z,jopedime,I16,3266828.jope_i16_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,cargo test passed (51534a3e1),,legacy_s9,simple,1,45
+2026-10-18T04:28:48Z,joil,V5-09,joil_v5_codex_lane2,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,f4608584 V5-09-01..05 15/15 observer tests + clippy + public check pass receipt f0b47942,,legacy_s9,hard,1,36
+2026-10-18T04:29:46Z,dope,W1-GITLEAKS-FIX,2863070.dope_fb_codex_2,xbabe2,T0,gpt-6-luna,medium,deescalated,,switched dope_fb_codex_2 from gpt-6.1-sol xhigh to gpt-6-luna medium at B00 task boundary,,canonical,,,
+2026-10-18T04:29:46Z,dope,W1-GITLEAKS-FIX,2863070.dope_fb_codex_2,xbabe2,T0,gpt-6-luna,medium,started,,apply .gitleaksignore fingerprint patch and push PR #269 on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:30:35Z,dope,W03,2129037.dope_lane_w03,xbabe2,T0,gpt-6-luna,medium,fail,,test_adapters failed because W02/W03 models.json keys require base.py allowlist update,,canonical,,,
+2026-10-18T04:30:35Z,dope,W1-GITLEAKS-FIX,2863070.dope_fb_codex_2,xbabe2,T0,gpt-6-luna,medium,pass,,added exact C03 gitleaks fingerprint to .gitleaksignore (2768bf2) and pushed to PR #269,,canonical,,,
+2026-10-18T04:31:50Z,dope,R02,1447085.dope_lane_c05,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (7a48c37),,canonical,,,
+2026-10-18T04:33:26Z,dope,W01,2182942.dope_lane_w01,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (024f795),,canonical,,,
+2026-10-18T04:33:47Z,jopedime,INTEGRATE-BATCH3,2830191.jopedime_agy,xbabe2,A-plan,gemini-4-argon,high,started,,Integrating Batch 3 (9 tasks) on PR #358 feat/selfplay-spec-integration-20261018,,legacy_s9,hard,1,0
+2026-10-18T04:35:00Z,jopedime,I11,3360075.jope_i11_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,cargo test passed (01f19f3ab),,legacy_s9,hard,1,51
+2026-10-18T04:35:00Z,jopedime,I48,18541.jope_i26_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched I48 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:35:15Z,dope,W03,2129037.dope_lane_w03,xbabe2,T0,gpt-6-luna,medium,escalated,gpt-6-luna,escalated T0->T1 (gpt-6-luna high) with base.py added to W03 file allowlist,,canonical,,,
+2026-10-18T04:36:00Z,jopedime,I04,3473045.jope_i04_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,cargo test passed (be0ab8559),,legacy_s9,hard,1,54
+2026-10-18T04:36:21Z,jopedime,I16,3266828.jope_i16_codex,xbabe2,T0,gpt-6-luna,medium,deescalated,gpt-6-luna,relaunched jope_i16_codex on T0 gpt-6-luna medium at task boundary,,legacy_s9,simple,1,0
+2026-10-18T04:36:25Z,dope,W03,3261823.dope_lane_w03,xbabe2,T1,gpt-6-luna,high,started,,attempt 2 on T1 (gpt-6-luna high) with base.py added to W03 allowlist,,canonical,,,
+2026-10-18T04:36:50Z,super_captain,DISK-XBABE2,3248208.sc_disk_luna_xbabe2,xbabe2,T0,gpt-6-luna,medium,pass,,Scoped cleanup of pre-checked user caches and merged worktree target/ dirs under HARD SCOPE LIMIT,,legacy_s9,simple,1,5
+2026-10-18T04:36:55Z,dope,R07,1447085.dope_lane_c05,xbabe2,T0,gpt-6-luna,medium,started,,attempt 1 on T0 (gpt-6-luna medium) reusing idle screen after R02 completion,,canonical,,,
+2026-10-18T04:36:58Z,dope,R08,2182942.dope_lane_w01,xbabe2,T0,gpt-6-luna,medium,started,,attempt 1 on T0 (gpt-6-luna medium) reusing idle screen after W01 completion,,canonical,,,
+2026-10-18T04:37:00Z,jopedime,I10,3473054.jope_i10_codex,xbabe2,T2,gpt-6.1-sol,high,pass,,cargo test passed (7ea8260c7),,legacy_s9,hard,1,39
+2026-10-18T04:38:12Z,jopedime,I11,3360075.jope_i11_codex,xbabe2,T0,gpt-6-luna,medium,deescalated,gpt-6-luna,relaunched jope_i11_codex on T0 gpt-6-luna medium at task boundary,,legacy_s9,simple,1,0
+2026-10-18T04:38:48Z,dope,R06,1595358.dope_lane_f02,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (fc92253),,canonical,,,
+2026-10-18T04:39:00Z,jarambit,G16-12-RSV2-04-p3,1242467.codex_jarambit_gate_diag,xbabe2,T2,gpt-6.1-sol,high,pass,,Phase-3 WIDE_TIP_REPORT.md completed and verified (SHA256 09e98354187bf05e9ed665857b38fc4bdfb4661f127060530e91bf920da6a569),,legacy_s9,hard,1,15
+2026-10-18T04:39:05Z,dope,R09,2863070.dope_fb_codex_2,xbabe2,T0,gpt-6-luna,medium,started,,attempt 1 on T0 (gpt-6-luna medium) reusing idle screen after W1-GITLEAKS-FIX completion,,canonical,,,
+2026-10-18T04:40:16Z,jopedime,I04,3473045.jope_i04_codex,xbabe2,T0,gpt-6-luna,medium,deescalated,gpt-6-luna,relaunched jope_i04_codex on T0 gpt-6-luna medium at task boundary,,legacy_s9,simple,1,0
+2026-10-18T04:40:16Z,jopedime,I10,3473054.jope_i10_codex,xbabe2,T0,gpt-6-luna,medium,deescalated,gpt-6-luna,relaunched jope_i10_codex on T0 gpt-6-luna medium at task boundary,,legacy_s9,simple,1,0
+2026-10-18T04:41:31Z,dope,Q02,3538900.dope_lane_q02,xbabe2,T0,gpt-6-luna,medium,started,,launched Q02 (simple) on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:42:00Z,jopedime,I05,3648365.jope_i05_codex,xbabe2,T3,gpt-6.1-sol,xhigh,pass,,cargo test passed (4b3af5291),,legacy_s9,medium,1,59
+2026-10-18T04:42:30Z,dope,R10,1595358.dope_lane_f02,xbabe2,T0,gpt-6-luna,medium,started,,attempt 1 on T0 (gpt-6-luna medium) reusing idle screen after R06 completion,,canonical,,,
+2026-10-18T04:42:35Z,dope,U02,2750399.dope_lane_u02,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (89c2057),,canonical,,,
+2026-10-18T04:42:35Z,dope,M01,3603263.dope_lane_m01,xbabe2,T0,gpt-6-luna,medium,started,,launched M01 (medium) on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:43:13Z,jopedime,I05,3648365.jope_i05_codex,xbabe2,T0,gpt-6-luna,medium,deescalated,gpt-6-luna,relaunched jope_i05_codex on T0 gpt-6-luna medium at task boundary,,legacy_s9,simple,1,0
+2026-10-18T04:43:45Z,dope,U01,2750399.dope_lane_u02,xbabe2,T0,gpt-6-luna,medium,started,,attempt 1 on T0 (gpt-6-luna medium) reusing idle screen after U02 completion,,canonical,,,
+2026-10-18T04:44:17Z,dope,E07,2660394.dope_lane_e07,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (2a4bcb6),,canonical,,,
+2026-10-18T04:44:41Z,joil,V5-08,joil_v5_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,in-flight G007 geometry kernel + super-merge integrator,,legacy_s9,hard,1,45
+2026-10-18T04:44:41Z,joil,V5-10,joil_v5_codex_lane1,xbabe2,T2,gpt-6.1-sol,high,started,,queued in lane_supervisor for V5-10-01..05,,legacy_s9,medium,1,0
+2026-10-18T04:44:41Z,joil,V5-13,joil_v5_claude,xbabe2,C1,claude-sonnet-5-5,high,pass,,b30d7eb 5 receipts at tested 76cc1b7; 18/18 tests + D-07 control exit 0,,legacy_s9,medium,1,16
+2026-10-18T04:44:41Z,joil,V5-14,joil_v5_codex_lane2,xbabe2,T0,gpt-6-luna,medium,deescalated,gpt-6-luna,de-escalated from Sol to T0 gpt-6-luna medium at V5-09->V5-14 boundary,,legacy_s9,medium,1,0
+2026-10-18T04:44:41Z,joil,V5-11,joil_v5_codex_lane3,xbabe2,T0,gpt-6-luna,medium,started,,queued in lane_supervisor on T0 gpt-6-luna medium for V5-11-01..05,,legacy_s9,medium,1,0
+2026-10-18T04:44:41Z,joil,V5-14,joil_v5_codex_lane2,xbabe2,T0,gpt-6-luna,medium,started,,queued in lane_supervisor on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:44:41Z,joil,V5-04-04,joil_v5_claude,xbabe2,C0,claude-haiku-5-5,medium,started,,fresh C0 Haiku 5.5 medium session (<100K prompt) on C007-F2 signed-zero fix,,legacy_s9,simple,1,0
+2026-10-18T04:44:41Z,joil,Audit-016,joil_v5_audit,xbabe2,C0,claude-haiku-5-5,medium,started,,switched joil_v5_audit to C0 haiku + /clear (<100K prompt) for Audit 016,,legacy_s9,simple,1,0
+2026-10-18T04:44:41Z,joil,V5-26,joil_v5_codex_lane4,xbabe2,T0,gpt-6-luna,medium,started,,queued in lane_supervisor on T0 gpt-6-luna medium for V5-26-01..05,,legacy_s9,simple,1,0
+2026-10-18T04:44:41Z,joil,Audit-015,joil_v5_audit,xbabe2,C1,claude-sonnet-5-5,medium,pass,,"Audit 015 completed (V5-08, C007 merge, V5-13 source)",,legacy_s9,simple,1,2
+2026-10-18T04:44:46Z,dope,S03,1495063.dope_lane_s03,xbabe2,T0,gpt-6-luna,medium,pass,,"all acceptance criteria and just check passed on T0 attempt 1 (4fd1297, 494 lines <500)",,canonical,,,
+2026-10-18T04:45:45Z,dope,U04,2660394.dope_lane_e07,xbabe2,T0,gpt-6-luna,medium,started,,attempt 1 on T0 (gpt-6-luna medium) reusing idle screen after E07 completion,,canonical,,,
+2026-10-18T04:45:48Z,dope,Q03,1495063.dope_lane_s03,xbabe2,T0,gpt-6-luna,medium,started,,attempt 1 on T0 (gpt-6-luna medium) reusing idle screen after S03 completion,,canonical,,,
+2026-10-18T04:46:03Z,super_captain,AGY-ROUTING-ACK,,,A-plan,gemini-4-argon,high,pass,,,,canonical,medium,1,
+2026-10-18T04:46:45Z,jopedime,I32,1543967.jope_i12_codex,xbabe2,T0,gpt-6-luna,medium,started,,dispatched final 66th task I32 on T0 gpt-6-luna medium,,legacy_s9,medium,1,0
+2026-10-18T04:48:37Z,dope,R04,743344.dope_fb_codex_1,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (b9b5ed3),,canonical,,,
+2026-10-18T04:48:57Z,dope,R05,1550752.dope_lane_u03,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and fixtures passed on T0 attempt 1 (1bb84f8),,canonical,,,
+2026-10-18T04:49:42Z,dope,R01,4020333.dope_lane_r01,xbabe2,T0,gpt-6-luna,medium,started,,launched R01 (medium) on T0 gpt-6-luna medium,,canonical,,,
+2026-10-18T04:50:00Z,jopedime,I13,1589155.jope_i13_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (719de9d6a),,legacy_s9,hard,1,13
+2026-10-18T04:50:00Z,jopedime,I25,1616403.jope_i27_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (8c5399c55),,legacy_s9,medium,1,10
+2026-10-18T04:50:00Z,jopedime,I24,295120.jope_i28_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (91bf952d4),,legacy_s9,medium,1,10
+2026-10-18T04:50:00Z,jopedime,I17,1400848.jope_i17_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (08144e128),,legacy_s9,medium,1,11
+2026-10-18T04:50:00Z,jopedime,I28,295120.jope_i28_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (330c4308b),,legacy_s9,medium,1,11
+2026-10-18T04:50:00Z,jopedime,I15,966812.jope_i07_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (603c99f58),,legacy_s9,medium,1,11
+2026-10-18T04:50:00Z,jopedime,I31,1589155.jope_i13_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (dbbb6f567),,legacy_s9,medium,1,11
+2026-10-18T04:50:00Z,jopedime,I06,1451217.jope_i06_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (12b319466),,legacy_s9,medium,1,12
+2026-10-18T04:50:00Z,jopedime,I19,1447344.jope_prep_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (c0f35a2f1),,legacy_s9,medium,1,12
+2026-10-18T04:50:00Z,jopedime,I26,18541.jope_i26_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (1713e6e30),,legacy_s9,medium,1,14
+2026-10-18T04:50:00Z,jopedime,I12,1543967.jope_i12_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (5f784f8c8),,legacy_s9,medium,1,14
+2026-10-18T04:50:00Z,jopedime,I39,1447344.jope_prep_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (7ce0447e7),,legacy_s9,medium,1,15
+2026-10-18T04:50:00Z,jopedime,I55,1616403.jope_i27_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (20c827598),,legacy_s9,medium,1,8
+2026-10-18T04:50:00Z,jopedime,I34,868331.jope_prep2_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (63b0b7ab6),,legacy_s9,medium,1,8
+2026-10-18T04:50:00Z,jopedime,I40,868331.jope_prep2_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (cec0b02ca),,legacy_s9,medium,1,8
+2026-10-18T04:50:00Z,jopedime,I54,1616403.jope_i27_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (eda564023),,legacy_s9,medium,1,8
+2026-10-18T04:50:00Z,jopedime,I29,966812.jope_i07_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (2f44806ec),,legacy_s9,medium,1,9
+2026-10-18T04:50:00Z,jopedime,I33,868331.jope_prep2_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (558d4035b),,legacy_s9,medium,1,9
+2026-10-18T04:50:00Z,jopedime,I20,1451217.jope_i06_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (570532843),,legacy_s9,medium,1,9
+2026-10-18T04:50:00Z,jopedime,I35,1589155.jope_i13_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (8906e3acf),,legacy_s9,medium,1,9
+2026-10-18T04:50:00Z,jopedime,I30,966812.jope_i07_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (9475e6dcd),,legacy_s9,medium,1,9
+2026-10-18T04:50:00Z,jopedime,I23,1400848.jope_i17_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (b45753cf5),,legacy_s9,medium,1,9
+2026-10-18T04:50:00Z,jopedime,I56,1400848.jope_i17_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (7809e9436),,legacy_s9,simple,1,10
+2026-10-18T04:50:00Z,jopedime,I57,3266828.jope_i16_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (a9f59203d),,legacy_s9,simple,1,10
+2026-10-18T04:50:00Z,jopedime,I61,3648365.jope_i05_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (7baf0f599),,legacy_s9,simple,1,11
+2026-10-18T04:50:00Z,jopedime,I66,70727.jope_i21_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (e22fb1085),,legacy_s9,simple,1,11
+2026-10-18T04:50:00Z,jopedime,I47,1520508.jope_i03_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (7903c7b0f),,legacy_s9,simple,1,12
+2026-10-18T04:50:00Z,jopedime,I59,2224621.jope_i09_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (b04b37885),,legacy_s9,simple,1,5
+2026-10-18T04:50:00Z,jopedime,I18,2224621.jope_i09_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (075af518d),,legacy_s9,simple,1,6
+2026-10-18T04:50:00Z,jopedime,I52,1520508.jope_i03_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (3a7c7bcd9),,legacy_s9,simple,1,6
+2026-10-18T04:50:00Z,jopedime,I42,295120.jope_i28_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (61323cd04),,legacy_s9,simple,1,6
+2026-10-18T04:50:00Z,jopedime,I49,1616403.jope_i27_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (0b4d28f68),,legacy_s9,simple,1,7
+2026-10-18T04:50:00Z,jopedime,I51,1520508.jope_i03_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (1b07789a1),,legacy_s9,simple,1,7
+2026-10-18T04:50:00Z,jopedime,I58,2224621.jope_i09_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (437000962),,legacy_s9,simple,1,7
+2026-10-18T04:50:00Z,jopedime,I36,3473045.jope_i04_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (4475c1da3),,legacy_s9,simple,1,7
+2026-10-18T04:50:00Z,jopedime,I22,2224621.jope_i09_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (6991726b8),,legacy_s9,simple,1,7
+2026-10-18T04:50:00Z,jopedime,I38,1543967.jope_i12_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (27696273e),,legacy_s9,simple,1,8
+2026-10-18T04:50:00Z,jopedime,I43,1451217.jope_i06_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (45382e86a),,legacy_s9,simple,1,8
+2026-10-18T04:50:00Z,jopedime,I41,3473054.jope_i10_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (529c3d6ad),,legacy_s9,simple,1,8
+2026-10-18T04:50:00Z,jopedime,I50,1520508.jope_i03_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (aed7cc8e2),,legacy_s9,simple,1,8
+2026-10-18T04:50:00Z,jopedime,I37,3360075.jope_i11_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (b41ecaee3),,legacy_s9,simple,1,9
+2026-10-18T04:50:00Z,jopedime,I44,70727.jope_i21_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (d90192fd8),,legacy_s9,simple,1,9
+2026-10-18T04:50:00Z,jopedime,I60,1589155.jope_i13_codex,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance tests passed on T0 attempt 1 (f9f820317),,legacy_s9,simple,1,9
+2026-10-18T04:50:00Z,dope,REVIEW-IDLE-SWITCH,1061468.dope_paper_claude,xbabe2,C0,claude-haiku-5-5,medium,deescalated,,CLAUDE ROUTING ORDER: switched idle Claude screen from default opus xhigh to C0 haiku medium + /clear (<100K),,canonical,,,
+2026-10-18T04:50:02Z,dope,ROUTER-IDLE-SWITCH,300394.dope_gemini,xbabe2,A-plan,gemini-4-argon,medium,deescalated,,GROK+GEMINI ROUTING ORDER: switched idle agy screen from gemini-4-argon high to gemini-4-argon-medium at turn boundary,,canonical,,,
+2026-10-18T04:50:04Z,dope,CAPTAIN-ROUTING,2716151.captain_dope,xbabe2,A-plan,gemini-4-argon,medium,deescalated,,GROK+GEMINI ROUTING ORDER: captain adopting gemini-4-argon-medium at turn boundary + one-shot gemini-3.8-flash-low for routine polls,,canonical,,,
+2026-10-18T04:50:20Z,dope,R07,1447085.dope_lane_c05,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (695d540),,canonical,,,
+2026-10-18T04:50:45Z,jopedime,REVIEW-BATCH4,2269522.jope_review_claude,xbabe2,C1,claude-sonnet-5-5,medium,started,,Review Batch 4 (34 completed lanes) on claude-sonnet-5-5 medium,,legacy_s9,medium,1,0
+2026-10-18T04:51:00Z,jarambit,G16-12-RSV2-04-p4,1242467.codex_jarambit_gate_diag,xbabe2,T2,gpt-6.1-sol,high,started,,"Phase-4 unified prototype study combining window_w6.0_fill0.65_r6.4_drop0.0_refined and hotspot_strict_3 on T2 high (CPUs 10,11)",,legacy_s9,hard,1,0
+2026-10-18T04:51:20Z,dope,E03,743344.dope_fb_codex_1,xbabe2,T0,gpt-6-luna,medium,started,,attempt 1 on T0 (gpt-6-luna medium) reusing idle screen after R04 completion,,canonical,,,
+2026-10-18T04:51:22Z,dope,E04,1550752.dope_lane_u03,xbabe2,T0,gpt-6-luna,medium,started,,attempt 1 on T0 (gpt-6-luna medium) reusing idle screen after R05 completion,,canonical,,,
+2026-10-18T04:51:24Z,dope,E05,1447085.dope_lane_c05,xbabe2,T0,gpt-6-luna,medium,started,,attempt 1 on T0 (gpt-6-luna medium) reusing idle screen after R07 completion,,canonical,,,
+2026-10-18T04:51:45Z,dope,R08,2182942.dope_lane_w01,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (dope_lane_r08_receipt_20261018.json),,canonical,,,
+2026-10-18T04:52:10Z,dope,E06,1061468.dope_paper_claude,xbabe2,C0,claude-haiku-5-5,medium,started,,"attempt 1 on C0 (claude-haiku-5-5 medium, /clear <100K) for simple reproducibility doc/receipt task E06",,canonical,,,
+2026-10-18T04:54:10Z,jopedime,STAGE-BATCH4,868331.jope_prep2_codex,xbabe2,T0,gpt-6-luna,medium,started,,50-commit super-merge pre-staging onto stage/super-merge-batch4,,legacy_s9,hard,1,0
+2026-10-18T04:54:10Z,dope,R10,1595358.dope_lane_f02,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and fixtures passed on T0 attempt 1 (f33ac1c),,canonical,,,
+2026-10-18T04:54:23Z,dope,W03,3261823.dope_lane_w03,xbabe2,T1,gpt-6-luna,high,pass,,all acceptance criteria and just check passed on T1 attempt 2 (c43df57),,canonical,,,
+2026-10-18T04:54:56Z,joil,CAPTAIN-ORCHESTRATION,captain_joil,xbabe2,A-plan,gemini-4-argon,high,started,,GROK+GEMINI ROUTING ACK (§12-14): captain_joil on gemini-4-argon high (A-plan); Grok DORMANT (0 lanes),,legacy_s9,hard,1,0
+2026-10-18T04:55:00Z,jopedime,CAPTAIN-ORCHESTRATION,2724936.captain_jopedime,xbabe2,A-plan,gemini-4-argon,high,started,,CLAUDE + GROK + GEMINI ROUTING ACK (§11-14); Grok DORMANT (0 lanes); 64/66 tasks committed,,legacy_s9,hard,1,0
+2026-10-18T04:55:15Z,dope,R03,1649551.dope_lane_e00,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (2fbbfc8),,canonical,,,
+2026-10-18T04:56:19Z,dope,F03,2671347.dope_lane_f03,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (31767ec),,canonical,,,
+2026-10-18T04:56:30Z,dope,M01,3603263.dope_lane_m01,xbabe2,T0,gpt-6-luna,medium,fail,,attempt 1 only wrote CHANGELOG without implementing coupled-edit Rust fixtures in rust/compiler/candidate_search/,,canonical,,,
+2026-10-18T04:56:37Z,joil,V5-19,joil_v5_claude,xbabe2,C1,claude-sonnet-5-5,medium,started,,"fresh C1 Sonnet 5.5 medium session on V5-19-01..05 (structural loads, static FEA, buckling)",,legacy_s9,medium,1,0
+2026-10-18T04:56:37Z,joil,Audit-017,joil_v5_audit,xbabe2,C0,claude-haiku-5-5,medium,started,,C0 Haiku 5.5 medium (/clear <100K) audit of 1842b3c + 10d32c7 (C007-F2/F3),,legacy_s9,simple,1,0
+2026-10-18T04:56:37Z,joil,V5-04-04,joil_v5_claude,xbabe2,C0,claude-haiku-5-5,medium,pass,,1842b3c + 10d32c7: C007-F2 (order.rs) & C007-F3 (joint.rs) red+positive controls & 2 receipts exit 0,,legacy_s9,simple,1,5
+2026-10-18T04:57:00Z,jarambit,CAPTAIN-PLAN-ROUTE-MERGE,2740538.captain_jarambit,xbabe2,A-plan,gemini-4-argon,high,started,,Primary captain session on gemini-4-argon high (A-plan); will test gemini-4-argon-medium at turn boundary and one-shot gemini-3.8-flash-low (A-routine) for status polls/summaries per §13,,legacy_s9,hard,1,140
+2026-10-18T04:57:40Z,dope,M01,3603263.dope_lane_m01,xbabe2,T0,gpt-6-luna,medium,escalated,gpt-6-luna,escalated T0->T1 (gpt-6-luna high) with explicit coupled-edit fixture specification in M01.md,,canonical,,,
+2026-10-18T04:57:45Z,dope,M01,dope_lane_m01,xbabe2,T1,gpt-6-luna,high,started,,attempt 2 on T1 (gpt-6-luna high) for M01 coupled-edit selector fixtures,,canonical,,,
+2026-10-18T04:58:35Z,jarambit,G16-15,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,pass,,GCI_DIAGNOSIS.md + w311_vs_w312_p14_seq_ratio_gci_classification test passed (3/3 gci tests) and committed as c7d80641d11f973bbb32eca8667aa76c527da62b with trailers,,legacy_s9,simple,1,55
+2026-10-18T04:59:00Z,jarambit,G16-15-p2,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,started,,"Implement p14 internal-boundary (COMET_W0, COMET_BOW, FULLER_S0) preservation option in auto_evolve.rs with unit test on T0 Luna medium",,legacy_s9,simple,1,0
+2026-10-18T05:00:55Z,dope,R09,2863070.dope_fb_codex_2,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (dope_lane_r09_receipt_20261018.json),,canonical,,,
+2026-10-18T05:00:57Z,jopedime,CI-FIX-PYTHON-HYGIENE,3473045.jope_i04_codex,xbabe2,T0,gpt-6-luna,medium,started,,Diagnose and fix python CI exit 124 timeout and hygiene zero-SHA push base on T0,,legacy_s9,simple,1,0
+2026-10-18T05:00:57Z,jopedime,CI-FIX-PUBLISH,1520508.jope_i03_codex,xbabe2,T0,gpt-6-luna,medium,started,,Reproduce and fix jope-learning progress::tests::publish::a_missing_or_corrupt_dependency_blocks_the_pointer on T0,,legacy_s9,simple,1,0
+2026-10-18T05:02:14Z,joil,V5-11,joil_v5_codex_lane3,xbabe2,T0,gpt-6-luna,medium,started,,codex_lane3 cleared launch guard and started V5-11-01..05 on T0 gpt-6-luna medium,,canonical,medium,1,0
+2026-10-18T05:02:14Z,joil,V5-26,joil_v5_codex_lane4,xbabe2,T0,gpt-6-luna,medium,started,,codex_lane4 cleared launch guard and started V5-26-01..05 on T0 gpt-6-luna medium,,canonical,simple,1,0
+2026-10-18T05:02:14Z,joil,Audit-017,joil_v5_audit,xbabe2,C0,claude-haiku-5-5,medium,pass,,Audit 017 verified 1842b3c + 10d32c7 (C007-F2/F3) trailers and 8 log SHA256s,,canonical,simple,1,2
+2026-10-18T05:02:53Z,dope,Q01,1756731.dope_lane_q01,xbabe2,T0,gpt-6-luna,medium,pass,,"figure_one.py, test_figure_one.py (4 tests), and just fast passed on T0 attempt 1 (42e1d3b)",,canonical,,,
+2026-10-18T05:02:55Z,dope,U04,2660394.dope_lane_e07,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (4bc0868),,canonical,,,
+2026-10-18T05:03:20Z,dope,E03,743344.dope_fb_codex_1,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (6109cc4),,canonical,,,
+2026-10-18T05:04:25Z,jopedime,I32,1543967.jope_i12_codex,xbabe2,T0,gpt-6-luna,medium,pass,,research_loop_smoke and clover audit passed on T0 attempt 1 (35e16c9ab),,legacy_s9,medium,1,17
+2026-10-18T05:04:40Z,dope,U01,2750399.dope_lane_u02,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (dope_lane_u01_receipt_20261018.json),,canonical,,,
+2026-10-18T05:04:55Z,dope,E04,1550752.dope_lane_u03,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (dope_lane_e04_receipt_20261018.json),,canonical,,,
+2026-10-18T05:04:59Z,jopedime,REVIEW-BATCH4,2269522.jope_review_claude,xbabe2,C1,claude-sonnet-5-5,medium,pass,,Completed Review Batch 4 (34 lane review pairs written in reviews/i01-claude/),108000,legacy_s9,medium,1,13
+2026-10-18T05:04:59Z,jopedime,REVIEW-BATCH5,2269522.jope_review_claude,xbabe2,C0,claude-haiku-5-5,medium,deescalated,claude-haiku-5-5,Switched 2269522.jope_review_claude from C1 sonnet to C0 haiku + /clear (<100K prompt) at Batch 4 boundary,,legacy_s9,simple,1,0
+2026-10-18T05:04:59Z,jopedime,REVIEW-BATCH5,2269522.jope_review_claude,xbabe2,C0,claude-haiku-5-5,medium,started,,"Review Batch 5 (I60, I61, I32) on C0 claude-haiku-5-5 medium after /clear",,legacy_s9,simple,1,0
+2026-10-18T05:05:31Z,super_captain,LEDGER-SCHEMA-ACK,4060655.super_captain,xbabe2,A-plan,gemini-4-argon,high,pass,,Canonical model_usage.jsonl schema and model_usage.jsonl.lock adopted per 11:00 PM MDT order,,canonical,simple,1,
+2026-10-18T05:06:55Z,dope,R01,4020333.dope_lane_r01,xbabe2,T0,gpt-6-luna,medium,pass,,all acceptance criteria and just check passed on T0 attempt 1 (dope_lane_r01_receipt_20261018.json),,canonical,,,
+2026-10-18T05:07:01Z,jopedime,STAGE-BATCH4,868331.jope_prep2_codex,xbabe2,T0,gpt-6-luna,medium,pass,,"Cherry-picked and reconciled all 50 commits (39 tasks) onto stage/super-merge-batch4 (6ee69f422), cargo check workspace passed",,legacy_s9,hard,1,12
+2026-10-18T05:07:01Z,jopedime,STAGE-BATCH5,868331.jope_prep2_codex,xbabe2,T0,gpt-6-luna,medium,started,,Cherry-pick I61 (7baf0f599) and I32 (35e16c9ab) onto stage/super-merge-batch4 and verify cargo check,,legacy_s9,simple,1,0
+2026-10-18T05:08:57Z,joil,V5-11,joil_v5_codex_lane3,xbabe2,T0,gpt-6-luna,medium,started,,codex_lane3 cleared launch guard and started V5-11-01..05 on T0 gpt-6-luna medium,,canonical,medium,1,0
+2026-10-18T05:08:57Z,joil,V5-26,joil_v5_codex_lane4,xbabe2,T0,gpt-6-luna,medium,started,,codex_lane4 cleared launch guard and started V5-26-01..05 on T0 gpt-6-luna medium,,canonical,simple,1,0
+2026-10-18T05:08:57Z,joil,Audit-017,joil_v5_audit,xbabe2,C0,claude-haiku-5-5,medium,pass,,Audit 017 verified 1842b3c + 10d32c7 (C007-F2/F3) trailers and 8 log SHA256s,,canonical,simple,1,2
+2026-10-18T05:09:59Z,joil,V5-10-01..05,3128818.joil_v5_codex_lane1,xbabe2,T2,gpt-6.1-sol,high,started,,"V5-10-01..05 (Derived surfaces, volume meshes and honest exports) actively started in codex_lane1 after V5-08 completed",,canonical,hard,1,0
+2026-10-18T05:09:59Z,joil,V5-14-01..05,61562.joil_v5_codex_lane2,xbabe2,T0,gpt-6-luna,medium,started,,V5-14-01..05 (Corrected native carrier evaluator and control) actively started in codex_lane2 on T0 gpt-6-luna medium,,canonical,medium,1,0
+2026-10-18T05:12:30Z,dope,E06,1061468.dope_paper_claude,xbabe2,C0,claude-haiku-5-5,medium,pass,,E06 four-level reproducibility documented honestly in docs/reproducibility.md with 0444 receipt; just fast && just check passed (9df3567),,canonical,,,
+2026-10-18T05:12:30Z,dope,E05,1447085.dope_lane_c05,xbabe2,T0,gpt-6-luna,medium,pass,,E05 prerequisite blocker & custody hold documented with 0444 receipt; just fast && just check passed (dd63823),,canonical,,,
+2026-10-18T05:12:30Z,dope,Q03,1495063.dope_lane_s03,xbabe2,T0,gpt-6-luna,medium,pass,,Q03 release reproducibility & signing readiness verified with 0444 receipt; just fast && just check passed (00c7fd6),,canonical,,,
+2026-10-18T05:13:00Z,jarambit,CAPTAIN-PLAN-MERGE,2740538.captain_jarambit,xbabe2,A-plan,gemini-4-argon,medium,deescalated,gemini-4-argon-medium,switched captain agy session to gemini-4-argon medium effort at turn boundary per Playbook section 13,,canonical,,,
+2026-10-18T05:13:24Z,joil,V5-19-01..05,1052087.joil_v5_claude,xbabe2,C1,claude-sonnet-5-5,medium,pass,,"V5-19-01..05 (structural load, traction-transfer, FEA-qualification, buckling and reserve judges) completed at 3969e6e + 6b4b787",,canonical,hard,1,11
+2026-10-18T05:13:24Z,joil,V5-14-01..05,61562.joil_v5_codex_lane2,xbabe2,T0,gpt-6-luna,medium,pass,,"V5-14-01..05 software controls completed on T0 gpt-6-luna medium at 5a3ac6e + cafc841 (8/8 openfoam tests pass, clippy/fmt/check_public exit 0)",,canonical,medium,1,8
+2026-10-18T05:14:00Z,jarambit,G16-15-p2,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,pass,,implemented p14 even-offspring internal-boundary gene preservation and passed 20/20 auto_evolve unit tests,,canonical,,,
+2026-10-18T05:16:00Z,jarambit,RSV2-07,1574790.jarambit_lane_hm_seq,xbabe2,T2,gpt-6.1-sol,high,pass,,completed 158-evaluation HM study with 3-mesh spine/ringback witnesses and 14/14 integrity tests passing,,canonical,,,
+2026-10-18T05:17:41Z,dope,M01,417665.dope_lane_m01,xbabe2,T1,gpt-6-luna,high,pass,,"M01 coupled-edit selector DP (coupled.rs, tests.rs, search-comparison.json) passed just fast && just check (f1cce59)",,canonical,,,
+2026-10-18T05:17:52Z,joil,Audit-018,2269515.joil_v5_audit,xbabe2,C0,claude-haiku-5-5,medium,started,,"Dispatched Audit 018 (/clear first, <100K prompt) on 11eba0d (V5-09 super-merge), 3969e6e/6b4b787 (V5-19), and 5a3ac6e/cafc841 (V5-14)",,canonical,simple,1,0
+2026-10-18T05:18:10Z,jarambit,G16-06-RSV2-08,1574779.jarambit_lane_lat_fat,xbabe2,T2,gpt-6.1-sol,high,pass,,"sealed multi-mesh (0.25/0.125/0.0625 mm2) witness passing lat_rob>=376.06N, fat_sf>=1.0505, sf_hunter>=1.4464, seq_ratio>=1.3098 and exported sharpness",,canonical,,,
+2026-10-18T05:19:20Z,jarambit,G16-12-RSV2-04-p4,1242467.codex_jarambit_gate_diag,xbabe2,T2,gpt-6.1-sol,high,pass,,sealed 95 artifacts in UNIFIED_PROTOTYPE_REPORT.md combining lateral/fatigue/seq_ratio and HM spine/ringback witnesses across 0.25/0.125/0.0625 mm2 meshes,,canonical,,,
+2026-10-18T05:20:33Z,dope,V00,2005070.dope_fb_codex_2,xbabe2,T2,gpt-6.1-sol,high,started,,"hard task: 53-branch Wave-2 super-merge, cross-lane conflict resolution, and full just fast/check/security verification",,canonical,,,
+2026-10-18T05:20:56Z,joil,V5-20-01..05,1052087.joil_v5_claude,xbabe2,C0,claude-haiku-5-5,medium,deescalated,claude-haiku-5-5,"De-escalated 1052087.joil_v5_claude from C1 (sonnet medium on V5-19) to C0 (haiku medium, fresh <100K session) for V5-20-01..05",,canonical,medium,1,0
+2026-10-18T05:20:56Z,joil,V5-20-01..05,1052087.joil_v5_claude,xbabe2,C0,claude-haiku-5-5,medium,started,,"Launched Stage G-013 (V5-20-01..05 Wet dynamics, finite-life fatigue and as-built uncertainty) on C0 claude-haiku-5-5 medium",,canonical,medium,1,0
+2026-10-18T05:20:56Z,joil,V5-16-01..05,61562.joil_v5_codex_lane2,xbabe2,T0,gpt-6-luna,medium,started,,"Launched v5-16-implementation (V5-16-01..05 Native light-drop forces, face injection and inventory) on T0 gpt-6-luna medium",,canonical,medium,1,0
+2026-10-18T05:20:56Z,joil,V5-11-01..05,308711.joil_v5_codex_lane3,xbabe2,T0,gpt-6-luna,medium,started,,Launched v5-11-lock-and-complete on T0 gpt-6-luna medium following G007 draft Cargo.lock clarification,,canonical,medium,2,0
+2026-10-18T05:20:56Z,joil,V5-26-01..05,484638.joil_v5_codex_lane4,xbabe2,T0,gpt-6-luna,medium,started,,Launched v5-26-lock-and-complete on T0 gpt-6-luna medium following G007 draft Cargo.lock clarification,,canonical,simple,2,0
+2026-10-18T05:25:15Z,jarambit,G16-06-RSV2-08-p2,1574779.jarambit_lane_lat_fat,xbabe2,T2,gpt-6.1-sol,high,started,,dispatched Phase-2 3-level GCI (G16-15) and side_a4 buckling (G16-13) verification on multi-mesh witness,,canonical,,,
+2026-10-18T05:25:15Z,jarambit,RSV2-07-p2,1574790.jarambit_lane_hm_seq,xbabe2,T2,gpt-6.1-sol,high,started,,dispatched Phase-2 HM twist (16.2 N*m) closure on critical_fem_3 spine witness,,canonical,,,
+2026-10-18T05:25:15Z,jarambit,G16-12-RSV2-04-p5,1242467.codex_jarambit_gate_diag,xbabe2,T2,gpt-6.1-sol,high,started,,dispatched Phase-5 spine-web-preserving unified prototype and heel-bevel sharpness closure,,canonical,,,
+2026-10-18T05:25:15Z,jarambit,PR-101-REVIEW,2132048.codex_jarambit,xbabe2,T0,gpt-6-luna,medium,started,,dispatched exact-head review of PR #101 (19a32275),,canonical,,,
+2026-10-18T05:25:33Z,joil,V5-10-01..05,3128818.joil_v5_codex_lane1,xbabe2,T2,gpt-6.1-sol,high,pass,,"V5-10-01..05 (Derived surfaces, volume meshes and honest exports) completed at 4992bfd + 519f0bd (14 artifact tests + 2 numerical predicate controls pass)",,canonical,hard,1,19
+2026-10-18T05:25:33Z,joil,V5-23-01..05,3128818.joil_v5_codex_lane1,xbabe2,T0,gpt-6-luna,medium,deescalated,gpt-6-luna,De-escalated 3128818.joil_v5_codex_lane1 from T2 (gpt-6.1-sol high on V5-10) to T0 (gpt-6-luna medium) for V5-23-01..05 per MODEL_ROUTING_PLAYBOOK.md,,canonical,medium,1,0
+2026-10-18T05:25:33Z,joil,V5-23-01..05,3128818.joil_v5_codex_lane1,xbabe2,T0,gpt-6-luna,medium,started,,"Launched v5-23-implementation (V5-23-01..05 Leased workers, measured benchmarks and scaling + D-18) on T0 gpt-6-luna medium",,canonical,medium,1,0
+2026-10-18T05:25:48Z,jopedime,INTEGRATE-BATCH3,2830191.jopedime_agy,xbabe2,A-plan,gemini-4-argon,high,pass,,Committed and pushed Batch 3 + hygiene + rust-test(2) repair on PR #358 (dd26e4355),,legacy_s9,hard,1,35
+2026-10-18T05:25:48Z,jopedime,CAPTAIN-RECOVERY,2724936.captain_jopedime,xbabe2,A-plan,gemini-4-argon,medium,deescalated,gemini-4-argon,Captain resumed after accidental restart on gemini-4-argon medium; 66/66 tasks committed and pushed,,legacy_s9,hard,1,0
+2026-10-18T05:25:48Z,jopedime,I48,18541.jope_i26_codex,xbabe2,T0,gpt-6-luna,medium,pass,,66th task I48 passed all segment/checkpoint/reconcile tests and pushed (2abb84917 / ac4434230),,legacy_s9,medium,1,32
+2026-10-18T05:25:48Z,jopedime,CI-FIX-PUBLISH,1520508.jope_i03_codex,xbabe2,T0,gpt-6-luna,medium,pass,,Fixed corrupt dependency publication test setup and pushed (2a2c83400 / dcc5a543d),,legacy_s9,simple,1,5
+2026-10-18T05:25:48Z,jopedime,STAGE-BATCH5,868331.jope_prep2_codex,xbabe2,T0,gpt-6-luna,medium,pass,,Cherry-picked I61 + I32 onto stage/super-merge-batch4 and pushed (ccf07baef),,legacy_s9,simple,1,6
+2026-10-18T05:25:48Z,jopedime,CI-FIX-PYTHON-HYGIENE,3473045.jope_i04_codex,xbabe2,T0,gpt-6-luna,medium,pass,,Bounded python offline lane and zero-SHA bases and pushed (d35b372f7),,legacy_s9,simple,1,8
+2026-10-18T05:26:15Z,jarambit,AUTO-03-p3,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,started,,dispatched witness-guided offspring mutation arm and unit test in auto_evolve.rs,,canonical,,,
+2026-10-18T05:27:46Z,joil,V5-11-01..05,308711.joil_v5_codex_lane3,xbabe2,T0,gpt-6-luna,medium,pass,,"V5-11-01..05 (MPG schema, bounded development and legacy lowering) completed on T0 gpt-6-luna medium at 1995e6f + d99ab78 (8/8 dev tests, clippy/fmt/public exit 0)",,canonical,medium,2,5
+2026-10-18T05:27:46Z,joil,V5-26-01..05,484638.joil_v5_codex_lane4,xbabe2,T0,gpt-6-luna,medium,pass,,V5-26-01..05 (Evidence-bound scenes and complete Blender recipe registry + D-21) completed on T0 gpt-6-luna medium at 8649910 + 50d2890 (locked render tests/clippy/fmt/probe/dry-run/public exit 0),,canonical,simple,2,5
+2026-10-18T05:30:36Z,dope,Q02,3538900.dope_lane_q02,xbabe2,T0,gpt-6-luna,medium,pass,,"Q02 README, CITATION.cff, COMPREHENSION_v2.md, and readme_benchmark.py completed with 0444 receipt (7972238)",,canonical,,,
+2026-10-18T05:33:45Z,jarambit,AUTO-03-p3,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,pass,,implemented witness-guided offspring mutation arm in auto_evolve.rs and passed unit test,,canonical,,,
+2026-10-18T05:35:26Z,joil,V5-12-01..05,308711.joil_v5_codex_lane3,xbabe2,T0,gpt-6-luna,medium,started,,"Launched v5-12-implementation (V5-12-01..05 Variation, expressiveness and operator-yield audit) on T0 gpt-6-luna medium after V5-11 completed",,canonical,medium,1,0
+2026-10-18T05:35:26Z,joil,V5-27-01..05,484638.joil_v5_codex_lane4,xbabe2,T0,gpt-6-luna,medium,started,,Launched v5-27-implementation (V5-27-01..05 Read-only evidence explorer and live progress) on T0 gpt-6-luna medium after V5-26 completed,,canonical,medium,1,0
+2026-10-18T05:38:22Z,joil,V5-16-01..05,61562.joil_v5_codex_lane2,xbabe2,T0,gpt-6-luna,medium,pass,,"V5-16-01..05 (Native light-drop forces, face injection and inventory) completed on T0 gpt-6-luna medium at cf7a512 + a688702",,canonical,medium,1,12
+2026-10-18T05:38:22Z,joil,V5-20-01..05,1052087.joil_v5_claude,xbabe2,C0,claude-haiku-5-5,medium,pass,,"V5-20-01..05 (Wet dynamics, finite-life fatigue and as-built uncertainty) completed on C0 claude-haiku-5-5 medium at 7efca10 + 1cbcd71",,canonical,medium,1,15
+2026-10-18T05:38:22Z,joil,V5-23-01..05,3128818.joil_v5_codex_lane1,xbabe2,T0,gpt-6-luna,medium,pass,,"V5-23-01..05 (Leased workers, measured benchmarks and scaling + D-18) completed on T0 gpt-6-luna medium at d320c61 + 0ce45e2",,canonical,medium,1,7
+2026-10-18T05:39:30Z,jarambit,G16-12-RSV2-04-p5,1242467.codex_jarambit_gate_diag,xbabe2,T2,gpt-6.1-sol,high,pass,,completed Phase-5 UNIFIED_PROTOTYPE_V2_REPORT.md (538 sealed artifacts) passing HM spine and export sharpness,,canonical,,,
+2026-10-18T05:39:30Z,jarambit,PR-101-REVIEW,2132048.codex_jarambit,xbabe2,T0,gpt-6-luna,medium,pass,,completed exact-head review receipt for PR #101 (19a32275) with 0 findings,,canonical,,,
+2026-10-18T05:40:03Z,joil,Audit-018,2269515.joil_v5_audit,xbabe2,C0,claude-haiku-5-5,medium,pass,,"Audit 018 completed on C0 claude-haiku-5-5 medium: verified d80718c, 11eba0d, 05d1855, V5-11 (8/8 logs), caught V5-26 2-char hash typo and V5-19 missing log paths",,canonical,simple,1,6
+2026-10-18T05:40:30Z,jarambit,G16-12-RSV2-04-p6,1242467.codex_jarambit_gate_diag,xbabe2,T2,gpt-6.1-sol,high,started,,dispatched Phase-6 split hand/blade CP synthesis to preserve x=17mm C_hand and x>=100mm HM spine simultaneously,,canonical,,,
+2026-10-18T05:41:50Z,jarambit,RSV2-07-p2,1574790.jarambit_lane_hm_seq,xbabe2,T2,gpt-6.1-sol,high,pass,,"verified side_a4 buckling (eigenvalue 9.7829, critical load 2543.56N) and 3-level GCI diagnostics on critical_fem_3",,canonical,,,
+2026-10-18T05:43:35Z,jarambit,G16-06-RSV2-08-p2,1574779.jarambit_lane_lat_fat,xbabe2,T2,gpt-6.1-sol,high,pass,,completed 60-trial Phase-2 3-level GCI and side_a4 buckling verification (buckling_eigenvalue=2.5630>=1.0),,canonical,,,
+2026-10-18T05:44:22Z,joil,V5-15-01..05,1052087.joil_v5_claude,xbabe2,C0,claude-haiku-5-5,medium,started,,Launched Stage G-014 (V5-15-01..05 Validation accession and controlled vortex/PDR study + V5-19 log retention) on C0 claude-haiku-5-5 medium,,canonical,medium,1,0
+2026-10-18T05:44:22Z,joil,V5-17-01..05,61562.joil_v5_codex_lane2,xbabe2,T0,gpt-6-luna,medium,started,,"Launched v5-17-implementation (V5-17-01..05 Dispersion, breakup and transport uncertainty) on T0 gpt-6-luna medium",,canonical,medium,1,0
+2026-10-18T05:44:22Z,joil,V5-21-01..05,3128818.joil_v5_codex_lane1,xbabe2,T0,gpt-6-luna,medium,started,,Launched v5-21-implementation (V5-21-01..05 Deterministic reference-search policy and fair controls) on T0 gpt-6-luna medium,,canonical,medium,1,0
+2026-10-18T05:45:30Z,jarambit,G16-06-RSV2-08-p3,1574779.jarambit_lane_lat_fat,xbabe2,T2,gpt-6.1-sol,high,started,,"dispatched Phase-3 full multi-mesh + export + side_a4 evaluation of admissible-GCI witnesses placement_05, local_01, local_04 and s1 micro-sweep",,canonical,,,
+2026-10-18T05:46:15Z,jarambit,RSV2-07-p3,1574790.jarambit_lane_hm_seq,xbabe2,T2,gpt-6.1-sol,high,started,,dispatched Phase-3 3D P2 TET10 tip submodel (G16-12) and DOLFINx cross-check (G16-16) audit on critical_fem_3,,canonical,,,
+2026-10-18T05:48:23Z,dope,V00,2005070.dope_fb_codex_2,xbabe2,T2,gpt-6.1-sol,high,pass,,V00 53-branch Wave-2 super-merge and full just fast/check/security/custody/claims verification passed (d1f6d10),,canonical,,,
+2026-10-18T05:48:23Z,dope,V00,2005070.dope_fb_codex_2,xbabe2,T0,gpt-6-luna,medium,deescalated,gpt-6-luna,de-escalated integrator screen to T0 gpt-6-luna medium after completing hard task V00,,canonical,,,
+2026-10-18T05:50:22Z,dope,V02,1061468.dope_paper_claude,xbabe2,C0,claude-haiku-5-5,medium,started,,V02 independent exact-head review of PR #269 (d1f6d10) on C0 claude-haiku-5-5 medium (<100K prompt),,canonical,,,
+2026-10-18T05:52:18Z,joil,V5-29-01..05,308711.joil_v5_codex_lane3,xbabe2,T0,gpt-6-luna,medium,started,,Launched v5-29-implementation (V5-29-01..05 Structural bracket reuse proof) on T0 gpt-6-luna medium,,canonical,medium,1,0
+2026-10-18T05:52:18Z,joil,V5-12-01..05,308711.joil_v5_codex_lane3,xbabe2,T0,gpt-6-luna,medium,pass,,"V5-12-01..05 (Variation, expressiveness and operator-yield audit) completed on T0 gpt-6-luna medium at 055d8ef + 04dbed0 (8/8 operator tests, 16/16 crate tests)",,canonical,medium,1,8
+2026-10-18T05:52:19Z,joil,G008-supermerge-push,1052075.joil_v5_codex,xbabe2,T3,gpt-6.1-sol,xhigh,started,,Resumed G008 integrator at 05d1855 after pruning 1.67 GB of DWARF-2 test executables and enabling line-tables-only + sccache,,canonical,hard,1,0
+2026-10-18T05:52:19Z,joil,Audit-019,2269515.joil_v5_audit,xbabe2,C0,claude-haiku-5-5,medium,started,,"Dispatched Audit 019 (/clear first, <100K prompt) on V5-20 (7efca10/1cbcd71), V5-23 (d320c61/0ce45e2), V5-16 (cf7a512/a688702), and V5-12 (055d8ef/04dbed0)",,canonical,simple,1,0
+2026-10-18T05:53:11Z,dope,V02,1061468.dope_paper_claude,xbabe2,C0,claude-haiku-5-5,medium,pass,,V02 independent exact-head review of PR #269 (d1f6d10) completed with 0444 receipt; external GitHub approval gate recorded honestly,,canonical,,,
+2026-10-18T05:56:24Z,dope,V00-CI-FIX,2109407.dope_fb_codex_2,xbabe2,T0,gpt-6-luna,medium,started,,simple CI-red fix: frozen-evidence.json allowlist for Q01 figure-one files and README native_byte_conformance section,,canonical,,,
+2026-10-18T05:57:00Z,jarambit,G16-06-RSV2-08-p3,1574779.jarambit_lane_lat_fat,xbabe2,T2,gpt-6.1-sol,high,pass,,"completed Phase-3 admissible-GCI witness multi-mesh, export, and side_a4 evaluation",,canonical,,,
+2026-10-18T05:57:00Z,jarambit,G16-12-RSV2-04-p6,1242467.codex_jarambit_gate_diag,xbabe2,T2,gpt-6.1-sol,high,pass,,completed Phase-6 113-evaluation split hand/blade CP study (678 sealed artifacts in UNIFIED_PROTOTYPE_V3_REPORT.md),,canonical,,,
+2026-10-18T05:58:00Z,jarambit,G16-12-RSV2-04-p7,1242467.codex_jarambit_gate_diag,xbabe2,T2,gpt-6.1-sol,high,started,,dispatched Phase-7 neutral-axis interior web fuller on Q7 to decouple out-of-plane sequence from in-plane HM spine,,canonical,,,
+2026-10-18T05:58:00Z,jarambit,AUTO-03-p4,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,started,,dispatched Phase-4 admissible-GCI window placement steering in auto_evolve.rs,,canonical,,,
+2026-10-18T05:58:00Z,jarambit,AUDIT-WITNESS-P3-V3,2132048.codex_jarambit,xbabe2,T0,gpt-6-luna,medium,started,,"dispatched provenance and metric audit of PHASE3, GCI_A4_VERIFICATION, and UNIFIED_PROTOTYPE_V3_REPORT",,canonical,,,
+2026-10-18T06:01:21Z,joil,V5-27-01..05,484638.joil_v5_codex_lane4,xbabe2,T0,gpt-6-luna,medium,pass,,V5-27-01..05 (Read-only evidence explorer and live progress) completed on T0 gpt-6-luna medium at 2103611 + 94bc0c9 (8/8 tests pass),,canonical,medium,1,12
+2026-10-18T06:01:21Z,joil,V5-15-01..05,1052087.joil_v5_claude,xbabe2,C0,claude-haiku-5-5,medium,pass,,V5-15-01..05 (Validation accession and controlled vortex/PDR study + V5-19 log retention) completed on C0 claude-haiku-5-5 medium at 6ec5836 + 976c706 + 8832e34 (19/19 tests pass),,canonical,medium,1,8
+2026-10-18T06:01:21Z,joil,V5-17-01..05,61562.joil_v5_codex_lane2,xbabe2,T0,gpt-6-luna,medium,pass,,"V5-17-01..05 (Dispersion, breakup and transport uncertainty + RSM conversion) completed on T0 gpt-6-luna medium at ecb1f03 + 602748b",,canonical,medium,1,8
+2026-10-18T06:01:21Z,joil,V5-21-01..05,3128818.joil_v5_codex_lane1,xbabe2,T0,gpt-6-luna,medium,pass,,V5-21-01..05 (Deterministic reference-search policy and fair controls) completed on T0 gpt-6-luna medium at 5a53c81 + f7eb2eb (8/8 tests pass),,canonical,medium,1,8
+2026-10-18T06:01:26Z,joil,V5-18-01..05,1052087.joil_v5_claude,xbabe2,C0,claude-haiku-5-5,medium,started,,"Launched Stage G-015 (V5-18-01..05 Mechanistic erosion, energy spectra and empirical contrast) on C0 claude-haiku-5-5 medium",,canonical,medium,1,0
+2026-10-18T06:01:26Z,joil,V5-22-01..05,3128818.joil_v5_codex_lane1,xbabe2,T0,gpt-6-luna,medium,started,,Launched v5-22-implementation (V5-22-01..05 Local-model trust-region and uncertainty-aware ranking) on T0 gpt-6-luna medium,,canonical,medium,1,0
+2026-10-18T06:01:27Z,joil,V5-24-01..05,61562.joil_v5_codex_lane2,xbabe2,T0,gpt-6-luna,medium,started,,Launched v5-24-implementation (V5-24-01..05 Direct coarse-to-fine promotion and refinement stability) on T0 gpt-6-luna medium,,canonical,medium,1,0
+2026-10-18T06:01:27Z,joil,V5-28-01..05,484638.joil_v5_codex_lane4,xbabe2,T0,gpt-6-luna,medium,started,,"Launched v5-26-followup-and-v5-28 (V5-26 adapter follow-up rev 2 + V5-28-01..05 Offline data cards, pareto fronts and baseline-delta reports) on T0 gpt-6-luna medium",,canonical,medium,1,0
+2026-10-18T06:02:00Z,jarambit,AUDIT-WITNESS-P3-V3,2132048.codex_jarambit,xbabe2,T0,gpt-6-luna,medium,pass,,audited Phase-3 and Unified Prototype V3 witness receipts (a830b605),,canonical,,,
+2026-10-18T06:02:00Z,jarambit,AUTO-03-p4,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,pass,,steered witness-guided window placement to GCI-admissible s0/s1/fill band with unit test,,canonical,,,
+2026-10-18T06:05:56Z,jarambit,AUTO-03-p5,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,started,,Q7 split-hand/blade spine+lateral+fatigue+sharpness witness offspring arm + unit test,,canonical,,,
+2026-10-18T06:05:56Z,jarambit,DOC-02-W405-W406-WP01,2132048.codex_jarambit,xbabe2,T0,gpt-6-luna,medium,started,,"ingest w405c3/w406c3/w406t3 waves, mark WP-01 DONE in WORKPLAN.md, and rebuild paper figures",,canonical,,,
+2026-10-18T06:06:50Z,jopedime,IDLE-BOUNDARY,jope_review_claude,xbabe2,C1,claude-sonnet-5-5,medium,deescalated,claude-haiku-5-5,Reset to C0 haiku medium at task boundary after PR #358 review,,canonical,,,
+2026-10-18T06:06:50Z,jopedime,PR358-REVIEW,jope_review_claude,xbabe2,C1,claude-sonnet-5-5,medium,pass,,PR #358 exact-head review and native APPROVED review 5561688149 at 69ceae58d4e06f19c4ce968946839a5c6cdacce5,,canonical,,,
+2026-10-18T06:11:01Z,jarambit,RSV2-07-p3,1574790.jarambit_lane_hm_seq,xbabe2,T2,gpt-6.1-sol,high,pass,,proved 0.0625-surface 8.37M-tet memory scaling and verified DOLFINx 0.9.0 runtime (55fe93d),,canonical,,,
+2026-10-18T06:11:01Z,jarambit,RSV2-07-p4,1574790.jarambit_lane_hm_seq,xbabe2,T2,gpt-6.1-sol,high,started,,"production export::solid(&p, 1.0) 3D P2 tip solve + DOLFINx 0.9.0 cross-check on critical_fem_3",,canonical,,,
+2026-10-18T06:13:17Z,joil,V5-29-01..05,308711.joil_v5_codex_lane3,xbabe2,T0,gpt-6-luna,medium,pass,,"V5-29-01..05 (Structural bracket reuse proof) completed on T0 gpt-6-luna medium at 3bedc9b + c63c74e (7/7 reuse_proof tests, clippy/fmt/public exit 0)",,canonical,medium,1,8
+2026-10-18T06:13:20Z,joil,V5-30-01..05,308711.joil_v5_codex_lane3,xbabe2,T0,gpt-6-luna,medium,started,,"Launched v5-30-implementation (V5-30-01..05 Physical protocol, as-built confirmation and private dossiers) on T0 gpt-6-luna medium",,canonical,medium,1,0
+2026-10-18T06:15:53Z,joil,V5-22-01..05,3128818.joil_v5_codex_lane1,xbabe2,T0,gpt-6-luna,medium,pass,,V5-22-01..05 (Local-model trust-region and uncertainty-aware ranking) completed on T0 gpt-6-luna medium at 08fccf8 + 011a5ab,,canonical,medium,1,5
+2026-10-18T06:15:53Z,joil,V5-24-01..05,61562.joil_v5_codex_lane2,xbabe2,T0,gpt-6-luna,medium,pass,,V5-24-01..05 (Optional accelerator admission reference track) completed on T0 gpt-6-luna medium at ad5f3d4 + e4d9bdd,,canonical,medium,1,5
+2026-10-18T06:15:53Z,joil,V5-18-01..05,1052087.joil_v5_claude,xbabe2,C0,claude-haiku-5-5,medium,pass,,"V5-18-01..05 (Common-flow capacity, energy and bounded objectives) completed on C0 claude-haiku-5-5 medium at 7635854 + 6eda2c0 (26/26 tests pass)",,canonical,medium,1,9
+2026-10-18T06:15:53Z,joil,V5-28-01..05,484638.joil_v5_codex_lane4,xbabe2,T0,gpt-6-luna,medium,pass,,V5-26 adapter follow-up rev 2 (bcd483d + 9c5fa4d) and V5-28-01..05 (1dbca1f + 6500861) completed on T0 gpt-6-luna medium,,canonical,medium,1,9
+2026-10-18T06:15:55Z,joil,V5-25-01..05,1052087.joil_v5_claude,xbabe2,C0,claude-haiku-5-5,medium,started,,Launched Stage G-016 (V5-25-01..05 Optional frozen-liner response operator) on C0 claude-haiku-5-5 medium,,canonical,medium,1,0
+2026-10-18T06:19:00Z,jarambit,G16-12-RSV2-04-p7,1242467.codex_jarambit_gate_diag,xbabe2,T2,gpt-6.1-sol,high,pass,,completed Unified Prototype V4 neutral-axis web-fuller 3-mesh qualification report,,canonical,,,
+2026-10-18T06:19:00Z,jarambit,AUTO-03-p5,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,pass,,added Q7 split-hand/blade witness offspring arm + unit test,,canonical,,,
+2026-10-18T06:19:00Z,jarambit,DOC-02-W405-W406-WP01,2132048.codex_jarambit,xbabe2,T0,gpt-6-luna,medium,pass,,"ingested w405c3/w406c3/w406t3, updated WAVE_LOG.md and WORKPLAN.md, refreshed wave_history figure",,canonical,,,
+2026-10-18T06:21:25Z,jarambit,G16-12-RSV2-04-p8,1242467.codex_jarambit_gate_diag,xbabe2,T2,gpt-6.1-sol,high,started,,distal structural fuse pocket x=118..156mm + ring_wall hand_stress reduction on Q7 across 0.25/0.125/0.0625,,canonical,,,
+2026-10-18T06:23:56Z,joil,V5-30-01..05,308711.joil_v5_codex_lane3,xbabe2,T0,gpt-6-luna,medium,pass,,"V5-30-01..05 (Physical protocol, as-built confirmation and private dossiers) completed on T0 gpt-6-luna medium",,canonical,medium,1,9
+2026-10-18T06:26:00Z,jarambit,AUTO-03-p6,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,started,,Q7 reinforced ring/handle sequence-ratio offspring arm c%11==10 + unit test,,canonical,,,
+2026-10-18T06:26:00Z,jarambit,AUDIT-PR102,2132048.codex_jarambit,xbabe2,T0,gpt-6-luna,medium,started,,independent T0 audit of PR #102 head 7764183b,,canonical,,,
+2026-10-18T06:26:12Z,joil,Audit-019,2269515.joil_v5_audit,xbabe2,C0,claude-haiku-5-5,medium,pass,,"Audit 019 completed on C0 claude-haiku-5-5 medium (audit-20261018T061800Z.md/.json): 13/14 packets PASS/PASS-WITH-NOTES, trailers 28/28 verified",,canonical,simple,1,6
+2026-10-18T06:27:06Z,jarambit,G16-06-RSV2-08-p3,1574779.jarambit_lane_lat_fat,xbabe2,T2,gpt-6.1-sol,high,pass,,"completed 9/9 Phase-3 GCI + export + side_a4 witness audit (placement_05, local_01, local_04 pass all 9 groups)",,canonical,,,
+2026-10-18T06:27:06Z,jarambit,G16-06-RSV2-08-p4,1574779.jarambit_lane_lat_fat,xbabe2,T2,gpt-6.1-sol,high,started,,hybrid placement_05/local_04 admissible-GCI window + Q7 dorsal spine interpolation across 5 meshes,,canonical,,,
+2026-10-18T06:29:04Z,joil,V5-25-01..05,1052087.joil_v5_claude,xbabe2,C0,claude-haiku-5-5,medium,pass,,V5-25-01..05 (Optional frozen-liner response operator) completed on C0 claude-haiku-5-5 medium,,canonical,medium,1,11
+2026-10-18T06:29:06Z,jarambit,AUTO-03-p6,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,pass,,committed Q7 reinforced ring/handle sequence-ratio offspring arm c%11==10 + unit test,,canonical,,,
+2026-10-18T06:32:21Z,jarambit,AUTO-03-p4,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,fail,,"full auto_evolve::tests suite caught stale assert_eq!(WIN_FILL, 0.65) at line 1020 after widening WIN_FILL to 0.65..=0.70",,canonical,,,
+2026-10-18T06:32:21Z,jarambit,AUTO-03-p6-fix,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,started,,update line 1020 WIN_FILL assertion to 0.65..=0.70 and verify all 15 auto_evolve::tests pass,,canonical,,,
+2026-10-18T06:34:24Z,jarambit,AUTO-03-p6-fix,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,pass,,fixed line 1020 WIN_FILL assertion and verified 15/15 auto_evolve::tests pass,,canonical,,,
+2026-10-18T06:34:24Z,jarambit,AUDIT-PR102,2132048.codex_jarambit,xbabe2,T0,gpt-6-luna,medium,pass,,wrote PR #102 audit receipt 48c19c37,,canonical,,,
+2026-10-18T06:35:06Z,jarambit,AUTO-03-p7,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,started,,add 358N G16-06 lateral shortfall term to Stage-1 screen_deficit + unit test,,canonical,,,
+2026-10-18T06:35:06Z,jarambit,AUDIT-PR102-8e5bab46,2132048.codex_jarambit,xbabe2,T0,gpt-6-luna,medium,started,,independent T0 audit of updated PR #102 head 8e5bab46 (15/15 tests),,canonical,,,
+2026-10-18T06:35:19Z,dope,V00,9362.dope_fb_codex_2,xbabe2,T0,gpt-6-luna,medium,escalated,gpt-6-luna,Escalated one tier T0 -> T1 (gpt-6-luna high) for V00-CI-FIX + Jankurai v1.7.1 gate repair,,canonical,,,
+2026-10-18T06:35:19Z,dope,V00,9362.dope_fb_codex_2,xbabe2,T0,gpt-6-luna,medium,fail,,V00-CI-FIX T0 attempt left 8 failures in docs/whitepaper/scripts/test_*.py after manual README edit,,canonical,,,
+2026-10-18T06:35:23Z,dope,V00,,xbabe2,T1,gpt-6-luna,high,started,,Dispatched V00-CI-FIX on T1 (gpt-6-luna high),,canonical,,,
+2026-10-18T06:35:40Z,dope,V00,,xbabe2,T1,gpt-6-luna,high,started,,Dispatched V00-CI-FIX on T1 (gpt-6-luna high),,canonical,,,
+2026-10-18T06:36:18Z,dope,V00,4009593.dope_fb_codex_2,xbabe2,T1,gpt-6-luna,high,started,,Dispatched V00-CI-FIX on T1 (gpt-6-luna high),,canonical,,,
+2026-10-18T06:38:23Z,jarambit,RSV2-07-p4,1574790.jarambit_lane_hm_seq,xbabe2,T2,gpt-6.1-sol,high,pass,,verified 3D P2 tip SF=2.376 >= 1.0 and DOLFINx 0.9.0 2.3763 (rel_err=0.0126% <= 2%) on critical_fem_3,,canonical,,,
+2026-10-18T06:38:23Z,jarambit,AUTO-03-p7,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,pass,,added 358N G16-06 lateral shortfall term to Stage-1 screen_deficit and verified 16/16 auto_evolve::tests,,canonical,,,
+2026-10-18T06:38:23Z,jarambit,AUDIT-PR102-8e5bab46,2132048.codex_jarambit,xbabe2,T0,gpt-6-luna,medium,pass,,"audited PR #102 head 8e5bab46 (PASS, 0 findings, 15/15 tests, receipt 4d0b72a7)",,canonical,,,
+2026-10-18T06:39:07Z,jarambit,RSV2-07-p5,1574790.jarambit_lane_hm_seq,xbabe2,T2,gpt-6.1-sol,high,started,,production-surface 3D P2 tip solve + DOLFINx 0.9.0 cross-check on placement_05 and Q7,,canonical,,,
+2026-10-18T06:39:07Z,jarambit,AUDIT-PHASE3-V4-P4,2132048.codex_jarambit,xbabe2,T0,gpt-6-luna,medium,started,,"independent T0 audit of Phase-3 (5a7f01a), V4 (348a649), and RSV2-07-p4 (a4c008c) receipts",,canonical,,,
+2026-10-18T06:39:07Z,jarambit,AUTO-03-p8,1013411.codex_jarambit_auto03,xbabe2,T0,gpt-6-luna,medium,started,,verify witness and Q7 offspring arms produce rankable Stage-1 survivors on w283 seeds,,canonical,,,
+2026-10-18T06:40:53Z,jarambit,DOC-02-W315-W406-STAGE,1409298.agy_jarambit_paper,xbabe2,T1,gemini-4-argon-medium,medium,deescalated,,switched agy_jarambit_paper from gemini-4-argon high to gemini-4-argon-medium at turn boundary per section 13,,canonical,,,
+2026-10-18T06:40:53Z,jarambit,DOC-02-W315-W406-STAGE,1409298.agy_jarambit_paper,xbabe2,T1,gemini-4-argon-medium,medium,started,,stage synchronized w315 + w405c3/w406c3/w406t3 wave_summary.json and paper table rows in /tmp/doc02_w315_w406_stage,,canonical,,,
+2026-10-18T06:41:28Z,joil,Audit-020,2269515.joil_v5_audit,xbabe2,C0,claude-haiku-5-5,medium,started,,"Launched Audit 020 on C0 claude-haiku-5-5 medium covering V5-25 (09f2ffb/f562a68), V5-30 (1b150c2/cf3fa85), V5-28 (509f437), V5-23 (1009fe2), and V5-21 log",,canonical,simple,1,0
+2026-10-18T06:43:03Z,jarambit,AUDIT-PHASE3-V4-P4,2132048.codex_jarambit,xbabe2,T0,gpt-6-luna,medium,pass,,"audited Phase-3 (5a7f01a), Unified V4 (348a649), and RSV2-07-p4 (a4c008c) with 0 findings (SHA256 144547a3)",,canonical,,,
+2026-10-18T06:44:17Z,jopedime,PR359-REVIEW,jope_review_claude,xbabe2,C0,claude-haiku-5-5,medium,started,,Exact-head review of standalone neural compile hotfix PR #359 at 7002063fa5d941c3c563a3a67ef4baa1cae87b0b,,canonical,,,
+2026-10-18T06:44:37Z,dope,V00,4009593.dope_fb_codex_2,xbabe2,T1,gpt-6-luna,high,deescalated,gpt-6-luna,De-escalated dope_fb_codex_2 from T1 back to T0 (gpt-6-luna medium) after V00-CI-FIX pass,,canonical,,,
+2026-10-18T06:44:37Z,dope,V00,4009593.dope_fb_codex_2,xbabe2,T1,gpt-6-luna,high,pass,,V00-CI-FIX committed and pushed eee73fd1a12010ca07ec66875b7a93c6c4d084bc with all gates green,,canonical,,,
+2026-10-18T06:45:26Z,dope,V02,1061468.dope_paper_claude,xbabe2,C0,claude-haiku-5-5,medium,started,,Dispatched V02 exact-head review of eee73fd1a12010ca07ec66875b7a93c6c4d084bc on C0 haiku medium,,canonical,,,
+2026-10-18T06:45:58Z,jopedime,PR359-REVIEW,jope_review_claude,xbabe2,C0,claude-haiku-5-5,medium,pass,,PR #359 exact-head review and native APPROVED review 5561786663 at 7002063fa5d941c3c563a3a67ef4baa1cae87b0b,,canonical,,,
+2026-10-18T06:46:20Z,joil,Audit-020,2269515.joil_v5_audit,xbabe2,C0,claude-haiku-5-5,medium,pass,,"Audit 020 completed on C0 claude-haiku-5-5 medium (audit-20261018T064000Z.md/.json): PASS/PASS-with-notes on V5-25, V5-30, V5-28, V5-23, and V5-21 log (0 failures)",,canonical,simple,1,2
+2026-10-18T06:51:17Z,joil,V5-20-followup,1052087.joil_v5_claude,xbabe2,C0,claude-haiku-5-5,medium,started,,Launched Stage G-017 (G008 V5-20 finite-arithmetic follow-up in claude/next-assignment.json) on C0 claude-haiku-5-5 medium,,canonical,simple,1,0
+2026-10-18T06:52:47Z,dope,V02,1061468.dope_paper_claude,xbabe2,C0,claude-haiku-5-5,medium,pass,,V02 exact-head review of eee73fd1a12010ca07ec66875b7a93c6c4d084bc completed with 0444 receipts,12000,canonical,,,
+2026-10-18T06:54:56Z,joil,V5-20-followup,1052087.joil_v5_claude,xbabe2,C0,claude-haiku-5-5,medium,pass,,G008 V5-20 finite-arithmetic follow-up completed on C0 claude-haiku-5-5 medium at e165b8b + af2784f (2 reds + 38/38 dynamics tests pass),,canonical,simple,1,3
+2026-10-18T06:57:08Z,joil,Audit-021,2269515.joil_v5_audit,xbabe2,C0,claude-haiku-5-5,medium,started,,"Launched Audit 021 on C0 claude-haiku-5-5 medium covering V5-20 follow-up (e165b8b/af2784f) and G008 integration commits (2b36553, 9706899, 605f26b, 483b4eb)",,canonical,simple,1,0
+2026-10-18T06:57:11Z,jopedime,PR359-REVIEW-A5376684,jope_review_claude,xbabe2,C0,claude-haiku-5-5,medium,pass,,PR #359 exact-head review and native APPROVED review 5561830345 at a5376684d737a3363f39de2c1416fd06b23d86ab,,canonical,,,
+2026-10-18T06:58:09Z,jarambit,DOC-02-W315-W406-STAGE,1409298.agy_jarambit_paper,xbabe2,A-med,gemini-4-argon-medium,medium,pass,,"staged synchronized w315 + w405c3/w406c3/w406t3 wave_summary.json, wave_history_points.json, WHITEPAPER.md, and ENGINEERING_GATES_AND_EVOLUTION.md passing 36/36 pytest checks",,canonical,,,
+2026-10-18T06:59:02Z,joil,Audit-021,2269515.joil_v5_audit,xbabe2,C0,claude-haiku-5-5,medium,pass,,"Audit 021 completed on C0 claude-haiku-5-5 medium (audit-20261018T065600Z.md/.json): PASS on V5-20 follow-up (e165b8b/af2784f, 8/8 logs) and G008 commits (2b36553, 9706899, 605f26b, 483b4eb)",,canonical,simple,1,2
+2026-10-18T07:00:44Z,jarambit,G16-06-RSV2-08-p4,1574779.jarambit_lane_lat_fat,xbabe2,T2,gpt-6.1-sol,high,pass,,completed 8/8 Phase-4 literal CP29/30 5-mesh GCI and export evaluations (PHASE4.md + phase4_receipt.json),,canonical,,,
+2026-10-18T07:01:24Z,jarambit,G16-06-RSV2-08-p5,1574779.jarambit_lane_lat_fat,xbabe2,T2,gpt-6.1-sol,high,started,,"q7.csv base (spine_sharp_offset=42.0, D0=0.48, D1=0.65, point_shape=3) + window/ring_wall sweep across 5 meshes + GCI + export + A4",,canonical,,,
