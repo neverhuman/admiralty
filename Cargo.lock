@@ -44,6 +44,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "admiralty-root-qualification"
+version = "0.1.0"
+dependencies = [
+ "admiralty-core",
+ "admiralty-store",
+ "rusqlite",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
 name = "admiralty-runtime"
 version = "0.1.0"
 dependencies = [
