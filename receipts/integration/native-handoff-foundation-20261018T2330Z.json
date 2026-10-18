@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-18T23:30:26.781Z",
+  "scope": "P00/P01 criterion-specific foundation review and original workspace capability handoff",
+  "base_commit": "fe158305d0ea49fd905fd1e7d888aa4b477e4412",
+  "source_identity": "Exact production deltas and foundation inputs are hashed below. The containing commit adds this receipt and documentation; no test is attributed to an uncreated Git SHA.",
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "rust": "rustc 1.95.0 (59807616e 2026-04-14) (Homebrew)",
+    "node": "v25.2.1",
+    "build_jobs": 2,
+    "rust_test_threads": 1
+  },
+  "criteria": {
+    "P00": {
+      "pinned_source_manifest": "37 immutable Git source blobs, hashes/counts/time bounds and mirror relationships verified",
+      "historical_exports": "449-row older baseline remains separate from 503-row current export",
+      "incident_cases": "11 explicitly synthetic cases cover all ten required failures plus foreign cleanup; no invented exact historical attempts/acceptances",
+      "inventory": "Read-only deployment worksheet retains unknown paths/versions/owners explicitly",
+      "verification": "Immutable fixture verifier passes mirror/count/hash and secret scan; current worktree drift is reported separately from the immutable baseline"
+    },
+    "P01": {
+      "tooling": "Pinned Rust 1.95 stable/MSRV, Node24 and pnpm11.15.1; workspace dependencies/lints and CI registered",
+      "fake_processes": "Success, quiet tool, malformed/split stream, cumulative reset, crash, blocked input and noisy output; fake clock/fault plan/forge simulation stay credential-free",
+      "ci": "Named integration targets, formatting, strict Clippy, schema drift and frontend checks registered; paid provider jobs disabled by default",
+      "entrypoints": "All four actual binaries return 0 for --help and -h in a private empty cwd; no cwd entries created. Normal admiralty-node startup still returns 78 without enrollment.",
+      "generated_zones": "target, dist, node_modules and runtime/state ignored; public contracts intentionally tracked with drift checks"
+    }
+  },
+  "checks": [
+    {
+      "command": "python3 tests/fixtures/legacy/verify.py",
+      "exit": 0,
+      "verified_sources": 37,
+      "synthetic_cases": 11,
+      "mirror_check": "pass",
+      "secret_scan": "pass",
+      "scope": "Offline fixture verifier only; no Python production ingestion"
+    },
+    {
+      "command": "cargo test -p admiralty-testkit --locked --test legacy_import --test deterministic_faults",
+      "exit": 0,
+      "legacy_import_passed": 13,
+      "deterministic_faults_passed": 5
+    },
+    {
+      "command": "cargo test -p admiralty-server --locked services::native_executor",
+      "exit": 0,
+      "passed": 3,
+      "ignored": 1,
+      "filtered_out": 35,
+      "scope": "Existing negative custody/journal/admission tests; ignored child helper is not qualification"
+    },
+    {
+      "command": "cargo build -p admiralty-server -p admiralty-runtime --bins --locked",
+      "exit": 0
+    },
+    {
+      "command": "Actual admiraltyd, admiralty-node, admiralty-session and admiralty binaries: --help and -h; admiralty-node with no arguments",
+      "exit": 0,
+      "help_checks_passed": 8,
+      "node_disabled_exit": 78,
+      "cwd_unchanged": true
+    },
+    {
+      "command": "cargo clippy -p admiralty-server -p admiralty-runtime --all-targets --locked -- -D warnings",
+      "exit": 0
+    }
+  ],
+  "reused_exact_source_checks": {
+    "commit": "fe158305d0ea49fd905fd1e7d888aa4b477e4412",
+    "workspace_tests_passed": 1061,
+    "workspace_tests_ignored": 4,
+    "workspace_suites": 132,
+    "ci_run": "https://github.com/neverhuman/admiralty/actions/runs/39173192206",
+    "ci_result": "success",
+    "limitation": "Full workspace and main CI evidence is for the base source. Current two-file deltas have affected tests, actual binary help checks and strict all-target server/runtime Clippy; no later-source full workspace result is invented."
+  },
+  "source_sha256": {
+    "Cargo.toml": "369a0c260de5c909a95db7ef52b4acb75d5401b7c0d80fbd97a26d84658e1844",
+    "Cargo.lock": "e57e63aa221852467617c0de5521c0062d874c27342b458caddef650ea473457",
+    "rust-toolchain.toml": "7d21c66a15f41bad66b82ed06a289f5dc8a6e3751951d2696bbf20ce296f2b0f",
+    ".gitignore": "ed459975038d55a7fda88423da917bacbe3ec031a807a90859e0b47a75670228",
+    ".github/workflows/ci.yml": "df74e8a73ad08d3c306988ce77609b324d1f96ee544c04cb4c1e1197ad522715",
+    "crates/admiralty-testkit/Cargo.toml": "3217ac9009cd007b5c78b5a1225c4c12299d73a456ad0ff3f53dd69e3f314496",
+    "crates/admiralty-testkit/src/fake_provider.rs": "3a4428d204d35499a3a9d9ed0ac1ef25aa840fc9978fd7abcfaa0a7dd1fda6a3",
+    "crates/admiralty-runtime/src/bin/admiralty-node.rs": "2a13c969e68e3b9e632d910c6de01b93803ad56d55cf974f32961ce447b388c7",
+    "crates/admiralty-server/src/services/native_executor.rs": "6d606bce7786f06b3c7149666b280965aff350eed23c90a73f59437ebddeac31",
+    "tests/fixtures/legacy/source-manifest.json": "24985946f6d7a56c62e67b792418890120d1550d7038535306f41050e3cc36c5",
+    "tests/fixtures/legacy/verify.py": "e7a2c18317e55fdb18a5d9b60790b684e95fba25162f224fbeea67f6b25b4943"
+  },
+  "artifact_sha256": {
+    "target/quality/p00-immutable-fixture-verify.log": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12",
+    "target/quality/foundation-entrypoint-help.json": "5bac4644bec88ccd3629d41f93c4612b60bcd947b94659e858e248059a827c5c",
+    "target/quality/native-release-fe158-workspace.log": "d6f48de74355e0f927f43cf60dc110a29b1561256f5b8dd5aa356749f572cba4"
+  },
+  "review": {
+    "independent_agent": "audit_runtime",
+    "result": "No blocking finding in the two-file diff; static review only",
+    "parent_criteria_reviewer": "audit_product",
+    "result_parent": "P00 artifact criteria satisfied; P01 final help gap repaired and actual binaries checked",
+    "integration": "Pending exact-head review and main integration; parent rollout acceptance is recorded separately after merge."
+  },
+  "implementation": "NativeExecutor retains the original PreparedWorkspace in pending/recovery ownership and transfers that opaque capability with actual ClosedAdmission only after fallible closure/journal/capacity checks. The receiver must still validate source custody.",
+  "general_native_execution_qualified": false,
+  "successful_linux_executor_to_candidate_handoff_proven": false,
+  "other_packet_acceptance": false,
+  "limits": [
+    "No production controller/provider or durable model-admission wiring is installed by this patch.",
+    "Captured transcript digest is not changed-source candidate evidence.",
+    "No full P02–P31 acceptance follows from shared fixture or workspace test counts."
+  ]
+}

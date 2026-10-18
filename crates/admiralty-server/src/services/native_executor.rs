@@ -68,6 +68,7 @@ pub struct NativeExecutor {
 struct PendingRun {
     host: SessionHost,
     running: RunningAdmission,
+    prepared_workspace: PreparedWorkspace,
     task_id: TaskId,
     attempt_id: AttemptId,
     intent: DispatchIntent,
@@ -82,6 +83,7 @@ struct PendingRun {
 pub struct ClosedExecution {
     receipt: RuntimeReceipt,
     closure: ClosedAdmission,
+    prepared_workspace: PreparedWorkspace,
     output: Vec<u8>,
 }
 impl ClosedExecution {
@@ -90,6 +92,24 @@ impl ClosedExecution {
     }
     pub fn closure(&self) -> &ClosedAdmission {
         &self.closure
+    }
+    /// Original descriptor-backed preparation capability, retained through
+    /// uncertain execution and actual service closure. Paths cannot recreate it.
+    pub fn prepared_workspace(&self) -> &PreparedWorkspace {
+        &self.prepared_workspace
+    }
+    /// Consume the one-shot handoff for trusted source-candidate composition.
+    /// The receiver must validate the original preparation and closure together;
+    /// neither transcript bytes nor this receipt establish changed source.
+    pub fn into_completion_parts(
+        self,
+    ) -> (RuntimeReceipt, PreparedWorkspace, ClosedAdmission, Vec<u8>) {
+        (
+            self.receipt,
+            self.prepared_workspace,
+            self.closure,
+            self.output,
+        )
     }
     /// Captured transcript bytes; this is NOT a source/code candidate artifact.
     pub fn output(&self) -> &[u8] {
@@ -319,16 +339,22 @@ impl NativeExecutor {
         if completed.len() >= self.max_pending {
             return Err(NativeExecutorError::Capacity);
         }
+        // All fallible observation, durable evidence and capacity checks finish
+        // before removing the pending owner. Unknown/error paths keep its
+        // SessionHost, resource admission and original workspace capability.
+        let closed_run = pending
+            .remove(run_id)
+            .ok_or(NativeExecutorError::LaunchUnknown)?;
         completed.insert(
             run_id.into(),
             ClosedExecution {
                 receipt: receipt.clone(),
                 closure,
+                prepared_workspace: closed_run.prepared_workspace,
                 output,
             },
         );
         // Dropping this run's SessionHost is safe only after proven closure.
-        pending.remove(run_id);
         Ok(Some(receipt))
     }
 
@@ -387,13 +413,13 @@ impl NativeExecutor {
             Err(failure) => {
                 if let Some(running) = failure.recovery {
                     let recovery = running.recovery_identity().clone();
-                    self.insert_pending(intent, task, host, *running, recovery)?;
+                    self.insert_pending(intent, host, *running, recovery, plan.prepared_workspace)?;
                 }
                 return Err(NativeExecutorError::LaunchUnknown);
             }
         };
         let recovery = running.recovery_identity().clone();
-        self.insert_pending(intent, task, host, running, recovery)?;
+        self.insert_pending(intent, host, running, recovery, plan.prepared_workspace)?;
         // Noninteractive executor: no hidden open pipe can block provider EOF.
         // Interactive sessions require a separately authorized future interface.
         {
@@ -427,14 +453,15 @@ impl NativeExecutor {
     fn insert_pending(
         &self,
         intent: &DispatchIntent,
-        task: &TaskView,
         host: SessionHost,
         running: RunningAdmission,
         recovery: RecoveryIdentity,
+        prepared_workspace: PreparedWorkspace,
     ) -> Result<(), NativeExecutorError> {
         // These identities were validated before launch. Never drop the host or
         // admission handle on a post-spawn bookkeeping failure.
         let attempt_id = running.recovery_identity().identity.attempt_id.clone();
+        let task_id = prepared_workspace.task_id().clone();
         let mut pending = self
             .pending
             .lock()
@@ -461,7 +488,8 @@ impl NativeExecutor {
             PendingRun {
                 host,
                 running,
-                task_id: task.contract.task_id.clone(),
+                prepared_workspace,
+                task_id,
                 attempt_id,
                 intent: intent.clone(),
                 recovery,
