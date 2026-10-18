@@ -59,6 +59,21 @@ name = "codex_p13_p14_round8"
 path = "../../tests/integration/codex_p13_p14_round8.rs"
 
 [[test]]
+<<<<<<< HEAD
+=======
+name = "codex_p13_p14_p21_round9"
+path = "../../tests/integration/codex_p13_p14_p21_round9.rs"
+
+[[test]]
+name = "codex_p06_p13_p14_round11"
+path = "../../tests/integration/codex_p06_p13_p14_round11.rs"
+
+[[test]]
+name = "codex_p06_p13_p14_round12"
+path = "../../tests/integration/codex_p06_p13_p14_round12.rs"
+
+[[test]]
+>>>>>>> f154808 (test: add round twelve P06 P13 P14 red team audit gate)
 name = "coordination_delivery"
 path = "../../tests/integration/coordination_delivery.rs"
 
