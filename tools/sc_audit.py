@@ -348,29 +348,182 @@ def audit_jopedime(sc_claims):
     res['done_recomputed'] = len(on_main_pass)
     return res
 
-def audit_dope():
-    res = {'source': DOPE_P + '/tasks.json'}
-    t = rj(DOPE_P + '/tasks.json'); p = rj(DOPE_P + '/progress.json') or {}
-    if not t: F('amber', 'dope', 'LEDGER_UNREADABLE', 'tasks.json unreadable', DOPE_P); return res
+# ---------------- DOPE per-task receipts (super_captain request 2026-10-18 ~06:00 MDT) ----------------
+# A DOPE task counts as done only when its own receipt proves it: receipt file exists (and matches the #sha256 pinned in
+# tasks.json), status passed, integer exit code(s) == 0 (never prose), every command has a log_path that exists with a
+# matching log_sha256, checkout sha == receipt sha (40-hex) and that sha is on origin/main, and the receipt is this task's
+# own (a receipt shared by several tasks counts only for tasks that have their own per-task entry with their own log).
+DOPE_VERIFY_REF = re.compile(r'(/\S+?/verify/\S+?\.json)(?:#sha256=([0-9a-f]{64}))?\s*$')
+DOPE_GENERIC_CMD_MIN = 5      # same command proving >= this many tasks is reported (amber) as generic evidence
+DOPE_PROBLEMS = {
+    'no_receipt': 'no verify receipt referenced in tasks.json evidence (prose/typed evidence only)',
+    'receipt_missing': 'referenced receipt file does not exist',
+    'receipt_unreadable': 'receipt JSON unreadable',
+    'receipt_sha256_mismatch': 'receipt file no longer matches the #sha256 pinned in tasks.json (edited after pinning)',
+    'receipt_not_for_task': 'receipt names a different task_id',
+    'shared_receipt_no_task_entry': 'receipt is shared by several tasks and has no per-task entry (with its own log) for this task',
+    'status_not_passed': 'receipt status is not passed',
+    'bad_or_missing_sha': 'receipt sha missing, truncated or malformed (need 40-hex)',
+    'no_commands': 'receipt lists no executed commands',
+    'exit_code_not_integer': 'exit code missing or typed as text/prose instead of an integer',
+    'nonzero_exit': 'a command exited nonzero',
+    'no_log_path': 'a command has no log_path',
+    'log_missing': 'log_path does not exist',
+    'no_log_sha256': 'log_sha256 missing or malformed',
+    'log_sha256_mismatch': 'log file does not match log_sha256 (overwritten or edited)',
+    'log_names_other_sha': 'log header names a different head_sha than the receipt',
+    'log_exit_code_mismatch': 'log header exit_code differs from the recorded integer exit code',
+    'log_shared_across_tasks': 'the same log (same log_sha256) is cited as proof for several tasks',
+    'no_checkout_sha': 'no checkout_sha/head_sha recorded for the commands',
+    'checkout_sha_mismatch': 'checkout sha differs from the receipt sha',
+    'sha_not_on_main': 'receipt sha is not on origin/main',
+    'receipt_predates_sha': 'verified_at is older than the commit it names (relabeled, not re-run)',
+}
+
+def _sha256_file(p):
+    try:
+        with open(p, 'rb') as f: return hashlib.sha256(f.read()).hexdigest()
+    except OSError:
+        return None
+
+def dope_receipt_refs(task):
+    refs = []
+    for e in task.get('evidence') or []:
+        m = DOPE_VERIFY_REF.search(str(e).strip())
+        if m: refs.append((m.group(1), m.group(2)))
+    return refs
+
+def check_dope_receipt(task_id, ref_path, ref_hash, on_main, commit_time_fn=None):
+    """Verify one DOPE task receipt. Returns (sorted problem codes, info). on_main(sha) -> bool. Never writes."""
+    probs, info = set(), {'receipt': ref_path}
+    if not os.path.isfile(ref_path): return ['receipt_missing'], info
+    if ref_hash and _sha256_file(ref_path) != ref_hash: probs.add('receipt_sha256_mismatch')
+    r = rj(ref_path)
+    if not isinstance(r, dict): return sorted(probs | {'receipt_unreadable'}), info
+    entry = r
+    if r.get('task_id') != task_id:
+        per = r.get('tasks')
+        if isinstance(per, dict) and isinstance(per.get(task_id), dict): entry = per[task_id]
+        elif isinstance(per, list) and any(isinstance(x, dict) and x.get('task_id') == task_id for x in per):
+            entry = next(x for x in per if isinstance(x, dict) and x.get('task_id') == task_id)
+        else:
+            return sorted(probs | {'receipt_not_for_task' if r.get('task_id') else 'shared_receipt_no_task_entry'}), info
+        info['shared_receipt'] = True
+    def g(k): return entry.get(k) if entry.get(k) is not None else (r.get(k) if entry is not r else None)
+    if str(g('status') or '').strip().lower() not in ('passed', 'pass'): probs.add('status_not_passed')
+    sha = str(g('sha') or g('head_sha') or '')
+    info['sha'] = sha
+    good_sha = bool(re.fullmatch(r'[0-9a-f]{40}', sha))
+    if not good_sha: probs.add('bad_or_missing_sha')
+    cmds = entry.get('commands')
+    if not isinstance(cmds, list) or not cmds:
+        cmds = [entry] if (entry.get('log_path') or entry.get('cmd') or entry.get('command')) else []
+    if not cmds: probs.add('no_commands')
+    checkout = {str(entry['checkout_sha'])} if entry.get('checkout_sha') else set()
+    info['cmds'], info['log_hashes'] = [], []
+    for c in cmds:
+        if not isinstance(c, dict): probs.add('no_commands'); continue
+        info['cmds'].append(str(c.get('cmd') or c.get('command') or ''))
+        ec = c['exit_codes'] if 'exit_codes' in c else c.get('exit_code')
+        ecs = ec if isinstance(ec, list) else [ec]
+        if not ecs or any(type(x) is not int for x in ecs): probs.add('exit_code_not_integer')
+        elif any(x != 0 for x in ecs): probs.add('nonzero_exit')
+        lp, lh = c.get('log_path'), c.get('log_sha256')
+        if not lp: probs.add('no_log_path')
+        elif not os.path.isfile(str(lp)): probs.add('log_missing')
+        elif not (isinstance(lh, str) and re.fullmatch(r'(sha256:)?[0-9a-f]{64}', lh)): probs.add('no_log_sha256')
+        elif _sha256_file(lp) != lh.split(':')[-1]: probs.add('log_sha256_mismatch')
+        else:
+            info['log_hashes'].append(lh.split(':')[-1])
+            with open(lp, errors='replace') as fh: head = fh.read(20000)
+            ls = set(re.findall(r'^head_sha:\s*([0-9a-f]{40})\s*$', head, re.M))
+            if ls and good_sha and ls != {sha}: probs.add('log_names_other_sha')
+            le = {int(x) for x in re.findall(r'^exit_code:\s*(-?\d+)\s*$', head, re.M)}
+            if le and all(type(x) is int for x in ecs) and not set(ecs) <= le: probs.add('log_exit_code_mismatch')
+        cs = c.get('checkout_sha') or c.get('head_sha')
+        if cs: checkout.add(str(cs))
+    if not checkout: probs.add('no_checkout_sha')
+    elif checkout != {sha}: probs.add('checkout_sha_mismatch')
+    if good_sha and not on_main(sha): probs.add('sha_not_on_main')
+    va = parse_utc(g('verified_at_utc') or g('verified_at'))
+    ct = commit_time_fn(sha) if (commit_time_fn and good_sha) else None
+    if va and ct and va < ct: probs.add('receipt_predates_sha')
+    return sorted(probs), info
+
+def verify_dope_tasks(tasks, on_main, commit_time_fn=None):
+    """Per-task verification for DOPE ledger tasks marked done. Returns (verified ids, {id: problems}, generic_cmds)."""
+    verified, bad, infos = [], {}, {}
+    for x in tasks:
+        if x.get('status') != 'done': continue
+        tid = x.get('id')
+        refs = dope_receipt_refs(x)
+        if not refs: bad[tid] = ['no_receipt']; continue
+        p, i = check_dope_receipt(tid, refs[-1][0], refs[-1][1], on_main, commit_time_fn)
+        infos[tid] = i
+        if p: bad[tid] = p
+    # one receipt / one log per task: the same log cited for several tasks is not per-task proof
+    by_log = collections.defaultdict(set)
+    for tid, i in infos.items():
+        for h in i.get('log_hashes') or []: by_log[h].add(tid)
+    for h, ids in by_log.items():
+        if len(ids) > 1:
+            for tid in ids: bad[tid] = sorted(set(bad.get(tid, [])) | {'log_shared_across_tasks'})
+    for tid in infos:
+        if tid not in bad: verified.append(tid)
+    by_cmd = collections.defaultdict(list)
+    for tid in verified:
+        for c in set(infos[tid].get('cmds') or []): by_cmd[c].append(tid)
+    generic = {c: sorted(ids) for c, ids in by_cmd.items() if c and len(ids) >= DOPE_GENERIC_CMD_MIN}
+    return sorted(verified), bad, generic
+
+def audit_dope(packet=None, on_main=None, commit_time_fn=None):
+    packet = packet or DOPE_P
+    repo = REPOS['dope']
+    res = {'source': packet + '/tasks.json (+ per-task verify receipts)'}
+    t = rj(packet + '/tasks.json'); p = rj(packet + '/progress.json') or {}
+    if not t: F('amber', 'dope', 'LEDGER_UNREADABLE', 'tasks.json unreadable', packet); return res
+    if on_main is None:
+        run(['git', '-C', repo, 'fetch', '-q', 'origin', 'main'], timeout=60)
+        main = rev(repo, 'origin/main')
+        res['main_sha'] = main
+        on_main = (lambda s: bool(main) and is_anc(repo, s, main))
+        commit_time_fn = commit_time_fn or (lambda s: commit_time(repo, s))
     st = collections.Counter(x.get('status') for x in t['tasks'])
     done = [x for x in t['tasks'] if x.get('status') == 'done']
-    res.update(total=len(t['tasks']), done_recomputed=len(done), status_counts=dict(st))
+    verified, bad, generic = verify_dope_tasks(t['tasks'], on_main, commit_time_fn)
+    res.update(total=len(t['tasks']), ledger_done=len(done), done_recomputed=len(verified), status_counts=dict(st),
+               unverified_done=sorted(bad), note='done_recomputed counts only ledger-done tasks whose own receipt verifies (log+sha256, int exit codes, checkout sha on main)')
+    res['receipt_problems'] = {k: v for k, v in sorted(bad.items())}
+    shas = collections.Counter()
+    for x in done:
+        refs = dope_receipt_refs(x)
+        rr = (rj(refs[-1][0]) or {}) if refs else {}
+        shas[str(rr.get('head_sha') or rr.get('sha') or 'none')[:9]] += 1
+    res['receipt_shas'] = dict(shas)
     pc = p.get('counts') or {}
     if pc and pc.get('done') != len(done):
-        F('red', 'dope', 'PROGRESS_VS_LEDGER', f'progress.json counts.done={pc.get("done")} but tasks.json has {len(done)} done', DOPE_P)
+        F('red', 'dope', 'PROGRESS_VS_LEDGER', f'progress.json counts.done={pc.get("done")} but tasks.json has {len(done)} done', packet)
     for x in done:
-        if not x.get('evidence'): F('red', 'dope', 'DONE_NO_EVIDENCE', f'{x["id"]} is done with empty evidence', DOPE_P + '/tasks.json')
-    # stale reviewed heads: shas cited in progress.json that are not the current PR head
+        if not x.get('evidence'): F('red', 'dope', 'DONE_NO_EVIDENCE', f'{x["id"]} is done with empty evidence', packet + '/tasks.json')
+    by_prob = collections.defaultdict(list)
+    for tid, ps in bad.items():
+        for q in ps: by_prob[q].append(tid)
+    for q, ids in sorted(by_prob.items()):
+        F('red', 'dope', 'RECEIPT_' + q.upper(), f'{DOPE_PROBLEMS.get(q, q)} (not counted as done): {len(ids)} task(s) {" ".join(sorted(ids)[:40])}', packet + '/verify')
+    if bad:
+        F('red', 'dope', 'DONE_UNVERIFIED', f'{len(bad)}/{len(done)} ledger-done tasks have no verifiable per-task receipt; audited done = {len(verified)}/{len(t["tasks"])}', packet + '/tasks.json')
+    for c, ids in sorted(generic.items(), key=lambda kv: -len(kv[1])):
+        F('amber', 'dope', 'RECEIPT_GENERIC_COMMAND', f'one generic command is the only proof for {len(ids)} different tasks ({" ".join(ids[:25])}): `{c[:120]}`; each has its own log so they count, but captain_dope must show the command exercises each task\'s acceptance', packet + '/verify')
     head = p.get('pr_269_head_sha')
     res['pr_head_in_progress_json'] = head
     for l in p.get('active_leases') or []:
         hc = l.get('head_commit')
         if head and hc and hc != head and l.get('pr'):
-            F('amber', 'dope', 'LEASE_STALE_HEAD', f'lease {l.get("lease_id")} still pins head {hc[:9]} while PR #269 head is {head[:9]}; any acceptance tied to {hc[:9]} must be re-checked on the current head', DOPE_P + '/progress.json')
+            F('amber', 'dope', 'LEASE_STALE_HEAD', f'lease {l.get("lease_id")} still pins head {hc[:9]} while PR #269 head is {head[:9]}; any acceptance tied to {hc[:9]} must be re-checked on the current head', packet + '/progress.json')
     claim = max_claim(LOGS['dope'], len(t['tasks']), CAPTAINS['dope'])
     res['captain_claim_max_recent'] = claim
-    if claim is not None and claim > len(done):
-        F('red', 'dope', 'COUNT_OVERCLAIM', f'captain screen/log recently claimed {claim}/{len(t["tasks"])} done; ledger tasks.json has {len(done)}', LOGS['dope'])
+    if claim is not None and claim > len(verified):
+        F('red', 'dope', 'COUNT_OVERCLAIM', f'captain screen/log recently claimed {claim}/{len(t["tasks"])} done; audit verifies {len(verified)} (ledger says {len(done)})', LOGS['dope'])
     return res
 
 def max_claim(logp, total, scr):
