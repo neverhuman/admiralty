@@ -9,6 +9,8 @@ pub mod models;
 
 pub mod providers;
 pub mod recovery;
+#[cfg(any(target_os = "linux", test))]
+pub mod resource_gate;
 pub mod reservations;
 pub mod strategies;
 pub mod workspace;
