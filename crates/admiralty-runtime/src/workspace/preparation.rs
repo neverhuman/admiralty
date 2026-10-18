@@ -8,7 +8,8 @@
 //! Descriptor-relative creation and validation narrow pathname races, but do
 //! not isolate against a hostile same-UID process or provide a sandbox. Git
 //! work and output are deadline- and size-bounded; the pinned snapshot is
-//! limited to 100,000 objects and 512 MiB of object and materialized file data.
+//! limited to 100,000 Git objects and materialized path entries, SHA-1 object
+//! IDs, and 512 MiB of object and materialized file data.
 
 use super::registry::{Custody, NodeRef, ValidatedWorkspace, WorkspaceError, WorkspaceSpec};
 use admiralty_core::{AttemptId, ProjectId, RootId, TaskId};
@@ -16,7 +17,7 @@ use std::{
     fs,
     io::{self, Read, Write},
     os::{
-        fd::{AsRawFd, OwnedFd},
+        fd::{AsFd, AsRawFd, OwnedFd},
         unix::{
             fs::{MetadataExt, PermissionsExt},
             process::CommandExt,
@@ -24,10 +25,6 @@ use std::{
     },
     path::{Path, PathBuf},
     process::{Child, Command, Output, Stdio},
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
     thread,
     time::{Duration, Instant},
 };
@@ -123,6 +120,8 @@ pub enum PreparationError {
     UnsafeSourceMetadata,
     #[error("pinned commit is not a full object ID for this repository")]
     InvalidObjectId,
+    #[error("repository object format is unsupported; only SHA-1 is qualified")]
+    UnsupportedObjectFormat,
     #[error("pinned object is not a commit in the source repository")]
     CommitUnavailable,
     #[error("managed parent must be a canonical caller-owned mode-0700 directory")]
@@ -178,12 +177,14 @@ pub fn prepare_workspace(
             bytes.checked_add((source.object_count as u64).checked_mul(DISK_BYTES_PER_OBJECT)?)
         })
         .and_then(|bytes| {
-            bytes.checked_add((source.file_count as u64).checked_mul(DISK_BYTES_PER_FILE)?)
+            bytes.checked_add(
+                (source.materialized_entry_count as u64).checked_mul(DISK_BYTES_PER_FILE)?,
+            )
         })
         .and_then(|bytes| bytes.checked_add(DISK_RESERVE_BYTES))
         .ok_or(PreparationError::SnapshotLimit)?;
     let admitted_inodes = (source.object_count as u64)
-        .checked_add(source.file_count as u64)
+        .checked_add(source.materialized_entry_count as u64)
         .and_then(|count| count.checked_add(DISK_INODE_RESERVE))
         .ok_or(PreparationError::SnapshotLimit)?;
     if available < admitted_bytes || available_inodes < admitted_inodes {
@@ -217,7 +218,11 @@ pub fn prepare_workspace(
     ensure_same_directory(&parent_fd, &request.destination_name, &destination_fd)?;
     let destination = parent_path.join(&request.destination_name);
     let destination_cwd = fd_path(&destination_fd);
-    run_git(&git, Some(&destination_cwd), &["init", "--quiet"])?;
+    run_git(
+        &git,
+        Some(&destination_cwd),
+        &["init", "--quiet", "--object-format=sha1"],
+    )?;
     let git_dir = destination_cwd.join(".git");
     let git_dir_meta =
         fs::symlink_metadata(&git_dir).map_err(|_| PreparationError::UnsafeDestinationMetadata)?;
@@ -462,78 +467,110 @@ fn run_git_with_options(
         .stderr(Stdio::piped())
         .process_group(0);
     let mut child = command.spawn()?;
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| PreparationError::Git("missing stdout pipe".into()))?;
-    let stderr = child
-        .stderr
-        .take()
-        .ok_or_else(|| PreparationError::Git("missing stderr pipe".into()))?;
-    let oversized = Arc::new(AtomicBool::new(false));
-    let stdout_reader = read_bounded(stdout, output_limit, Arc::clone(&oversized));
-    let stderr_reader = read_bounded(stderr, MAX_GIT_STDERR, Arc::clone(&oversized));
-    let input_writer = if let Some(bytes) = input {
-        let Some(mut pipe) = child.stdin.take() else {
-            terminate_git_group(&mut child);
-            reap_child_bounded(&mut child)?;
-            return Err(PreparationError::Git("missing stdin pipe".into()));
-        };
-        let bytes = bytes.to_vec();
-        Some(thread::spawn(move || pipe.write_all(&bytes)))
+    let mut stdout = match child.stdout.take() {
+        Some(pipe) => Some(pipe),
+        None => {
+            return abort_git_child(
+                &mut child,
+                PreparationError::Git("missing stdout pipe".into()),
+            );
+        }
+    };
+    let mut stderr = match child.stderr.take() {
+        Some(pipe) => Some(pipe),
+        None => {
+            return abort_git_child(
+                &mut child,
+                PreparationError::Git("missing stderr pipe".into()),
+            );
+        }
+    };
+    let mut stdin = if input.is_some() {
+        match child.stdin.take() {
+            Some(pipe) => Some(pipe),
+            None => {
+                return abort_git_child(
+                    &mut child,
+                    PreparationError::Git("missing stdin pipe".into()),
+                );
+            }
+        }
     } else {
         None
     };
+    if let Some(pipe) = stdout.as_ref()
+        && let Err(error) = set_nonblocking(pipe)
+    {
+        return abort_git_child(&mut child, error.into());
+    }
+    if let Some(pipe) = stderr.as_ref()
+        && let Err(error) = set_nonblocking(pipe)
+    {
+        return abort_git_child(&mut child, error.into());
+    }
+    if let Some(pipe) = stdin.as_ref()
+        && let Err(error) = set_nonblocking(pipe)
+    {
+        return abort_git_child(&mut child, error.into());
+    }
+    let input = input.unwrap_or_default();
+    let mut input_offset = 0usize;
+    if input_offset == input.len() {
+        stdin.take();
+    }
+    let mut stdout_bytes = Vec::with_capacity(output_limit.min(8192));
+    let mut stderr_bytes = Vec::with_capacity(MAX_GIT_STDERR.min(8192));
     let deadline = Instant::now() + timeout;
-    let mut timed_out = false;
-    let status = loop {
-        if oversized.load(Ordering::Relaxed) {
-            terminate_git_group(&mut child);
-            reap_child_bounded(&mut child)?;
-            break None;
+    let mut status = None;
+    loop {
+        let stdout_overflow = match drain_pipe(&mut stdout, &mut stdout_bytes, output_limit) {
+            Ok(overflow) => overflow,
+            Err(error) if status.is_some() => return Err(error.into()),
+            Err(error) => return abort_git_child(&mut child, error.into()),
+        };
+        let stderr_overflow = match drain_pipe(&mut stderr, &mut stderr_bytes, MAX_GIT_STDERR) {
+            Ok(overflow) => overflow,
+            Err(error) if status.is_some() => return Err(error.into()),
+            Err(error) => return abort_git_child(&mut child, error.into()),
+        };
+        if status.is_none() {
+            status = match child.try_wait() {
+                Ok(status) => status,
+                Err(error) => return abort_git_child(&mut child, error.into()),
+            };
         }
-        if let Some(status) = child.try_wait()? {
-            break Some(status);
+        if stdout_overflow || stderr_overflow {
+            if status.is_none() {
+                terminate_git_group(&mut child);
+                reap_child_bounded(&mut child)?;
+            }
+            return Err(PreparationError::GitOutputLimit);
+        }
+        if status.is_some() && stdin.is_some() {
+            return Err(PreparationError::Git(
+                "process exited before accepting all input".into(),
+            ));
+        }
+        if let Err(error) = write_pipe(&mut stdin, input, &mut input_offset) {
+            return abort_git_child(&mut child, error.into());
+        }
+        if stdin.is_none() && status.is_some() && stdout.is_none() && stderr.is_none() {
+            break;
         }
         if Instant::now() >= deadline {
-            timed_out = true;
-            terminate_git_group(&mut child);
-            reap_child_bounded(&mut child)?;
-            break None;
+            if status.is_none() {
+                terminate_git_group(&mut child);
+                reap_child_bounded(&mut child)?;
+                return Err(PreparationError::GitTimeout);
+            }
+            return Err(PreparationError::GitDescendantRetainedPipe);
         }
         thread::sleep(Duration::from_millis(10));
-    };
-    if !wait_workers_bounded(
-        &stdout_reader,
-        &stderr_reader,
-        input_writer.as_ref(),
-        deadline,
-    ) {
-        // The detached workers own only their pipes and bounded buffers.
-        return Err(PreparationError::GitDescendantRetainedPipe);
-    }
-    if timed_out {
-        return Err(PreparationError::GitTimeout);
-    }
-    if oversized.load(Ordering::Relaxed) {
-        return Err(PreparationError::GitOutputLimit);
-    }
-    let stdout = stdout_reader
-        .join()
-        .map_err(|_| PreparationError::Git("stdout reader panicked".into()))??;
-    let stderr = stderr_reader
-        .join()
-        .map_err(|_| PreparationError::Git("stderr reader panicked".into()))??;
-    if let Some(writer) = input_writer {
-        writer
-            .join()
-            .map_err(|_| PreparationError::Git("stdin writer panicked".into()))?
-            .map_err(PreparationError::Io)?;
     }
     let output = Output {
         status: status.ok_or_else(|| PreparationError::Git("missing child status".into()))?,
-        stdout,
-        stderr,
+        stdout: stdout_bytes,
+        stderr: stderr_bytes,
     };
     if output.status.success() {
         Ok(output)
@@ -548,28 +585,76 @@ fn run_git_with_options(
     }
 }
 
-fn read_bounded<R: Read + Send + 'static>(
-    mut reader: R,
+fn set_nonblocking(pipe: &impl AsFd) -> io::Result<()> {
+    let flags = rustix::fs::fcntl_getfl(pipe).map_err(io::Error::from)?;
+    rustix::fs::fcntl_setfl(pipe, flags | rustix::fs::OFlags::NONBLOCK).map_err(io::Error::from)
+}
+
+fn drain_pipe<R: Read>(
+    pipe: &mut Option<R>,
+    retained: &mut Vec<u8>,
     limit: usize,
-    oversized: Arc<AtomicBool>,
-) -> thread::JoinHandle<io::Result<Vec<u8>>> {
-    thread::spawn(move || {
-        let mut retained = Vec::with_capacity(limit.min(8192));
-        let mut buffer = [0u8; 8192];
-        loop {
-            let count = reader.read(&mut buffer)?;
-            if count == 0 {
-                break;
+) -> io::Result<bool> {
+    let Some(reader) = pipe.as_mut() else {
+        return Ok(false);
+    };
+    let mut buffer = [0u8; 8192];
+    loop {
+        match reader.read(&mut buffer) {
+            Ok(0) => {
+                pipe.take();
+                return Ok(false);
             }
-            let available = limit.saturating_sub(retained.len());
-            let keep = count.min(available);
-            retained.extend_from_slice(&buffer[..keep]);
-            if keep < count {
-                oversized.store(true, Ordering::Relaxed);
+            Ok(count) => {
+                let available = limit.saturating_sub(retained.len());
+                let keep = count.min(available);
+                retained.extend_from_slice(&buffer[..keep]);
+                if keep < count {
+                    return Ok(true);
+                }
             }
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => return Ok(false),
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error),
         }
-        Ok(retained)
-    })
+    }
+}
+
+fn write_pipe<W: Write>(pipe: &mut Option<W>, input: &[u8], offset: &mut usize) -> io::Result<()> {
+    let Some(writer) = pipe.as_mut() else {
+        return Ok(());
+    };
+    if *offset >= input.len() {
+        pipe.take();
+        return Ok(());
+    }
+    match writer.write(&input[*offset..]) {
+        Ok(0) => Err(io::ErrorKind::WriteZero.into()),
+        Ok(count) => {
+            *offset += count;
+            if *offset == input.len() {
+                pipe.take();
+            }
+            Ok(())
+        }
+        Err(error)
+            if matches!(
+                error.kind(),
+                io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+            ) =>
+        {
+            Ok(())
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn abort_git_child<T>(child: &mut Child, error: PreparationError) -> Result<T, PreparationError> {
+    let _ = child.kill();
+    match reap_child_bounded(child) {
+        Ok(()) => Err(error),
+        Err(cleanup_error) => Err(cleanup_error),
+    }
 }
 
 fn terminate_git_group(child: &mut Child) {
@@ -596,32 +681,17 @@ fn reap_child_bounded(child: &mut Child) -> Result<(), PreparationError> {
     }
 }
 
-fn wait_workers_bounded(
-    stdout: &thread::JoinHandle<io::Result<Vec<u8>>>,
-    stderr: &thread::JoinHandle<io::Result<Vec<u8>>>,
-    writer: Option<&thread::JoinHandle<io::Result<()>>>,
-    deadline: Instant,
-) -> bool {
-    while !stdout.is_finished()
-        || !stderr.is_finished()
-        || writer.is_some_and(|worker| !worker.is_finished())
-    {
-        if Instant::now() >= deadline {
-            return false;
-        }
-        thread::sleep(Duration::from_millis(5));
-    }
-    true
-}
-
 fn same_directory_as_fd(path: &Path, directory: &OwnedFd) -> bool {
     let Ok(path_metadata) = fs::metadata(path) else {
         return false;
     };
-    let Ok(fd_metadata) = rustix::fs::fstat(directory) else {
+    let Ok(fd_copy) = directory.try_clone() else {
         return false;
     };
-    path_metadata.dev() == fd_metadata.st_dev && path_metadata.ino() == fd_metadata.st_ino
+    let Ok(fd_metadata) = fs::File::from(fd_copy).metadata() else {
+        return false;
+    };
+    path_metadata.dev() == fd_metadata.dev() && path_metadata.ino() == fd_metadata.ino()
 }
 
 fn git_text(git: &Path, cwd: Option<&Path>, args: &[&str]) -> Result<String, PreparationError> {
@@ -639,7 +709,7 @@ struct ValidatedSource {
     snapshot_bytes: u64,
     object_count: usize,
     working_tree_bytes: u64,
-    file_count: usize,
+    materialized_entry_count: usize,
 }
 
 fn validate_source(
@@ -674,7 +744,16 @@ fn validate_source(
     }
     let config = read_safe_config(&git_dir.join("config"))
         .map_err(|_| PreparationError::UnsafeSourceMetadata)?;
-    validate_source_git_metadata(&git_dir, &config)?;
+    let format = git_text(
+        git,
+        Some(&source_cwd),
+        &["rev-parse", "--show-object-format"],
+    )?;
+    let oid_len = match format.trim() {
+        "sha1" => 40,
+        _ => return Err(PreparationError::UnsupportedObjectFormat),
+    };
+    validate_source_git_metadata(&git_dir, &config, oid_len)?;
     let top = git_text(git, Some(&source_cwd), &["rev-parse", "--show-toplevel"])?;
     if !same_directory_as_fd(Path::new(top.trim()), &source_fd) {
         return Err(PreparationError::InvalidSource);
@@ -699,16 +778,6 @@ fn validate_source(
     if !status.is_empty() {
         return Err(PreparationError::DirtySource);
     }
-    let format = git_text(
-        git,
-        Some(&source_cwd),
-        &["rev-parse", "--show-object-format"],
-    )?;
-    let oid_len = match format.trim() {
-        "sha1" => 40,
-        "sha256" => 64,
-        _ => return Err(PreparationError::InvalidObjectId),
-    };
     if !valid_oid_for(&request.pinned_commit, oid_len) {
         return Err(PreparationError::InvalidObjectId);
     }
@@ -752,14 +821,15 @@ fn validate_source(
         MAX_TREE_LISTING,
     )?
     .stdout;
-    let (snapshot_bytes, object_count, working_tree_bytes, file_count) = measure_object_closure(
-        git,
-        &source_cwd,
-        &request.pinned_commit,
-        &tree_oid,
-        &listing,
-        oid_len,
-    )?;
+    let (snapshot_bytes, object_count, working_tree_bytes, materialized_entry_count) =
+        measure_object_closure(
+            git,
+            &source_cwd,
+            &request.pinned_commit,
+            &tree_oid,
+            &listing,
+            oid_len,
+        )?;
     let config_after = read_safe_config(&git_dir.join("config"))
         .map_err(|_| PreparationError::UnsafeSourceMetadata)?;
     if config != config_after {
@@ -778,7 +848,7 @@ fn validate_source(
         snapshot_bytes,
         object_count,
         working_tree_bytes,
-        file_count,
+        materialized_entry_count,
     })
 }
 
@@ -811,7 +881,11 @@ fn read_safe_config(path: &Path) -> Result<Vec<u8>, PreparationError> {
     Ok(bytes)
 }
 
-fn validate_source_git_metadata(git_dir: &Path, config: &[u8]) -> Result<(), PreparationError> {
+fn validate_source_git_metadata(
+    git_dir: &Path,
+    config: &[u8],
+    oid_len: usize,
+) -> Result<(), PreparationError> {
     let lower = String::from_utf8_lossy(config).to_ascii_lowercase();
     if lower.contains("remote.") && lower.contains("promisor")
         || lower.contains("partialclone")
@@ -889,7 +963,7 @@ fn validate_source_git_metadata(git_dir: &Path, config: &[u8]) -> Result<(), Pre
                         || !metadata.is_file()
                         || metadata.uid() != rustix::process::geteuid().as_raw()
                         || metadata.mode() & 0o022 != 0
-                        || object_name.len() != 38
+                        || object_name.len() != oid_len.saturating_sub(2)
                         || !is_lower_hex(&object_name)
                     {
                         return Err(PreparationError::UnsafeSourceMetadata);
@@ -964,7 +1038,7 @@ fn measure_object_closure(
     }
     let mut objects = std::collections::BTreeSet::new();
     let mut blob_references = std::collections::BTreeMap::<String, usize>::new();
-    let mut file_count = 0usize;
+    let mut materialized_entry_count = 0usize;
     objects.insert(commit.to_owned());
     objects.insert(tree.to_owned());
     for record in listing
@@ -993,13 +1067,13 @@ fn measure_object_closure(
         if !matches!(kind, "blob" | "tree") {
             return Err(PreparationError::UnsafeSourceMetadata);
         }
+        materialized_entry_count = materialized_entry_count
+            .checked_add(1)
+            .ok_or(PreparationError::SnapshotLimit)?;
+        if materialized_entry_count > MAX_OBJECTS {
+            return Err(PreparationError::SnapshotLimit);
+        }
         if kind == "blob" {
-            file_count = file_count
-                .checked_add(1)
-                .ok_or(PreparationError::SnapshotLimit)?;
-            if file_count > MAX_OBJECTS {
-                return Err(PreparationError::SnapshotLimit);
-            }
             let multiplicity = blob_references.entry(oid.to_owned()).or_default();
             *multiplicity = multiplicity
                 .checked_add(1)
@@ -1077,7 +1151,7 @@ fn measure_object_closure(
             )
             .ok_or(PreparationError::SnapshotLimit)
         })?;
-    Ok((total, count, working_tree_bytes, file_count))
+    Ok((total, count, working_tree_bytes, materialized_entry_count))
 }
 
 fn ensure_source_unchanged(git: &Path, source: &ValidatedSource) -> Result<(), PreparationError> {
@@ -1451,6 +1525,43 @@ mod tests {
     }
 
     #[test]
+    fn refuses_sha256_source_until_materialization_support_is_qualified() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let source = temp.path().join("sha256-source");
+        let parent = temp.path().join("managed");
+        fs::create_dir(&source).expect("source dir");
+        fs::create_dir(&parent).expect("managed parent");
+        fs::set_permissions(&parent, fs::Permissions::from_mode(0o700)).expect("private mode");
+        let git = trusted_git().expect("trusted git");
+        test_git(&git, &source, &["init", "-q", "--object-format=sha256"]);
+        test_git(&git, &source, &["config", "user.name", "test"]);
+        test_git(
+            &git,
+            &source,
+            &["config", "user.email", "test@example.invalid"],
+        );
+        fs::write(source.join("tracked.txt"), "sha256 content\n").expect("write source");
+        test_git(&git, &source, &["add", "tracked.txt"]);
+        test_git(&git, &source, &["commit", "-qm", "sha256 fixture"]);
+        privatize_git_metadata(&source.join(".git")).expect("private source metadata");
+        let commit = git_text(&git, Some(&source), &["rev-parse", "HEAD"])
+            .expect("read sha256 commit")
+            .trim()
+            .to_owned();
+        let fixture = Fixture {
+            _temp: temp,
+            source,
+            parent,
+            commit,
+        };
+
+        assert!(matches!(
+            prepare_workspace(request(&fixture, "unsupported-sha256")),
+            Err(PreparationError::UnsupportedObjectFormat)
+        ));
+    }
+
+    #[test]
     fn rejects_symlink_source_destination_escape_and_scope_escape() {
         let fixture = fixture();
         let alias = fixture.parent.join("source-link");
@@ -1531,17 +1642,43 @@ mod tests {
 
     #[test]
     fn output_capture_is_bounded_and_reports_overflow() {
-        let oversized = Arc::new(AtomicBool::new(false));
-        let captured = read_bounded(
-            std::io::Cursor::new(b"abcdef".to_vec()),
-            3,
-            Arc::clone(&oversized),
-        )
-        .join()
-        .expect("reader thread")
-        .expect("read output");
+        let mut reader = Some(std::io::Cursor::new(b"abcdef".to_vec()));
+        let mut captured = Vec::new();
+        let oversized = drain_pipe(&mut reader, &mut captured, 3).expect("read output");
         assert_eq!(captured, b"abc");
-        assert!(oversized.load(Ordering::Relaxed));
+        assert!(oversized);
+
+        assert!(matches!(
+            run_git_with_options(
+                Path::new("/bin/sh"),
+                None,
+                &["-c", "printf abcdef"],
+                None,
+                Duration::from_secs(1),
+                3,
+            ),
+            Err(PreparationError::GitOutputLimit)
+        ));
+    }
+
+    #[test]
+    fn repeated_tree_occurrences_count_toward_materialization_limit() {
+        let oid = "a".repeat(40);
+        let mut listing = Vec::new();
+        for index in 0..=MAX_OBJECTS {
+            listing.extend_from_slice(format!("040000 tree {oid}\td{index:06}\0").as_bytes());
+        }
+        assert!(matches!(
+            measure_object_closure(
+                Path::new("/not-used"),
+                Path::new("/not-used"),
+                &"b".repeat(40),
+                &"c".repeat(40),
+                &listing,
+                40,
+            ),
+            Err(PreparationError::SnapshotLimit)
+        ));
     }
 
     #[cfg(unix)]
