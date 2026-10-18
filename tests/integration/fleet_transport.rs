@@ -8,6 +8,7 @@ use admiralty_core::nodes::{
 };
 use admiralty_core::{PrincipalId, ProjectId, RootId, TaskId};
 use admiralty_runtime::MANAGED_EXECUTION_QUALIFIED;
+use admiralty_testkit::faults::{FaultEffect, FaultPlan, FaultRule};
 
 fn digest(value: char) -> String {
     format!("sha256:{}", value.to_string().repeat(64))
@@ -248,6 +249,34 @@ fn uppercase_digest_corruption_is_rejected_without_mutating_registry() {
     );
     assert!(state.tokens.is_empty());
     assert!(state.applied_events.is_empty());
+}
+
+#[test]
+fn dropped_enrollment_send_preserves_state_until_deterministic_retry() {
+    let start = issued_token("dropped-send", 20, 1);
+    let enrollment = EnrollmentEvent::Enrolled {
+        event_id: "enroll-after-drop".into(),
+        token_id: "dropped-send".into(),
+        scope: scope(),
+        identity: identity("node-after-drop", "boot-1", 1, 'c'),
+    };
+    let mut state = start.clone();
+    let mut faults = FaultPlan::new(vec![FaultRule {
+        point: "enrollment.send".into(),
+        occurrence: 1,
+        effect: FaultEffect::Drop,
+    }])
+    .expect("one deterministic drop rule");
+
+    assert_eq!(faults.hit("enrollment.send"), Ok(Some(FaultEffect::Drop)));
+    assert_eq!(state, start, "dropped send applies no enrollment event");
+    assert_eq!(faults.hit("enrollment.send"), Ok(None));
+    state = apply(&state, &enrollment, Some(2)).expect("retry after dropped send");
+    assert!(
+        state
+            .nodes
+            .contains_key(&NodeId::new("node-after-drop").expect("node ID fixture"))
+    );
 }
 
 #[test]
