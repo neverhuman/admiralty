@@ -1,0 +1,446 @@
+{
+  "head_sha": "455ee5f4867886752d168fa4d2a651c531101640",
+  "base_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+  "observed_utc": "2026-10-18T13:54:21.119136+00:00",
+  "state": "partial_review",
+  "packet_accepted": false,
+  "native_execution_qualified": false,
+  "validation": [
+    {
+      "source_sha": "455ee5f4867886752d168fa4d2a651c531101640",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "subprocess_umask": "0002",
+      "started_utc": "2026-10-18T13:53:32.157226+00:00",
+      "duration_s": 0.554,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/455ee5f4867886752d168fa4d2a651c531101640/fmt.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source_sha": "455ee5f4867886752d168fa4d2a651c531101640",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "subprocess_umask": "0002",
+      "started_utc": "2026-10-18T13:53:32.712070+00:00",
+      "duration_s": 1.646,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/455ee5f4867886752d168fa4d2a651c531101640/clippy.log",
+      "log_sha256": "481c444ee5962106842575782d5a967b3390667083bea23c8c699ca5bc60139a"
+    },
+    {
+      "source_sha": "455ee5f4867886752d168fa4d2a651c531101640",
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "-q"
+      ],
+      "subprocess_umask": "0002",
+      "started_utc": "2026-10-18T13:53:34.358649+00:00",
+      "duration_s": 8.818,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/455ee5f4867886752d168fa4d2a651c531101640/rust.log",
+      "log_sha256": "e2e5bf876d67d5fa5f784bf77af3dca41a9ef304ed01afd2526e273d49cf2477",
+      "checks_passed": 464
+    },
+    {
+      "source_sha": "455ee5f4867886752d168fa4d2a651c531101640",
+      "argv": [
+        "cargo",
+        "build",
+        "-p",
+        "admiralty-cli",
+        "-p",
+        "admiralty-server",
+        "--locked"
+      ],
+      "subprocess_umask": "0002",
+      "started_utc": "2026-10-18T13:53:43.177125+00:00",
+      "duration_s": 0.079,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/455ee5f4867886752d168fa4d2a651c531101640/build.log",
+      "log_sha256": "ee1d3fffa2022e962e63e0dbe4d35c9c198450a20c29fc09030f635dbb38bfcd"
+    },
+    {
+      "source_sha": "455ee5f4867886752d168fa4d2a651c531101640",
+      "argv": [
+        "python3",
+        "scripts/check/canary-smoke.py",
+        "--admiraltyd-binary",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd",
+        "--admiralty-binary",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty",
+        "--scratch-root",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/455ee5f4867886752d168fa4d2a651c531101640/smoke-root"
+      ],
+      "subprocess_umask": "0002",
+      "started_utc": "2026-10-18T13:53:43.255997+00:00",
+      "duration_s": 0.718,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/455ee5f4867886752d168fa4d2a651c531101640/binary-smoke.log",
+      "log_sha256": "0a4ea0136d433d21cdd929ec2f14f0c0a2a8595f35bf2784ff939df81640ef22"
+    },
+    {
+      "source_sha": "455ee5f4867886752d168fa4d2a651c531101640",
+      "argv": [
+        "cargo",
+        "run",
+        "-p",
+        "admiralty-cli",
+        "--locked",
+        "--",
+        "contracts",
+        "check"
+      ],
+      "subprocess_umask": "0002",
+      "started_utc": "2026-10-18T13:53:43.974588+00:00",
+      "duration_s": 0.373,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/455ee5f4867886752d168fa4d2a651c531101640/schema.log",
+      "log_sha256": "8484fffdfcbf87b7e980d19dc3e00694df7cbea204ddbb676892ccf7e69dc9d5"
+    }
+  ],
+  "rust_checks_passed": 464,
+  "rust_compile_fail_doctests_included": 2,
+  "actual_binary_smoke_checks_passed": 15,
+  "unchanged_source_reuse": {
+    "apps/dashboard": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "3488f6bf7cd14f506bdc018657ad4908a3b672d5",
+      "current_object": "3488f6bf7cd14f506bdc018657ad4908a3b672d5",
+      "unchanged": true
+    },
+    "packages/contracts": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "c1b85bc834151b86919bda4b5c0fcbc8d3a476a1",
+      "current_object": "c1b85bc834151b86919bda4b5c0fcbc8d3a476a1",
+      "unchanged": true
+    },
+    "schemas": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "current_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "unchanged": true
+    },
+    "package.json": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "11db476204136b8f180828c6ebc1a02878fb6b59",
+      "current_object": "11db476204136b8f180828c6ebc1a02878fb6b59",
+      "unchanged": true
+    },
+    "pnpm-lock.yaml": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "7681223a6442bb9dd3ed8646f6fecdbbf8abc26f",
+      "current_object": "7681223a6442bb9dd3ed8646f6fecdbbf8abc26f",
+      "unchanged": true
+    },
+    "pnpm-workspace.yaml": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+      "current_object": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+      "unchanged": true
+    },
+    "tests/legacy": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "b5607bda6e691c08754bf3bd6fddb5b56881f2ad",
+      "current_object": "b5607bda6e691c08754bf3bd6fddb5b56881f2ad",
+      "unchanged": true
+    },
+    "tests/fixtures/legacy": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "64751dfd485b7e1b1773362f0e5fd9076e54e4b5",
+      "current_object": "64751dfd485b7e1b1773362f0e5fd9076e54e4b5",
+      "unchanged": true
+    },
+    "scripts/release/package.py": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "current_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "unchanged": true
+    },
+    "scripts/check/canary-smoke.py": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "current_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "unchanged": true
+    },
+    "dashboard": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "4af50da206e66b61c0b0560b2a3b9aacdfd0e3a9",
+      "current_object": "4af50da206e66b61c0b0560b2a3b9aacdfd0e3a9",
+      "unchanged": true
+    }
+  },
+  "reused_checks": {
+    "react_tests": 75,
+    "react_typecheck": "pass",
+    "react_build": "pass",
+    "ui_receipt": "/home/ubuntu/admiralty-v2-build/receipts/react-assets.json",
+    "legacy_linux_tests": 74,
+    "package_self_tests": 10,
+    "smoke_harness_self_tests": 18,
+    "source_hashes": 37,
+    "synthetic_fixture_cases": 11,
+    "linux_reference_receipt": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/9debe5ddde0b0b455dd6d96e37c70a06ec02c09c/b793be45a934490aa27feb713a43dac3-full-rust-legacy.json",
+    "linux_reference_receipt_sha256": "9c3faa3a1d748ac659852674db9686a2be79fc6daf64a2af56c8f9fcf0da1a8c",
+    "contract_runtime_checks": 5,
+    "contract_runtime_note": "Previously passing unchanged contract sources; no new Linux Node job claimed.",
+    "fixture_verifier_current_source": {
+      "tested_source": "ebec880b34abb2d2b67011f8473160a6cd737795",
+      "current_source": "455ee5f4867886752d168fa4d2a651c531101640",
+      "state": "pass",
+      "source_files": 37,
+      "synthetic_cases": 11,
+      "working_tree_drift_paths": 5,
+      "note": "Exact verifier rerun on ebec because root README changed; README/fixtures unchanged by the 455ee5f4 permission correction. Drift paths reported, not ignored."
+    }
+  },
+  "provider_candidates": {
+    "P21": {
+      "candidate_sha": "9cbd02104b6d8c9770b43d55e84e3c74c2e77b3d",
+      "imported": false,
+      "review": "receipts/reviews/p21-9cbd02104b6d8c9770b43d55e84e3c74c2e77b3d.md",
+      "original_tests": 4,
+      "offline_counterexample_probes": 14,
+      "disposition": "changes_required"
+    },
+    "P22": {
+      "candidate_sha": "f5a34805196d4b9d87ccbf5c7be705e684104d55",
+      "imported": false,
+      "review": "receipts/reviews/p22-f5a34805196d4b9d87ccbf5c7be705e684104d55.json",
+      "disposition": "changes_required_static_review"
+    }
+  },
+  "worker_observation": {
+    "observed_utc": "2026-10-18T14:03:49Z",
+    "owned_processes_and_screens": 15,
+    "active": 6,
+    "idle": 9,
+    "basis": "Explicit open provider-session task boundaries, not stale hardcopy heuristics",
+    "model_argv": "gpt-6-luna",
+    "model_argv_is_native_execution_attestation": false,
+    "cpu_104_through_109_owned_process_count_each": 3,
+    "idle_is_released_capacity": false,
+    "active_screens": [
+      "adm_p13a_workplans",
+      "adm_p05b_questions",
+      "adm_p10c_reservations",
+      "adm_p20a_retirement",
+      "adm_p24a_placement",
+      "adm_p25a_recovery"
+    ],
+    "new_luna_processes_launched_by_this_checkpoint": 0
+  },
+  "manager_observation": {
+    "exact_screen": "2062267.agy_captain_admiralty",
+    "observed_model": "Gemini 4 Argon",
+    "requested_label_substitution": false,
+    "evidence_receipt": "/home/ubuntu/admiralty-v2-build/receipts/ci-investigation/9debe5ddde0b0b455dd6d96e37c70a06ec02c09c/56eee9e4ed5249689c37c66a787e20d0.json",
+    "observed_utc": "2026-10-18T14:02:00Z",
+    "fresh_capture_utc": "2026-10-18T14:02:39Z"
+  },
+  "live": {
+    "healthz_status": 200,
+    "legacy_status": 200,
+    "native_execution_qualified": false,
+    "binary_source": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4",
+    "ui_source": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+    "deployed_new_binary": false
+  },
+  "hosted_ci": {
+    "run_id": 39128735146,
+    "head_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+    "state_at_investigation": "pending",
+    "assigned_runner_ids": [
+      0,
+      0
+    ],
+    "underlying_queue_cause": "undisclosed",
+    "success_claimed": false
+  },
+  "linux_exact_source_gate": {
+    "source_sha": "455ee5f4867886752d168fa4d2a651c531101640",
+    "state": "pass",
+    "rust_checks_passed": 466,
+    "linux_fake_example_tests_passed": 6,
+    "actual_binary_smoke_checks_passed": 15,
+    "build": "pass",
+    "schemas": "pass",
+    "fmt": "pass_same_source_log_reuse",
+    "strict_workspace_clippy": "pass_same_source_log_reuse",
+    "umask": "0002",
+    "temp_environment": "fresh owned 0700 TMPDIR outside every Git checkout; recorded exact directory in private receipt",
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/455ee5f4867886752d168fa4d2a651c531101640/78e0398e92fa4172a373ab452220383c-integrated-rust.json",
+    "receipt_sha256": "d16c6761306b911437dd37ed78197c1496bd64ac7649734a3dd866c422a29644",
+    "checkout_clean": true,
+    "real_provider_invocations": 0,
+    "smoke_cleanup": "both owned smoke children terminated"
+  },
+  "limitations": [
+    "Every P00-P31 parent remains partially implemented or in review; zero full packet acceptance inferred.",
+    "Native execution, general provider qualification, full fleet rollout and economic savings remain unqualified.",
+    "Old failed Linux cleanup evidence at997513f6 is retained; corrected native signal implementation already passed Linux at e2b540fb."
+  ],
+  "retained_failure_evidence": {
+    "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+    "state": "failed",
+    "failed_step": "workspace-tests",
+    "failed_test": "admiralty-cli tests::isolated_demo_has_bounded_coordination_and_no_acceptance",
+    "reason": "Default tempfile permissions inherited observed Linux umask0002, making the database parent group writable. Custody guard correctly rejected it.",
+    "partial_results": {
+      "fmt": "pass",
+      "strict_workspace_clippy": "pass",
+      "cli_tests_passed_before_stop": 16,
+      "cli_tests_failed": 1,
+      "later_rust_suites": "not_reached"
+    },
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/ebec880b34abb2d2b67011f8473160a6cd737795/da29b7ab879d449193a5b5a22cd235e8-integrated-rust.json",
+    "receipt_sha256": "b36250b1c9bda6408553fb3d73439e5fe764fa29e7b0baf265d5e461ea031959",
+    "log_sha256": "e0f19a6f9ff84ff8abdc1393b3edfa12f3087881a6179dffaa1df7e6802aee34",
+    "correction_source_sha": "455ee5f4867886752d168fa4d2a651c531101640",
+    "correction": "Explicit0700 at private directory creation; owned-child umask0002 regression; corrected affected Store/harness fixtures. Never loosened the Store guard."
+  },
+  "correction": {
+    "private_directories": "mode 0700 requested at creation, independent of host umask",
+    "full_mac_gate_umask": "0002",
+    "owned_child_demo_regression": "pass",
+    "separate_scoped_testkit_umask0002_checks": 32
+  },
+  "binary_smoke": {
+    "acceptance": false,
+    "binaries": {
+      "admiralty_sha256": "sha256:5a07aac4d42280e55fc69473e75ad1317475a0545a50d2ec534401aa2ab4c264",
+      "admiraltyd_sha256": "sha256:a905f489c5cb8f279d7e681324d511ee7218c27630ed55437f9e3ef3ed8d9e4c"
+    },
+    "checks": [
+      {
+        "duration_ms": 259,
+        "name": "real_server_startup",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 3,
+        "name": "real_health_native_unqualified",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 0,
+        "name": "unauthorized_real_fleet_rejected",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 0,
+        "name": "unauthorized_real_models_rejected",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 0,
+        "name": "model_auth_precedes_body_validation",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "authorized_real_fleet",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "authorized_models_policy",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "model_selection_proposal_only",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 262,
+        "name": "demo_startup",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 2,
+        "name": "demo_fleet_simulated",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "demo_no_models",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 0,
+        "name": "demo_no_model_policy_write",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "demo_no_legacy_policy",
+        "state": "pass"
+      },
+      {
+        "name": "doctor_read_only_capability",
+        "state": "pass"
+      },
+      {
+        "name": "demo_cli_has_no_real_policy_flags",
+        "state": "pass"
+      }
+    ],
+    "cleanup": {
+      "admiraltyd": "terminated",
+      "demo": "terminated"
+    },
+    "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+    "duration_ms": 560,
+    "fleet_rollout_closure": false,
+    "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+    "started_at_utc": "2026-10-18T13:53:43.324839+00:00",
+    "status": "pass",
+    "synthetic": false
+  },
+  "linux_unqualified_temp_environment_failure": {
+    "source_sha": "455ee5f4867886752d168fa4d2a651c531101640",
+    "failed_step": "workspace-tests",
+    "failed_test": "full_linux_harness_uses_only_fake_provider_and_retains_false_qualification",
+    "preceding_rust_checks_passed": 314,
+    "example_tests_passed": 5,
+    "example_tests_failed": 1,
+    "reason": "Pre-existing /tmp/.git put default scratch parent under a Git checkout; Config correctly refused it. Foreign checkout preserved.",
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/455ee5f4867886752d168fa4d2a651c531101640/2e8d611ff87147e1b5ab454f7b9b55e2-integrated-rust.json",
+    "receipt_sha256": "3462ad1a4a45f3325a8c2434b6a769eea63671a8b1c10ef6f409e5ee21a83c44",
+    "next_attempt": "Same source, explicit fresh owned 0700 TMPDIR outside Git; umask0002 retained; previous evidence immutable."
+  },
+  "initial_worker_observation": {
+    "observed_idle_owned_luna_processes": 15,
+    "cpu_104_through_109_owned_process_count_each": 3,
+    "idle_is_released_capacity": false,
+    "new_luna_processes_launched_this_checkpoint": 0,
+    "implementation_method": "Three authorized scoped local subagents plus integrator fallback; existing fleet lanes and other projects preserved."
+  },
+  "fresh_fleet_snapshot": {
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/fleet-observations/a1d7cad496c54a629b67a90667ec1b48/snapshot-final.json",
+    "sha256": "b9189355669754975909d25ed065deda71dd9ef6fa9a06ecc84986a7b3c9e3e5",
+    "legacy_producer_utc": "2026-10-18T14:01:57Z",
+    "manifest_utc": "2026-10-18T13:51:31Z",
+    "manifest_state": "stale; not freshness-washed by live process observation",
+    "healthz_observed_utc": "2026-10-18T14:04:40Z",
+    "healthz_status": 200,
+    "native_execution_qualified": false
+  }
+}

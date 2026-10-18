@@ -1,0 +1,57 @@
+{
+  "packet": "P22",
+  "candidate_sha": "f5a34805196d4b9d87ccbf5c7be705e684104d55",
+  "review_base_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+  "observed_utc": "2026-10-18T13:35:32.512105+00:00",
+  "state": "changes_required_not_imported",
+  "parent_acceptance": false,
+  "native_execution_qualified": false,
+  "review_method": "full-range static source and fixture review; no provider invocation; no candidate tests claimed",
+  "changed_paths": [
+    "crates/admiralty-runtime/src/providers/agy.rs",
+    "crates/admiralty-runtime/src/providers/grok.rs",
+    "crates/admiralty-runtime/src/providers/process.rs",
+    "tests/fixtures/providers/agy/1.4.2/capabilities.json",
+    "tests/fixtures/providers/agy/1.4.2/stream.jsonl",
+    "tests/fixtures/providers/grok/1.0.62/capabilities.json",
+    "tests/fixtures/providers/grok/1.0.62/stream.jsonl",
+    "tests/fixtures/providers/process/legacy/argv.jsonl",
+    "tests/fixtures/providers/process/legacy/capabilities.json",
+    "tests/integration/provider_matrix.rs"
+  ],
+  "findings": [
+    {
+      "priority": 1,
+      "path": "tests/integration/provider_matrix.rs",
+      "line": 10,
+      "issue": "Tests are outside every registered Cargo test target, and fixture lookup hardcodes ../../p22-providers/tests. The workspace will not run them and a fresh checkout cannot resolve this private worktree name.",
+      "required_fix": "Register the target via integration owner; resolve fixtures from checked-in repository paths with no candidate-worktree name. Demonstrate exact cargo test target in a clean isolated checkout."
+    },
+    {
+      "priority": 1,
+      "path": "crates/admiralty-runtime/src/providers/process.rs",
+      "line": 79,
+      "issue": "An arbitrary screen name or transcript containing grok fabricates a provider identity. --model argv is a requested configuration, not observed provider execution identity. This conflicts with requested-versus-observed semantics.",
+      "required_fix": "Keep executable-verified identity separate from untrusted hints and requested_model. Unknown evidence stays unknown. Add quoted-output, misleading screen name, conflicting executable and argv-only model cases."
+    },
+    {
+      "priority": 1,
+      "path": "crates/admiralty-runtime/src/providers/agy.rs",
+      "line": 108,
+      "issue": "Whole-buffer serde_json::Value parsing accepts duplicate JSON keys, scalar/non-event JSON and an unterminated final line. No journal offsets, sticky failure or drain watermark bind the output to one observed session. Grok repeats the same parser shape.",
+      "required_fix": "Use a bounded incremental provider observation decoder with strict duplicate detection and explicit framing/EOF behavior. Keep observation and protocol validation separate; unknown events must not grant authority. Integrate shared session-journal watermark checks before claiming managed conformance."
+    },
+    {
+      "priority": 2,
+      "path": "crates/admiralty-runtime/src/providers/process.rs",
+      "line": 25,
+      "issue": "The launch validator permits 128 arguments of 64KiB each without the shared total argv and serialized LaunchSpec envelope limits. AGY/Grok launch builders similarly return unbound argv without cwd, pinned configuration or supervision/admission seam.",
+      "required_fix": "Route builders through existing shared limits and typed launch-preparation boundary. No implicit grant from parsed help or opaque references. Test final serialized bytes and combinations, not per-argument bounds alone."
+    }
+  ],
+  "retained_positive_evidence": [
+    "Capability fixtures explicitly identify help/version-only probes and synthetic stream vectors; auth, usage, resume and permission semantics remain unsupported.",
+    "No runtime module or Cargo registration was changed by this candidate, so it is not active in the main runtime."
+  ],
+  "next_action": "Implement only scoped offline hardening and registered counterexample tests in a new isolated candidate; integration owner handles module/Cargo wiring. Real qualification waits for admission/resource prerequisites and bounded explicit run review."
+}
