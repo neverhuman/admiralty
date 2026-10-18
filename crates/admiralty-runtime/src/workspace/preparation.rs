@@ -139,6 +139,10 @@ pub enum PreparationError {
     GitTimeout,
     #[error("Git operation exceeded its output limit")]
     GitOutputLimit,
+    #[error("Git exited but a descendant retained a pipe past the operation deadline")]
+    GitDescendantRetainedPipe,
+    #[error("Git process could not be confirmed reaped after termination")]
+    GitProcessCleanupUnknown,
     #[error("pinned snapshot exceeds the configured object or byte limit")]
     SnapshotLimit,
     #[error("managed filesystem has insufficient admitted free space")]
@@ -472,6 +476,7 @@ fn run_git_with_options(
     let input_writer = if let Some(bytes) = input {
         let Some(mut pipe) = child.stdin.take() else {
             terminate_git_group(&mut child);
+            reap_child_bounded(&mut child)?;
             return Err(PreparationError::Git("missing stdin pipe".into()));
         };
         let bytes = bytes.to_vec();
@@ -484,18 +489,35 @@ fn run_git_with_options(
     let status = loop {
         if oversized.load(Ordering::Relaxed) {
             terminate_git_group(&mut child);
-            break child.wait()?;
+            reap_child_bounded(&mut child)?;
+            break None;
         }
         if let Some(status) = child.try_wait()? {
-            break status;
+            break Some(status);
         }
         if Instant::now() >= deadline {
             timed_out = true;
             terminate_git_group(&mut child);
-            break child.wait()?;
+            reap_child_bounded(&mut child)?;
+            break None;
         }
         thread::sleep(Duration::from_millis(10));
     };
+    if !wait_workers_bounded(
+        &stdout_reader,
+        &stderr_reader,
+        input_writer.as_ref(),
+        deadline,
+    ) {
+        // The detached workers own only their pipes and bounded buffers.
+        return Err(PreparationError::GitDescendantRetainedPipe);
+    }
+    if timed_out {
+        return Err(PreparationError::GitTimeout);
+    }
+    if oversized.load(Ordering::Relaxed) {
+        return Err(PreparationError::GitOutputLimit);
+    }
     let stdout = stdout_reader
         .join()
         .map_err(|_| PreparationError::Git("stdout reader panicked".into()))??;
@@ -508,14 +530,8 @@ fn run_git_with_options(
             .map_err(|_| PreparationError::Git("stdin writer panicked".into()))?
             .map_err(PreparationError::Io)?;
     }
-    if timed_out {
-        return Err(PreparationError::GitTimeout);
-    }
-    if oversized.load(Ordering::Relaxed) {
-        return Err(PreparationError::GitOutputLimit);
-    }
     let output = Output {
-        status,
+        status: status.ok_or_else(|| PreparationError::Git("missing child status".into()))?,
         stdout,
         stderr,
     };
@@ -565,6 +581,47 @@ fn terminate_git_group(child: &mut Child) {
         let _ = kill_process_group(pid, Signal::KILL);
     }
     let _ = child.kill();
+}
+
+fn reap_child_bounded(child: &mut Child) -> Result<(), PreparationError> {
+    let deadline = Instant::now() + Duration::from_secs(1);
+    loop {
+        if child.try_wait()?.is_some() {
+            return Ok(());
+        }
+        if Instant::now() >= deadline {
+            return Err(PreparationError::GitProcessCleanupUnknown);
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
+}
+
+fn wait_workers_bounded(
+    stdout: &thread::JoinHandle<io::Result<Vec<u8>>>,
+    stderr: &thread::JoinHandle<io::Result<Vec<u8>>>,
+    writer: Option<&thread::JoinHandle<io::Result<()>>>,
+    deadline: Instant,
+) -> bool {
+    while !stdout.is_finished()
+        || !stderr.is_finished()
+        || writer.is_some_and(|worker| !worker.is_finished())
+    {
+        if Instant::now() >= deadline {
+            return false;
+        }
+        thread::sleep(Duration::from_millis(5));
+    }
+    true
+}
+
+fn same_directory_as_fd(path: &Path, directory: &OwnedFd) -> bool {
+    let Ok(path_metadata) = fs::metadata(path) else {
+        return false;
+    };
+    let Ok(fd_metadata) = rustix::fs::fstat(directory) else {
+        return false;
+    };
+    path_metadata.dev() == fd_metadata.st_dev && path_metadata.ino() == fd_metadata.st_ino
 }
 
 fn git_text(git: &Path, cwd: Option<&Path>, args: &[&str]) -> Result<String, PreparationError> {
@@ -619,7 +676,7 @@ fn validate_source(
         .map_err(|_| PreparationError::UnsafeSourceMetadata)?;
     validate_source_git_metadata(&git_dir, &config)?;
     let top = git_text(git, Some(&source_cwd), &["rev-parse", "--show-toplevel"])?;
-    if Path::new(top.trim()) != source {
+    if !same_directory_as_fd(Path::new(top.trim()), &source_fd) {
         return Err(PreparationError::InvalidSource);
     }
     let status = git_text(
@@ -1398,6 +1455,8 @@ mod tests {
         let fixture = fixture();
         let alias = fixture.parent.join("source-link");
         std::os::unix::fs::symlink(&fixture.source, &alias).expect("source symlink");
+        let source_fd = open_directory_chain(&fixture.source).expect("open source directory");
+        assert!(same_directory_as_fd(&alias, &source_fd));
         let mut linked = request(&fixture, "linked");
         linked.source = alias;
         assert!(matches!(
@@ -1483,6 +1542,45 @@ mod tests {
         .expect("read output");
         assert_eq!(captured, b"abc");
         assert!(oversized.load(Ordering::Relaxed));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn git_deadline_bounds_a_blocked_stdin_writer() {
+        let started = Instant::now();
+        let input = vec![b'x'; 1024 * 1024];
+        let result = run_git_with_options(
+            Path::new("/bin/sh"),
+            None,
+            &["-c", "exec sleep 10"],
+            Some(&input),
+            Duration::from_millis(150),
+            MAX_GIT_OUTPUT,
+        );
+        assert!(matches!(
+            result,
+            Err(PreparationError::GitTimeout | PreparationError::GitDescendantRetainedPipe)
+        ));
+        assert!(started.elapsed() < Duration::from_secs(2));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn git_deadline_bounds_descendant_held_output_pipe() {
+        let started = Instant::now();
+        let result = run_git_with_options(
+            Path::new("/bin/sh"),
+            None,
+            &["-c", "sleep 1 & exit 0"],
+            None,
+            Duration::from_millis(150),
+            MAX_GIT_OUTPUT,
+        );
+        assert!(matches!(
+            result,
+            Err(PreparationError::GitDescendantRetainedPipe)
+        ));
+        assert!(started.elapsed() < Duration::from_millis(800));
     }
 
     #[test]
