@@ -3,6 +3,7 @@ name = "admiralty-integration-tests"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+<<<<<<< HEAD
 publish.workspace = true
 
 [dependencies]
@@ -10,6 +11,14 @@ admiralty-core.workspace = true
 admiralty-runtime.workspace = true
 admiralty-store.workspace = true
 rusqlite.workspace = true
+=======
+publish = false
+
+[dependencies]
+admiralty-core.workspace = true
+admiralty-store.workspace = true
+admiralty-testkit = { path = "../admiralty-testkit" }
+>>>>>>> b0c7362 (test: qualify round 14 workplan replay)
 serde_json.workspace = true
 tempfile.workspace = true
 
