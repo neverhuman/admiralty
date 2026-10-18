@@ -633,3 +633,84 @@ fn p20_round11_item4_final_validation_gate() {
         b"ignored evidence must survive"
     );
 }
+
+#[test]
+fn p20_round12_item5_redteam_audit_gate() {
+    let fixture = tempfile::tempdir().expect("temporary red-team fixture");
+    let db_path = fixture.path().join("custody.sqlite");
+    let mut db = Connection::open(&db_path).expect("open isolated custody database");
+    custody::initialize(&db).expect("initialize custody schema");
+    let binding = AssetBinding {
+        project_id: ProjectId::new("round12-project").expect("project id"),
+        root_id: RootId::new("round12-root").expect("root id"),
+        task_id: TaskId::new("round12-task").expect("task id"),
+        asset_id: "round12-asset".into(),
+        owner_id: PrincipalId::new("round12-owner").expect("owner id"),
+        sha256: format!("sha256:{}", "e".repeat(64)),
+        generation: "1".into(),
+    };
+    let registration = RegisterAssetRequest {
+        command_id: "round12-register".into(),
+        binding: binding.clone(),
+        expected_revision: "0".into(),
+        observation: observation(&binding, false, 10),
+    };
+    let receipt = custody::register_asset(&mut db, registration.clone())
+        .expect("persist registration receipt");
+    assert_eq!(receipt.request_digest.len(), 71);
+    let receipt_json = serde_json::to_value(&receipt).expect("serialize public receipt");
+    assert_eq!(receipt_json["recorded_only"], true);
+    assert_eq!(receipt_json["destructive_permission"], false);
+    assert_eq!(
+        custody::register_asset(&mut db, registration).expect("exact replay"),
+        receipt
+    );
+
+    let mut collision = binding.clone();
+    collision.sha256 = format!("sha256:{}", "f".repeat(64));
+    assert!(matches!(
+        custody::register_asset(
+            &mut db,
+            RegisterAssetRequest {
+                command_id: "round12-register".into(),
+                binding: collision.clone(),
+                expected_revision: "0".into(),
+                observation: observation(&collision, false, 10),
+            }
+        ),
+        Err(CustodyError::CommandCollision)
+    ));
+    let revision: i64 = db
+        .query_row(
+            "SELECT revision FROM custody_assets WHERE asset_id='round12-asset'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("read revision after rejected collision");
+    assert_eq!(revision, 1, "collision must not mutate registered state");
+
+    db.execute(
+        "UPDATE custody_commands SET request_digest=?1 WHERE command_id=?2",
+        rusqlite::params![format!("sha256:{}", "0".repeat(64)), "round12-register"],
+    )
+    .expect("simulate persisted receipt metadata tampering");
+    assert!(matches!(
+        custody::acquire_pin(
+            &mut db,
+            AcquirePinRequest {
+                command_id: "round12-pin".into(),
+                binding: binding.clone(),
+                pin_id: "red-team-pin".into(),
+                expected_revision: "1".into(),
+                observation: observation(&binding, true, 11),
+            }
+        ),
+        Err(CustodyError::CorruptState)
+    ));
+    let command_count: i64 = db
+        .query_row("SELECT count(*) FROM custody_commands", [], |row| {
+            row.get(0)
+        })
+        .expect("read command count after tamper rejection");
+    assert_eq!(command_count, 1, "corrupt history must fail closed");
+}
