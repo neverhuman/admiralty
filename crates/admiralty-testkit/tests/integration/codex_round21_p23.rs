@@ -10,8 +10,7 @@ use admiralty_runtime::recovery::{Blocker, plan_recovery};
 use serde::Serialize;
 use std::{fs, path::Path};
 
-#[path = "../../../../tests/integration/support/recovery.rs"]
-mod recovery_fixture;
+use super::recovery_fixture;
 
 fn digest(value: char) -> String {
     format!("sha256:{}", value.to_string().repeat(64))
