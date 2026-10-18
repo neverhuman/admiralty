@@ -6,3 +6,5 @@ pub mod session;
 pub mod models;
 
 pub mod providers;
+pub mod strategies;
+pub mod workspace;

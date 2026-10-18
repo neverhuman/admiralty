@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "candidate_model_id": "ornith",
+  "synthesis_model_id": "ornith",
+  "candidates": 2,
+  "max_concurrent": 3,
+  "max_total_attempts": 3,
+  "required_capabilities": ["coding", "tool_calls"],
+  "synthesis_fallback": null
+}
