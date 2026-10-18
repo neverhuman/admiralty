@@ -1,4 +1,4 @@
-//! Post-execution changed-source candidate custody and immutable checkout materialization.
+//! Post-execution changed-source candidate custody and detached checkout materialization.
 //!
 //! # Integration Contract
 //!
@@ -13,8 +13,9 @@
 //!      [`PreparedWorkspace`] handle alongside [`ClosedAdmission`].
 //!    - Once the owned service exits cleanly and `RunningAdmission::prove_closed`
 //!      mints a [`ClosedAdmission`], trusted composition calls
-//!      [`prove_closed_workspace`] to bind the [`PreparedWorkspace`] and
-//!      [`ClosedAdmission`] into an opaque, non-deserializable
+//!      [`prove_closed_workspace`] to verify [`PreparedWorkspace::validate_current_custody`]
+//!      against the original retained parent/workspace descriptors and bind the
+//!      [`PreparedWorkspace`] and [`ClosedAdmission`] into a
 //!      [`ClosedWorkspaceExecution`].
 //!    - Raw filesystem paths, agent JSON claims, or captured session transcript
 //!      bytes/digests are never accepted as workspace custody or candidate source.
@@ -23,23 +24,25 @@
 //!    - After recording `DomainEvent::TaskStarted`, trusted composition calls
 //!      [`materialize_source_candidate`] with the [`ClosedWorkspaceExecution`] and
 //!      a private mode-`0700` `candidate_parent` directory.
-//!    - [`materialize_source_candidate`] re-validates workspace custody and `.git`
-//!      metadata, freezes dirty working-tree edits or verifies pre-committed
-//!      provider commits on top of `base_commit_sha`, enforces `owned_paths` and
-//!      `forbidden_paths`, validates the resulting [`CandidateChange`] via
-//!      [`admiralty_core::conflicts::parse_candidates`], and materializes an
-//!      immutable, clean, detached mode-`0700` checkout at `source_commit_sha`.
-//!    - Trusted composition emits [`SourceCandidate::candidate_submitted_event`]
-//!      (`DomainEvent::CandidateSubmitted`), runs
-//!      [`crate::trusted_checks::execute_checks`] directly against
-//!      [`SourceCandidate::checkout_path`] using
-//!      [`SourceCandidate::verification_inputs`], and binds the resulting
-//!      [`ExecutedChecks`] into [`CandidateDecisionEvidence`] via
-//!      [`SourceCandidate::decision_evidence`] for `LifecycleAction::DecideCandidate`.
+//!    - [`materialize_source_candidate`] re-validates the original
+//!      [`PreparedWorkspace`] descriptor custody and `.git` metadata, freezes
+//!      dirty working-tree edits or verifies pre-committed provider commits on
+//!      top of `base_commit_sha` without external diff/textconv/filter drivers,
+//!      enforces `owned_paths` and `forbidden_paths`, validates the resulting
+//!      [`CandidateChange`] via [`admiralty_core::conflicts::parse_candidates`],
+//!      and materializes a clean, detached mode-`0700` checkout at `source_commit_sha`.
+//!    - Because a mode-`0700` checkout remains writable by the same UID,
+//!      [`SourceCandidate::revalidate_custody`] and
+//!      [`SourceCandidate::decision_evidence`] re-verify both original workspace
+//!      and candidate checkout descriptor identity, `.git` safety, clean status,
+//!      commit/tree OIDs, and actual on-disk file content digests before minting
+//!      [`CandidateDecisionEvidence`].
 //!
 //! 3. **Qualification Gate:**
-//!    - `native_execution_qualified` remains `false` until Root wires central
-//!      startup and controller composition end-to-end.
+//!    - Opaque type names and `compile_fail` serde checks are local component
+//!      guards only and do not qualify production candidate acceptance or
+//!      `native_execution_qualified`. `NativeExecutor` and `controller` startup
+//!      composition remain Root integration work.
 
 use crate::{
     resource_gate::{ClosedAdmission, EnforcementObservation, RecoveryIdentity},
@@ -57,12 +60,13 @@ use admiralty_core::{
     verification::{ReceiptProducer, VerificationInputs},
 };
 use rustix::fs::{AtFlags, Mode, OFlags, fstat, mkdirat, open, openat, statat};
+use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeSet,
     fs,
     io::{self, Read},
     os::{
-        fd::{AsFd, OwnedFd},
+        fd::{AsFd, BorrowedFd, OwnedFd},
         unix::{
             fs::{FileTypeExt, MetadataExt, PermissionsExt},
             process::CommandExt,
@@ -75,7 +79,7 @@ use std::{
 };
 use thiserror::Error;
 
-const TRUSTED_GIT: [&str; 2] = ["/usr/bin/git", "/bin/git"];
+const TRUSTED_GIT: [&str; 3] = ["/usr/bin/git", "/bin/git", "/usr/local/bin/git"];
 const GIT_TIMEOUT: Duration = Duration::from_secs(5);
 const GIT_TRANSFER_TIMEOUT: Duration = Duration::from_secs(15);
 const MAX_GIT_OUTPUT: usize = 1024 * 1024;
@@ -190,6 +194,8 @@ pub fn workspace_spec_digest(
 #[derive(Debug)]
 pub struct ClosedWorkspaceExecution {
     prepared: PreparedWorkspace,
+    parent_identity: (u64, u64),
+    workspace_identity: (u64, u64),
     identity: RecoveryIdentity,
     observation: EnforcementObservation,
     exit_code: Option<i32>,
@@ -231,10 +237,29 @@ impl ClosedWorkspaceExecution {
     pub fn closed_admission(&self) -> Option<&ClosedAdmission> {
         self.closed_admission.as_ref()
     }
+
+    /// Re-verify that the [`PreparedWorkspace`] and its parent directory on disk
+    /// still resolve without symlinks to the exact original directory descriptors
+    /// retained when the workspace was prepared.
+    pub fn revalidate_custody(&self) -> Result<(), SourceCandidateError> {
+        self.prepared
+            .validate_current_custody()
+            .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        if self.prepared.workspace().custody != Custody::RegisteredOnly
+            || self.prepared.workspace().git_metadata != GitMetadata::Directory
+            || fd_identity(self.prepared.managed_parent_fd())? != self.parent_identity
+            || fd_identity(self.prepared.workspace_dir_fd())? != self.workspace_identity
+        {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        let pinned = PinnedGitDirectory::from_prepared(&self.prepared)?;
+        pinned.check()
+    }
 }
 
 /// Verify that a closed service admission succeeded and matches the exact
-/// task, attempt, project, root, node, and workspace custody of `prepared`.
+/// task, attempt, project, root, node, and original retained descriptor custody
+/// of `prepared`.
 pub fn prove_closed_workspace<C: ClosedAdmissionProof>(
     prepared: PreparedWorkspace,
     closure: C,
@@ -246,23 +271,18 @@ pub fn prove_closed_workspace<C: ClosedAdmissionProof>(
     if !valid_sha256_digest(&closure_digest) {
         return Err(SourceCandidateError::ClosureIdentityMismatch);
     }
+    prepared
+        .validate_current_custody()
+        .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
     let ws = prepared.workspace();
-    let revalidated = WorkspaceSpec {
-        node_id: ws.node_id.clone(),
-        root_id: ws.root_id.clone(),
-        project_id: ws.project_id.clone(),
-        workspace: ws.workspace.clone(),
-        owned_paths: ws.owned_paths.clone(),
-        forbidden_paths: ws.forbidden_paths.clone(),
-    }
-    .validate()
-    .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
-    if &revalidated != ws
-        || revalidated.custody != Custody::RegisteredOnly
-        || revalidated.git_metadata != GitMetadata::Directory
-    {
+    if ws.custody != Custody::RegisteredOnly || ws.git_metadata != GitMetadata::Directory {
         return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
     }
+    let parent_identity = fd_identity(prepared.managed_parent_fd())?;
+    let workspace_identity = fd_identity(prepared.workspace_dir_fd())?;
+    let pinned = PinnedGitDirectory::from_prepared(&prepared)?;
+    pinned.check()?;
+
     let workspace_digest = workspace_spec_digest(ws)?;
     let identity = closure.identity().clone();
     let observation = closure.observation().clone();
@@ -283,6 +303,8 @@ pub fn prove_closed_workspace<C: ClosedAdmissionProof>(
     let closed_admission = closure.into_closed_admission();
     Ok(ClosedWorkspaceExecution {
         prepared,
+        parent_identity,
+        workspace_identity,
         identity,
         observation,
         exit_code,
@@ -293,8 +315,9 @@ pub fn prove_closed_workspace<C: ClosedAdmissionProof>(
     })
 }
 
-/// Opaque, non-deserializable changed-source candidate holding an immutable,
-/// clean, detached mode-`0700` Git checkout at `source_commit_sha`.
+/// Opaque, non-deserializable changed-source candidate holding a detached,
+/// clean mode-`0700` Git checkout at `source_commit_sha` whose descriptor and
+/// content custody are re-validated before acceptance.
 ///
 /// ```compile_fail
 /// use admiralty_runtime::workspace::source_candidate::SourceCandidate;
@@ -305,6 +328,12 @@ pub fn prove_closed_workspace<C: ClosedAdmissionProof>(
 pub struct SourceCandidate {
     execution: ClosedWorkspaceExecution,
     checkout_workspace: ValidatedWorkspace,
+    candidate_parent_path: PathBuf,
+    destination_name: String,
+    candidate_parent_identity: (u64, u64),
+    candidate_checkout_identity: (u64, u64),
+    candidate_config: Vec<u8>,
+    working_tree_digest: String,
     candidate_ref: String,
     base_commit_sha: String,
     base_tree_sha: String,
@@ -391,6 +420,80 @@ impl SourceCandidate {
         &self.candidate_change
     }
 
+    /// Re-verify original prepared workspace custody, candidate checkout
+    /// descriptor custody, `.git` metadata, working-tree cleanliness, and
+    /// actual on-disk file content digests.
+    pub fn revalidate_custody(&self) -> Result<(), SourceCandidateError> {
+        self.execution.revalidate_custody()?;
+        if fd_identity(self._candidate_parent_fd.as_fd())? != self.candidate_parent_identity
+            || fd_identity(self._candidate_checkout_fd.as_fd())? != self.candidate_checkout_identity
+        {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        let checkout_cwd = PinnedGitDirectory::with_parent(
+            self.checkout_path(),
+            self._candidate_checkout_fd.as_fd(),
+            &self.candidate_parent_path,
+            self._candidate_parent_fd.as_fd(),
+            &self.destination_name,
+        )?;
+        let revalidated = WorkspaceSpec {
+            node_id: self.checkout_workspace.node_id.clone(),
+            root_id: self.checkout_workspace.root_id.clone(),
+            project_id: self.checkout_workspace.project_id.clone(),
+            workspace: self.checkout_workspace.workspace.clone(),
+            owned_paths: self.checkout_workspace.owned_paths.clone(),
+            forbidden_paths: self.checkout_workspace.forbidden_paths.clone(),
+        }
+        .validate()
+        .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        if revalidated != self.checkout_workspace
+            || revalidated.custody != Custody::RegisteredOnly
+            || revalidated.git_metadata != GitMetadata::Directory
+        {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        let git = trusted_git()?;
+        let current_config = validate_workspace_git_metadata(
+            &git,
+            &checkout_cwd,
+            self._candidate_checkout_fd.as_fd(),
+        )?;
+        if current_config != self.candidate_config {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        validate_working_tree_entries(&checkout_cwd)?;
+        verify_clean_detached_checkout(
+            &git,
+            &checkout_cwd,
+            &self.source_commit_sha,
+            &self.source_tree_sha,
+        )?;
+        validate_commit_tree_entries(&git, &checkout_cwd, &self.source_tree_sha)?;
+        let current_wt_digest =
+            compute_working_tree_content_digest(&git, &checkout_cwd, &self.source_tree_sha)?;
+        if current_wt_digest != self.working_tree_digest {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        let current_files = extract_and_validate_changed_files(
+            &git,
+            &checkout_cwd,
+            &self.checkout_workspace,
+            &self.base_commit_sha,
+            &self.source_commit_sha,
+        )?;
+        let current_artifact_digest = compute_source_artifact_digest(
+            &self.base_commit_sha,
+            &self.source_commit_sha,
+            &self.source_tree_sha,
+            &current_files,
+        )?;
+        if current_files != self.files || current_artifact_digest != self.source_artifact_digest {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        checkout_cwd.check()
+    }
+
     /// Attach declared contract/interface constraints to this candidate's diff
     /// and validate through [`admiralty_core::conflicts::parse_candidates`].
     pub fn candidate_change_with_constraints(
@@ -403,7 +506,7 @@ impl SourceCandidate {
         Ok(change)
     }
 
-    /// Construct [`VerificationInputs`] bound to this candidate's immutable
+    /// Construct [`VerificationInputs`] bound to this candidate's
     /// source commit, tree, artifact digest, and candidate reference.
     pub fn verification_inputs(
         &self,
@@ -428,13 +531,15 @@ impl SourceCandidate {
         }
     }
 
-    /// Bind an [`ExecutedChecks`] proof to this candidate's custody and closure
+    /// Re-validate actual candidate checkout and workspace custody on disk and
+    /// bind an [`ExecutedChecks`] proof to this candidate's custody and closure
     /// digests for `LifecycleAction::DecideCandidate`.
     pub fn decision_evidence(
         &self,
         executed_checks: &ExecutedChecks,
         verifier: PrincipalId,
     ) -> Result<CandidateDecisionEvidence, SourceCandidateError> {
+        self.revalidate_custody()?;
         let receipt = executed_checks.receipt();
         let inputs = &receipt.inputs;
         let receipt_digest = content_digest(receipt).map_err(|_| SourceCandidateError::Digest)?;
@@ -478,31 +583,19 @@ impl SourceCandidate {
 }
 
 /// Inspect a closed execution workspace, freeze or validate changed Git source
-/// relative to `prepared.head_oid()`, enforce path scope, and materialize an
-/// immutable, clean, detached mode-`0700` checkout beneath `candidate_parent`.
+/// relative to `prepared.head_oid()`, enforce path scope, and materialize a
+/// clean, detached mode-`0700` checkout beneath `candidate_parent`.
 pub fn materialize_source_candidate(
     execution: ClosedWorkspaceExecution,
     candidate_parent: &Path,
     destination_name: &str,
 ) -> Result<SourceCandidate, SourceCandidateError> {
     let git = trusted_git()?;
-    let workspace_path = execution.prepared.workspace().workspace.clone();
-    let workspace_parent = workspace_path
-        .parent()
-        .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
-    let workspace_parent_fd = open_directory_chain(workspace_parent)
-        .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
-    ensure_private_fd(&workspace_parent_fd)
-        .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
-    let workspace_fd = open_directory_chain(&workspace_path)
-        .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
-    ensure_private_fd(&workspace_fd).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
-    ensure_path_points_to_fd(&workspace_path, &workspace_fd)
-        .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
-
-    let workspace_cwd = PinnedGitDirectory::new(&workspace_path, &workspace_fd)?;
-    validate_workspace_git_metadata(&git, &workspace_cwd, &workspace_fd)?;
-    validate_working_tree_entries(&workspace_path)?;
+    execution.revalidate_custody()?;
+    let workspace_fd = execution.prepared.workspace_dir_fd();
+    let workspace_cwd = PinnedGitDirectory::from_prepared(&execution.prepared)?;
+    validate_workspace_git_metadata(&git, &workspace_cwd, workspace_fd)?;
+    validate_working_tree_entries(&workspace_cwd)?;
 
     let base_commit_sha = execution.prepared.head_oid().to_owned();
     let base_tree_sha = execution.prepared.tree_oid().to_owned();
@@ -515,6 +608,18 @@ pub fn materialize_source_candidate(
         &["cat-file", "-t", &base_commit_sha],
     )?;
     if base_kind.trim() != "commit" {
+        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+    }
+    let resolved_base_tree = git_text(
+        &git,
+        Some(&workspace_cwd),
+        &[
+            "rev-parse",
+            "--verify",
+            &format!("{base_commit_sha}^{{tree}}"),
+        ],
+    )?;
+    if resolved_base_tree.trim() != base_tree_sha {
         return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
     }
 
@@ -539,7 +644,9 @@ pub fn materialize_source_candidate(
         return Err(SourceCandidateError::NoSourceChanges);
     }
 
-    validate_workspace_git_metadata(&git, &workspace_cwd, &workspace_fd)?;
+    execution.revalidate_custody()?;
+    validate_workspace_git_metadata(&git, &workspace_cwd, workspace_fd)?;
+    validate_working_tree_entries(&workspace_cwd)?;
     let status_after = git_status_porcelain(&git, &workspace_cwd)?;
     if !status_after.trim().is_empty() {
         return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
@@ -582,25 +689,34 @@ pub fn materialize_source_candidate(
         return Err(SourceCandidateError::NoSourceChanges);
     }
 
-    let (checkout_workspace, candidate_parent_fd, candidate_checkout_fd) =
-        materialize_immutable_checkout(
-            &git,
-            &workspace_cwd,
-            execution.prepared.workspace(),
-            candidate_parent,
-            destination_name,
-            &source_commit_sha,
-            &source_tree_sha,
-        )?;
+    let MaterializedCheckout {
+        checkout_workspace,
+        candidate_parent_path,
+        candidate_parent_identity,
+        candidate_checkout_identity,
+        candidate_config,
+        working_tree_digest,
+        candidate_parent_fd,
+        candidate_checkout_fd,
+    } = materialize_immutable_checkout(
+        &git,
+        &workspace_cwd,
+        execution.prepared.workspace(),
+        candidate_parent,
+        destination_name,
+        &base_commit_sha,
+        &source_commit_sha,
+        &source_tree_sha,
+    )?;
 
-    let source_artifact_digest = content_digest(&(
-        "source-candidate-artifact-v1",
+    execution.revalidate_custody()?;
+
+    let source_artifact_digest = compute_source_artifact_digest(
         &base_commit_sha,
         &source_commit_sha,
         &source_tree_sha,
         &files,
-    ))
-    .map_err(|_| SourceCandidateError::Digest)?;
+    )?;
 
     let custody_digest = content_digest(&(
         "source-candidate-custody-v1",
@@ -652,9 +768,15 @@ pub fn materialize_source_candidate(
     };
     validate_candidate_change(&candidate_change)?;
 
-    Ok(SourceCandidate {
+    let candidate = SourceCandidate {
         execution,
         checkout_workspace,
+        candidate_parent_path,
+        destination_name: destination_name.to_owned(),
+        candidate_parent_identity,
+        candidate_checkout_identity,
+        candidate_config,
+        working_tree_digest,
         candidate_ref,
         base_commit_sha,
         base_tree_sha,
@@ -666,7 +788,25 @@ pub fn materialize_source_candidate(
         candidate_change,
         _candidate_parent_fd: candidate_parent_fd,
         _candidate_checkout_fd: candidate_checkout_fd,
-    })
+    };
+    candidate.revalidate_custody()?;
+    Ok(candidate)
+}
+
+fn compute_source_artifact_digest(
+    base_commit_sha: &str,
+    source_commit_sha: &str,
+    source_tree_sha: &str,
+    files: &[FileChange],
+) -> Result<String, SourceCandidateError> {
+    content_digest(&(
+        "source-candidate-artifact-v1",
+        base_commit_sha,
+        source_commit_sha,
+        source_tree_sha,
+        files,
+    ))
+    .map_err(|_| SourceCandidateError::Digest)
 }
 
 fn validate_candidate_change(change: &CandidateChange) -> Result<(), SourceCandidateError> {
@@ -862,6 +1002,9 @@ fn extract_and_validate_changed_files(
             "core.fsmonitor=false",
             "diff",
             "--name-only",
+            "--no-color",
+            "--no-ext-diff",
+            "--no-textconv",
             "--no-renames",
             "-z",
             base_commit_sha,
@@ -963,6 +1106,7 @@ fn extract_file_hunks(
             "--unified=0",
             "--no-color",
             "--no-ext-diff",
+            "--no-textconv",
             "--no-renames",
             base_commit_sha,
             source_commit_sha,
@@ -1024,29 +1168,48 @@ fn parse_hunk_span(span: &str) -> Option<(u32, u32)> {
     }
 }
 
+struct MaterializedCheckout {
+    checkout_workspace: ValidatedWorkspace,
+    candidate_parent_path: PathBuf,
+    candidate_parent_identity: (u64, u64),
+    candidate_checkout_identity: (u64, u64),
+    candidate_config: Vec<u8>,
+    working_tree_digest: String,
+    candidate_parent_fd: OwnedFd,
+    candidate_checkout_fd: OwnedFd,
+}
+
+#[allow(clippy::too_many_arguments)]
 fn materialize_immutable_checkout(
     git: &Path,
     source_cwd: &PinnedGitDirectory<'_>,
     source_workspace: &ValidatedWorkspace,
     candidate_parent: &Path,
     destination_name: &str,
+    base_commit_sha: &str,
     source_commit_sha: &str,
     source_tree_sha: &str,
-) -> Result<(ValidatedWorkspace, OwnedFd, OwnedFd), SourceCandidateError> {
+) -> Result<MaterializedCheckout, SourceCandidateError> {
     validate_destination_name(destination_name)?;
     if !candidate_parent.is_absolute() {
         return Err(SourceCandidateError::InvalidCandidateDestination);
     }
     let parent_fd = open_directory_chain(candidate_parent)
         .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    ensure_private_fd(&parent_fd).map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    ensure_private_fd(parent_fd.as_fd())
+        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
     let canonical_parent = fs::canonicalize(candidate_parent)
         .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
     if canonical_parent != candidate_parent {
         return Err(SourceCandidateError::InvalidCandidateDestination);
     }
-    ensure_path_points_to_fd(&canonical_parent, &parent_fd)
+    ensure_path_points_to_fd(&canonical_parent, parent_fd.as_fd())
         .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    match statat(&parent_fd, destination_name, AtFlags::SYMLINK_NOFOLLOW) {
+        Ok(_) => return Err(SourceCandidateError::InvalidCandidateDestination),
+        Err(error) if error == rustix::io::Errno::NOENT => {}
+        Err(_) => return Err(SourceCandidateError::InvalidCandidateDestination),
+    }
 
     mkdirat(
         &parent_fd,
@@ -1054,170 +1217,288 @@ fn materialize_immutable_checkout(
         Mode::from_bits_truncate(0o700),
     )
     .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    let destination_fd = match openat(
+    let destination_fd = openat(
         &parent_fd,
         destination_name,
         OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
         Mode::empty(),
-    ) {
-        Ok(fd) => fd,
-        Err(_) => return Err(SourceCandidateError::InvalidCandidateDestination),
-    };
+    )
+    .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
     let destination_path = canonical_parent.join(destination_name);
-    let setup = (|| -> Result<ValidatedWorkspace, SourceCandidateError> {
-        rustix::fs::fchmod(&destination_fd, Mode::from_bits_truncate(0o700))
-            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-        ensure_private_fd(&destination_fd)
-            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-        ensure_same_directory(&parent_fd, destination_name, &destination_fd)
-            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-        let destination_cwd = PinnedGitDirectory::new(&destination_path, &destination_fd)?;
-        run_git(
-            git,
-            Some(&destination_cwd),
-            &[
-                "-c",
-                "core.hooksPath=/dev/null",
-                "-c",
-                "core.attributesFile=/dev/null",
-                "-c",
-                "core.fsmonitor=false",
-                "init",
-                "--quiet",
-                "--template=",
-            ],
-        )?;
-        make_git_dir_private(&destination_cwd.access_path().join(".git"))?;
-        let source_path_text = source_cwd
-            .access_path()
-            .to_str()
-            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?
-            .to_owned();
-        run_git_with_options(
-            git,
-            Some(&destination_cwd),
-            &[
-                "-c",
-                "core.hooksPath=/dev/null",
-                "-c",
-                "core.attributesFile=/dev/null",
-                "-c",
-                "core.fsmonitor=false",
-                "-c",
-                "protocol.file.allow=always",
-                "fetch",
-                "--quiet",
-                "--depth=1",
-                "--no-tags",
-                "--no-recurse-submodules",
-                &source_path_text,
-                source_commit_sha,
-            ],
-            None,
-            GIT_TRANSFER_TIMEOUT,
-            MAX_GIT_OUTPUT,
-        )?;
-        run_git(
-            git,
-            Some(&destination_cwd),
-            &[
-                "-c",
-                "core.hooksPath=/dev/null",
-                "-c",
-                "core.attributesFile=/dev/null",
-                "-c",
-                "core.fsmonitor=false",
-                "checkout",
-                "--quiet",
-                "--detach",
-                "--no-recurse-submodules",
-                source_commit_sha,
-            ],
-        )?;
-        make_git_dir_private(&destination_cwd.access_path().join(".git"))?;
-        fs::set_permissions(&destination_path, fs::Permissions::from_mode(0o700))
-            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-        ensure_private_fd(&destination_fd)
-            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-        validate_workspace_git_metadata(git, &destination_cwd, &destination_fd)?;
-
-        let head = git_text(
-            git,
-            Some(&destination_cwd),
-            &["rev-parse", "--verify", "HEAD"],
-        )?
-        .trim()
-        .to_owned();
-        let tree = git_text(
-            git,
-            Some(&destination_cwd),
-            &["rev-parse", "--verify", "HEAD^{tree}"],
-        )?
-        .trim()
-        .to_owned();
-        if head != source_commit_sha || tree != source_tree_sha {
-            return Err(SourceCandidateError::InvalidCandidateDestination);
-        }
-        let branch_status = git_text(
-            git,
-            Some(&destination_cwd),
-            &[
-                "--no-pager",
-                "-c",
-                "core.fsmonitor=false",
-                "-c",
-                "core.untrackedCache=false",
-                "-c",
-                "core.excludesFile=/dev/null",
-                "-c",
-                "core.hooksPath=/dev/null",
-                "status",
-                "--porcelain=v2",
-                "--branch",
-                "--untracked-files=all",
-            ],
-        )?;
-        if branch_status
-            .lines()
-            .any(|line| !line.is_empty() && !line.starts_with("# "))
-            || !branch_status
-                .lines()
-                .any(|line| line.strip_prefix("# branch.oid ") == Some(source_commit_sha))
-        {
-            return Err(SourceCandidateError::InvalidCandidateDestination);
-        }
-
-        let validated = WorkspaceSpec {
-            node_id: source_workspace.node_id.clone(),
-            root_id: source_workspace.root_id.clone(),
-            project_id: source_workspace.project_id.clone(),
-            workspace: destination_path.clone(),
-            owned_paths: source_workspace.owned_paths.clone(),
-            forbidden_paths: source_workspace.forbidden_paths.clone(),
-        }
-        .validate()
+    rustix::fs::fchmod(&destination_fd, Mode::from_bits_truncate(0o700))
         .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-        if validated.custody != Custody::RegisteredOnly
-            || validated.git_metadata != GitMetadata::Directory
-        {
-            return Err(SourceCandidateError::InvalidCandidateDestination);
-        }
-        ensure_path_points_to_fd(&canonical_parent, &parent_fd)
-            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-        ensure_same_directory(&parent_fd, destination_name, &destination_fd)
-            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-        Ok(validated)
-    })();
-
-    match setup {
-        Ok(validated) => Ok((validated, parent_fd, destination_fd)),
-        Err(error) => {
-            if ensure_same_directory(&parent_fd, destination_name, &destination_fd).is_ok() {
-                let _ = fs::remove_dir_all(&destination_path);
-            }
-            Err(error)
-        }
+    ensure_private_fd(destination_fd.as_fd())
+        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    ensure_same_directory_borrowed(parent_fd.as_fd(), destination_name, destination_fd.as_fd())
+        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    let destination_cwd = PinnedGitDirectory::with_parent(
+        &destination_path,
+        destination_fd.as_fd(),
+        &canonical_parent,
+        parent_fd.as_fd(),
+        destination_name,
+    )
+    .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    run_git(
+        git,
+        Some(&destination_cwd),
+        &[
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "core.attributesFile=/dev/null",
+            "-c",
+            "core.fsmonitor=false",
+            "init",
+            "--quiet",
+            "--template=",
+            "--object-format=sha1",
+        ],
+    )?;
+    make_git_dir_private(&destination_cwd.access_path().join(".git"))?;
+    let initial_config = read_safe_config(&destination_cwd.access_path().join(".git/config"))?;
+    source_cwd.check()?;
+    let source_path_text = source_cwd
+        .canonical_path()
+        .to_str()
+        .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?
+        .to_owned();
+    run_git_with_options(
+        git,
+        Some(&destination_cwd),
+        &[
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "core.attributesFile=/dev/null",
+            "-c",
+            "core.fsmonitor=false",
+            "-c",
+            "protocol.file.allow=always",
+            "fetch",
+            "--quiet",
+            "--depth=1",
+            "--no-tags",
+            "--no-recurse-submodules",
+            &source_path_text,
+            base_commit_sha,
+            source_commit_sha,
+        ],
+        None,
+        GIT_TRANSFER_TIMEOUT,
+        MAX_GIT_OUTPUT,
+    )?;
+    source_cwd.check()?;
+    run_git(
+        git,
+        Some(&destination_cwd),
+        &[
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "core.attributesFile=/dev/null",
+            "-c",
+            "core.fsmonitor=false",
+            "checkout",
+            "--quiet",
+            "--detach",
+            "--no-recurse-submodules",
+            source_commit_sha,
+        ],
+    )?;
+    make_git_dir_private(&destination_cwd.access_path().join(".git"))?;
+    fs::set_permissions(&destination_path, fs::Permissions::from_mode(0o700))
+        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    ensure_private_fd(destination_fd.as_fd())
+        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    let candidate_config =
+        validate_workspace_git_metadata(git, &destination_cwd, destination_fd.as_fd())?;
+    if candidate_config != initial_config {
+        return Err(SourceCandidateError::InvalidCandidateDestination);
     }
+    validate_working_tree_entries(&destination_cwd)?;
+    verify_clean_detached_checkout(git, &destination_cwd, source_commit_sha, source_tree_sha)?;
+    validate_commit_tree_entries(git, &destination_cwd, source_tree_sha)?;
+    let working_tree_digest =
+        compute_working_tree_content_digest(git, &destination_cwd, source_tree_sha)?;
+
+    let validated = WorkspaceSpec {
+        node_id: source_workspace.node_id.clone(),
+        root_id: source_workspace.root_id.clone(),
+        project_id: source_workspace.project_id.clone(),
+        workspace: destination_path.clone(),
+        owned_paths: source_workspace.owned_paths.clone(),
+        forbidden_paths: source_workspace.forbidden_paths.clone(),
+    }
+    .validate()
+    .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    if validated.custody != Custody::RegisteredOnly
+        || validated.git_metadata != GitMetadata::Directory
+    {
+        return Err(SourceCandidateError::InvalidCandidateDestination);
+    }
+    destination_cwd
+        .check()
+        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    let candidate_parent_identity = fd_identity(parent_fd.as_fd())
+        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    let candidate_checkout_identity = fd_identity(destination_fd.as_fd())
+        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    Ok(MaterializedCheckout {
+        checkout_workspace: validated,
+        candidate_parent_path: canonical_parent,
+        candidate_parent_identity,
+        candidate_checkout_identity,
+        candidate_config,
+        working_tree_digest,
+        candidate_parent_fd: parent_fd,
+        candidate_checkout_fd: destination_fd,
+    })
+}
+
+fn verify_clean_detached_checkout(
+    git: &Path,
+    checkout_cwd: &PinnedGitDirectory<'_>,
+    source_commit_sha: &str,
+    source_tree_sha: &str,
+) -> Result<(), SourceCandidateError> {
+    let head = git_text(git, Some(checkout_cwd), &["rev-parse", "--verify", "HEAD"])?
+        .trim()
+        .to_owned();
+    let tree = git_text(
+        git,
+        Some(checkout_cwd),
+        &["rev-parse", "--verify", "HEAD^{tree}"],
+    )?
+    .trim()
+    .to_owned();
+    if head != source_commit_sha || tree != source_tree_sha {
+        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+    }
+    let branch_status = git_text(
+        git,
+        Some(checkout_cwd),
+        &[
+            "--no-pager",
+            "-c",
+            "core.fsmonitor=false",
+            "-c",
+            "core.untrackedCache=false",
+            "-c",
+            "core.excludesFile=/dev/null",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "status",
+            "--porcelain=v2",
+            "--branch",
+            "--untracked-files=all",
+            "--ignored=matching",
+            "--ignore-submodules=none",
+        ],
+    )?;
+    if branch_status
+        .lines()
+        .any(|line| !line.is_empty() && !line.starts_with("# "))
+        || !branch_status
+            .lines()
+            .any(|line| line.strip_prefix("# branch.oid ") == Some(source_commit_sha))
+    {
+        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+    }
+    Ok(())
+}
+
+fn compute_working_tree_content_digest(
+    git: &Path,
+    checkout_cwd: &PinnedGitDirectory<'_>,
+    tree_oid: &str,
+) -> Result<String, SourceCandidateError> {
+    checkout_cwd.check()?;
+    let listing = run_git_with_options(
+        git,
+        Some(checkout_cwd),
+        &["ls-tree", "-r", "-z", "--full-tree", tree_oid],
+        None,
+        GIT_TIMEOUT,
+        MAX_TREE_LISTING,
+    )?
+    .stdout;
+    let uid = rustix::process::geteuid().as_raw();
+    let access_root = checkout_cwd.access_path();
+    let mut records = Vec::<(String, String, String, String)>::new();
+    for record in listing
+        .split(|byte| *byte == 0)
+        .filter(|record| !record.is_empty())
+    {
+        let tab = record
+            .iter()
+            .position(|byte| *byte == b'\t')
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        let header = std::str::from_utf8(&record[..tab])
+            .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        let path_text = std::str::from_utf8(&record[tab + 1..])
+            .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        if !safe_relative_path(path_text) {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        let mut fields = header.split_ascii_whitespace();
+        let mode = fields
+            .next()
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        let kind = fields
+            .next()
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        let oid = fields
+            .next()
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        if fields.next().is_some()
+            || !valid_sha1_oid(oid)
+            || kind != "blob"
+            || !matches!(mode, "100644" | "100755")
+        {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        let file_path = access_root.join(path_text);
+        let meta = fs::symlink_metadata(&file_path)
+            .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        if meta.file_type().is_symlink()
+            || !meta.is_file()
+            || meta.uid() != uid
+            || meta.nlink() != 1
+            || meta.mode() & 0o002 != 0
+        {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        let bytes =
+            fs::read(&file_path).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        if bytes.len() as u64 > MAX_WORKING_TREE_BYTES {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        let expected_blob = run_git_with_options(
+            git,
+            Some(checkout_cwd),
+            &["cat-file", "blob", oid],
+            None,
+            GIT_TIMEOUT,
+            MAX_GIT_OUTPUT,
+        )?
+        .stdout;
+        if bytes != expected_blob {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        let mut hasher = Sha256::new();
+        hasher.update(&bytes);
+        let file_sha256 = format!("sha256:{:x}", hasher.finalize());
+        records.push((
+            path_text.to_owned(),
+            mode.to_owned(),
+            oid.to_owned(),
+            file_sha256,
+        ));
+    }
+    checkout_cwd.check()?;
+    content_digest(&("working-tree-content-v1", tree_oid, &records))
+        .map_err(|_| SourceCandidateError::Digest)
 }
 
 fn validate_destination_name(name: &str) -> Result<(), SourceCandidateError> {
@@ -1234,14 +1515,28 @@ fn validate_destination_name(name: &str) -> Result<(), SourceCandidateError> {
     Ok(())
 }
 
-fn validate_working_tree_entries(workspace_root: &Path) -> Result<(), SourceCandidateError> {
+fn validate_working_tree_entries(
+    workspace_cwd: &PinnedGitDirectory<'_>,
+) -> Result<(), SourceCandidateError> {
+    workspace_cwd.check()?;
+    let workspace_root = workspace_cwd.access_path();
+    if !same_directory_as_fd(&workspace_root, workspace_cwd.descriptor())
+        || !same_directory_as_fd(workspace_cwd.canonical_path(), workspace_cwd.descriptor())
+    {
+        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+    }
     let uid = rustix::process::geteuid().as_raw();
-    let mut stack = vec![workspace_root.to_path_buf()];
+    let mut stack = vec![workspace_root.clone()];
     let mut entries = 0usize;
     let mut total_bytes = 0u64;
     while let Some(directory) = stack.pop() {
-        let dir_meta = fs::symlink_metadata(&directory)
-            .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        workspace_cwd.check()?;
+        let dir_meta = if directory == workspace_root {
+            fs::metadata(&directory).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?
+        } else {
+            fs::symlink_metadata(&directory)
+                .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?
+        };
         if dir_meta.file_type().is_symlink() || !dir_meta.is_dir() || dir_meta.uid() != uid {
             return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
         }
@@ -1294,14 +1589,15 @@ fn validate_working_tree_entries(workspace_root: &Path) -> Result<(), SourceCand
             }
         }
     }
-    Ok(())
+    workspace_cwd.check()
 }
 
 fn validate_workspace_git_metadata(
     git: &Path,
     workspace_cwd: &PinnedGitDirectory<'_>,
-    workspace_fd: &OwnedFd,
-) -> Result<(), SourceCandidateError> {
+    workspace_fd: BorrowedFd<'_>,
+) -> Result<Vec<u8>, SourceCandidateError> {
+    workspace_cwd.check()?;
     let git_dir = workspace_cwd.access_path().join(".git");
     let uid = rustix::process::geteuid().as_raw();
     let meta = fs::symlink_metadata(&git_dir)
@@ -1313,10 +1609,16 @@ fn validate_workspace_git_metadata(
     {
         return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
     }
-    read_safe_config(&git_dir.join("config"))?;
+    let config_path = git_dir.join("config");
+    let config = read_safe_config(&config_path)?;
     for forbidden in [
         Path::new("objects/info/alternates"),
         Path::new("objects/info/http-alternates"),
+        Path::new("info/attributes"),
+        Path::new("info/grafts"),
+        Path::new("config.worktree"),
+        Path::new("modules"),
+        Path::new("worktrees"),
     ] {
         if path_entry_exists(&git_dir.join(forbidden))? {
             return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
@@ -1357,7 +1659,12 @@ fn validate_workspace_git_metadata(
     if !same_directory_as_fd(Path::new(top.trim()), workspace_fd) {
         return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
     }
-    Ok(())
+    let config_after = read_safe_config(&config_path)?;
+    if config_after != config {
+        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+    }
+    workspace_cwd.check()?;
+    Ok(config)
 }
 
 fn read_safe_config(path: &Path) -> Result<Vec<u8>, SourceCandidateError> {
@@ -1373,19 +1680,50 @@ fn read_safe_config(path: &Path) -> Result<Vec<u8>, SourceCandidateError> {
     }
     let bytes = fs::read(path).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
     let lower = String::from_utf8_lossy(&bytes).to_ascii_lowercase();
-    if lower.contains("[include")
-        || lower.contains("[filter")
-        || lower.contains("fsmonitor")
-        || lower.contains("hookspath")
-        || lower.contains("promisor")
-        || lower.contains("partialclone")
-        || lower.contains("protocol.")
-        || lower.contains("insteadof")
-        || lower.contains("credential.helper")
-        || lower.contains("sshcommand")
-        || lower.contains("ext::")
-    {
-        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+    for forbidden in [
+        "[include",
+        "include.",
+        "includeif.",
+        "[filter",
+        "filter.",
+        "[diff",
+        "diff.",
+        "[merge",
+        "merge.",
+        "textconv",
+        "extdiff",
+        "external",
+        "driver",
+        "command",
+        "clean",
+        "smudge",
+        "fsmonitor",
+        "hookspath",
+        "attributesfile",
+        "excludesfile",
+        "promisor",
+        "partialclone",
+        "protocol.",
+        "insteadof",
+        "credential",
+        "sshcommand",
+        "gitproxy",
+        "pager",
+        "editor",
+        "askpass",
+        "program",
+        "uploadpack",
+        "receivepack",
+        "alias.",
+        "[alias",
+        "worktree",
+        "gitdir",
+        "alternate",
+        "ext::",
+    ] {
+        if lower.contains(forbidden) {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
     }
     Ok(bytes)
 }
@@ -1447,24 +1785,76 @@ fn path_entry_exists(path: &Path) -> Result<bool, SourceCandidateError> {
 }
 
 struct PinnedGitDirectory<'a> {
-    named: &'a Path,
-    directory: &'a OwnedFd,
+    canonical: &'a Path,
+    descriptor: BorrowedFd<'a>,
+    parent: Option<(&'a Path, BorrowedFd<'a>, &'a str)>,
 }
 
 impl<'a> PinnedGitDirectory<'a> {
-    fn new(named: &'a Path, directory: &'a OwnedFd) -> Result<Self, SourceCandidateError> {
-        let pinned = Self { named, directory };
+    fn from_prepared(prepared: &'a PreparedWorkspace) -> Result<Self, SourceCandidateError> {
+        let canonical = prepared.workspace().workspace.as_path();
+        let parent_canonical = canonical
+            .parent()
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        let entry_name = canonical
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        Self::with_parent(
+            canonical,
+            prepared.workspace_dir_fd(),
+            parent_canonical,
+            prepared.managed_parent_fd(),
+            entry_name,
+        )
+    }
+
+    fn with_parent(
+        canonical: &'a Path,
+        descriptor: BorrowedFd<'a>,
+        parent_canonical: &'a Path,
+        parent_descriptor: BorrowedFd<'a>,
+        entry_name: &'a str,
+    ) -> Result<Self, SourceCandidateError> {
+        let pinned = Self {
+            canonical,
+            descriptor,
+            parent: Some((parent_canonical, parent_descriptor, entry_name)),
+        };
         pinned.check()?;
         Ok(pinned)
     }
 
-    fn access_path(&self) -> &Path {
-        self.named
+    fn descriptor(&self) -> BorrowedFd<'a> {
+        self.descriptor
+    }
+
+    fn canonical_path(&self) -> &'a Path {
+        self.canonical
+    }
+
+    fn access_path(&self) -> PathBuf {
+        #[cfg(target_os = "linux")]
+        {
+            use std::os::fd::AsRawFd;
+            PathBuf::from(format!("/proc/self/fd/{}", self.descriptor.as_raw_fd()))
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            self.canonical.to_owned()
+        }
     }
 
     fn check(&self) -> Result<(), SourceCandidateError> {
-        ensure_path_points_to_fd(self.named, self.directory)
-            .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)
+        ensure_private_fd(self.descriptor)?;
+        ensure_path_points_to_fd(self.canonical, self.descriptor)?;
+        if let Some((parent_canonical, parent_descriptor, entry_name)) = self.parent {
+            ensure_private_fd(parent_descriptor)?;
+            ensure_path_points_to_fd(parent_canonical, parent_descriptor)?;
+            ensure_same_directory_borrowed(parent_descriptor, entry_name, self.descriptor)
+                .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        }
+        Ok(())
     }
 }
 
@@ -1476,7 +1866,7 @@ fn open_directory_chain(path: &Path) -> Result<OwnedFd, SourceCandidateError> {
     let mut current = open("/", flags, Mode::empty())
         .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
     for component in path.components() {
-        ensure_safe_ancestor_fd(&current)?;
+        ensure_safe_ancestor_fd(current.as_fd())?;
         match component {
             Component::RootDir => {}
             Component::Normal(name) => {
@@ -1486,11 +1876,11 @@ fn open_directory_chain(path: &Path) -> Result<OwnedFd, SourceCandidateError> {
             _ => return Err(SourceCandidateError::UnsafeWorkspaceMetadata),
         }
     }
-    ensure_safe_ancestor_fd(&current)?;
+    ensure_safe_ancestor_fd(current.as_fd())?;
     Ok(current)
 }
 
-fn ensure_safe_ancestor_fd(fd: &OwnedFd) -> Result<(), SourceCandidateError> {
+fn ensure_safe_ancestor_fd(fd: BorrowedFd<'_>) -> Result<(), SourceCandidateError> {
     let stat = fstat(fd).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
     let uid = rustix::process::geteuid().as_raw();
     let mode = stat.st_mode & 0o7777;
@@ -1500,16 +1890,18 @@ fn ensure_safe_ancestor_fd(fd: &OwnedFd) -> Result<(), SourceCandidateError> {
     Ok(())
 }
 
-fn ensure_private_fd(fd: &OwnedFd) -> Result<(), SourceCandidateError> {
+fn ensure_private_fd(fd: BorrowedFd<'_>) -> Result<(), SourceCandidateError> {
     let stat = fstat(fd).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    let is_directory =
+        rustix::fs::FileType::from_raw_mode(stat.st_mode) == rustix::fs::FileType::Directory;
     let uid = rustix::process::geteuid().as_raw();
-    if stat.st_uid != uid || stat.st_mode & 0o077 != 0 {
+    if !is_directory || stat.st_uid != uid || stat.st_mode & 0o7777 != 0o700 {
         return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
     }
     Ok(())
 }
 
-fn ensure_path_points_to_fd(path: &Path, fd: &OwnedFd) -> Result<(), SourceCandidateError> {
+fn ensure_path_points_to_fd(path: &Path, fd: BorrowedFd<'_>) -> Result<(), SourceCandidateError> {
     let opened = open_directory_chain(path)?;
     let left = fstat(&opened).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
     let right = fstat(fd).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
@@ -1519,29 +1911,44 @@ fn ensure_path_points_to_fd(path: &Path, fd: &OwnedFd) -> Result<(), SourceCandi
     Ok(())
 }
 
-fn ensure_same_directory(
-    parent_fd: &OwnedFd,
+fn ensure_same_directory_borrowed(
+    parent_fd: BorrowedFd<'_>,
     name: &str,
-    child_fd: &OwnedFd,
+    child_fd: BorrowedFd<'_>,
 ) -> Result<(), SourceCandidateError> {
     let child_stat =
         fstat(child_fd).map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
     let named_stat = statat(parent_fd, name, AtFlags::SYMLINK_NOFOLLOW)
         .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    if child_stat.st_dev != named_stat.st_dev || child_stat.st_ino != named_stat.st_ino {
+    if child_stat.st_dev != named_stat.st_dev
+        || child_stat.st_ino != named_stat.st_ino
+        || child_stat.st_uid != named_stat.st_uid
+        || rustix::fs::FileType::from_raw_mode(named_stat.st_mode)
+            != rustix::fs::FileType::Directory
+    {
         return Err(SourceCandidateError::InvalidCandidateDestination);
     }
     Ok(())
 }
 
-fn same_directory_as_fd(path: &Path, directory: &OwnedFd) -> bool {
+fn fd_identity(directory: BorrowedFd<'_>) -> Result<(u64, u64), SourceCandidateError> {
+    let fd_copy = directory
+        .try_clone_to_owned()
+        .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    let fd_metadata = fs::File::from(fd_copy)
+        .metadata()
+        .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    Ok((fd_metadata.dev(), fd_metadata.ino()))
+}
+
+fn same_directory_as_fd(path: &Path, directory: BorrowedFd<'_>) -> bool {
     let Ok(path_metadata) = fs::metadata(path) else {
         return false;
     };
-    let Ok(stat) = fstat(directory) else {
+    let Ok((fd_dev, fd_ino)) = fd_identity(directory) else {
         return false;
     };
-    path_metadata.dev() == stat.st_dev && path_metadata.ino() == stat.st_ino
+    path_metadata.dev() == fd_dev && path_metadata.ino() == fd_ino
 }
 
 fn trusted_git() -> Result<PathBuf, SourceCandidateError> {
@@ -1574,11 +1981,20 @@ fn base_git_command(git: &Path, cwd: Option<&Path>) -> Command {
     command.env_clear();
     command
         .env("HOME", "/nonexistent")
+        .env("XDG_CONFIG_HOME", "/nonexistent")
         .env("PATH", "/usr/bin:/bin")
+        .env("GIT_ATTR_NOSYSTEM", "1")
         .env("GIT_CONFIG_NOSYSTEM", "1")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GIT_ASKPASS", "/bin/false")
+        .env("SSH_ASKPASS", "/bin/false")
+        .env("GIT_SSH_COMMAND", "/bin/false")
+        .env("GIT_EDITOR", "/bin/false")
+        .env("GIT_PAGER", "cat")
+        .env("PAGER", "cat")
+        .env("GIT_EXTERNAL_DIFF", "/bin/false")
         .env("GIT_OPTIONAL_LOCKS", "0")
         .env("GIT_NO_REPLACE_OBJECTS", "1")
         .env("GIT_PROTOCOL_FROM_USER", "0")
@@ -1625,7 +2041,7 @@ fn run_git_with_options(
         directory.check()?;
     }
     let command_cwd = cwd.map(PinnedGitDirectory::access_path);
-    let mut command = base_git_command(git, command_cwd);
+    let mut command = base_git_command(git, command_cwd.as_deref());
     command
         .args(args)
         .stdin(if input.is_some() {
@@ -2449,5 +2865,205 @@ mod tests {
         )
         .unwrap_err();
         assert!(matches!(check_err, TrustedCheckError::CandidateDrift));
+    }
+
+    #[test]
+    fn rejects_path_replacement_preserving_ids_and_base_commit_with_different_inode() {
+        // Case A: Path replaced before prove_closed_workspace handoff
+        let mut fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        let original_prepared = fixture.take_prepared();
+        let original_ino = fd_identity(original_prepared.workspace_dir_fd())
+            .expect("original workspace identity")
+            .1;
+        let displaced = fixture.root.join("managed-workspaces/attempt-1-displaced");
+        fs::rename(&fixture.workspace_path, &displaced).expect("rename original checkout away");
+
+        let replacement = prepare_workspace(WorkspacePreparation {
+            source: fixture.root.join("origin-repo"),
+            managed_parent: fixture.root.join("managed-workspaces"),
+            destination_name: "attempt-1-work".into(),
+            pinned_commit: original_prepared.head_oid().to_owned(),
+            node_id: NodeRef::new("node-alpha").expect("node_id"),
+            root_id: original_prepared.root_id().clone(),
+            project_id: original_prepared.project_id().clone(),
+            task_id: original_prepared.task_id().clone(),
+            attempt_id: original_prepared.attempt_id().clone(),
+            owned_paths: original_prepared.owned_paths().to_vec(),
+            forbidden_paths: original_prepared.forbidden_paths().to_vec(),
+        })
+        .expect("prepare replacement workspace at same path with identical IDs and base commit");
+        let replacement_ino = fd_identity(replacement.workspace_dir_fd())
+            .expect("replacement workspace identity")
+            .1;
+        assert_ne!(original_ino, replacement_ino);
+        fs::write(
+            fixture.workspace_path.join("src/lib.rs"),
+            b"pub fn answer() -> u32 {\n    42\n}\n",
+        )
+        .expect("modify replacement checkout");
+
+        assert!(original_prepared.validate_current_custody().is_err());
+        assert_eq!(
+            prove_closed_workspace(original_prepared, fixture.closure.clone()).unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+
+        // Case B: Path replaced after prove_closed_workspace but before materialize_source_candidate
+        let mut fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        let closed = prove_closed_workspace(fixture.take_prepared(), fixture.closure.clone())
+            .expect("prove closed before path swap");
+        let displaced = fixture.root.join("managed-workspaces/attempt-1-displaced");
+        fs::rename(&fixture.workspace_path, &displaced).expect("rename closed checkout away");
+        let _replacement = prepare_workspace(WorkspacePreparation {
+            source: fixture.root.join("origin-repo"),
+            managed_parent: fixture.root.join("managed-workspaces"),
+            destination_name: "attempt-1-work".into(),
+            pinned_commit: closed.prepared().head_oid().to_owned(),
+            node_id: NodeRef::new("node-alpha").expect("node_id"),
+            root_id: closed.prepared().root_id().clone(),
+            project_id: closed.prepared().project_id().clone(),
+            task_id: closed.prepared().task_id().clone(),
+            attempt_id: closed.prepared().attempt_id().clone(),
+            owned_paths: closed.prepared().owned_paths().to_vec(),
+            forbidden_paths: closed.prepared().forbidden_paths().to_vec(),
+        })
+        .expect("prepare replacement workspace after closure handoff");
+        fs::write(
+            fixture.workspace_path.join("src/lib.rs"),
+            b"pub fn answer() -> u32 {\n    42\n}\n",
+        )
+        .expect("modify replacement checkout");
+
+        assert_eq!(
+            closed.revalidate_custody().unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        assert_eq!(
+            materialize_source_candidate(closed, &fixture.candidate_parent, "candidate-swapped")
+                .unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+    }
+
+    #[test]
+    fn rejects_textconv_diff_driver_without_executing_marker_command_and_reads_raw_hunks() {
+        let mut fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        let marker_path = fixture.root.join("textconv-marker-ran.txt");
+        let base_commit = fixture.prepared.as_ref().unwrap().head_oid().to_owned();
+
+        fs::write(
+            fixture.workspace_path.join("src/lib.rs"),
+            b"pub fn answer() -> u32 {\n    42\n}\n",
+        )
+        .expect("edit src/lib.rs");
+        fs::write(
+            fixture.workspace_path.join("src/.gitattributes"),
+            b"*.rs diff=marker\n",
+        )
+        .expect("write .gitattributes selecting marker diff driver");
+        run_fixture_git(
+            &fixture.workspace_path,
+            &["add", "src/lib.rs", "src/.gitattributes"],
+        );
+        run_fixture_git(
+            &fixture.workspace_path,
+            &["commit", "--quiet", "-m", "commit with gitattributes"],
+        );
+        let head_commit = run_fixture_git(&fixture.workspace_path, &["rev-parse", "HEAD"]);
+
+        let config_path = fixture.workspace_path.join(".git/config");
+        let mut config_bytes = fs::read(&config_path).expect("read .git/config");
+        let textconv_stanza = format!(
+            "\n[diff \"marker\"]\n\ttextconv = /bin/sh -c 'echo invoked > \"{}\"; printf \"transformed\\\\n\"' --\n",
+            marker_path.display()
+        );
+        config_bytes.extend_from_slice(textconv_stanza.as_bytes());
+        fs::write(&config_path, config_bytes).expect("inject diff.marker.textconv config");
+        make_git_dir_private(&fixture.workspace_path.join(".git")).expect("private .git");
+
+        // Direct hunk extraction must pass --no-textconv, never execute the marker command,
+        // and read the untransformed source hunks (line 2 of src/lib.rs).
+        let git = trusted_git().expect("trusted git");
+        let prepared_ref = fixture.prepared.as_ref().expect("prepared ref");
+        let pinned_cwd = PinnedGitDirectory::from_prepared(prepared_ref).expect("pinned cwd");
+        let hunks = extract_file_hunks(&git, &pinned_cwd, &base_commit, &head_commit, "src/lib.rs")
+            .expect("extract_file_hunks succeeds without running textconv");
+        assert_eq!(hunks, Some(vec![HunkRange { start: 2, end: 2 }]));
+        assert!(
+            !marker_path.exists(),
+            "textconv marker command must never execute during hunk extraction"
+        );
+
+        // Full materialization must also reject the textconv config and never run the marker command.
+        let closed = prove_closed_workspace(fixture.take_prepared(), fixture.closure.clone())
+            .expect("prove closed");
+        let err = materialize_source_candidate(
+            closed,
+            &fixture.candidate_parent,
+            "candidate-textconv-rejected",
+        )
+        .unwrap_err();
+        assert_eq!(err, SourceCandidateError::UnsafeWorkspaceMetadata);
+        assert!(
+            !marker_path.exists(),
+            "textconv marker command must never execute during candidate materialization"
+        );
+    }
+
+    #[test]
+    fn decision_evidence_revalidates_actual_checkout_content_and_rejects_post_materialization_edits()
+     {
+        let mut fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        fs::write(
+            fixture.workspace_path.join("src/lib.rs"),
+            b"pub fn answer() -> u32 {\n    42\n}\n",
+        )
+        .expect("edit src/lib.rs");
+
+        let closed = prove_closed_workspace(fixture.take_prepared(), fixture.closure.clone())
+            .expect("prove closed");
+        let candidate =
+            materialize_source_candidate(closed, &fixture.candidate_parent, "candidate-tamper")
+                .expect("materialize candidate");
+
+        let contract_digest = content_digest(&fixture.contract).expect("contract digest");
+        let verifier = PrincipalId::new("independent-verifier").expect("verifier");
+        let policy = test_policy(verifier.clone());
+        let policy_digest = content_digest(&policy).expect("policy digest");
+        let inputs = candidate.verification_inputs(
+            fixture.contract.revision,
+            &contract_digest,
+            &policy_digest,
+            &policy.protected_oracle_digest,
+        );
+        let host = SessionHost::new();
+        let executed = execute_checks(
+            &host,
+            &inputs,
+            &fixture.contract,
+            &policy,
+            candidate.checkout_path(),
+            &fixture.spool_root,
+            "check-run-before-tamper",
+        )
+        .expect("execute_checks before tamper");
+
+        // Tamper with the owner-writable mode-0700 candidate checkout using identical byte length.
+        fs::write(
+            candidate.checkout_path().join("src/lib.rs"),
+            b"pub fn answer() -> u32 {\n    99\n}\n",
+        )
+        .expect("overwrite candidate file in place");
+
+        assert_eq!(
+            candidate.revalidate_custody().unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        assert_eq!(
+            candidate
+                .decision_evidence(&executed, verifier)
+                .unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
     }
 }
