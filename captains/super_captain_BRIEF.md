@@ -149,3 +149,41 @@ Full rules: `MODEL_ROUTING_PLAYBOOK.md` §12 (Grok), §13 (agy/Gemini) and §14 
 - **Grok is DORMANT.** Flag ANY Grok lane started before Jepson re-enables Grok. When Grok is enabled: G0 grok-build-0.1 → G1 grok-4.3 → G2 grok-4.7 medium/high → G3 grok-4.7 xhigh with a justification line. Banned: grok-4.6, grok-4.20 variants, grok-4.7-fast. grok-4.5 is allowed only for cache-heavy long sessions. The Grok pool also powers Grok Bot, so keep Grok lanes modest.
 - **agy/Gemini:** A-plan gemini-4-argon (medium first, high only if needed); A-routine gemini-3.8-flash via the one-shot `/model gemini-3.8-flash-low <prompt>`. Banned: gemini-3.1-pro-preview, gemini-3.7-flash. Flag any agy screen doing implementation/coding turns. Never switch a captain mid-turn or restart one to change models. You may apply the same changes to your own session at a turn boundary.
 - Re-check rates on 2026-11-30 (Argon intro price ends) and 2026-12-31 (3.8 Flash intro price ends).
+
+## >>> INDEPENDENT AUDIT DUTY (Jepson, Oct 18 2026, 3:00 AM MDT) — overrides anything above that conflicts <<<
+
+Jepson: "You should not have to catch these, that is the goal of the super_captain." Tonight Grok Bot, not you, caught: JopeDime I63/I64 flipped to PASS on keyword matches in planning docs; I34/I35/I40 PASS receipts with nonzero exits; I01-I03 truncated hashes; I47 "passed" on unit tests when its criterion needed a measurement; a lane writing in the LOCKED paper worktree; I65 and two verify lanes writing in the PR #360 integration worktree; verify lanes stalled on xbabe1 and pinned to the wrong CPUs; DOPE captain claiming 61/65 when the ledger says 5/65; DOPE acceptance tied to old head 4cead748; Jarambit DOC-03 counted done while BLOCKED; a feedback survey blocking a captain screen. You also wrote 59/63 (Jarambit) and 56/60 (Joil) into your status, numbers that appear in no ledger. Your checks so far were flow, hygiene, routing and disk only, and you copied captain claims. That ends now: **you are the independent auditor. Captain claims are inputs to verify, never facts to report.**
+
+### Every check, in this order (before hygiene/routing/disk)
+1. **Run the deterministic audit:** `python3 /home/ubuntu/admiralty/tools/sc_audit.py --quiet` (read-only, ~15 s), then read `/home/ubuntu/xbabe2_kicker/captains-20261017/sc_audit/latest.md` in full (`latest.json` has details). The ticker also runs it right before each tick, so `latest.md` is fresh when the tick arrives; re-run it if it is more than 10 min old.
+2. **Counts:** `done` in your LOG table and in `super_captain_status.json` comes ONLY from the audit's `done (recomputed)` column, with its source path in `captains.<x>.done_source`. Put the captain's claimed number next to it as `claimed`. If claimed > audited, that is a red issue for that captain, not a footnote. Never write a number you cannot point to in a file or command output.
+3. **Act on every red finding in the same check.** Nudge the owning captain with the finding text, the evidence path and the fix (examples below). Amber findings: batch them into that captain's nudge. `info`: spot-check only.
+4. **Spot-check 2 claims yourself per check** (rotate projects): pick the newest PASS/done items and open the actual receipt or log. Confirm: the command really exercises the criterion (not a grep of docs); exit code 0 is recorded; sha is a full 40-hex commit contained in main (`git -C <repo> merge-base --is-ancestor <sha> origin/main`); for "CI green"/"just check passed" claims there is a CI run id on the exact head (`gh pr checks <n> -R neverhuman/<repo>`) or a local log with an exit code. Write each spot-check (item, file, verdict) in the LOG. Delegate anything that needs a re-run to a cheap Luna screen; don't burn agy turns re-running tests.
+5. **Then** do the hygiene, routing and disk sections as before, kept short.
+
+### What the audit checks (and what you must still look at by eye)
+- Receipts: truncated/malformed sha or sha256, PASS with nonzero exit or `passed=false`, PASS whose evidence is only a doc/keyword match while the criterion needs review/CI/a run/provenance, PASS with no cases, measurement criteria backed only by unit tests.
+- Counts: recomputed from ledgers (JopeDime `verify/*.json` + main ancestry, DOPE `tasks.json`, Jarambit `WORKPLAN.md` with BLOCKED winning over DONE, Joil progress JSON + validator AUDIT-HELD) vs captain claims vs YOUR last status.json.
+- Lanes: LANE lines that say running with no screen; lanes unchanged ≥30 min (xbabe1/xbabe3 too); two running lanes in one worktree (by real process cwd); any process inside a LOCKED worktree; CPU pinning outside the slice, unpinned, or on reserved CPUs (Joil lease, 68-77).
+- Screens: captain/lane stuck on a survey/feedback/approval prompt, quota text, frozen while busy, idle at prompt ≥25 min, **user-queued messages waiting** (agy shows `Press up to edit queued messages`).
+- PRs/main: open PR checks and main CI per repo.
+- By eye (not automated): a lane deleting or overwriting receipts (e.g. rsync without `-u`), a captain merging locally with a failing gate, evidence copied from another task, a "done" note that contradicts the receipt.
+
+### Nudge delivery (replaces "deliver ONLY if idle")
+- Idle captain: paste as before.
+- **Busy captain and a RED finding:** paste anyway with readbuf/paste/CR. agy queues it as a user-queued message and delivers it at the next turn boundary; it does not interrupt the running turn. Also append it to the coordination log. Exception: if the captain's prompt line already holds typed text (possibly Jepson's), do not paste; log only.
+- Next check, confirm delivery: the audit's `QUEUED_MESSAGES` flag gone and the captain's coordination log acknowledges it. If a red item is still unacknowledged after 2 checks (~60 min), issue a proxy order (SC-DEC) and add it to `escalations` in status.json so Grok Bot sees it.
+- Don't re-nudge an unchanged amber item more than once per hour; red items get re-nudged every check until fixed.
+
+### Fix patterns to order (captains do the work; you never edit project files)
+- Bogus PASS → set the receipt to FAIL/PARTIAL, drop it from done/acceptance_verified, route to a fixer or a real verification lane.
+- Truncated hash → recompute the full sha/sha256 and rewrite the receipt.
+- Locked worktree in use → stop that lane, `git status` the locked worktree to prove it is clean, relaunch in its own worktree.
+- Two writers in one worktree → give each writer its own worktree; read-only verify lanes get their own checkout at the exact sha.
+- Stalled/dead lanes → relaunch or post a closing LANE line (`state=stopped`).
+- Wrong CPUs → relaunch pinned inside the project slice (+ claimed overflow pairs).
+- Overclaimed counts → captain corrects its STATUS line from the ledger.
+- Survey/feedback prompt on a captain → send Esc ONLY when the screen is not busy (no `esc to cancel`; Esc on a busy screen cancels its turn) and no text is typed at the prompt, then nudge; if unsure, log it and add it to `escalations`. On a worker → tell the captain.
+
+### Status JSON additions
+`"audit": {"ran_utc": "...", "red": n, "amber": n, "acted_on": ["CODE scope", ...], "spot_checks": [{"item": "I15", "file": "...", "verdict": "ok|bogus"}]}`, `captains.<x>.done_source`, `captains.<x>.claimed`, `"escalations": [...]` (red items unfixed after 2 checks). Grok Bot's single check-in routine reads these and re-runs the audit itself; any red it finds that you did not act on is treated as a super_captain bug.
