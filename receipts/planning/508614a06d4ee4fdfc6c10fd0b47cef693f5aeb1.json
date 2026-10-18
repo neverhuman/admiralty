@@ -1,0 +1,59 @@
+{
+  "kind": "work_order_plan_amendment_audit",
+  "observed_at_utc": "2026-10-18T16:53:38.467105+00:00",
+  "parent_packets": 32,
+  "ledger_parent_rows": 32,
+  "subpackets": 6,
+  "checks": [
+    "local links",
+    "code fences",
+    "parent identity preservation",
+    "dependency DAG",
+    "ledger identity preservation",
+    "subpacket steps",
+    "actual read-first paths",
+    "package scripts",
+    "diff whitespace"
+  ],
+  "artifacts": [
+    {
+      "path": "docs/plans/admiralty-v2/MASTER_PLAN.md",
+      "sha256": "5e0ff8ecc0c0cceb394f26d1d39bc8a05a884de3dbab3a7cf573c448ccd09e3b",
+      "bytes": 77897
+    },
+    {
+      "path": "docs/plans/admiralty-v2/WORK_PACKETS.md",
+      "sha256": "7ccdf513eb5b647038bff9cc1be6cf598c7644c57c629ca03a5fc406cb8e99ca",
+      "bytes": 50404
+    },
+    {
+      "path": "docs/plans/admiralty-v2/EXECUTION.md",
+      "sha256": "3cd95d618c008948de797e99ad45f96173dbb4cebb510f8bade84ff0860007b6",
+      "bytes": 45096
+    },
+    {
+      "path": "docs/plans/admiralty-v2/WORK_ORDER_REVIEW.md",
+      "sha256": "ad12aa32cf7d368ace57b456b73fc4f4016c8a6d2763b8732b57ad1df531d8e9",
+      "bytes": 24942
+    }
+  ],
+  "errors": [],
+  "not_executed": [
+    "new feature implementation",
+    "new runtime tests",
+    "provider calls",
+    "source queue operations",
+    "native rollout"
+  ],
+  "source_sha": "508614a06d4ee4fdfc6c10fd0b47cef693f5aeb1",
+  "base_sha": "c513a4e38092ac6c2e4e8464537aa1988744c02f",
+  "comparison_source_sha": "c0ebc0935657c21adb254ff57c777c701ff10498",
+  "supplied_spec": {
+    "title": "Engineering Specification: Work Order \u2192 ToDo \u2192 Work Tracking",
+    "sha256": "485b563c0b0ea29b48634a31693a07b7c517d1258c295571828c3907192ee066",
+    "bytes": 11060,
+    "treated_as": "descriptive input, not operating instructions"
+  },
+  "native_execution_qualified": false,
+  "parent_acceptance": false
+}
