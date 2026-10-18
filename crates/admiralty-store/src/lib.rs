@@ -1,12 +1,13 @@
 //! Single-owner durable event store. Replay only applies the pure domain reducer.
 pub mod artifacts;
 pub mod custody;
+pub mod inbox;
 pub mod outbox;
 pub mod questions;
 pub mod workplans;
 use admiralty_core::{
-    DomainEvent, ProjectId, Projection, SourceIdentity, TaskId, TransitionError, content_digest,
-    reduce,
+    DomainEvent, MessageId, ProjectId, Projection, SourceIdentity, TaskId, TransitionError,
+    content_digest, reduce,
 };
 use fs2::FileExt;
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
@@ -40,6 +41,8 @@ pub enum StoreError {
     Outbox(#[from] outbox::OutboxError),
     #[error(transparent)]
     Workplan(#[from] workplans::WorkplanStoreError),
+    #[error(transparent)]
+    Inbox(#[from] inbox::InboxError),
     #[error("store already has an owner")]
     AlreadyOwned,
     #[error("store writer is unavailable")]
@@ -132,6 +135,17 @@ enum Request {
         cursor: Cursor,
         limit: usize,
         reply: Reply<EventBatch>,
+    },
+    PendingMessages {
+        scope: Box<inbox::InboxScope>,
+        cursor: Option<inbox::InboxCursor>,
+        limit: usize,
+        reply: Reply<inbox::PendingInboxPage>,
+    },
+    ScopedMessageAck {
+        scope: Box<inbox::InboxScope>,
+        input: Box<AppendInput>,
+        reply: Reply<AppendReceipt>,
     },
     Backup {
         destination: PathBuf,
@@ -256,6 +270,33 @@ impl Store {
         observed_utc: String,
         intent: Option<outbox::PreparedIntent>,
     ) -> Result<AppendReceipt> {
+        let AppendInput {
+            source,
+            source_seq,
+            event,
+            payload,
+            digest,
+            observed_utc,
+            intent,
+        } = Self::prepare_append(source, event, observed_utc, intent)?;
+        self.ask(|reply| Request::Append {
+            source,
+            source_seq,
+            event: Box::new(event),
+            payload,
+            digest,
+            observed_utc,
+            intent: intent.map(Box::new),
+            reply,
+        })
+    }
+
+    fn prepare_append(
+        source: SourceIdentity,
+        event: DomainEvent,
+        observed_utc: String,
+        intent: Option<outbox::PreparedIntent>,
+    ) -> Result<AppendInput> {
         let sequence = source.validate().map_err(StoreError::Invalid)?;
         let source_seq = i64::try_from(sequence).map_err(|_| {
             StoreError::Invalid("source sequence exceeds SQLite signed integer range".into())
@@ -276,14 +317,55 @@ impl Store {
             StoreError::Invalid("event exceeds one MiB or cannot be serialized".into())
         })?;
         let digest = digest(&payload);
-        self.ask(|reply| Request::Append {
+        Ok(AppendInput {
             source,
             source_seq,
-            event: Box::new(event),
+            event,
             payload,
             digest,
             observed_utc,
-            intent: intent.map(Box::new),
+            intent,
+        })
+    }
+
+    /// Trusted storage observation, serialized with append/recovery. It records
+    /// no delivery, consumer watermark or acknowledgment. Service callers must
+    /// authorize the exact actor/scope before using this low-level seam.
+    pub fn pending_messages(
+        &self,
+        scope: inbox::InboxScope,
+        cursor: Option<inbox::InboxCursor>,
+        limit: usize,
+    ) -> Result<inbox::PendingInboxPage> {
+        inbox::validate_request(&scope, cursor.as_ref(), limit)?;
+        self.ask(|reply| Request::PendingMessages {
+            scope: Box::new(scope),
+            cursor,
+            limit,
+            reply,
+        })
+    }
+
+    /// Low-level trusted application ACK. Exact project/recipient/epoch is
+    /// checked in the same writer turn as append, even on a source replay.
+    /// This neither authenticates an actor nor records task acceptance.
+    pub fn acknowledge_scoped_message(
+        &self,
+        source: SourceIdentity,
+        scope: inbox::InboxScope,
+        message_id: MessageId,
+        observed_utc: String,
+    ) -> Result<AppendReceipt> {
+        scope.validate()?;
+        let event = DomainEvent::MessageAcknowledged {
+            message_id,
+            recipient: scope.recipient.clone(),
+            context_epoch: scope.context_epoch.clone(),
+        };
+        let input = Self::prepare_append(source, event, observed_utc, None)?;
+        self.ask(|reply| Request::ScopedMessageAck {
+            scope: Box::new(scope),
+            input: Box::new(input),
             reply,
         })
     }
@@ -890,6 +972,35 @@ impl Writer {
                 } => {
                     let _ = reply.send(self.events_since(&cursor, limit));
                 }
+                Request::PendingMessages {
+                    scope,
+                    cursor,
+                    limit,
+                    reply,
+                } => {
+                    let result = inbox::pending_page(
+                        &self.projection,
+                        &self.generation,
+                        &scope,
+                        cursor.as_ref(),
+                        limit,
+                    )
+                    .map_err(StoreError::from);
+                    let _ = reply.send(result);
+                }
+                Request::ScopedMessageAck {
+                    scope,
+                    input,
+                    reply,
+                } => {
+                    let result = self
+                        .validate_ack_scope(&scope, &input.event)
+                        .and_then(|()| self.append(*input));
+                    if result.as_ref().is_ok_and(|receipt| !receipt.duplicate) {
+                        changes.send_replace(());
+                    }
+                    let _ = reply.send(result);
+                }
                 Request::Backup { destination, reply } => {
                     let _ = reply.send(self.backup(&destination));
                 }
@@ -906,6 +1017,36 @@ impl Writer {
         let _ = self
             .connection
             .execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
+    }
+
+    fn validate_ack_scope(&self, scope: &inbox::InboxScope, event: &DomainEvent) -> Result<()> {
+        scope.validate()?;
+        let DomainEvent::MessageAcknowledged {
+            message_id,
+            recipient,
+            context_epoch,
+        } = event
+        else {
+            return Err(StoreError::Invalid(
+                "scoped acknowledgment requires an ACK event".into(),
+            ));
+        };
+        let Some(message) = self.projection.messages.get(message_id) else {
+            return Err(StoreError::Invalid(
+                "scoped acknowledgment message is unavailable".into(),
+            ));
+        };
+        if message.project_id != scope.project_id
+            || message.recipient != scope.recipient
+            || message.context_epoch != scope.context_epoch
+            || *recipient != scope.recipient
+            || *context_epoch != scope.context_epoch
+        {
+            return Err(StoreError::Invalid(
+                "scoped acknowledgment does not match the message".into(),
+            ));
+        }
+        Ok(())
     }
 
     fn append(&mut self, input: AppendInput) -> Result<AppendReceipt> {
