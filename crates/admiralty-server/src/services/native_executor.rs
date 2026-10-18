@@ -933,7 +933,16 @@ mod tests {
         fs::create_dir(source.join("src")).expect("source src directory");
         fs::write(source.join("src/seed.txt"), b"seed\n").expect("source seed");
         let git = |args: &[&str]| {
-            let output = std::process::Command::new("git")
+            let output = std::process::Command::new("/usr/bin/git")
+                .env_clear()
+                .env("PATH", "/usr/bin:/bin")
+                .env("HOME", &temp)
+                .env("TMPDIR", &temp)
+                .env("GIT_CONFIG_NOSYSTEM", "1")
+                .env("GIT_CONFIG_SYSTEM", "/dev/null")
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
+                .env("GIT_TERMINAL_PROMPT", "0")
+                .args(["-c", "core.hooksPath=/dev/null"])
                 .arg("-C")
                 .arg(&source)
                 .args(args)
@@ -952,13 +961,7 @@ mod tests {
         git(&["add", "src/seed.txt"]);
         git(&["commit", "--quiet", "-m", "fixture"]);
         let pinned_commit = git(&["rev-parse", "HEAD"]);
-        fs::set_permissions(source.join(".git"), fs::Permissions::from_mode(0o700))
-            .expect("private source metadata");
-        fs::set_permissions(
-            source.join(".git/config"),
-            fs::Permissions::from_mode(0o600),
-        )
-        .expect("private source config");
+        make_fixture_metadata_private(&source.join(".git"));
         let source = fs::canonicalize(source).expect("canonical source");
         let managed_parent = fs::canonicalize(managed_parent).expect("canonical managed parent");
         let journal = fs::canonicalize(journal).expect("canonical journal");
@@ -1177,6 +1180,23 @@ mod tests {
         fs::remove_dir_all(temp).expect("remove private fixture");
     }
 
+    fn make_fixture_metadata_private(path: &Path) {
+        // A permissive caller umask must not make the fresh fixture shared.
+        // Touch only this test's new Git metadata, never the process umask or
+        // production custody rules. Reject aliases before recursive traversal.
+        let metadata = fs::symlink_metadata(path).expect("fixture metadata");
+        assert!(!metadata.file_type().is_symlink());
+        assert_eq!(metadata.uid(), rustix::process::geteuid().as_raw());
+        let mode = if metadata.is_dir() { 0o700 } else { 0o600 };
+        assert!(metadata.is_dir() || metadata.is_file());
+        fs::set_permissions(path, fs::Permissions::from_mode(mode))
+            .expect("private fixture metadata permissions");
+        if metadata.is_dir() {
+            for entry in fs::read_dir(path).expect("owned metadata children") {
+                make_fixture_metadata_private(&entry.expect("owned child").path());
+            }
+        }
+    }
     fn private_fixture(prefix: &str) -> PathBuf {
         // CI checkouts may have shared or differently owned ancestors. The
         // production journal/source custody guard must still reject them.
