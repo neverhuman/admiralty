@@ -70,6 +70,18 @@ pub struct VerifiedResourcePermit {
     authority: Arc<dyn ResourcePermitAuthority>,
 }
 impl VerifiedResourcePermit {
+    /// Explicit trusted startup composition seam. The configured authority must
+    /// authenticate signature/reservation/generation now; prepare and launch
+    /// recheck it. Agent JSON alone cannot create this value.
+    pub fn verify_current(
+        claims: ResourcePermitClaims,
+        authority: Arc<dyn ResourcePermitAuthority>,
+    ) -> Result<Self, ResourceGateError> {
+        if !authority.is_current(&claims) {
+            return Err(ResourceGateError::PermitUnavailable);
+        }
+        Ok(Self { claims, authority })
+    }
     #[allow(dead_code)] // Centralized authenticated issuer integration is separate.
     pub(crate) fn from_authenticated_issuer(
         claims: ResourcePermitClaims,
@@ -422,7 +434,7 @@ fn recovery_identity(
         process_start: None,
     }
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub struct EnforcementObservation {
     pub unit: String,
     pub invocation_id: String,
@@ -438,6 +450,33 @@ pub struct EnforcementObservation {
     pub actual_environment_digest: String,
     pub cgroup_path: PathBuf,
 }
+/// Actual owned service closure, minted only after live reconciliation. This
+/// serialization-only value cannot be reconstructed from an agent's JSON.
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct ClosedAdmission {
+    identity: RecoveryIdentity,
+    observation: EnforcementObservation,
+    exit_code: Option<i32>,
+    success: bool,
+    closure_digest: String,
+}
+impl ClosedAdmission {
+    pub fn identity(&self) -> &RecoveryIdentity {
+        &self.identity
+    }
+    pub fn observation(&self) -> &EnforcementObservation {
+        &self.observation
+    }
+    pub fn exit_code(&self) -> Option<i32> {
+        self.exit_code
+    }
+    pub fn success(&self) -> bool {
+        self.success
+    }
+    pub fn closure_digest(&self) -> &str {
+        &self.closure_digest
+    }
+}
 pub struct RunningAdmission {
     recovery: RecoveryIdentity,
     backend: SystemdCgroupBackend,
@@ -448,6 +487,34 @@ pub struct RunningAdmission {
     slot: Option<CapacitySlot>,
 }
 impl RunningAdmission {
+    /// A proof is produced only from this handle's real, owned Linux service.
+    /// Unknown/missing observations and failed probes cannot mint closure.
+    #[cfg(target_os = "linux")]
+    pub fn prove_closed(
+        &mut self,
+        host: &SessionHost,
+    ) -> Result<ClosedAdmission, ResourceGateError> {
+        let exit = self.reconcile_complete(host)?;
+        let observation = self
+            .observation
+            .clone()
+            .ok_or(ResourceGateError::UnknownOutcome)?;
+        let closure_digest = content_digest(&(
+            "closed-admission-v1",
+            &self.recovery,
+            &observation,
+            exit.code(),
+            exit.success(),
+        ))
+        .map_err(|_| ResourceGateError::IdentityMismatch)?;
+        Ok(ClosedAdmission {
+            identity: self.recovery.clone(),
+            observation,
+            exit_code: exit.code(),
+            success: exit.success(),
+            closure_digest,
+        })
+    }
     pub fn observation(&self) -> Option<&EnforcementObservation> {
         self.observation.as_ref()
     }

@@ -15,6 +15,7 @@ admiralty-server.workspace = true
 serde.workspace = true
 rustix.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 schemars.workspace = true
 tokio.workspace = true
 clap.workspace = true

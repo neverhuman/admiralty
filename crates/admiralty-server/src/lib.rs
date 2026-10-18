@@ -1,7 +1,8 @@
-//! Read-only fleet projection and durable event replay. Native provider control remains disabled.
+//! Fleet projection, durable replay and explicitly configured native command services.
 pub mod legacy;
 pub mod models;
 pub mod services;
+pub mod startup;
 use admiralty_core::{Projection, SchedulingState, TaskView};
 use admiralty_store::{Cursor, Store};
 use axum::{
@@ -592,6 +593,19 @@ pub fn app(
     store: Store,
     config: ServerConfig,
 ) -> Result<Router, Box<dyn std::error::Error + Send + Sync>> {
+    app_with_native_routes(store, config, None)
+}
+
+/// Native command routes are constructed by protected startup configuration;
+/// neither dashboard input nor demo mode can enable this surface.
+pub fn app_with_native_routes(
+    store: Store,
+    config: ServerConfig,
+    native_routes: Option<Router>,
+) -> Result<Router, Box<dyn std::error::Error + Send + Sync>> {
+    if config.simulated && native_routes.is_some() {
+        return Err("demo mode cannot install native command routes".into());
+    }
     if !config.listen.ip().is_loopback() {
         return Err("remote bind is not qualified; use a loopback SSH tunnel".into());
     }
@@ -632,7 +646,7 @@ pub fn app(
             state.clone(),
             model_access_gate,
         ));
-    Ok(Router::new()
+    let router = Router::new()
         .merge(model_routes)
         .route("/healthz", get(health))
         .route("/v1/fleet", get(fleet))
@@ -649,20 +663,70 @@ pub fn app(
         .route("/", get(asset))
         .route("/{*path}", get(asset))
         .layer(axum::extract::DefaultBodyLimit::max(1024 * 1024))
-        .with_state(state))
+        .with_state(state);
+    Ok(match native_routes {
+        Some(routes) => router.merge(routes),
+        None => router,
+    })
 }
 
 pub async fn serve(
     store: Store,
     config: ServerConfig,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    serve_with_native_routes(store, config, None).await
+}
+
+pub async fn serve_with_native_routes(
+    store: Store,
+    config: ServerConfig,
+    native_routes: Option<Router>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let listen = config.listen;
-    let app = app(store, config)?;
+    let native_commands = native_routes.is_some();
+    let app = app_with_native_routes(store, config, native_routes)?;
     let listener = tokio::net::TcpListener::bind(listen).await?;
     eprintln!(
-        "Admiralty listening on http://{} (read-only; native execution disabled)",
-        listener.local_addr()?
+        "Admiralty listening on http://{} (native commands: {}; execution requires admitted controller)",
+        listener.local_addr()?,
+        native_commands
     );
+    axum::serve(listener, app)
+        .with_graceful_shutdown(async {
+            let _ = tokio::signal::ctrl_c().await;
+        })
+        .await?;
+    Ok(())
+}
+
+/// Compatibility port implemented by the same native binary. Target and bind
+/// remain loopback-only, and the original path/query is retained.
+pub fn redirect_app(
+    target: SocketAddr,
+) -> Result<Router, Box<dyn std::error::Error + Send + Sync>> {
+    if !target.ip().is_loopback() || target.port() == 0 {
+        return Err("redirect target must be a concrete loopback listener".into());
+    }
+    let base = format!("http://{target}");
+    Ok(Router::new().fallback(move |uri: axum::http::Uri| {
+        let destination = format!(
+            "{}{}",
+            base,
+            uri.path_and_query().map_or("/", |value| value.as_str())
+        );
+        async move { axum::response::Redirect::temporary(&destination) }
+    }))
+}
+
+pub async fn serve_redirect(
+    listen: SocketAddr,
+    target: SocketAddr,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if !listen.ip().is_loopback() || listen == target {
+        return Err("redirect listener must be a separate loopback address".into());
+    }
+    let app = redirect_app(target)?;
+    let listener = tokio::net::TcpListener::bind(listen).await?;
     axum::serve(listener, app)
         .with_graceful_shutdown(async {
             let _ = tokio::signal::ctrl_c().await;
