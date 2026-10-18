@@ -6,6 +6,17 @@ use serde_json::json;
 
 const NOW: &str = "2026-10-18T12:00:00Z";
 
+fn store_directory() -> tempfile::TempDir {
+    let mut builder = tempfile::Builder::new();
+    builder.prefix("admiralty-store-replay-");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        builder.permissions(std::fs::Permissions::from_mode(0o700));
+    }
+    builder.tempdir().expect("private replay fixture directory")
+}
+
 fn source(sequence: u64) -> SourceIdentity {
     SourceIdentity {
         producer_id: "producer".into(),
@@ -28,7 +39,7 @@ fn task(id: &str) -> DomainEvent {
 
 #[test]
 fn duplicate_and_collision_survive_reopen() {
-    let directory = tempfile::tempdir().expect("tempdir");
+    let directory = store_directory();
     let path = directory.path().join("state.sqlite");
     let store = Store::open(&path).expect("open");
     let first = store
@@ -59,7 +70,7 @@ fn duplicate_and_collision_survive_reopen() {
 
 #[test]
 fn source_ack_never_skips_gaps() {
-    let directory = tempfile::tempdir().expect("tempdir");
+    let directory = store_directory();
     let store = Store::open(directory.path().join("state.sqlite")).expect("open");
     assert_eq!(
         store
@@ -99,7 +110,7 @@ fn source_ack_never_skips_gaps() {
 
 #[test]
 fn failed_transition_is_atomic_and_candidates_cannot_self_accept() {
-    let directory = tempfile::tempdir().expect("tempdir");
+    let directory = store_directory();
     let store = Store::open(directory.path().join("state.sqlite")).expect("open");
     let task_id: TaskId = "T1".to_owned().try_into().expect("task id");
     let attempt_id: AttemptId = "attempt-1".to_owned().try_into().expect("attempt id");
@@ -153,7 +164,7 @@ fn failed_transition_is_atomic_and_candidates_cannot_self_accept() {
 
 #[test]
 fn one_owner_and_many_clones_share_a_serial_writer() {
-    let directory = tempfile::tempdir().expect("tempdir");
+    let directory = store_directory();
     let path = directory.path().join("state.sqlite");
     let store = Store::open(&path).expect("open");
     assert!(matches!(Store::open(&path), Err(StoreError::AlreadyOwned)));
@@ -184,7 +195,7 @@ fn one_owner_and_many_clones_share_a_serial_writer() {
 
 #[test]
 fn backup_is_consistent_and_never_overwrites_existing_or_live_files() {
-    let directory = tempfile::tempdir().expect("tempdir");
+    let directory = store_directory();
     let path = directory.path().join("state.sqlite");
     let backup_path = directory.path().join("backup.sqlite");
     let store = Store::open(&path).expect("open");
@@ -214,7 +225,7 @@ fn backup_is_consistent_and_never_overwrites_existing_or_live_files() {
 
 #[test]
 fn tampered_durable_payload_fails_replay_without_silent_repair() {
-    let directory = tempfile::tempdir().expect("tempdir");
+    let directory = store_directory();
     let path = directory.path().join("state.sqlite");
     let store = Store::open(&path).expect("open");
     store
@@ -244,7 +255,7 @@ fn tampered_durable_payload_fails_replay_without_silent_repair() {
 
 #[test]
 fn sequence_encoding_rejects_noncanonical_and_out_of_sqlite_range() {
-    let directory = tempfile::tempdir().expect("tempdir");
+    let directory = store_directory();
     let store = Store::open(directory.path().join("state.sqlite")).expect("open");
     for sequence in ["0", "01", "-1", "18446744073709551615"] {
         let mut identity = source(1);
@@ -256,7 +267,7 @@ fn sequence_encoding_rejects_noncanonical_and_out_of_sqlite_range() {
 
 #[test]
 fn failed_sql_insert_never_publishes_an_in_memory_projection() {
-    let directory = tempfile::tempdir().expect("tempdir");
+    let directory = store_directory();
     let path = directory.path().join("state.sqlite");
     let store = Store::open(&path).expect("open");
     let fault = rusqlite::Connection::open(&path).expect("fault injection connection");
@@ -285,7 +296,7 @@ fn failed_sql_insert_never_publishes_an_in_memory_projection() {
 
 #[test]
 fn atomic_event_batches_reject_old_generations_and_preserve_pagination() {
-    let directory = tempfile::tempdir().expect("tempdir");
+    let directory = store_directory();
     let store = Store::open(directory.path().join("state.sqlite")).expect("open");
     let initial = store.snapshot().expect("initial snapshot").cursor;
     store
@@ -323,7 +334,7 @@ fn atomic_event_batches_reject_old_generations_and_preserve_pagination() {
 
 #[test]
 fn live_event_reads_refuse_tampered_payloads() {
-    let directory = tempfile::tempdir().expect("tempdir");
+    let directory = store_directory();
     let path = directory.path().join("state.sqlite");
     let store = Store::open(&path).expect("open");
     store
@@ -360,7 +371,7 @@ fn live_event_reads_refuse_tampered_payloads() {
 #[test]
 fn database_backup_and_sidecars_are_private_and_symlinks_refused() {
     use std::os::unix::fs::{PermissionsExt, symlink};
-    let directory = tempfile::tempdir().expect("tempdir");
+    let directory = store_directory();
     let path = directory.path().join("private/state.sqlite");
     let store = Store::open(&path).expect("new private directory");
     store

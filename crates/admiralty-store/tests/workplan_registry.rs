@@ -8,6 +8,16 @@ use std::{
     thread,
 };
 
+fn private_root() -> tempfile::TempDir {
+    let mut builder = tempfile::Builder::new();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        builder.permissions(std::fs::Permissions::from_mode(0o700));
+    }
+    builder.tempdir().expect("private root")
+}
+
 fn task(title: &str) -> TaskContract {
     serde_json::from_value(serde_json::json!({
         "schema_version":1,"project_id":"project","root_id":"root","task_id":"task",
@@ -57,7 +67,7 @@ fn submit(
 
 #[test]
 fn writer_registry_survives_backup_reopen_and_old_retry_without_events_or_wakes() {
-    let root = tempfile::tempdir().expect("private root");
+    let root = private_root();
     let database = root.path().join("work.sqlite");
     let backup = root.path().join("backup.sqlite");
     let store = Store::open(&database).expect("store");
@@ -107,7 +117,7 @@ fn writer_registry_survives_backup_reopen_and_old_retry_without_events_or_wakes(
 
 #[test]
 fn domain_and_registry_cannot_rebind_task_identity_in_either_order() {
-    let root = tempfile::tempdir().expect("root");
+    let root = private_root();
     let store = Store::open(root.path().join("registry-first.sqlite")).expect("store");
     store
         .register_workplan(request(1, "Original"))
@@ -141,7 +151,7 @@ fn domain_and_registry_cannot_rebind_task_identity_in_either_order() {
 
 #[test]
 fn cloned_writers_serialize_competing_revision_commands_and_preserve_winner() {
-    let root = tempfile::tempdir().expect("root");
+    let root = private_root();
     let store = Store::open(root.path().join("work.sqlite")).expect("store");
     store
         .register_workplan(request(1, "Original"))
@@ -178,7 +188,7 @@ fn cloned_writers_serialize_competing_revision_commands_and_preserve_winner() {
 
 #[test]
 fn rebuild_rejects_registry_tampering_before_changing_cursor_or_projection() {
-    let root = tempfile::tempdir().expect("root");
+    let root = private_root();
     let database = root.path().join("work.sqlite");
     let store = Store::open(&database).expect("store");
     store

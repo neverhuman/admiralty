@@ -16,6 +16,17 @@ use tower::ServiceExt;
 
 const TOKEN: &str = "fixture-authentication-value-at-least-32-characters";
 
+fn store_directory() -> TempDir {
+    let mut builder = tempfile::Builder::new();
+    builder.prefix("admiralty-api-stream-");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        builder.permissions(std::fs::Permissions::from_mode(0o700));
+    }
+    builder.tempdir().expect("private API fixture directory")
+}
+
 struct HttpFixture {
     app: Router,
     store: Store,
@@ -36,7 +47,7 @@ fn config(simulated: bool, assets: Option<PathBuf>) -> ServerConfig {
 }
 
 fn fixture(simulated: bool) -> HttpFixture {
-    let directory = tempfile::tempdir().expect("isolated fixture directory");
+    let directory = store_directory();
     let store = Store::open(directory.path().join("fleet.sqlite")).expect("fixture store");
     let app = app(store.clone(), config(simulated, None)).expect("qualified test app");
     HttpFixture {
@@ -142,7 +153,7 @@ async fn demo_response_marks_simulation_unknown_usage_and_unqualified_execution(
 
 #[test]
 fn demo_mode_rejects_a_store_containing_real_task_contracts() {
-    let directory = tempfile::tempdir().expect("fixture directory");
+    let directory = store_directory();
     let store = Store::open(directory.path().join("fleet.sqlite")).expect("fixture store");
     let mut contract = task_fixture("HTTP-REAL-TASK");
     contract.simulated = false;
@@ -356,7 +367,7 @@ async fn queued_append_wakes_a_pending_stream_without_routine_model_turns() {
 
 #[tokio::test]
 async fn cursor_and_stream_sequences_above_javascript_precision_remain_decimal_strings() {
-    let directory = tempfile::tempdir().expect("isolated precision fixture");
+    let directory = store_directory();
     let path = directory.path().join("fleet.sqlite");
     let store = Store::open(&path).expect("fixture store");
     append_task(&store, 1, "HTTP-PRECISION-INITIAL");
@@ -634,7 +645,7 @@ fn app_rejects_remote_binding_and_missing_private_authentication() {
 
 #[tokio::test]
 async fn legacy_bridge_keeps_real_facts_out_of_demo_and_preserves_native_auth() {
-    let directory = tempfile::tempdir().expect("legacy fixture");
+    let directory = store_directory();
     let status = directory.path().join("status.json");
     let index = directory.path().join("index.html");
     std::fs::write(&status, br#"{"generated_utc":"2026-10-18T12:00:00Z","order":["example"],"projects":{"example":{"name":"Example","done":3}},"rollout":{"project":{"id":"build"}}}"#).expect("legacy facts");
@@ -704,7 +715,7 @@ async fn legacy_bridge_keeps_real_facts_out_of_demo_and_preserves_native_auth() 
 
 #[tokio::test]
 async fn model_configuration_requires_auth_and_exact_revision_and_never_exposes_connection_refs() {
-    let directory = tempfile::tempdir().expect("models API fixture");
+    let directory = store_directory();
     let private = directory.path().join("private-models");
     std::fs::create_dir(&private).expect("private model root");
     #[cfg(unix)]
