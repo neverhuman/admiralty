@@ -11,6 +11,7 @@ admiralty-core.workspace = true
 admiralty-store.workspace = true
 admiralty-runtime.workspace = true
 rusqlite.workspace = true
+serde_json.workspace = true
 sha2.workspace = true
 
 [[test]]
