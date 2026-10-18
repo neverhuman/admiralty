@@ -1,6 +1,7 @@
 use admiralty_core::{DomainEvent, SourceIdentity};
 use admiralty_runtime::recovery::{Compatibility, plan_recovery};
 use admiralty_store::Store;
+use admiralty_testkit::clock::{ClockError, FakeClock};
 use admiralty_testkit::task_fixture;
 
 #[path = "support/recovery.rs"]
@@ -82,4 +83,19 @@ fn tampered_backup_manifest_digest_blocks_upgrade_continuity() {
     assert!(!proposal.resume_proposed);
     assert!(!proposal.restore_authorized());
     assert!(!proposal.effects_authorized());
+}
+
+#[test]
+fn backward_clock_skew_keeps_upgrade_clock_state_unchanged() {
+    let mut clock = FakeClock::new(50);
+
+    assert_eq!(
+        clock.advance_to_ms(49),
+        Err(ClockError::Backwards {
+            now_ms: 50,
+            target_ms: 49,
+        })
+    );
+    assert_eq!(clock.now_ms(), 50);
+    assert_eq!(clock.advance_ms(1), Ok(51));
 }
