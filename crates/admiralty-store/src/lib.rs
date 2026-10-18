@@ -1,6 +1,8 @@
 //! Single-owner durable event store. Replay only applies the pure domain reducer.
 pub mod artifacts;
+pub mod custody;
 pub mod outbox;
+pub mod questions;
 use admiralty_core::{DomainEvent, Projection, SourceIdentity, TransitionError, reduce};
 use fs2::FileExt;
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
@@ -237,8 +239,8 @@ impl Store {
         })?;
         if source.producer_id.len() > 256
             || source.incarnation.len() > 256
-            || source.producer_id.contains('\0')
-            || source.incarnation.contains('\0')
+            || source.producer_id.chars().any(char::is_control)
+            || source.incarnation.chars().any(char::is_control)
             || observed_utc.is_empty()
             || observed_utc.len() > 128
             || observed_utc.chars().any(char::is_control)
@@ -392,44 +394,37 @@ fn digest(payload: &str) -> String {
     format!("sha256:{:x}", Sha256::digest(payload.as_bytes()))
 }
 
-struct BoundedJsonWriter {
-    bytes: Vec<u8>,
-    maximum: usize,
-    overflowed: bool,
-}
-
-impl std::io::Write for BoundedJsonWriter {
-    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-        if self
-            .bytes
-            .len()
-            .checked_add(bytes.len())
-            .is_none_or(|size| size > self.maximum)
-        {
-            self.overflowed = true;
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::WriteZero,
-                "JSON byte limit exceeded",
-            ));
-        }
-        self.bytes.extend_from_slice(bytes);
-        Ok(bytes.len())
-    }
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
-}
-
 fn bounded_json(value: &impl serde::Serialize, maximum: usize) -> std::result::Result<String, ()> {
-    let mut writer = BoundedJsonWriter {
-        bytes: Vec::with_capacity(maximum.min(4096)),
-        maximum,
-        overflowed: false,
-    };
-    if serde_json::to_writer(&mut writer, value).is_err() || writer.overflowed {
-        return Err(());
+    admiralty_core::limits::bounded_json_size(value, maximum).map_err(|_| ())?;
+    serde_json::to_string(value).map_err(|_| ())
+}
+
+/// Inspect SQLite's borrowed bytes before allocating any owned string.
+pub(crate) fn stored_text(
+    row: &rusqlite::Row<'_>,
+    index: usize,
+    maximum: usize,
+) -> rusqlite::Result<String> {
+    match row.get_ref(index)? {
+        rusqlite::types::ValueRef::Text(bytes) if bytes.len() <= maximum => {
+            std::str::from_utf8(bytes)
+                .map(str::to_owned)
+                .map_err(|error| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        index,
+                        rusqlite::types::Type::Text,
+                        Box::new(error),
+                    )
+                })
+        }
+        value => Err(rusqlite::Error::FromSqlConversionFailure(
+            index,
+            value.data_type(),
+            Box::new(std::io::Error::other(
+                "stored text is invalid or exceeds its byte budget",
+            )),
+        )),
     }
-    String::from_utf8(writer.bytes).map_err(|_| ())
 }
 
 fn identity_digest(event_digest: &str, observed_utc: &str, intent_digest: Option<&str>) -> String {
@@ -471,10 +466,7 @@ fn record_source_collision(
     Ok(())
 }
 
-fn associated_intent(
-    tx: &Transaction<'_>,
-    event_seq: i64,
-) -> Result<Option<outbox::PreparedIntent>> {
+fn associated_intent(tx: &Connection, event_seq: i64) -> Result<Option<outbox::PreparedIntent>> {
     struct AssociationRow {
         association_id: i64,
         association_key: String,
@@ -488,13 +480,13 @@ fn associated_intent(
         due: i64,
     }
     let row = tx.query_row(
-        "SELECT a.outbox_intent_id,a.idempotency_key,a.payload_digest,a.not_before,a.intent_digest,o.id,o.idempotency_key,o.payload,o.payload_digest,o.not_before FROM event_outbox_associations a JOIN outbox_intents o ON o.id=a.outbox_intent_id WHERE a.event_seq=?1",
+        "SELECT a.outbox_intent_id,a.idempotency_key,a.payload_digest,a.not_before,a.intent_digest,o.id,o.idempotency_key,o.payload,o.payload_digest,o.not_before FROM event_outbox_associations a LEFT JOIN outbox_intents o ON o.id=a.outbox_intent_id WHERE a.event_seq=?1",
         [event_seq],
         |row| Ok(AssociationRow {
-            association_id: row.get(0)?, association_key: row.get(1)?,
-            association_payload_digest: row.get(2)?, association_due: row.get(3)?,
-            association_intent_digest: row.get(4)?, intent_id: row.get(5)?,
-            key: row.get(6)?, payload: row.get(7)?, payload_digest: row.get(8)?, due: row.get(9)?,
+            association_id: row.get(0)?, association_key: stored_text(row,1,256)?,
+            association_payload_digest: stored_text(row,2,71)?, association_due: row.get(3)?,
+            association_intent_digest: stored_text(row,4,71)?, intent_id: row.get(5)?,
+            key: stored_text(row,6,256)?, payload: stored_text(row,7,outbox::MAX_PAYLOAD_BYTES)?, payload_digest: stored_text(row,8,71)?, due: row.get(9)?,
         }),
     ).optional()?;
     let Some(row) = row else {
@@ -508,6 +500,9 @@ fn associated_intent(
         || row.association_due != row.due
         || row.payload_digest != calculated_payload_digest
         || row.association_intent_digest != calculated_intent_digest
+        || row.due < 0
+        || row.key.is_empty()
+        || row.key.chars().any(char::is_control)
     {
         return Err(StoreError::Replay {
             sequence: event_seq.to_string(),
@@ -521,6 +516,115 @@ fn associated_intent(
         intent_digest: row.association_intent_digest,
         not_before: row.due,
     }))
+}
+
+fn request_digest(
+    source: &SourceIdentity,
+    event_digest: &str,
+    observed: &str,
+    intent: Option<&str>,
+) -> String {
+    let mut hash = Sha256::new();
+    for field in [
+        &source.producer_id,
+        &source.incarnation,
+        &source.sequence,
+        event_digest,
+        observed,
+        intent.unwrap_or("plain-event"),
+    ] {
+        hash.update(field.as_bytes());
+        hash.update([0]);
+    }
+    format!("sha256:{:x}", hash.finalize())
+}
+
+struct CheckedEvent {
+    event: DomainEvent,
+    payload: String,
+    digest: String,
+    observed_utc: String,
+    intent: Option<outbox::PreparedIntent>,
+}
+
+fn checked_event(connection: &Connection, sequence: i64) -> Result<CheckedEvent> {
+    let fail = |reason: &str| StoreError::Replay {
+        sequence: sequence.to_string(),
+        reason: reason.into(),
+    };
+    let (producer,incarnation,producer_seq,expected,observed,payload): (String,String,i64,String,String,String) = connection.query_row(
+        "SELECT producer_id,incarnation,producer_seq,digest,observed_utc,payload FROM domain_events WHERE seq=?1",[sequence],
+        |row| Ok((stored_text(row,0,256)?,stored_text(row,1,256)?,row.get(2)?,stored_text(row,3,71)?,stored_text(row,4,128)?,stored_text(row,5,MAX_EVENT_BYTES)?)))?;
+    let source = SourceIdentity {
+        producer_id: producer,
+        incarnation,
+        sequence: producer_seq.to_string(),
+    };
+    if sequence <= 0
+        || source.validate().is_err()
+        || source.producer_id.chars().any(char::is_control)
+        || source.incarnation.chars().any(char::is_control)
+        || observed.is_empty()
+        || observed.chars().any(char::is_control)
+        || digest(&payload) != expected
+    {
+        return Err(fail(
+            "stored event source, timestamp or payload digest mismatch",
+        ));
+    }
+    let event: DomainEvent =
+        serde_json::from_str(&payload).map_err(|error| fail(&error.to_string()))?;
+    if bounded_json(&event, MAX_EVENT_BYTES).map_err(|()| fail("stored event exceeds bound"))?
+        != payload
+    {
+        return Err(fail("stored event is not canonical"));
+    }
+    let intent = associated_intent(connection, sequence)?;
+    let binding: Option<(String, Option<String>)> = connection
+        .query_row(
+            "SELECT request_digest,intent_digest FROM event_request_bindings WHERE event_seq=?1",
+            [sequence],
+            |row| {
+                Ok((
+                    stored_text(row, 0, 71)?,
+                    if matches!(row.get_ref(1)?, rusqlite::types::ValueRef::Null) {
+                        None
+                    } else {
+                        Some(stored_text(row, 1, 71)?)
+                    },
+                ))
+            },
+        )
+        .optional()?;
+    let intent_digest = intent.as_ref().map(|v| v.intent_digest.as_str());
+    match binding {
+        Some((request, bound_intent))
+            if request == request_digest(&source, &expected, &observed, intent_digest)
+                && bound_intent.as_deref() == intent_digest => {}
+        Some(_) => return Err(fail("stored request/intent binding mismatch")),
+        None => {
+            let legacy: String = connection.query_row(
+                "SELECT value FROM metadata WHERE key='atomic_effects_legacy_event_seq'",
+                [],
+                |row| stored_text(row, 0, 20),
+            )?;
+            let watermark = legacy
+                .parse::<i64>()
+                .ok()
+                .filter(|n| *n >= 0 && n.to_string() == legacy)
+                .ok_or_else(|| fail("invalid legacy event watermark"))?;
+            if sequence > watermark {
+                return Err(fail("event request binding missing"));
+            }
+        }
+    }
+    Ok(CheckedEvent {
+        event,
+        payload,
+        digest: expected,
+        observed_utc: observed,
+        intent,
+    })
 }
 
 struct Writer {
@@ -562,7 +666,9 @@ impl Writer {
         // Storage initialization only. Startup/replay never reserves or delivers
         // an outbox intent; explicit trusted-clock helpers remain separate.
         outbox::initialize(&connection)?;
-        connection.execute_batch(include_str!("../migrations/0003_atomic_effects.sql"))?;
+        let migration = Transaction::new_unchecked(&connection, TransactionBehavior::Immediate)?;
+        migration.execute_batch(include_str!("../migrations/0003_atomic_effects.sql"))?;
+        migration.commit()?;
         let generation = connection
             .query_row(
                 "SELECT value FROM metadata WHERE key='recovery_generation'",
@@ -661,11 +767,15 @@ impl Writer {
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let existing: Option<(i64, String, String, String)> = tx.query_row(
-            "SELECT seq,digest,payload,observed_utc FROM domain_events WHERE producer_id=?1 AND incarnation=?2 AND producer_seq=?3",
-            params![source.producer_id, source.incarnation, source_seq], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))).optional()?;
-        if let Some((seq, original_digest, original_payload, original_observed)) = existing {
-            let original_intent = associated_intent(&tx, seq)?;
+        let existing: Option<i64> = tx.query_row(
+            "SELECT seq FROM domain_events WHERE producer_id=?1 AND incarnation=?2 AND producer_seq=?3",
+            params![source.producer_id, source.incarnation, source_seq], |row| row.get(0)).optional()?;
+        if let Some(seq) = existing {
+            let checked = checked_event(&tx, seq)?;
+            let original_digest = checked.digest;
+            let original_payload = checked.payload;
+            let original_observed = checked.observed_utc;
+            let original_intent = checked.intent;
             let intent_matches = match (&original_intent, &intent) {
                 (None, None) => true,
                 (Some(original), Some(incoming)) => {
@@ -677,10 +787,7 @@ impl Writer {
                 }
                 _ => false,
             };
-            if original_digest != incoming_digest
-                || original_payload != payload
-                || original_observed != observed_utc
-                || !intent_matches
+            if original_digest != incoming_digest || original_payload != payload || !intent_matches
             {
                 let original_identity = identity_digest(
                     &original_digest,
@@ -736,6 +843,8 @@ impl Writer {
             tx.execute("INSERT INTO event_outbox_associations(event_seq,outbox_intent_id,idempotency_key,payload_digest,not_before,intent_digest) VALUES(?1,?2,?3,?4,?5,?6)",
                 params![seq, intent_id, intent.idempotency_key, intent.payload_digest, intent.not_before, intent.intent_digest])?;
         }
+        tx.execute("INSERT INTO event_request_bindings(event_seq,request_digest,intent_digest) VALUES(?1,?2,?3)",
+            params![seq, request_digest(&source,&incoming_digest,&observed_utc,intent.as_ref().map(|v|v.intent_digest.as_str())),intent.as_ref().map(|v|v.intent_digest.as_str())])?;
         let mut contiguous: i64 = tx.query_row("SELECT contiguous_seq FROM producer_watermarks WHERE producer_id=?1 AND incarnation=?2",
             params![source.producer_id, source.incarnation], |row| row.get(0)).optional()?.unwrap_or(0);
         while let Some(next) = contiguous.checked_add(1) {
@@ -781,25 +890,18 @@ impl Writer {
     }
 
     fn events_after(&self, seq: i64, limit: usize) -> Result<Vec<EventRecord>> {
-        let mut query = self.connection.prepare(
-            "SELECT seq,observed_utc,payload,digest FROM domain_events WHERE seq>?1 ORDER BY seq LIMIT ?2",
-        )?;
+        let mut query = self
+            .connection
+            .prepare("SELECT seq FROM domain_events WHERE seq>?1 ORDER BY seq LIMIT ?2")?;
         let mut rows = query.query(params![seq, limit as i64])?;
         let mut events = Vec::new();
         while let Some(row) = rows.next()? {
             let seq: i64 = row.get(0)?;
-            let payload: String = row.get(2)?;
-            let expected: String = row.get(3)?;
-            if payload.len() > MAX_EVENT_BYTES || digest(&payload) != expected {
-                return Err(StoreError::Replay {
-                    sequence: seq.to_string(),
-                    reason: "stored event size/digest mismatch".into(),
-                });
-            }
+            let checked = checked_event(&self.connection, seq)?;
             events.push(EventRecord {
                 seq: seq.to_string(),
-                observed_utc: row.get(1)?,
-                event: serde_json::from_str(&payload)?,
+                observed_utc: checked.observed_utc,
+                event: checked.event,
             });
         }
         Ok(events)
@@ -891,26 +993,31 @@ impl Writer {
 }
 
 fn replay(connection: &Connection) -> Result<Projection> {
+    if connection.is_autocommit() {
+        let tx = Transaction::new_unchecked(connection, TransactionBehavior::Deferred)?;
+        let projection = replay_inner(&tx)?;
+        tx.commit()?;
+        Ok(projection)
+    } else {
+        replay_inner(connection)
+    }
+}
+
+fn replay_inner(connection: &Connection) -> Result<Projection> {
+    let orphaned: bool = connection.query_row("SELECT EXISTS(SELECT 1 FROM event_outbox_associations a LEFT JOIN domain_events d ON d.seq=a.event_seq LEFT JOIN outbox_intents o ON o.id=a.outbox_intent_id WHERE d.seq IS NULL OR o.id IS NULL) OR EXISTS(SELECT 1 FROM event_request_bindings b LEFT JOIN domain_events d ON d.seq=b.event_seq WHERE d.seq IS NULL)",[],|row|row.get(0))?;
+    if orphaned {
+        return Err(StoreError::Replay {
+            sequence: "0".into(),
+            reason: "orphaned event/effect binding".into(),
+        });
+    }
     let mut projection = Projection::default();
-    let mut statement =
-        connection.prepare("SELECT seq,digest,payload FROM domain_events ORDER BY seq")?;
+    let mut statement = connection.prepare("SELECT seq FROM domain_events ORDER BY seq")?;
     let mut rows = statement.query([])?;
     while let Some(row) = rows.next()? {
         let seq: i64 = row.get(0)?;
-        let expected: String = row.get(1)?;
-        let payload: String = row.get(2)?;
-        if digest(&payload) != expected {
-            return Err(StoreError::Replay {
-                sequence: seq.to_string(),
-                reason: "stored event digest mismatch".into(),
-            });
-        }
-        let event: DomainEvent =
-            serde_json::from_str(&payload).map_err(|error| StoreError::Replay {
-                sequence: seq.to_string(),
-                reason: error.to_string(),
-            })?;
-        projection = reduce(&projection, &event).map_err(|error| StoreError::Replay {
+        let checked = checked_event(connection, seq)?;
+        projection = reduce(&projection, &checked.event).map_err(|error| StoreError::Replay {
             sequence: seq.to_string(),
             reason: error.to_string(),
         })?;
@@ -972,21 +1079,9 @@ mod tests {
     }
 
     fn private_tempdir() -> tempfile::TempDir {
-        let root = std::path::PathBuf::from(
-            std::env::var_os("CARGO_TARGET_DIR")
-                .expect("private CARGO_TARGET_DIR must be configured"),
-        )
-        .join("store-fixtures");
-        std::fs::create_dir_all(&root).expect("create private fixture root");
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700))
-                .expect("restrict fixture root permissions");
-        }
         let directory = tempfile::Builder::new()
             .prefix("adm-store-")
-            .tempdir_in(root)
+            .tempdir()
             .expect("private fixture directory");
         #[cfg(unix)]
         {
@@ -1205,11 +1300,10 @@ mod tests {
             "changed event bytes collide even when the effect is unchanged"
         );
         assert!(
-            matches!(
-                store.append_with_intent(source("1"), event, "time-b".into(), original),
-                Err(super::StoreError::SourceCollision { .. })
-            ),
-            "event observation time is part of exact replay"
+            store
+                .append_with_intent(source("1"), event, "time-b".into(), original)
+                .expect("fresh receive time does not change the original admission")
+                .duplicate
         );
         assert_eq!(counts(&path), (1, 1, 1));
         let incidents: i64 = Connection::open(&path)
@@ -1218,7 +1312,7 @@ mod tests {
                 row.get(0)
             })
             .expect("incident count");
-        assert_eq!(incidents, 6);
+        assert_eq!(incidents, 5);
     }
 
     #[test]
@@ -1395,5 +1489,287 @@ mod tests {
             "u64 source sequences outside SQLite's signed range are rejected"
         );
         assert_eq!(counts(&path), (0, 0, 0));
+    }
+
+    #[test]
+    fn restart_and_cursor_reads_reject_source_or_effect_binding_tampering() {
+        for mutation in [
+            "DROP TRIGGER event_immutable_update; UPDATE domain_events SET observed_utc='changed'",
+            "DROP TRIGGER event_immutable_update; UPDATE domain_events SET producer_id='other-producer'",
+            "DROP TRIGGER event_immutable_update; UPDATE domain_events SET producer_seq=2",
+            "DROP TRIGGER event_request_binding_immutable_delete; DELETE FROM event_request_bindings",
+            "DROP TRIGGER event_outbox_association_immutable_delete; DELETE FROM event_outbox_associations",
+            "DROP TRIGGER event_outbox_association_immutable_update; UPDATE event_outbox_associations SET not_before=99",
+        ] {
+            let directory = private_tempdir();
+            let path = directory.path().join("tampered.sqlite");
+            let store = Store::open(&path).expect("owned store");
+            store
+                .append_with_intent(
+                    source("1"),
+                    submitted("protected"),
+                    "recorded".into(),
+                    intent("effect", json!({"x":1}), 3),
+                )
+                .expect("atomic append");
+            let observer = Connection::open(&path).expect("own fault connection");
+            assert!(
+                observer
+                    .execute("UPDATE domain_events SET observed_utc='forged'", [])
+                    .is_err(),
+                "normal updates are immutable"
+            );
+            observer
+                .execute_batch(mutation)
+                .expect("explicit offline fault injection");
+            assert!(
+                store.events_after(0, 1).is_err(),
+                "cursor read must validate source and effect bindings: {mutation}"
+            );
+            drop(observer);
+            drop(store);
+            assert!(
+                Store::open(&path).is_err(),
+                "startup must reject tampered evidence: {mutation}"
+            );
+        }
+    }
+
+    #[test]
+    fn request_binding_insert_failure_rolls_back_every_half_and_watch() {
+        let directory = private_tempdir();
+        let path = directory.path().join("fault.sqlite");
+        let store = Store::open(&path).expect("owned store");
+        let before = store.snapshot().expect("before");
+        let changes = store.subscribe_changes();
+        let fixture = Connection::open(&path).expect("own fault connection");
+        fixture.execute_batch("CREATE TRIGGER reject_request_binding BEFORE INSERT ON event_request_bindings BEGIN SELECT RAISE(ABORT,'binding failure'); END").expect("install own fault");
+        assert!(
+            store
+                .append_with_intent(
+                    source("1"),
+                    submitted("rollback"),
+                    "recorded".into(),
+                    intent("effect", json!({"x":1}), 3)
+                )
+                .is_err()
+        );
+        assert_eq!(counts(&path), (0, 0, 0));
+        assert_eq!(store.snapshot().expect("after rollback"), before);
+        assert!(!changes.has_changed().expect("watch remains open"));
+        let watermarks: i64 = fixture
+            .query_row("SELECT count(*) FROM producer_watermarks", [], |row| {
+                row.get(0)
+            })
+            .expect("watermark count");
+        assert_eq!(watermarks, 0);
+        fixture
+            .execute_batch("DROP TRIGGER reject_request_binding")
+            .expect("remove own fault");
+        let receipt = store
+            .append_with_intent(
+                source("1"),
+                submitted("rollback"),
+                "recorded".into(),
+                intent("effect", json!({"x":1}), 3),
+            )
+            .expect("same identity can commit after rollback");
+        assert_eq!(receipt.event_seq, "1");
+        assert_eq!(receipt.source_contiguous_seq, "1");
+    }
+
+    #[test]
+    fn competing_atomic_appends_commit_only_one_event_for_one_effect() {
+        let directory = private_tempdir();
+        let path = directory.path().join("race.sqlite");
+        let store = Store::open(&path).expect("owned store");
+        let start = std::sync::Barrier::new(2);
+        let results = std::thread::scope(|scope| {
+            let mut workers = Vec::new();
+            for name in ["worker-a", "worker-b"] {
+                let owned = store.clone();
+                let start = &start;
+                workers.push(scope.spawn(move || {
+                    start.wait();
+                    let mut identity = source("1");
+                    identity.producer_id = name.into();
+                    owned.append_with_intent(
+                        identity,
+                        submitted(name),
+                        "recorded".into(),
+                        intent("shared-effect", json!({"x":1}), 3),
+                    )
+                }));
+            }
+            workers
+                .into_iter()
+                .map(|worker| worker.join().expect("owned thread finishes"))
+                .collect::<Vec<_>>()
+        });
+        assert_eq!(results.iter().filter(|result| result.is_ok()).count(), 1);
+        assert_eq!(
+            results
+                .iter()
+                .filter(|result| matches!(
+                    result,
+                    Err(super::StoreError::Outbox(
+                        outbox::OutboxError::IdentityCollision
+                    ))
+                ))
+                .count(),
+            1
+        );
+        assert_eq!(counts(&path), (1, 1, 1));
+        let snapshot = store.snapshot().expect("committed snapshot");
+        assert_eq!(snapshot.projection.tasks.len(), 1);
+        drop(store);
+        assert_eq!(
+            Store::open(&path)
+                .expect("reopen")
+                .snapshot()
+                .expect("snapshot")
+                .projection,
+            snapshot.projection
+        );
+    }
+
+    #[test]
+    fn legacy_events_have_an_explicit_upgrade_boundary_and_new_events_require_bindings() {
+        let directory = private_tempdir();
+        let path = directory.path().join("legacy.sqlite");
+        let connection = Connection::open(&path).expect("owned legacy fixture");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
+                .expect("private legacy database");
+        }
+        connection
+            .execute_batch(include_str!("../migrations/0001_foundation.sql"))
+            .expect("legacy schema");
+        let payload = serde_json::to_string(&submitted("legacy")).expect("legacy event");
+        connection.execute("INSERT INTO domain_events(producer_id,incarnation,producer_seq,digest,observed_utc,payload) VALUES('test-producer','incarnation-a',1,?1,'legacy-time',?2)",rusqlite::params![super::digest(&payload),payload]).expect("legacy append");
+        connection
+            .execute(
+                "INSERT INTO producer_watermarks VALUES('test-producer','incarnation-a',1)",
+                [],
+            )
+            .expect("legacy watermark");
+        drop(connection);
+        let store = Store::open(&path).expect("upgrade original store");
+        store
+            .append(source("1"), submitted("legacy"), "legacy-time".into())
+            .expect("legacy exact retry");
+        store
+            .append(source("2"), submitted("new"), "new-time".into())
+            .expect("new bounded append");
+        drop(store);
+        let connection = Connection::open(&path).expect("inspect own upgrade");
+        let boundary: String = connection
+            .query_row(
+                "SELECT value FROM metadata WHERE key='atomic_effects_legacy_event_seq'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("recorded boundary");
+        assert_eq!(boundary, "1");
+        let count: i64 = connection
+            .query_row("SELECT count(*) FROM event_request_bindings", [], |row| {
+                row.get(0)
+            })
+            .expect("binding count");
+        assert_eq!(count, 1);
+        assert!(
+            connection
+                .execute(
+                    "UPDATE metadata SET value='99' WHERE key='atomic_effects_legacy_event_seq'",
+                    []
+                )
+                .is_err()
+        );
+        connection.execute_batch("DROP TRIGGER event_request_binding_immutable_delete;DELETE FROM event_request_bindings").expect("inject missing new binding");
+        drop(connection);
+        assert!(Store::open(&path).is_err());
+    }
+
+    #[test]
+    fn fresh_receive_timestamps_replay_plain_and_effectful_events_without_rewriting_admission() {
+        let directory = private_tempdir();
+        let path = directory.path().join("receive-retry.sqlite");
+        let store = Store::open(&path).expect("owned store");
+        let plain = submitted("plain-retry");
+        let effectful = submitted("effectful-retry");
+        let effect = intent("retry-effect", json!({"work":"candidate-only"}), 7);
+        let plain_receipt = store
+            .append(source("1"), plain.clone(), "first-plain-receive".into())
+            .expect("first plain admission");
+        let effect_receipt = store
+            .append_with_intent(
+                source("2"),
+                effectful.clone(),
+                "first-effect-receive".into(),
+                effect.clone(),
+            )
+            .expect("first effect admission");
+        let before = store.snapshot().expect("original projection");
+        let changes = store.subscribe_changes();
+        let retried_plain = store
+            .append(source("1"), plain.clone(), "later-plain-receive".into())
+            .expect("exact plain retry with fresh transport observation");
+        let retried_effect = store
+            .append_with_intent(
+                source("2"),
+                effectful.clone(),
+                "later-effect-receive".into(),
+                effect.clone(),
+            )
+            .expect("exact effect retry with fresh transport observation");
+        assert!(retried_plain.duplicate && retried_effect.duplicate);
+        assert_eq!(retried_plain.event_seq, plain_receipt.event_seq);
+        assert_eq!(retried_effect.event_seq, effect_receipt.event_seq);
+        assert_eq!(store.snapshot().expect("after retries"), before);
+        assert_eq!(counts(&path), (2, 1, 1));
+        assert!(
+            !changes
+                .has_changed()
+                .expect("duplicate emits no watch hint")
+        );
+        let observed: Vec<_> = store
+            .events_after(0, 2)
+            .expect("checked original records")
+            .into_iter()
+            .map(|record| record.observed_utc)
+            .collect();
+        assert_eq!(observed, ["first-plain-receive", "first-effect-receive"]);
+        drop(store);
+        let reopened = Store::open(&path)
+            .expect("first-admission request bindings remain valid across reopen");
+        let changes = reopened.subscribe_changes();
+        assert!(
+            reopened
+                .append(source("1"), plain, "after-reopen-plain".into())
+                .expect("plain retry after reopen")
+                .duplicate
+        );
+        assert!(
+            reopened
+                .append_with_intent(source("2"), effectful, "after-reopen-effect".into(), effect)
+                .expect("effect retry after reopen")
+                .duplicate
+        );
+        assert_eq!(reopened.snapshot().expect("after reopened retries"), before);
+        assert!(
+            !changes
+                .has_changed()
+                .expect("reopened duplicate emits no watch hint")
+        );
+        assert_eq!(counts(&path), (2, 1, 1));
+        let observed: Vec<_> = reopened
+            .events_after(0, 2)
+            .expect("stored timestamp and request hash still validate")
+            .into_iter()
+            .map(|record| record.observed_utc)
+            .collect();
+        assert_eq!(observed, ["first-plain-receive", "first-effect-receive"]);
     }
 }

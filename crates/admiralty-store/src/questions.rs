@@ -4,6 +4,7 @@
 //! transaction. Replay trusts only the bounded event journal, never a stored
 //! state blob or the host clock.
 
+use crate::stored_text;
 use admiralty_core::{
     MessageId, PrincipalId, ProjectId, RootId, TaskId,
     coordination::questions::{
@@ -108,6 +109,7 @@ enum PublicStatus<'a> {
 
 #[derive(Serialize)]
 struct EscalationView<'a> {
+    root_id: &'a RootId,
     project_id: &'a ProjectId,
     task_id: &'a TaskId,
     question_id: &'a MessageId,
@@ -123,47 +125,10 @@ struct CommandContent<'a> {
     event: &'a QuestionEvent,
 }
 
-struct BoundedVecWriter {
-    bytes: Vec<u8>,
-    maximum: usize,
-}
-
-impl BoundedVecWriter {
-    fn new(maximum: usize) -> Self {
-        Self {
-            bytes: Vec::with_capacity(maximum.min(4096)),
-            maximum,
-        }
-    }
-}
-
-impl std::io::Write for BoundedVecWriter {
-    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-        let length = self
-            .bytes
-            .len()
-            .checked_add(bytes.len())
-            .filter(|length| *length <= self.maximum)
-            .ok_or_else(|| std::io::Error::other("bounded question serialization exceeded"))?;
-        self.bytes.extend_from_slice(bytes);
-        Ok(length - (self.bytes.len() - bytes.len()))
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
-}
-
 fn bounded_json<T: Serialize>(value: &T, maximum: usize) -> Result<Vec<u8>> {
-    let mut writer = BoundedVecWriter::new(maximum);
-    serde_json::to_writer(&mut writer, value).map_err(|error| {
-        if error.is_io() {
-            QuestionStoreError::EventTooLarge
-        } else {
-            QuestionStoreError::Json(error)
-        }
-    })?;
-    Ok(writer.bytes)
+    admiralty_core::limits::bounded_json_size(value, maximum)
+        .map_err(|_| QuestionStoreError::EventTooLarge)?;
+    Ok(serde_json::to_vec(value)?)
 }
 
 fn digest(bytes: &[u8]) -> String {
@@ -276,8 +241,12 @@ fn projection_bytes(scope: &JournalScope, state: &QuestionState) -> Result<Vec<u
         .map_err(|_| QuestionStoreError::ProjectionTooLarge)
 }
 
-fn escalation_view(proposal: &EscalationProposal) -> EscalationView<'_> {
+fn escalation_view<'a>(
+    scope: &'a JournalScope,
+    proposal: &'a EscalationProposal,
+) -> EscalationView<'a> {
     EscalationView {
+        root_id: &scope.root_id,
         project_id: &proposal.project_id,
         task_id: &proposal.task_id,
         question_id: &proposal.question_id,
@@ -397,7 +366,7 @@ fn read_escalation(
         .query_row(
             "SELECT escalation_ref,substr(CAST(proposal_json AS BLOB),1,?2),length(CAST(proposal_json AS BLOB)),proposal_digest FROM durable_question_escalations WHERE question_id=?1",
             params![question_id, sql_length(MAX_PROJECTION_BYTES + 1)?],
-            |row| Ok((row.get::<_,String>(0)?,row.get::<_,Vec<u8>>(1)?,row.get::<_,i64>(2)?,row.get::<_,String>(3)?)),
+            |row| Ok((stored_text(row,0,71)?,row.get::<_,Vec<u8>>(1)?,row.get::<_,i64>(2)?,stored_text(row,3,71)?)),
         )
         .optional()?;
     row.map(|(reference, bytes, length, digest)| {
@@ -419,6 +388,7 @@ fn reconstruct_inner(
     requested_scope: &JournalScope,
 ) -> Result<Option<DurableQuestion>> {
     validate_scope(requested_scope)?;
+    validate_store_task(connection, requested_scope)?;
     let Some(stored_scope) =
         read_stored_scope(connection, requested_scope.question.question_id.as_str())?
     else {
@@ -433,7 +403,7 @@ fn reconstruct_inner(
             requested_scope.question.question_id.as_str(),
             sql_length(MAX_PROJECTION_BYTES + 1)?
         ],
-        |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?,row.get(5)?)),
+        |row| Ok((row.get(0)?,stored_text(row,1,71)?,stored_text(row,2,20)?,row.get(3)?,row.get(4)?,stored_text(row,5,71)?)),
     )?;
     let count = usize::try_from(metadata.0)
         .map_err(|_| QuestionStoreError::Integrity("negative event count".into()))?;
@@ -450,7 +420,7 @@ fn reconstruct_inner(
     }
     let expected_scope_digest = scope_digest(&stored_scope)?;
     let mut statement = connection.prepare(
-        "SELECT sequence,event_id,substr(CAST(event_json AS BLOB),1,?2),length(CAST(event_json AS BLOB)),event_digest,scope_digest,previous_digest,chain_digest,revision FROM durable_question_events WHERE question_id=?1 ORDER BY sequence",
+        "SELECT sequence,event_id,substr(CAST(event_json AS BLOB),1,?2),length(CAST(event_json AS BLOB)),event_digest,scope_digest,previous_digest,chain_digest,revision FROM durable_question_events WHERE question_id=?1 ORDER BY sequence LIMIT 34",
     )?;
     let mut rows = statement.query(params![
         requested_scope.question.question_id.as_str(),
@@ -470,14 +440,14 @@ fn reconstruct_inner(
             ));
         }
         let stored_sequence: i64 = row.get(0)?;
-        let stored_event_id: String = row.get(1)?;
+        let stored_event_id = stored_text(row, 1, 128)?;
         let event_bytes: Vec<u8> = row.get(2)?;
         let event_length: i64 = row.get(3)?;
-        let stored_event_digest: String = row.get(4)?;
-        let stored_scope_digest: String = row.get(5)?;
-        let stored_previous: String = row.get(6)?;
-        let stored_chain: String = row.get(7)?;
-        let stored_revision: String = row.get(8)?;
+        let stored_event_digest = stored_text(row, 4, 71)?;
+        let stored_scope_digest = stored_text(row, 5, 71)?;
+        let stored_previous = stored_text(row, 6, 71)?;
+        let stored_chain = stored_text(row, 7, 71)?;
+        let stored_revision = stored_text(row, 8, 20)?;
         let event_length =
             usize::try_from(event_length).map_err(|_| QuestionStoreError::Overflow)?;
         if stored_sequence != i64::try_from(sequence).map_err(|_| QuestionStoreError::Overflow)?
@@ -520,7 +490,7 @@ fn reconstruct_inner(
             ));
         }
         if let Some(proposal) = reduction.escalation {
-            let view = escalation_view(&proposal);
+            let view = escalation_view(&stored_scope, &proposal);
             let bytes = bounded_json(&view, MAX_PROJECTION_BYTES)?;
             expected_escalation = Some((
                 digest(&bytes),
@@ -570,6 +540,7 @@ fn reconstruct_inner(
             ));
         }
     };
+    verify_command_receipts(connection, &stored_scope, escalation_ref.as_deref())?;
     Ok(Some(DurableQuestion {
         scope: stored_scope,
         state,
@@ -577,6 +548,88 @@ fn reconstruct_inner(
         head_digest: previous,
         escalation_ref,
     }))
+}
+
+// When sharing a Store database, the authoritative immutable task contract is
+// verified from its event log. A standalone journal has no domain task table.
+fn validate_store_task(connection: &Connection, scope: &JournalScope) -> Result<()> {
+    let has_store: bool = connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='domain_events')",
+        [],
+        |row| row.get(0),
+    )?;
+    if has_store {
+        let projection = super::replay(connection)
+            .map_err(|error| QuestionStoreError::Integrity(error.to_string()))?;
+        let task = projection
+            .tasks
+            .get(&scope.question.task_id)
+            .ok_or(QuestionStoreError::ScopeMismatch)?;
+        if task.contract.project_id != scope.question.project_id
+            || task.contract.root_id != scope.root_id
+            || task.contract.authority_ref != scope.authority_ref
+        {
+            return Err(QuestionStoreError::ScopeMismatch);
+        }
+    }
+    Ok(())
+}
+
+fn verify_command_receipts(
+    connection: &Connection,
+    scope: &JournalScope,
+    escalation: Option<&str>,
+) -> Result<()> {
+    let fail = || {
+        QuestionStoreError::Integrity("command receipt is not bound to its canonical event".into())
+    };
+    let mut statement=connection.prepare("SELECT command_id,command_digest,receipt_json,receipt_digest FROM durable_question_commands WHERE question_id=?1 ORDER BY command_id LIMIT 67")?;
+    let mut rows = statement.query([scope.question.question_id.as_str()])?;
+    let mut commands = std::collections::BTreeSet::new();
+    while let Some(row) = rows.next()? {
+        if commands.len() >= MAX_COMMANDS_PER_QUESTION {
+            return Err(QuestionStoreError::CapacityFull);
+        }
+        let command = stored_text(row, 0, 128)?;
+        let stored_digest = stored_text(row, 1, 71)?;
+        let json = stored_text(row, 2, MAX_PROJECTION_BYTES)?;
+        let receipt_digest = stored_text(row, 3, 71)?;
+        let receipt: QuestionReceipt = serde_json::from_str(&json)?;
+        let sequence = receipt
+            .event_seq
+            .parse::<i64>()
+            .ok()
+            .filter(|value| {
+                *value > 0 && *value <= MAX_HISTORY as i64 && value.to_string() == receipt.event_seq
+            })
+            .ok_or_else(fail)?;
+        let (event_json,original_command,revision):(String,String,String)=connection.query_row("SELECT event_json,command_id,revision FROM durable_question_events WHERE question_id=?1 AND sequence=?2",params![scope.question.question_id.as_str(),sequence],|row|Ok((stored_text(row,0,MAX_QUESTION_EVENT_BYTES)?,stored_text(row,1,128)?,stored_text(row,2,20)?)))?;
+        let event: QuestionEvent = serde_json::from_str(&event_json)?;
+        let expected_escalation = if matches!(event, QuestionEvent::EvaluateDeadline { .. }) {
+            escalation
+        } else {
+            None
+        };
+        if receipt.command_id.as_str() != command
+            || receipt.revision != revision
+            || receipt.duplicate != (original_command != command)
+            || receipt.escalation_ref.as_deref() != expected_escalation
+            || digest(json.as_bytes()) != receipt_digest
+            || bounded_json(&receipt, MAX_PROJECTION_BYTES)? != json.as_bytes()
+            || command_digest(scope, &event)? != stored_digest
+        {
+            return Err(fail());
+        }
+        commands.insert(command);
+    }
+    let mut statement=connection.prepare("SELECT command_id FROM durable_question_events WHERE question_id=?1 ORDER BY sequence LIMIT 34")?;
+    let mut rows = statement.query([scope.question.question_id.as_str()])?;
+    while let Some(row) = rows.next()? {
+        if !commands.contains(&stored_text(row, 0, 128)?) {
+            return Err(fail());
+        }
+    }
+    Ok(())
 }
 
 fn event_digest(bytes: &[u8]) -> String {
@@ -588,7 +641,10 @@ pub fn reconstruct(
     connection: &Connection,
     scope: &JournalScope,
 ) -> Result<Option<DurableQuestion>> {
-    reconstruct_inner(connection, scope)
+    let tx = Transaction::new_unchecked(connection, TransactionBehavior::Deferred)?;
+    let result = reconstruct_inner(&tx, scope)?;
+    tx.commit()?;
+    Ok(result)
 }
 
 fn receipt_json(receipt: &QuestionReceipt) -> Result<(String, String)> {
@@ -606,7 +662,7 @@ fn cached_receipt(
     let row = connection.query_row(
         "SELECT command_digest,substr(CAST(receipt_json AS BLOB),1,?2),length(CAST(receipt_json AS BLOB)),receipt_digest FROM durable_question_commands WHERE command_id=?1",
         params![command_id, sql_length(MAX_PROJECTION_BYTES + 1)?],
-        |row| Ok((row.get::<_,String>(0)?,row.get::<_,Vec<u8>>(1)?,row.get::<_,i64>(2)?,row.get::<_,String>(3)?)),
+        |row| Ok((stored_text(row,0,71)?,row.get::<_,Vec<u8>>(1)?,row.get::<_,i64>(2)?,stored_text(row,3,71)?)),
     ).optional()?;
     let Some((stored_command_digest, receipt_bytes, receipt_len, stored_receipt_digest)) = row
     else {
@@ -658,7 +714,14 @@ pub fn append(
     let event_key = event_id(event).as_str();
     let scope_hash = scope_digest(scope)?;
     let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    if let Some(cached) = cached_receipt(&tx, command_id.as_str(), &command_digest)? {
+    let cached = cached_receipt(&tx, command_id.as_str(), &command_digest)?;
+    let current = reconstruct_inner(&tx, scope)?;
+    if let Some(cached) = cached {
+        if current.is_none() {
+            return Err(QuestionStoreError::Integrity(
+                "cached receipt has no canonical question".into(),
+            ));
+        }
         tx.commit()?;
         return Ok(cached);
     }
@@ -697,7 +760,7 @@ pub fn append(
     let existing_event: Option<(String, i64, String)> = tx.query_row(
         "SELECT event_digest,sequence,revision FROM durable_question_events WHERE question_id=?1 AND event_id=?2",
         params![scope.question.question_id.as_str(), event_key],
-        |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?)),
+        |row| Ok((stored_text(row,0,71)?,row.get(1)?,stored_text(row,2,20)?)),
     ).optional()?;
     if existing_event
         .as_ref()
@@ -706,7 +769,6 @@ pub fn append(
         return Err(QuestionStoreError::IdentityCollision);
     }
 
-    let current = reconstruct_inner(&tx, scope)?;
     let current_state = current.as_ref().map(|value| value.state.clone());
     let reduction = reduce_question(&current_state, event)?;
     let new_revision = reduction.state.revision;
@@ -724,9 +786,13 @@ pub fn append(
                 .to_string(),
             revision,
             duplicate: true,
-            escalation_ref: current
-                .as_ref()
-                .and_then(|value| value.escalation_ref.clone()),
+            escalation_ref: if matches!(event, QuestionEvent::EvaluateDeadline { .. }) {
+                current
+                    .as_ref()
+                    .and_then(|value| value.escalation_ref.clone())
+            } else {
+                None
+            },
         };
         insert_receipt_for_question(&tx, scope, &command_digest, &receipt)?;
         tx.commit()?;
@@ -778,7 +844,7 @@ pub fn append(
     )?;
 
     let escalation_ref = if let Some(proposal) = reduction.escalation.as_ref() {
-        let bytes = bounded_json(&escalation_view(proposal), MAX_PROJECTION_BYTES)?;
+        let bytes = bounded_json(&escalation_view(scope, proposal), MAX_PROJECTION_BYTES)?;
         let proposal_json = String::from_utf8(bytes.clone())
             .map_err(|error| QuestionStoreError::Integrity(error.to_string()))?;
         let proposal_digest = digest(&bytes);
@@ -890,6 +956,12 @@ mod tests {
     }
     fn db() -> (tempfile::TempDir, Connection) {
         let directory = tempdir().expect("fixture temporary directory creates");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(directory.path(), std::fs::Permissions::from_mode(0o700))
+                .expect("private test directory");
+        }
         let connection = Connection::open(directory.path().join("questions.sqlite3"))
             .expect("fixture database opens");
         initialize(&connection).expect("question journal initializes");
@@ -1210,5 +1282,289 @@ mod tests {
             )
             .expect("event count remains readable");
         assert_eq!(after, before, "bounded history is never evicted");
+    }
+
+    #[test]
+    fn forged_canonical_receipts_are_rejected_even_with_recomputed_hashes() {
+        for field in ["revision", "sequence", "duplicate", "escalation"] {
+            let (_directory, mut connection) = db();
+            let scope = scope();
+            let event = open(&scope, "evt-open", None);
+            let mut forged =
+                append(&mut connection, &scope, &msg("cmd-open"), &event).expect("opening");
+            match field {
+                "revision" => forged.revision = "999".into(),
+                "sequence" => forged.event_seq = "2".into(),
+                "duplicate" => forged.duplicate = true,
+                _ => forged.escalation_ref = Some(format!("sha256:{}", "a".repeat(64))),
+            }
+            let (json, hash) = receipt_json(&forged).expect("canonical forged receipt");
+            connection.execute("UPDATE durable_question_commands SET receipt_json=?1,receipt_digest=?2 WHERE command_id='cmd-open'",params![json,hash]).expect("inject own forged receipt");
+            assert!(
+                reconstruct(&connection, &scope).is_err(),
+                "reopen must reject {field} forgery"
+            );
+            assert!(
+                append(&mut connection, &scope, &msg("cmd-open"), &event).is_err(),
+                "cached return must reject {field} forgery"
+            );
+            let count: i64 = connection
+                .query_row("SELECT count(*) FROM durable_question_events", [], |row| {
+                    row.get(0)
+                })
+                .expect("unchanged event count");
+            assert_eq!(count, 1);
+        }
+        let (_directory, mut connection) = db();
+        let scope = scope();
+        let event = open(&scope, "evt-open", None);
+        append(&mut connection, &scope, &msg("cmd-open"), &event).expect("opening");
+        connection
+            .execute("DELETE FROM durable_question_commands", [])
+            .expect("inject missing original receipt");
+        assert!(reconstruct(&connection, &scope).is_err());
+        assert!(
+            append(&mut connection, &scope, &msg("cmd-retry"), &event).is_err(),
+            "missing historical receipts are never silently recreated"
+        );
+    }
+
+    #[test]
+    fn replay_of_opening_after_expiry_does_not_fabricate_an_escalation_receipt() {
+        let (_directory, mut connection) = db();
+        let scope = scope();
+        let opening = open(&scope, "evt-open", Some(100));
+        let original =
+            append(&mut connection, &scope, &msg("cmd-open"), &opening).expect("opening");
+        let expired = append(
+            &mut connection,
+            &scope,
+            &msg("cmd-expire"),
+            &deadline(&scope, "evt-expire", 1, Some(101)),
+        )
+        .expect("recorded expiry");
+        assert!(expired.escalation_ref.is_some());
+        assert_eq!(
+            append(&mut connection, &scope, &msg("cmd-open"), &opening)
+                .expect("original receipt remains exact"),
+            original
+        );
+        let replay = append(&mut connection, &scope, &msg("cmd-open-retry"), &opening)
+            .expect("new command for identical old event");
+        assert!(replay.duplicate);
+        assert_eq!(replay.event_seq, "1");
+        assert_eq!(replay.revision, "1");
+        assert!(replay.escalation_ref.is_none());
+        let replayed = reconstruct(&connection, &scope)
+            .expect("verified history")
+            .expect("question exists");
+        assert_eq!(replayed.event_count, "2");
+        assert_eq!(replayed.escalation_ref, expired.escalation_ref);
+        let count: i64 = connection
+            .query_row(
+                "SELECT count(*) FROM durable_question_escalations",
+                [],
+                |row| row.get(0),
+            )
+            .expect("proposal count");
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn sql_receipt_failure_rolls_back_event_projection_and_escalation_together() {
+        let (_directory, mut connection) = db();
+        let scope = scope();
+        append(
+            &mut connection,
+            &scope,
+            &msg("cmd-open"),
+            &open(&scope, "evt-open", Some(100)),
+        )
+        .expect("opening");
+        let before = reconstruct(&connection, &scope)
+            .expect("before fault")
+            .expect("question");
+        connection.execute_batch("CREATE TRIGGER reject_question_receipt BEFORE INSERT ON durable_question_commands BEGIN SELECT RAISE(ABORT,'receipt fault'); END").expect("own fault trigger");
+        let expiry = deadline(&scope, "evt-expire", 1, Some(101));
+        assert!(append(&mut connection, &scope, &msg("cmd-expire"), &expiry).is_err());
+        assert_eq!(
+            reconstruct(&connection, &scope)
+                .expect("rollback reconstructs")
+                .expect("question"),
+            before
+        );
+        let counts:(i64,i64,i64)=connection.query_row("SELECT (SELECT count(*) FROM durable_question_events),(SELECT count(*) FROM durable_question_commands),(SELECT count(*) FROM durable_question_escalations)",[],|row|Ok((row.get(0)?,row.get(1)?,row.get(2)?))).expect("actual SQLite counts");
+        assert_eq!(counts, (1, 1, 0));
+        connection
+            .execute_batch("DROP TRIGGER reject_question_receipt")
+            .expect("remove own fault");
+        assert!(
+            append(&mut connection, &scope, &msg("cmd-expire"), &expiry)
+                .expect("same command after rollback")
+                .escalation_ref
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn two_connections_serialize_question_revision_cas() {
+        let (directory, mut connection) = db();
+        let scope = scope();
+        append(
+            &mut connection,
+            &scope,
+            &msg("cmd-open"),
+            &open(&scope, "evt-open", None),
+        )
+        .expect("opening");
+        let path = directory.path().join("questions.sqlite3");
+        let start = std::sync::Barrier::new(2);
+        let results = std::thread::scope(|threads| {
+            let mut workers = Vec::new();
+            for (command, event) in [
+                ("cmd-route", route(&scope, "evt-route", 1)),
+                ("cmd-answer", answer(&scope, "evt-answer", 1)),
+            ] {
+                let path = &path;
+                let scope = &scope;
+                let start = &start;
+                workers.push(threads.spawn(move || {
+                    let mut connection = Connection::open(path).expect("own competing connection");
+                    connection
+                        .busy_timeout(std::time::Duration::from_secs(2))
+                        .expect("bounded busy wait");
+                    initialize(&connection).expect("same explicit schema");
+                    start.wait();
+                    append(&mut connection, scope, &msg(command), &event)
+                }));
+            }
+            workers
+                .into_iter()
+                .map(|worker| worker.join().expect("owned test thread finishes"))
+                .collect::<Vec<_>>()
+        });
+        assert_eq!(results.iter().filter(|result| result.is_ok()).count(), 1);
+        assert_eq!(
+            results
+                .iter()
+                .filter(|result| matches!(result, Err(QuestionStoreError::Reducer(_))))
+                .count(),
+            1
+        );
+        let question = reconstruct(&connection, &scope)
+            .expect("canonical race result")
+            .expect("question");
+        assert_eq!(question.event_count, "2");
+        assert_eq!(question.state.revision, 2);
+    }
+
+    #[test]
+    fn journal_in_a_store_database_requires_its_exact_immutable_task_scope() {
+        let directory = tempdir().expect("owned store fixture");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(directory.path(), std::fs::Permissions::from_mode(0o700))
+                .expect("private store fixture");
+        }
+        let path = directory.path().join("store.sqlite");
+        let store = crate::Store::open(&path).expect("real Store");
+        let scope = scope();
+        let contract:admiralty_core::TaskContract=serde_json::from_value(serde_json::json!({
+            "schema_version":1,"project_id":scope.question.project_id,"root_id":scope.root_id,"task_id":scope.question.task_id,"revision":7,"title":"Question scope","objective":"Bind the durable journal to this contract","non_goals":[],"owned_paths":["src/lib.rs"],"forbidden_paths":[],"read_first":[],"dependencies":[],"criteria":[{"id":"c","text":"Scope must match","check_ids":["test"]}],"checks":[{"id":"test","program":"cargo","args":["test"],"cwd":".","timeout_secs":1}],"authority_ref":scope.authority_ref,"max_attempts":1,"simulated":true
+        })).expect("bounded real contract");
+        store
+            .append(
+                admiralty_core::SourceIdentity {
+                    producer_id: "scope-test".into(),
+                    incarnation: "one".into(),
+                    sequence: "1".into(),
+                },
+                admiralty_core::DomainEvent::TaskSubmitted { contract },
+                "recorded".into(),
+            )
+            .expect("actual durable task");
+        drop(store);
+        let mut connection = Connection::open(&path).expect("offline owned writer connection");
+        initialize(&connection).expect("explicit question storage");
+        for mut foreign in [scope.clone(), scope.clone(), scope.clone(), scope.clone()]
+            .into_iter()
+            .enumerate()
+        {
+            match foreign.0 {
+                0 => foreign.1.root_id = RootId::new("foreign-root").expect("valid root"),
+                1 => {
+                    foreign.1.question.project_id =
+                        ProjectId::new("foreign-project").expect("valid project")
+                }
+                2 => foreign.1.question.task_id = TaskId::new("foreign-task").expect("valid task"),
+                _ => foreign.1.authority_ref = "grant:foreign".into(),
+            }
+            assert!(matches!(
+                append(
+                    &mut connection,
+                    &foreign.1,
+                    &msg("cmd-foreign"),
+                    &open(&foreign.1, "evt-foreign", None)
+                ),
+                Err(QuestionStoreError::ScopeMismatch)
+            ));
+        }
+        append(
+            &mut connection,
+            &scope,
+            &msg("cmd-open"),
+            &open(&scope, "evt-open", None),
+        )
+        .expect("exact Store contract scope");
+        assert!(
+            reconstruct(&connection, &scope)
+                .expect("verified task and journal")
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn command_capacity_preserves_original_receipts_without_eviction() {
+        let (_directory, mut connection) = db();
+        let scope = scope();
+        let event = open(&scope, "evt-open", None);
+        let original = append(&mut connection, &scope, &msg("cmd-open"), &event).expect("opening");
+        for index in 1..MAX_COMMANDS_PER_QUESTION {
+            assert!(
+                append(
+                    &mut connection,
+                    &scope,
+                    &msg(&format!("cmd-retry-{index}")),
+                    &event
+                )
+                .expect("bounded duplicate receipt")
+                .duplicate
+            );
+        }
+        assert!(matches!(
+            append(&mut connection, &scope, &msg("cmd-over-capacity"), &event),
+            Err(QuestionStoreError::CapacityFull)
+        ));
+        assert_eq!(
+            append(&mut connection, &scope, &msg("cmd-open"), &event)
+                .expect("exact original retry still works at capacity"),
+            original
+        );
+        let count: i64 = connection
+            .query_row(
+                "SELECT count(*) FROM durable_question_commands",
+                [],
+                |row| row.get(0),
+            )
+            .expect("retained command count");
+        assert_eq!(count, MAX_COMMANDS_PER_QUESTION as i64);
+        assert_eq!(
+            reconstruct(&connection, &scope)
+                .expect("complete retained history")
+                .expect("question")
+                .event_count,
+            "1"
+        );
     }
 }

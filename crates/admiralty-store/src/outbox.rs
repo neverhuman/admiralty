@@ -105,45 +105,7 @@ fn token_integer(value: &str) -> Result<i64> {
 fn logical_now(now: Option<u64>) -> Result<i64> {
     integer(now.ok_or(OutboxError::UnknownClock)?)
 }
-struct CappedWriter {
-    bytes: Vec<u8>,
-    maximum: usize,
-    overflowed: bool,
-}
-
-impl CappedWriter {
-    fn new(maximum: usize) -> Self {
-        Self {
-            bytes: Vec::with_capacity(maximum.min(4096)),
-            maximum,
-            overflowed: false,
-        }
-    }
-}
-
-impl std::io::Write for CappedWriter {
-    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-        if self
-            .bytes
-            .len()
-            .checked_add(bytes.len())
-            .is_none_or(|size| size > self.maximum)
-        {
-            self.overflowed = true;
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::WriteZero,
-                "JSON byte limit exceeded",
-            ));
-        }
-        self.bytes.extend_from_slice(bytes);
-        Ok(bytes.len())
-    }
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
-}
-
-fn canonical_value(value: &Value, writer: &mut CappedWriter) -> Result<()> {
+fn canonical_value(value: &Value, writer: &mut Vec<u8>) -> Result<()> {
     match value {
         Value::Array(values) => {
             writer
@@ -195,7 +157,6 @@ pub(crate) fn prepare_intent(intent: &OutboxIntent) -> Result<PreparedIntent> {
         ));
     }
     let not_before = integer(intent.not_before)?;
-    let mut writer = CappedWriter::new(MAX_PAYLOAD_BYTES);
     // Bound work before serialization, including deep and wide in-memory values.
     let mut pending = vec![(&intent.payload, 0usize)];
     let mut nodes = 0usize;
@@ -234,15 +195,12 @@ pub(crate) fn prepare_intent(intent: &OutboxIntent) -> Result<PreparedIntent> {
             _ => {}
         }
     }
-    canonical_value(&intent.payload, &mut writer).map_err(|error| {
-        if writer.overflowed {
-            OutboxError::Invalid("payload exceeds 16 KiB".into())
-        } else {
-            error
-        }
-    })?;
+    let size = admiralty_core::limits::bounded_json_size(&intent.payload, MAX_PAYLOAD_BYTES)
+        .map_err(|_| OutboxError::Invalid("payload exceeds 16 KiB".into()))?;
+    let mut writer = Vec::with_capacity(size);
+    canonical_value(&intent.payload, &mut writer)?;
     let payload =
-        String::from_utf8(writer.bytes).map_err(|error| OutboxError::Invalid(error.to_string()))?;
+        String::from_utf8(writer).map_err(|error| OutboxError::Invalid(error.to_string()))?;
     let payload_digest = format!("sha256:{:x}", Sha256::digest(payload.as_bytes()));
     let intent_digest = prepared_intent_digest(&intent.idempotency_key, &payload, not_before);
     Ok(PreparedIntent {
@@ -302,7 +260,7 @@ pub(crate) fn enqueue_prepared_in_transaction(
     let existing: Option<(i64, String, String, i64)> = tx.query_row(
         "SELECT id,payload_digest,payload,not_before FROM outbox_intents WHERE idempotency_key=?1",
         [&intent.idempotency_key],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        |row| Ok((row.get(0)?, super::stored_text(row,1,71)?, super::stored_text(row,2,MAX_PAYLOAD_BYTES)?, row.get(3)?)),
     ).optional()?;
     if let Some((id, previous_digest, previous_payload, previous_due)) = existing {
         if previous_digest == intent.payload_digest
@@ -341,7 +299,7 @@ pub fn claim_due(
     tx.execute("UPDATE outbox_intents SET state='unknown',unknown_reason='lease_expired' WHERE state='claimed' AND lease_deadline<=?1", [now])?;
     let next: Option<(i64, String, String, String, i64)> = tx.query_row(
         "SELECT id,idempotency_key,payload_digest,payload,fence FROM outbox_intents WHERE state='pending' AND not_before<=?1 ORDER BY id LIMIT 1", [now],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?))).optional()?;
+        |row| Ok((row.get(0)?, super::stored_text(row,1,256)?, super::stored_text(row,2,71)?, super::stored_text(row,3,MAX_PAYLOAD_BYTES)?, row.get(4)?))).optional()?;
     let Some((id, idempotency_key, payload_digest, payload, previous_fence)) = next else {
         tx.commit()?;
         return Ok(None);
