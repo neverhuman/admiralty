@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use admiralty_core::{
     AcceptanceCriterion, CheckSpec, ProjectId, RootId, TaskContract, TaskId,
     publication::{
