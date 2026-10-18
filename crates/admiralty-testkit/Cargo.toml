@@ -160,6 +160,10 @@ name = "codex_round8_packaging"
 path = "../../tests/integration/codex_round8_packaging.rs"
 
 [[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[[test]]
 name = "codex_p27_round8"
 path = "../../tests/integration/codex_p27_round8.rs"
 
