@@ -12,6 +12,7 @@ use axum::{
 };
 use futures_util::StreamExt;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::net::SocketAddr;
 use tempfile::TempDir;
 use tower::ServiceExt;
@@ -441,6 +442,129 @@ async fn p11_p12_p18_round11_item4_final_validation_gate() {
     foreign.project_id = ProjectId::new("foreign-project").expect("valid foreign project");
     assert!(matches!(
         analyze_conflicts(&[candidates[0].clone(), foreign], "round11-policy"),
+        Err(admiralty_core::conflicts::ConflictError::ScopeMismatch { .. })
+    ));
+}
+
+#[tokio::test]
+async fn p11_p12_p18_round12_item5_redteam_audit_gate() {
+    let receipt_path = std::path::Path::new(
+        "/home/ubuntu/admiralty-v2-build/receipts/RELEASE-QUALIFICATION/ROUND11-accept-p12-p18.json",
+    );
+    let receipt_bytes = std::fs::read(receipt_path).expect("read prior P11/P12/P18 receipt");
+    let receipt: Value = serde_json::from_slice(&receipt_bytes).expect("valid receipt JSON");
+    assert_eq!(
+        receipt["packet_ids"],
+        serde_json::json!(["P11", "P12", "P18"])
+    );
+    assert_eq!(receipt["status"], "passed");
+    assert_eq!(
+        receipt["test"],
+        "p11_p12_p18_round11_item4_final_validation_gate"
+    );
+    assert_eq!(receipt["exit_code"], 0);
+
+    let log_path = receipt["log_path"]
+        .as_str()
+        .expect("receipt has a log path");
+    let expected_log_sha = receipt["log_sha256"]
+        .as_str()
+        .expect("receipt has log SHA-256");
+    assert_eq!(expected_log_sha.len(), 64);
+    assert!(
+        expected_log_sha
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit())
+    );
+    let log = std::fs::read(log_path).expect("read receipt's recorded validation log");
+    let actual_log_sha = format!("{:x}", Sha256::digest(&log));
+    assert_eq!(
+        actual_log_sha, expected_log_sha,
+        "receipt log digest mismatch"
+    );
+    assert!(String::from_utf8_lossy(&log).contains("1 passed; 0 failed"));
+    let mut tampered_log = log.clone();
+    tampered_log.push(b'!');
+    assert_ne!(
+        format!("{:x}", Sha256::digest(&tampered_log)),
+        expected_log_sha,
+        "single-byte log tampering must be detected"
+    );
+
+    let directory = private_directory();
+    let store = Store::open(directory.path().join("round12.sqlite")).expect("fixture store");
+    let mut contract = task_fixture("round12-redteam-task");
+    contract.simulated = false;
+    store
+        .append(
+            SourceIdentity {
+                producer_id: "round12-redteam".into(),
+                incarnation: "boot-1".into(),
+                sequence: "1".into(),
+            },
+            DomainEvent::TaskSubmitted { contract },
+            "2026-10-18T00:00:00Z".into(),
+        )
+        .expect("record private task fixture");
+    let router = app(
+        store,
+        ServerConfig {
+            listen: "127.0.0.1:0"
+                .parse::<SocketAddr>()
+                .expect("loopback address"),
+            simulated: false,
+            token: Some(ROUND11_TOKEN.into()),
+            assets: None,
+            legacy: None,
+            models_file: None,
+        },
+    )
+    .expect("authenticated private API");
+    let denied = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/v1/fleet")
+                .body(Body::empty())
+                .expect("unauthenticated red-team request"),
+        )
+        .await
+        .expect("authorization denial");
+    assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
+    let allowed = router
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/v1/fleet")
+                .header("authorization", format!("Bearer {ROUND11_TOKEN}"))
+                .body(Body::empty())
+                .expect("authenticated read request"),
+        )
+        .await
+        .expect("authorized fleet response");
+    assert_eq!(allowed.status(), StatusCode::OK);
+    let bytes = to_bytes(allowed.into_body(), 1024 * 1024)
+        .await
+        .expect("bounded fleet projection");
+    let fleet: Value = serde_json::from_slice(&bytes).expect("fleet JSON");
+    assert_eq!(fleet["simulated"], false);
+    assert_eq!(fleet["native_execution_qualified"], false);
+    assert_eq!(fleet["cursor"]["event_seq"], "1");
+    assert_eq!(fleet["tasks"][0]["contract"]["simulated"], false);
+    assert_eq!(fleet["projects"][0]["accepted"], 0);
+
+    let repeated = candidate("round12-candidate");
+    let once = analyze_conflicts(std::slice::from_ref(&repeated), "round12-policy")
+        .expect("single candidate audit");
+    let replay = analyze_conflicts(&[repeated.clone(), repeated], "round12-policy")
+        .expect("duplicate replay audit");
+    assert_eq!(once, replay, "duplicate candidate replay is idempotent");
+    assert!(replay.edges.is_empty());
+    let mut foreign = candidate("round12-foreign");
+    foreign.root_id = RootId::new("foreign-root").expect("valid foreign root");
+    assert!(matches!(
+        analyze_conflicts(&[candidate("round12-local"), foreign], "round12-policy"),
         Err(admiralty_core::conflicts::ConflictError::ScopeMismatch { .. })
     ));
 }
