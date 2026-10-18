@@ -1041,7 +1041,7 @@ impl VerifiedUsageClosure {
             UsageDisposition::ConfirmedNoUsage => {
                 if measured_amount.get() != 0
                     || receipt.prior_settled_amount.get() != 0
-                    || reservation.settled.get() != 0
+                    || (reservation.outstanding && reservation.settled.get() != 0)
                 {
                     return Err(ModelSelectionError::Reservation(
                         ReservationError::InvalidSettlement,
@@ -1288,9 +1288,13 @@ fn resolve_settlement_event_for_ledger(
                 ReservationError::EventCollision,
             ));
         }
+        let no_subsequent_revision_after_event =
+            existing.revision == expected_rev.saturating_add(1);
         if existing.revision <= expected_rev
-            || existing.settled.get() < cumulative_amount.get()
-            || (is_terminal && (existing.outstanding || existing.settled != cumulative_amount))
+            || (is_terminal && existing.outstanding)
+            || (existing.outstanding && existing.settled.get() < cumulative_amount.get())
+            || (no_subsequent_revision_after_event
+                && (existing.outstanding == is_terminal || existing.settled != cumulative_amount))
         {
             return Err(ModelSelectionError::Reservation(
                 ReservationError::InvalidSettlement,
@@ -3104,6 +3108,118 @@ mod tests {
             replayed_10000.settlement_audit,
             terminal_10000.settlement_audit
         );
+
+        // Step 4: After an allowed post-terminal CorrectSettlement (10,000 -> 12,000),
+        // exact replay of "evt-terminal-10000" and "evt-interim-5000" succeeds idempotently
+        // while preserving the corrected ledger (12,000) and capacity (in_use == 1).
+        let corrected_12000 = reduce_reservation(
+            &terminal_10000.proposed_ledger,
+            ReservationEvent::CorrectSettlement {
+                event_id: "evt-correct-12000".into(),
+                reservation_id: "res-1".into(),
+                binding: terminal_10000.proposed_ledger.reservations["res-1"].binding(),
+                corrected_total: MinorUnits::new(12_000),
+                evidence_ref: "receipt:late-provider-correction-12000".into(),
+            },
+        )
+        .expect("allowed CorrectSettlement 10,000 -> 12,000");
+        assert_eq!(
+            corrected_12000.reservations["res-1"].settled,
+            MinorUnits::new(12_000)
+        );
+        let replayed_after_upward_correction = settle_model_slot_attempt(
+            &corrected_12000,
+            &terminal_10000.proposed_capacity,
+            &proposal.slot_claim,
+            "res-1",
+            "evt-terminal-10000",
+            &terminal_report,
+            &verifier,
+        )
+        .expect("exact terminal replay after CorrectSettlement 10,000 -> 12,000");
+        assert!(replayed_after_upward_correction.idempotent_replay);
+        assert!(!replayed_after_upward_correction.slot_released);
+        assert_eq!(
+            replayed_after_upward_correction.proposed_ledger,
+            corrected_12000
+        );
+        assert_eq!(
+            replayed_after_upward_correction.proposed_capacity.in_use["ornith"],
+            1
+        );
+        assert_eq!(
+            replayed_after_upward_correction.settlement_audit,
+            terminal_10000.settlement_audit
+        );
+
+        let replayed_interim_after_correction = settle_model_slot_attempt(
+            &corrected_12000,
+            &terminal_10000.proposed_capacity,
+            &proposal.slot_claim,
+            "res-1",
+            "evt-interim-5000",
+            &interim_report,
+            &verifier,
+        )
+        .expect("exact interim replay after CorrectSettlement 10,000 -> 12,000");
+        assert!(replayed_interim_after_correction.idempotent_replay);
+        assert!(!replayed_interim_after_correction.slot_released);
+        assert_eq!(
+            replayed_interim_after_correction.proposed_ledger,
+            corrected_12000
+        );
+
+        // Downward CorrectSettlement (12,000 -> 8,000) also preserves idempotent terminal replay.
+        let corrected_8000 = reduce_reservation(
+            &corrected_12000,
+            ReservationEvent::CorrectSettlement {
+                event_id: "evt-correct-8000".into(),
+                reservation_id: "res-1".into(),
+                binding: corrected_12000.reservations["res-1"].binding(),
+                corrected_total: MinorUnits::new(8_000),
+                evidence_ref: "receipt:late-provider-credit-8000".into(),
+            },
+        )
+        .expect("allowed CorrectSettlement 12,000 -> 8,000");
+        let replayed_after_downward_correction = settle_model_slot_attempt(
+            &corrected_8000,
+            &terminal_10000.proposed_capacity,
+            &proposal.slot_claim,
+            "res-1",
+            "evt-terminal-10000",
+            &terminal_report,
+            &verifier,
+        )
+        .expect("exact terminal replay after CorrectSettlement 12,000 -> 8,000");
+        assert!(replayed_after_downward_correction.idempotent_replay);
+        assert!(!replayed_after_downward_correction.slot_released);
+        assert_eq!(
+            replayed_after_downward_correction.proposed_ledger,
+            corrected_8000
+        );
+
+        // Unrevised inconsistent ledger state (revision == expected_rev + 1 but settled != 10,000)
+        // still fails closed with InvalidSettlement.
+        let mut corrupted_unrevised = terminal_10000.proposed_ledger.clone();
+        corrupted_unrevised
+            .reservations
+            .get_mut("res-1")
+            .expect("res-1")
+            .settled = MinorUnits::new(12_000);
+        let corrupted_err = settle_model_slot_attempt(
+            &corrupted_unrevised,
+            &terminal_10000.proposed_capacity,
+            &proposal.slot_claim,
+            "res-1",
+            "evt-terminal-10000",
+            &terminal_report,
+            &verifier,
+        )
+        .expect_err("unrevised settled mismatch must fail closed");
+        assert!(matches!(
+            corrupted_err,
+            ModelSelectionError::Reservation(ReservationError::InvalidSettlement)
+        ));
     }
 
     #[test]
