@@ -24,7 +24,7 @@ TASK = {'id': 'I01', 'title': 'Bounded fixture',
 def collector_functions():
     source = ast.parse((ROOT / 'dashboard/collector.py').read_text())
     names = {'audit_failure_verdicts', 'joil_validator', 'jope_evidence_bytes',
-             'jope_receipt_proof', 'jope_receipts', 'collect_jopedime', 'compute_stages', 'bucket'}
+             'jope_receipt_proof', 'jope_receipts', 'collect_jopedime_legacy', 'compute_stages', 'bucket'}
     nodes = [node for node in source.body if isinstance(node, ast.FunctionDef) and node.name in names]
     namespace = dict(collections=collections, datetime=datetime, glob=glob, hashlib=hashlib,
                      json=json, os=os, re=re, stat=stat,
@@ -87,7 +87,7 @@ class StageEvidenceTests(unittest.TestCase):
                 'programme_progress': {'verified_task_ids': ['I01']},
                 'receiving_main': {'sha': MAIN}}
         (self.root / 'LIVE_STATUS.json').write_text(json.dumps(live))
-        project = self.ns['collect_jopedime']({}, False)
+        project = self.ns['collect_jopedime_legacy']({}, False)
         self.assertNotIn('error', project)
         self.assertEqual(project['done'], 0)
         self.assertEqual(project['receipts']['unsupported_verified_claims'], ['I01'])
