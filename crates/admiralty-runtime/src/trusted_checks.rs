@@ -54,6 +54,7 @@ pub enum TrustedCheckError {
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct ExecutedChecks {
     receipt: VerificationReceipt,
+    receipt_digest: String,
     execution_digest: String,
 }
 
@@ -62,6 +63,13 @@ impl ExecutedChecks {
         &self.receipt
     }
 
+    /// Canonical digest of the validated check receipt for lifecycle evidence.
+    /// It does not establish custody or supervised process closure.
+    pub fn receipt_digest(&self) -> &str {
+        &self.receipt_digest
+    }
+
+    /// Binds this run's checked source and receipt; it is not a closure digest.
     pub fn execution_digest(&self) -> &str {
         &self.execution_digest
     }
@@ -170,6 +178,7 @@ pub fn execute_checks(
         .map_err(|error| TrustedCheckError::Evidence(error.to_string()))?;
     Ok(ExecutedChecks {
         receipt,
+        receipt_digest: validated.receipt_digest().to_owned(),
         execution_digest,
     })
 }
@@ -807,6 +816,12 @@ mod tests {
         )
         .expect("real checks pass with exact expected exits");
         assert_eq!(evidence.receipt().inputs, inputs);
+        assert_eq!(
+            evidence.receipt_digest(),
+            content_digest(evidence.receipt())
+                .expect("receipt digest")
+                .as_str()
+        );
         assert_eq!(evidence.receipt().checks.len(), 1);
         assert_eq!(evidence.receipt().negative_checks[0].exit_code, Some(128));
         assert!(!evidence.execution_digest().is_empty());
