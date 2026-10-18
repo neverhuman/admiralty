@@ -39,6 +39,10 @@ name = "codex_round8_p08_worktree_isolation"
 path = "../../tests/integration/codex_round8_p08_worktree_isolation.rs"
 
 [[test]]
+name = "codex_round8_qualification"
+path = "../../tests/integration/codex_round8_qualification.rs"
+
+[[test]]
 name = "context_fidelity"
 path = "../../tests/integration/context_fidelity.rs"
 
