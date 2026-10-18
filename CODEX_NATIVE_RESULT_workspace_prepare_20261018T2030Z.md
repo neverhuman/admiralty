@@ -1,0 +1,11 @@
+# Native result: workspace preparation
+
+- Branch: `codex/native-workspace-prepare`
+- Base: `origin/main` at `104701a22437bef4152064ff652b38eb5c6b250f`
+- Scope: new `crates/admiralty-runtime/src/workspace/preparation.rs` and its in-file tests.
+- Implementation: creates a new private destination under a pre-existing caller-owned mode-0700 managed parent; accepts only a clean canonical self-contained local Git worktree and a full commit object ID; uses an allowlisted system Git binary, a cleared/sanitized environment, local no-hardlinks/no-checkout clone, disabled hooks, no recursive submodules, detached exact checkout, and post-check validation of HEAD/tree, status, metadata and caller scope. The result is opaque and non-Deserialize; custody remains `RegisteredOnly`.
+- Safety behavior: no force/reset/clean/overwrite/delete; an existing destination is refused, and a partial destination from a failed operation is preserved for inspection. Source and destination must be disjoint.
+- Tests: 14 focused tests passed, including the 5 preparation tests and 9 registry tests. Strict Clippy passed with `-D warnings`.
+- Test method: a temporary harness under the lane's ignored `target/` imported the new file and existing registry directly. This was necessary because the centralized `workspace/mod.rs` still exports only `registry`; the task reserved module registration to the primary integrator. Private lane `target/` and `/home/ubuntu/.adm-native-workspace-prepare-tmp` were used, with 2 build jobs and CPU affinity 32–33.
+- Limits / integration required: this branch does not modify `workspace/mod.rs` or manifests. The primary integrator must add `pub mod preparation;`, then run the normal `admiralty-runtime` package tests and clippy on the integrated tree. This work prepares custody evidence only; it does not grant execution or sandbox qualification.
+- Initial verification findings fixed: the isolated harness initially used an invalid relative module path; the corrected harness then exposed group-writable Git metadata inherited from the host umask. Newly created clone metadata is now made private before checkout, and unsafe source metadata is rejected. Final focused test and clippy runs pass.
