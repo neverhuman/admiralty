@@ -6,3 +6,4 @@ mod codex_round15_p11_p12_p18;
 mod codex_round15_p06_p13_p14;
 mod codex_round15_p19;
 mod codex_round15_p20;
+pub mod codex_round15_p23;
