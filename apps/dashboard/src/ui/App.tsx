@@ -34,7 +34,7 @@ function App() {
   const totals = useMemo(() => fleet ? fleetTotals(fleet) : null, [fleet]);
   const visibleTasks = fleet?.tasks.filter(({ contract }) => `${contract.title} ${contract.objective} ${contract.project_id}`.toLowerCase().includes(filter.toLowerCase())) ?? [];
 
-  return <div className={`app theme-${theme}`}>
+  return <div className={`app theme-${theme} ${legacyView ? 'fleet-console' : ''}`}>
     <aside className="sidebar">
       <a className="brand" href="#overview" aria-label="Admiralty home" onClick={() => setView('Legacy detailed view')}>
         <img className="brand-mark" src="/brand/admiralty-source.png" alt="" /><span><strong>ADMIRALTY</strong><small>FLEET CONTROL</small></span>
@@ -63,7 +63,7 @@ function App() {
       </header>
 
       <div className={`content ${legacyView ? 'legacy-content' : ''}`}>
-        <section className="page-heading"><div><div className="eyebrow">ADMIRALTY / {legacyView ? 'OBSERVED PRODUCER FLEET' : 'NATIVE CONTROL PLANE'}</div><h1>{legacyView ? 'Fleet detail' : view === 'Overview' && fleet?.simulated ? 'Demo overview' : view}</h1><p>{legacyView ? 'Every project, captain, worker and evidence source in one detailed view.' : view === 'Overview' ? 'Native task projections; separate from the detailed producer fleet.' : view === 'Workplans' ? 'Native task stages and current ownership.' : view === 'Models' ? 'Provider and model configuration.' : 'Compact native coordination activity and message acknowledgements.'}</p></div>
+        <section className="page-heading"><div><div className="eyebrow">ADMIRALTY / {legacyView ? 'OBSERVED PRODUCER FLEET' : 'NATIVE CONTROL PLANE'}</div><h1>{legacyView ? 'Fleet detail' : view === 'Overview' && fleet?.simulated ? 'Demo overview' : view}</h1><p>{legacyView ? 'Live project progress · hierarchy · model mix · token efficiency' : view === 'Overview' ? 'Native task projections; separate from the detailed producer fleet.' : view === 'Workplans' ? 'Native task stages and current ownership.' : view === 'Models' ? 'Provider and model configuration.' : 'Compact native coordination activity and message acknowledgements.'}</p></div>
           <div className="heading-meta"><span className={`mode-pill ${!legacyView && fleet?.simulated ? 'simulation' : ''}`}>{legacyView ? 'PRODUCER OBSERVATIONS' : fleet?.simulated ? 'SIMULATION · SYNTHETIC TASKS' : fleet ? 'NATIVE SNAPSHOT' : 'AWAITING DATA'}</span>{!legacyView && <span className="freshness"><i />{updated ? `Updated ${updated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No snapshot yet'}</span>}</div>
         </section>
         {legacyView && <LegacyDetailed token={token || undefined} />}
