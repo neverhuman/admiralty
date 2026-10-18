@@ -792,6 +792,20 @@ def progress_accountability(report, state, now, no_gh=False):
         out[proj] = info
     report['progress'] = out
 
+P1_PROJECTS = ('jopedime', 'admiralty')   # Jepson 6:24 AM MDT Oct 18: JopeDime GPU testing + Admiralty come first
+def stuck_queued_checks(roll, now, mins=30):
+    """Checks still QUEUED/PENDING/WAITING (no runner picked them up) for >= mins. Returns [(name, age_min)]."""
+    out = []
+    for c in roll or []:
+        if c.get('conclusion'): continue
+        st = str(c.get('status') or c.get('state') or '').upper()
+        if st not in ('QUEUED', 'PENDING', 'WAITING', 'EXPECTED', 'REQUESTED'): continue
+        t = c.get('startedAt') or c.get('createdAt')
+        try: age = (now - datetime.datetime.fromisoformat(str(t).replace('Z', '+00:00'))).total_seconds() / 60
+        except Exception: continue
+        if age >= mins: out.append((c.get('name') or c.get('context') or '?', round(age)))
+    return out
+
 def open_prs(project):
     rc, out, _ = run([GH, 'pr', 'list', '-R', GHREPO[project], '--state', 'open', '--json',
                       'number,headRefName,headRefOid,isDraft,reviewDecision,statusCheckRollup,updatedAt', '-L', '10'], timeout=30)
@@ -807,6 +821,12 @@ def open_prs(project):
         res.append({'number': p['number'], 'branch': p['headRefName'], 'head': p['headRefOid'][:9], 'draft': p['isDraft'],
                     'review': p.get('reviewDecision'), 'ci': ci, 'checks': dict(concl)})
         if ci == 'red': F('amber', project, 'PR_CI_RED', f'PR #{p["number"]} @ {p["headRefOid"][:9]} has failing checks {dict(concl)}', f'gh pr checks {p["number"]} -R {GHREPO[project]}')
+        stuck = stuck_queued_checks(roll, datetime.datetime.now(datetime.timezone.utc))
+        if stuck and not p['isDraft']:
+            F('red' if project in P1_PROJECTS else 'amber', project, 'PR_CI_QUEUED_STUCK',
+              f'PR #{p["number"]} @ {p["headRefOid"][:9]}: {len(stuck)} check(s) queued with no runner for {max(a for _, a in stuck)} min ({", ".join(f"{n} {a}m" for n, a in stuck[:6])}). '
+              'A queued check is not progress: find out why no runner picks it up (runs-on label vs available runners, GitHub-hosted minutes/billing for private repos) and fix it or decide the merge path this check; do not keep re-reporting an ETA',
+              f'gh pr checks {p["number"]} -R {GHREPO[project]}')
     return res
 
 def main_ci(project):
