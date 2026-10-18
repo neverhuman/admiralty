@@ -879,6 +879,8 @@ pub struct VerifiedUsageClosure {
     reservation_id: String,
     attempt_id: AttemptId,
     model_id: String,
+    expected_revision: Option<u64>,
+    prior_settled_amount: Option<MinorUnits>,
     scope_digest: String,
     resource_claims_digest: String,
     trusted_closure_verified: bool,
@@ -931,6 +933,8 @@ impl VerifiedUsageClosure {
             reservation_id: reservation.id.clone(),
             attempt_id: slot_claim.attempt_id.clone(),
             model_id: slot_claim.model_id.clone(),
+            expected_revision: None,
+            prior_settled_amount: None,
             scope_digest: expected_scope_digest,
             resource_claims_digest: expected_claims_digest,
             trusted_closure_verified: false,
@@ -965,6 +969,7 @@ impl VerifiedUsageClosure {
         }
 
         if receipt.settlement_event_id != settlement_event_id
+            || receipt.expected_revision == 0
             || receipt.evidence_ref.trim().is_empty()
             || report.measured_amount != receipt.measured_amount
             || report.disposition != receipt.disposition
@@ -985,6 +990,8 @@ impl VerifiedUsageClosure {
                 reservation_id: reservation.id.clone(),
                 attempt_id: slot_claim.attempt_id.clone(),
                 model_id: slot_claim.model_id.clone(),
+                expected_revision: Some(receipt.expected_revision),
+                prior_settled_amount: Some(receipt.prior_settled_amount.clone()),
                 scope_digest: expected_scope_digest,
                 resource_claims_digest: expected_claims_digest,
                 trusted_closure_verified: true,
@@ -995,6 +1002,12 @@ impl VerifiedUsageClosure {
             });
         };
 
+        if measured_amount.get() < receipt.prior_settled_amount.get() {
+            return Err(ModelSelectionError::Reservation(
+                ReservationError::InvalidSettlement,
+            ));
+        }
+
         if receipt.disposition == UsageDisposition::IncompleteOrUnknown
             || receipt.usage_complete != Some(true)
             || receipt.effects_reconciled != Some(true)
@@ -1004,6 +1017,8 @@ impl VerifiedUsageClosure {
                 reservation_id: reservation.id.clone(),
                 attempt_id: slot_claim.attempt_id.clone(),
                 model_id: slot_claim.model_id.clone(),
+                expected_revision: Some(receipt.expected_revision),
+                prior_settled_amount: Some(receipt.prior_settled_amount.clone()),
                 scope_digest: expected_scope_digest,
                 resource_claims_digest: expected_claims_digest,
                 trusted_closure_verified: true,
@@ -1024,7 +1039,10 @@ impl VerifiedUsageClosure {
 
         let final_evidence = match receipt.disposition {
             UsageDisposition::ConfirmedNoUsage => {
-                if measured_amount.get() != 0 || reservation.settled.get() != 0 {
+                if measured_amount.get() != 0
+                    || receipt.prior_settled_amount.get() != 0
+                    || reservation.settled.get() != 0
+                {
                     return Err(ModelSelectionError::Reservation(
                         ReservationError::InvalidSettlement,
                     ));
@@ -1045,6 +1063,8 @@ impl VerifiedUsageClosure {
             reservation_id: reservation.id.clone(),
             attempt_id: slot_claim.attempt_id.clone(),
             model_id: slot_claim.model_id.clone(),
+            expected_revision: Some(receipt.expected_revision),
+            prior_settled_amount: Some(receipt.prior_settled_amount.clone()),
             scope_digest: expected_scope_digest,
             resource_claims_digest: expected_claims_digest,
             trusted_closure_verified: true,
@@ -1069,14 +1089,17 @@ pub trait UsageClosureVerifier {
 }
 
 /// Authenticated closure receipt registered with [`AuthenticatedUsageVerifier`].
-/// Binds the exact `settlement_event_id`, `scope_digest`, `resource_claims_digest`,
-/// cumulative `measured_amount`, `disposition`, and all three reconciliation flags.
+/// Binds the exact `settlement_event_id`, `expected_revision`, `prior_settled_amount`,
+/// `scope_digest`, `resource_claims_digest`, cumulative `measured_amount`, `disposition`,
+/// and all three reconciliation flags so exact replay never guesses or brute-forces deltas.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AuthenticatedClosureReceipt {
     pub settlement_event_id: String,
     pub reservation_id: String,
     pub attempt_id: AttemptId,
     pub model_id: String,
+    pub expected_revision: u64,
+    pub prior_settled_amount: MinorUnits,
     pub measured_amount: Option<MinorUnits>,
     pub disposition: UsageDisposition,
     pub usage_complete: Option<bool>,
@@ -1167,6 +1190,23 @@ impl UsageClosureVerifier for UntrustedProposalUsageAdapter {
     }
 }
 
+/// Durable audit metadata for an applied or replayed settlement event that the
+/// single-writer commit path must persist alongside `ReservationLedger`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettlementEventAuditRecord {
+    pub settlement_event_id: String,
+    pub settlement_event_digest: String,
+    pub reservation_id: String,
+    pub expected_revision: u64,
+    pub prior_settled_amount: MinorUnits,
+    pub delta_amount: MinorUnits,
+    pub cumulative_settled_amount: MinorUnits,
+    pub scope_digest: String,
+    pub resource_claims_digest: String,
+    pub terminal: bool,
+}
+
 /// Settlement proposal state returned by [`settle_model_slot_attempt`].
 /// Single-writer serialization and atomic commit are required before real admission.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1176,6 +1216,7 @@ pub struct ModelSlotSettlementProposal {
     pub attempt_id: AttemptId,
     pub model_id: String,
     pub settlement_event: Option<ReservationEvent>,
+    pub settlement_audit: Option<SettlementEventAuditRecord>,
     pub proposed_ledger: ReservationLedger,
     pub proposed_capacity: CapacitySnapshot,
     /// True only on the first legitimate terminal transition (`outstanding: true -> false`).
@@ -1189,75 +1230,90 @@ pub struct ModelSlotSettlementProposal {
     pub writer_atomicity_required: bool,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn resolve_settlement_event_for_ledger(
     ledger: &ReservationLedger,
     existing: &Reservation,
     event_id: String,
     reservation_id: String,
+    expected_revision: Option<u64>,
+    prior_settled_amount: Option<MinorUnits>,
     cumulative_amount: MinorUnits,
     final_evidence: Option<FinalEvidence>,
+    scope_digest: &str,
+    resource_claims_digest: &str,
     is_terminal: bool,
-) -> Result<(ReservationEvent, bool), ModelSelectionError> {
-    if let Some(prior_digest) = ledger.processed_events.get(&event_id) {
-        let mut candidate_amounts = Vec::new();
-        let current_delta = cumulative_amount
-            .get()
-            .saturating_sub(existing.settled.get());
-        candidate_amounts.push(current_delta);
-        if cumulative_amount.get() != current_delta {
-            candidate_amounts.push(cumulative_amount.get());
-        }
-        for amt in 0..=cumulative_amount.get().min(4096) {
-            if amt != current_delta && amt != cumulative_amount.get() {
-                candidate_amounts.push(amt);
-            }
-        }
-        for rev in (1..=existing.revision).rev() {
-            for &amt in &candidate_amounts {
-                let candidate = ReservationEvent::Settle {
-                    event_id: event_id.clone(),
-                    reservation_id: reservation_id.clone(),
-                    binding: ReservationBinding {
-                        scope: existing.scope.clone(),
-                        correlation_id: existing.correlation_id.clone(),
-                        expected_revision: rev,
-                    },
-                    amount: MinorUnits::new(amt),
-                    final_evidence: final_evidence.clone(),
-                };
-                let digest = content_digest(&candidate).map_err(|_| ReservationError::TooLarge)?;
-                if &digest == prior_digest {
-                    return Ok((candidate, true));
-                }
-            }
-        }
-        return Err(ModelSelectionError::Reservation(
-            ReservationError::EventCollision,
-        ));
-    }
-
-    if !existing.outstanding || cumulative_amount.get() < existing.settled.get() {
+) -> Result<(ReservationEvent, SettlementEventAuditRecord, bool), ModelSelectionError> {
+    let (Some(expected_rev), Some(prior_settled)) = (expected_revision, prior_settled_amount)
+    else {
         return Err(ModelSelectionError::Reservation(
             ReservationError::InvalidSettlement,
         ));
-    }
-    let delta_amount = cumulative_amount.get() - existing.settled.get();
-    if !is_terminal && delta_amount == 0 && existing.revision > 1 {
+    };
+    if expected_rev == 0 || cumulative_amount.get() < prior_settled.get() {
         return Err(ModelSelectionError::Reservation(
             ReservationError::InvalidSettlement,
         ));
     }
 
-    Ok((
-        ReservationEvent::Settle {
-            event_id,
-            reservation_id,
-            binding: existing.binding(),
-            amount: MinorUnits::new(delta_amount),
-            final_evidence,
+    let delta_amount = MinorUnits::new(cumulative_amount.get() - prior_settled.get());
+    let candidate = ReservationEvent::Settle {
+        event_id: event_id.clone(),
+        reservation_id: reservation_id.clone(),
+        binding: ReservationBinding {
+            scope: existing.scope.clone(),
+            correlation_id: existing.correlation_id.clone(),
+            expected_revision: expected_rev,
         },
-        false,
-    ))
+        amount: delta_amount.clone(),
+        final_evidence,
+    };
+    let event_digest = content_digest(&candidate).map_err(|_| ReservationError::TooLarge)?;
+    let audit = SettlementEventAuditRecord {
+        settlement_event_id: event_id.clone(),
+        settlement_event_digest: event_digest.clone(),
+        reservation_id,
+        expected_revision: expected_rev,
+        prior_settled_amount: prior_settled.clone(),
+        delta_amount: delta_amount.clone(),
+        cumulative_settled_amount: cumulative_amount.clone(),
+        scope_digest: scope_digest.to_owned(),
+        resource_claims_digest: resource_claims_digest.to_owned(),
+        terminal: is_terminal,
+    };
+
+    if let Some(prior_digest) = ledger.processed_events.get(&event_id) {
+        if &event_digest != prior_digest {
+            return Err(ModelSelectionError::Reservation(
+                ReservationError::EventCollision,
+            ));
+        }
+        if existing.revision <= expected_rev
+            || existing.settled.get() < cumulative_amount.get()
+            || (is_terminal && (existing.outstanding || existing.settled != cumulative_amount))
+        {
+            return Err(ModelSelectionError::Reservation(
+                ReservationError::InvalidSettlement,
+            ));
+        }
+        return Ok((candidate, audit, true));
+    }
+
+    if !existing.outstanding
+        || existing.revision != expected_rev
+        || existing.settled != prior_settled
+    {
+        return Err(ModelSelectionError::Reservation(
+            ReservationError::InvalidSettlement,
+        ));
+    }
+    if !is_terminal && delta_amount.get() == 0 && existing.revision > 1 {
+        return Err(ModelSelectionError::Reservation(
+            ReservationError::InvalidSettlement,
+        ));
+    }
+
+    Ok((candidate, audit, false))
 }
 
 /// Propose settlement of an inference slot and budget reservation after an attempt,
@@ -1266,8 +1322,8 @@ fn resolve_settlement_event_for_ledger(
 /// - Never fabricates `usage_complete`, `effects_reconciled`, `resource_claims_reconciled`,
 ///   or `ConfirmedNoUsage` from raw caller strings/amounts.
 /// - Treats `measured_amount` as cumulative usage for the reservation and charges only the
-///   non-negative delta over `existing.settled` so chained interim -> terminal settlements
-///   never double-charge.
+///   exact authenticated delta `measured_amount - prior_settled_amount` bound in the receipt
+///   (zero digest guessing or brute-force loops).
 /// - Wrong, missing, unknown, or untrusted usage keeps the reservation and slot held.
 /// - Mutates `proposed_capacity` ONLY on the first legitimate terminal settlement
 ///   (`outstanding: true -> false`), never on idempotent replay of `settlement_event_id`.
@@ -1306,11 +1362,17 @@ pub fn settle_model_slot_attempt<V: UsageClosureVerifier + ?Sized>(
     match closure.outcome {
         VerifiedUsageOutcome::HeldIncomplete { interim_amount, .. } => {
             if !closure.trusted_closure_verified || interim_amount.is_none() {
+                if ledger.processed_events.contains_key(&event_id) {
+                    return Err(ModelSelectionError::Reservation(
+                        ReservationError::EventCollision,
+                    ));
+                }
                 return Ok(ModelSlotSettlementProposal {
                     reservation_id: existing.id.clone(),
                     attempt_id: slot_claim.attempt_id.clone(),
                     model_id: slot_claim.model_id.clone(),
                     settlement_event: None,
+                    settlement_audit: None,
                     proposed_ledger: ledger.clone(),
                     proposed_capacity: capacity.clone(),
                     slot_released: false,
@@ -1322,13 +1384,17 @@ pub fn settle_model_slot_attempt<V: UsageClosureVerifier + ?Sized>(
             }
 
             let cumulative_amount = interim_amount.expect("checked Some above");
-            let (event, is_replay) = resolve_settlement_event_for_ledger(
+            let (event, audit, is_replay) = resolve_settlement_event_for_ledger(
                 ledger,
                 existing,
                 event_id,
                 reservation_id.to_owned(),
+                closure.expected_revision,
+                closure.prior_settled_amount,
                 cumulative_amount,
                 None,
+                &closure.scope_digest,
+                &closure.resource_claims_digest,
                 false,
             )?;
             let next_ledger = reduce_reservation(ledger, event.clone())?;
@@ -1337,6 +1403,7 @@ pub fn settle_model_slot_attempt<V: UsageClosureVerifier + ?Sized>(
                 attempt_id: slot_claim.attempt_id.clone(),
                 model_id: slot_claim.model_id.clone(),
                 settlement_event: Some(event),
+                settlement_audit: Some(audit),
                 proposed_ledger: next_ledger,
                 proposed_capacity: capacity.clone(),
                 slot_released: false,
@@ -1351,13 +1418,17 @@ pub fn settle_model_slot_attempt<V: UsageClosureVerifier + ?Sized>(
             final_evidence,
         } => {
             let was_outstanding = existing.outstanding;
-            let (event, is_replay) = resolve_settlement_event_for_ledger(
+            let (event, audit, is_replay) = resolve_settlement_event_for_ledger(
                 ledger,
                 existing,
                 event_id,
                 reservation_id.to_owned(),
+                closure.expected_revision,
+                closure.prior_settled_amount,
                 settled_amount,
                 Some(final_evidence),
+                &closure.scope_digest,
+                &closure.resource_claims_digest,
                 true,
             )?;
             let next_ledger = reduce_reservation(ledger, event.clone())?;
@@ -1393,6 +1464,7 @@ pub fn settle_model_slot_attempt<V: UsageClosureVerifier + ?Sized>(
                 attempt_id: slot_claim.attempt_id.clone(),
                 model_id: slot_claim.model_id.clone(),
                 settlement_event: Some(event),
+                settlement_audit: Some(audit),
                 proposed_ledger: next_ledger,
                 proposed_capacity,
                 slot_released: first_legitimate_settlement,
@@ -2243,6 +2315,8 @@ mod tests {
                 reservation_id: reservation_id.into(),
                 attempt_id: slot_claim.attempt_id.clone(),
                 model_id: slot_claim.model_id.clone(),
+                expected_revision: existing.revision,
+                prior_settled_amount: existing.settled.clone(),
                 measured_amount: Some(amount),
                 disposition,
                 usage_complete: Some(true),
@@ -2562,6 +2636,8 @@ mod tests {
                 reservation_id: "res-1".into(),
                 attempt_id: proposal1.slot_claim.attempt_id.clone(),
                 model_id: "ornith".into(),
+                expected_revision: ledger_both.reservations["res-1"].revision,
+                prior_settled_amount: MinorUnits::new(0),
                 measured_amount: None,
                 disposition: UsageDisposition::IncompleteOrUnknown,
                 usage_complete: Some(false),
@@ -2593,6 +2669,8 @@ mod tests {
                 reservation_id: "res-1".into(),
                 attempt_id: proposal1.slot_claim.attempt_id.clone(),
                 model_id: "ornith".into(),
+                expected_revision: ledger_both.reservations["res-1"].revision,
+                prior_settled_amount: MinorUnits::new(0),
                 measured_amount: Some(MinorUnits::new(6)),
                 disposition: UsageDisposition::SettledAndTerminated,
                 usage_complete: Some(true),
@@ -2665,6 +2743,9 @@ mod tests {
                     reservation_id: "res-1".into(),
                     attempt_id: proposal1.slot_claim.attempt_id.clone(),
                     model_id: "ornith".into(),
+                    expected_revision: held_unreconciled.proposed_ledger.reservations["res-1"]
+                        .revision,
+                    prior_settled_amount: MinorUnits::new(6),
                     measured_amount: Some(MinorUnits::new(6)),
                     disposition: UsageDisposition::SettledAndTerminated,
                     usage_complete: Some(true),
@@ -2698,6 +2779,8 @@ mod tests {
                 reservation_id: "res-1".into(),
                 attempt_id: proposal1.slot_claim.attempt_id.clone(),
                 model_id: "ornith".into(),
+                expected_revision: ledger_both.reservations["res-1"].revision,
+                prior_settled_amount: MinorUnits::new(0),
                 measured_amount: Some(MinorUnits::new(6)),
                 disposition: UsageDisposition::ConfirmedNoUsage,
                 usage_complete: Some(true),
@@ -2726,6 +2809,15 @@ mod tests {
         // 5. Chaining `held_unreconciled.proposed_ledger` (where 6 minor units are already settled)
         // into the first legitimate terminal settlement of Worker 1 (cumulative measured_amount = 6)
         // charges ONLY the delta (0), leaving total settled at 6 (not 12!), and releases 1 slot (2 -> 1).
+        let (report1, verifier1) = build_authenticated_settlement(
+            &held_unreconciled.proposed_ledger,
+            &proposal1.slot_claim,
+            "res-1",
+            "evt-settle-w1",
+            MinorUnits::new(6),
+            UsageDisposition::SettledAndTerminated,
+            "receipt:worker-1-close",
+        );
         let first_settle = settle_model_slot_attempt(
             &held_unreconciled.proposed_ledger,
             &held_unreconciled.proposed_capacity,
@@ -2837,6 +2929,181 @@ mod tests {
             duplicate_err,
             ModelSelectionError::Reservation(ReservationError::InvalidSettlement)
         ));
+    }
+
+    #[test]
+    fn chained_5000_to_10000_interim_to_terminal_and_exact_replay_without_digest_guessing() {
+        let registry = ornith_luna_registry();
+        let task = ready_task(4);
+        let observed = observed_slots(&registry, Some(1), Some(0));
+        let ledger0 = funded_ledger(20_000);
+        let mut policy = base_policy(1, true);
+        policy
+            .model_attempt_budgets
+            .insert("ornith".into(), MinorUnits::new(10_000));
+
+        let proposal = match propose_model_slot_reservation(
+            &registry,
+            &task,
+            &TaskModelAttemptHistory::default(),
+            &policy,
+            &observed,
+            &ledger0,
+            105,
+        )
+        .expect("reserve 10,000 minor units")
+        {
+            ModelSlotDecision::Ready { proposal } => *proposal,
+            other => panic!("expected Ready, got {other:?}"),
+        };
+        assert_eq!(proposal.updated_capacity.in_use["ornith"], 2);
+
+        let scope_digest =
+            content_digest(&proposal.reservation_scope).expect("reservation scope digest");
+        let claims_digest = content_digest(&proposal.slot_claim).expect("slot claim digest");
+
+        // Step 1: Chained interim cumulative 5,000 minor units (held, effects_reconciled = false).
+        let interim_report = UsageReconciliationReport {
+            reservation_id: "res-1".into(),
+            attempt_id: proposal.slot_claim.attempt_id.clone(),
+            model_id: "ornith".into(),
+            measured_amount: Some(MinorUnits::new(5_000)),
+            disposition: UsageDisposition::SettledAndTerminated,
+            usage_complete: Some(true),
+            effects_reconciled: Some(false),
+            resource_claims_reconciled: Some(true),
+            scope_digest: scope_digest.clone(),
+            resource_claims_digest: claims_digest.clone(),
+            evidence_ref: "receipt:interim-5000".into(),
+        };
+        let verifier = AuthenticatedUsageVerifier::new()
+            .with_receipt(AuthenticatedClosureReceipt {
+                settlement_event_id: "evt-interim-5000".into(),
+                reservation_id: "res-1".into(),
+                attempt_id: proposal.slot_claim.attempt_id.clone(),
+                model_id: "ornith".into(),
+                expected_revision: proposal.next_ledger.reservations["res-1"].revision,
+                prior_settled_amount: MinorUnits::new(0),
+                measured_amount: Some(MinorUnits::new(5_000)),
+                disposition: UsageDisposition::SettledAndTerminated,
+                usage_complete: Some(true),
+                effects_reconciled: Some(false),
+                resource_claims_reconciled: Some(true),
+                scope_digest: scope_digest.clone(),
+                resource_claims_digest: claims_digest.clone(),
+                evidence_ref: "receipt:interim-5000".into(),
+            })
+            .with_receipt(AuthenticatedClosureReceipt {
+                settlement_event_id: "evt-terminal-10000".into(),
+                reservation_id: "res-1".into(),
+                attempt_id: proposal.slot_claim.attempt_id.clone(),
+                model_id: "ornith".into(),
+                expected_revision: proposal.next_ledger.reservations["res-1"].revision + 1,
+                prior_settled_amount: MinorUnits::new(5_000),
+                measured_amount: Some(MinorUnits::new(10_000)),
+                disposition: UsageDisposition::SettledAndTerminated,
+                usage_complete: Some(true),
+                effects_reconciled: Some(true),
+                resource_claims_reconciled: Some(true),
+                scope_digest: scope_digest.clone(),
+                resource_claims_digest: claims_digest.clone(),
+                evidence_ref: "receipt:terminal-10000".into(),
+            });
+
+        let held_5000 = settle_model_slot_attempt(
+            &proposal.next_ledger,
+            &proposal.updated_capacity,
+            &proposal.slot_claim,
+            "res-1",
+            "evt-interim-5000",
+            &interim_report,
+            &verifier,
+        )
+        .expect("interim 5,000 settlement");
+        assert!(!held_5000.slot_released);
+        assert!(!held_5000.idempotent_replay);
+        assert!(held_5000.proposed_ledger.reservations["res-1"].outstanding);
+        assert_eq!(
+            held_5000.proposed_ledger.reservations["res-1"].settled,
+            MinorUnits::new(5_000)
+        );
+        assert_eq!(held_5000.proposed_capacity.in_use["ornith"], 2);
+        let interim_audit = held_5000.settlement_audit.as_ref().expect("interim audit");
+        assert_eq!(interim_audit.delta_amount, MinorUnits::new(5_000));
+        assert_eq!(
+            interim_audit.cumulative_settled_amount,
+            MinorUnits::new(5_000)
+        );
+        assert!(!interim_audit.terminal);
+
+        // Step 2: Chained terminal cumulative 10,000 minor units (delta = 5,000 > 4,096).
+        let terminal_report = UsageReconciliationReport {
+            reservation_id: "res-1".into(),
+            attempt_id: proposal.slot_claim.attempt_id.clone(),
+            model_id: "ornith".into(),
+            measured_amount: Some(MinorUnits::new(10_000)),
+            disposition: UsageDisposition::SettledAndTerminated,
+            usage_complete: Some(true),
+            effects_reconciled: Some(true),
+            resource_claims_reconciled: Some(true),
+            scope_digest,
+            resource_claims_digest: claims_digest,
+            evidence_ref: "receipt:terminal-10000".into(),
+        };
+        let terminal_10000 = settle_model_slot_attempt(
+            &held_5000.proposed_ledger,
+            &held_5000.proposed_capacity,
+            &proposal.slot_claim,
+            "res-1",
+            "evt-terminal-10000",
+            &terminal_report,
+            &verifier,
+        )
+        .expect("chained terminal 10,000 settlement");
+        assert!(terminal_10000.slot_released);
+        assert!(!terminal_10000.idempotent_replay);
+        assert!(!terminal_10000.proposed_ledger.reservations["res-1"].outstanding);
+        assert_eq!(
+            terminal_10000.proposed_ledger.reservations["res-1"].settled,
+            MinorUnits::new(10_000)
+        );
+        assert_eq!(terminal_10000.proposed_capacity.in_use["ornith"], 1);
+        let term_audit = terminal_10000
+            .settlement_audit
+            .as_ref()
+            .expect("terminal audit");
+        assert_eq!(term_audit.prior_settled_amount, MinorUnits::new(5_000));
+        assert_eq!(term_audit.delta_amount, MinorUnits::new(5_000));
+        assert_eq!(
+            term_audit.cumulative_settled_amount,
+            MinorUnits::new(10_000)
+        );
+        assert!(term_audit.terminal);
+
+        // Step 3: Exact replay of "evt-terminal-10000" on `terminal_10000.proposed_ledger`
+        // (where `settled == 10_000` and original delta was `5_000 > 4_096`) succeeds in O(1)
+        // without EventCollision and without releasing another slot!
+        let replayed_10000 = settle_model_slot_attempt(
+            &terminal_10000.proposed_ledger,
+            &terminal_10000.proposed_capacity,
+            &proposal.slot_claim,
+            "res-1",
+            "evt-terminal-10000",
+            &terminal_report,
+            &verifier,
+        )
+        .expect("exact replay of chained 5,000 -> 10,000 terminal settlement");
+        assert!(replayed_10000.idempotent_replay);
+        assert!(!replayed_10000.slot_released);
+        assert_eq!(
+            replayed_10000.proposed_ledger,
+            terminal_10000.proposed_ledger
+        );
+        assert_eq!(replayed_10000.proposed_capacity.in_use["ornith"], 1);
+        assert_eq!(
+            replayed_10000.settlement_audit,
+            terminal_10000.settlement_audit
+        );
     }
 
     #[test]
