@@ -1050,6 +1050,49 @@ def merged_since(project, since_iso):
     except Exception: return None
     return [p['number'] for p in prs if (p.get('mergedAt') or '') >= since_iso.replace('+00:00', 'Z')[:19]]
 
+# Jepson 11:17 AM MDT Oct 18: "why wasn't the SUPER_CAPTAIN aware ... I'm more concerned it was allowed to sit."
+# Jarambit sat at 6/37 from 14:31Z while NO_PROGRESS stayed quiet: any merged PR (CI/infra/test-only) cleared it, and
+# ETAs / "verified busy" were accepted as progress. These detectors key ONLY on the done count: nothing but a count
+# increase (or the project reaching total) clears them. Merges, ETAs, busy screens and plans do not.
+STALL_ESCALATE_MIN = 60        # no done increase this long -> must-act: super_captain inspects in person and changes the plan
+STALL_REPEAT_MIN = 120         # still flat one hour later -> repeated stall, cannot be cleared by ETA/'busy'/merges
+STALL_PLAN_RE = re.compile(r'STALL_PLAN_CHANGE\s+`?(\w+)`?\s+`?(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?Z)')
+
+def stall_plan_changes(paths=None):
+    """{project: [utc datetimes]} from 'STALL_PLAN_CHANGE <project> <ISO-Z>' lines super_captain writes."""
+    out = {}
+    for path in paths or (KICK + '/super_captain_DECISIONS.md', KICK + '/super_captain_LOG.md'):
+        try: text = open(path, errors='replace').read()
+        except Exception: continue
+        for m in STALL_PLAN_RE.finditer(text):
+            try: t = datetime.datetime.fromisoformat(m.group(2).replace('Z', '+00:00'))
+            except Exception: continue
+            out.setdefault(m.group(1).lower(), []).append(t)
+    return out
+
+def stall_escalation(proj, done, total, stuck_since_iso, now, plan_changes=()):
+    """Return [(severity, code, text)] for a project whose done count has not increased since stuck_since_iso."""
+    if not isinstance(done, int) or not stuck_since_iso: return []
+    if total and done >= total: return []
+    try: since = datetime.datetime.fromisoformat(str(stuck_since_iso).replace('Z', '+00:00'))
+    except Exception: return []
+    mins = int((now - since).total_seconds() / 60)
+    if mins < STALL_ESCALATE_MIN: return []
+    cap = CAPTAINS.get(proj, proj)
+    out = [('red', 'STALL_60M', f'done has been {done}/{total} for {mins} min (no increase since {stuck_since_iso}). Merges, ETAs and "verified busy" do NOT clear this; only a done increase does. '
+            f'super_captain MUST this tick: (1) personally hardcopy {cap} (all windows) and every worker screen, (2) name the real blocker of each open task, '
+            f'(3) change the plan: add workers/hosts (xbabe1-3, never xbabe0), re-scope, or decide reversible blockers as owner, (4) write '
+            f'"STALL_PLAN_CHANGE {proj} <ISO-Z>" in super_captain_DECISIONS.md with the change, and (5) get a count increase within 60 min')]
+    recent = [t for t in plan_changes if t >= since]
+    if not recent:
+        out.append(('red', 'STALL_NO_PLAN_CHANGE', f'stalled {mins} min and no "STALL_PLAN_CHANGE {proj}" decision recorded since the stall began ({stuck_since_iso}); a plan change is mandatory, not an ETA'))
+    if mins >= STALL_REPEAT_MIN:
+        last = max(recent) if recent else None
+        tail = f'; last plan change {last.isoformat(timespec="minutes")} did not move the count' if last else ''
+        out.append(('red', 'STALL_REPEATED', f'done flat {mins} min (>= {STALL_REPEAT_MIN}){tail}. Repeated no-progress: the previous plan failed. Change it again (more parallel workers, re-scope tasks so they can close, '
+                    f'or decide the blocker); escalate to Jepson only if the blocker is reserved (xbabe0/Jeryu, outside messages, new paid spend/legal, force-push main, deleting prod data, writing /home/ubuntu/admiralty)'))
+    return out
+
 def progress_accountability(report, state, now, no_gh=False):
     hist = state.setdefault('progress', {})
     if not hist:   # seed done-history from audit.jsonl so the first run already has a baseline
@@ -1061,6 +1104,7 @@ def progress_accountability(report, state, now, no_gh=False):
         except Exception: pass
     cutoff = (now - datetime.timedelta(hours=8)).isoformat(timespec='seconds')
     out = {}
+    plan_changes = stall_plan_changes()
     for proj, r in report['projects'].items():
         done, total = r.get('done_recomputed'), r.get('total')
         blocked = r.get('blocked')
@@ -1084,6 +1128,10 @@ def progress_accountability(report, state, now, no_gh=False):
                   f'super_captain: demand a concrete unblock plan + ETA from {CAPTAINS.get(proj, proj)} this check, decide reversible blockers yourself as owner, escalate only irreversible ones to Jepson')
             if isinstance(blocked, int) and isinstance(base.get('blocked'), int) and blocked > base['blocked']:
                 F('red', proj, 'BLOCKED_ROSE', f'blocked {base["blocked"]} -> {blocked} since {base["utc"]}; every new blocker needs an owner, a cause and an unblock action this check')
+        stuck_since = last_up or (h[0]['utc'] if h else None)
+        info['stuck_since_utc'] = stuck_since
+        for sev, code, text in stall_escalation(proj, done, total, stuck_since, now, plan_changes.get(proj, ())):
+            MA(sev, proj, code, text)
         if isinstance(blocked, int) and total and blocked / total > BLOCKED_SHARE_RED:
             groups = collections.Counter(classify_block(n) for n in (r.get('blocked_reasons') or {}).values())
             g = ', '.join(f'{k} {v}' for k, v in groups.most_common()) if groups else 'reasons not machine-readable; captain must list them'
