@@ -78,7 +78,7 @@ mod tests {
         assert_eq!(spec.jsonl_bytes(), spec.jsonl_bytes());
         assert!(
             String::from_utf8(spec.jsonl_bytes())
-                .unwrap()
+                .expect("synthetic provider bytes are valid UTF-8")
                 .contains("\"input_tokens\":10")
         );
         assert_ne!(
@@ -90,7 +90,7 @@ mod tests {
     #[test]
     fn structured_chunks_are_explicitly_simulated_and_have_usage_segments() {
         let bytes = FakeProviderSpec::new(FakeMode::Success, 7).jsonl_bytes();
-        let line = String::from_utf8(bytes).unwrap();
+        let line = String::from_utf8(bytes).expect("synthetic provider bytes are valid UTF-8");
         for field in [
             "\"source_sequence\":1",
             "\"turn\":0",
