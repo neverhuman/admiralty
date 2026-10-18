@@ -154,6 +154,10 @@ mod probe {
         let mut line = String::new();
         std::io::stdin().lock().take(128).read_line(&mut line)?;
         if line != format!("compute {nonce}\n") {
+            // Retain the owned bounded fixture briefly after an observation
+            // failure closes stdin, so an operator can inspect actual numeric
+            // cgroup controls. This never computes or bypasses admission.
+            thread::sleep(Duration::from_secs(45));
             return Err("missing owned launch barrier".into());
         }
         write_new(Path::new("result.txt"), &result_bytes(nonce))?;
