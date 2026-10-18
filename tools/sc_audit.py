@@ -240,6 +240,24 @@ def audit_jopedime(sc_claims):
         if MEASURE.search(crit) and not any('measure' in k.lower() for k in r) and 'measurement' not in json.dumps(r).lower():
             bad['measurement_criterion_unit_tests_only'].append(tid)
         if len(cases) == 0: bad['pass_without_cases'].append(tid); continue
+        # proof honesty: a proof that says every command uses --exact while a cargo test command does not is a false receipt
+        allcmds = [str(c.get('command', '')) for c in cases + cmds if c.get('command')]
+        if re.search(r'\b(each|every|all)\b[^.]*--exact', proof, re.I) and any('cargo test' in c and '--exact' not in c for c in allcmds):
+            bad['proof_claim_false_exact'].append(tid); continue
+        # reused execution: a case that reuses an execution from another commit was not re-run on the named sha
+        if any(c.get('reused_existing_execution') and str(c.get('source_commit') or '')[:7] and not sha.startswith(str(c.get('source_commit'))[:7]) for c in cases):
+            bad['case_reused_other_commit'].append(tid)
+        # retry-to-green: an earlier FAIL receipt for this task on the same sha (I##.fail.json etc.)
+        for ff in glob.glob(vdir + '/' + tid + '.*fail*.json'):
+            fr = rj(ff) or {}
+            if str(fr.get('sha') or '') != sha or str(fr.get('status', '')).upper() == 'PASS': continue
+            fva = parse_utc(fr.get('verified_at_utc') or fr.get('verified_at'))
+            if va and fva and fva > va: continue
+            fcmds = [str(c.get('command', '')) for c in (fr.get('case_to_test_map') or fr.get('cases') or [])]
+            pcmds = [str(c.get('command', '')) for c in cases]
+            if fcmds != pcmds: bad['pass_after_fail_cmd_changed'].append(tid)
+            else: bad['pass_after_fail_same_cmd'].append(tid + '(' + str(fr.get('host', '?')) + '->' + str(r.get('host', '?')) + ')')
+            break
         # log integrity: a case log that no longer matches the sha256 the receipt recorded was overwritten (e.g. lane log-name collision)
         lbad = False
         for c in cases:
@@ -263,6 +281,10 @@ def audit_jopedime(sc_claims):
               'receipt_predates_sha': ('red', 'verified_at is older than the commit the receipt names (relabeled to a newer sha, not re-run; not counted)'),
               'proof_names_other_sha': ('red', 'proof says the tests ran at a different full sha than the receipt names (not counted)'),
               'log_sha256_mismatch': ('red', 'a case log is missing or no longer matches the log_sha256 in the receipt (overwritten; not counted)'),
+              'proof_claim_false_exact': ('red', 'proof says every command uses --exact but a cargo test command does not (substring filter may run other tests; not counted)'),
+              'case_reused_other_commit': ('amber', 'a case reuses an execution from a different commit instead of re-running on the named sha (spot-check)'),
+              'pass_after_fail_cmd_changed': ('amber', 'PASS follows a FAIL on the same sha with changed commands (retry-to-green; confirm the change is a legit fix, not a weakened check)'),
+              'pass_after_fail_same_cmd': ('amber', 'PASS follows a FAIL on the same sha with identical commands (flaky or host-dependent, failing->passing host shown; root-cause before it counts toward the xbabe1-4 order)'),
               'unreadable': ('amber', 'receipt JSON unreadable')}
     for k, ids in bad.items():
         sev, txt = labels[k]
