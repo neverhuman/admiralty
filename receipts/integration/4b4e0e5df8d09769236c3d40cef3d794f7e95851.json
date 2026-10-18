@@ -1,0 +1,297 @@
+{
+  "schema": "admiralty.native_integration_implementation_qualification.v1",
+  "recorded_utc": "2026-10-18T21:13:13.067367+00:00",
+  "pr": "https://github.com/neverhuman/admiralty/pull/70",
+  "source_commit": "4b4e0e5df8d09769236c3d40cef3d794f7e95851",
+  "full_workspace_source": "533e9afa175a727cdb9aab2e8c02347b689ce986",
+  "delta_since_workspace_suite": "Only compatible listener announcement in server/src/lib.rs; affected31server tests/strictClippy/fmt and rebuiltactualbinarysmoke pass at finalhead",
+  "rust": {
+    "passed": 987,
+    "ignored": 3,
+    "failed": 0,
+    "suites": 129
+  },
+  "frontend": {
+    "tests_passed": 93,
+    "test_files": 11,
+    "production_build": "pass"
+  },
+  "native_execution_qualified": false,
+  "packet_acceptance": false,
+  "primary_web_switch_source": "f7ae3c1c86b46911051931dcbad0178ca4075d81",
+  "checks": [
+    {
+      "name": "fmt",
+      "source_commit": "533e9afa175a727cdb9aab2e8c02347b689ce986",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.99,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "rust-tests",
+      "source_commit": "533e9afa175a727cdb9aab2e8c02347b689ce986",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 134.88,
+      "log_sha256": "226db10410ba7fbc2ff7e71ab0f457474560a8d8b05c7eb5c282c0ff840244fa"
+    },
+    {
+      "name": "clippy",
+      "source_commit": "533e9afa175a727cdb9aab2e8c02347b689ce986",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 101,
+      "elapsed_seconds": 3.92,
+      "log_sha256": "4fbac8d3349626a45cca71e4b5d11f14b95f64eccee666d2cf9d262e0b071443"
+    },
+    {
+      "name": "clippy-tracked-source",
+      "source_commit": "533e9afa175a727cdb9aab2e8c02347b689ce986",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 19.01,
+      "log_sha256": "38414099862e0a0b05f122900ef0408258ce560e189de38e97f7e2cbf1c1c6a1"
+    },
+    {
+      "name": "binary-build",
+      "source_commit": "533e9afa175a727cdb9aab2e8c02347b689ce986",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "admiralty-server",
+        "-p",
+        "admiralty-cli",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.2,
+      "log_sha256": "4f27ac380b22e1d975eee20ce727fa8cbc09061177f6253af0777fd4de7b7506"
+    },
+    {
+      "name": "ui-tests",
+      "source_commit": "533e9afa175a727cdb9aab2e8c02347b689ce986",
+      "command": [
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "test",
+        "--run"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.0,
+      "log_sha256": "25b9421759fa59be0b0cb99cfb036e03a747bf70a3cb92cee0547ee442f588e4"
+    },
+    {
+      "name": "ui-build",
+      "source_commit": "533e9afa175a727cdb9aab2e8c02347b689ce986",
+      "command": [
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "build"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.05,
+      "log_sha256": "be788c89c4a3af5f975a06c0cfbf4f75e0fa6c96f738f3c1d3bb45d47a0cb7f0"
+    },
+    {
+      "source_commit": "4b4e0e5df8d09769236c3d40cef3d794f7e95851",
+      "command": [
+        "python3",
+        "scripts/check/canary-smoke.py",
+        "--admiraltyd-binary",
+        "<built-admiraltyd>",
+        "--admiralty-binary",
+        "<built-admiralty>",
+        "--scratch-root",
+        "<new-private-scratch>"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.72,
+      "log_sha256": "c4b23305a63381a9997d1e733125b26397210ee837c3951131b662dceef3dd76"
+    },
+    {
+      "name": "schemas",
+      "command": [
+        "pnpm",
+        "contracts:check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.77,
+      "log_sha256": "ee08697cab569671a69fe486e641dc851e83e89d44ebd0806b044e29d3252a94"
+    },
+    {
+      "name": "contracts",
+      "command": [
+        "pnpm",
+        "--dir",
+        "packages/contracts",
+        "test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.67,
+      "log_sha256": "22840e1d0d8028e87e44d3b3d3bb607ad8807038f2a80ba633291f97fa6f4120"
+    },
+    {
+      "name": "ui-tests",
+      "command": [
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "test",
+        "--run"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.86,
+      "log_sha256": "8855b0bf77069db1bf950fdf05fffcd79331b6c28a86e812e191eef08f0e94b1"
+    },
+    {
+      "name": "ui-build",
+      "command": [
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "build"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.87,
+      "log_sha256": "4204d80357eb426e3054e0757315bacc111622c74ca90daa4083cdbfff665937"
+    },
+    {
+      "name": "legacy",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/legacy",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.29,
+      "log_sha256": "c017e4c85e10e4da3016f2e9127612b42223befea72c07ceeefcff8e0dca51b0"
+    },
+    {
+      "name": "audit",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_sc_audit*.py",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.08,
+      "log_sha256": "4cbaa4880fb88063a52d8a3b806c3dd6c47a26db7baa67edf77bd9b0848f4f65"
+    },
+    {
+      "name": "fixtures",
+      "command": [
+        "python3",
+        "tests/fixtures/legacy/verify.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.61,
+      "log_sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12"
+    },
+    {
+      "name": "packaging",
+      "command": [
+        "python3",
+        "scripts/release/package.py",
+        "--self-test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.2,
+      "log_sha256": "43ca5c9f73c1f70df70caa76e6e7ffcc68b7e729a4dc1691af828fa44834efc4"
+    },
+    {
+      "name": "smoke-fixtures",
+      "command": [
+        "python3",
+        "scripts/check/canary-smoke.py",
+        "--self-test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.47,
+      "log_sha256": "52555664611ffb2c6e7a6dc43995002e6fdc567fa31e6771487ecd5d05bf83a1"
+    }
+  ],
+  "retained_failed_evidence": [
+    {
+      "reason": "Old cockpit guard expected table in App rather than extractedNativeTasks; fixed23970e6",
+      "log_sha256": "84955991f694d940a0dc621297402173b34ee412cefb979bd92825bc64f0c172"
+    },
+    {
+      "reason": "Untracked in-progress qualification example auto-discovered; preserved in ignoredcandidatearea; tracked-sourceClippypass",
+      "log_sha256": "4fbac8d3349626a45cca71e4b5d11f14b95f64eccee666d2cf9d262e0b071443"
+    },
+    {
+      "reason": "Default listener announcement compatibility regression; fixed4b4e0e5",
+      "log_sha256": "64cec08258a67cbb78ed26ae747f6310c5311e04744971b7cb8c819a60c0b273"
+    }
+  ],
+  "remaining": [
+    "actual Linux observed admission and opaque closure proof; one consumed sleep probe returned unknown and remains unqualified",
+    "workspace preparation portability, bounded descendant pipe handling, capacity and repository-format repairs",
+    "concrete trusted executor, durable observed recovery and startup admission composition",
+    "positive closed-runtime/checks/custody/Store acceptance/replay qualification",
+    "model settlement cumulative usage and authenticated receipt binding repairs",
+    "live command UI followup, mounting and actual browser/axe qualification",
+    "receiving-main CI and every full P00-P31 acceptance criterion"
+  ],
+  "merge": {
+    "reviewed_head": "4b4e0e5df8d09769236c3d40cef3d794f7e95851",
+    "receiving_main": "f6f5ea57b79a1cafcf7987ff0bb8196b04b7b8d5",
+    "merged_utc": "2026-10-18T21:13:54Z",
+    "approval": "neverhumanbot exact-head; local-CI only; rebase match-head"
+  },
+  "observed_deployment": {
+    "source_commit": "f6f5ea57b79a1cafcf7987ff0bb8196b04b7b8d5",
+    "observed_utc": "2026-10-18T21:20:57Z",
+    "binary_sha256": "e82361aa05ce6048bf7882b08d1276f492f3566073f1ee8d948ce9678eab49b6",
+    "primary": "Rust/React",
+    "health_status": 200,
+    "legacy_live_status": 200,
+    "native_unauth_status": 401,
+    "alternate_port_redirect": 307,
+    "native_execution_qualified": false,
+    "private_receipt_reference": "ADMIRALTY_NATIVE_PR70_DEPLOY_RECEIPT_20261018T2119Z.json",
+    "private_receipt_not_published": true
+  }
+}

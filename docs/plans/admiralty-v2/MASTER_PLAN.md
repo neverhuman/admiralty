@@ -3,7 +3,7 @@
 **Date:** 18 October 2026  
 **Planning baseline:** `neverhuman/admiralty` at `1e8ed17eff27ed3ab80dc6860fc8eda301406aee`  
 **Target:** Rust control plane and CLI; SQLite; Vite, TypeScript and React dashboard  
-**Status:** Implementation in progress; current source, checks and remaining gates are recorded in [EXECUTION.md](EXECUTION.md). Existing fleet remains operational. The 18 October work-order review adds the requirements in [WORK_ORDER_REVIEW.md](WORK_ORDER_REVIEW.md); it does not mark them implemented.
+**Status:** Implementation in progress; current source, checks and remaining gates are recorded in [EXECUTION.md](EXECUTION.md). The primary Rust/React web switch is live; native execution qualification remains in progress. The 18 October work-order review adds the requirements in [WORK_ORDER_REVIEW.md](WORK_ORDER_REVIEW.md); it does not mark them implemented.
 
 Build on Admiralty's working dashboard, project knowledge and operational rules. Replace expensive conversational coordination with a durable coordination system. Most inference should solve tasks; captains should spend little context deciding what needs judgment, and the super_captain should handle cross-project exceptions. Preserve detailed evidence outside model context and retrieve only what a decision needs.
 
