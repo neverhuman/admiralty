@@ -159,6 +159,10 @@ name = "codex_p19_round11_final_gate"
 path = "../../tests/integration/codex_p19_round11_final_gate.rs"
 
 [[test]]
+[[test]]
+name = "codex_p19_round12_redteam"
+path = "../../tests/integration/codex_p19_round12_redteam.rs"
+
 name = "codex_round8_packaging"
 path = "../../tests/integration/codex_round8_packaging.rs"
 
