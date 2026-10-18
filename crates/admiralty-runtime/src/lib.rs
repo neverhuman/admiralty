@@ -2,6 +2,8 @@
 pub const MANAGED_EXECUTION_QUALIFIED: bool = false;
 
 pub mod session;
+pub mod execution;
+pub mod trusted_checks;
 
 pub mod models;
 
