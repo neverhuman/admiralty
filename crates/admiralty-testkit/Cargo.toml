@@ -171,6 +171,10 @@ name = "codex_round15_p19"
 path = "tests/integration.rs"
 
 [[test]]
+name = "codex_round17_p19"
+path = "../../tests/integration/codex_round17_p19.rs"
+
+[[test]]
 name = "codex_round8_packaging"
 path = "../../tests/integration/codex_round8_packaging.rs"
 
