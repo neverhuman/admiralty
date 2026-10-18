@@ -114,6 +114,10 @@ name = "codex_p06_p13_p14_round13"
 path = "../../tests/integration/codex_p06_p13_p14_round13.rs"
 
 [[test]]
+name = "codex_round15_p06_p13_p14"
+path = "tests/integration/mod.rs"
+
+[[test]]
 name = "coordination_delivery"
 path = "../../tests/integration/coordination_delivery.rs"
 
