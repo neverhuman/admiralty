@@ -242,3 +242,40 @@ fn corrupted_evidence_reference_is_rejected_before_proposal() {
         "malformed evidence digest must not produce a proposal"
     );
 }
+
+#[test]
+fn deterministic_clock_skew_keeps_expired_check_unresolved() {
+    use admiralty_testkit::clock::FakeClock;
+
+    let mut clock = FakeClock::new(1_000);
+    let deadline = clock.deadline_after_ms(25).expect("bounded audit deadline");
+    assert_eq!(
+        clock.now_ms(),
+        1_000,
+        "creating a deadline does not advance time"
+    );
+    clock
+        .advance_to_ms(1_025)
+        .expect("advance to exact deadline");
+    assert!(
+        deadline.is_due(clock.now_ms()),
+        "deadline is due at equality"
+    );
+
+    let policy = policy();
+    let mut staged = evidence(&policy);
+    let required = staged
+        .check_results
+        .iter_mut()
+        .find(|result| result.check_id == "unit")
+        .expect("required check result");
+    required.outcome = CheckOutcome::Unknown;
+    required.exit_code = None;
+    required.evidence_ref = None;
+
+    let proposal = evaluate_staged_audit(&scope(), &policy, &staged).expect("timed-out evidence");
+    assert!(matches!(proposal.outcome, AuditOutcome::Reproduce { .. }));
+    assert!(!proposal.acceptance_granted());
+    assert!(!proposal.execution_granted());
+    assert!(!proposal.publication_granted());
+}

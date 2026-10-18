@@ -160,3 +160,40 @@ fn forbidden_scope_overrides_broader_owned_scope() {
         "forbidden child scope overrides an owned parent"
     );
 }
+
+#[test]
+fn deterministic_retry_fault_preserves_registered_only_custody() {
+    use admiralty_testkit::faults::{FaultEffect, FaultPlan, FaultRule};
+
+    let temp = tempfile::tempdir().expect("temporary workspace fixture");
+    let workspace = fs::canonicalize(temp.path()).expect("canonical fixture root");
+    let spec = WorkspaceSpec {
+        node_id: NodeRef::new("node-fault-retry").expect("node ID"),
+        root_id: RootId::new("root-fault-retry").expect("root ID"),
+        project_id: ProjectId::new("project-fault-retry").expect("project ID"),
+        workspace,
+        owned_paths: vec![PathBuf::from("src")],
+        forbidden_paths: vec![PathBuf::from(".git")],
+    };
+    let mut faults = FaultPlan::new(vec![FaultRule {
+        point: "workspace.validate".into(),
+        occurrence: 1,
+        effect: FaultEffect::Fail,
+    }])
+    .expect("deterministic transient fault");
+
+    let mut attempts = 0;
+    let validated = loop {
+        attempts += 1;
+        match faults.hit("workspace.validate").expect("known fault point") {
+            Some(FaultEffect::Fail) => continue,
+            None => break spec.validate().expect("retry validates workspace"),
+            other => panic!("unexpected symbolic fault effect: {other:?}"),
+        }
+    };
+
+    assert_eq!(attempts, 2);
+    assert_eq!(faults.hits("workspace.validate"), Ok(2));
+    assert_eq!(validated.custody, Custody::RegisteredOnly);
+    assert!(!validated.owns(std::path::Path::new(".git/hooks/pre-commit")));
+}
