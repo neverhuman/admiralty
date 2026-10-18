@@ -806,9 +806,10 @@ mod tests {
             "positive-negative",
         )
         .expect("real checks pass with exact expected exits");
-        assert_eq!(evidence.receipt.checks.len(), 1);
-        assert_eq!(evidence.receipt.negative_checks[0].exit_code, Some(128));
-        assert!(!evidence.execution_digest.is_empty());
+        assert_eq!(evidence.receipt().inputs, inputs);
+        assert_eq!(evidence.receipt().checks.len(), 1);
+        assert_eq!(evidence.receipt().negative_checks[0].exit_code, Some(128));
+        assert!(!evidence.execution_digest().is_empty());
     }
 
     #[test]
