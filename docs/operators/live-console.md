@@ -20,7 +20,7 @@ project or all projects; Admiralty uses the same project component. The chart
 strip scrolls horizontally and each card expands on click or keyboard activation.
 It includes cost index versus all-Luna, Luna failures/first-pass, ToDo burn-up,
 in-progress work by project, agent tiers, escalation funnel, CPU load, root disk,
-integration CI history, captain hygiene, generated/integration/main tokens,
+integration CI history, Commodore hygiene, generated/integration/main tokens,
 estimated token yield/coverage, and quota usage. Expanded cards retain the source
 period, timestamps and accounting notes. Missing measurements stay unknown and
 break graph lines.
@@ -44,3 +44,7 @@ and choose an explicit fallback. See [model policy](models.md) and
 [OpenCode SSH](opencode-ssh.md). Routing configuration alone does not qualify or
 launch a native provider. Existing Screen workers remain visible through the
 read-only rollout bridge while native execution is built and qualified.
+
+The React role labels are **Admiral** for fleet coordination and **Commodore**
+for each project lead. Existing producer keys and Screen IDs retain their exact
+identities in observations; the display mapping does not rename live sessions.

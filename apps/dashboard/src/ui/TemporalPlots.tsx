@@ -84,8 +84,8 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
       return { label: projectName(id), value: state, color: ciColor(state) };
     }), [], 'Rows retain project identity · green pass · red fail · amber pending · gray unknown', snapshot.generated_utc), kind: 'ci',
     ci: projects.map(id => ({ id, label: projectName(id), color: projectColor(id), points: rows.map(row => ({ time: Number(row.ts), state: text(data(data(row.proj)[id]).ci) || 'unknown' })) })) },
-    { ...make('hygiene', 'Hygiene score per captain', projects.map(id => ({ label: projectName(id), value: format(data(hygiene.hyg)[id]), color: projectColor(id) })),
-      series(projects, (row, id) => data(row.hyg)[id], projectName, projectColor), 'Unscored captains remain unknown', sourceTime(hygiene)), max: 100 },
+    { ...make('hygiene', 'Hygiene score per Commodore', projects.map(id => ({ label: projectName(id), value: format(data(hygiene.hyg)[id]), color: projectColor(id) })),
+      series(projects, (row, id) => data(row.hyg)[id], projectName, projectColor), 'Unscored Commodores remain unknown', sourceTime(hygiene)), max: 100 },
     make('tokens', 'Tokens · generated / integration / main', [
       { label: 'generated', value: compact(total.tokens), color: '#c1c9d2' },
       { label: 'integration', value: compact(total.integration_tokens), color: '#f2c335' },

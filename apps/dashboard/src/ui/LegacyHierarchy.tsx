@@ -57,7 +57,7 @@ function Captain({ captain, project, status }: { captain: Data; project: Data; s
   const done = number(captain.done) ?? number(counts.done), total = number(captain.total) ?? number(project.total);
   const inProgress = number(counts.in_progress), state = reportedState(captain);
   return <article className="legacy-hierarchy-captain" data-captain-key={text(captain.key ?? captain.project ?? captain.id)}>
-    <header className="legacy-hierarchy-captain-heading"><div><b>{text(captain.name ?? captain.key ?? captain.project) || 'Captain'}</b> <State state={state} /></div>
+    <header className="legacy-hierarchy-captain-heading"><div><b title="Project Commodore">{text(captain.name ?? captain.key ?? captain.project) || 'Commodore'}</b> <State state={state} /></div>
       <ModelBadge model={text(captain.model) || 'unknown'} effort={text(captain.effort)} tier={text(captain.tier)} />
       <div className="legacy-hierarchy-screen legacy-hierarchy-muted">{screenName(captain)} <Host record={captain} /></div>
       {(done !== null || total !== null || inProgress !== null) && <div className="legacy-hierarchy-progress">{done !== null ? `${done}/${total ?? '?'} done` : total !== null ? `${total} tasks · done not reported` : ''}{inProgress !== null && <span className="legacy-hierarchy-warn">{done !== null || total !== null ? ' · ' : ''}{inProgress} in progress</span>}</div>}
@@ -82,18 +82,18 @@ export function LegacyHierarchy({ snapshot }: { snapshot: LegacySnapshot }) {
   const ticker = typeof superCaptain.ticker_alive === 'boolean' ? superCaptain.ticker_alive : data(superSource.ticker).alive;
   const rollout = data(snapshot.rollout), rolloutId = text(data(rollout.project).id), unassigned = list(hierarchy.unassigned).map(data);
   return <section className="legacy-hierarchy" aria-label="Fleet hierarchy">
-    <div className="legacy-hierarchy-heading"><h2>Hierarchy</h2><span className="legacy-hierarchy-muted">Owner → watcher → super_captain → captains → workers</span></div>
+    <div className="legacy-hierarchy-heading"><h2>Hierarchy</h2><span className="legacy-hierarchy-muted">Owner → watcher → Admiral → Commodores → agents</span></div>
     <div className="legacy-hierarchy-chain-scroll"><div className="legacy-hierarchy-chain">
       <div className="legacy-hierarchy-node legacy-hierarchy-person"><ProfileAvatar name={owner} profile={profile} className="legacy-hierarchy-avatar" /><div><b>{owner}</b><div className="legacy-hierarchy-muted">owner</div></div></div>
       <span className="legacy-hierarchy-arrow" aria-hidden="true">→</span>
       <div className="legacy-hierarchy-node legacy-hierarchy-person">{isGrokbot && <img className="legacy-hierarchy-grokbot" src="/brand/grokbot.png" alt="Grokbot" width="44" height="44" />}<div><b>{watcherName}</b>{routines.length > 0 ? <details className="legacy-hierarchy-routines"><summary>{routines.length} routines</summary><ul>{routines.map((routine, index) => <li key={index}>{identity(routine) || text(data(routine).description) || 'Routine details not reported'}</li>)}</ul></details> : <div className="legacy-hierarchy-muted">watcher</div>}</div></div>
       <span className="legacy-hierarchy-arrow" aria-hidden="true">→</span>
-      <div className="legacy-hierarchy-node legacy-hierarchy-super"><div><b>{text(superCaptain.name) || 'super_captain'}</b> <State state={reportedState(superCaptain)} /></div><ModelBadge model={text(superCaptain.model) || 'unknown'} effort={text(superCaptain.effort)} tier={text(superCaptain.tier)} /><div className="legacy-hierarchy-muted legacy-hierarchy-screen">{screenName(superCaptain)}</div><div className="legacy-hierarchy-muted">{ticker === true ? 'ticker ✓' : ticker === false ? 'ticker not running' : 'ticker not reported'}{text(lastCheck.no) ? ` · check #${text(lastCheck.no)}` : ''}{text(lastCheck.utc ?? superStatus.updated_utc) ? ` · ${text(lastCheck.utc ?? superStatus.updated_utc)}` : ''}</div></div>
+      <div className="legacy-hierarchy-node legacy-hierarchy-super"><div><b>Admiral</b> <State state={reportedState(superCaptain)} /></div><ModelBadge model={text(superCaptain.model) || 'unknown'} effort={text(superCaptain.effort)} tier={text(superCaptain.tier)} /><div className="legacy-hierarchy-muted legacy-hierarchy-screen">{screenName(superCaptain)}</div><div className="legacy-hierarchy-muted">{ticker === true ? 'ticker ✓' : ticker === false ? 'ticker not running' : 'ticker not reported'}{text(lastCheck.no) ? ` · check #${text(lastCheck.no)}` : ''}{text(lastCheck.utc ?? superStatus.updated_utc) ? ` · ${text(lastCheck.utc ?? superStatus.updated_utc)}` : ''}</div></div>
     </div></div>
     {captains.length > 0 ? <div className="legacy-hierarchy-columns-scroll"><div className="legacy-hierarchy-columns" style={{ gridTemplateColumns: `repeat(${captains.length}, minmax(150px, 1fr))` }}>{captains.map((captain, index) => {
       const key = text(captain.key ?? captain.project ?? captain.id);
       return <Captain key={`${key}:${index}`} captain={captain} project={data(snapshot.projects[key] ?? (key === rolloutId ? rollout : undefined))} status={data(data(superStatus.captains)[key])} />;
-    })}</div></div> : <div className="legacy-hierarchy-muted">No captains reported.</div>}
+    })}</div></div> : <div className="legacy-hierarchy-muted">No Commodores reported.</div>}
     {unassigned.length > 0 && <details className="legacy-hierarchy-unassigned"><summary>Producer unassigned screens ({unassigned.length})</summary><WorkerRows workers={unassigned} /></details>}
     <div className="legacy-hierarchy-legend"><span><i className="legacy-hierarchy-dot legacy-hierarchy-dot--active" />active</span><span><i className="legacy-hierarchy-dot legacy-hierarchy-dot--idle" />idle</span><span><i className="legacy-hierarchy-dot legacy-hierarchy-dot--blocked" />blocked / quota</span><span><i className="legacy-hierarchy-dot legacy-hierarchy-dot--remote" />remote</span><span><i className="legacy-hierarchy-dot legacy-hierarchy-dot--unknown" />unknown</span><span>State and model labels are producer observations.</span></div>
   </section>;

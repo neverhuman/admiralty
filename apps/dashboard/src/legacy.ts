@@ -10,7 +10,7 @@ export type ProjectDetailModel = { id: string; name: string; source: string; obs
 export const data = (value: unknown): Data => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Data : {};
 export const list = (value: unknown): unknown[] => Array.isArray(value) ? value : [];
 export const text = (value: unknown): string => typeof value === 'string' ? value : typeof value === 'number' || typeof value === 'boolean' ? String(value) : '';
-export const label = (value: string): string => value.replaceAll('_', ' ');
+export const label = (value: string): string => value.replaceAll('_', ' ').replace(/\bsuper captain\b/gi, 'Admiral').replace(/\bcaptains\b/gi, 'Commodores').replace(/\bcaptain\b/gi, 'Commodore');
 export const number = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 export function freshness(value: string, now = Date.now()): string {
   const age = (now - Date.parse(value)) / 1000;
@@ -62,7 +62,7 @@ const sections: Array<[string, string]> = [
   ['validator', 'Validator audit'], ['lease', 'Lease'], ['by_kind', 'Ledger progress'], ['leases', 'Task leases'],
   ['live_status', 'Live status'], ['waves', 'Evolution waves'], ['declared_counter', 'Declared source counter'],
   ['active_claims', 'Active claims'], ['in_progress_breakdown', 'In-progress accounting'],
-  ['assigned_from_captain_state', 'Captain assignments'], ['queued_assignments_no_live_screen', 'Queued assignments without live screen'],
+  ['assigned_from_captain_state', 'Commodore assignments'], ['queued_assignments_no_live_screen', 'Queued assignments without live screen'],
   ['coord_log', 'Coordination log'], ['stage_by_task', 'Per-task stages'], ['stage_meta', 'Stage provenance'],
   ['raw_status_counts', 'Raw ledger status counts'], ['current_focus', 'Current focus'],
 ];
