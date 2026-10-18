@@ -683,22 +683,16 @@ impl RunningAdmission {
         {
             return Err(ResourceGateError::UnknownOutcome);
         }
-        let service = self.backend.show(&self.recovery.unit);
-        let absent = match service {
-            Ok(ref properties) => {
-                if field(properties, "InvocationID")? != observation.invocation_id
-                    || !matches!(field(properties, "ActiveState")?, "inactive" | "failed")
-                    || !no_pending_job(properties)?
-                {
-                    return Err(ResourceGateError::UnknownOutcome);
-                }
-                false
-            }
-            Err(_) => {
-                self.backend.require_absent(&self.recovery.unit)?;
-                true
-            }
-        };
+        // A generic manager/parse failure is uncertainty, never an absence
+        // observation. This host reports collected transient units with an
+        // explicit, successful not-found property response.
+        let service = self.backend.show(&self.recovery.unit)?;
+        let absent = closed_service_absent(
+            &service,
+            &self.recovery.unit,
+            &observation.invocation_id,
+            || self.backend.require_absent(&self.recovery.unit),
+        )?;
         // The previously observed owned kernel cgroup must be empty or gone.
         // Missing files are accepted only here, with positive manager absence or
         // exact inactive invocation plus an already exited owned client.
@@ -709,7 +703,7 @@ impl RunningAdmission {
         }
         if absent {
             self.backend.require_absent(&self.recovery.unit)?;
-        } else if self.backend.show(&self.recovery.unit)? != service? {
+        } else if self.backend.show(&self.recovery.unit)? != service {
             return Err(ResourceGateError::UnknownOutcome);
         }
         if read_host_incarnation()? != self.recovery.host_incarnation {
@@ -1170,6 +1164,48 @@ fn cgroup_limit_failure(
     }
 }
 
+/// Classify only a precisely observed collected transient unit as an absence
+/// candidate, then demand a separate successful exact-name manager listing.
+/// The caller must still check its prior live cgroup and confirm absence again.
+fn closed_service_absent(
+    properties: &BTreeMap<String, String>,
+    unit: &str,
+    invocation: &str,
+    confirm_absent: impl FnOnce() -> Result<(), ResourceGateError>,
+) -> Result<bool, ResourceGateError> {
+    if field(properties, "LoadState")? == "not-found" {
+        let expected = [
+            ("Id", unit),
+            ("LoadState", "not-found"),
+            ("ActiveState", "inactive"),
+            ("ControlGroup", ""),
+            ("InvocationID", ""),
+            ("MainPID", "0"),
+            ("ExecMainPID", "0"),
+            ("Job", ""),
+            ("Slice", ""),
+        ];
+        if properties.len() != expected.len()
+            || expected
+                .iter()
+                .any(|(key, value)| properties.get(*key).map(String::as_str) != Some(*value))
+        {
+            return Err(ResourceGateError::UnknownOutcome);
+        }
+        confirm_absent()?;
+        return Ok(true);
+    }
+    if field(properties, "Id")? != unit
+        || field(properties, "LoadState")? != "loaded"
+        || field(properties, "InvocationID")? != invocation
+        || !matches!(field(properties, "ActiveState")?, "inactive" | "failed")
+        || !no_pending_job(properties)?
+    {
+        return Err(ResourceGateError::UnknownOutcome);
+    }
+    Ok(false)
+}
+
 fn no_pending_job(properties: &BTreeMap<String, String>) -> Result<bool, ResourceGateError> {
     // systemctl renders a missing job as an explicit empty value on the
     // qualified host; some versions render zero. Missing/malformed fields or
@@ -1533,6 +1569,70 @@ fn bounded_output(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn collected_transient_unit_requires_exact_not_found_shape_and_positive_absence() {
+        let unit = "adm-resource-7baf5851a3857a38085ce7feaf7a55c6.service";
+        let actual = format!(
+            "MainPID=0\nExecMainPID=0\nSlice=\nControlGroup=\nId={unit}\nLoadState=not-found\nActiveState=inactive\nJob=\nInvocationID=\n"
+        );
+        let properties =
+            parse_properties(actual.as_bytes()).expect("actual successful show format");
+        let confirmations = std::cell::Cell::new(0);
+        let confirmed = closed_service_absent(&properties, unit, "prior-live-invocation", || {
+            confirmations.set(confirmations.get() + 1);
+            Ok(())
+        });
+        assert!(confirmed.expect("strict shape plus exact empty listing"));
+        assert_eq!(confirmations.get(), 1);
+        assert!(
+            closed_service_absent(&properties, unit, "prior-live-invocation", || {
+                Err(ResourceGateError::UnknownOutcome)
+            })
+            .is_err()
+        );
+        // Missing, malformed or contradictory fields must not even consult the
+        // absence listing, much less authorize the caller's closure path.
+        for key in properties.keys() {
+            let mut missing = properties.clone();
+            missing.remove(key);
+            assert!(
+                closed_service_absent(&missing, unit, "prior-live-invocation", || {
+                    panic!("incomplete property shape must remain unknown")
+                })
+                .is_err()
+            );
+            let mut changed = properties.clone();
+            changed.insert(key.clone(), "contradictory".into());
+            assert!(
+                closed_service_absent(&changed, unit, "prior-live-invocation", || {
+                    panic!("contradictory property shape must remain unknown")
+                })
+                .is_err()
+            );
+        }
+        let mut extra = properties.clone();
+        extra.insert("UnrequestedProperty".into(), "value".into());
+        assert!(
+            closed_service_absent(&extra, unit, "prior-live-invocation", || {
+                panic!("unrequested property shape must remain unknown")
+            })
+            .is_err()
+        );
+        let mut inactive = properties;
+        inactive.insert("LoadState".into(), "loaded".into());
+        inactive.insert("InvocationID".into(), "prior-live-invocation".into());
+        assert!(
+            !closed_service_absent(&inactive, unit, "prior-live-invocation", || {
+                panic!("retained loaded invocation does not use absence classification")
+            })
+            .expect("matching inactive invocation")
+        );
+        inactive.insert("InvocationID".into(), "different-invocation".into());
+        assert!(
+            closed_service_absent(&inactive, unit, "prior-live-invocation", || Ok(())).is_err()
+        );
+    }
 
     #[test]
     fn cgroup_diagnostics_distinguish_every_enforcement_comparison() {
