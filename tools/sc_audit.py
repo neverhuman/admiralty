@@ -271,7 +271,12 @@ def audit_dope():
     return res
 
 def max_claim(logp, total, scr):
-    txt = tail_text(logp, 30000) + '\n' + (open('/tmp/sc_audit_hc_' + scr + '.txt', errors='replace').read() if os.path.exists('/tmp/sc_audit_hc_' + scr + '.txt') else '')
+    """Highest done-count the captain itself is claiming NOW: its screen tail + its own latest STATUS lines."""
+    hc = '/tmp/sc_audit_hc_' + scr + '.txt'
+    scr_txt = '\n'.join(open(hc, errors='replace').read().split('\n')[-150:]) if os.path.exists(hc) else ''
+    own = [l for l in tail_text(logp, 12000).split('\n') if scr in l and 'STATUS' in l.upper()][-2:]
+    txt = scr_txt + '\n' + '\n'.join(own)
+    txt = '\n'.join(l for l in txt.split('\n') if not re.search(r'gorkbot|grok ?bot|ENG.watcher|super_captain|\bNOT\b|claimed|\bclaim\b|\brev\d+|ledger', l, re.I))
     vals = [int(m.group(1)) for m in re.finditer(r'\b(\d{1,3})\s*/\s*%d\b[^\n]{0,25}\b(done|complete|accepted|verified)' % total, txt, re.I)]
     vals += [int(m.group(2)) for m in re.finditer(r'\b(done|complete|accepted)\b[^\n]{0,6}?[:= ]\s*(\d{1,3})\s*/\s*%d\b' % total, txt, re.I)]
     return max(vals) if vals else None
