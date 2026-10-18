@@ -579,4 +579,3 @@ fn p19_p21_round10_item3_workspace_gate_audit() {
     assert!(!audited.execution_granted());
     assert!(audited.intent.is_some());
 }
-
