@@ -1,3 +1,19 @@
+[package]
+name = "admiralty-qualification-tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+autolib = false
+
+[dependencies]
+admiralty-core.workspace = true
+serde_json.workspace = true
+
+[[test]]
+name = "codex_round16_p27"
+path = "tests/integration/codex_round16_p27.rs"
+
 [workspace]
 members = ["crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests"]
 resolver = "2"
