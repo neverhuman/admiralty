@@ -143,6 +143,10 @@ name = "codex_worktree_publication"
 path = "../../tests/integration/codex_worktree_publication.rs"
 
 [[test]]
+name = "codex_p19_round11_final_gate"
+path = "../../tests/integration/codex_p19_round11_final_gate.rs"
+
+[[test]]
 name = "codex_round8"
 path = "../../tests/integration/codex_round8.rs"
 
