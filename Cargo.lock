@@ -41,6 +41,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "admiralty-release-qualification"
+version = "0.1.0"
+dependencies = [
+ "admiralty-core",
+ "admiralty-runtime",
+]
+
+[[package]]
 name = "admiralty-runtime"
 version = "0.1.0"
 dependencies = [
