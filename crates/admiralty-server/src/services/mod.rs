@@ -7,3 +7,4 @@ pub mod native_commands;
 pub mod native_lifecycle;
 
 pub mod native_executor;
+pub mod native_loop;
