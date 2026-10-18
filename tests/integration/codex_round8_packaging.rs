@@ -311,3 +311,101 @@ fn p28_round10_item3_workspace_gate_audit() {
     assert_eq!(value["reason"], "golden webhook omitted cost");
     assert!(DecimalU128::parse("340282366920938463463374607431768211456").is_err());
 }
+
+#[test]
+fn p28_p32_round11_item4_final_validation_gate() {
+    // Freeze one P28 trial assignment, then carry that exact cohort into the
+    // P32 combined candidate review. Reordered delivery must preserve both
+    // the assignments and the conflict generation.
+    let variants = [
+        VariantId::new("control").expect("control variant"),
+        VariantId::new("candidate").expect("candidate variant"),
+    ];
+    let clusters = [
+        ClusterId::new("manager-a").expect("manager A"),
+        ClusterId::new("manager-b").expect("manager B"),
+    ];
+    let cohort = [
+        ("root-a1", 0),
+        ("root-a2", 0),
+        ("root-b1", 1),
+        ("root-b2", 1),
+    ]
+    .into_iter()
+    .map(|(root, cluster)| ClusterMember {
+        root_id: RootId::new(root).expect("cohort root"),
+        cluster_id: clusters[cluster].clone(),
+    })
+    .collect::<Vec<_>>();
+    let spec = TrialSpec {
+        trial_id: TrialId::new("round11-final-gate").expect("trial ID"),
+        project_id: ProjectId::new("final-gate").expect("project ID"),
+        scope_root_id: RootId::new("scope-root").expect("scope root"),
+        scope_task_id: TaskId::new("scope-task").expect("scope task"),
+        contract_revision: 1,
+        contract_digest: digest('a'),
+        fixed_cohort: cohort.clone(),
+        immutable_bundle_digests: vec![digest('b')],
+        protected_oracle_digest: digest('c'),
+        pre_registered_seed: "round11-fixed-seed".into(),
+        decision_tick: DecimalU64::new(100),
+        cluster_assignments: clusters
+            .iter()
+            .map(|cluster_id| ClusterAssignment {
+                cluster_id: cluster_id.clone(),
+                variants: variants.to_vec(),
+            })
+            .collect(),
+        required_maturity: DecimalU64::new(2),
+        planned_looks: DecimalU64::new(1),
+    };
+    let assignments = assign_trial(&spec, &cohort, 1, 2).expect("fixed trial assignment");
+    let mut reordered_cohort = cohort.clone();
+    reordered_cohort.reverse();
+    assert_eq!(
+        assignments,
+        assign_trial(&spec, &reordered_cohort, 1, 2).expect("replay reordered cohort")
+    );
+    for manager in ["manager-a", "manager-b"] {
+        let arm_ids = assignments
+            .iter()
+            .filter(|assignment| assignment.cluster_id.as_str() == manager)
+            .map(|assignment| assignment.variant.clone())
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(arm_ids.len(), 1, "shared-manager cohort stays in one arm");
+    }
+
+    let candidates = assignments
+        .iter()
+        .map(|assignment| {
+            let id = format!("candidate-{}", assignment.root_id.as_str());
+            CandidateChange {
+                project_id: spec.project_id.clone(),
+                root_id: spec.scope_root_id.clone(),
+                task_id: TaskId::new(&id).expect("candidate task ID"),
+                candidate_id: id,
+                base_sha: digest('d'),
+                head_sha: digest('e'),
+                tree_sha: digest('f'),
+                ancestry_digest: Some(digest('0')),
+                files: vec![FileChange {
+                    path: format!("variants/{}/src/handler.rs", assignment.variant.as_str()),
+                    hunks: None,
+                }],
+                constraints: None,
+            }
+        })
+        .collect::<Vec<_>>();
+    let forward = analyze_conflicts(&candidates, "round11-policy").expect("combined validation");
+    let mut reversed_candidates = candidates;
+    reversed_candidates.reverse();
+    let replay = analyze_conflicts(&reversed_candidates, "round11-policy")
+        .expect("replayed combined validation");
+    assert_eq!(forward, replay);
+    assert_eq!(forward.generation.candidate_ids.len(), cohort.len());
+    assert!(forward.generation.combined_verification_required);
+    assert!(forward.edges.iter().all(|edge| {
+        edge.risks
+            .contains(&admiralty_core::conflicts::ConflictRisk::UnknownWriteScope)
+    }));
+}
