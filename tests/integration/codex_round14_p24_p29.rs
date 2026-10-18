@@ -1,10 +1,10 @@
 //! Round 14 deterministic release readiness checks for placement and topology.
 
-use admiralty_core::{ProjectId, RootId, TaskId};
 use admiralty_core::placement::{
-    BudgetRequirement, Capacity, DecimalU64, Known, NodeId, NodeOffer, Observation,
-    PlacementError, PlacementPolicy, PlacementRequest, propose_placement,
+    BudgetRequirement, Capacity, DecimalU64, Known, NodeId, NodeOffer, Observation, PlacementError,
+    PlacementPolicy, PlacementRequest, propose_placement,
 };
+use admiralty_core::{ProjectId, RootId, TaskId};
 
 fn amount(value: u64) -> DecimalU64 {
     DecimalU64::new(value)
@@ -88,8 +88,8 @@ fn codex_round14_p24_p29() {
 
     let first = propose_placement(&request, &offers, &policy, 20)
         .expect("valid capacity and topology evidence yields a proposal");
-    let replay = propose_placement(&request, &offers, &policy, 20)
-        .expect("replay yields a proposal");
+    let replay =
+        propose_placement(&request, &offers, &policy, 20).expect("replay yields a proposal");
     assert_eq!(first, replay, "identical evidence must replay identically");
     assert_eq!(first.candidates.len(), 2);
     assert!(!first.execution_granted);
@@ -115,7 +115,12 @@ fn codex_round14_p24_p29() {
     assert!(!stale_topology.authority_granted);
 
     assert_eq!(
-        propose_placement(&request, &[offer("duplicate", 1, 7), offer("duplicate", 1, 7)], &policy, 20),
+        propose_placement(
+            &request,
+            &[offer("duplicate", 1, 7), offer("duplicate", 1, 7)],
+            &policy,
+            20
+        ),
         Err(PlacementError::DuplicateNode),
         "ambiguous duplicate topology must be rejected before scheduling"
     );

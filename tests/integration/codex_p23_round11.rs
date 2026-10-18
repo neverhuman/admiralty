@@ -487,5 +487,7 @@ fn p23_round13_wo_node_running_evidence_gate() {
             .map(|r| r.numerator.as_u128()),
         Some(1)
     );
-    assert!(!MANAGED_EXECUTION_QUALIFIED);
+    const {
+        assert!(!MANAGED_EXECUTION_QUALIFIED);
+    }
 }
