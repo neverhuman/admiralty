@@ -88,6 +88,13 @@ export type IntakeDraft = {
   authority_ref: string;
   max_attempts: string;
   simulated: boolean;
+  full_non_goals?: string[];
+  full_owned_paths?: string[];
+  full_forbidden_paths?: string[];
+  full_read_first?: string[];
+  full_dependencies?: string[];
+  full_criteria?: AcceptanceCriterion[];
+  full_checks?: CheckSpec[];
 };
 
 export type DuplicateCandidate = {
@@ -475,77 +482,118 @@ export function sha256Hex(input: string): string {
     .join('');
 }
 
-function serializeContractCanonical(contract: TaskContract): Record<string, unknown> {
-  return {
-    schema_version: contract.schema_version,
-    project_id: contract.project_id,
-    root_id: contract.root_id,
-    task_id: contract.task_id,
-    revision: contract.revision,
-    title: contract.title,
-    objective: contract.objective,
-    non_goals: [...contract.non_goals],
-    owned_paths: [...contract.owned_paths],
-    forbidden_paths: [...contract.forbidden_paths],
-    read_first: [...contract.read_first],
-    dependencies: [...contract.dependencies],
-    criteria: contract.criteria.map(criterion => ({
-      id: criterion.id,
-      text: criterion.text,
-      check_ids: [...criterion.check_ids],
-    })),
-    checks: contract.checks.map(check => ({
-      id: check.id,
-      program: check.program,
-      args: [...check.args],
-      cwd: check.cwd,
-      timeout_secs: check.timeout_secs,
-    })),
-    authority_ref: contract.authority_ref,
-    max_attempts: contract.max_attempts,
-    simulated: contract.simulated,
-  };
+function encodeJsonObject(entries: ReadonlyArray<readonly [string, string]>): string {
+  return `{${entries.map(([key, rawJson]) => `${JSON.stringify(key)}:${rawJson}`).join(',')}}`;
 }
 
-function serializeLifecycleCanonical(lifecycle: TaskLifecycleView): Record<string, unknown> {
-  const sortedAttempts: Record<string, string> = {};
-  for (const key of Object.keys(lifecycle.attempts).sort()) {
-    sortedAttempts[key] = lifecycle.attempts[key];
-  }
-  const decision = lifecycle.decision
-    ? {
-        contract_digest: lifecycle.decision.contract_digest,
-        verification_policy_digest: lifecycle.decision.verification_policy_digest,
-        receipt_digest: lifecycle.decision.receipt_digest,
-        custody_digest: lifecycle.decision.custody_digest,
-        closure_digest: lifecycle.decision.closure_digest,
-        source_commit_sha: lifecycle.decision.source_commit_sha,
-        source_tree_sha: lifecycle.decision.source_tree_sha,
-        verifier: lifecycle.decision.verifier,
+function encodeStringArray(items: readonly string[]): string {
+  return `[${items.map(item => JSON.stringify(item)).join(',')}]`;
+}
+
+function serializeContractFragment(contract: TaskContract): string {
+  const criteriaJson = `[${contract.criteria
+    .map(c =>
+      encodeJsonObject([
+        ['id', JSON.stringify(c.id)],
+        ['text', JSON.stringify(c.text)],
+        ['check_ids', encodeStringArray(c.check_ids)],
+      ]),
+    )
+    .join(',')}]`;
+  const checksJson = `[${contract.checks
+    .map(chk =>
+      encodeJsonObject([
+        ['id', JSON.stringify(chk.id)],
+        ['program', JSON.stringify(chk.program)],
+        ['args', encodeStringArray(chk.args)],
+        ['cwd', JSON.stringify(chk.cwd)],
+        ['timeout_secs', JSON.stringify(chk.timeout_secs)],
+      ]),
+    )
+    .join(',')}]`;
+  return encodeJsonObject([
+    ['schema_version', JSON.stringify(contract.schema_version)],
+    ['project_id', JSON.stringify(contract.project_id)],
+    ['root_id', JSON.stringify(contract.root_id)],
+    ['task_id', JSON.stringify(contract.task_id)],
+    ['revision', JSON.stringify(contract.revision)],
+    ['title', JSON.stringify(contract.title)],
+    ['objective', JSON.stringify(contract.objective)],
+    ['non_goals', encodeStringArray(contract.non_goals)],
+    ['owned_paths', encodeStringArray(contract.owned_paths)],
+    ['forbidden_paths', encodeStringArray(contract.forbidden_paths)],
+    ['read_first', encodeStringArray(contract.read_first)],
+    ['dependencies', encodeStringArray(contract.dependencies)],
+    ['criteria', criteriaJson],
+    ['checks', checksJson],
+    ['authority_ref', JSON.stringify(contract.authority_ref)],
+    ['max_attempts', JSON.stringify(contract.max_attempts)],
+    ['simulated', JSON.stringify(contract.simulated)],
+  ]);
+}
+
+/**
+ * Serializes Rust BTreeMap<AttemptId, PrincipalId> directly as lexically sorted
+ * key/value JSON fragments without any intermediate JS object round-trip.
+ * Preserves lexical byte order ("10" before "2") and preserves own "__proto__" keys.
+ */
+export function serializeAttemptsBTreeMap(
+  attempts: Record<string, string> | ReadonlyMap<string, string>,
+): string {
+  const entries: Array<[string, string]> = [];
+  if (attempts instanceof Map) {
+    for (const [k, v] of attempts.entries()) {
+      if (typeof k === 'string' && typeof v === 'string') {
+        entries.push([k, v]);
       }
-    : null;
-  return {
-    revision: lifecycle.revision,
-    attempts: sortedAttempts,
-    closure_digest: lifecycle.closure_digest,
-    decision,
-    reason: lifecycle.reason,
-  };
+    }
+  } else {
+    for (const key of Object.getOwnPropertyNames(attempts)) {
+      const desc = Object.getOwnPropertyDescriptor(attempts, key);
+      if (desc && desc.enumerable && typeof desc.value === 'string') {
+        entries.push([key, desc.value]);
+      }
+    }
+  }
+  entries.sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${JSON.stringify(v)}`).join(',')}}`;
 }
 
-/** Matches Rust admiralty_core::content_digest(&task_view) serde_json field order. */
+function serializeLifecycleFragment(lifecycle: TaskLifecycleView): string {
+  const decisionJson = lifecycle.decision
+    ? encodeJsonObject([
+        ['contract_digest', JSON.stringify(lifecycle.decision.contract_digest)],
+        ['verification_policy_digest', JSON.stringify(lifecycle.decision.verification_policy_digest)],
+        ['receipt_digest', JSON.stringify(lifecycle.decision.receipt_digest)],
+        ['custody_digest', JSON.stringify(lifecycle.decision.custody_digest)],
+        ['closure_digest', JSON.stringify(lifecycle.decision.closure_digest)],
+        ['source_commit_sha', JSON.stringify(lifecycle.decision.source_commit_sha)],
+        ['source_tree_sha', JSON.stringify(lifecycle.decision.source_tree_sha)],
+        ['verifier', JSON.stringify(lifecycle.decision.verifier)],
+      ])
+    : 'null';
+  return encodeJsonObject([
+    ['revision', JSON.stringify(lifecycle.revision)],
+    ['attempts', serializeAttemptsBTreeMap(lifecycle.attempts)],
+    ['closure_digest', JSON.stringify(lifecycle.closure_digest)],
+    ['decision', decisionJson],
+    ['reason', JSON.stringify(lifecycle.reason)],
+  ]);
+}
+
+/** Matches Rust admiralty_core::content_digest(&task_view) serde_json field and BTreeMap order. */
 export function serializeTaskViewForDigest(task: AnyFleetTask): string {
-  const view: Record<string, unknown> = {
-    contract: serializeContractCanonical(task.contract),
-    state: task.state,
-    attempt_id: task.attempt_id,
-    owner: task.owner,
-    candidate_ref: task.candidate_ref,
-  };
+  const fields: Array<[string, string]> = [
+    ['contract', serializeContractFragment(task.contract)],
+    ['state', JSON.stringify(task.state)],
+    ['attempt_id', JSON.stringify(task.attempt_id)],
+    ['owner', JSON.stringify(task.owner)],
+    ['candidate_ref', JSON.stringify(task.candidate_ref)],
+  ];
   if (task.lifecycle !== undefined && task.lifecycle !== null) {
-    view.lifecycle = serializeLifecycleCanonical(task.lifecycle);
+    fields.push(['lifecycle', serializeLifecycleFragment(task.lifecycle)]);
   }
-  return JSON.stringify(view);
+  return encodeJsonObject(fields);
 }
 
 export function computeTaskViewDigest(task: AnyFleetTask): string {
@@ -910,6 +958,76 @@ export function emptyIntakeDraft(projectId = 'admiralty'): IntakeDraft {
   };
 }
 
+function formatListFieldForDraft(items: readonly string[]): string {
+  if (items.some(item => item.includes(',') || item.includes('\n'))) {
+    return JSON.stringify(items);
+  }
+  return items.join(', ');
+}
+
+function parseListFieldFromDraft(
+  raw: string,
+  fullBackup: readonly string[] | undefined,
+  deduplicate: boolean,
+): string[] {
+  const trimmed = raw.trim();
+  if (fullBackup && formatListFieldForDraft(fullBackup) === trimmed) {
+    return [...fullBackup];
+  }
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+        return deduplicate ? [...new Set(parsed as string[])] : (parsed as string[]);
+      }
+    } catch {
+      /* fall through to split */
+    }
+  }
+  if (deduplicate) {
+    return splitList(raw);
+  }
+  return raw
+    .split(/[\n,]+/)
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+export function contractFromTaskForRevision(
+  task: AnyFleetTask,
+  patch?: Partial<Pick<TaskContract, 'title' | 'objective'>>,
+): TaskContract {
+  return {
+    schema_version: task.contract.schema_version,
+    project_id: task.contract.project_id,
+    root_id: task.contract.root_id,
+    task_id: task.contract.task_id,
+    revision: task.contract.revision + 1,
+    title: patch?.title ?? task.contract.title,
+    objective: patch?.objective ?? task.contract.objective,
+    non_goals: [...task.contract.non_goals],
+    owned_paths: [...task.contract.owned_paths],
+    forbidden_paths: [...task.contract.forbidden_paths],
+    read_first: [...task.contract.read_first],
+    dependencies: [...task.contract.dependencies],
+    criteria: task.contract.criteria.map(c => ({
+      id: c.id,
+      text: c.text,
+      check_ids: [...c.check_ids],
+    })),
+    checks: task.contract.checks.map(chk => ({
+      id: chk.id,
+      program: chk.program,
+      args: [...chk.args],
+      cwd: chk.cwd,
+      timeout_secs: chk.timeout_secs,
+    })),
+    authority_ref: task.contract.authority_ref,
+    max_attempts: task.contract.max_attempts,
+    simulated: task.contract.simulated,
+  };
+}
+
 export function draftFromTaskForRevision(task: AnyFleetTask): IntakeDraft {
   const firstCriterion = task.contract.criteria[0];
   const firstCheck = task.contract.checks[0];
@@ -920,11 +1038,11 @@ export function draftFromTaskForRevision(task: AnyFleetTask): IntakeDraft {
     revision: String(task.contract.revision + 1),
     title: task.contract.title,
     objective: task.contract.objective,
-    non_goals: task.contract.non_goals.join(', '),
-    owned_paths: task.contract.owned_paths.join(', '),
-    forbidden_paths: task.contract.forbidden_paths.join(', '),
-    read_first: task.contract.read_first.join(', '),
-    dependencies: task.contract.dependencies.join(', '),
+    non_goals: formatListFieldForDraft(task.contract.non_goals),
+    owned_paths: formatListFieldForDraft(task.contract.owned_paths),
+    forbidden_paths: formatListFieldForDraft(task.contract.forbidden_paths),
+    read_first: formatListFieldForDraft(task.contract.read_first),
+    dependencies: formatListFieldForDraft(task.contract.dependencies),
     criterion_id: firstCriterion?.id ?? 'crit-1',
     criterion_text: firstCriterion?.text ?? '',
     check_id: firstCheck?.id ?? 'chk-1',
@@ -935,6 +1053,23 @@ export function draftFromTaskForRevision(task: AnyFleetTask): IntakeDraft {
     authority_ref: task.contract.authority_ref,
     max_attempts: String(task.contract.max_attempts),
     simulated: task.contract.simulated,
+    full_non_goals: [...task.contract.non_goals],
+    full_owned_paths: [...task.contract.owned_paths],
+    full_forbidden_paths: [...task.contract.forbidden_paths],
+    full_read_first: [...task.contract.read_first],
+    full_dependencies: [...task.contract.dependencies],
+    full_criteria: task.contract.criteria.map(c => ({
+      id: c.id,
+      text: c.text,
+      check_ids: [...c.check_ids],
+    })),
+    full_checks: task.contract.checks.map(chk => ({
+      id: chk.id,
+      program: chk.program,
+      args: [...chk.args],
+      cwd: chk.cwd,
+      timeout_secs: chk.timeout_secs,
+    })),
   };
 }
 
@@ -944,6 +1079,58 @@ export function draftToContractCandidate(draft: IntakeDraft): unknown {
   const timeoutSecs = /^\d+$/.test(draft.check_timeout_secs.trim()) ? Number(draft.check_timeout_secs.trim()) : NaN;
   const checkId = draft.check_id.trim();
   const parsedArgs = parseCheckArgs(draft.check_args);
+
+  const checks: CheckSpec[] =
+    draft.full_checks && draft.full_checks.length > 0
+      ? draft.full_checks.map((chk, idx) =>
+          idx === 0 && checkId
+            ? {
+                id: checkId,
+                program: draft.check_program.trim(),
+                args: parsedArgs.args,
+                cwd: draft.check_cwd.trim(),
+                timeout_secs: timeoutSecs,
+              }
+            : { ...chk, args: [...chk.args] },
+        )
+      : checkId
+        ? [
+            {
+              id: checkId,
+              program: draft.check_program.trim(),
+              args: parsedArgs.args,
+              cwd: draft.check_cwd.trim(),
+              timeout_secs: timeoutSecs,
+            },
+          ]
+        : [];
+
+  const criteria: AcceptanceCriterion[] =
+    draft.full_criteria && draft.full_criteria.length > 0
+      ? draft.full_criteria.map((crit, idx) =>
+          idx === 0 && (draft.criterion_id.trim() || draft.criterion_text.trim())
+            ? {
+                id: draft.criterion_id.trim(),
+                text: draft.criterion_text.trim(),
+                check_ids:
+                  crit.check_ids.length > 0
+                    ? [checkId || crit.check_ids[0], ...crit.check_ids.slice(1)]
+                    : checkId
+                      ? [checkId]
+                      : [],
+              }
+            : { ...crit, check_ids: [...crit.check_ids] },
+        )
+      : draft.criterion_id.trim() || draft.criterion_text.trim()
+        ? [
+            {
+              id: draft.criterion_id.trim(),
+              text: draft.criterion_text.trim(),
+              check_ids: checkId ? [checkId] : [],
+            },
+          ]
+        : [];
+
   return {
     schema_version: 1,
     project_id: draft.project_id.trim(),
@@ -952,35 +1139,13 @@ export function draftToContractCandidate(draft: IntakeDraft): unknown {
     revision,
     title: draft.title.trim(),
     objective: draft.objective.trim(),
-    non_goals: splitList(draft.non_goals),
-    owned_paths: splitList(draft.owned_paths),
-    forbidden_paths: splitList(draft.forbidden_paths),
-    read_first: splitList(draft.read_first),
-    dependencies: draft.dependencies
-      .split(/[\n,]+/)
-      .map(item => item.trim())
-      .filter(Boolean),
-    criteria:
-      draft.criterion_id.trim() || draft.criterion_text.trim()
-        ? [
-            {
-              id: draft.criterion_id.trim(),
-              text: draft.criterion_text.trim(),
-              check_ids: checkId ? [checkId] : [],
-            },
-          ]
-        : [],
-    checks: checkId
-      ? [
-          {
-            id: checkId,
-            program: draft.check_program.trim(),
-            args: parsedArgs.args,
-            cwd: draft.check_cwd.trim(),
-            timeout_secs: timeoutSecs,
-          },
-        ]
-      : [],
+    non_goals: parseListFieldFromDraft(draft.non_goals, draft.full_non_goals, true),
+    owned_paths: parseListFieldFromDraft(draft.owned_paths, draft.full_owned_paths, true),
+    forbidden_paths: parseListFieldFromDraft(draft.forbidden_paths, draft.full_forbidden_paths, true),
+    read_first: parseListFieldFromDraft(draft.read_first, draft.full_read_first, true),
+    dependencies: parseListFieldFromDraft(draft.dependencies, draft.full_dependencies, false),
+    criteria,
+    checks,
     authority_ref: draft.authority_ref.trim(),
     max_attempts: maxAttempts,
     simulated: draft.simulated,
@@ -2105,15 +2270,193 @@ export async function replayEventsToCursor(
   }
 }
 
-type RetainedCommandEnvelope<T> = {
-  fingerprint: string;
-  request_id: string;
-  request: T;
-};
+export type RetainedCommandEnvelope =
+  | {
+      kind: 'create';
+      fingerprint: string;
+      request_id: string;
+      request: SubmitTaskRequest;
+    }
+  | {
+      kind: 'cancel_pending' | 'revise_contract';
+      fingerprint: string;
+      request_id: string;
+      request: SubmitLifecycleRequest;
+    };
+
+export async function executeIntakeCommand(params: {
+  retainedRef: { current: RetainedCommandEnvelope | null };
+  preview: IntakePreview;
+  effectiveCasDigest: string | null;
+  onPinCasDigest?: (digest: string) => void;
+  token?: string;
+  fetcher?: typeof fetch;
+  onSubmitTask?: (request: SubmitTaskRequest) => Promise<CommandReceipt>;
+  onReviseContract?: (request: SubmitLifecycleRequest) => Promise<CommandReceipt>;
+  onRefreshSnapshot?: () => void | Promise<void>;
+}): Promise<CommandReceipt> {
+  let envelope = params.retainedRef.current;
+  if (!envelope) {
+    if (!params.preview.valid || !params.preview.contract) {
+      throw new Error(params.preview.errors[0] ?? 'Contract preview is invalid');
+    }
+    if (params.preview.operation === 'revise_contract') {
+      const casDigest = params.effectiveCasDigest ?? params.preview.expectedTaskDigest;
+      if (!casDigest) {
+        throw new Error('Missing expected_task_digest for CAS contract revision');
+      }
+      params.onPinCasDigest?.(casDigest);
+      const req: SubmitLifecycleRequest = {
+        request_id: generateCanonicalRequestId(),
+        task_id: params.preview.contract.task_id,
+        expected_task_digest: casDigest,
+        action: { action: 'revise_contract', contract: params.preview.contract },
+      };
+      const fingerprint = JSON.stringify({
+        op: 'revise_contract',
+        task_id: req.task_id,
+        expected_task_digest: casDigest,
+        contract: serializeContractFragment(params.preview.contract),
+      });
+      envelope = {
+        kind: 'revise_contract',
+        fingerprint,
+        request_id: req.request_id,
+        request: req,
+      };
+    } else {
+      const req: SubmitTaskRequest = {
+        request_id: generateCanonicalRequestId(),
+        contract: params.preview.contract,
+      };
+      const fingerprint = JSON.stringify({
+        op: 'create',
+        contract: serializeContractFragment(params.preview.contract),
+      });
+      envelope = {
+        kind: 'create',
+        fingerprint,
+        request_id: req.request_id,
+        request: req,
+      };
+    }
+    params.retainedRef.current = envelope;
+  }
+
+  // Dispatch the retained envelope directly without re-evaluating current snapshot eligibility or CAS.
+  const receipt =
+    envelope.kind === 'create'
+      ? params.onSubmitTask
+        ? await params.onSubmitTask(envelope.request)
+        : await submitNativeTask(envelope.request, params.token, undefined, params.fetcher)
+      : params.onReviseContract
+        ? await params.onReviseContract(envelope.request)
+        : await submitNativeLifecycle(envelope.request, params.token, undefined, params.fetcher);
+
+  params.retainedRef.current = null;
+  await params.onRefreshSnapshot?.();
+  return receipt;
+}
+
+export async function executeTaskDetailLifecycleCommand(params: {
+  kind: 'cancel_pending' | 'revise_contract';
+  retainedRef: { current: RetainedCommandEnvelope | null };
+  detail: TaskDetailModel | null;
+  boundDigest: string | null;
+  cancelReason?: string;
+  reviseTitle?: string;
+  reviseObjective?: string;
+  token?: string;
+  fetcher?: typeof fetch;
+  onCancelPendingTask?: (request: SubmitLifecycleRequest) => Promise<CommandReceipt>;
+  onReviseContract?: (request: SubmitLifecycleRequest) => Promise<CommandReceipt>;
+  onRefreshSnapshot?: () => void | Promise<void>;
+}): Promise<CommandReceipt> {
+  let envelope = params.retainedRef.current;
+  if (!envelope || envelope.kind !== params.kind) {
+    if (!params.detail) {
+      throw new Error('Task detail is unavailable');
+    }
+    const { task } = params.detail;
+    const expectedDigest = params.boundDigest ?? params.detail.taskDigest;
+    if (params.kind === 'cancel_pending') {
+      if (!params.detail.canCancelPending) {
+        throw new Error(`Task "${task.contract.task_id}" is not eligible for pending cancellation`);
+      }
+      const reason = (params.cancelReason ?? '').trim();
+      if (!reason) {
+        throw new Error('Pending cancellation reason is required');
+      }
+      const req: SubmitLifecycleRequest = {
+        request_id: generateCanonicalRequestId(),
+        task_id: task.contract.task_id,
+        expected_task_digest: expectedDigest,
+        action: { action: 'cancel_pending', reason },
+      };
+      const fingerprint = JSON.stringify({
+        op: 'cancel_pending',
+        task_id: req.task_id,
+        expected_task_digest: expectedDigest,
+        reason,
+      });
+      envelope = {
+        kind: 'cancel_pending',
+        fingerprint,
+        request_id: req.request_id,
+        request: req,
+      };
+    } else {
+      if (!params.detail.canReviseContract) {
+        throw new Error(`Task "${task.contract.task_id}" is not eligible for contract revision`);
+      }
+      const nextContract: TaskContract = {
+        ...task.contract,
+        revision: task.contract.revision + 1,
+        title: (params.reviseTitle ?? '').trim() || task.contract.title,
+        objective: (params.reviseObjective ?? '').trim() || task.contract.objective,
+      };
+      const req: SubmitLifecycleRequest = {
+        request_id: generateCanonicalRequestId(),
+        task_id: task.contract.task_id,
+        expected_task_digest: expectedDigest,
+        action: { action: 'revise_contract', contract: nextContract },
+      };
+      const fingerprint = JSON.stringify({
+        op: 'revise_contract',
+        task_id: req.task_id,
+        expected_task_digest: expectedDigest,
+        contract: serializeContractFragment(nextContract),
+      });
+      envelope = {
+        kind: 'revise_contract',
+        fingerprint,
+        request_id: req.request_id,
+        request: req,
+      };
+    }
+    params.retainedRef.current = envelope;
+  }
+
+  // Dispatch the retained lifecycle envelope directly without re-checking new snapshot eligibility or recomputing revision/CAS.
+  const request = envelope.request as SubmitLifecycleRequest;
+  const receipt =
+    envelope.kind === 'cancel_pending'
+      ? params.onCancelPendingTask
+        ? await params.onCancelPendingTask(request)
+        : await submitNativeLifecycle(request, params.token, undefined, params.fetcher)
+      : params.onReviseContract
+        ? await params.onReviseContract(request)
+        : await submitNativeLifecycle(request, params.token, undefined, params.fetcher);
+
+  params.retainedRef.current = null;
+  await params.onRefreshSnapshot?.();
+  return receipt;
+}
 
 export function IntakeJourney({
   fleet,
   initialDraft,
+  initialRetainedEnvelope = null,
   token,
   fetcher = fetch,
   onSubmitTask,
@@ -2123,6 +2466,7 @@ export function IntakeJourney({
 }: {
   fleet: AnyFleet | Fleet | null;
   initialDraft?: IntakeDraft;
+  initialRetainedEnvelope?: RetainedCommandEnvelope | null;
   token?: string;
   fetcher?: typeof fetch;
   onSubmitTask?: (request: SubmitTaskRequest) => Promise<CommandReceipt>;
@@ -2138,7 +2482,8 @@ export function IntakeJourney({
   const [submitError, setSubmitError] = useState('');
   const [submitReceipt, setSubmitReceipt] = useState<CommandReceipt | null>(null);
   const [pinnedCasDigest, setPinnedCasDigest] = useState<string | null>(null);
-  const retainedSubmitRef = useRef<RetainedCommandEnvelope<SubmitTaskRequest | SubmitLifecycleRequest> | null>(null);
+  const retainedSubmitRef = useRef<RetainedCommandEnvelope | null>(initialRetainedEnvelope);
+  const [retainedSubmit, setRetainedSubmit] = useState<RetainedCommandEnvelope | null>(initialRetainedEnvelope);
 
   const preview = useMemo(() => {
     if (jsonMode) {
@@ -2170,86 +2515,43 @@ export function IntakeJourney({
   // Keep pinned CAS digest stable once bound unless the user changes target task_id or explicitly rebinds.
   const effectiveCasDigest = pinnedCasDigest ?? preview.expectedTaskDigest;
 
-  const activeFingerprint = useMemo(() => {
-    if (!preview.valid || !preview.contract) return '';
-    if (preview.operation === 'revise_contract') {
-      return JSON.stringify({
-        op: 'revise_contract',
-        task_id: preview.contract.task_id,
-        expected_task_digest: effectiveCasDigest,
-        contract: serializeContractCanonical(preview.contract),
-      });
-    }
-    return JSON.stringify({
-      op: 'create',
-      contract: serializeContractCanonical(preview.contract),
-    });
-  }, [preview, effectiveCasDigest]);
-
-  const currentRequestId = useMemo(() => {
-    if (!activeFingerprint) return null;
-    if (retainedSubmitRef.current && retainedSubmitRef.current.fingerprint === activeFingerprint) {
-      return retainedSubmitRef.current.request_id;
-    }
-    return null;
-  }, [activeFingerprint, submitError, submitReceipt]);
+  function clearRetainedSubmit() {
+    retainedSubmitRef.current = null;
+    setRetainedSubmit(null);
+  }
 
   function updateField<K extends keyof IntakeDraft>(key: K, value: IntakeDraft[K]) {
     if (key === 'task_id') {
       setPinnedCasDigest(null);
     }
+    clearRetainedSubmit();
     setSubmitError('');
     setSubmitReceipt(null);
     setDraft(current => ({ ...current, [key]: value }));
   }
 
   async function handleLiveSubmit() {
-    if (submitting || !preview.valid || !preview.contract) return;
+    if (submitting) return;
+    if (!retainedSubmitRef.current && (!preview.valid || !preview.contract)) return;
     setSubmitting(true);
     setSubmitError('');
 
     try {
-      if (preview.operation === 'revise_contract') {
-        const casDigest = effectiveCasDigest;
-        if (!casDigest) {
-          throw new Error('Missing expected_task_digest for CAS contract revision');
-        }
-        setPinnedCasDigest(casDigest);
-        let envelope = retainedSubmitRef.current;
-        if (!envelope || envelope.fingerprint !== activeFingerprint) {
-          const req: SubmitLifecycleRequest = {
-            request_id: generateCanonicalRequestId(),
-            task_id: preview.contract.task_id,
-            expected_task_digest: casDigest,
-            action: { action: 'revise_contract', contract: preview.contract },
-          };
-          envelope = { fingerprint: activeFingerprint, request_id: req.request_id, request: req };
-          retainedSubmitRef.current = envelope;
-        }
-        const request = envelope.request as SubmitLifecycleRequest;
-        const receipt = onReviseContract
-          ? await onReviseContract(request)
-          : await submitNativeLifecycle(request, token, undefined, fetcher);
-        setSubmitReceipt(receipt);
-        await onRefreshSnapshot?.();
-      } else {
-        let envelope = retainedSubmitRef.current;
-        if (!envelope || envelope.fingerprint !== activeFingerprint) {
-          const req: SubmitTaskRequest = {
-            request_id: generateCanonicalRequestId(),
-            contract: preview.contract,
-          };
-          envelope = { fingerprint: activeFingerprint, request_id: req.request_id, request: req };
-          retainedSubmitRef.current = envelope;
-        }
-        const request = envelope.request as SubmitTaskRequest;
-        const receipt = onSubmitTask
-          ? await onSubmitTask(request)
-          : await submitNativeTask(request, token, undefined, fetcher);
-        setSubmitReceipt(receipt);
-        await onRefreshSnapshot?.();
-      }
+      const receipt = await executeIntakeCommand({
+        retainedRef: retainedSubmitRef,
+        preview,
+        effectiveCasDigest,
+        onPinCasDigest: setPinnedCasDigest,
+        token,
+        fetcher,
+        onSubmitTask,
+        onReviseContract,
+        onRefreshSnapshot,
+      });
+      setRetainedSubmit(null);
+      setSubmitReceipt(receipt);
     } catch (error) {
+      setRetainedSubmit(retainedSubmitRef.current);
       setSubmitReceipt(null);
       setSubmitError(error instanceof Error ? error.message : 'Operator command failed');
     } finally {
@@ -2285,6 +2587,7 @@ export function IntakeJourney({
                   onChange={event => {
                     const found = revisableTasks.find(t => t.contract.task_id === event.target.value);
                     if (found) {
+                      clearRetainedSubmit();
                       setPinnedCasDigest(computeTaskViewDigest(found));
                       setDraft(draftFromTaskForRevision(found));
                       setJsonMode(false);
@@ -2326,6 +2629,7 @@ export function IntakeJourney({
                 rows={10}
                 value={rawJson}
                 onChange={event => {
+                  clearRetainedSubmit();
                   setSubmitError('');
                   setSubmitReceipt(null);
                   setRawJson(event.target.value);
@@ -2496,16 +2800,31 @@ export function IntakeJourney({
           <button
             type="button"
             className="primary-button"
-            disabled={!preview.valid || submitting}
+            disabled={submitting || (!retainedSubmit && !preview.valid)}
             onClick={() => void handleLiveSubmit()}
           >
             {submitting
               ? 'Submitting…'
-              : preview.operation === 'revise_contract'
-                ? `Submit +1 contract revision (POST /v2/tasks/lifecycle)`
-                : `Submit pending task (POST /v2/tasks)`}
+              : retainedSubmit
+                ? `Retry retained ${retainedSubmit.kind === 'revise_contract' ? '+1 contract revision' : 'task submission'} (${retainedSubmit.request_id.slice(0, 8)}…)`
+                : preview.operation === 'revise_contract'
+                  ? `Submit +1 contract revision (POST /v2/tasks/lifecycle)`
+                  : `Submit pending task (POST /v2/tasks)`}
           </button>
-          {preview.operation === 'revise_contract' && effectiveCasDigest && (
+          {retainedSubmit && (
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={submitting}
+              onClick={() => {
+                clearRetainedSubmit();
+                setSubmitError('');
+              }}
+            >
+              Discard retained request
+            </button>
+          )}
+          {(preview.operation === 'revise_contract' || retainedSubmit?.kind === 'revise_contract') && effectiveCasDigest && (
             <span>
               CAS digest: <code>{effectiveCasDigest}</code>
               {preview.expectedTaskDigest && preview.expectedTaskDigest !== effectiveCasDigest && (
@@ -2514,7 +2833,7 @@ export function IntakeJourney({
                   className="text-button"
                   onClick={() => {
                     setPinnedCasDigest(preview.expectedTaskDigest);
-                    retainedSubmitRef.current = null;
+                    clearRetainedSubmit();
                     setSubmitError('');
                   }}
                 >
@@ -2523,9 +2842,9 @@ export function IntakeJourney({
               )}
             </span>
           )}
-          {(currentRequestId || retainedSubmitRef.current?.request_id) && (
+          {retainedSubmit && (
             <span>
-              Idempotency request_id: <code>{currentRequestId ?? retainedSubmitRef.current?.request_id}</code>
+              Idempotency request_id: <code>{retainedSubmit.request_id}</code>
             </span>
           )}
         </div>
@@ -2664,6 +2983,7 @@ export function TaskDetailEvidenceJourney({
   records,
   replayCoverage,
   selectedTaskId,
+  initialRetainedEnvelope = null,
   onSelectTask,
   token,
   fetcher = fetch,
@@ -2677,6 +2997,7 @@ export function TaskDetailEvidenceJourney({
   records: readonly (DomainRecord | AnyDomainRecord)[];
   replayCoverage?: ReplayCoverageState;
   selectedTaskId?: string;
+  initialRetainedEnvelope?: RetainedCommandEnvelope | null;
   onSelectTask?: (taskId: string) => void;
   token?: string;
   fetcher?: typeof fetch;
@@ -2694,7 +3015,9 @@ export function TaskDetailEvidenceJourney({
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [lifecycleError, setLifecycleError] = useState('');
   const [lifecycleReceipt, setLifecycleReceipt] = useState<CommandReceipt | null>(null);
-  const retainedLifecycleRef = useRef<RetainedCommandEnvelope<SubmitLifecycleRequest> | null>(null);
+  const retainedLifecycleRef = useRef<RetainedCommandEnvelope | null>(initialRetainedEnvelope);
+  const [retainedLifecycle, setRetainedLifecycle] = useState<RetainedCommandEnvelope | null>(initialRetainedEnvelope);
+  const lastTaskIdRef = useRef<string | undefined>(undefined);
 
   const activeTaskId = selectedTaskId ?? internalTaskId;
 
@@ -2708,14 +3031,23 @@ export function TaskDetailEvidenceJourney({
     return deriveTaskDetail(currentTask, fleet, records);
   }, [fleet, currentTask, records]);
 
+  function clearRetainedLifecycle() {
+    retainedLifecycleRef.current = null;
+    setRetainedLifecycle(null);
+  }
+
   useEffect(() => {
-    if (currentTask) {
+    if (currentTask && currentTask.contract.task_id !== lastTaskIdRef.current) {
+      const switchedTask = lastTaskIdRef.current !== undefined;
+      lastTaskIdRef.current = currentTask.contract.task_id;
       setReviseTitle(currentTask.contract.title);
       setReviseObjective(currentTask.contract.objective);
       setPinnedTaskDigest(computeTaskViewDigest(currentTask));
-      retainedLifecycleRef.current = null;
-      setLifecycleError('');
-      setLifecycleReceipt(null);
+      if (switchedTask) {
+        clearRetainedLifecycle();
+        setLifecycleError('');
+        setLifecycleReceipt(null);
+      }
     }
   }, [currentTask?.contract.task_id]);
 
@@ -2744,33 +3076,29 @@ export function TaskDetailEvidenceJourney({
   const boundDigest = pinnedTaskDigest ?? detail.taskDigest;
 
   async function handleCancelPending() {
-    if (!detail || !detail.canCancelPending || lifecycleBusy) return;
+    if (lifecycleBusy) return;
+    if (retainedLifecycleRef.current?.kind !== 'cancel_pending' && (!detail || !detail.canCancelPending)) {
+      return;
+    }
     setLifecycleBusy(true);
     setLifecycleError('');
     try {
-      const fingerprint = JSON.stringify({
-        op: 'cancel_pending',
-        task_id: task.contract.task_id,
-        expected_task_digest: boundDigest,
-        reason: cancelReason.trim(),
+      const receipt = await executeTaskDetailLifecycleCommand({
+        kind: 'cancel_pending',
+        retainedRef: retainedLifecycleRef,
+        detail,
+        boundDigest,
+        cancelReason,
+        token,
+        fetcher,
+        onCancelPendingTask,
+        onReviseContract,
+        onRefreshSnapshot,
       });
-      let envelope = retainedLifecycleRef.current;
-      if (!envelope || envelope.fingerprint !== fingerprint) {
-        const req: SubmitLifecycleRequest = {
-          request_id: generateCanonicalRequestId(),
-          task_id: task.contract.task_id,
-          expected_task_digest: boundDigest,
-          action: { action: 'cancel_pending', reason: cancelReason.trim() },
-        };
-        envelope = { fingerprint, request_id: req.request_id, request: req };
-        retainedLifecycleRef.current = envelope;
-      }
-      const receipt = onCancelPendingTask
-        ? await onCancelPendingTask(envelope.request)
-        : await submitNativeLifecycle(envelope.request, token, undefined, fetcher);
+      setRetainedLifecycle(null);
       setLifecycleReceipt(receipt);
-      await onRefreshSnapshot?.();
     } catch (error) {
+      setRetainedLifecycle(retainedLifecycleRef.current);
       setLifecycleReceipt(null);
       setLifecycleError(error instanceof Error ? error.message : 'Pending cancellation failed');
     } finally {
@@ -2779,39 +3107,30 @@ export function TaskDetailEvidenceJourney({
   }
 
   async function handleQuickRevise() {
-    if (!detail || !detail.canReviseContract || lifecycleBusy) return;
+    if (lifecycleBusy) return;
+    if (retainedLifecycleRef.current?.kind !== 'revise_contract' && (!detail || !detail.canReviseContract)) {
+      return;
+    }
     setLifecycleBusy(true);
     setLifecycleError('');
     try {
-      const nextContract: TaskContract = {
-        ...task.contract,
-        revision: task.contract.revision + 1,
-        title: reviseTitle.trim() || task.contract.title,
-        objective: reviseObjective.trim() || task.contract.objective,
-      };
-      const fingerprint = JSON.stringify({
-        op: 'revise_contract',
-        task_id: task.contract.task_id,
-        expected_task_digest: boundDigest,
-        contract: serializeContractCanonical(nextContract),
+      const receipt = await executeTaskDetailLifecycleCommand({
+        kind: 'revise_contract',
+        retainedRef: retainedLifecycleRef,
+        detail,
+        boundDigest,
+        reviseTitle,
+        reviseObjective,
+        token,
+        fetcher,
+        onCancelPendingTask,
+        onReviseContract,
+        onRefreshSnapshot,
       });
-      let envelope = retainedLifecycleRef.current;
-      if (!envelope || envelope.fingerprint !== fingerprint) {
-        const req: SubmitLifecycleRequest = {
-          request_id: generateCanonicalRequestId(),
-          task_id: task.contract.task_id,
-          expected_task_digest: boundDigest,
-          action: { action: 'revise_contract', contract: nextContract },
-        };
-        envelope = { fingerprint, request_id: req.request_id, request: req };
-        retainedLifecycleRef.current = envelope;
-      }
-      const receipt = onReviseContract
-        ? await onReviseContract(envelope.request)
-        : await submitNativeLifecycle(envelope.request, token, undefined, fetcher);
+      setRetainedLifecycle(null);
       setLifecycleReceipt(receipt);
-      await onRefreshSnapshot?.();
     } catch (error) {
+      setRetainedLifecycle(retainedLifecycleRef.current);
       setLifecycleReceipt(null);
       setLifecycleError(error instanceof Error ? error.message : 'Contract revision failed');
     } finally {
@@ -2961,7 +3280,7 @@ export function TaskDetailEvidenceJourney({
                 className="text-button"
                 onClick={() => {
                   setPinnedTaskDigest(detail.taskDigest);
-                  retainedLifecycleRef.current = null;
+                  clearRetainedLifecycle();
                   setLifecycleError('');
                 }}
               >
@@ -2972,10 +3291,37 @@ export function TaskDetailEvidenceJourney({
           )}
         </p>
 
-        {retainedLifecycleRef.current && (
-          <p>
-            Retained idempotency request_id: <code>{retainedLifecycleRef.current.request_id}</code>
-          </p>
+        {retainedLifecycle && (
+          <div className="models-form-actions" style={{ marginBottom: 12 }}>
+            <span>
+              Retained idempotency request_id: <code>{retainedLifecycle.request_id}</code>
+            </span>
+            <button
+              type="button"
+              className="primary-button"
+              disabled={lifecycleBusy}
+              onClick={() =>
+                void (retainedLifecycle.kind === 'cancel_pending'
+                  ? handleCancelPending()
+                  : handleQuickRevise())
+              }
+            >
+              {lifecycleBusy
+                ? 'Submitting…'
+                : `Retry retained ${retainedLifecycle.kind === 'cancel_pending' ? 'pending cancellation' : 'contract revision'} (${retainedLifecycle.request_id.slice(0, 8)}…)`}
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={lifecycleBusy}
+              onClick={() => {
+                clearRetainedLifecycle();
+                setLifecycleError('');
+              }}
+            >
+              Discard retained request
+            </button>
+          </div>
         )}
 
         {lifecycleError && (
@@ -3011,7 +3357,7 @@ export function TaskDetailEvidenceJourney({
           </div>
         )}
 
-        {detail.canCancelPending ? (
+        {detail.canCancelPending || retainedLifecycle ? (
           <div className="models-form">
             <label>
               Pending cancellation reason (1–512 printable chars)
@@ -3019,6 +3365,7 @@ export function TaskDetailEvidenceJourney({
                 aria-label="Pending cancellation reason"
                 value={cancelReason}
                 onChange={event => {
+                  clearRetainedLifecycle();
                   setLifecycleError('');
                   setCancelReason(event.target.value);
                 }}
@@ -3028,13 +3375,17 @@ export function TaskDetailEvidenceJourney({
               <button
                 type="button"
                 className="secondary-button"
-                disabled={lifecycleBusy || !cancelReason.trim()}
+                disabled={
+                  lifecycleBusy ||
+                  (retainedLifecycle?.kind !== 'cancel_pending' &&
+                    (!detail.canCancelPending || !cancelReason.trim()))
+                }
                 onClick={() => void handleCancelPending()}
               >
                 {lifecycleBusy ? 'Submitting…' : 'Cancel pending task (POST /v2/tasks/lifecycle)'}
               </button>
             </div>
-            {detail.canReviseContract ? (
+            {detail.canReviseContract || retainedLifecycle?.kind === 'revise_contract' ? (
               <>
                 <label>
                   Revise title (rev {task.contract.revision} → rev {task.contract.revision + 1})
@@ -3042,6 +3393,7 @@ export function TaskDetailEvidenceJourney({
                     aria-label="Revise contract title"
                     value={reviseTitle}
                     onChange={event => {
+                      clearRetainedLifecycle();
                       setLifecycleError('');
                       setReviseTitle(event.target.value);
                     }}
@@ -3053,6 +3405,7 @@ export function TaskDetailEvidenceJourney({
                     aria-label="Revise contract objective"
                     value={reviseObjective}
                     onChange={event => {
+                      clearRetainedLifecycle();
                       setLifecycleError('');
                       setReviseObjective(event.target.value);
                     }}
@@ -3062,7 +3415,11 @@ export function TaskDetailEvidenceJourney({
                   <button
                     type="button"
                     className="primary-button"
-                    disabled={lifecycleBusy || !reviseTitle.trim() || !reviseObjective.trim()}
+                    disabled={
+                      lifecycleBusy ||
+                      (retainedLifecycle?.kind !== 'revise_contract' &&
+                        (!detail.canReviseContract || !reviseTitle.trim() || !reviseObjective.trim()))
+                    }
                     onClick={() => void handleQuickRevise()}
                   >
                     {lifecycleBusy
