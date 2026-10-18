@@ -1,3 +1,24 @@
+[package]
+name = "admiralty-root-integration"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+admiralty-core.workspace = true
+admiralty-store.workspace = true
+rusqlite.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true
+
+[[test]]
+name = "codex_round16_p05_p15"
+path = "tests/integration/codex_round16_p05_p15.rs"
+
 [workspace]
 members = ["crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests"]
 resolver = "2"
