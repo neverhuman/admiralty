@@ -446,3 +446,40 @@ fn p23_p25_round9_item3_webhook_node_ingest_qualification() {
     .expect("serialize unknown economics");
     assert_eq!(cost["kind"], "unknown");
 }
+
+// This cross-packet qualification keeps the cockpit read-only, preserves exact
+// economics values, and rejects unsafe launch envelopes with fixed fixtures.
+#[test]
+fn p26_p31_round8_p12_hitl_cockpit_qualification() {
+    let cockpit = include_str!("../../apps/dashboard/src/ui/App.tsx");
+    assert!(cockpit.contains("READ ONLY · SOURCE:"));
+    assert!(cockpit.contains("Candidate reports await independent verification"));
+    assert!(cockpit.contains("Native execution remains disabled."));
+    assert!(cockpit.contains("Sending, replying and changing task state are not available here."));
+
+    let exact_cost = DecimalU128(u128::MAX);
+    let encoded = serde_json::to_string(&ObservedAmount::Known { amount: exact_cost })
+        .expect("serialize exact economics amount");
+    let decoded: ObservedAmount = serde_json::from_str(&encoded).expect("decode exact amount");
+    assert_eq!(
+        decoded,
+        ObservedAmount::Known {
+            amount: DecimalU128(u128::MAX)
+        }
+    );
+
+    let safe = LaunchSpec {
+        run_id: "round8-qualification".into(),
+        program: "/usr/bin/codex".into(),
+        args: vec!["exec".into(), "--version".into()],
+        cwd: "/workspace/project".into(),
+        spool_dir: "/workspace/project/.spool".into(),
+    };
+    assert!(validate_launch_envelope(&safe).is_ok());
+    let mut relative = safe.clone();
+    relative.program = "codex".into();
+    assert!(validate_launch_envelope(&relative).is_err());
+    let mut oversized = safe;
+    oversized.args = vec!["x".repeat(64 * 1024 + 1)];
+    assert!(validate_launch_envelope(&oversized).is_err());
+}
