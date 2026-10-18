@@ -38,6 +38,7 @@ const MAX_GIT_STDERR: usize = 64 * 1024;
 const MAX_TREE_LISTING: usize = 8 * 1024 * 1024;
 const MAX_OBJECTS: usize = 100_000;
 const MAX_SNAPSHOT_BYTES: u64 = 512 * 1024 * 1024;
+const MAX_GIT_CONFIG_BYTES: u64 = 64 * 1024;
 const DISK_RESERVE_BYTES: u64 = 16 * 1024 * 1024;
 const DISK_BYTES_PER_OBJECT: u64 = 4 * 1024;
 const DISK_BYTES_PER_FILE: u64 = 4 * 1024;
@@ -912,31 +913,157 @@ fn validate_source(
     })
 }
 
-fn read_safe_config(path: &Path) -> Result<Vec<u8>, PreparationError> {
-    let metadata =
+fn read_bounded_regular_file(
+    path: &Path,
+    max_bytes: u64,
+    disallowed_mode_mask: u32,
+) -> Result<Vec<u8>, PreparationError> {
+    let path_meta =
         fs::symlink_metadata(path).map_err(|_| PreparationError::UnsafeDestinationMetadata)?;
     let uid = rustix::process::geteuid().as_raw();
-    if metadata.file_type().is_symlink()
-        || !metadata.is_file()
-        || metadata.uid() != uid
-        || metadata.mode() & 0o022 != 0
+    let path_type = path_meta.file_type();
+    if path_type.is_symlink()
+        || !path_meta.is_file()
+        || path_meta.uid() != uid
+        || path_meta.nlink() != 1
+        || path_meta.mode() & disallowed_mode_mask != 0
+        || path_meta.len() > max_bytes
     {
         return Err(PreparationError::UnsafeDestinationMetadata);
     }
-    let bytes = fs::read(path)?;
-    let lower = String::from_utf8_lossy(&bytes).to_ascii_lowercase();
-    if lower.contains("[include")
-        || lower.contains("[filter")
-        || lower.contains("fsmonitor")
-        || lower.contains("promisor")
-        || lower.contains("partialclone")
-        || lower.contains("protocol.")
-        || lower.contains("insteadof")
-        || lower.contains("credential.helper")
-        || lower.contains("sshcommand")
-        || lower.contains("ext::")
+    let fd = rustix::fs::open(
+        path,
+        rustix::fs::OFlags::RDONLY
+            | rustix::fs::OFlags::NOFOLLOW
+            | rustix::fs::OFlags::CLOEXEC
+            | rustix::fs::OFlags::NONBLOCK,
+        rustix::fs::Mode::empty(),
+    )
+    .map_err(|_| PreparationError::UnsafeDestinationMetadata)?;
+    let mut file = fs::File::from(fd);
+    let fd_meta = file
+        .metadata()
+        .map_err(|_| PreparationError::UnsafeDestinationMetadata)?;
+    let fd_type = fd_meta.file_type();
+    if fd_type.is_symlink()
+        || !fd_meta.is_file()
+        || fd_meta.uid() != uid
+        || fd_meta.nlink() != 1
+        || fd_meta.mode() & disallowed_mode_mask != 0
+        || fd_meta.dev() != path_meta.dev()
+        || fd_meta.ino() != path_meta.ino()
+        || fd_meta.len() > max_bytes
     {
         return Err(PreparationError::UnsafeDestinationMetadata);
+    }
+    let initial_capacity = usize::try_from(fd_meta.len().min(max_bytes).min(8192)).unwrap_or(0);
+    let mut bytes = Vec::with_capacity(initial_capacity);
+    (&mut file)
+        .take(max_bytes.saturating_add(1))
+        .read_to_end(&mut bytes)
+        .map_err(|_| PreparationError::UnsafeDestinationMetadata)?;
+    if bytes.len() as u64 > max_bytes {
+        return Err(PreparationError::UnsafeDestinationMetadata);
+    }
+    verify_regular_file_identity_after_read(
+        path,
+        &file,
+        &fd_meta,
+        bytes.len(),
+        max_bytes,
+        disallowed_mode_mask,
+    )?;
+    Ok(bytes)
+}
+
+fn verify_regular_file_identity_after_read(
+    path: &Path,
+    file: &fs::File,
+    fd_meta: &fs::Metadata,
+    bytes_len: usize,
+    max_bytes: u64,
+    disallowed_mode_mask: u32,
+) -> Result<(), PreparationError> {
+    let uid = rustix::process::geteuid().as_raw();
+    let fd_after = file
+        .metadata()
+        .map_err(|_| PreparationError::UnsafeDestinationMetadata)?;
+    let path_after =
+        fs::symlink_metadata(path).map_err(|_| PreparationError::UnsafeDestinationMetadata)?;
+    if fd_after.file_type().is_symlink()
+        || !fd_after.is_file()
+        || fd_after.uid() != uid
+        || fd_after.nlink() != 1
+        || fd_after.mode() & disallowed_mode_mask != 0
+        || fd_after.dev() != fd_meta.dev()
+        || fd_after.ino() != fd_meta.ino()
+        || fd_after.len() != bytes_len as u64
+        || fd_after.len() > max_bytes
+        || path_after.file_type().is_symlink()
+        || !path_after.is_file()
+        || path_after.uid() != uid
+        || path_after.nlink() != 1
+        || path_after.mode() & disallowed_mode_mask != 0
+        || path_after.dev() != fd_meta.dev()
+        || path_after.ino() != fd_meta.ino()
+        || path_after.len() != bytes_len as u64
+    {
+        return Err(PreparationError::UnsafeDestinationMetadata);
+    }
+    Ok(())
+}
+
+fn read_safe_config(path: &Path) -> Result<Vec<u8>, PreparationError> {
+    read_safe_config_bounded(path, MAX_GIT_CONFIG_BYTES)
+}
+
+fn read_safe_config_bounded(path: &Path, max_bytes: u64) -> Result<Vec<u8>, PreparationError> {
+    let bytes = read_bounded_regular_file(path, max_bytes, 0o022)?;
+    let lower = String::from_utf8_lossy(&bytes).to_ascii_lowercase();
+    for forbidden in [
+        "[include",
+        "include.",
+        "includeif.",
+        "[filter",
+        "filter.",
+        "[diff",
+        "diff.",
+        "[merge",
+        "merge.",
+        "textconv",
+        "extdiff",
+        "external",
+        "driver",
+        "command",
+        "clean",
+        "smudge",
+        "fsmonitor",
+        "hookspath",
+        "attributesfile",
+        "excludesfile",
+        "promisor",
+        "partialclone",
+        "protocol.",
+        "insteadof",
+        "credential",
+        "sshcommand",
+        "gitproxy",
+        "pager",
+        "editor",
+        "askpass",
+        "program",
+        "uploadpack",
+        "receivepack",
+        "alias.",
+        "[alias",
+        "worktree",
+        "gitdir",
+        "alternate",
+        "ext::",
+    ] {
+        if lower.contains(forbidden) {
+            return Err(PreparationError::UnsafeDestinationMetadata);
+        }
     }
     Ok(bytes)
 }
@@ -1736,6 +1863,87 @@ mod tests {
             Err(PreparationError::UnsafeSourceMetadata)
         ));
         assert!(!fixture.source.join("injected").exists());
+    }
+
+    #[test]
+    fn rejects_oversized_hardlinked_or_symlinked_source_git_config() {
+        // 1. Bounded helper rejects exact_len - 1 and accepts exact_len
+        let helper_fixture = fixture();
+        let config_path = helper_fixture.source.join(".git/config");
+        let valid_len = fs::metadata(&config_path).expect("config metadata").len();
+        assert_eq!(
+            read_safe_config_bounded(&config_path, valid_len)
+                .expect("exact config bound succeeds")
+                .len() as u64,
+            valid_len
+        );
+        assert!(matches!(
+            read_safe_config_bounded(&config_path, valid_len.saturating_sub(1)),
+            Err(PreparationError::UnsafeDestinationMetadata)
+        ));
+
+        // 2. Hardlinked .git/config (nlink > 1) is rejected
+        let hardlink_fixture = fixture();
+        let link_target = hardlink_fixture._temp.path().join("config-hardlink");
+        fs::hard_link(hardlink_fixture.source.join(".git/config"), &link_target)
+            .expect("create hardlink to source .git/config");
+        assert!(matches!(
+            prepare_workspace(request(&hardlink_fixture, "hardlinked-config")),
+            Err(PreparationError::UnsafeSourceMetadata)
+        ));
+        assert!(!hardlink_fixture.parent.join("hardlinked-config").exists());
+
+        // 3. Symlinked .git/config is rejected
+        let symlink_fixture = fixture();
+        let moved_config = symlink_fixture._temp.path().join("config-real");
+        fs::rename(symlink_fixture.source.join(".git/config"), &moved_config)
+            .expect("move source .git/config");
+        std::os::unix::fs::symlink(&moved_config, symlink_fixture.source.join(".git/config"))
+            .expect("replace .git/config with symlink");
+        assert!(matches!(
+            prepare_workspace(request(&symlink_fixture, "symlinked-config")),
+            Err(PreparationError::UnsafeSourceMetadata)
+        ));
+        assert!(!symlink_fixture.parent.join("symlinked-config").exists());
+
+        // 4. Path replacement after descriptor open (different inode with identical content/mode) is rejected
+        let replaced_fixture = fixture();
+        let replaced_config = replaced_fixture.source.join(".git/config");
+        let original_bytes = fs::read(&replaced_config).expect("read original config");
+        let opened = fs::File::open(&replaced_config).expect("open original config");
+        let opened_meta = opened.metadata().expect("original fd metadata");
+        fs::remove_file(&replaced_config).expect("unlink original config");
+        fs::write(&replaced_config, &original_bytes)
+            .expect("write replacement config at same path");
+        fs::set_permissions(&replaced_config, fs::Permissions::from_mode(0o600))
+            .expect("chmod 0600 replacement config");
+        assert!(matches!(
+            verify_regular_file_identity_after_read(
+                &replaced_config,
+                &opened,
+                &opened_meta,
+                original_bytes.len(),
+                MAX_GIT_CONFIG_BYTES,
+                0o022,
+            ),
+            Err(PreparationError::UnsafeDestinationMetadata)
+        ));
+
+        // 5. Oversized actual .git/config (> MAX_GIT_CONFIG_BYTES) is rejected without whole-file allocation
+        let oversized_fixture = fixture();
+        let oversized_file = fs::OpenOptions::new()
+            .write(true)
+            .open(oversized_fixture.source.join(".git/config"))
+            .expect("open source .git/config");
+        oversized_file
+            .set_len(MAX_GIT_CONFIG_BYTES + 1)
+            .expect("inflate .git/config to MAX_GIT_CONFIG_BYTES + 1");
+        drop(oversized_file);
+        assert!(matches!(
+            prepare_workspace(request(&oversized_fixture, "oversized-config")),
+            Err(PreparationError::UnsafeSourceMetadata)
+        ));
+        assert!(!oversized_fixture.parent.join("oversized-config").exists());
     }
 
     #[test]
