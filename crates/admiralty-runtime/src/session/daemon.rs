@@ -545,10 +545,24 @@ impl SessionDaemon {
 }
 
 fn handle_connection(stream: &mut UnixStream, state: &State) -> io::Result<()> {
-    let deadline = Instant::now() + IO_DEADLINE;
-    let response = match read_frame(stream, deadline) {
+    handle_connection_with_dispatch(stream, IO_DEADLINE, |request| state.dispatch(request))
+}
+fn handle_connection_with_dispatch(
+    stream: &mut UnixStream,
+    io_budget: Duration,
+    dispatch: impl FnOnce(DaemonRequest) -> DaemonResponse,
+) -> io::Result<()> {
+    let deadline = Instant::now() + io_budget;
+    let frame = read_frame(stream, deadline);
+    // Keep one aggregate socket-I/O budget, including partial reads/writes,
+    // but do not charge dispatch's filesystem sync or process-spawn time to it.
+    // Those OS calls can finish after the read deadline; discarding their
+    // completed mutation receipt solely for that reason creates ambiguity.
+    // Refuse dispatch if reading already exhausted the available I/O budget.
+    let response_budget = remaining(deadline)?;
+    let response = match frame {
         Ok(bytes) => match serde_json::from_slice::<DaemonRequest>(&bytes) {
-            Ok(request) => state.dispatch(request),
+            Ok(request) => dispatch(request),
             Err(_) => DaemonResponse::error(ErrorCode::InvalidRequest),
         },
         Err(error) if error.kind() == io::ErrorKind::InvalidData => {
@@ -556,7 +570,7 @@ fn handle_connection(stream: &mut UnixStream, state: &State) -> io::Result<()> {
         }
         Err(error) => return Err(error),
     };
-    write_frame(stream, &response, deadline)
+    write_frame(stream, &response, Instant::now() + response_budget)
 }
 fn remaining(deadline: Instant) -> io::Result<Duration> {
     deadline
@@ -872,6 +886,50 @@ mod tests {
         );
         let journal = fs::read_to_string(fixture.spool.join("eof/input.journal"))?;
         assert_eq!(journal.matches("eof_closed").count(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn completed_dispatch_keeps_its_receipt_when_sync_exceeds_socket_io_budget() -> io::Result<()> {
+        let (mut client, mut server) = UnixStream::pair()?;
+        let request = json!({"command":"close_input","run_id":"slow-sync","expected_epoch":"1"});
+        // Queue the complete frame before starting the handler: this test
+        // exercises a slow operation, not an idle or slow request client.
+        send(&mut client, &request)?;
+        let io_budget = Duration::from_millis(50);
+        let worker = thread::spawn(move || {
+            let mut dispatches = 0;
+            handle_connection_with_dispatch(&mut server, io_budget, |request| {
+                dispatches += 1;
+                let DaemonRequest::CloseInput {
+                    run_id,
+                    expected_epoch,
+                } = request
+                else {
+                    panic!("fixture must dispatch the EOF request");
+                };
+                assert_eq!(expected_epoch, "1");
+                // A durable dispatch can legitimately outlast the socket-I/O
+                // budget. The previous shared wall deadline dropped this
+                // response even though dispatch had already completed.
+                thread::sleep(io_budget * 2);
+                DaemonResponse::new(ResponseResult::InputClosed {
+                    run_id,
+                    input_epoch: "2".into(),
+                })
+            })?;
+            assert_eq!(dispatches, 1, "a lost receipt must never replay dispatch");
+            Ok::<_, io::Error>(())
+        });
+        let response = read_response(&mut client);
+        let handled = worker
+            .join()
+            .map_err(|_| io::Error::other("delayed dispatch fixture panicked"))?;
+        handled?;
+        let response = response?;
+        assert_eq!(response["result"]["kind"], "input_closed");
+        assert_eq!(response["result"]["run_id"], "slow-sync");
+        assert_eq!(response["result"]["input_epoch"], "2");
         Ok(())
     }
 
