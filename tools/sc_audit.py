@@ -1186,7 +1186,7 @@ def stale_pr_problems(p, now, max_age_min=STALE_PR_MIN):
 
 def open_prs(project):
     rc, out, _ = run([GH, 'pr', 'list', '-R', GHREPO[project], '--state', 'open', '--json',
-                      'number,title,headRefName,headRefOid,isDraft,reviewDecision,statusCheckRollup,updatedAt,createdAt,mergeable', '-L', '20'], timeout=30)
+                      'number,title,headRefName,headRefOid,isDraft,reviewDecision,statusCheckRollup,updatedAt,createdAt,mergeable,reviewRequests,latestReviews', '-L', '20'], timeout=30)
     try: prs = json.loads(out)
     except Exception: return []
     res = []
@@ -1198,6 +1198,8 @@ def open_prs(project):
         ci = 'red' if failing else ('pending' if pending or not roll else 'green')
         res.append({'number': p['number'], 'branch': p['headRefName'], 'head': p['headRefOid'][:9], 'draft': p['isDraft'],
                     'review': p.get('reviewDecision'), 'ci': ci, 'checks': dict(concl)})
+        for why in jepson_pr_reasons(p):
+            MA('red', project, 'JEPSON_BOTTLENECK', f'PR #{p["number"]} @ {p["headRefOid"][:9]} is waiting on Jepson: {why}. {JEPSON_TAKEOVER}', f'gh pr view {p["number"]} -R {GHREPO[project]}')
         if ci == 'red': F('amber', project, 'PR_CI_RED', f'PR #{p["number"]} @ {p["headRefOid"][:9]} has failing checks {dict(concl)}', f'gh pr checks {p["number"]} -R {GHREPO[project]}')
         stuck = stuck_queued_checks(roll, datetime.datetime.now(datetime.timezone.utc))
         sp = stale_pr_problems(p, datetime.datetime.now(datetime.timezone.utc))
@@ -1480,12 +1482,76 @@ def check_gpu_idle(report, prev, newh, now, sample_fn=None):
            '(do not wait for a later queue item or ETA), confirm load in a fresh nvidia-smi, and record it in super_captain_status.json gpu_status. '
            'An ETA alone does not clear this', 'nvidia-smi on ' + ', '.join(reached))
 
+# Jepson 11:34 AM MDT Oct 18: "The individual captains need to manage their own PRs ... I should never be a bottleneck,
+# if I'm detected to be one then have super_captain take over." Must-act whenever a PR or task waits on jepsontaylor.
+JEPSON_LOGINS = ('jepsontaylor',)
+JEPSON_TEXT_RE = re.compile(r'(waiting|wait|blocked|pending|awaiting|needs?|requires?)\W+(?:\w+\W+){0,3}?(on|for)?\W*jepson|needs[\s_-]*jepson|jepson[\s_-]*(approval|sign[\s-]?off|review|decision|to (approve|merge|decide|review))', re.I)
+RESERVED_RE = re.compile(r'xbabe0|jeryu|outside|external (party|people|recipient)|email|paid|spend|purchase|licen[cs]e|legal|contract|force[\s-]?push|delet\w* (prod|production)|/home/ubuntu/admiralty\b', re.I)
+JEPSON_TAKEOVER = ('super_captain takes over now under JEPSON_DELEGATION_20261018T1158Z_fleet_admiral.md: approve via neverhumanbot (gh-role reviewer) and merge '
+                   '--rebase --match-head-commit, or decide it as owner. Only reserved items (xbabe0/Jeryu, outside messages, new paid spend/legal, '
+                   'force-push main, deleting prod data, writing /home/ubuntu/admiralty) may wait for Jepson')
+
+def jepson_pr_reasons(p):
+    """Reasons an open PR (gh pr list json) is waiting on Jepson personally."""
+    out = []
+    if p.get('isDraft'): return out
+    for r in p.get('reviewRequests') or []:
+        if str(r.get('login') or r.get('name') or '').lower() in JEPSON_LOGINS: out.append('review requested from jepsontaylor')
+    for r in p.get('latestReviews') or []:
+        if str((r.get('author') or {}).get('login') or '').lower() in JEPSON_LOGINS and str(r.get('state')).upper() == 'CHANGES_REQUESTED':
+            out.append('jepsontaylor requested changes')
+    return out
+
+def jepson_text_hits(texts):
+    """[(source, snippet)] for 'waiting on Jepson'-style text that is not a reserved item."""
+    hits = []
+    for src, text in texts:
+        for m in JEPSON_TEXT_RE.finditer(text or ''):
+            a, b = max(0, m.start() - 160), min(len(text), m.end() + 160)
+            snip = text[a:b].replace('\n', ' ')
+            if RESERVED_RE.search(snip): continue
+            hits.append((src, snip.strip())); break
+    return hits
+
+def jepson_protection_reasons(protection, codeowners_text):
+    """Branch-protection/CODEOWNERS settings that make jepsontaylor specifically required."""
+    out = []
+    prr = (protection or {}).get('required_pull_request_reviews') or {}
+    owners_jepson = any(re.search(r'@jepsontaylor\b', l, re.I) for l in (codeowners_text or '').splitlines() if not l.strip().startswith('#'))
+    if prr.get('require_code_owner_reviews') and owners_jepson:
+        out.append('main requires CODEOWNER review and CODEOWNERS names @jepsontaylor')
+    users = [u.get('login', '').lower() for u in ((prr.get('bypass_pull_request_allowances') or {}).get('users') or [])]
+    rest = (protection or {}).get('restrictions') or {}
+    pushers = [u.get('login', '').lower() for u in (rest.get('users') or [])]
+    if pushers and pushers == ['jepsontaylor']: out.append('only jepsontaylor may push/merge to main (restrictions.users)')
+    return out
+
+def jepson_bottleneck(report, scs, no_gh=False):
+    texts = [('super_captain_status.json', json.dumps(scs, default=str))]
+    for proj, r in report['projects'].items():
+        br = r.get('blocked_reasons') or {}
+        if br: texts.append((f'{proj} blocked_reasons', json.dumps(br, default=str)))
+    for src, snip in jepson_text_hits(texts):
+        MA('red', 'super_captain', 'JEPSON_BOTTLENECK', f'"waiting on Jepson" text in {src}: ...{snip[:260]}... {JEPSON_TAKEOVER}', src)
+    if no_gh: return
+    for proj, repo in GHREPO.items():
+        rc, out, _ = run([GH, 'api', f'repos/{repo}/branches/main/protection'], timeout=20)
+        try: prot = json.loads(out) if rc == 0 else {}
+        except Exception: prot = {}
+        co = ''
+        for path in ('.github/CODEOWNERS', 'CODEOWNERS', 'docs/CODEOWNERS'):
+            rc2, out2, _ = run([GH, 'api', f'repos/{repo}/contents/{path}', '-H', 'Accept: application/vnd.github.raw'], timeout=20)
+            if rc2 == 0 and out2 and not out2.lstrip().startswith('{'): co += out2 + '\n'
+        for why in jepson_protection_reasons(prot, co):
+            MA('red', proj, 'JEPSON_BOTTLENECK', f'{repo}: {why}. super_captain may change it so neverhumanbot approval suffices (back up the protection JSON first; never allow force-push to main)', f'gh api repos/{repo}/branches/main/protection')
+
 def watchdog(report, scr, prev, newh, now, no_gh=False):
     scs = rj(KICK + '/super_captain_status.json') or {}
     managed = managed_screens(scs, {p: lane_screens_any_format(p) for p in CAPTAINS})
     watch = idle_watch(scr, managed, prev, newh, now)
     report['watch'] = watch
     check_eta_overdue(scs, now)
+    jepson_bottleneck(report, scs, no_gh)
     check_redrive_delivered(tail_text(KICK + '/super_captain_LOG.md', 300000), scr, now)
     if not no_gh: check_no_push(report, now)
     check_sc_claims(report, scs, watch)
