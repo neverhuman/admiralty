@@ -112,7 +112,7 @@ export function projectDetails(snapshot: LegacySnapshot): ProjectDetailModel[] {
   const order = [...new Set([...(snapshot.order ?? []), ...Object.keys(snapshot.projects)])];
   const projects: ProjectDetailModel[] = order.filter(id => Object.hasOwn(snapshot.projects, id)).map(id => {
     const project = snapshot.projects[id];
-    return { id, name: text(project.name) || id, source: text(project.ledger_source) || 'Legacy collector', observed: snapshot.generated_utc,
+    return { id, name: text(project.name) || id, source: text(project.ledger_source) || 'Legacy collector', observed: text(project.ledger_updated_utc) || text(project.observed_utc) || snapshot.generated_utc,
       total: number(project.total), stages: counts(project.stages ?? project.counts), labels: Object.fromEntries(Object.entries(data(project.stage_labels)).map(([key, value]) => [key, text(value)])),
       alerts: warnings(project), recent: list(project.recent), captain: data(project.captain), workers: list(project.workers), pr: data(project.pr),
       sections: sections.filter(([key]) => project[key] !== undefined).map(([key, title]) => ({ title, value: project[key], open: ['coord_log', 'validator', 'live_status', 'waves', 'by_kind'].includes(key) })), raw: project };

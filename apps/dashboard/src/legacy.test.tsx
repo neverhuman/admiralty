@@ -23,6 +23,12 @@ const snapshot = () => parseLegacy({ generated_utc: '2026-10-18T12:00:00Z', host
 });
 
 describe('detailed project source adapters', () => {
+  it('preserves ledger source age even when publication and observation are fresh', () => {
+    const source = snapshot();
+    source.projects.alpha.ledger_updated_utc = '2026-10-17T01:00:00Z';
+    source.projects.alpha.observed_utc = '2026-10-18T12:00:00Z';
+    expect(projectDetails(source)[0].observed).toBe('2026-10-17T01:00:00Z');
+  });
   it('renders every producer project and rollout through the same ordinary project component', () => {
     const source = snapshot(), projects = projectDetails(source);
     expect(projects.map(project => project.id)).toEqual(['alpha', 'beta', 'gamma', 'delta', 'build-project']);

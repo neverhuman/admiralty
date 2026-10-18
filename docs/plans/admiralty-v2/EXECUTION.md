@@ -888,3 +888,44 @@ records source and log hashes. This is separate from the scoped real native
 lifecycle proof at `eb62f5f`; neither establishes general provider execution or
 full P00–P31 acceptance. PR72 packages both implementation and honest evidence
 presentation. Commodore remains the single deployment owner.
+
+## Native Rust producer replacement — 2026-10-18T22:33Z
+
+The web cutover still depended on the historical Python collector and rollout
+observer. The user explicitly rejected that runtime dependency. A new registered
+`admiralty-observe` crate now reads configured project ledgers, local Git/PR
+evidence, fleet resources, real Screen/process identities, usage events and
+rollout inputs directly, without Python or model turns. Node/project identities
+and all deployment paths remain configuration. The source checkout is read-only.
+
+Three disjoint workers implemented project adapters, fleet observations and
+usage/history; independent integration review found and repaired retained-HTML
+shape failures, omitted rollout history/Commodore fields, excessive embedded
+history, malformed identity pins and nested credential-field exposure. The real
+47-task tracker uses its configured Git ref, not a drifting worktree. Requested
+models never replace missing observed footer identity. Screen presence never
+establishes task progress or acceptance.
+
+Bounded private usage offsets/baselines and observed events survive restarts.
+Partial source scans and initially truncated logs leave full windows, aggregate
+cost and yield unknown, with measured lower bounds kept separately. Historical
+samples retain original timestamps; display embedding is bounded separately
+from the retained 4,096-row disk history. These observations do not grant task
+acceptance or qualify autonomous provider execution.
+
+The final local candidate passes 47 registered observer tests, strict observer
+all-target Clippy, workspace formatting, 101 frontend tests and the TypeScript/
+Vite production build. Commands now mounts the merged command component in App;
+the production bundle contains its lazy chunk. Native cost weighting and ledger
+source age remain distinct from historical per-agent/publication measurements.
+Actual Linux source tests and a real separate-output fleet observation are being
+qualified before the deployment owner replaces the feed and retires exact old
+owned processes. Do not interpret this entry as a deployment receipt.
+
+PRs71,72,74,75 have exact-head review and are merged. PR69 remains actively
+owned for its browser/isolated-native-server repairs; existence-only build reuse
+or optional skipped backend coverage does not qualify an exact release. New
+work starts from current main rather than stacking unmerged branches. Shared
+Admiral/ticker, other projects, GPU jobs, runners and preserved data stay outside
+the observer retirement scope. General native controller/provider/candidate
+publication and atomic model-admission composition remain separate open work.

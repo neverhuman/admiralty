@@ -47,6 +47,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "admiralty-observe"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "rustix",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "admiralty-round16-qualification"
 version = "0.1.0"
 dependencies = [
@@ -1097,6 +1112,7 @@ version = "1.53.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce3335fa71841cda333a58d7615b03901380ecf09d59b3296d21f8bbac0dde4e"
 dependencies = [
+ "bytes",
  "libc",
  "mio",
  "pin-project-lite",

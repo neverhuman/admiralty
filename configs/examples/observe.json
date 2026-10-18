@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "node_id": "control-node",
+  "owner_name": "Your name",
+  "output_dir": "/srv/admiralty/observe/candidate",
+  "interval_seconds": 15,
+  "projects": [
+    {
+      "id": "project-a",
+      "name": "Project A",
+      "repository": "/srv/projects/project-a",
+      "tracker": {
+        "kind": "task_array",
+        "path": "/srv/projects/project-a/work/tasks.json",
+        "progress_path": "/srv/projects/project-a/work/progress.json",
+        "events_path": "/srv/projects/project-a/work/events.jsonl"
+      },
+      "manager_screen": "commodore_project_a",
+      "worker_prefixes": ["project_a_worker_"],
+      "coordination_log": "/srv/projects/project-a/work/coordination.log"
+    }
+  ],
+  "nodes": [
+    {"id": "control-node", "ssh": null, "os": "linux"},
+    {"id": "build-node", "ssh": "admiralty-build", "os": "linux"},
+    {"id": "desktop-node", "ssh": "admiralty-desktop", "os": "macos"}
+  ],
+  "coordination_dir": null,
+  "rollout_manifest": null,
+  "rollout_lanes_file": null,
+  "codex_sessions": null,
+  "claude_projects": null,
+  "rates_dir": null,
+  "history_source": null,
+  "admiral_screen": "admiral",
+  "gh_program": null
+}

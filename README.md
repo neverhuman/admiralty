@@ -25,7 +25,7 @@ These capabilities have different qualification levels. The native web service a
 
 ## Quickstart
 
-Use Rust **1.95.0** with rustfmt/Clippy, Node **24+**, pnpm **11.15.1**, Bash and a native C build toolchain. The repository pins its Rust and pnpm versions. Python 3 is used by the retained collector, packaging utility and compatibility checks; it is not the Rust HTTP server or React runtime.
+Use Rust **1.95.0** with rustfmt/Clippy, Node **24+**, pnpm **11.15.1**, Bash and a native C build toolchain. The repository pins its Rust and pnpm versions. Native ingestion and HTTP serving use Rust; Node builds the React assets. Historical migration utilities and compatibility tests remain in the repository.
 
 ```sh
 git clone https://github.com/neverhuman/admiralty.git
@@ -48,7 +48,22 @@ CARGO_TARGET_DIR="$PWD/target" cargo run -p admiralty-cli --locked -- --help
 
 ## Connect real fleet observations
 
-Point the source launcher at **existing** collector files:
+Build and configure the native observer using the [operator guide](docs/operators/native-observer.md) and [generic configuration](configs/examples/observe.json):
+
+```sh
+CARGO_TARGET_DIR="$PWD/target" cargo build --release -p admiralty-observe --locked
+target/release/admiralty-observe --config /absolute/private/observe.json --validate
+target/release/admiralty-observe --config /absolute/private/observe.json
+```
+
+The observer reads configured project ledgers, Git/PR evidence, Screen identities,
+resource probes and measured usage directly. It publishes `status.json` and
+bounded history without Python or model turns. It does not write project repos
+or launch workers. Existing history can be imported with its original timestamps.
+Missing or partial measurements remain explicit; local models are never priced
+as free merely because no price was recorded.
+
+Point the source launcher at the observer output and the retained detailed HTML page:
 
 ```sh
 pnpm live \
@@ -70,7 +85,7 @@ Build the service, CLI and static dashboard:
 
 ```sh
 CARGO_TARGET_DIR="$PWD/target" cargo build --release \
-  -p admiralty-server -p admiralty-cli --locked
+  -p admiralty-server -p admiralty-cli -p admiralty-observe --locked
 pnpm --dir apps/dashboard build
 ```
 
@@ -87,7 +102,7 @@ target/release/admiraltyd \
 
 Configuration directories must be owned and mode `0700`; credentials and private configuration must be owned regular files, mode `0600`. Use absolute paths. The server rejects unsafe private inputs. Owner and agent credentials differ, stay outside Git and travel in authorization headers rather than URLs. The browser keeps its access token in page memory. Use an authenticated SSH tunnel for remote access; the current service binds only to loopback.
 
-An optional `--redirect-listen 127.0.0.1:18891` serves an old-port HTTP 307 redirect from the same Rust binary. To retain an existing feed, add `--legacy-status-file` and `--legacy-index-file`; reads are authenticated unless `--legacy-public-read` is explicitly selected. The collector remains a separate compatibility dependency until its replacement is qualified.
+An optional `--redirect-listen 127.0.0.1:18891` serves an old-port HTTP 307 redirect from the same Rust binary. Set `--legacy-status-file` to the Rust observer's `status.json` and `--legacy-index-file` to the retained detailed HTML page; these names preserve the existing feed contract. Reads are authenticated unless `--legacy-public-read` is explicitly selected. The observer is a separate Rust process with one exclusive output writer.
 
 The private native configuration currently enables scoped operator task intake, pending cancellation and unstarted contract revision, plus scoped agent context/inbox reads and separately granted acknowledgments. It does **not** install a general provider executor or candidate-acceptance authority. Request payloads cannot install grants. See [the lifecycle contract](docs/architecture/native-lifecycle.md) for the exact state and authority boundaries.
 
@@ -117,10 +132,11 @@ Registration preserves task identity and dependency order; it does not submit or
 | `crates/admiralty-store` | Serialized durable writes, SQLite replay, idempotency, inbox/outbox, workplans and artifacts. |
 | `crates/admiralty-runtime` | Session ownership, pinned workspaces, resource admission, executed checks and recovery primitives. |
 | `crates/admiralty-server` | Authenticated HTTP/SSE, protected startup, native operator/agent adapters and static dashboard serving. |
+| `crates/admiralty-observe` | Native project/fleet/usage ingestion, observed identities and bounded temporal history. |
 | `crates/admiralty-cli` | Offline inspection, workplans, context, diagnostics, models, backup/rehearsal and release staging. |
 | `apps/dashboard` | React/TypeScript fleet console and native projections, built with Vite. |
 | `schemas` and `packages/contracts` | Rust-derived JSON Schemas and generated TypeScript contracts. |
-| `dashboard`, `captains` and `tools` | Retained collector, compatibility data and historical fleet operations. |
+| `dashboard`, `captains` and `tools` | Historical migration utilities, compatible detailed HTML, source adapters and fleet operating references. |
 
 Admiral and Commodore are role labels, not model names or fixed machine identities. Each execution still needs an independently observed provider/model, an owned workspace, current admission and configured resource limits. Compatibility producer keys and Screen IDs keep their observed identities; changing a label does not rename a running process.
 
@@ -128,7 +144,7 @@ Admiral and Commodore are role labels, not model names or fixed machine identiti
 
 The primary web service is Rust/React. A real, isolated Linux deterministic integration exercised admission, owned service observation and closure, positive and negative checks, immutable custody, trusted Store acceptance, exact retry, revocation denial and reopen replay. Its [source-attributed receipt](receipts/integration/eb62f5f635bea46e98c76e91499b56b4c7673849.json) records exactly what ran.
 
-General coding-provider execution, production controller/issuer composition, atomic model-budget/capacity admission and full rollout acceptance remain separate gates. The compatibility collector is still retained; this release does not claim that every old-system process has been retired. Full P00–P31 acceptance is not implied by passing component checks.
+General coding-provider execution, production controller/issuer composition, atomic model-budget/capacity admission and full rollout acceptance remain separate gates. Retiring old producers requires a verified single-writer cutover after native observations and history are checked. Full P00–P31 acceptance is not implied by passing component checks.
 
 See [release scope and remaining gates](docs/operators/release-status.md), the [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [master plan](docs/plans/admiralty-v2/MASTER_PLAN.md) and [work packets](docs/plans/admiralty-v2/WORK_PACKETS.md). Historical deployment information remains in [the compatibility inventory](docs/operators/legacy-inventory.md).
 
