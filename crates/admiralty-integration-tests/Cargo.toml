@@ -1,0 +1,13 @@
+[package]
+name = "admiralty-integration-tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+admiralty-core.workspace = true
+admiralty-runtime.workspace = true
+
+[lints]
+workspace = true
