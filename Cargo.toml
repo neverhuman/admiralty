@@ -68,6 +68,9 @@ axum = "0.8.9"
 futures-util = "0.3"
 clap = { version = "4.5", features = ["derive"] }
 
+[[test]]
+name = "codex_round17_p20"
+path = "tests/integration/codex_round17_p20.rs"
 [workspace.lints.rust]
 unsafe_code = "forbid"
 
