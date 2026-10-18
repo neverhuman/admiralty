@@ -12,12 +12,14 @@ use admiralty_runtime::{
     },
     recovery::plan_recovery,
     session::{OutputChunk, OutputStream},
+    workspace::registry::{Custody, GitMetadata, NodeRef, WorkspaceSpec},
 };
 use admiralty_testkit::{
     clock::FakeClock,
     faults::{FaultEffect, FaultPlan, FaultRule},
     forge::{Fault, ForgeKey, ForgeOutcome, ForgeReply, ForgeRequest, ForgeSimulator},
 };
+use std::{fs, path::PathBuf};
 
 #[path = "support/recovery.rs"]
 mod recovery_support;
@@ -431,4 +433,57 @@ fn p24_p29_round9_item3_telegram_bridge_migration_qualification() {
     })
     .expect("unknown cost serializes");
     assert_eq!(unknown["kind"], "unknown");
+}
+
+#[test]
+fn p24_p29_round10_item3_workspace_gate_audit() {
+    // P29's workspace registry keeps custody observational and scopes ownership
+    // to declared paths, even when the Git metadata directory exists.
+    let temp = tempfile::tempdir().expect("workspace audit fixture");
+    let root = fs::canonicalize(temp.path()).expect("canonical fixture root");
+    let workspace = root.join("workspace");
+    fs::create_dir_all(workspace.join("src")).expect("source fixture");
+    fs::create_dir_all(workspace.join(".git")).expect("Git metadata fixture");
+    let spec = WorkspaceSpec {
+        node_id: NodeRef::new("round10-node").expect("node fixture"),
+        root_id: RootId::new("round10-root").expect("root fixture"),
+        project_id: ProjectId::new("round10-project").expect("project fixture"),
+        workspace,
+        owned_paths: vec![PathBuf::from("src")],
+        forbidden_paths: vec![PathBuf::from(".git"), PathBuf::from("secrets")],
+    };
+    let validated = spec.validate().expect("bounded workspace gate");
+    assert_eq!(validated.custody, Custody::RegisteredOnly);
+    assert_eq!(validated.git_metadata, GitMetadata::Directory);
+    assert!(validated.owns(std::path::Path::new("src/lib.rs")));
+    assert!(!validated.owns(std::path::Path::new(".git/config")));
+    assert!(!validated.owns(std::path::Path::new("../outside")));
+    assert_eq!(spec.validate().expect("repeat audit"), validated);
+
+    let mut invalid_scope = spec;
+    invalid_scope.owned_paths.push(PathBuf::from("../outside"));
+    assert!(invalid_scope.validate().is_err());
+
+    // P24's placement decision independently rejects stale ownership evidence;
+    // a registered workspace alone cannot grant placement or authority.
+    let mut stale_offer = round9_placement_offer();
+    stale_offer.ownership_observed_at = Some(d(10));
+    let proposal = propose_placement(
+        &round9_placement_request(),
+        &[stale_offer],
+        &PlacementPolicy {
+            max_observation_age: d(10),
+            maximum_pressure: d(5),
+            minimum_spool_reserve: d(2),
+            disconnected_continuation_only: true,
+            ownership_revision: Some(d(1)),
+        },
+        21,
+    )
+    .expect("stale ownership is a safe rejection");
+    assert!(proposal.candidates.is_empty());
+    assert_eq!(proposal.rejected.len(), 1);
+    assert!(!proposal.execution_granted);
+    assert!(!proposal.publication_granted);
+    assert!(!proposal.authority_granted);
 }
