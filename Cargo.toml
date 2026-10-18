@@ -48,6 +48,10 @@ tempfile.workspace = true
 name = "codex_round16_p20"
 path = "tests/integration/codex_round16_p20.rs"
 
+[[test]]
+name = "codex_round17_p20"
+path = "tests/integration/codex_round17_p20.rs"
+
 [workspace.lints.rust]
 unsafe_code = "forbid"
 
