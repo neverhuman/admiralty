@@ -39,6 +39,7 @@ dependencies = [
  "admiralty-core",
  "admiralty-runtime",
  "admiralty-store",
+ "admiralty-testkit",
  "rusqlite",
  "serde_json",
  "tempfile",
