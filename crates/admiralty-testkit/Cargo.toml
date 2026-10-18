@@ -55,6 +55,10 @@ name = "codex_round13_workorder_release_evidence"
 path = "../../tests/integration/codex_round8_qualification.rs"
 
 [[test]]
+name = "codex_round15_p20"
+path = "tests/integration/mod.rs"
+
+[[test]]
 name = "codex_p25_p30_round8"
 path = "../../tests/integration/codex_p25_p30_round8.rs"
 
