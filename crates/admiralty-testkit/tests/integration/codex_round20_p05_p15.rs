@@ -2,8 +2,8 @@
 
 use admiralty_core::coordination::questions::{QuestionEvent, QuestionScope, QuestionStatus};
 use admiralty_core::verification::{
-    CheckResult, ReceiptProducer, RequiredNegativeCheck, VerificationInputs, VerificationPolicy, VerificationReceipt,
-    parse_receipt, validate_receipt,
+    CheckResult, ReceiptProducer, RequiredNegativeCheck, VerificationInputs, VerificationPolicy,
+    VerificationReceipt, parse_receipt, validate_receipt,
 };
 use admiralty_core::{
     AcceptanceCriterion, AttemptId, CheckSpec, MessageId, PrincipalId, ProjectId, RootId,

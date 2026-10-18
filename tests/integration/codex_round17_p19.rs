@@ -3,9 +3,9 @@
 use admiralty_core::{
     ProjectId, RootId, TaskId,
     publication::{
-        ApprovalEvidence, CheckEvidence, CheckState, DecimalU64, IntentStage,
-        PublicationScope, PublicationSnapshot, ReconciliationReceipt,
-        propose_publication, publication_request_digest, reduce_publication_intent,
+        ApprovalEvidence, CheckEvidence, CheckState, DecimalU64, IntentStage, PublicationScope,
+        PublicationSnapshot, ReconciliationReceipt, propose_publication,
+        publication_request_digest, reduce_publication_intent,
     },
 };
 use admiralty_store::artifacts::ArtifactStore;
@@ -44,8 +44,7 @@ fn p19_round17_post_item5_release_audit_cross_packet_invariant_qualification() {
     let scope = PublicationScope {
         project_id: ProjectId::new("round17-release-audit")
             .unwrap_or_else(|error| panic!("project id: {error}")),
-        root_id: RootId::new("release-root")
-            .unwrap_or_else(|error| panic!("root id: {error}")),
+        root_id: RootId::new("release-root").unwrap_or_else(|error| panic!("root id: {error}")),
         task_id: TaskId::new("artifact-publication")
             .unwrap_or_else(|error| panic!("task id: {error}")),
         target_ref: "refs/heads/release".into(),
@@ -77,32 +76,36 @@ fn p19_round17_post_item5_release_audit_cross_packet_invariant_qualification() {
     let digest = publication_request_digest(&scope, &snapshot, &candidate, &generation)
         .unwrap_or_else(|error| panic!("publication digest: {error}"));
     let proposal = propose_publication(&scope, &snapshot, &candidate, &digest, &generation);
-    assert!(proposal.eligible, "valid evidence should be eligible: {:?}", proposal.reasons);
-    assert!(!proposal.execution_granted(), "proposal is not an external side effect");
+    assert!(
+        proposal.eligible,
+        "valid evidence should be eligible: {:?}",
+        proposal.reasons
+    );
+    assert!(
+        !proposal.execution_granted(),
+        "proposal is not an external side effect"
+    );
     for _ in 0..32 {
         let replay = propose_publication(&scope, &snapshot, &candidate, &digest, &generation);
-        assert_eq!(replay.intent, proposal.intent, "publication replay is deterministic");
+        assert_eq!(
+            replay.intent, proposal.intent,
+            "publication replay is deterministic"
+        );
         assert!(!replay.execution_granted());
     }
 
     let mut altered_provenance = snapshot.clone();
-    altered_provenance.checks[0].provenance_ref.push_str(":forged");
-    let altered_digest = publication_request_digest(
-        &scope,
-        &altered_provenance,
-        &candidate,
-        &generation,
-    )
-    .unwrap_or_else(|error| panic!("altered-evidence digest: {error}"));
+    altered_provenance.checks[0]
+        .provenance_ref
+        .push_str(":forged");
+    let altered_digest =
+        publication_request_digest(&scope, &altered_provenance, &candidate, &generation)
+            .unwrap_or_else(|error| panic!("altered-evidence digest: {error}"));
     assert_ne!(digest, altered_digest, "digest binds provenance evidence");
     altered_provenance.checks[0].provenance_ref.clear();
-    let missing_digest = publication_request_digest(
-        &scope,
-        &altered_provenance,
-        &candidate,
-        &generation,
-    )
-    .unwrap_or_else(|error| panic!("missing-evidence digest: {error}"));
+    let missing_digest =
+        publication_request_digest(&scope, &altered_provenance, &candidate, &generation)
+            .unwrap_or_else(|error| panic!("missing-evidence digest: {error}"));
     let rejected = propose_publication(
         &scope,
         &altered_provenance,
@@ -140,7 +143,9 @@ fn p19_round17_post_item5_release_audit_cross_packet_invariant_qualification() {
     };
     let mut forged_receipt = receipt.clone();
     forged_receipt.request_digest.push('0');
-    assert!(reduce_publication_intent(Some(&ambiguous), &ambiguous, Some(&forged_receipt)).is_err());
+    assert!(
+        reduce_publication_intent(Some(&ambiguous), &ambiguous, Some(&forged_receipt)).is_err()
+    );
     let reconciled = reduce_publication_intent(Some(&ambiguous), &ambiguous, Some(&receipt))
         .unwrap_or_else(|error| panic!("reconcile observed publication: {error}"));
     assert_eq!(reconciled.stage, IntentStage::ReconciledSuccess);

@@ -190,7 +190,10 @@ fn codex_round19_p28_p32() -> Result<(), Box<dyn Error>> {
         assert_eq!(generation.generation.candidate_ids.len(), 3);
         assert!(generation.generation.combined_verification_required);
         let generation_schema = serde_json::to_value(&generation)?;
-        assert_eq!(generation_schema["analysis_version"], generation.analysis_version);
+        assert_eq!(
+            generation_schema["analysis_version"],
+            generation.analysis_version
+        );
         assert_eq!(
             generation_schema["generation"]["combined_verification_required"],
             true

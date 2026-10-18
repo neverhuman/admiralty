@@ -64,14 +64,19 @@ fn p19_round20_post_pr57_release_qualification_strict_clippy_audit() {
     };
     let digest = publication_request_digest(&scope, &snapshot, &candidate, &generation).unwrap();
     let proposal = propose_publication(&scope, &snapshot, &candidate, &digest, &generation);
-    assert!(proposal.eligible, "valid artifact evidence: {:?}", proposal.reasons);
+    assert!(
+        proposal.eligible,
+        "valid artifact evidence: {:?}",
+        proposal.reasons
+    );
     assert!(!proposal.execution_granted());
 
     let mut unproven = snapshot.clone();
     unproven.checks[0].provenance_ref.clear();
     let unproven_digest =
         publication_request_digest(&scope, &unproven, &candidate, &generation).unwrap();
-    let rejected = propose_publication(&scope, &unproven, &candidate, &unproven_digest, &generation);
+    let rejected =
+        propose_publication(&scope, &unproven, &candidate, &unproven_digest, &generation);
     assert!(!rejected.eligible);
     assert!(rejected.intent.is_none());
     assert!(!rejected.execution_granted());
