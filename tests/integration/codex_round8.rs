@@ -10,6 +10,7 @@ use admiralty_core::placement::{
     NodeOffer, Observation, PlacementPolicy, PlacementRequest, propose_placement,
 };
 use admiralty_core::{PrincipalId, ProjectId, RootId, TaskId};
+use admiralty_runtime::MANAGED_EXECUTION_QUALIFIED;
 use admiralty_runtime::{
     providers::codex::{CodexEffort, CodexError, CodexNdjsonStream},
     providers::{claude, codex, process},
