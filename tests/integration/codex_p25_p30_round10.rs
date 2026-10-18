@@ -106,3 +106,62 @@ fn p25_p30_round10_item3_workspace_gate_audit() {
         "P30 package self-test did not report its expected deterministic suite"
     );
 }
+
+#[test]
+fn p25_p30_round11_item4_final_validation_gate() {
+    use admiralty_runtime::recovery::{Blocker, plan_recovery};
+
+    let (manifest, mut observation, mut fence) = recovery_fixture::valid_recovery_evidence();
+    let valid = plan_recovery(&manifest, &observation, Some(&fence))
+        .expect("P25 complete recovery closure is valid");
+    assert!(valid.resume_proposed);
+    assert_eq!(
+        valid,
+        plan_recovery(&manifest, &observation, Some(&fence))
+            .expect("P25 replay of the same evidence is deterministic")
+    );
+    assert!(!valid.restore_authorized());
+    assert!(!valid.effects_authorized());
+
+    observation.available_artifacts.clear();
+    let missing_artifacts = plan_recovery(&manifest, &observation, Some(&fence))
+        .expect("missing P25 closure entries become blockers");
+    assert!(
+        missing_artifacts
+            .blockers
+            .iter()
+            .any(|blocker| matches!(blocker, Blocker::MissingArtifact(_)))
+    );
+    assert!(!missing_artifacts.resume_proposed);
+    assert!(!missing_artifacts.restore_authorized());
+    assert!(!missing_artifacts.effects_authorized());
+
+    observation.available_artifacts = manifest.artifact_closure.clone();
+    fence.old_executor_fenced = Some(false);
+    let unfenced = plan_recovery(&manifest, &observation, Some(&fence))
+        .expect("P25 requires a positive old-executor fence");
+    assert!(unfenced.blockers.contains(&Blocker::OldExecutorNotFenced));
+    assert!(!unfenced.resume_proposed);
+    assert!(!unfenced.restore_authorized());
+    assert!(!unfenced.effects_authorized());
+
+    let workspace = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .canonicalize()
+        .expect("workspace root resolves");
+    let package_check = Command::new("python3")
+        .args(["scripts/release/package.py", "--self-test"])
+        .current_dir(workspace)
+        .output()
+        .expect("P30 offline package gate starts");
+    assert!(
+        package_check.status.success(),
+        "P30 package gate failed:\n{}\n{}",
+        String::from_utf8_lossy(&package_check.stdout),
+        String::from_utf8_lossy(&package_check.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&package_check.stderr).contains("Ran 10 tests"),
+        "P30 final gate must report all ten package-builder checks"
+    );
+}
