@@ -23,6 +23,10 @@ futures-util.workspace = true
 workspace = true
 
 [[test]]
+name = "integration"
+path = "tests/integration/mod.rs"
+
+[[test]]
 name = "api_stream"
 path = "../../tests/integration/api_stream.rs"
 
