@@ -59,16 +59,16 @@ use admiralty_core::{
     contracts::safe_relative_path,
     verification::{ReceiptProducer, VerificationInputs},
 };
-use rustix::fs::{AtFlags, Mode, OFlags, fstat, mkdirat, open, openat, statat};
+use rustix::fs::{AtFlags, Mode, OFlags, fchmod, fstat, fstatvfs, mkdirat, open, openat, statat};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     fs,
-    io::{self, Read},
+    io::{self, Read, Write},
     os::{
         fd::{AsFd, BorrowedFd, OwnedFd},
         unix::{
-            fs::{FileTypeExt, MetadataExt, PermissionsExt},
+            fs::{FileTypeExt, MetadataExt},
             process::CommandExt,
         },
     },
@@ -85,9 +85,20 @@ const GIT_TRANSFER_TIMEOUT: Duration = Duration::from_secs(15);
 const MAX_GIT_OUTPUT: usize = 1024 * 1024;
 const MAX_GIT_STDERR: usize = 16 * 1024;
 const MAX_TREE_LISTING: usize = 4 * 1024 * 1024;
+const MAX_GIT_CONFIG_BYTES: u64 = 64 * 1024;
+const MAX_GIT_HOOK_ENTRIES: usize = 64;
+const MAX_GIT_DIR_DEPTH: usize = 16;
+const MAX_GIT_DIR_ENTRIES: usize = 4_096;
+const MAX_GIT_DIR_BYTES: u64 = 64 * 1024 * 1024;
+const MAX_COMMIT_DISTANCE: usize = 64;
+const MAX_SOURCE_FILE_BYTES: u64 = 1024 * 1024;
 const MAX_WORKING_TREE_ENTRIES: usize = 10_000;
 const MAX_WORKING_TREE_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_DESTINATION_NAME_BYTES: usize = 128;
+const DISK_RESERVE_BYTES: u64 = 16 * 1024 * 1024;
+const DISK_BYTES_PER_OBJECT: u64 = 4 * 1024;
+const DISK_BYTES_PER_FILE: u64 = 4 * 1024;
+const DISK_INODE_RESERVE: u64 = 64;
 const DETERMINISTIC_AUTHOR_NAME: &str = "Admiralty Source Candidate";
 const DETERMINISTIC_AUTHOR_EMAIL: &str = "source-candidate@admiralty.invalid";
 const DETERMINISTIC_COMMIT_DATE: &str = "1970-01-01T00:00:00Z";
@@ -469,7 +480,12 @@ impl SourceCandidate {
             &self.source_commit_sha,
             &self.source_tree_sha,
         )?;
-        validate_commit_tree_entries(&git, &checkout_cwd, &self.source_tree_sha)?;
+        validate_commit_tree_entries(
+            &git,
+            &checkout_cwd,
+            &self.source_commit_sha,
+            &self.source_tree_sha,
+        )?;
         let current_wt_digest =
             compute_working_tree_content_digest(&git, &checkout_cwd, &self.source_tree_sha)?;
         if current_wt_digest != self.working_tree_digest {
@@ -622,6 +638,8 @@ pub fn materialize_source_candidate(
     if resolved_base_tree.trim() != base_tree_sha {
         return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
     }
+    let base_closure =
+        validate_commit_tree_entries(&git, &workspace_cwd, &base_commit_sha, &base_tree_sha)?;
 
     let status_before = git_status_porcelain(&git, &workspace_cwd)?;
     let current_head = git_text(
@@ -676,7 +694,8 @@ pub fn materialize_source_candidate(
         return Err(SourceCandidateError::NoSourceChanges);
     }
     verify_commit_ancestry(&git, &workspace_cwd, &base_commit_sha, &source_commit_sha)?;
-    validate_commit_tree_entries(&git, &workspace_cwd, &source_tree_sha)?;
+    let source_closure =
+        validate_commit_tree_entries(&git, &workspace_cwd, &source_commit_sha, &source_tree_sha)?;
 
     let files = extract_and_validate_changed_files(
         &git,
@@ -698,7 +717,7 @@ pub fn materialize_source_candidate(
         working_tree_digest,
         candidate_parent_fd,
         candidate_checkout_fd,
-    } = materialize_immutable_checkout(
+    } = materialize_detached_checkout(
         &git,
         &workspace_cwd,
         execution.prepared.workspace(),
@@ -707,6 +726,8 @@ pub fn materialize_source_candidate(
         &base_commit_sha,
         &source_commit_sha,
         &source_tree_sha,
+        base_closure,
+        source_closure,
     )?;
 
     execution.revalidate_custody()?;
@@ -896,7 +917,6 @@ fn freeze_dirty_working_tree(
             "admiralty source candidate",
         ],
     )?;
-    make_git_dir_private(&workspace_cwd.access_path().join(".git"))?;
     Ok(())
 }
 
@@ -922,25 +942,60 @@ fn verify_commit_ancestry(
             head_commit_sha,
         ],
     )
-    .map(|_| ())
-    .map_err(|_| SourceCandidateError::InvalidBaseAncestry)
+    .map_err(|_| SourceCandidateError::InvalidBaseAncestry)?;
+    let count_text = git_text(
+        git,
+        Some(workspace_cwd),
+        &[
+            "rev-list",
+            "--count",
+            &format!("{base_commit_sha}..{head_commit_sha}"),
+        ],
+    )
+    .map_err(|_| SourceCandidateError::InvalidBaseAncestry)?;
+    let distance = count_text
+        .trim()
+        .parse::<usize>()
+        .map_err(|_| SourceCandidateError::InvalidBaseAncestry)?;
+    if distance == 0 || distance > MAX_COMMIT_DISTANCE {
+        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+    }
+    Ok(())
+}
+
+#[derive(Clone, Copy, Debug)]
+struct PreflightTreeClosure {
+    snapshot_bytes: u64,
+    object_count: usize,
+    working_tree_bytes: u64,
+    materialized_entry_count: usize,
 }
 
 fn validate_commit_tree_entries(
     git: &Path,
     workspace_cwd: &PinnedGitDirectory<'_>,
+    commit_oid: &str,
     tree_oid: &str,
-) -> Result<(), SourceCandidateError> {
+) -> Result<PreflightTreeClosure, SourceCandidateError> {
+    if !valid_sha1_oid(commit_oid) || !valid_sha1_oid(tree_oid) {
+        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+    }
     let listing = run_git_with_options(
         git,
         Some(workspace_cwd),
-        &["ls-tree", "-r", "-t", "-z", "--full-tree", tree_oid],
+        &["ls-tree", "-r", "-t", "-l", "-z", "--full-tree", tree_oid],
         None,
         GIT_TIMEOUT,
         MAX_TREE_LISTING,
     )?
     .stdout;
     let mut entries = 0usize;
+    let mut total_listed_bytes = 0u64;
+    let mut objects = BTreeSet::new();
+    let mut blob_references = BTreeMap::<String, usize>::new();
+    let mut listed_blob_sizes = BTreeMap::<String, u64>::new();
+    objects.insert(commit_oid.to_owned());
+    objects.insert(tree_oid.to_owned());
     for record in listing
         .split(|byte| *byte == 0)
         .filter(|record| !record.is_empty())
@@ -970,17 +1025,131 @@ fn validate_commit_tree_entries(
         let oid = fields
             .next()
             .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
-        if fields.next().is_some()
-            || !valid_sha1_oid(oid)
-            || !matches!(
-                (mode, kind),
-                ("100644" | "100755", "blob") | ("040000", "tree")
-            )
-        {
+        let size_field = fields
+            .next()
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        if fields.next().is_some() || !valid_sha1_oid(oid) {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        match (mode, kind) {
+            ("040000", "tree") => {
+                if size_field != "-" {
+                    return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+                }
+            }
+            ("100644" | "100755", "blob") => {
+                let blob_size = size_field
+                    .parse::<u64>()
+                    .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+                if blob_size > MAX_SOURCE_FILE_BYTES {
+                    return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+                }
+                total_listed_bytes = total_listed_bytes
+                    .checked_add(blob_size)
+                    .filter(|bytes| *bytes <= MAX_WORKING_TREE_BYTES)
+                    .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+                let copies = blob_references.entry(oid.to_owned()).or_default();
+                *copies = copies
+                    .checked_add(1)
+                    .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+                if let Some(prev_size) = listed_blob_sizes.insert(oid.to_owned(), blob_size)
+                    && prev_size != blob_size
+                {
+                    return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+                }
+            }
+            _ => return Err(SourceCandidateError::UnsafeWorkspaceMetadata),
+        }
+        objects.insert(oid.to_owned());
+        if objects.len() > MAX_WORKING_TREE_ENTRIES {
             return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
         }
     }
-    Ok(())
+
+    let mut batch_input = Vec::with_capacity(objects.len().saturating_mul(41));
+    for oid in &objects {
+        batch_input.extend_from_slice(oid.as_bytes());
+        batch_input.push(b'\n');
+    }
+    let batch_output = run_git_with_options(
+        git,
+        Some(workspace_cwd),
+        &[
+            "cat-file",
+            "--batch-check=%(objectname) %(objecttype) %(objectsize)",
+        ],
+        Some(&batch_input),
+        GIT_TIMEOUT,
+        MAX_GIT_OUTPUT,
+    )?
+    .stdout;
+    let mut snapshot_bytes = 0u64;
+    let mut object_count = 0usize;
+    let mut object_sizes = BTreeMap::<String, u64>::new();
+    for line in batch_output
+        .split(|byte| *byte == b'\n')
+        .filter(|line| !line.is_empty())
+    {
+        let line =
+            std::str::from_utf8(line).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        let mut fields = line.split_ascii_whitespace();
+        let oid = fields
+            .next()
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        let kind = fields
+            .next()
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        let size = fields
+            .next()
+            .and_then(|value| value.parse::<u64>().ok())
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        if fields.next().is_some()
+            || !objects.contains(oid)
+            || !matches!(kind, "blob" | "tree" | "commit")
+        {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        if kind == "blob"
+            && (size > MAX_SOURCE_FILE_BYTES || listed_blob_sizes.get(oid) != Some(&size))
+        {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        snapshot_bytes = snapshot_bytes
+            .checked_add(size)
+            .filter(|bytes| *bytes <= MAX_WORKING_TREE_BYTES)
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        object_sizes.insert(oid.to_owned(), size);
+        object_count = object_count
+            .checked_add(1)
+            .filter(|count| *count <= MAX_WORKING_TREE_ENTRIES)
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    }
+    if object_count != objects.len() {
+        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+    }
+    let working_tree_bytes = blob_references
+        .iter()
+        .try_fold(0u64, |sum, (oid, copies)| {
+            let size = object_sizes
+                .get(oid)
+                .copied()
+                .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+            sum.checked_add(
+                size.checked_mul(*copies as u64)
+                    .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?,
+            )
+            .filter(|bytes| *bytes <= MAX_WORKING_TREE_BYTES)
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)
+        })?;
+    if working_tree_bytes != total_listed_bytes {
+        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+    }
+    Ok(PreflightTreeClosure {
+        snapshot_bytes,
+        object_count,
+        working_tree_bytes,
+        materialized_entry_count: entries,
+    })
 }
 
 fn extract_and_validate_changed_files(
@@ -1146,18 +1315,22 @@ fn parse_unified_zero_hunk_header(line: &str) -> Option<HunkRange> {
     let header = &body[..end_header];
     let (old_part, new_part) = header.split_once(" +")?;
     let (old_start, old_count) = parse_hunk_span(old_part)?;
-    let (new_start, new_count) = parse_hunk_span(new_part)?;
-    let anchor = if new_count > 0 {
-        (new_start, new_count)
-    } else if old_count > 0 {
-        (old_start, old_count)
+    let (_new_start, _new_count) = parse_hunk_span(new_part)?;
+    // Anchor hunks in shared base_commit_sha coordinates so length-changing
+    // earlier hunks do not shift later shared-base edits across candidates.
+    if old_count > 0 {
+        let start = old_start.max(1);
+        let end = start.checked_add(old_count.saturating_sub(1))?;
+        Some(HunkRange { start, end })
     } else {
-        let start = new_start.max(old_start).max(1);
-        (start, 1)
-    };
-    let start = anchor.0.max(1);
-    let end = start.checked_add(anchor.1.saturating_sub(1))?;
-    Some(HunkRange { start, end })
+        let start = old_start.max(1);
+        let end = if old_start == 0 {
+            1
+        } else {
+            old_start.checked_add(1)?
+        };
+        Some(HunkRange { start, end })
+    }
 }
 
 fn parse_hunk_span(span: &str) -> Option<(u32, u32)> {
@@ -1180,7 +1353,7 @@ struct MaterializedCheckout {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn materialize_immutable_checkout(
+fn materialize_detached_checkout(
     git: &Path,
     source_cwd: &PinnedGitDirectory<'_>,
     source_workspace: &ValidatedWorkspace,
@@ -1189,6 +1362,8 @@ fn materialize_immutable_checkout(
     base_commit_sha: &str,
     source_commit_sha: &str,
     source_tree_sha: &str,
+    base_closure: PreflightTreeClosure,
+    source_closure: PreflightTreeClosure,
 ) -> Result<MaterializedCheckout, SourceCandidateError> {
     validate_destination_name(destination_name)?;
     if !candidate_parent.is_absolute() {
@@ -1205,6 +1380,7 @@ fn materialize_immutable_checkout(
     }
     ensure_path_points_to_fd(&canonical_parent, parent_fd.as_fd())
         .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    ensure_admitted_capacity(parent_fd.as_fd(), base_closure, source_closure)?;
     match statat(&parent_fd, destination_name, AtFlags::SYMLINK_NOFOLLOW) {
         Ok(_) => return Err(SourceCandidateError::InvalidCandidateDestination),
         Err(error) if error == rustix::io::Errno::NOENT => {}
@@ -1225,7 +1401,7 @@ fn materialize_immutable_checkout(
     )
     .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
     let destination_path = canonical_parent.join(destination_name);
-    rustix::fs::fchmod(&destination_fd, Mode::from_bits_truncate(0o700))
+    fchmod(&destination_fd, Mode::from_bits_truncate(0o700))
         .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
     ensure_private_fd(destination_fd.as_fd())
         .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
@@ -1307,10 +1483,22 @@ fn materialize_immutable_checkout(
         ],
     )?;
     make_git_dir_private(&destination_cwd.access_path().join(".git"))?;
-    fs::set_permissions(&destination_path, fs::Permissions::from_mode(0o700))
+    fchmod(&destination_fd, Mode::from_bits_truncate(0o700))
         .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
     ensure_private_fd(destination_fd.as_fd())
         .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    if git_text(
+        git,
+        Some(&destination_cwd),
+        &["rev-parse", "--is-shallow-repository"],
+    )?
+    .trim()
+        != "true"
+    {
+        return Err(SourceCandidateError::InvalidCandidateDestination);
+    }
+    let object_stats = git_text(git, Some(&destination_cwd), &["count-objects", "-v"])?;
+    validate_object_store_stats(&object_stats, base_closure, source_closure)?;
     let candidate_config =
         validate_workspace_git_metadata(git, &destination_cwd, destination_fd.as_fd())?;
     if candidate_config != initial_config {
@@ -1318,7 +1506,7 @@ fn materialize_immutable_checkout(
     }
     validate_working_tree_entries(&destination_cwd)?;
     verify_clean_detached_checkout(git, &destination_cwd, source_commit_sha, source_tree_sha)?;
-    validate_commit_tree_entries(git, &destination_cwd, source_tree_sha)?;
+    validate_commit_tree_entries(git, &destination_cwd, source_commit_sha, source_tree_sha)?;
     let working_tree_digest =
         compute_working_tree_content_digest(git, &destination_cwd, source_tree_sha)?;
 
@@ -1354,6 +1542,93 @@ fn materialize_immutable_checkout(
         candidate_parent_fd: parent_fd,
         candidate_checkout_fd: destination_fd,
     })
+}
+
+fn ensure_admitted_capacity(
+    parent_fd: BorrowedFd<'_>,
+    base_closure: PreflightTreeClosure,
+    source_closure: PreflightTreeClosure,
+) -> Result<(), SourceCandidateError> {
+    let usage =
+        fstatvfs(parent_fd).map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    let available_bytes = usage
+        .f_bavail
+        .checked_mul(usage.f_frsize)
+        .ok_or(SourceCandidateError::InvalidCandidateDestination)?;
+    let available_inodes = usage.f_favail;
+    let combined_objects = (base_closure.object_count as u64)
+        .checked_add(source_closure.object_count as u64)
+        .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    let combined_snapshot_bytes = base_closure
+        .snapshot_bytes
+        .checked_add(source_closure.snapshot_bytes)
+        .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    let admitted_bytes = combined_snapshot_bytes
+        .checked_add(source_closure.working_tree_bytes)
+        .and_then(|bytes| bytes.checked_add(combined_objects.checked_mul(DISK_BYTES_PER_OBJECT)?))
+        .and_then(|bytes| {
+            bytes.checked_add(
+                (source_closure.materialized_entry_count as u64)
+                    .checked_mul(DISK_BYTES_PER_FILE)?,
+            )
+        })
+        .and_then(|bytes| bytes.checked_add(DISK_RESERVE_BYTES))
+        .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    let admitted_inodes = combined_objects
+        .checked_add(source_closure.materialized_entry_count as u64)
+        .and_then(|count| count.checked_add(DISK_INODE_RESERVE))
+        .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    if available_bytes < admitted_bytes || available_inodes < admitted_inodes {
+        return Err(SourceCandidateError::InvalidCandidateDestination);
+    }
+    Ok(())
+}
+
+fn validate_object_store_stats(
+    stats: &str,
+    base_closure: PreflightTreeClosure,
+    source_closure: PreflightTreeClosure,
+) -> Result<(), SourceCandidateError> {
+    let mut map = BTreeMap::new();
+    for (key, value) in stats
+        .lines()
+        .filter_map(|line| line.split_once(':'))
+        .map(|(key, value)| (key.trim(), value.trim()))
+    {
+        map.insert(
+            key,
+            value
+                .parse::<u64>()
+                .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?,
+        );
+    }
+    let objects = map
+        .get("count")
+        .copied()
+        .unwrap_or(0)
+        .checked_add(map.get("in-pack").copied().unwrap_or(0))
+        .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    let loose_kib = map.get("size").copied().unwrap_or(0);
+    let packed_kib = map.get("size-pack").copied().unwrap_or(0);
+    let stored_bytes = loose_kib
+        .checked_add(packed_kib)
+        .and_then(|kib| kib.checked_mul(1024))
+        .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    let expected_objects = (base_closure.object_count as u64)
+        .checked_add(source_closure.object_count as u64)
+        .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    let expected_bytes = base_closure
+        .snapshot_bytes
+        .checked_add(source_closure.snapshot_bytes)
+        .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    if objects > expected_objects
+        || stored_bytes > expected_bytes.saturating_add(2 * 1024 * 1024)
+        || map.get("garbage").copied().unwrap_or(0) != 0
+        || map.get("size-garbage").copied().unwrap_or(0) != 0
+    {
+        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+    }
+    Ok(())
 }
 
 fn verify_clean_detached_checkout(
@@ -1423,13 +1698,18 @@ fn compute_working_tree_content_digest(
         MAX_TREE_LISTING,
     )?
     .stdout;
-    let uid = rustix::process::geteuid().as_raw();
     let access_root = checkout_cwd.access_path();
+    let mut entries = 0usize;
+    let mut total_bytes = 0u64;
     let mut records = Vec::<(String, String, String, String)>::new();
     for record in listing
         .split(|byte| *byte == 0)
         .filter(|record| !record.is_empty())
     {
+        entries = entries
+            .checked_add(1)
+            .filter(|count| *count <= MAX_WORKING_TREE_ENTRIES)
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
         let tab = record
             .iter()
             .position(|byte| *byte == b'\t')
@@ -1458,29 +1738,25 @@ fn compute_working_tree_content_digest(
         {
             return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
         }
+        let remaining_cumulative = MAX_WORKING_TREE_BYTES
+            .checked_sub(total_bytes)
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        let file_limit = MAX_SOURCE_FILE_BYTES.min(remaining_cumulative);
         let file_path = access_root.join(path_text);
-        let meta = fs::symlink_metadata(&file_path)
-            .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
-        if meta.file_type().is_symlink()
-            || !meta.is_file()
-            || meta.uid() != uid
-            || meta.nlink() != 1
-            || meta.mode() & 0o002 != 0
-        {
-            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
-        }
-        let bytes =
-            fs::read(&file_path).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
-        if bytes.len() as u64 > MAX_WORKING_TREE_BYTES {
-            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
-        }
+        let bytes = read_bounded_regular_file(&file_path, file_limit, 0o002)?;
+        total_bytes = total_bytes
+            .checked_add(bytes.len() as u64)
+            .filter(|count| *count <= MAX_WORKING_TREE_BYTES)
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
         let expected_blob = run_git_with_options(
             git,
             Some(checkout_cwd),
             &["cat-file", "blob", oid],
             None,
             GIT_TIMEOUT,
-            MAX_GIT_OUTPUT,
+            usize::try_from(file_limit)
+                .unwrap_or(MAX_GIT_OUTPUT)
+                .min(MAX_GIT_OUTPUT),
         )?
         .stdout;
         if bytes != expected_blob {
@@ -1548,7 +1824,6 @@ fn validate_working_tree_entries(
             let name_str = name
                 .to_str()
                 .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
-            let path = entry.path();
             if directory == workspace_root && name_str == ".git" {
                 continue;
             }
@@ -1559,6 +1834,10 @@ fn validate_working_tree_entries(
                 .checked_add(1)
                 .filter(|count| *count <= MAX_WORKING_TREE_ENTRIES)
                 .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+            if stack.len() >= MAX_WORKING_TREE_ENTRIES {
+                return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+            }
+            let path = entry.path();
             let meta = fs::symlink_metadata(&path)
                 .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
             let file_type = meta.file_type();
@@ -1577,11 +1856,10 @@ fn validate_working_tree_entries(
                 }
                 stack.push(path);
             } else if meta.is_file() {
-                if meta.nlink() != 1 || meta.mode() & 0o002 != 0 {
-                    return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
-                }
+                let (_file, fd_meta) =
+                    open_verified_regular_file(&path, MAX_SOURCE_FILE_BYTES, 0o002)?;
                 total_bytes = total_bytes
-                    .checked_add(meta.len())
+                    .checked_add(fd_meta.len())
                     .filter(|bytes| *bytes <= MAX_WORKING_TREE_BYTES)
                     .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
             } else {
@@ -1609,6 +1887,7 @@ fn validate_workspace_git_metadata(
     {
         return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
     }
+    validate_git_dir_tree(&git_dir)?;
     let config_path = git_dir.join("config");
     let config = read_safe_config(&config_path)?;
     for forbidden in [
@@ -1628,23 +1907,52 @@ fn validate_workspace_git_metadata(
     if path_entry_exists(&hooks_dir)? {
         let hooks_meta = fs::symlink_metadata(&hooks_dir)
             .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
-        if hooks_meta.file_type().is_symlink() || !hooks_meta.is_dir() || hooks_meta.uid() != uid {
+        if hooks_meta.file_type().is_symlink()
+            || !hooks_meta.is_dir()
+            || hooks_meta.uid() != uid
+            || hooks_meta.mode() & 0o002 != 0
+        {
             return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
         }
+        let mut hook_entries = 0usize;
         for hook in
             fs::read_dir(&hooks_dir).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?
         {
+            hook_entries = hook_entries
+                .checked_add(1)
+                .filter(|count| *count <= MAX_GIT_HOOK_ENTRIES)
+                .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
             let hook = hook.map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
             let hook_meta = fs::symlink_metadata(hook.path())
                 .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
             let hook_name = hook.file_name();
             let hook_name_str = hook_name.to_string_lossy();
             if hook_meta.file_type().is_symlink()
+                || !hook_meta.is_file()
+                || hook_meta.nlink() != 1
                 || hook_meta.uid() != uid
+                || hook_meta.mode() & 0o002 != 0
                 || (!hook_name_str.ends_with(".sample") && hook_meta.mode() & 0o111 != 0)
             {
                 return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
             }
+        }
+    }
+    let index_flags = run_git_with_options(
+        git,
+        Some(workspace_cwd),
+        &["ls-files", "-v", "-z"],
+        None,
+        GIT_TIMEOUT,
+        MAX_TREE_LISTING,
+    )?
+    .stdout;
+    for entry in index_flags
+        .split(|byte| *byte == 0)
+        .filter(|entry| !entry.is_empty())
+    {
+        if matches!(entry.first().copied(), Some(b'h' | b'S' | b's')) {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
         }
     }
     let format = git_text(
@@ -1667,18 +1975,95 @@ fn validate_workspace_git_metadata(
     Ok(config)
 }
 
-fn read_safe_config(path: &Path) -> Result<Vec<u8>, SourceCandidateError> {
-    let metadata =
+fn open_verified_regular_file(
+    path: &Path,
+    max_bytes: u64,
+    disallowed_mode_mask: u32,
+) -> Result<(fs::File, fs::Metadata), SourceCandidateError> {
+    let path_meta =
         fs::symlink_metadata(path).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
     let uid = rustix::process::geteuid().as_raw();
-    if metadata.file_type().is_symlink()
-        || !metadata.is_file()
-        || metadata.uid() != uid
-        || metadata.mode() & 0o022 != 0
+    let path_type = path_meta.file_type();
+    if path_type.is_symlink()
+        || !path_meta.is_file()
+        || path_meta.uid() != uid
+        || path_meta.nlink() != 1
+        || path_meta.mode() & disallowed_mode_mask != 0
+        || path_meta.len() > max_bytes
     {
         return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
     }
-    let bytes = fs::read(path).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    let fd = open(
+        path,
+        OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::CLOEXEC | OFlags::NONBLOCK,
+        Mode::empty(),
+    )
+    .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    let file = fs::File::from(fd);
+    let fd_meta = file
+        .metadata()
+        .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    let fd_type = fd_meta.file_type();
+    if fd_type.is_symlink()
+        || !fd_meta.is_file()
+        || fd_meta.uid() != uid
+        || fd_meta.nlink() != 1
+        || fd_meta.mode() & disallowed_mode_mask != 0
+        || fd_meta.dev() != path_meta.dev()
+        || fd_meta.ino() != path_meta.ino()
+        || fd_meta.len() > max_bytes
+    {
+        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+    }
+    Ok((file, fd_meta))
+}
+
+fn read_bounded_regular_file(
+    path: &Path,
+    max_bytes: u64,
+    disallowed_mode_mask: u32,
+) -> Result<Vec<u8>, SourceCandidateError> {
+    let (mut file, fd_meta) = open_verified_regular_file(path, max_bytes, disallowed_mode_mask)?;
+    let uid = rustix::process::geteuid().as_raw();
+    let initial_capacity = usize::try_from(fd_meta.len().min(max_bytes).min(8192)).unwrap_or(0);
+    let mut bytes = Vec::with_capacity(initial_capacity);
+    (&mut file)
+        .take(max_bytes.saturating_add(1))
+        .read_to_end(&mut bytes)
+        .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    if bytes.len() as u64 > max_bytes || fd_meta.len() > max_bytes {
+        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+    }
+    let fd_after = file
+        .metadata()
+        .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    let path_after =
+        fs::symlink_metadata(path).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+    if fd_after.file_type().is_symlink()
+        || !fd_after.is_file()
+        || fd_after.uid() != uid
+        || fd_after.nlink() != 1
+        || fd_after.mode() & disallowed_mode_mask != 0
+        || fd_after.dev() != fd_meta.dev()
+        || fd_after.ino() != fd_meta.ino()
+        || fd_after.len() != bytes.len() as u64
+        || fd_after.len() > max_bytes
+        || path_after.file_type().is_symlink()
+        || !path_after.is_file()
+        || path_after.uid() != uid
+        || path_after.nlink() != 1
+        || path_after.mode() & disallowed_mode_mask != 0
+        || path_after.dev() != fd_meta.dev()
+        || path_after.ino() != fd_meta.ino()
+        || path_after.len() != bytes.len() as u64
+    {
+        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+    }
+    Ok(bytes)
+}
+
+fn read_safe_config(path: &Path) -> Result<Vec<u8>, SourceCandidateError> {
+    let bytes = read_bounded_regular_file(path, MAX_GIT_CONFIG_BYTES, 0o022)?;
     let lower = String::from_utf8_lossy(&bytes).to_ascii_lowercase();
     for forbidden in [
         "[include",
@@ -1728,29 +2113,118 @@ fn read_safe_config(path: &Path) -> Result<Vec<u8>, SourceCandidateError> {
     Ok(bytes)
 }
 
-fn make_git_dir_private(path: &Path) -> Result<(), SourceCandidateError> {
-    let uid = rustix::process::geteuid().as_raw();
-    let metadata =
-        fs::symlink_metadata(path).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
-    if metadata.file_type().is_symlink() || metadata.uid() != uid {
+fn validate_git_dir_tree(root: &Path) -> Result<(), SourceCandidateError> {
+    traverse_git_dir_bounded(root, false)
+}
+
+fn make_git_dir_private(root: &Path) -> Result<(), SourceCandidateError> {
+    traverse_git_dir_bounded(root, true)
+}
+
+fn traverse_git_dir_bounded(
+    root: &Path,
+    normalize_modes: bool,
+) -> Result<(), SourceCandidateError> {
+    traverse_git_dir_bounded_with_limits(
+        root,
+        normalize_modes,
+        MAX_GIT_DIR_DEPTH,
+        MAX_GIT_DIR_ENTRIES,
+        MAX_GIT_DIR_BYTES,
+    )
+}
+
+fn traverse_git_dir_bounded_with_limits(
+    root: &Path,
+    normalize_modes: bool,
+    max_depth: usize,
+    max_entries: usize,
+    max_bytes: u64,
+) -> Result<(), SourceCandidateError> {
+    if max_entries == 0 {
         return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
     }
-    if metadata.is_dir() {
-        fs::set_permissions(path, fs::Permissions::from_mode(0o700))
-            .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
-        for entry in
-            fs::read_dir(path).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?
-        {
-            let entry = entry.map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
-            make_git_dir_private(&entry.path())?;
+    let uid = rustix::process::geteuid().as_raw();
+    let mut stack = vec![(root.to_path_buf(), 0usize)];
+    let mut entries = 1usize;
+    let mut total_bytes = 0u64;
+    while let Some((path, depth)) = stack.pop() {
+        if depth > max_depth {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
         }
-        Ok(())
-    } else if metadata.is_file() {
-        fs::set_permissions(path, fs::Permissions::from_mode(0o600))
-            .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)
-    } else {
-        Err(SourceCandidateError::UnsafeWorkspaceMetadata)
+        let metadata = fs::symlink_metadata(&path)
+            .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+        let file_type = metadata.file_type();
+        if file_type.is_symlink()
+            || file_type.is_fifo()
+            || file_type.is_socket()
+            || file_type.is_block_device()
+            || file_type.is_char_device()
+            || metadata.uid() != uid
+        {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        if metadata.is_dir() {
+            let dir_fd = open(
+                &path,
+                OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+                Mode::empty(),
+            )
+            .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+            let dir_file = fs::File::from(dir_fd);
+            let fd_meta = dir_file
+                .metadata()
+                .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+            if fd_meta.file_type().is_symlink()
+                || !fd_meta.is_dir()
+                || fd_meta.uid() != uid
+                || fd_meta.dev() != metadata.dev()
+                || fd_meta.ino() != metadata.ino()
+            {
+                return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+            }
+            if normalize_modes {
+                fchmod(&dir_file, Mode::from_bits_truncate(0o700))
+                    .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+            } else if fd_meta.mode() & 0o002 != 0 {
+                return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+            }
+            let next_depth = depth
+                .checked_add(1)
+                .filter(|d| *d <= max_depth)
+                .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+            for entry in
+                fs::read_dir(&path).map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?
+            {
+                entries = entries
+                    .checked_add(1)
+                    .filter(|count| *count <= max_entries)
+                    .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+                if stack.len() >= max_entries {
+                    return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+                }
+                let entry = entry.map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+                stack.push((entry.path(), next_depth));
+            }
+        } else if metadata.is_file() {
+            if metadata.nlink() != 1 {
+                return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+            }
+            let disallowed_mask = if normalize_modes { 0 } else { 0o002 };
+            let (file, fd_meta) = open_verified_regular_file(&path, max_bytes, disallowed_mask)?;
+            total_bytes = total_bytes
+                .checked_add(fd_meta.len())
+                .filter(|bytes| *bytes <= max_bytes)
+                .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?;
+            if normalize_modes {
+                fchmod(&file, Mode::from_bits_truncate(0o600))
+                    .map_err(|_| SourceCandidateError::UnsafeWorkspaceMetadata)?;
+            }
+        } else {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
     }
+    Ok(())
 }
 
 fn git_status_porcelain(
@@ -2073,6 +2547,19 @@ fn run_git_with_options(
             );
         }
     };
+    let mut stdin = if input.is_some() {
+        match child.stdin.take() {
+            Some(pipe) => Some(pipe),
+            None => {
+                return abort_git_child(
+                    &mut child,
+                    SourceCandidateError::GitCommand("missing stdin pipe".into()),
+                );
+            }
+        }
+    } else {
+        None
+    };
     if let Some(pipe) = stdout.as_ref()
         && set_nonblocking(pipe).is_err()
     {
@@ -2088,6 +2575,19 @@ fn run_git_with_options(
             &mut child,
             SourceCandidateError::GitCommand("failed to configure nonblocking stderr".into()),
         );
+    }
+    if let Some(pipe) = stdin.as_ref()
+        && set_nonblocking(pipe).is_err()
+    {
+        return abort_git_child(
+            &mut child,
+            SourceCandidateError::GitCommand("failed to configure nonblocking stdin".into()),
+        );
+    }
+    let input = input.unwrap_or_default();
+    let mut input_offset = 0usize;
+    if input_offset == input.len() {
+        stdin.take();
     }
     let mut stdout_bytes = Vec::with_capacity(output_limit.min(8192));
     let mut stderr_bytes = Vec::with_capacity(MAX_GIT_STDERR.min(8192));
@@ -2130,7 +2630,18 @@ fn run_git_with_options(
             }
             return Err(SourceCandidateError::GitOutputLimit);
         }
-        if status.is_some() && stdout.is_none() && stderr.is_none() {
+        if status.is_some() && stdin.is_some() {
+            return Err(SourceCandidateError::GitCommand(
+                "process exited before accepting all input".into(),
+            ));
+        }
+        if let Err(error) = write_pipe(&mut stdin, input, &mut input_offset) {
+            return abort_git_child(
+                &mut child,
+                SourceCandidateError::GitCommand(error.to_string()),
+            );
+        }
+        if stdin.is_none() && status.is_some() && stdout.is_none() && stderr.is_none() {
             break;
         }
         if Instant::now() >= deadline {
@@ -2196,6 +2707,35 @@ fn drain_pipe<R: Read>(
             Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
             Err(error) => return Err(error),
         }
+    }
+}
+
+fn write_pipe<W: Write>(pipe: &mut Option<W>, input: &[u8], offset: &mut usize) -> io::Result<()> {
+    let Some(writer) = pipe.as_mut() else {
+        return Ok(());
+    };
+    if *offset >= input.len() {
+        pipe.take();
+        return Ok(());
+    }
+    match writer.write(&input[*offset..]) {
+        Ok(0) => Err(io::ErrorKind::WriteZero.into()),
+        Ok(count) => {
+            *offset += count;
+            if *offset == input.len() {
+                pipe.take();
+            }
+            Ok(())
+        }
+        Err(error)
+            if matches!(
+                error.kind(),
+                io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+            ) =>
+        {
+            Ok(())
+        }
+        Err(error) => Err(error),
     }
 }
 
@@ -2273,7 +2813,10 @@ mod tests {
         reduce,
         verification::{RequiredNegativeCheck, VerificationPolicy},
     };
-    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::{
+        os::unix::fs::PermissionsExt,
+        sync::atomic::{AtomicU64, Ordering},
+    };
 
     static FIXTURE_SEQ: AtomicU64 = AtomicU64::new(1);
 
@@ -3064,6 +3607,392 @@ mod tests {
                 .decision_evidence(&executed, verifier)
                 .unwrap_err(),
             SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+    }
+
+    #[test]
+    fn rejects_oversized_or_hardlinked_git_config_and_excess_hooks_without_huge_allocation() {
+        // 1. Oversized .git/config (MAX_GIT_CONFIG_BYTES + 1 bytes via take(limit + 1))
+        let mut fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        fs::write(
+            fixture.workspace_path.join("src/lib.rs"),
+            b"pub fn answer() -> u32 {\n    42\n}\n",
+        )
+        .expect("edit src/lib.rs");
+        let config_path = fixture.workspace_path.join(".git/config");
+        let mut oversized_config = fs::read(&config_path).expect("read .git/config");
+        let pad_len = (MAX_GIT_CONFIG_BYTES as usize + 1).saturating_sub(oversized_config.len());
+        oversized_config.push(b'#');
+        oversized_config.extend(std::iter::repeat_n(b'a', pad_len.saturating_sub(1)));
+        fs::write(&config_path, &oversized_config).expect("write MAX_GIT_CONFIG_BYTES + 1 config");
+        fs::set_permissions(&config_path, fs::Permissions::from_mode(0o600))
+            .expect("chmod 0600 .git/config");
+        assert_eq!(
+            read_safe_config(&config_path).unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        let closed = prove_closed_workspace(fixture.take_prepared(), fixture.closure.clone())
+            .expect("prove closed");
+        assert_eq!(
+            materialize_source_candidate(
+                closed,
+                &fixture.candidate_parent,
+                "candidate-oversized-config"
+            )
+            .unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+
+        // 2. Sparse 64 MiB .git/config rejected without allocating 64 MiB
+        let fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        let sparse_config = fixture.workspace_path.join(".git/config");
+        let file = fs::OpenOptions::new()
+            .write(true)
+            .open(&sparse_config)
+            .expect("open .git/config for sparse extend");
+        file.set_len(64 * 1024 * 1024)
+            .expect("set sparse 64 MiB length");
+        drop(file);
+        assert_eq!(
+            read_safe_config(&sparse_config).unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+
+        // 3. Hardlinked .git/config (st_nlink > 1) rejected
+        let fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        let config_path = fixture.workspace_path.join(".git/config");
+        let hardlink_path = fixture.root.join("config-hardlink");
+        fs::hard_link(&config_path, &hardlink_path).expect("hardlink .git/config");
+        assert_eq!(
+            read_safe_config(&config_path).unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+
+        // 4. Excess entries in .git/hooks (> MAX_GIT_HOOK_ENTRIES) rejected
+        let mut fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        fs::write(
+            fixture.workspace_path.join("src/lib.rs"),
+            b"pub fn answer() -> u32 {\n    42\n}\n",
+        )
+        .expect("edit src/lib.rs");
+        let hooks_dir = fixture.workspace_path.join(".git/hooks");
+        fs::create_dir_all(&hooks_dir).expect("ensure .git/hooks");
+        fs::set_permissions(&hooks_dir, fs::Permissions::from_mode(0o700))
+            .expect("chmod 0700 .git/hooks");
+        for idx in 0..=MAX_GIT_HOOK_ENTRIES {
+            let sample = hooks_dir.join(format!("extra-{idx}.sample"));
+            fs::write(&sample, b"#!/bin/sh\n").expect("write hook sample");
+            fs::set_permissions(&sample, fs::Permissions::from_mode(0o600))
+                .expect("chmod 0600 hook sample");
+        }
+        let closed = prove_closed_workspace(fixture.take_prepared(), fixture.closure.clone())
+            .expect("prove closed");
+        assert_eq!(
+            materialize_source_candidate(
+                closed,
+                &fixture.candidate_parent,
+                "candidate-excess-hooks"
+            )
+            .unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+    }
+
+    #[test]
+    fn rejects_oversized_or_hardlinked_source_files_and_preflights_declared_tree_blobs() {
+        // 1. Direct bounded regular file reader rejects limit + 1 and hardlinks
+        let fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        let bounded_test_file = fixture.root.join("bounded.txt");
+        fs::write(&bounded_test_file, b"0123456789abcdef").expect("write 16-byte file");
+        fs::set_permissions(&bounded_test_file, fs::Permissions::from_mode(0o600))
+            .expect("chmod 0600");
+        assert_eq!(
+            read_bounded_regular_file(&bounded_test_file, 16, 0o002)
+                .expect("exact 16-byte bound succeeds")
+                .len(),
+            16
+        );
+        assert_eq!(
+            read_bounded_regular_file(&bounded_test_file, 15, 0o002).unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        let linked_file = fixture.root.join("bounded-link.txt");
+        fs::hard_link(&bounded_test_file, &linked_file).expect("create hardlink");
+        assert_eq!(
+            read_bounded_regular_file(&bounded_test_file, 16, 0o002).unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+
+        // 2. Dirty working-tree file exceeding MAX_SOURCE_FILE_BYTES rejected before freeze/materialization
+        let mut fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        let large_dirty = fs::OpenOptions::new()
+            .write(true)
+            .open(fixture.workspace_path.join("src/lib.rs"))
+            .expect("open src/lib.rs");
+        large_dirty
+            .set_len(MAX_SOURCE_FILE_BYTES + 1)
+            .expect("set src/lib.rs to MAX_SOURCE_FILE_BYTES + 1");
+        drop(large_dirty);
+        let closed = prove_closed_workspace(fixture.take_prepared(), fixture.closure.clone())
+            .expect("prove closed");
+        let dest_dirty = "candidate-oversized-dirty";
+        assert_eq!(
+            materialize_source_candidate(closed, &fixture.candidate_parent, dest_dirty)
+                .unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        assert!(
+            !fixture.candidate_parent.join(dest_dirty).exists(),
+            "oversized dirty working tree must be rejected before creating destination checkout"
+        );
+
+        // 3. Pre-committed oversized Git blob with small working-tree replacement + assume-unchanged
+        // is rejected during preflight before destination checkout creation.
+        let mut fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        let oversized_payload = vec![b'x'; (MAX_SOURCE_FILE_BYTES as usize) + 1];
+        fs::write(
+            fixture.workspace_path.join("src/lib.rs"),
+            &oversized_payload,
+        )
+        .expect("write oversized blob to src/lib.rs");
+        run_fixture_git(&fixture.workspace_path, &["add", "src/lib.rs"]);
+        run_fixture_git(
+            &fixture.workspace_path,
+            &["commit", "--quiet", "-m", "commit oversized blob"],
+        );
+        // Shrink on-disk working tree file and hide behind assume-unchanged index flag
+        fs::write(
+            fixture.workspace_path.join("src/lib.rs"),
+            b"pub fn answer() -> u32 {\n    42\n}\n",
+        )
+        .expect("shrink working-tree file after committing oversized blob");
+        run_fixture_git(
+            &fixture.workspace_path,
+            &["update-index", "--assume-unchanged", "src/lib.rs"],
+        );
+        make_git_dir_private(&fixture.workspace_path.join(".git")).expect("normalize fixture .git");
+
+        let git = trusted_git().expect("trusted git");
+        let prepared_ref = fixture.prepared.as_ref().expect("prepared ref");
+        let pinned_cwd = PinnedGitDirectory::from_prepared(prepared_ref).expect("pinned cwd");
+        let head_commit = run_fixture_git(&fixture.workspace_path, &["rev-parse", "HEAD"]);
+        let head_tree = run_fixture_git(&fixture.workspace_path, &["rev-parse", "HEAD^{tree}"]);
+        assert_eq!(
+            validate_commit_tree_entries(&git, &pinned_cwd, &head_commit, &head_tree).unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+
+        let closed = prove_closed_workspace(fixture.take_prepared(), fixture.closure.clone())
+            .expect("prove closed");
+        let dest_blob = "candidate-oversized-blob";
+        assert_eq!(
+            materialize_source_candidate(closed, &fixture.candidate_parent, dest_blob).unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        assert!(
+            !fixture.candidate_parent.join(dest_blob).exists(),
+            "oversized committed tree must be rejected before creating destination checkout"
+        );
+    }
+
+    #[test]
+    fn rejects_nested_excess_or_hardlinked_git_dir_metadata_without_touching_linked_target() {
+        // 1. Hardlink inside .git is rejected BEFORE fchmod touches the external linked file's mode
+        let fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        let external_target = fixture.root.join("external-target.txt");
+        fs::write(&external_target, b"preserve-my-permissions\n").expect("write external file");
+        fs::set_permissions(&external_target, fs::Permissions::from_mode(0o644))
+            .expect("set external file mode 0644");
+        let git_hardlink = fixture.workspace_path.join(".git/objects/info/linked-file");
+        fs::hard_link(&external_target, &git_hardlink).expect("hardlink external file into .git");
+
+        assert_eq!(
+            make_git_dir_private(&fixture.workspace_path.join(".git")).unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        assert_eq!(
+            validate_git_dir_tree(&fixture.workspace_path.join(".git")).unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        let external_mode = fs::symlink_metadata(&external_target)
+            .expect("external metadata")
+            .mode()
+            & 0o777;
+        assert_eq!(
+            external_mode, 0o644,
+            "make_git_dir_private must reject hardlinked file before fchmod alters external file"
+        );
+        fs::remove_file(&git_hardlink).expect("remove hardlink");
+
+        // 2. Wide .git directory is rejected BEFORE enqueueing unbounded children (both via
+        // bounded helper limit and production MAX_GIT_DIR_ENTRIES).
+        let wide_dir = fixture.workspace_path.join(".git/objects/info/wide");
+        fs::create_dir_all(&wide_dir).expect("create wide dir");
+        fs::set_permissions(&wide_dir, fs::Permissions::from_mode(0o700))
+            .expect("chmod 0700 wide dir");
+        for idx in 0..32 {
+            let entry_path = wide_dir.join(format!("f-{idx:04}"));
+            fs::write(&entry_path, b"x").expect("write wide child");
+            fs::set_permissions(&entry_path, fs::Permissions::from_mode(0o600))
+                .expect("chmod 0600 wide child");
+        }
+        assert_eq!(
+            traverse_git_dir_bounded_with_limits(
+                &fixture.workspace_path.join(".git"),
+                false,
+                MAX_GIT_DIR_DEPTH,
+                16,
+                MAX_GIT_DIR_BYTES,
+            )
+            .unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        for idx in 32..=MAX_GIT_DIR_ENTRIES {
+            let entry_path = wide_dir.join(format!("f-{idx:04}"));
+            fs::write(&entry_path, b"").expect("write wide child up to MAX_GIT_DIR_ENTRIES");
+            fs::set_permissions(&entry_path, fs::Permissions::from_mode(0o600))
+                .expect("chmod 0600 wide child");
+        }
+        assert_eq!(
+            validate_git_dir_tree(&fixture.workspace_path.join(".git")).unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        assert_eq!(
+            make_git_dir_private(&fixture.workspace_path.join(".git")).unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        fs::remove_dir_all(&wide_dir).expect("remove wide dir");
+
+        // 3. Excessive directory nesting depth inside .git (> MAX_GIT_DIR_DEPTH) is rejected
+        let mut deep_dir = fixture.workspace_path.join(".git");
+        for depth in 0..=(MAX_GIT_DIR_DEPTH + 2) {
+            deep_dir = deep_dir.join(format!("d{depth}"));
+            fs::create_dir(&deep_dir).expect("create nested .git subdir");
+            fs::set_permissions(&deep_dir, fs::Permissions::from_mode(0o700))
+                .expect("chmod 0700 nested .git subdir");
+        }
+        assert_eq!(
+            make_git_dir_private(&fixture.workspace_path.join(".git")).unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        assert_eq!(
+            validate_git_dir_tree(&fixture.workspace_path.join(".git")).unwrap_err(),
+            SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+    }
+
+    #[test]
+    fn shared_base_hunk_coordinates_detect_overlapping_hunks_after_earlier_line_insertions() {
+        use admiralty_core::conflicts::{ConflictRisk, analyze_conflicts};
+
+        let fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        // Seed a 10-line src/lib.rs in origin-repo and prepare two workspaces sharing that exact base_sha.
+        let ten_line_base =
+            "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\n";
+        let origin_repo = fixture.root.join("origin-repo");
+        fs::write(origin_repo.join("src/lib.rs"), ten_line_base).expect("write 10-line base");
+        run_fixture_git(&origin_repo, &["add", "src/lib.rs"]);
+        run_fixture_git(
+            &origin_repo,
+            &["commit", "--quiet", "-m", "ten-line shared base"],
+        );
+        let shared_base = run_fixture_git(&origin_repo, &["rev-parse", "HEAD"]);
+        make_git_dir_private(&origin_repo.join(".git")).expect("private origin .git");
+
+        let prepared_a = prepare_workspace(WorkspacePreparation {
+            source: origin_repo.clone(),
+            managed_parent: fixture.root.join("managed-workspaces"),
+            destination_name: "attempt-a-work".into(),
+            pinned_commit: shared_base.clone(),
+            node_id: NodeRef::new("node-alpha").expect("node_id"),
+            root_id: fixture.contract.root_id.clone(),
+            project_id: fixture.contract.project_id.clone(),
+            task_id: TaskId::new("TASK-HUNK-A").expect("task A"),
+            attempt_id: AttemptId::new("attempt-a").expect("attempt A"),
+            owned_paths: vec![PathBuf::from("src")],
+            forbidden_paths: vec![PathBuf::from("src/secret")],
+        })
+        .expect("prepare workspace A");
+        let prepared_b = prepare_workspace(WorkspacePreparation {
+            source: origin_repo,
+            managed_parent: fixture.root.join("managed-workspaces"),
+            destination_name: "attempt-b-work".into(),
+            pinned_commit: shared_base,
+            node_id: NodeRef::new("node-alpha").expect("node_id"),
+            root_id: fixture.contract.root_id.clone(),
+            project_id: fixture.contract.project_id.clone(),
+            task_id: TaskId::new("TASK-HUNK-B").expect("task B"),
+            attempt_id: AttemptId::new("attempt-b").expect("attempt B"),
+            owned_paths: vec![PathBuf::from("src")],
+            forbidden_paths: vec![PathBuf::from("src/secret")],
+        })
+        .expect("prepare workspace B");
+
+        // Candidate A inserts 4 new lines at line 1 AND edits base line 8.
+        let edited_a = "ins A\nins B\nins C\nins D\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8 modified by A\nline 9\nline 10\n";
+        fs::write(
+            prepared_a.workspace().workspace.join("src/lib.rs"),
+            edited_a,
+        )
+        .expect("write candidate A edits");
+        // Candidate B leaves top of file untouched and edits base line 8.
+        let edited_b = "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8 modified by B\nline 9\nline 10\n";
+        fs::write(
+            prepared_b.workspace().workspace.join("src/lib.rs"),
+            edited_b,
+        )
+        .expect("write candidate B edits");
+
+        let mut closure_a = fixture.closure.clone();
+        closure_a.identity.identity.task_id = prepared_a.task_id().clone();
+        closure_a.identity.identity.attempt_id = prepared_a.attempt_id().clone();
+        closure_a.observation.actual_cwd = prepared_a.workspace().workspace.clone();
+
+        let mut closure_b = fixture.closure.clone();
+        closure_b.identity.identity.task_id = prepared_b.task_id().clone();
+        closure_b.identity.identity.attempt_id = prepared_b.attempt_id().clone();
+        closure_b.observation.actual_cwd = prepared_b.workspace().workspace.clone();
+
+        let candidate_a = materialize_source_candidate(
+            prove_closed_workspace(prepared_a, closure_a).expect("prove closed A"),
+            &fixture.candidate_parent,
+            "candidate-hunk-a",
+        )
+        .expect("materialize candidate A");
+        let candidate_b = materialize_source_candidate(
+            prove_closed_workspace(prepared_b, closure_b).expect("prove closed B"),
+            &fixture.candidate_parent,
+            "candidate-hunk-b",
+        )
+        .expect("materialize candidate B");
+
+        assert_eq!(
+            candidate_a.files()[0].hunks,
+            Some(vec![
+                HunkRange { start: 1, end: 1 },
+                HunkRange { start: 8, end: 8 },
+            ])
+        );
+        assert_eq!(
+            candidate_b.files()[0].hunks,
+            Some(vec![HunkRange { start: 8, end: 8 }])
+        );
+
+        let graph = analyze_conflicts(
+            &[
+                candidate_a.candidate_change().clone(),
+                candidate_b.candidate_change().clone(),
+            ],
+            "policy-v1",
+        )
+        .expect("analyze conflicts across shared-base candidates");
+        assert_eq!(graph.edges.len(), 1);
+        assert!(
+            graph.edges[0]
+                .risks
+                .contains(&ConflictRisk::OverlappingHunks),
+            "shared-base hunk coordinates must preserve OverlappingHunks across earlier insertions: {:?}",
+            graph.edges[0].risks
         );
     }
 }
