@@ -86,8 +86,8 @@ record their worker commit mapping and the full workspace qualification at
 `b7a0ceeb01d51dca5861eeada5b2dfbf79809614`. Formatting, workspace clippy,
 workspace tests (712 passed, 0 failed, 1 ignored), and `pnpm contracts:check`
 passed using the specified shared acceptance target and private scratch path.
-Packet status remains in progress/unaccepted; main merge is held for the
-17:00Z–17:05Z batched window.
+Round 8 receipts are supplemental and leave existing rollout packet statuses
+unchanged; main merge is held for the 17:00Z–17:05Z batched window.
 
 The receipt is engineering evidence, not product acceptance. Integrator verifies actual resulting tree/tests and records the integrated SHA. Reconcile planning estimates after P08/P15 establish real provider/verifier throughput; preserve earlier estimates as history rather than silently changing a committed delivery promise.
 
