@@ -8,20 +8,21 @@ use crate::{
     session::{CaptureState, LaunchSpec, SessionError, SessionHost, SessionStatus},
     workspace::registry::{ValidatedWorkspace, WorkspaceSpec},
 };
+use admiralty_core::{AttemptId, ProjectId, RootId, SourceIdentity, TaskId};
 use std::{collections::BTreeMap, io, path::PathBuf, sync::Mutex};
 use thiserror::Error;
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct ExecutionIdentity {
-    pub project_id: String,
-    pub root_id: String,
-    pub task_id: String,
-    pub attempt_id: String,
+    pub project_id: ProjectId,
+    pub root_id: RootId,
+    pub task_id: TaskId,
+    pub attempt_id: AttemptId,
     pub contract_digest: String,
     pub context_digest: String,
     pub candidate_digest: String,
-    pub policy_digest: String,
-    pub evidence_source: String,
+    pub verification_policy_digest: String,
+    pub evidence_source: SourceIdentity,
     pub workspace: PathBuf,
     pub provider: String,
     pub model: String,
@@ -43,21 +44,20 @@ impl PreparedCommand {
             || identity.model.trim().is_empty()
             || identity.resource_permit_ref.trim().is_empty()
             || [
-                &identity.project_id,
-                &identity.root_id,
-                &identity.task_id,
-                &identity.attempt_id,
                 &identity.contract_digest,
                 &identity.context_digest,
                 &identity.candidate_digest,
-                &identity.policy_digest,
-                &identity.evidence_source,
+                &identity.verification_policy_digest,
             ]
             .iter()
             .any(|s| s.trim().is_empty())
         {
             return Err(ExecutionError::InvalidBinding);
         }
+        identity
+            .evidence_source
+            .validate()
+            .map_err(|_| ExecutionError::InvalidBinding)?;
         crate::session::validate_launch_envelope(&spec)?;
         Ok(Self { identity, spec })
     }
@@ -134,8 +134,17 @@ pub enum ExecutionOutcome {
 /// It never represents trusted-check success or lifecycle acceptance.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RuntimeEvidence {
-    pub identity: ExecutionIdentity,
-    pub outcome: ExecutionOutcome,
+    identity: ExecutionIdentity,
+    outcome: ExecutionOutcome,
+}
+impl RuntimeEvidence {
+    pub fn identity(&self) -> &ExecutionIdentity {
+        &self.identity
+    }
+
+    pub fn outcome(&self) -> &ExecutionOutcome {
+        &self.outcome
+    }
 }
 
 pub struct ExecutionAdapter<V> {
@@ -164,10 +173,10 @@ impl<V: ExecutionAdmissionValidator> ExecutionAdapter<V> {
     ) -> Result<(), ExecutionError> {
         if command.spec.run_id != command.identity.run_id
             || workspace_spec.workspace != command.identity.workspace
-            || reservation.scope.project_id.to_string() != command.identity.project_id
-            || reservation.scope.root_id.to_string() != command.identity.root_id
-            || reservation.scope.task_id.to_string() != command.identity.task_id
-            || reservation.scope.attempt_id.to_string() != command.identity.attempt_id
+            || reservation.scope.project_id != command.identity.project_id
+            || reservation.scope.root_id != command.identity.root_id
+            || reservation.scope.task_id != command.identity.task_id
+            || reservation.scope.attempt_id != command.identity.attempt_id
             || reservation.scope.contract_digest != command.identity.contract_digest
             || !reservation.outstanding
             || reservation.stop_requested
@@ -177,8 +186,8 @@ impl<V: ExecutionAdmissionValidator> ExecutionAdapter<V> {
         let workspace = workspace_spec
             .validate()
             .map_err(|e| ExecutionError::Workspace(e.to_string()))?;
-        if workspace.project_id.to_string() != command.identity.project_id
-            || workspace.root_id.to_string() != command.identity.root_id
+        if workspace.project_id != command.identity.project_id
+            || workspace.root_id != command.identity.root_id
         {
             return Err(ExecutionError::InvalidBinding);
         }
@@ -411,15 +420,19 @@ mod tests {
     #[test]
     fn prepared_command_rejects_mismatched_run_identity() {
         let identity = ExecutionIdentity {
-            project_id: "p".into(),
-            root_id: "r".into(),
-            task_id: "t".into(),
-            attempt_id: "a".into(),
+            project_id: ProjectId::new("p").expect("project id"),
+            root_id: RootId::new("r").expect("root id"),
+            task_id: TaskId::new("t").expect("task id"),
+            attempt_id: AttemptId::new("a").expect("attempt id"),
             contract_digest: "contract".into(),
             context_digest: "context".into(),
             candidate_digest: "candidate".into(),
-            policy_digest: "policy".into(),
-            evidence_source: "authority".into(),
+            verification_policy_digest: "policy".into(),
+            evidence_source: SourceIdentity {
+                producer_id: "execution-adapter".into(),
+                incarnation: "test-incarnation".into(),
+                sequence: "1".into(),
+            },
             workspace: PathBuf::from("/workspace"),
             provider: "codex".into(),
             model: "m".into(),
