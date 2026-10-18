@@ -80,3 +80,7 @@ unwrap_used = "warn"
 [profile.release]
 lto = "thin"
 strip = true
+
+[[test]]
+name = "codex_round17_p25_p30"
+path = "tests/integration/codex_round17_p25_p30.rs"
