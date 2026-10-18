@@ -606,6 +606,35 @@ All full parent acceptance gates remain separate; P00's prior technical artifact
 verification is retained. Next ready implementation is the authenticated bounded
 durable coordination command/delivery seam, after manager ownership reconciliation.
 
+## Independent review and continued implementation
+
+Root independently reviews the testkit code, boundary cases, replay semantics,
+watchdog and current PR diff. Another integrator rebases PR35 onto the later
+`e1710ca` harness additions and merges exact head `bea32822` as `2f693b1a` at
+16:19:08 UTC, after neverhumanbot approves that head at 16:19:02. Root preserves
+its original history and reconciles the external source through normal merges;
+root performs no force push or PR35 merge. Earlier 880 evidence remains scoped
+to 880 and is not relabeled as testing the newer harnesses.
+
+The independent review fixes two further concrete issues at source `f16fc759`:
+quoted/fenced foreground cancel hints cannot suppress idle detection, and a
+newer completed status overrides an older foreground spinner. The new artifact
+corruption test now uses the canonical directory private at creation and changes
+one byte without changing length; a size mismatch can no longer falsely prove
+digest verification. Five failing watchdog subcases are retained before repair.
+
+Exact source `f16fc759` passes macOS 684/Linux 686 Rust checks, strict workspace
+Clippy and formatting, 69 audit checks on each platform, the 37-source/11-case
+fixture verifier and fresh legacy 88 discovery (one Mac skip). The unchanged
+binary/schema/actual smoke and frontend/package inputs retain their earlier
+source-attributed proof. Receipt:
+`receipts/integration/f16fc759e4d4a9a39364f9670923de0ae7be9d68.json`.
+Full packet acceptance and native activation remain separate. Implementation
+continues while hosted CI routing is repaired; root is not awaiting user review.
+The next bounded pending-inbox Store component is being built with disjoint
+ownership while the authorized todoq study and existing general-runner setup run
+in parallel.
+
 ## Work-order intake and delivery plan amendment — 18 October 2026
 
 Reviewed the supplied “Work Order → ToDo → Work Tracking” specification against
