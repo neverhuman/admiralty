@@ -157,3 +157,66 @@ fn p08_p21_p22_round11_item4_final_validation_gate() {
     assert_eq!(legacy.observed_provider, None);
     assert_eq!(legacy.observed_model, None);
 }
+
+#[test]
+fn p08_p21_p22_round12_item5_redteam_audit_gate() {
+    // P08: a complete provider turn remains observation evidence, not an acceptance.
+    let mut parser = codex::CodexNdjsonStream::new("fixture-model", codex::CodexEffort::Medium)
+        .expect("Codex fixture model");
+    let mut offset = 0_u64;
+    let mut events = Vec::new();
+    for bytes in CODEX_TURN.chunks(13) {
+        events.extend(
+            parser
+                .push_chunk(&OutputChunk {
+                    offset,
+                    stream: OutputStream::Stdout,
+                    bytes: bytes.to_vec(),
+                })
+                .expect("ordered Codex fixture chunks"),
+        );
+        offset += bytes.len() as u64;
+    }
+    let summary = parser.finish(Some(0), true);
+    assert!(events.iter().any(|event| event.usage.is_some()));
+    assert_eq!(
+        summary.termination,
+        codex::CodexTermination::ProviderTurnCompleted
+    );
+    assert!(!summary.trusted_acceptance());
+    assert!(!summary.native_execution_qualified());
+
+    // P21: Claude usage categories are retained independently; parsing is not trust.
+    let claude = claude::parse_stream(CLAUDE_TURN, Some("fixture-session"))
+        .expect("complete Claude fixture");
+    assert_eq!(claude.usage.input_tokens, Some(2));
+    assert_eq!(claude.usage.cache_read_input_tokens, Some(649));
+    assert_eq!(claude.usage.cache_creation_input_tokens, Some(1991));
+    assert_eq!(claude.usage.output_tokens, Some(20));
+    assert!(!claude.trusted_acceptance());
+    assert!(!claude.native_execution_qualified());
+
+    // P22: advertised protocols cannot be promoted to qualified provider behavior.
+    let agy =
+        agy::qualify("1.4.2", &help_evidence(AGY_CAPABILITIES)).expect("pinned agy fixture row");
+    assert_eq!(agy.stream_json, agy::Capability::Advertised);
+    assert!(matches!(agy.auth_status, agy::Capability::Unsupported(_)));
+    assert!(matches!(agy.usage, agy::Capability::Unsupported(_)));
+    assert!(!agy.native_execution_qualified());
+    let grok = grok::qualify(
+        "grok 1.0.62 (1474f9cbdd91) [stable]",
+        &help_evidence(GROK_CAPABILITIES),
+    )
+    .expect("pinned Grok fixture row");
+    assert_eq!(grok.acp_stream, grok::Capability::Advertised);
+    assert!(matches!(grok.usage, grok::Capability::Unsupported(_)));
+    assert!(!grok.native_execution_qualified());
+
+    // Red-team the release boundary: a merged commit or imported status is only a hint.
+    // These checked-in work-order requirements keep delivery evidence stage-specific.
+    let work_order = include_str!("../../docs/plans/admiralty-v2/WORK_ORDER_REVIEW.md");
+    let plan = include_str!("../../docs/plans/admiralty-v2/MASTER_PLAN.md");
+    assert!(work_order.contains("Tracking trailers"));
+    assert!(work_order.contains("never acceptance, model identity or release evidence"));
+    assert!(plan.contains("Never promote an imported `done`, a tracking trailer, merged PR or available package into deployed/released status."));
+}
