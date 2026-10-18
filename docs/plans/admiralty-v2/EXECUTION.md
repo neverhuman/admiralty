@@ -658,3 +658,36 @@ P00–P31 identities and acceptance states are retained. Immediate implementatio
 priority remains completing bounded pending communication and one durable task
 attempt; intake preview/contracts can proceed in disjoint scope after interface
 freeze. CI capacity and runner repair continue independently of implementation.
+
+## PR reconciliation and publication-fixture cleanup — 18 October 2026
+
+Observed PR40/42/43/44/46 merged by the concurrent integrator. PR40 exact source
+`9d07244d` has a passing general-pool run `39148202646` (709 Rust checks plus
+legacy/audit/frontend and actual isolated smoke). ARM64 qualification at
+`deda67f` passes on the shared xbabe4 general pool. PR44's bounded pending inbox
+and scoped application ACK component is integrated at `cc51d140`; it remains a
+trusted internal service, without authenticated transport/native activation.
+
+Independent review of the publication regressions found unqualified temporary
+path custody, inherited Git overrides/unbounded output, and a positive fixture
+whose review/check evidence described the base rather than its candidate. The
+post-merge repair preserves the existing regressions, adds canonical private
+fixtures, bounded hermetic owned-child Git execution with positive/negative
+controls, and exact-candidate evidence plus changed-candidate rejection. This
+is offline fixture coverage, not P08/P19 native acceptance. The CI scratch guide
+is corrected to match the actual canonical `/tmp` implementation.
+
+Combined source `cf0e4a1723f487b54d635005e710d8a91ad6b866` passes 726 macOS Rust
+checks, workspace strict Clippy/formatting, actual isolated binary smoke,
+schemas, retained fixtures and legacy/audit checks. The helper/harness matches
+the independently cleared `9986686e` candidate. Receipt:
+`receipts/integration/cf0e4a1723f487b54d635005e710d8a91ad6b866.json`.
+Source verification and every full parent/native rollout gate remain separate.
+
+The user's orphan cleanup also found fourteen replacement legacy workers in
+different owned Admiralty worktrees. Their old Screen PID/branch bindings were
+stale, not evidence those new processes were dead. Private verified bundles,
+create-only HEAD anchors and staged/unstaged patches preserve both Git commons,
+including active dirty/unpushed work. Current lane identity observations are
+reconciled without inventing task acceptance, model identity or CPU permits;
+active/ambiguous/queue-referenced assets remain protected during retirement.

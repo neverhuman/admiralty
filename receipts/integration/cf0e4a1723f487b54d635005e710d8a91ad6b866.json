@@ -1,0 +1,579 @@
+{
+  "kind": "integrated_source_verification",
+  "source_sha": "cf0e4a1723f487b54d635005e710d8a91ad6b866",
+  "base_sha": "cc51d140568eb92af14d4926052419eb40a41822",
+  "candidate_origin_sha": "9986686e93c9c57671ccdda6704013c1df8d434a",
+  "checks_passed": 726,
+  "raw_receipt_sha256": "8a4791ad87a4297ff2bbe1871014ae306bfe6745e71d7797b5373f0beab3670a",
+  "commands": [
+    {
+      "name": "fmt",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "rust_test_results": []
+    },
+    {
+      "name": "clippy",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log_sha256": "3adbc432879847d5704a1181fd598c0ae0bd917463334b70247a83c89eb0891c",
+      "rust_test_results": []
+    },
+    {
+      "name": "workspace-tests",
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "log_sha256": "5c2bfdd022a5b7174373f1424540516d82b214dcf17cba8f760fd64d610bb632",
+      "rust_test_results": [
+        {
+          "failed": 0,
+          "passed": 17,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 6,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 176,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 5,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 126,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 0,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 1,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 5,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 2,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 0,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 2,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 74,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 3,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 2,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 5,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 4,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 34,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 19,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 4,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 3,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 1,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 1,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 1,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 2,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 1,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 1,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 1,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 1,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 1,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 5,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 6,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 11,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 14,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 5,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 9,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 4,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 2,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 6,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 11,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 5,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 10,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 3,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 12,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 6,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 13,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 1,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 8,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 25,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 10,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 17,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 9,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 2,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 6,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 8,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 2,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 2,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 11,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 3,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 1,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 1,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 0,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 0,
+          "result": "ok"
+        },
+        {
+          "failed": 0,
+          "passed": 0,
+          "result": "ok"
+        }
+      ]
+    },
+    {
+      "name": "isolated-binary-build",
+      "argv": [
+        "cargo",
+        "build",
+        "-p",
+        "admiralty-server",
+        "-p",
+        "admiralty-cli",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "log_sha256": "f0788aa36d1c86b6ccdfb7f4042a5574102d82061c046422a2d42e008a1e4710",
+      "rust_test_results": []
+    },
+    {
+      "name": "actual-isolated-smoke",
+      "argv": [
+        "python3",
+        "scripts/check/canary-smoke.py",
+        "--admiraltyd-binary",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd",
+        "--admiralty-binary",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty",
+        "--scratch-root",
+        "/private/var/folders/jv/799z43hd61j1s9gjyg0dtqlm0000gn/T/am-m3q3b4vg/smoke"
+      ],
+      "exit_code": 0,
+      "log_sha256": "5cd0c6a64ddac7eac733b0c0caeba0235581909575c5a344d4ac94db186a355a",
+      "rust_test_results": []
+    },
+    {
+      "name": "schemas-check",
+      "argv": [
+        "cargo",
+        "run",
+        "-p",
+        "admiralty-cli",
+        "--locked",
+        "--",
+        "contracts",
+        "check"
+      ],
+      "exit_code": 0,
+      "log_sha256": "a1f43285448324d4218714d8da7c5f9d954ce505ab26dfa7107c11b6414400eb",
+      "rust_test_results": []
+    },
+    {
+      "name": "legacy-fixtures",
+      "argv": [
+        "python3",
+        "tests/fixtures/legacy/verify.py"
+      ],
+      "exit_code": 0,
+      "log_sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12",
+      "rust_test_results": []
+    },
+    {
+      "name": "legacy-tests",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/legacy",
+        "-v"
+      ],
+      "exit_code": 0,
+      "log_sha256": "a33219462323652d52bc9e280057cfd158cc2e69b9ac884d72462bf020dc1ac7",
+      "rust_test_results": []
+    },
+    {
+      "name": "audit-tests",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_sc_audit*.py",
+        "-v"
+      ],
+      "exit_code": 0,
+      "log_sha256": "742296e8dd169027837feeb92dce897d2c570c81d31ca7060d238d1cfa388be2",
+      "rust_test_results": []
+    }
+  ],
+  "source_bindings": [
+    {
+      "path": "tests/integration/codex_worktree_publication.rs",
+      "sha256": "fe06bf6da3662f2da6e55eb329004e259194aee643f84a5af57203e848746386"
+    },
+    {
+      "path": "tests/integration/support/git_fixture.rs",
+      "sha256": "940b05a0abec336063ee9989c63b03dfbff64b1681927421c245e2987a3e69d9"
+    },
+    {
+      "path": "docs/protocol/offline-publication-regressions.md",
+      "sha256": "5f21b5eb7374f0b8fc523f9903ec1e5f76f88799a7957a5e362b86d7babe78f2"
+    },
+    {
+      "path": "docs/operators/ci-runners.md",
+      "sha256": "7d3c7b4351b822b4f76c0aec895ad7e745b37cd3f5e7ebdbd91b15f43fccf67e"
+    }
+  ],
+  "independent_review": {
+    "reviewer": "dashboard_bridge",
+    "source_sha": "9986686e93c9c57671ccdda6704013c1df8d434a",
+    "result": "no scoped blocker; unchanged helper/harness/limits after cherry-pick"
+  },
+  "native_execution_qualified": false,
+  "parent_acceptance": false,
+  "limitations": [
+    "Offline Git and forge fixtures; no real provider/forge execution.",
+    "Frontend inputs unchanged from passing general-pool contracts job; no new frontend feature claimed.",
+    "This receipt is scoped engineering evidence, not complete P00\u2013P31 acceptance."
+  ],
+  "actual_isolated_smoke": {
+    "acceptance": false,
+    "binaries": {
+      "admiralty_sha256": "sha256:981f2f4d767f304f694ce69dce3e1b0d352d5c11ffadaa7698ea8e1da70f320f",
+      "admiraltyd_sha256": "sha256:81280b01dad00ed642be5156bd6fed769cc624638a48751e7b53b93f537521cb"
+    },
+    "checks": [
+      {
+        "duration_ms": 266,
+        "name": "real_server_startup",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 4,
+        "name": "real_health_native_unqualified",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 0,
+        "name": "unauthorized_real_fleet_rejected",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 0,
+        "name": "unauthorized_real_models_rejected",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "model_auth_precedes_body_validation",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "authorized_real_fleet",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "authorized_models_policy",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "model_selection_proposal_only",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 262,
+        "name": "demo_startup",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 2,
+        "name": "demo_fleet_simulated",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "demo_no_models",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "demo_no_model_policy_write",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "demo_no_legacy_policy",
+        "state": "pass"
+      },
+      {
+        "name": "doctor_read_only_capability",
+        "state": "pass"
+      },
+      {
+        "name": "demo_cli_has_no_real_policy_flags",
+        "state": "pass"
+      }
+    ],
+    "cleanup": {
+      "admiraltyd": "terminated",
+      "demo": "terminated"
+    },
+    "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+    "duration_ms": 567,
+    "fleet_rollout_closure": false,
+    "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+    "started_at_utc": "2026-10-18T17:18:29.739068+00:00",
+    "status": "pass",
+    "synthetic": false
+  }
+}
