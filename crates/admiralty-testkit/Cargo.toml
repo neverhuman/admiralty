@@ -155,6 +155,10 @@ name = "integration_train"
 path = "../../tests/integration/integration_train.rs"
 
 [[test]]
+name = "integration"
+path = "../../tests/integration.rs"
+
+[[test]]
 name = "jankurai_staged"
 path = "../../tests/integration/jankurai_staged.rs"
 
