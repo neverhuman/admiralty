@@ -851,3 +851,40 @@ a coding provider, automate model-budget/capacity transactions, publish source
 candidates or complete the P00–P31 parent packets. General native execution
 remains explicitly false. Those implementation steps continue under their
 existing owners; the primary Rust/React dashboard is already live.
+
+## Dashboard provenance correction and PR72 closeout — 2026-10-18T21:57Z
+
+The user-reported 32 identical red alerts came from the bootstrap input manifest,
+not a stopped collector. It declared all packets integrated while omitting the
+required integration receipt, target ref and observation time. Its shared
+component qualification did not complete the parent acceptance criteria. The
+existing loader correctly downgraded those claims; React then flattened the same
+warning into 32 alerts and colored recorded checks green.
+
+The dashboard now groups identical warnings into one counted notice with all
+affected packet IDs and the original evidence available on expansion. Distinct
+failures remain separate. Stale producer timestamps remain explicit, including
+the separate rollout timestamp when a project already has another source.
+Recorded component checks use blue styling and a `checks recorded` label;
+accepted completion retains its source meaning. All 97 frontend tests and the
+TypeScript/Vite production build pass, and independent review found no blocker.
+
+The owned observer input was atomically reconciled at 21:56:53 UTC against this
+ledger at source `30319e096bfaec6d87ae16ab5d0205a2d8214ee4`: P00 review and P01–P31
+in progress. Original bytes and historical claims are preserved under
+`admiralty-v2-build/receipts/rollout-corrections/20261018T215653Z/`. Before hash:
+`9eb3c954e0f57ab2ddeb34542e350bc055e91c447c31a131d8462d026b504696`;
+after hash: `ea07efad8d6def60c1905da7a489f08708d374252875f8ec2f63ddef9bc72f21`.
+The actual deployed loader validated the replacement. No integration provenance
+was invented, collector code changed or service restarted. Its observation age
+continues to increase naturally; future reconciliation must use fresh evidence.
+
+The final affected Linux checks at `30319e0` pass: three executor tests, 13
+workspace preparation tests and strict server Clippy. The hermetic fixture
+repair normalizes only newly owned test Git metadata under permissive caller
+umasks; production custody checks remain strict. The earlier failure is retained.
+[Sanitized Linux receipt](../../../receipts/integration/30319e096bfaec6d87ae16ab5d0205a2d8214ee4-linux-affected-checks.json)
+records source and log hashes. This is separate from the scoped real native
+lifecycle proof at `eb62f5f`; neither establishes general provider execution or
+full P00–P31 acceptance. PR72 packages both implementation and honest evidence
+presentation. Commodore remains the single deployment owner.

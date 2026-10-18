@@ -1,0 +1,15 @@
+{
+  "source_head": "30319e096bfaec6d87ae16ab5d0205a2d8214ee4",
+  "recorded_utc": "2026-10-18T21:50:47Z",
+  "environment": {"host": "xbabe2", "cpu_affinity": "0-5", "cargo_build_jobs": 2, "rust_test_threads": 1, "canonical_private_tmpdir": true},
+  "checks": [
+    {"command": "cargo test -p admiralty-server services::native_executor --locked", "exit_code": 0, "passed": 3, "ignored": 1, "log_sha256": "6d47d0d381e7ea8ab8b40a4c99da64f49da6f6598ac40df784dbcb4433d6b836"},
+    {"command": "cargo test -p admiralty-runtime workspace::preparation --locked", "exit_code": 0, "passed": 13, "log_sha256": "5acbae3d53cbd3730c13aae989397ccd1de3e15d83779133547cd0dd4e179180"},
+    {"command": "cargo clippy -p admiralty-server --all-targets --locked -- -D warnings", "exit_code": 0, "log_sha256": "3c7a536b842212f3c6d369b99d38bb4b012c6bc2c5e4de8148645a756a6786d7"}
+  ],
+  "private_receipt_sha256": "da0748c19b762a5e6ba93011af211ca4febb5079a0d2e58aad0bd34f1fe60fba",
+  "prior_failed_evidence_preserved": true,
+  "production_guards_weakened": false,
+  "general_native_execution_qualified": false,
+  "full_packet_acceptance": false
+}

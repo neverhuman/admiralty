@@ -4,8 +4,9 @@ import { assertBoundedJson } from './validation';
 export type Data = Record<string, unknown>;
 export type LegacySnapshot = Data & { generated_utc: string; projects: Record<string, Data>; order?: string[] };
 export type DetailSection = { title: string; value: unknown; open?: boolean };
+export type LegacyAlert = { message: string; sourceMessage: string; count: number; taskIds: string[]; kind: 'evidence' | 'warning' | 'error' };
 export type ProjectDetailModel = { id: string; name: string; source: string; observed: string; total: number | null;
-  stages: Record<string, number>; labels: Record<string, string>; alerts: string[]; recent: unknown[]; captain: Data;
+  stages: Record<string, number>; labels: Record<string, string>; alerts: LegacyAlert[]; recent: unknown[]; captain: Data;
   workers: unknown[]; pr: Data; sections: DetailSection[]; raw: Data };
 export const data = (value: unknown): Data => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Data : {};
 export const list = (value: unknown): unknown[] => Array.isArray(value) ? value : [];
@@ -69,9 +70,32 @@ const sections: Array<[string, string]> = [
 function counts(value: unknown): Record<string, number> {
   return Object.fromEntries(Object.entries(data(value)).filter((entry): entry is [string, number] => number(entry[1]) !== null));
 }
-function warnings(project: Data): string[] {
+function warnings(project: Data): LegacyAlert[] {
   return [...new Set([...list(project.flags), ...list(project.blockers), ...list(project.needs_jepson),
-    ...Object.entries(data(project.blocked_detail)).map(([id, value]) => `${id}: ${text(value)}`)].map(text).filter(Boolean))];
+    ...Object.entries(data(project.blocked_detail)).map(([id, value]) => `${id}: ${text(value)}`)].map(text).filter(Boolean))].map(message => ({ message, sourceMessage: message, count: 1, taskIds: [], kind: 'error' }));
+}
+/** Recorded component checks are evidence, never accepted completion. */
+export function stageLabel(stage: string, labels: Record<string, string> = {}): string {
+  return stage === 'verified' ? 'checks recorded' : stage === 'integrated' ? 'integration recorded' : labels[stage] || label(stage);
+}
+export function stageClass(stage: string): string {
+  return stage === 'verified' ? 'stage-evidence-recorded' : `stage-${stage}`;
+}
+function rolloutAlerts(rollout: Data): LegacyAlert[] {
+  const groups = new Map<string, LegacyAlert>();
+  const add = (value: unknown, taskId = '', kind: LegacyAlert['kind'] = 'error') => {
+    const sourceMessage = text(value).trim(); if (!sourceMessage) return;
+    const provenance = /^Integration provenance missing; displayed as verification recorded\.?$/i.test(sourceMessage);
+    if (provenance) kind = 'evidence';
+    const key = `${kind}:${sourceMessage}`, existing = groups.get(key);
+    if (existing) { existing.count++; if (taskId && !existing.taskIds.includes(taskId)) existing.taskIds.push(taskId); }
+    else groups.set(key, { sourceMessage, message: provenance ? 'Integration evidence is missing. Recorded checks do not establish integration or accepted completion.' : sourceMessage,
+      count: 1, taskIds: taskId ? [taskId] : [], kind });
+  };
+  add(rollout.error);
+  if (data(rollout.freshness).state === 'stale') add('Rollout evidence is stale; showing the producer’s last recorded state.', '', 'warning');
+  for (const packet of list(rollout.packets).map(data)) for (const warning of list(packet.warnings)) add(warning, text(packet.id));
+  return [...groups.values()];
 }
 function observedManagerId(observed: Data, identity: Data): string {
   if (observed.identity_state !== 'observed') return '';
@@ -125,12 +149,11 @@ export function projectDetails(snapshot: LegacySnapshot): ProjectDetailModel[] {
       if (!workers.some(worker => worker.screen === agent.screen)) workers.push(agent);
     }
     const extra: DetailSection[] = [{ title: 'Work packets', value: rollout.packets, open: true }, { title: 'Execution lanes', value: rollout.lanes, open: false },
-      { title: 'Manifest provenance', value: { source: rollout.source, producer: rollout.producer, freshness: rollout.freshness, assurance: rollout.assurance }, open: false }];
-    if (existing) { existing.sections.push(...extra); }
+      { title: 'Manifest provenance', value: { updated_utc: rollout.updated_utc, source: rollout.source, producer: rollout.producer, freshness: rollout.freshness, assurance: rollout.assurance }, open: false }];
+    if (existing) { existing.sections.push(...extra); existing.alerts.push(...rolloutAlerts(rollout)); }
     else projects.push({ id, name: text(identity.name) || id, source: text(rollout.producer) || 'Rollout manifest', observed: text(rollout.updated_utc) || snapshot.generated_utc,
-      total: number(rollout.total) ?? list(rollout.packets).length, stages: counts(rollout.counts), labels: { verified: 'verification recorded', integrated: 'integration recorded' },
-      alerts: [rollout.error, data(rollout.freshness).state === 'stale' ? 'Rollout source is stale; producer age is preserved.' : '',
-        ...list(rollout.packets).flatMap(packet => list(data(packet).warnings))].map(text).filter(Boolean), recent: [], captain,
+      total: number(rollout.total) ?? list(rollout.packets).length, stages: counts(rollout.counts), labels: { verified: 'checks recorded', integrated: 'integration recorded' },
+      alerts: rolloutAlerts(rollout), recent: [], captain,
       workers, pr: data(rollout.pr), sections: extra, raw: rollout });
   }
   return projects;

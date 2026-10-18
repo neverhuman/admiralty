@@ -1,0 +1,9 @@
+/* Recorded evidence is distinct from accepted (green) completion. */
+.stage-evidence-recorded,.fleet-console .stage-evidence-recorded{background:#5795ff!important}
+.legacy-evidence-note{font-size:12px;line-height:1.5;color:var(--soft);margin:8px 0}
+.legacy-alert.legacy-alert-evidence,.fleet-console .legacy-alert.legacy-alert-evidence{background:#5795ff0d;border-color:#42658e;color:#b8cdeb}
+.legacy-alert.legacy-alert-warning,.fleet-console .legacy-alert.legacy-alert-warning{background:#d3a74512;border-color:#826d3b;color:#dfcb99}
+.legacy-alert details{margin-top:5px}.legacy-alert summary{cursor:pointer;font-size:11px}.legacy-alert details p{margin:6px 0}
+.legacy-alert-task-ids{font-family:ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere}
+.theme-light .legacy-alert.legacy-alert-evidence,.theme-light .fleet-console .legacy-alert.legacy-alert-evidence{background:#edf4ff;border-color:#8daed3;color:#244b78}
+.theme-light .legacy-alert.legacy-alert-warning,.theme-light .fleet-console .legacy-alert.legacy-alert-warning{background:#fff8e7;border-color:#bea76d;color:#69551f}
