@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use admiralty_core::coordination::questions::{QuestionEvent, QuestionStatus};
 use admiralty_core::{
     AcceptanceCriterion, AttemptId, CheckSpec, PrincipalId, ProjectId, RootId, TaskContract,
