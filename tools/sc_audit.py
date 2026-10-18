@@ -43,7 +43,10 @@ def F(sev, scope, code, text, evidence=None):
 
 def run(args, timeout=20, cwd=None):
     try:
-        p = subprocess.run(args, capture_output=True, text=True, timeout=timeout, cwd=cwd)
+        # stdin=DEVNULL: the ticker runs this under `timeout` inside a screen pty, i.e. a background
+        # process group; a child (ssh) that touches the tty gets SIGTTIN, stops, and wedges the whole
+        # audit until the outer 300 s timeout kills it (every 5-min audit FAILED from 16:57Z Oct 18).
+        p = subprocess.run(args, capture_output=True, text=True, timeout=timeout, cwd=cwd, stdin=subprocess.DEVNULL)
         return p.returncode, p.stdout, p.stderr
     except Exception as e:
         return 99, '', str(e)
@@ -124,14 +127,14 @@ def screen_state(text):
 _rs = {}
 def remote_screens(host):
     if host not in _rs:
-        rc, out, _ = run(['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', 'ubuntu@' + host, 'screen -ls'], timeout=20)
+        rc, out, _ = run(['ssh', '-n', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', 'ubuntu@' + host, 'screen -ls'], timeout=20)
         _rs[host] = None if rc not in (0, 1) or 'Socket' not in out and 'No Sockets' not in out else {m.group(2): int(m.group(1)) for m in re.finditer(r'^\s*(\d+)\.(\S+)\s', out, re.M)}
     return _rs[host]
 
 def remote_hash(host, name):
     if host == 'xbabe0': return None  # never
     cmd = f"f=/tmp/sc_audit_hc_{name}.txt; rm -f $f; screen -S {name} -X hardcopy $f; sleep 0.3; tail -n 25 $f | sha256sum | cut -c1-16"
-    rc, out, _ = run(['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', 'ubuntu@' + host, cmd], timeout=20)
+    rc, out, _ = run(['ssh', '-n', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', 'ubuntu@' + host, cmd], timeout=20)
     return out.strip() or None
 
 # ---------------- LANE lines ----------------
@@ -672,11 +675,11 @@ def audit_jarambit():
     # Done counts only from what is on main. Never pick the newest-mtime WORKPLAN across worktrees:
     # stale detached /tmp worktrees and unmerged feature branches flap the count (false red 2026-10-18 10:00Z).
     repo = REPOS['jarambit']
-    try: subprocess.run(['git', '-C', repo, 'fetch', '-q', 'origin', 'main'], timeout=30, capture_output=True)
+    try: subprocess.run(['git', '-C', repo, 'fetch', '-q', 'origin', 'main'], timeout=30, capture_output=True, stdin=subprocess.DEVNULL)
     except Exception: pass
-    r = subprocess.run(['git', '-C', repo, 'show', 'origin/main:docs/WORKPLAN.md'], capture_output=True, text=True)
+    r = subprocess.run(['git', '-C', repo, 'show', 'origin/main:docs/WORKPLAN.md'], capture_output=True, text=True, stdin=subprocess.DEVNULL)
     if r.returncode == 0 and r.stdout.strip():
-        sha = subprocess.run(['git', '-C', repo, 'rev-parse', '--short=9', 'origin/main'], capture_output=True, text=True).stdout.strip()
+        sha = subprocess.run(['git', '-C', repo, 'rev-parse', '--short=9', 'origin/main'], capture_output=True, text=True, stdin=subprocess.DEVNULL).stdout.strip()
         wp = f'{repo}@origin/main({sha}):docs/WORKPLAN.md'; lines = r.stdout.splitlines(True)
     elif os.path.isfile(repo + '/docs/WORKPLAN.md'):
         wp = repo + '/docs/WORKPLAN.md'; lines = open(wp, errors='replace').readlines()
@@ -1452,7 +1455,7 @@ GPU_BUSY_MEM_MIB = 1024
 def gpu_sample(host):
     if host == 'xbabe0': return None  # never
     q = 'nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits'
-    args = q.split() if host == 'xbabe2' else ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', 'ubuntu@' + host, q]
+    args = q.split() if host == 'xbabe2' else ['ssh', '-n', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', 'ubuntu@' + host, q]
     rc, out, _ = run(args, timeout=25)
     if rc != 0: return None
     rows = []
