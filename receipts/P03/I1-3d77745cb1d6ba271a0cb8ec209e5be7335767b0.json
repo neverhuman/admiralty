@@ -1,0 +1,161 @@
+{
+  "packet": [
+    "P02",
+    "P03",
+    "P11",
+    "P14",
+    "P15"
+  ],
+  "component": "I1 authoritative native lifecycle",
+  "source_sha": "3d77745cb1d6ba271a0cb8ec209e5be7335767b0",
+  "recorded_utc": "2026-10-18T20:27:01.535927+00:00",
+  "packet_accepted": false,
+  "native_execution_qualified": false,
+  "validation": [
+    {
+      "name": "core-store",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-core",
+        "-p",
+        "admiralty-store",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "log": "target/quality/native-lifecycle/core-store-202559.log",
+      "sha256": "7cbae973aa950d8762fab7100f62c49d95a0ad45731818eeb86b0913f11bc91f",
+      "bytes": 28150
+    },
+    {
+      "name": "integration",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-testkit",
+        "--test",
+        "api_stream",
+        "--test",
+        "core_contracts",
+        "--test",
+        "store_replay",
+        "--test",
+        "store_crash",
+        "--test",
+        "coordination_delivery",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "log": "target/quality/native-lifecycle/integration-202617.log",
+      "sha256": "5a80048f526dc41e236f173b49096bd84ba4a4ad0f4b5bf4edbbb7bc4c3ebb52",
+      "bytes": 5630
+    },
+    {
+      "name": "clippy",
+      "argv": [
+        "cargo",
+        "clippy",
+        "-p",
+        "admiralty-core",
+        "-p",
+        "admiralty-store",
+        "-p",
+        "admiralty-server",
+        "-p",
+        "admiralty-cli",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "target/quality/native-lifecycle/clippy-202622.log",
+      "sha256": "c92508a29848820f033cd2ea015c85dde0953c88b07cc967ce34b7c08f610549",
+      "bytes": 72
+    },
+    {
+      "name": "integration-clippy",
+      "argv": [
+        "cargo",
+        "clippy",
+        "-p",
+        "admiralty-testkit",
+        "--test",
+        "api_stream",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "target/quality/native-lifecycle/integration-clippy-202622.log",
+      "sha256": "b872a7d984351e2099fb7d6bc4c88521fe620fda7f1a968e65490268dfeb1b3f",
+      "bytes": 182
+    },
+    {
+      "name": "contracts",
+      "argv": [
+        "node",
+        "--test",
+        "packages/contracts/runtime.test.mjs"
+      ],
+      "exit_code": 0,
+      "log": "target/quality/native-lifecycle/contracts-202623.log",
+      "sha256": "87e4d17996ec8774aa9d5e8f110d32ba6f4587d146855dfb2616dbc163e6b23f",
+      "bytes": 729
+    },
+    {
+      "name": "contract-drift",
+      "argv": [
+        "node",
+        "scripts/contracts/generate.mjs",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "target/quality/native-lifecycle/contract-drift-202624.log",
+      "sha256": "442a1321e94892fab6dd4e8e2d3ba6cbeda60780d50c549248875e3b1706f093",
+      "bytes": 77
+    },
+    {
+      "name": "fmt",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "target/quality/native-lifecycle/fmt-202625.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  ],
+  "passed_counts": [
+    {
+      "suite": "core-store",
+      "passed": 283
+    },
+    {
+      "suite": "integration",
+      "passed": 58
+    }
+  ],
+  "independent_review": {
+    "runtime": "No remaining production blocker after exact optional-effect authorization, separate closure proof and retained coordination revision refusal. Changing-tree review; schema-only codec fix followed.",
+    "product": "Frozen v1 schema and explicit v2 read upgrades checked; React activation integration remains pending."
+  },
+  "failed_attempts": [
+    "Clippy rejected redundant as_ref; corrected without suppressions.",
+    "Clippy rejected new fixture unwrap calls; replaced with explicit expect messages, no lint relaxation."
+  ],
+  "limits": [
+    "No runtime evidence authority or task executor activated; configured authority defaults deny.",
+    "Trusted callback must bind real custody, independent checks, supervised closure and optional effects; test predicates are doubles.",
+    "Registered workplan contract revision remains blocked by immutable reciprocal identity guard.",
+    "Task lifecycle protocol is version2; React v2 integration still required before activation."
+  ],
+  "next_action": "Merge exact-reviewed I1 then register and qualify worker runtime modules, connect native controller and v2 UI, deploy native service to primary port under owner hard-switch authorization."
+}
