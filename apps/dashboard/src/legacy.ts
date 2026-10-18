@@ -96,13 +96,14 @@ export function projectDetails(snapshot: LegacySnapshot): ProjectDetailModel[] {
       return { ...agent, id: lane.id, screen: lane.screen ?? agent.screen ?? lane.id,
         node: lane.node ?? agent.host, model: agent.model ?? lane.model, effort: agent.effort ?? lane.effort,
         tier: agent.tier ?? lane.tier, task: lane.packet_id ?? agent.task,
-        state: lane.status, screen_changed_utc: agent.last_token_utc ?? lane.source_updated_utc,
+        state: text(agent.state) && agent.state !== 'unknown' ? agent.state : lane.status,
+        lane_report_status: lane.status, screen_changed_utc: agent.last_token_utc ?? lane.source_updated_utc,
       };
     });
     for (const agent of agents.filter(agent => agent !== captain)) {
       if (!workers.some(worker => worker.screen === agent.screen)) workers.push(agent);
     }
-    const extra: DetailSection[] = [{ title: 'Work packets', value: rollout.packets, open: true }, { title: 'Execution lanes', value: rollout.lanes, open: true },
+    const extra: DetailSection[] = [{ title: 'Work packets', value: rollout.packets, open: true }, { title: 'Execution lanes', value: rollout.lanes, open: false },
       { title: 'Manifest provenance', value: { source: rollout.source, producer: rollout.producer, freshness: rollout.freshness, assurance: rollout.assurance }, open: false }];
     if (existing) { existing.sections.push(...extra); }
     else projects.push({ id, name: text(identity.name) || id, source: text(rollout.producer) || 'Rollout manifest', observed: text(rollout.updated_utc) || snapshot.generated_utc,

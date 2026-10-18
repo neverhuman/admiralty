@@ -248,6 +248,15 @@ def worker_state(w):
     if ch and time.time() - ch < 300: return 'active'
     return 'idle'
 
+def merge_extra_winfo(winfo, screens, extra_winfo):
+    """Add trusted collector observations without replacing producer records."""
+    if isinstance(extra_winfo, dict) and len(extra_winfo) <= 201:
+        for sid, observed in extra_winfo.items():
+            if sid not in winfo and sid in screens and isinstance(observed, tuple) and len(observed) == 2:
+                project, worker = observed
+                if isinstance(project, str) and isinstance(worker, dict) and worker.get('id') == sid and worker.get('alive') is True:
+                    winfo[sid] = observed
+
 def collect(out, screens, helpers):
     agent_proc = helpers['agent_proc']; descendants = helpers['descendants']; screen_info = helpers['screen_info']; project_of = helpers['project_of']
     res = {}
@@ -293,6 +302,9 @@ def collect(out, screens, helpers):
         for w in [p.get('captain') or {}] + (p.get('workers') or []):
             if w.get('id'): winfo[w['id']] = (key, w)
     if sc_scr[0]: winfo[sc_scr[0]] = ('super', sc['screen'])
+    # Optional rollout ownership joins are produced from this same inventory.
+    # Producer-owned identities remain authoritative and are never overwritten.
+    merge_extra_winfo(winfo, screens, helpers.get('extra_winfo'))
     agents = []
     for sid, s in screens.items():
         ap = agent_proc(s['pid'])

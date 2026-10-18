@@ -62,6 +62,13 @@ describe('detailed project source adapters', () => {
     expect(freshness('2026-10-18T12:00:00Z', Date.parse('2026-10-18T12:10:00Z'))).toContain('stale');
     expect(freshness('2026-10-18T12:10:00Z', Date.parse('2026-10-18T12:00:00Z'))).toBe('future source time');
   });
+  it('keeps independently observed worker activity separate from its lane report', () => {
+    const source = snapshot();
+    source.agents = [{ screen: 'observed_worker', project: 'build-project', state: 'active', last_token_utc: 'token source time' }];
+    source.rollout = { ...source.rollout as object, lanes: [{ id: 'lane', screen: 'observed_worker', status: 'stale; reported in_progress; screen present' }] };
+    const worker = projectDetails(source).at(-1)!.workers[0];
+    expect(worker).toMatchObject({ state: 'active', lane_report_status: 'stale; reported in_progress; screen present', screen_changed_utc: 'token source time' });
+  });
   it('includes additional project captains in the hierarchy without duplicating producer entries', () => {
     const source = snapshot();
     source.hierarchy = { captains: [{ key: 'alpha', name: 'Authoritative producer captain' }] };

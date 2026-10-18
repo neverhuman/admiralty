@@ -5,6 +5,7 @@ are displayed as text and are never opened, executed, or independently verified.
 """
 
 import datetime
+from collections import Counter
 import hashlib
 import json
 import os
@@ -17,11 +18,33 @@ from urllib.parse import urlsplit
 MAX_BYTES = 1024 * 1024
 MAX_PACKETS = 2000
 MAX_LANES = 200
+MAX_SCREEN_PID = 2**31 - 1
 STATUSES = ("planned", "ready", "claimed", "in_progress", "blocked", "review", "verified", "integrated")
 
 
 class ManifestError(ValueError):
     pass
+
+
+def _screen_identity(value):
+    if not isinstance(value, str) or len(value) > 200:
+        return None
+    match = re.fullmatch(r"(?:([1-9][0-9]{0,9})\.)?([A-Za-z0-9_][A-Za-z0-9_.-]{0,127})", value)
+    if not match or match[2] in {".", ".."}:
+        return None
+    pid = int(match[1]) if match[1] else None
+    return (match[2], pid) if pid is None or pid <= MAX_SCREEN_PID else None
+
+
+def _pid_fields(value):
+    result = {}
+    for key in ("screen_pid", "reported_screen_pid"):
+        if key in value:
+            pid = value[key]
+            if pid is not None and (type(pid) is not int or not 1 <= pid <= MAX_SCREEN_PID):
+                raise ManifestError("Screen PID fields must be null or bounded positive integers.")
+            result[key] = pid
+    return result
 
 
 def _text(value, limit=500):
@@ -165,6 +188,9 @@ def _normalize(value, now, source):
             "id", "owner", "node", "branch", "status", "screen", "model", "effort", "tier", "packet_id",
             "source_updated_utc", "observed_utc", "screen_state",
         )})
+        # Preserve pins rather than dropping them and rebinding a recycled name.
+        lanes[-1].update(_pid_fields(lane))
+        lanes[-1]["screen_identity_valid"] = _screen_identity(lane.get("screen")) is not None
         activity = _activity(lane.get("activity"))
         if activity:
             lanes[-1]["activity"] = activity
@@ -176,10 +202,19 @@ def _normalize(value, now, source):
     age = round((now - updated).total_seconds())
     freshness = "future" if age < -30 else "stale" if age > threshold else "fresh"
     pr = value.get("pr") if isinstance(value.get("pr"), dict) else {}
+    normalized_project = {"id": _text(project["id"], 100), "name": _text(project.get("name")) or _text(project["id"], 100),
+                          "repository_url": _url(project.get("repository_url"))}
+    if "captain_screen" in project:
+        if _screen_identity(project["captain_screen"]) is None:
+            raise ManifestError("Captain screen requires a bounded exact screen identity.")
+        normalized_project["captain_screen"] = project["captain_screen"]
+    for key in ("captain_screen_pid", "reported_captain_screen_pid"):
+        if key in project:
+            validated = _pid_fields({"screen_pid": project[key]})
+            normalized_project[key] = validated["screen_pid"]
     return {
         "schema_version": 1, "state": "ready", "read_only": True,
-        "project": {"id": _text(project["id"], 100), "name": _text(project.get("name")) or _text(project["id"], 100),
-                    "repository_url": _url(project.get("repository_url"))},
+        "project": normalized_project,
         "updated_utc": updated.isoformat(timespec="seconds"),
         "producer": _text(value.get("producer"), 200) or "unspecified",
         "source": source,
@@ -189,6 +224,154 @@ def _normalize(value, now, source):
         "total": len(packets), "pr": {"url": _url(pr.get("url")), "head": _text(pr.get("head"), 200)},
         "assurance": "Manifest observation only. Receipt references are not independently validated by this collector.",
     }
+
+
+def observe_rollout_workers(rollout, screens, projects, screen_info, *, do_hc=False,
+                            inventory_available=True, local_node=None, sanitize_tail=None):
+    """Join bounded manifest identities to a caller-supplied local inventory.
+
+    No I/O occurs except the trusted read-only screen_info callback, invoked at
+    most once for each noncolliding actual session. Manifest strings never
+    become command arguments; only verified inventory IDs reach that callback.
+    Returns additive extras wInfo plus separate observational records, never
+    producer projects, packet counts, claims, or acceptance.
+    """
+    result = {"winfo": {}, "observation": {"source": "screen_process_observation/v1",
+              "captain": None, "workers": [], "warnings": [],
+              "assurance": "Process and screen observations only; no task progress or acceptance established."}}
+    observed = result["observation"]
+    if not isinstance(rollout, dict) or rollout.get("state") != "ready":
+        return result
+    project = rollout.get("project") or {}
+    if not isinstance(project, dict) or not isinstance(projects, dict):
+        return result
+    project_id = project.get("id")
+    if not isinstance(project_id, str) or not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,99}", project_id):
+        observed["warnings"].append("Rollout project identity cannot be joined to local observations.")
+        return result
+    observed["project_id"] = project_id
+    # A manifest cannot adopt or overwrite a producer-owned project identity.
+    if project_id in projects:
+        observed["warnings"].append("Rollout project collides with an existing producer project; live join omitted.")
+        return result
+    lanes = rollout.get("lanes")
+    if not isinstance(lanes, list) or len(lanes) > MAX_LANES:
+        observed["warnings"].append("Rollout lane observation bound exceeded.")
+        return result
+    occupied_ids, occupied_names = set(), set()
+    for existing in projects.values():
+        if not isinstance(existing, dict):
+            continue
+        workers = existing.get("workers") or []
+        for worker in [existing.get("captain") or {}] + (workers if isinstance(workers, list) else []):
+            if not isinstance(worker, dict):
+                continue
+            identity = worker.get("id")
+            if isinstance(identity, str):
+                occupied_ids.add(identity)
+                parsed = _screen_identity(identity)
+                if parsed:
+                    occupied_names.add(parsed[0])
+            if isinstance(worker.get("name"), str):
+                occupied_names.add(worker["name"])
+    inventory = {}
+    for sid, screen in (screens.items() if isinstance(screens, dict) else []):
+        parsed = _screen_identity(sid)
+        if not parsed or parsed[1] is None or not isinstance(screen, dict):
+            continue
+        if type(screen.get("pid")) is not int or screen["pid"] != parsed[1] or screen.get("name") != parsed[0]:
+            continue
+        inventory.setdefault(parsed[0], []).append((sid, screen))
+    captain_ref = project.get("captain_screen", "captain_" + project_id)
+    captain_name = _screen_identity(captain_ref)
+    specs = []
+    for lane in lanes:
+        if not isinstance(lane, dict):
+            continue
+        parsed = _screen_identity(lane.get("screen"))
+        is_captain = parsed is not None and captain_name is not None and parsed[0] == captain_name[0]
+        specs.append(("captain" if is_captain else "worker", lane))
+    if captain_name and not any(role == "captain" for role, _ in specs):
+        specs.insert(0, ("captain", {"id": "captain", "screen": captain_ref,
+                     "screen_pid": project.get("captain_screen_pid"),
+                     "reported_screen_pid": project.get("reported_captain_screen_pid")}))
+    resolved = []
+    for role, lane in specs:
+        record = {"lane_id": _text(lane.get("id"), 200), "name": _text(lane.get("screen"), 200),
+                  "role": role, "alive": None, "agent_running": None, "identity_state": "unknown",
+                  "task": _text(lane.get("packet_id"), 200) or None,
+                  "task_source": "rollout manifest assignment (reported)", "tail": []}
+        if role == "captain":
+            if observed["captain"] is None:
+                observed["captain"] = record
+            else:
+                observed["workers"].append(record)
+        else:
+            observed["workers"].append(record)
+        parsed = _screen_identity(lane.get("screen"))
+        if parsed is None or lane.get("screen_identity_valid") is False:
+            record["identity_state"] = "invalid" if lane.get("screen") else "not_reported"
+            continue
+        node = lane.get("node")
+        if node and local_node and node != local_node:
+            record["identity_state"] = "remote_not_observed"
+            continue
+        if not inventory_available or not isinstance(screens, dict):
+            continue
+        pins = [pid for pid in (parsed[1], lane.get("screen_pid"), lane.get("reported_screen_pid")) if pid is not None]
+        if role == "captain":
+            pins += [pid for pid in (project.get("captain_screen_pid"), project.get("reported_captain_screen_pid")) if pid is not None]
+        if any(type(pid) is not int or not 1 <= pid <= MAX_SCREEN_PID for pid in pins) or len(set(pins)) > 1:
+            record["identity_state"] = "identity_mismatch"
+            continue
+        candidates = inventory.get(parsed[0], [])
+        if not candidates:
+            record.update(identity_state="absent", alive=False, agent_running=False)
+            continue
+        if pins:
+            matching = [(sid, screen) for sid, screen in candidates if screen["pid"] == pins[0]]
+            if not matching:
+                record["identity_state"] = "identity_mismatch"
+                continue
+            candidates = matching
+        if len(candidates) != 1:
+            record["identity_state"] = "ambiguous"
+            continue
+        sid, screen = candidates[0]
+        if sid in occupied_ids or screen["name"] in occupied_names:
+            record["identity_state"] = "producer_collision"
+            continue
+        resolved.append((sid, screen, role, record))
+    aliases = Counter(sid for sid, _, _, _ in resolved)
+    for sid, screen, role, record in resolved:
+        if aliases[sid] != 1:
+            record["identity_state"] = "aliased"
+            continue
+        try:
+            info = screen_info(sid, screen, bool(do_hc), project_id)
+        except Exception:
+            record["identity_state"] = "observation_unavailable"
+            continue
+        if not isinstance(info, dict) or info.get("id") != sid or info.get("alive") is not True:
+            record["identity_state"] = "observation_unavailable"
+            continue
+        running = info.get("agent_running") if type(info.get("agent_running")) is bool else None
+        if info.get("agent") == "supervised":
+            running = None
+        record.update(id=sid, name=screen["name"], pid=screen["pid"], alive=True,
+                      agent_running=running, identity_state="observed", agent=_text(info.get("agent"), 40),
+                      model=_text(info.get("model"), 200) or None, effort=_text(info.get("effort"), 40) or None)
+        changed = _timestamp(info.get("screen_changed_utc"))
+        source = rollout.get("source")
+        capture = _timestamp(source.get("loaded_utc")) if isinstance(source, dict) else None
+        record["screen_changed_utc"] = changed.isoformat(timespec="seconds") if changed and (capture is None or changed <= capture) else None
+        if callable(sanitize_tail) and isinstance(info.get("tail"), list):
+            for line in info["tail"][-(8 if role == "captain" else 3):]:
+                if isinstance(line, str):
+                    record["tail"].append(_text(sanitize_tail(line), 240))
+        if running is not None:
+            result["winfo"][sid] = (project_id, record)
+    return result
 
 
 def collect_rollout(runtime_dir, now=None, environ=None):
