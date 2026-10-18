@@ -1032,14 +1032,34 @@ impl SessionHost {
 
 #[cfg(unix)]
 fn signal_owned_group(pid: u32, signal: &str) -> io::Result<bool> {
-    // macOS /bin/kill supports a negative numeric group after its signal; unlike
-    // external GNU kill it need not accept the optional '--' separator.
-    Ok(Command::new("/bin/kill")
-        .args([format!("-{signal}"), format!("-{pid}")])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()?
-        .success())
+    use rustix::process::{Pid, Signal, kill_process_group};
+    // Pid::INIT would invoke kill(-1, ...), not an owned process group. Never
+    // allow zero/current-group, broadcast, narrowing casts or utility parsing.
+    let group = i32::try_from(pid)
+        .ok()
+        .filter(|pid| *pid > 1)
+        .and_then(Pid::from_raw)
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "owned process group ID must exceed one and fit pid_t",
+            )
+        })?;
+    let signal = match signal {
+        "TERM" => Signal::TERM,
+        "KILL" => Signal::KILL,
+        _ => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "unsupported owned-group signal",
+            ));
+        }
+    };
+    match kill_process_group(group, signal) {
+        Ok(()) => Ok(true),
+        Err(rustix::io::Errno::SRCH) => Ok(false),
+        Err(error) => Err(error.into()),
+    }
 }
 
 fn poll_exit(child: &mut Child, grace: Duration) -> io::Result<Option<ExitStatus>> {
@@ -1462,6 +1482,53 @@ mod tests {
                     == ["TERM", "KILL"]
         );
         Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn native_group_kill_reaches_term_ignoring_descendant_and_drains_pipes()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temporary = TempDir::new()?;
+        let host = SessionHost::new();
+        // Both shell and inherited child ignore TERM. The background child keeps
+        // both capture pipes open, so killing only the direct child cannot pass.
+        // Its bounded lifespan also prevents a regressed test leaving an orphan
+        // indefinitely; it exceeds the unchanged termination/capture deadlines.
+        host.launch(spec(
+            &temporary,
+            "native-group",
+            &["-c", "trap '' TERM; sleep 5 & printf group-ready; wait"],
+        ))?;
+        await_output(&host, "native-group", b"group-ready");
+        let started = Instant::now();
+        assert!(!host.terminate("native-group")?.success());
+        assert!(started.elapsed() < Duration::from_secs(2));
+        let status = host.status("native-group")?;
+        assert_eq!(status.capture_state, CaptureState::Complete);
+        assert!(!status.capture_failed);
+        assert_eq!(status.final_output_offset, Some(11));
+        assert_eq!(output(&host, "native-group"), b"group-ready");
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn native_group_signal_rejects_broadcast_ids_and_unknown_signals_before_effects() {
+        for pid in [0, 1, i32::MAX as u32 + 1, u32::MAX] {
+            assert_eq!(
+                signal_owned_group(pid, "KILL")
+                    .expect_err("invalid ID must not signal")
+                    .kind(),
+                io::ErrorKind::InvalidInput
+            );
+        }
+        // Signal validation happens before the system call; no PID is signalled.
+        assert_eq!(
+            signal_owned_group(2, "unexpected")
+                .expect_err("unknown signal must not dispatch")
+                .kind(),
+            io::ErrorKind::InvalidInput
+        );
     }
 
     #[test]

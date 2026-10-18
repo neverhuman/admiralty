@@ -179,6 +179,15 @@ signal may leave the old child alive; it must remain ambiguous until a separate
 qualified owner reconciles it. The orderly host destructor only cleans up its
 currently owned child handles using the existing identity-safe semantics.
 
+On Unix, owned-group TERM/KILL uses the native
+`rustix::process::kill_process_group` API rather than platform-dependent
+`/bin/kill` argument parsing. The raw group ID must exceed one and fit `pid_t`;
+zero/current-group and PID-one broadcast semantics are refused. The host sends
+both signals while the owned direct child remains unreaped, then polls/reaps it.
+Once that child has already been reaped, its historical numeric group never
+authorizes another signal. This fixes Linux cleanup of pipe-holding descendants
+inside the owned group; escaped descendants remain an unsupported boundary.
+
 Daemon restart adoption, continuity after host destruction, PTY behavior,
 terminal attachment, descendant/process-group escape containment, trusted
 provider supervision, service-manager installation and native execution
@@ -195,3 +204,10 @@ executable, overflow rejection, descendant-held output pipes and fixed final
 watermarks, and ambiguous restart behavior. The direct host test
 also holds the input lock to prove status returns `busy` and verifies idempotent
 EOF. No coding provider, credential or production service is exercised.
+
+A Unix regression creates an owned TERM-ignoring child and a TERM-ignoring
+background descendant that holds the capture pipes. Group KILL must close both
+pipes and produce a complete fixed watermark within the existing deadlines;
+killing only the direct child cannot satisfy it. Other regressions reject
+broadcast/out-of-range IDs before effects and ensure already-reaped children
+never authorize group signals. The same tests run on the Linux build gate.
