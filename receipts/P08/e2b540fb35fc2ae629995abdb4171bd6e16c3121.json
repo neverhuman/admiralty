@@ -1,0 +1,98 @@
+{
+  "packet": "P08",
+  "state": "in_progress",
+  "owner": "local integration reviewer",
+  "base_sha": "997513f6a0ad832b810864807fdc961070dc0974",
+  "head_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121",
+  "observed_utc": "2026-10-18T12:41:26.173147+00:00",
+  "contract_version": "integration-follow-up/v1",
+  "changed_paths": [
+    "crates/admiralty-runtime/src/providers/codex.rs",
+    "crates/admiralty-runtime/src/providers/mod.rs",
+    "docs/architecture/codex-adapter.md"
+  ],
+  "sha256": {
+    "crates/admiralty-runtime/src/providers/codex.rs": "dc24cef843a6e25776d567e561bd26c92ef1df7257c28dfe5d06587bf3f69e5b",
+    "crates/admiralty-runtime/src/providers/mod.rs": "1cf65a22fc7c322ed116fe9e4fb598dfe2e2f89d4ea697690051ea24949944c1",
+    "docs/architecture/codex-adapter.md": "70bcf41062ea62310cda9b7f97f22fc2d3691aac50ed137b23825626de15b7d9"
+  },
+  "criteria": [
+    {
+      "name": "Shell-free exact requested Codex launch tuple and bounded structured event/usage decoding",
+      "result": "pass"
+    },
+    {
+      "name": "Large escaped fake-provider socket fixture and incomplete/unread capture rejection",
+      "result": "pass"
+    },
+    {
+      "name": "Explicit requested-vs-reported metadata and input/owner attribution boundaries",
+      "result": "pass"
+    },
+    {
+      "name": "Complete parent packet acceptance",
+      "result": "not_run",
+      "evidence": [
+        "Installed CLI help was observed read-only; actual paid managed execution remains unqualified",
+        "Same-user socket access and reference strings do not establish domain admission or prompt purity"
+      ]
+    }
+  ],
+  "validation": [
+    {
+      "source_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121",
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "-q"
+      ],
+      "started_utc": "2026-10-18T12:40:06.197185+00:00",
+      "duration_s": 20.323,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/e2b540fb35fc2ae629995abdb4171bd6e16c3121/rust.log",
+      "log_sha256": "91e7f2964760c4766f5a2e3c29141dd6725243df4db5b64669a8dbd264c1f294",
+      "checks_passed": 441
+    },
+    {
+      "source_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started_utc": "2026-10-18T12:40:06.197208+00:00",
+      "duration_s": 3.356,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/e2b540fb35fc2ae629995abdb4171bd6e16c3121/clippy.log",
+      "log_sha256": "9de1ebd6a6ab9b18087a75fef353987762bcc3d8a5919821803c755fa5d75607"
+    }
+  ],
+  "environment": {
+    "platform": "macOS-15.7.5-arm64-arm-64bit-Mach-O",
+    "rust": "1.95.0",
+    "calls": "offline/fake-process except read-only live UI observation; no paid inference"
+  },
+  "limitations": [
+    "Installed CLI help was observed read-only; actual paid managed execution remains unqualified",
+    "Same-user socket access and reference strings do not establish domain admission or prompt purity"
+  ],
+  "accepted": false,
+  "native_execution_qualified": false,
+  "next_action": "Complete explicit admission/authority and real-path qualification gates before activation or acceptance.",
+  "blockers": [],
+  "linux_runtime": {
+    "source_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121",
+    "checks_passed": 125,
+    "failed": 0,
+    "receipt_sha256": "f56d3fd19707e6d965a3813bd5a058953b6750a3e9d0e171ae1fab0db2a59ceb",
+    "raw_log_sha256": "7fd6099349126d21b977b291fb44376c4e00ce6d88d4cd0be90358551b40ad9e",
+    "qualification": "offline/fake-process runtime tests only; no native activation"
+  }
+}

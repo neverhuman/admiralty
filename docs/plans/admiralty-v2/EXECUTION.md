@@ -13,8 +13,8 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). In
 | P04 | in_progress | artifact + custody lanes + strong review | reviewed `29acc013` | Transactional asset/pin catalog with full observation binding, fixed clock policy and receipt closure; trusted filesystem observation/startup activation pending |
 | P05 | in_progress | local coordination team + strong review | reviewed `29acc013` | Durable scoped messages/ACK and question journal with canonical receipt/task-scope checks; delivery service/subscriptions pending |
 | P06 | in_progress | local context team | PR prototype | Constraint-preserving capsules, epochs and bounded attention governor; durable governor/outbox activation and retrieval pending |
-| P07 | in_progress | remote session lane + local reviewer | session-daemon follow-up under integration review | Independent private Unix-socket host with explicit EOF and reconnect continuity; final capture evidence and transport envelope review underway; restart adoption unqualified |
-| P08 | in_progress | Luna candidate + strong review | reviewed supervision `17c7a76d`; Codex adapter follow-up under integration review | Bounded literal launch builder and NDJSON decoding; daemon envelope/final capture seam fixes underway; real managed provider qualification pending |
+| P07 | in_progress | remote session lane + local reviewer | reviewed `e2b540fb` | Independent private Unix-socket host, reconnect continuity, compatible launch envelope, final capture watermark and native owned-group cleanup; restart adoption and admitted fleet activation unqualified |
+| P08 | in_progress | Luna candidate + strong review | reviewed `e2b540fb` | Literal bounded Codex launch builder, NDJSON/usage decoding and consumer-drain EOF checks; real managed provider execution qualification pending |
 | P09 | in_progress | remote workspace lane + local reviewer | candidate `f0d15a82`, imported `d637bfe` | Read-only custody registration; real runner/resource isolation pending |
 | P10 | in_progress | usage/reservation lanes + strong review | candidate `99f05b0`, imported `61e888b` | Segmented usage plus conservative scoped reservations reviewed; runtime reservation activation pending |
 | P11 | in_progress | local API team | candidate, not integrated | Read-only authenticated API/SSE, generation/precision/security tests; commands pending |
@@ -171,8 +171,10 @@ All six follow-up integration-test lanes and all three durable storage lanes
 produced scoped candidates. Their imports received stronger review and root
 combined-tree validation. Store hardening is committed at `29acc013`; its partial
 P03/P04/P05 receipts preserve activation gaps. Session-host and Codex adapter
-follow-ups are under integration review; prompt-envelope compatibility and final
-capture evidence are required before their components can be connected.
+follow-ups are reviewed at `997513f6`: shared prompt-envelope limits and explicit
+final capture watermarks close the two identified seams. Durable launch-intent
+admission, trusted custody, actual provider execution and fleet recovery still
+require integration/qualification before native activation.
 
 React assets `0b8b8cb2` pass75 tests, typecheck and production build. The live
 Commodore card now uses the explicitly configured, observed manager's exact
@@ -187,3 +189,19 @@ Smoke harness `5e1bc679` fixes deadline shutdown appearing as successful EOF and
 rejects truncated HTTP bodies. All18 harness checks and15 actual isolated binary
 HTTP/CLI checks pass. The native canary remains read-only; no complete packet,
 production execution or hosted CI success is inferred from these checks.
+
+At source `997513f6`, the Mac combined tree passes 439 Rust checks (including
+two compile-fail doctests), strict workspace Clippy, formatting and15 actual
+isolated binary HTTP/CLI smoke checks. Raw local logs and hashes are retained in
+`target/quality/997513f6a0ad832b810864807fdc961070dc0974/`.
+The unchanged React source passes 75 tests/typecheck/build; legacy Python has 73
+passes and one platform skip. Store 62 and smoke-harness 18 checks also pass on
+exact clean Linux source `5e1bc679`. Linux runtime at `997513f6` failed four
+cleanup EOF checks (117 passed); the failed receipt is retained. The native
+process-group correction `e2b540fb` replaces platform-specific signal utility
+arguments with guarded Rustix calls and adds two real regressions. The Mac
+combined tree now passes 441 checks, strict Clippy and formatting. Exact-source
+Linux runtime passes all 125 checks (123 library, one binary and one doctest),
+including all four earlier failures. Both raw failure and passing evidence are
+retained; the aggregate receipt and partial P07/P08 receipts name the tested
+source. GitHub jobs remain queued at the last observation.

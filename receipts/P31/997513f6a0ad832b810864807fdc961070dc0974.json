@@ -1,0 +1,183 @@
+{
+  "packet": "P31",
+  "state": "in_progress",
+  "owner": "local integration reviewer",
+  "base_sha": "5e1bc679b911dedda8c61a956be6a43d468f8be2",
+  "head_sha": "997513f6a0ad832b810864807fdc961070dc0974",
+  "observed_utc": "2026-10-18T12:36:41.609293+00:00",
+  "contract_version": "integration-follow-up/v1",
+  "changed_paths": [
+    "scripts/check/canary-smoke.py",
+    "docs/operators/canary-smoke.md",
+    ".github/workflows/ci.yml"
+  ],
+  "sha256": {
+    "scripts/check/canary-smoke.py": "a84e92c25795d5809db2788ca2dd4863e5910d2d179b5027c485b79ac20149b3",
+    "docs/operators/canary-smoke.md": "0fb5b207ac6e23d65f9a8826bc2941e2b8b65b2ad30b3c0e461fa70019e153da",
+    ".github/workflows/ci.yml": "b372beddfd7b9690af6270fbeba88d687df50c6c9f0fa667c385b1a28c8fad5b"
+  },
+  "criteria": [
+    {
+      "name": "18 harness tests retain deadline limits and reject deadline EOF/truncated HTTP",
+      "result": "pass"
+    },
+    {
+      "name": "15 actual isolated binary checks pass on this committed source, including auth-before-JSON",
+      "result": "pass"
+    },
+    {
+      "name": "Own child cleanup recorded; protected live dashboard ports are not probed by smoke",
+      "result": "pass"
+    },
+    {
+      "name": "Complete parent packet acceptance",
+      "result": "not_run",
+      "evidence": [
+        "Full fleet rollback/cutover closure and hosted CI success remain unqualified"
+      ]
+    }
+  ],
+  "validation": [
+    {
+      "source_sha": "997513f6a0ad832b810864807fdc961070dc0974",
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "-q"
+      ],
+      "started_utc": "2026-10-18T12:35:07.973749+00:00",
+      "duration_s": 19.554,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/997513f6a0ad832b810864807fdc961070dc0974/rust.log",
+      "log_sha256": "041ae5ac3dc1ab6a3bad9689a4ae0f70786b7d09aabeb0404121552c979f65b7",
+      "checks_passed": 439
+    },
+    {
+      "source_sha": "997513f6a0ad832b810864807fdc961070dc0974",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started_utc": "2026-10-18T12:35:07.973779+00:00",
+      "duration_s": 3.896,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/997513f6a0ad832b810864807fdc961070dc0974/clippy.log",
+      "log_sha256": "7dc5739fbcb2baf3a09734318a4d59f3f6337ebdb45ff174be70550f5e8292ca"
+    },
+    {
+      "acceptance": false,
+      "binaries": {
+        "admiralty_sha256": "sha256:51facea205fd739cd2ee730e6c6d7c61beb85c3d29cf643f0cdeb616e079b0e6",
+        "admiraltyd_sha256": "sha256:1a9491dd2374961f1a024bf5b45a901a5e1fd8626621e86d17f11083a7fe19f8"
+      },
+      "checks": [
+        {
+          "duration_ms": 256,
+          "name": "real_server_startup",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 3,
+          "name": "real_health_native_unqualified",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "unauthorized_real_fleet_rejected",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 0,
+          "name": "unauthorized_real_models_rejected",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "model_auth_precedes_body_validation",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "authorized_real_fleet",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "authorized_models_policy",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "model_selection_proposal_only",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 245,
+          "name": "demo_startup",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 2,
+          "name": "demo_fleet_simulated",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 1,
+          "name": "demo_no_models",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 0,
+          "name": "demo_no_model_policy_write",
+          "state": "pass"
+        },
+        {
+          "duration_ms": 0,
+          "name": "demo_no_legacy_policy",
+          "state": "pass"
+        },
+        {
+          "name": "doctor_read_only_capability",
+          "state": "pass"
+        },
+        {
+          "name": "demo_cli_has_no_real_policy_flags",
+          "state": "pass"
+        }
+      ],
+      "cleanup": {
+        "admiraltyd": "terminated",
+        "demo": "terminated"
+      },
+      "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+      "duration_ms": 540,
+      "fleet_rollout_closure": false,
+      "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+      "started_at_utc": "2026-10-18T12:35:59.084225+00:00",
+      "status": "pass",
+      "synthetic": false,
+      "source_sha": "997513f6a0ad832b810864807fdc961070dc0974",
+      "log_sha256": "de83663bd55d9f401bc5234aa4b87eb849895250dc9b5e4a2f727e58190b5849",
+      "build_receipt": "target/quality/997513f6a0ad832b810864807fdc961070dc0974/build.json"
+    }
+  ],
+  "environment": {
+    "platform": "macOS-15.7.5-arm64-arm-64bit-Mach-O",
+    "rust": "1.95.0",
+    "calls": "offline/fake-process except read-only live UI observation; no paid inference"
+  },
+  "limitations": [
+    "Full fleet rollback/cutover closure and hosted CI success remain unqualified"
+  ],
+  "accepted": false,
+  "native_execution_qualified": false,
+  "next_action": "Complete explicit admission/authority and real-path qualification gates before activation or acceptance."
+}
