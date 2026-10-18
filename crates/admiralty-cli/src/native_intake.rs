@@ -222,7 +222,7 @@ pub fn preview_work_order(
     }
     source_identity
         .validate()
-        .map_err(|error| crate::invalid(error))?;
+        .map_err(crate::invalid)?;
     let value: Value = serde_json::from_slice(source)?;
     let plan_value = &value;
     let (missing_inputs, missing_dependencies, missing_authority, missing_acceptance_bindings) =
@@ -369,7 +369,19 @@ mod tests {
     use super::*;
     use admiralty_core::{AcceptanceCriterion, CheckSpec, ProjectId, RootId};
     use serde_json::json;
-    use tempfile::tempdir;
+    use tempfile::{Builder, TempDir};
+    use std::os::unix::fs::PermissionsExt;
+    use std::fs;
+
+    fn private_tempdir() -> TempDir {
+        let directory = Builder::new()
+            .prefix("native-intake-test-")
+            .tempdir_in(env!("CARGO_MANIFEST_DIR"))
+            .expect("private test directory is created under the CLI crate");
+        fs::set_permissions(directory.path(), fs::Permissions::from_mode(0o700))
+            .expect("test directory is private");
+        directory
+    }
 
     fn identity() -> SourceIdentity {
         SourceIdentity {
@@ -443,7 +455,7 @@ mod tests {
         assert_eq!(first.task_digests.len(), 2);
         assert_eq!(first.acceptance_bindings.len(), 2);
 
-        let directory = tempdir().expect("temporary store directory is created");
+        let directory = private_tempdir();
         let database = directory.path().join("intake.sqlite");
         let store = Store::open(&database).expect("private test store opens");
         let recorded = register_preview(&store, &first, &first.preview_digest, "0")
@@ -472,7 +484,7 @@ mod tests {
         let first = preview(&first_source).expect("first preview succeeds");
         let changed_source = source(vec![contract("base", &[], "src/changed")]);
         let changed = preview(&changed_source).expect("changed contract previews");
-        let directory = tempdir().expect("temporary store directory is created");
+        let directory = private_tempdir();
         let store = Store::open(directory.path().join("intake.sqlite"))
             .expect("private test store opens");
         assert!(register_preview(&store, &first, "sha256:stale", "0").is_err());
@@ -507,7 +519,7 @@ mod tests {
         assert_eq!(preview.missing_dependencies, ["task->absent"]);
         assert_eq!(preview.missing_authority, ["task"]);
         assert_eq!(preview.missing_acceptance_bindings, ["task"]);
-        let directory = tempdir().expect("temporary store directory is created");
+        let directory = private_tempdir();
         let store = Store::open(directory.path().join("intake.sqlite"))
             .expect("private test store opens");
         assert!(register_preview(&store, &preview, &preview.preview_digest, "0").is_err());
