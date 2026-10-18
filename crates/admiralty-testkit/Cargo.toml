@@ -27,6 +27,10 @@ name = "api_stream"
 path = "../../tests/integration/api_stream.rs"
 
 [[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[[test]]
 name = "artifact_custody"
 path = "../../tests/integration/artifact_custody.rs"
 
