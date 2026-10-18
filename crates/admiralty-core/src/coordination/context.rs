@@ -495,7 +495,10 @@ pub fn decode_role_capsule(
     expected_epoch: &str,
     expected_facts_digest: &str,
 ) -> Result<RoleFacts, RoleCapsuleError> {
-    if text.len() > MAX_ROLE_CAPSULE_BYTES || !digest(expected_facts_digest) {
+    if text.len() > MAX_ROLE_CAPSULE_BYTES
+        || !digest(expected_facts_digest)
+        || self::text(expected_epoch).is_err()
+    {
         return Err(RoleCapsuleError::BindingMismatch);
     }
     let document: RoleDocument =

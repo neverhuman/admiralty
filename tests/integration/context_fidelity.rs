@@ -428,6 +428,25 @@ mod role_capsules {
     }
 
     #[test]
+    fn decoder_refuses_invalid_epoch_even_when_retained_and_document_epochs_match() {
+        let capsule = compile_decision_capsule(&decision(), "epoch-7", BUDGET).expect("capsule");
+        let document: Value = serde_json::from_str(&capsule.text).expect("document");
+        for epoch in [String::new(), " \n\t".into(), "x".repeat(4097)] {
+            let mut handcrafted = document.clone();
+            handcrafted["context_epoch"] = json!(epoch);
+            assert_eq!(
+                decode_role_capsule(
+                    &handcrafted.to_string(),
+                    capsule.recipient,
+                    &epoch,
+                    &capsule.facts_digest,
+                ),
+                Err(RoleCapsuleError::BindingMismatch)
+            );
+        }
+    }
+
+    #[test]
     fn foreign_projects_duplicates_and_invalid_criterion_or_decision_role_are_rejected() {
         let mut value = project();
         value.exceptions[0].contract.project_id = ProjectId::new("foreign-project").expect("id");
