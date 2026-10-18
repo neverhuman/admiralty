@@ -10,6 +10,7 @@ use admiralty_core::scheduler::{
 use admiralty_core::{
     AcceptanceCriterion, CheckSpec, ProjectId, RootId, TaskContract, TaskId, content_digest,
 };
+use admiralty_testkit::clock::FakeClock;
 
 fn scope() -> SchedulingScope {
     SchedulingScope {
@@ -89,6 +90,27 @@ fn unknown_or_held_process_ownership_blocks_readiness_without_granting_execution
                 .contains_key(&TaskId::new("task").expect("task ID"))
         );
     }
+}
+
+#[test]
+fn clock_past_lease_expiry_does_not_authorize_reclaim_or_execution() {
+    let mut clock = FakeClock::new(10);
+    let lease = LeaseObservation::Held {
+        expires_tick: Some(20),
+    };
+    let input = snapshot(scheduled("task", lease));
+
+    assert_eq!(clock.advance_to_ms(21), Ok(21));
+    let proposal = propose_ready_tasks(&input, &scope()).expect("valid expired-lease snapshot");
+
+    assert!(proposal.ready.is_empty());
+    assert!(!proposal.execution_granted);
+    assert_eq!(
+        proposal.blocked.get(&TaskId::new("task").expect("task ID")),
+        Some(&vec![ReadinessBlocker::LeaseHeld {
+            expires_tick: Some(20),
+        }])
+    );
 }
 
 #[test]
