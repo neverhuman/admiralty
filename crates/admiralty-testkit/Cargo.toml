@@ -214,3 +214,7 @@ path = "../../tests/integration/codex_p00_p01_p04_p10_round12_redteam_audit.rs"
 [[test]]
 name = "codex_p00_p01_p04_p10_round13_workorder"
 path = "../../tests/integration/codex_p00_p01_p04_p10_round13_workorder.rs"
+
+[[test]]
+name = "codex_round16_p04_p10"
+path = "../../tests/integration/codex_round16_p04_p10.rs"
