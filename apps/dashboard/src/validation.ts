@@ -1,5 +1,5 @@
 import { validateDomainEvent, validateTaskContract, type DomainEvent } from '../../../packages/contracts/index';
-import type { Cursor, Fleet } from './api';
+import type { Cursor, Fleet, NativeFleet } from './api';
 
 export type DomainRecord = { seq: string; observed_utc: string; event: DomainEvent };
 function object(value: unknown): Record<string, unknown> {
@@ -52,10 +52,10 @@ export function parseCursor(value: unknown): Cursor {
     && !/[\r\n\0:]/.test(cursor.recovery_generation) && decimal(cursor.event_seq), 'invalid event cursor');
   return { recovery_generation: cursor.recovery_generation, event_seq: cursor.event_seq };
 }
-export function parseFleet(value: unknown): Fleet {
+function parseFleetEnvelope(value: unknown, version: 1 | 2): Record<string, unknown> {
   assertBoundedJson(value);
   const fleet = object(value);
-  assert(fleet.schema_version === 1 && typeof fleet.simulated === 'boolean' && fleet.native_execution_qualified === false, 'unqualified fleet envelope');
+  assert(fleet.schema_version === version && typeof fleet.simulated === 'boolean' && fleet.native_execution_qualified === false, 'unqualified fleet envelope');
   parseCursor(fleet.cursor);
   assert(Array.isArray(fleet.projects) && Array.isArray(fleet.tasks), 'invalid fleet collections');
   for (const value of fleet.projects) {
@@ -66,14 +66,25 @@ export function parseFleet(value: unknown): Fleet {
   for (const value of fleet.tasks) {
     const task = object(value);
     assert(validateTaskContract(task.contract), 'invalid task contract schema or version');
-    assert(['ready', 'blocked', 'claimed', 'running', 'awaiting_verification'].includes(String(task.state))
+    const states = version === 1
+      ? ['ready', 'blocked', 'claimed', 'running', 'awaiting_verification']
+      : ['ready', 'blocked', 'claimed', 'running', 'awaiting_verification', 'accepted', 'failed', 'cancelled'];
+    assert(states.includes(String(task.state))
       && nullableText(task.attempt_id) && nullableText(task.owner) && nullableText(task.candidate_ref), 'invalid task projection');
+    if (version === 1) assert(!Object.hasOwn(task, 'lifecycle'), 'v1 task projection cannot contain lifecycle metadata');
+    if (version === 2 && Object.hasOwn(task, 'lifecycle')) object(task.lifecycle);
   }
   const coordination = object(fleet.coordination);
   assert(count(coordination.queued_messages) && count(coordination.acknowledged_messages) && coordination.routine_model_turns === 0
     && (coordination.measured_tokens === null || decimal(coordination.measured_tokens)), 'invalid coordination metrics');
   assert(text(fleet.sqlite_version), 'missing SQLite version');
-  return fleet as Fleet;
+  return fleet;
+}
+export function parseFleet(value: unknown): Fleet {
+  return parseFleetEnvelope(value, 1) as unknown as Fleet;
+}
+export function parseNativeFleet(value: unknown): NativeFleet {
+  return parseFleetEnvelope(value, 2) as unknown as NativeFleet;
 }
 export function parseDomainRecord(value: unknown): DomainRecord {
   assertBoundedJson(value);

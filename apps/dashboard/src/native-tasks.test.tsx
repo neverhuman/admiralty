@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { Fleet } from './api';
+import type { NativeFleet } from './api';
+import { parseNativeFleet } from './validation';
 import NativeTasks, { filterNativeTasks } from './ui/NativeTasks';
 
 const contract = (taskId: string, projectId: string, title: string) => ({
@@ -9,13 +10,13 @@ const contract = (taskId: string, projectId: string, title: string) => ({
   root_id: `root-${taskId}`, schema_version: 1, simulated: false, task_id: taskId, title,
 });
 
-const task = (patch: Partial<Fleet['tasks'][number]> = {}): Fleet['tasks'][number] => ({
+const task = (patch: Partial<NativeFleet['tasks'][number]> = {}): NativeFleet['tasks'][number] => ({
   contract: contract('task-a', 'project-a', 'Review release evidence'), state: 'running',
   attempt_id: 'attempt-a', owner: 'worker-a', candidate_ref: 'artifact:sha256:abc123', ...patch,
 });
 
-const fleet = (patch: Partial<Fleet> = {}): Fleet => ({
-  schema_version: 1, simulated: false, cursor: { recovery_generation: 'generation-1', event_seq: '4' },
+const fleet = (patch: Partial<NativeFleet> = {}): NativeFleet => ({
+  schema_version: 2, simulated: false, cursor: { recovery_generation: 'generation-1', event_seq: '4' },
   projects: [{ id: 'project-a', name: 'Project A', total: 1, running: 1, awaiting_verification: 0, blocked: 0, accepted: 0 },
     { id: 'project-b', name: 'Project B', total: 1, running: 0, awaiting_verification: 0, blocked: 0, accepted: 0 }],
   tasks: [task(), task({ contract: contract('task-b', 'project-b', 'Check package'), state: 'awaiting_verification', attempt_id: null, owner: null, candidate_ref: null })],
@@ -34,7 +35,7 @@ describe('native task inspection panel', () => {
 
   it('renders projection state and only present attempt and candidate references', () => {
     const html = renderToStaticMarkup(<NativeTasks fleet={fleet()} error="" connection="connected" />);
-    expect(html).toContain('AUTHENTICATED SNAPSHOT');
+    expect(html).toContain('AUTHENTICATED V2 SNAPSHOT');
     expect(html).toContain('Review release evidence');
     expect(html).toContain('running');
     expect(html).toContain('attempt-a');
@@ -58,5 +59,15 @@ describe('native task inspection panel', () => {
     expect(html).toContain('SIMULATED SNAPSHOT');
     expect(html).toContain('synthetic and do not represent native acceptance or execution');
     expect(html).toContain('EXECUTION NOT QUALIFIED');
+  });
+
+  it('validates v2 lifecycle projections and terminal task states without interpreting claims', () => {
+    const snapshot = fleet({ tasks: [task({ state: 'accepted', lifecycle: {
+      revision: 3, attempts: { 'attempt-a': { outcome: 'accepted' } }, closure_digest: 'sha256:abc', decision: 'accepted', reason: null,
+    } })] });
+    expect(parseNativeFleet(snapshot).tasks[0].state).toBe('accepted');
+    expect(() => parseNativeFleet({ ...snapshot, schema_version: 1 })).toThrow('fleet envelope');
+    expect(() => parseNativeFleet({ ...snapshot, tasks: [{ ...snapshot.tasks[0], lifecycle: [] }] })).toThrow('expected object');
+    expect(() => parseNativeFleet({ ...snapshot, tasks: [{ ...snapshot.tasks[0], state: 'self_accepted' }] })).toThrow('task projection');
   });
 });

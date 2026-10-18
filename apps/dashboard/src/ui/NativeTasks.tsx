@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Fleet } from '../api';
+import type { NativeFleet, NativeTaskState } from '../api';
 import { taskStateLabel } from '../api';
 import type { ConnectionState } from '../events';
 
-type Task = Fleet['tasks'][number];
-type TaskState = Task['state'];
+type Task = NativeFleet['tasks'][number];
+type TaskState = NativeTaskState;
 type TaskFilters = { query?: string; projectId?: string; state?: TaskState | '' };
 
 const taskStates: TaskState[] = ['ready', 'blocked', 'claimed', 'running', 'awaiting_verification'];
@@ -18,7 +18,7 @@ export function filterNativeTasks(tasks: Task[], filters: TaskFilters = {}): Tas
 }
 
 export default function NativeTasks({ fleet, error, connection }: {
-  fleet: Fleet | null;
+  fleet: NativeFleet | null;
   error: string;
   connection: ConnectionState;
 }) {
@@ -35,7 +35,7 @@ export default function NativeTasks({ fleet, error, connection }: {
   return <section className="panel workplans-panel native-task-panel" aria-labelledby="native-task-title">
     <div className="panel-head">
       <div><div className="eyebrow">NATIVE TASKS / SNAPSHOT PROJECTION</div><h2 id="native-task-title">Task inspection</h2></div>
-      {fleet && <span className="tiny-badge">{fleet.simulated ? 'SIMULATED SNAPSHOT' : 'AUTHENTICATED SNAPSHOT'} · EXECUTION NOT QUALIFIED</span>}
+      {fleet && <span className="tiny-badge">{fleet.simulated ? 'SIMULATED SNAPSHOT' : 'AUTHENTICATED V2 SNAPSHOT'} · EXECUTION NOT QUALIFIED</span>}
     </div>
     {!fleet ? <div className="native-task-unavailable" role="status">
       <strong>Task snapshot unavailable</strong>
@@ -67,7 +67,7 @@ export default function NativeTasks({ fleet, error, connection }: {
       {!visibleTasks.length && <div className="empty-state"><span>⌁</span>{fleet.tasks.length && (query || projectId || state)
         ? 'No snapshot tasks match these filters.'
         : fleet.tasks.length ? 'No snapshot tasks match this filter.' : 'The current fleet snapshot contains no task records.'}</div>}
-      <p className="native-task-source">Source: current {fleet.simulated ? 'simulated' : 'authenticated'} <code>/v1/fleet</code> snapshot. This panel is read only; native execution is not qualified.</p>
+      <p className="native-task-source">Source: current {fleet.simulated ? 'simulated' : 'authenticated'} <code>/v2/fleet</code> snapshot. This panel is read only; native execution is not qualified.</p>
     </>}
   </section>;
 }

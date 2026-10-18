@@ -68,6 +68,18 @@ export type Fleet = {
   native_execution_qualified: false;
 };
 
+export type NativeTaskState = Fleet['tasks'][number]['state'] | 'accepted' | 'failed' | 'cancelled';
+export type NativeTaskLifecycle = Readonly<Record<string, unknown>>;
+export type NativeTaskView = Omit<Fleet['tasks'][number], 'state'> & {
+  state: NativeTaskState;
+  /** I1 lifecycle metadata is validated as a bounded object and stays opaque to this read-only panel. */
+  lifecycle?: NativeTaskLifecycle;
+};
+export type NativeFleet = Omit<Fleet, 'schema_version' | 'tasks'> & {
+  schema_version: 2;
+  tasks: NativeTaskView[];
+};
+
 export async function getFleet(token?: string, signal?: AbortSignal, fetcher: typeof fetch = fetch): Promise<Fleet> {
   const response = await fetcher('/v1/fleet', {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -92,6 +104,6 @@ export function fleetTotals(fleet: Fleet) {
   }), { projects: 0, tasks: 0, running: 0, blocked: 0, accepted: 0, verifying: 0 });
 }
 
-export function taskStateLabel(state: Fleet['tasks'][number]['state']): string {
+export function taskStateLabel(state: NativeTaskState): string {
   return state.replaceAll('_', ' ');
 }

@@ -75,7 +75,9 @@ function App() {
         {!legacyView && !modelsView && error && <div className="error-banner" role="status"><span>{connection === 'paused' ? 'Updates paused' : 'Connection issue'}</span><span>{error}{connection === 'reconnecting' ? ' · Reconnecting automatically.' : ''}</span><button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry connection</button></div>}
         {!legacyView && !modelsView && !fleet && !error && <div className="loading-card">Connecting to the local native service…</div>}
         {fleet && view === 'Overview' && <Overview fleet={fleet} totals={totals!} onWorkplans={() => setView('Workplans')} />}
-        {view === 'Workplans' && <NativeTasks fleet={fleet} error={error} connection={connection} />}
+        {view === 'Workplans' && <NativeTasks fleet={null}
+          error="The authenticated v2 fleet adapter is not available on this server yet."
+          connection={connection} />}
         {fleet && view === 'Coordination' && <Coordination fleet={fleet} />}
         {view === 'Models' && <Models token={token || undefined} onAccess={() => setShowAccess(true)} />}
         <footer className="page-footer"><span>{modelsView ? 'MODEL POLICY CONFIGURATION' : `READ ONLY · SOURCE: ${legacyView ? 'LEGACY PRODUCER SNAPSHOT' : 'NATIVE FLEET API'}`}</span><span>{legacyView ? 'Source provenance and uncertainty preserved' : <>Native execution {fleet?.native_execution_qualified ? 'qualified' : 'not qualified'} <b>·</b> Usage {formatUnknown(fleet?.coordination.measured_tokens)}</>}</span></footer>
