@@ -3,7 +3,7 @@
 A sanitized, git-friendly export of the captains dashboard's history. It's here so external agents can study the cost index over time, Luna failures and escalations, in-progress and done work per project, agents by tier, quota burn, host load and disk, CI state, hygiene, and token yield.
 
 - **Producer:** `tools/export_history.py`, which only reads the live runtime files.
-- **Schedule:** hourly, via `tools/history_export_cron.sh` (cron on xbabe2, minute 17).
+- **Schedule:** hourly, via `tools/history_export_cron.sh` (cron on xbabe2, minute 23).
 - **Time zone:** every timestamp is **UTC** (`...Z`). Integer `ts` fields are Unix epoch seconds. Jepson's local time is America/Denver (MDT = UTC-6).
 
 ## Layout
@@ -80,7 +80,7 @@ Optional fields when present: `class`, `attempt`, `minutes`. Exact duplicate lin
 - Every run ends with a secret-pattern scan (GitHub, OpenAI, AWS, Slack and Google keys, private keys, JWTs, password/secret assignments, absolute home paths). Any hit aborts the run and nothing is committed. `gitleaks` isn't installed on xbabe2; the built-in scan plus an `rg` pass were used for the initial snapshot.
 
 ## Updates, and the data-commit exception
-- `tools/history_export_cron.sh` runs **hourly at minute 17** from cron on xbabe2, in its own clone (`~/.admiralty-history`), never in the live checkout.
+- `tools/history_export_cron.sh` runs **hourly at minute 23** from cron on xbabe2, in its own clone (`~/.admiralty-history`), never in the live checkout.
 - It commits **only files under `data/history/`**. If anything else is staged, it refuses.
 - **Exception to the PR rule:** these data-only commits are pushed **directly to `main` as jepsontaylor**, with no PR or review. All code (including the exporter itself) still goes through the normal PR flow: neverhumanbot approves the exact head, then `gh pr merge --rebase --match-head-commit`.
 - Log: `~/xbabe2_kicker/captains-dashboard/history_export.log` (not in git).
