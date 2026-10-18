@@ -40,6 +40,15 @@ path = "tests/integration/codex_round17_p05_p15.rs"
 name = "codex_round17_p27"
 path = "tests/integration/codex_round17_p27.rs"
 
+
+[[test]]
+name = "codex_round17_p20"
+path = "tests/integration/codex_round17_p20.rs"
+
+[[test]]
+name = "codex_round17_p25_p30"
+path = "tests/integration/codex_round17_p25_p30.rs"
+
 [workspace]
 members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests"]
 default-members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests"]
@@ -72,9 +81,6 @@ axum = "0.8.9"
 futures-util = "0.3"
 clap = { version = "4.5", features = ["derive"] }
 
-[[test]]
-name = "codex_round17_p20"
-path = "tests/integration/codex_round17_p20.rs"
 [workspace.lints.rust]
 unsafe_code = "forbid"
 
@@ -84,7 +90,3 @@ unwrap_used = "warn"
 [profile.release]
 lto = "thin"
 strip = true
-
-[[test]]
-name = "codex_round17_p25_p30"
-path = "tests/integration/codex_round17_p25_p30.rs"

@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! Round 18 release bundle determinism and Rust-schema output parity audit.
 
 use admiralty_core::{

@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use admiralty_core::conflicts::{CandidateChange, ConflictError, FileChange, analyze_conflicts};
 use admiralty_core::trials::{
     AnalysisReceipt, AnalysisRecommendation, ClusterAssignment, ClusterId, ClusterMember,

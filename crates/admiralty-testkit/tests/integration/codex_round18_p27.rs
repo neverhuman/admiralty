@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! Round 18 release-bundle and serialized-schema parity qualification for P27.
 
 use admiralty_core::{

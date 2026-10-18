@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! P23 heartbeat, fencing recovery, and deterministic release audit qualification.
 
 use admiralty_core::nodes::{
