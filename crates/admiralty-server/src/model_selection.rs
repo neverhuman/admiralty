@@ -1,19 +1,58 @@
 //! Own-model selection, bounded attempt escalation, strategy candidate comparison,
-//! and inference slot + budget reservation proposal wiring.
+//! inference slot + budget reservation proposal wiring, and runtime execution
+//! admission + post-run accounting composition.
 //!
 //! This module connects `admiralty_runtime::models` (own-model configuration and
 //! Ornith -> Luna fallback policy), `admiralty_runtime::strategies` (parallel
-//! variants and synthesis fallback), and `admiralty_runtime::reservations`
-//! (conservative budget reservation and settlement) to read-only `admiralty_core`
-//! task/lifecycle contracts. It performs no provider launches, network calls, or
-//! mutations to store/reducer state.
+//! variants and synthesis fallback), `admiralty_runtime::reservations`
+//! (conservative budget reservation and settlement), and `admiralty_runtime::execution`
+//! (fail-closed execution admission and post-run evidence accounting) to
+//! `admiralty_core` task/lifecycle contracts while keeping general native execution
+//! (`MANAGED_EXECUTION_QUALIFIED == false`) explicitly honest.
+//!
+//! # Native Execution Integration Bindings & Upstream Dependencies
+//!
+//! 1. **Dual / Linked Inference-Slot and Kernel-Resource Reservation Authorities**:
+//!    - [`propose_model_slot_reservation`] binds `ReservationScope.resource_claims_digest`
+//!      on the inference-slot [`Reservation`] to `content_digest(&InferenceSlotClaim)`.
+//!    - `NativeExecutor::validate_bindings` (`crates/admiralty-server/src/services/native_executor.rs`)
+//!      requires `plan.reservation.scope.resource_claims_digest` to equal
+//!      [`native_resource_claims_digest`]`(&plan.permit_claims)`.
+//!    - Passing the inference-slot [`Reservation`] directly as `NativeExecutionPlan.reservation`
+//!      fails closed. Instead, [`propose_linked_kernel_resource_reservation`],
+//!      [`CompositeResourceAndInferenceClaims`], and [`LinkedExecutionReservations`] pair the
+//!      inference-slot [`Reservation`] (`content_digest(&InferenceSlotClaim)`) with a distinct
+//!      linked kernel-resource [`Reservation`] (`native_resource_claims_digest(&ResourcePermitClaims)`)
+//!      on the same [`ReservationLedger`], and [`ModelExecutionAdmissionGate::with_linked_reservations`]
+//!      validates BOTH digests without conflating or relaxing either equality check.
+//! 2. **Opaque `PreparedWorkspace` Custody Retention Across `PendingRun` / `ClosedExecution`**:
+//!    - `NativeExecutor` consumes `PreparedWorkspace` inside `NativeExecutionPlan` at launch and
+//!      currently does not retain its opaque `PreparedWorkspace` custody token inside `PendingRun`
+//!      or `ClosedExecution` (`ClosedExecution` exposes `receipt()`, `closure()`, and `output()`
+//!      transcript bytes only).
+//!    - Downstream source-candidate publication (`publish_candidate_from_prepared_workspace`)
+//!      requires the original opaque `PreparedWorkspace` custody token and must never invent or
+//!      re-open a raw filesystem path.
+//! 3. **Transcript Digest vs. Real Source Candidate & Lifecycle Events**:
+//!    - `ClosedExecution::output()` and `RuntimeEvidence::stdout()` / `stderr()` are bounded
+//!      process transcript captures, NOT git source/tree candidate artifacts (`CandidateRef`).
+//!    - Upstream controller completion must record authoritative `TaskStarted` and
+//!      `CandidateSubmitted` lifecycle events and compose a real git source candidate verified
+//!      through [`TrustedCustodyVerifierAdapter`] / [`AttestedCandidateCustody`], never relabeling
+//!      transcript digests as changed source.
+//! 4. **Production Provider / Decision Authority Startup & `native_execution_qualified = false`**:
+//!    - Live production coding-provider and decision-authority startup wiring is not yet composed;
+//!      all admission and accounting surfaces in this module preserve
+//!      `native_execution_qualified: false` (`MANAGED_EXECUTION_QUALIFIED == false`).
 
 use crate::models::ModelsApiError;
+pub use crate::services::native_executor::native_resource_claims_digest;
 use admiralty_core::{
     AttemptId, CandidateDecisionEvidence, PrincipalId, ProjectId, RootId, SchedulingState,
     TaskContract, TaskId, TaskView, content_digest,
 };
 use admiralty_runtime::{
+    MANAGED_EXECUTION_QUALIFIED,
     models::{
         CapacitySnapshot, FailureReason, ModelRegistry, ModelSpec, Provider, RegistryError,
         RegistryFile, SelectionOutcome, SelectionRequest, UsageCost, WaitReason,
@@ -30,6 +69,14 @@ use admiralty_runtime::{
         plan_variants,
     },
 };
+pub use admiralty_runtime::{
+    execution::{
+        ExecutionAdapter, ExecutionAdmissionValidator, ExecutionError, ExecutionIdentity,
+        ExecutionOutcome, ExecutionRequest, PreparedCommand, RuntimeEvidence,
+    },
+    resource_gate::{AdmissionIdentity, ResourcePermitAuthority, ResourcePermitClaims},
+    workspace::registry::{ValidatedWorkspace, WorkspaceSpec},
+};
 use axum::{Json, http::StatusCode};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -38,6 +85,15 @@ use std::{
 };
 
 pub const MAX_ATTEMPT_HISTORY: usize = 64;
+
+/// Canonical snake_case identifier for a [`Provider`] matching `ModelSpec` serde representation.
+pub const fn provider_snake_case(provider: &Provider) -> &'static str {
+    match provider {
+        Provider::OpenaiCompatible => "openai_compatible",
+        Provider::OpencodeSsh => "opencode_ssh",
+        Provider::CodexCli => "codex_cli",
+    }
+}
 
 /// Verified digest of a `ModelSpec`'s routing and concurrency configuration.
 /// Ensures slot reservations bind the exact observed model/provider/node tuple.
@@ -386,6 +442,19 @@ pub struct ModelSlotReservationProposal {
     /// Proposals never self-authorize execution; callers must commit the reservation
     /// and pass `ExecutionAdmissionValidator` before launching a session.
     pub execution_granted: bool,
+}
+
+/// Alias for [`ModelSlotReservationProposal`] used by runtime execution admission gates.
+pub type SlotReservationProposal = ModelSlotReservationProposal;
+
+impl ModelSlotReservationProposal {
+    pub fn model_id(&self) -> &str {
+        &self.slot_claim.model_id
+    }
+
+    pub fn model_config_digest(&self) -> &str {
+        &self.slot_claim.model_config_digest
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -2147,6 +2216,790 @@ pub async fn select_and_propose_model_slot(
                 "detail": other.to_string(),
             })),
         ),
+    })
+}
+
+/// Propose usage settlement for an inference slot and budget reservation attempt.
+/// Delegates to [`settle_model_slot_attempt`], enforcing authenticated closure receipts,
+/// exact non-negative delta calculation, and single-release slot accounting.
+pub fn propose_usage_settlement<V: UsageClosureVerifier + ?Sized>(
+    ledger: &ReservationLedger,
+    capacity: &CapacitySnapshot,
+    slot_claim: &InferenceSlotClaim,
+    reservation_id: &str,
+    settlement_event_id: impl Into<String>,
+    report: &UsageReconciliationReport,
+    verifier: &V,
+) -> Result<ModelSlotSettlementProposal, ModelSelectionError> {
+    settle_model_slot_attempt(
+        ledger,
+        capacity,
+        slot_claim,
+        reservation_id,
+        settlement_event_id,
+        report,
+        verifier,
+    )
+}
+
+/// Explicit composite claim binding preserving BOTH the inference-slot capacity claim
+/// (`inference_claims_digest == content_digest(&InferenceSlotClaim)`) and the Linux
+/// user-systemd kernel resource permit claim
+/// (`kernel_resource_claims_digest == native_resource_claims_digest(&ResourcePermitClaims)`)
+/// as distinct, non-conflated SHA-256 digests.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CompositeResourceAndInferenceClaims {
+    pub inference_slot_claim: InferenceSlotClaim,
+    pub inference_claims_digest: String,
+    pub inference_reservation_id: String,
+    pub kernel_permit_id: String,
+    pub kernel_reservation_id: String,
+    pub kernel_host_incarnation: String,
+    pub kernel_resource_claims_digest: String,
+    pub composite_binding_digest: String,
+}
+
+/// Explicit dual-reservation binding pairing the inference-slot [`Reservation`]
+/// (whose `scope.resource_claims_digest == content_digest(&InferenceSlotClaim)`) with a
+/// distinct linked kernel-resource [`Reservation`] and [`ResourcePermitClaims`]
+/// (whose `scope.resource_claims_digest == native_resource_claims_digest(&ResourcePermitClaims)`),
+/// satisfying `NativeExecutor::validate_bindings` without relaxing or conflating either
+/// `resource_claims_digest` equality check.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LinkedExecutionReservations {
+    pub inference_reservation: Reservation,
+    pub kernel_reservation: Reservation,
+    pub permit_claims: ResourcePermitClaims,
+    pub composite_claims: CompositeResourceAndInferenceClaims,
+    pub kernel_reservation_event: ReservationEvent,
+    pub next_ledger: ReservationLedger,
+}
+
+impl LinkedExecutionReservations {
+    /// Validate that both the inference-slot reservation and the kernel-resource reservation
+    /// are active in `ledger` and that each reservation's `scope.resource_claims_digest`
+    /// equals its respective authoritative claim digest without conflation or relaxation.
+    pub fn validate_against_ledger(
+        &self,
+        slot_proposal: &SlotReservationProposal,
+        ledger: &ReservationLedger,
+    ) -> Result<(), String> {
+        let expected_inference_digest = content_digest(&slot_proposal.slot_claim)
+            .map_err(|e| format!("inference slot_claim digest failed: {e}"))?;
+        let expected_kernel_digest = native_resource_claims_digest(&self.permit_claims)
+            .map_err(|e| format!("kernel resource_claims_digest failed: {e}"))?;
+        let expected_composite_digest = content_digest(&(
+            "admiralty.composite_resource_and_inference_claims.v1",
+            &expected_inference_digest,
+            &self.inference_reservation.id,
+            &self.permit_claims.permit_id,
+            &self.kernel_reservation.id,
+            &self.permit_claims.host_incarnation,
+            &expected_kernel_digest,
+        ))
+        .map_err(|e| format!("composite binding digest failed: {e}"))?;
+
+        if self.inference_reservation.id == self.kernel_reservation.id
+            || expected_inference_digest == expected_kernel_digest
+            || self.composite_claims.inference_slot_claim != slot_proposal.slot_claim
+            || self.composite_claims.inference_claims_digest != expected_inference_digest
+            || self.composite_claims.inference_reservation_id != self.inference_reservation.id
+            || self.composite_claims.kernel_permit_id != self.permit_claims.permit_id
+            || self.composite_claims.kernel_reservation_id != self.kernel_reservation.id
+            || self.composite_claims.kernel_host_incarnation != self.permit_claims.host_incarnation
+            || self.composite_claims.kernel_resource_claims_digest != expected_kernel_digest
+            || self.composite_claims.composite_binding_digest != expected_composite_digest
+            || slot_proposal.resource_claims_digest != expected_inference_digest
+            || self.permit_claims.reservation_ref != self.kernel_reservation.id
+        {
+            return Err(
+                "composite inference + kernel resource claim digest or identity binding mismatch"
+                    .into(),
+            );
+        }
+
+        let ledger_inference = ledger
+            .reservations
+            .get(&self.inference_reservation.id)
+            .ok_or_else(|| {
+                format!(
+                    "linked inference reservation {} missing from active ledger",
+                    self.inference_reservation.id
+                )
+            })?;
+        let ledger_kernel = ledger
+            .reservations
+            .get(&self.kernel_reservation.id)
+            .ok_or_else(|| {
+                format!(
+                    "linked kernel reservation {} missing from active ledger",
+                    self.kernel_reservation.id
+                )
+            })?;
+
+        if ledger_inference != &self.inference_reservation
+            || ledger_inference.revision == 0
+            || ledger_inference.revision > ledger.revision
+            || ledger_inference.scope != slot_proposal.reservation_scope
+            || ledger_inference.scope.resource_claims_digest != expected_inference_digest
+            || !ledger_inference.outstanding
+            || ledger_inference.stop_requested
+            || ledger_inference.original.get() == 0
+            || ledger_inference.settled.get() >= ledger_inference.original.get()
+        {
+            return Err(
+                "linked inference reservation binding or active exposure check failed".into(),
+            );
+        }
+
+        if ledger_kernel != &self.kernel_reservation
+            || ledger_kernel.revision == 0
+            || ledger_kernel.revision > ledger.revision
+            || ledger_kernel.scope.project_id != ledger_inference.scope.project_id
+            || ledger_kernel.scope.root_id != ledger_inference.scope.root_id
+            || ledger_kernel.scope.task_id != ledger_inference.scope.task_id
+            || ledger_kernel.scope.attempt_id != ledger_inference.scope.attempt_id
+            || ledger_kernel.scope.owner != ledger_inference.scope.owner
+            || ledger_kernel.scope.contract_revision != ledger_inference.scope.contract_revision
+            || ledger_kernel.scope.contract_digest != ledger_inference.scope.contract_digest
+            || ledger_kernel.scope.authority_ref != ledger_inference.scope.authority_ref
+            || ledger_kernel.scope.incarnation != self.permit_claims.host_incarnation
+            || ledger_kernel.scope.resource_claims_digest != expected_kernel_digest
+            || self.permit_claims.identity.project_id != ledger_inference.scope.project_id
+            || self.permit_claims.identity.task_id != ledger_inference.scope.task_id
+            || self.permit_claims.identity.attempt_id != ledger_inference.scope.attempt_id
+            || !ledger_kernel.outstanding
+            || ledger_kernel.stop_requested
+            || ledger_kernel.original.get() == 0
+            || ledger_kernel.settled.get() >= ledger_kernel.original.get()
+        {
+            return Err("linked kernel reservation binding or active exposure check failed".into());
+        }
+
+        if let Some(ref expected_node) = slot_proposal.slot_claim.node_id
+            && self.permit_claims.identity.node_id.as_str() != expected_node
+        {
+            return Err(format!(
+                "kernel permit node_id ({}) does not match inference slot node_id ({expected_node})",
+                self.permit_claims.identity.node_id.as_str()
+            ));
+        }
+
+        Ok(())
+    }
+}
+
+/// Propose a linked kernel-resource [`Reservation`] paired with an existing inference-slot
+/// [`SlotReservationProposal`] on the same [`ReservationLedger`].
+///
+/// The resulting [`LinkedExecutionReservations`] preserves:
+/// - `inference_reservation.scope.resource_claims_digest == content_digest(&InferenceSlotClaim)`
+/// - `kernel_reservation.scope.resource_claims_digest == native_resource_claims_digest(&ResourcePermitClaims)`
+///   (the exact binding required by `NativeExecutor::validate_bindings` for `NativeExecutionPlan.reservation`).
+pub fn propose_linked_kernel_resource_reservation(
+    slot_proposal: &SlotReservationProposal,
+    ledger_with_inference: &ReservationLedger,
+    permit_claims: &ResourcePermitClaims,
+    kernel_reservation_event_id: impl Into<String>,
+    kernel_correlation_id: impl Into<String>,
+    kernel_budget: MinorUnits,
+) -> Result<LinkedExecutionReservations, ModelSelectionError> {
+    let inference_reservation_id = match &slot_proposal.reservation_event {
+        ReservationEvent::Reserve { reservation_id, .. } => reservation_id.clone(),
+        _ => {
+            return Err(ModelSelectionError::Invalid(
+                "slot_proposal.reservation_event must be a Reserve event".into(),
+            ));
+        }
+    };
+    if permit_claims.reservation_ref.trim().is_empty()
+        || permit_claims.permit_id.trim().is_empty()
+        || permit_claims.host_incarnation.trim().is_empty()
+    {
+        return Err(ModelSelectionError::Invalid(
+            "kernel permit_claims must carry non-empty permit_id, reservation_ref, and host_incarnation"
+                .into(),
+        ));
+    }
+    if permit_claims.reservation_ref == inference_reservation_id {
+        return Err(ModelSelectionError::Invalid(
+            "kernel reservation_ref must be distinct from inference_reservation_id".into(),
+        ));
+    }
+
+    let inference_claims_digest = content_digest(&slot_proposal.slot_claim).map_err(|e| {
+        ModelSelectionError::Invalid(format!("inference slot_claim digest failed: {e}"))
+    })?;
+    if slot_proposal.resource_claims_digest != inference_claims_digest {
+        return Err(ModelSelectionError::Reservation(
+            ReservationError::BindingMismatch,
+        ));
+    }
+    let inference_reservation = ledger_with_inference
+        .reservations
+        .get(&inference_reservation_id)
+        .ok_or_else(|| ReservationError::UnknownReservation(inference_reservation_id.clone()))?
+        .clone();
+    if inference_reservation.scope != slot_proposal.reservation_scope
+        || inference_reservation.scope.resource_claims_digest != inference_claims_digest
+        || !inference_reservation.outstanding
+        || inference_reservation.stop_requested
+    {
+        return Err(ModelSelectionError::Reservation(
+            ReservationError::BindingMismatch,
+        ));
+    }
+
+    if permit_claims.identity.project_id != slot_proposal.slot_claim.project_id
+        || permit_claims.identity.task_id != slot_proposal.slot_claim.task_id
+        || permit_claims.identity.attempt_id != slot_proposal.slot_claim.attempt_id
+    {
+        return Err(ModelSelectionError::Reservation(
+            ReservationError::BindingMismatch,
+        ));
+    }
+    if let Some(ref expected_node) = slot_proposal.slot_claim.node_id
+        && permit_claims.identity.node_id.as_str() != expected_node
+    {
+        return Err(ModelSelectionError::Reservation(
+            ReservationError::BindingMismatch,
+        ));
+    }
+
+    let kernel_resource_claims_digest =
+        native_resource_claims_digest(permit_claims).map_err(|e| {
+            ModelSelectionError::Invalid(format!("kernel resource_claims_digest failed: {e}"))
+        })?;
+    let kernel_scope = ReservationScope {
+        project_id: inference_reservation.scope.project_id.clone(),
+        root_id: inference_reservation.scope.root_id.clone(),
+        task_id: inference_reservation.scope.task_id.clone(),
+        attempt_id: inference_reservation.scope.attempt_id.clone(),
+        owner: inference_reservation.scope.owner.clone(),
+        incarnation: permit_claims.host_incarnation.clone(),
+        contract_revision: inference_reservation.scope.contract_revision,
+        contract_digest: inference_reservation.scope.contract_digest.clone(),
+        authority_ref: inference_reservation.scope.authority_ref.clone(),
+        resource_claims_digest: kernel_resource_claims_digest.clone(),
+        account_id: inference_reservation.scope.account_id.clone(),
+        unit: inference_reservation.scope.unit.clone(),
+    };
+    let kernel_reservation_event = ReservationEvent::Reserve {
+        event_id: kernel_reservation_event_id.into(),
+        reservation_id: permit_claims.reservation_ref.clone(),
+        scope: kernel_scope,
+        correlation_id: kernel_correlation_id.into(),
+        amount: kernel_budget,
+    };
+    let next_ledger = reduce_reservation(ledger_with_inference, kernel_reservation_event.clone())?;
+    let kernel_reservation = next_ledger
+        .reservations
+        .get(&permit_claims.reservation_ref)
+        .ok_or_else(|| ReservationError::UnknownReservation(permit_claims.reservation_ref.clone()))?
+        .clone();
+    let composite_binding_digest = content_digest(&(
+        "admiralty.composite_resource_and_inference_claims.v1",
+        &inference_claims_digest,
+        &inference_reservation.id,
+        &permit_claims.permit_id,
+        &kernel_reservation.id,
+        &permit_claims.host_incarnation,
+        &kernel_resource_claims_digest,
+    ))
+    .map_err(|e| ModelSelectionError::Invalid(format!("composite binding digest failed: {e}")))?;
+
+    let composite_claims = CompositeResourceAndInferenceClaims {
+        inference_slot_claim: slot_proposal.slot_claim.clone(),
+        inference_claims_digest,
+        inference_reservation_id: inference_reservation.id.clone(),
+        kernel_permit_id: permit_claims.permit_id.clone(),
+        kernel_reservation_id: kernel_reservation.id.clone(),
+        kernel_host_incarnation: permit_claims.host_incarnation.clone(),
+        kernel_resource_claims_digest,
+        composite_binding_digest,
+    };
+
+    let linked = LinkedExecutionReservations {
+        inference_reservation,
+        kernel_reservation,
+        permit_claims: permit_claims.clone(),
+        composite_claims,
+        kernel_reservation_event,
+        next_ledger,
+    };
+    linked
+        .validate_against_ledger(slot_proposal, &linked.next_ledger)
+        .map_err(ModelSelectionError::Invalid)?;
+    Ok(linked)
+}
+
+/// Fail-closed runtime execution admission validator binding [`ModelRegistry`],
+/// [`ObservedModelSlotState`], [`SlotReservationProposal`], [`ReservationLedger`],
+/// and optional [`LinkedExecutionReservations`] to [`admiralty_runtime::execution::ExecutionAdapter`].
+#[derive(Clone, Debug)]
+pub struct ModelExecutionAdmissionGate {
+    pub registry: ModelRegistry,
+    pub observed_slots: ObservedModelSlotState,
+    pub slot_proposal: SlotReservationProposal,
+    pub ledger: ReservationLedger,
+    pub current_tick: u64,
+    pub expected_resource_permit_ref: Option<String>,
+    pub linked_reservations: Option<LinkedExecutionReservations>,
+}
+
+impl ModelExecutionAdmissionGate {
+    pub fn new(
+        registry: ModelRegistry,
+        observed_slots: ObservedModelSlotState,
+        slot_proposal: SlotReservationProposal,
+        ledger: ReservationLedger,
+        current_tick: u64,
+    ) -> Self {
+        Self {
+            registry,
+            observed_slots,
+            slot_proposal,
+            ledger,
+            current_tick,
+            expected_resource_permit_ref: None,
+            linked_reservations: None,
+        }
+    }
+
+    pub fn with_expected_resource_permit_ref(mut self, permit_ref: impl Into<String>) -> Self {
+        self.expected_resource_permit_ref = Some(permit_ref.into());
+        self
+    }
+
+    /// Configure an explicit [`LinkedExecutionReservations`] dual-authority binding so
+    /// `validate_current` verifies BOTH the inference-slot reservation
+    /// (`content_digest(&InferenceSlotClaim)`) and the kernel-resource reservation
+    /// (`native_resource_claims_digest(&ResourcePermitClaims)`) in `self.ledger`.
+    pub fn with_linked_reservations(mut self, linked: LinkedExecutionReservations) -> Self {
+        self.expected_resource_permit_ref = Some(linked.permit_claims.permit_id.clone());
+        self.linked_reservations = Some(linked);
+        self
+    }
+
+    fn validate_registry_and_slot_capacity(
+        &self,
+        request: &ExecutionRequest<'_>,
+    ) -> Result<(), String> {
+        self.registry
+            .validate()
+            .map_err(|e| format!("invalid model registry: {e}"))?;
+        if self.slot_proposal.slot_claim.registry_revision != self.registry.revision {
+            return Err(format!(
+                "slot proposal registry_revision ({}) does not match current registry ({})",
+                self.slot_proposal.slot_claim.registry_revision, self.registry.revision
+            ));
+        }
+        let verified_capacity = self
+            .observed_slots
+            .to_verified_capacity(&self.registry, self.current_tick)
+            .map_err(|e| e.to_string())?;
+        let spec = self
+            .registry
+            .models
+            .iter()
+            .find(|m| m.id == self.slot_proposal.selected_model_id)
+            .ok_or_else(|| {
+                format!(
+                    "model {} not found in current registry",
+                    self.slot_proposal.selected_model_id
+                )
+            })?;
+        if !spec.enabled {
+            return Err(format!("model {} is disabled in current registry", spec.id));
+        }
+        let spec_digest = model_config_digest(spec).map_err(|e| e.to_string())?;
+        if spec_digest != self.slot_proposal.model_config_digest() {
+            return Err(format!(
+                "model config digest drift for {}: expected {}, got {}",
+                spec.id,
+                self.slot_proposal.model_config_digest(),
+                spec_digest
+            ));
+        }
+        let expected_provider = provider_snake_case(&spec.provider);
+        let identity = request.command.identity();
+        if identity.provider != expected_provider || spec.provider != self.slot_proposal.provider {
+            return Err(format!(
+                "provider mismatch: command={}, proposal={:?}, spec={expected_provider}",
+                identity.provider, self.slot_proposal.provider
+            ));
+        }
+        if identity.model != spec.id
+            || identity.model != self.slot_proposal.selected_model_id
+            || identity.model != self.slot_proposal.slot_claim.model_id
+        {
+            return Err(format!(
+                "model identity mismatch: command={}, spec={}, slot_claim={}",
+                identity.model, spec.id, self.slot_proposal.slot_claim.model_id
+            ));
+        }
+        let Some(in_use_before) = verified_capacity.in_use.get(&spec.id).copied() else {
+            return Err(format!("model {} has no verified slot capacity", spec.id));
+        };
+        let slots_reserved = self.slot_proposal.slot_claim.slots_reserved;
+        if slots_reserved == 0
+            || in_use_before >= spec.max_concurrency
+            || in_use_before.saturating_add(slots_reserved) > spec.max_concurrency
+        {
+            return Err(format!(
+                "insufficient slot capacity for {}: in_use={in_use_before}, max={}",
+                spec.id, spec.max_concurrency
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl ExecutionAdmissionValidator for ModelExecutionAdmissionGate {
+    fn validate_current(&self, request: &ExecutionRequest<'_>) -> Result<(), String> {
+        self.validate_registry_and_slot_capacity(request)?;
+
+        let identity = request.command.identity();
+        let claim = &self.slot_proposal.slot_claim;
+        let expected_claims_digest =
+            content_digest(claim).map_err(|e| format!("slot_claim digest failed: {e}"))?;
+        if claim.project_id != identity.project_id
+            || claim.root_id != identity.root_id
+            || claim.task_id != identity.task_id
+            || claim.attempt_id != identity.attempt_id
+            || claim.contract_digest != identity.contract_digest
+            || self.slot_proposal.resource_claims_digest != expected_claims_digest
+        {
+            return Err("slot proposal identity or claims digest mismatch".into());
+        }
+        if let Some(ref expected_node) = claim.node_id
+            && request.workspace.node_id.as_str() != expected_node
+        {
+            return Err(format!(
+                "workspace node_id ({}) does not match model node_id ({expected_node})",
+                request.workspace.node_id.as_str()
+            ));
+        }
+        if request.workspace.project_id != identity.project_id
+            || request.workspace.root_id != identity.root_id
+            || request.workspace.workspace != identity.workspace
+            || request.command.launch_spec().cwd != request.workspace.workspace
+        {
+            return Err("workspace identity or canonical path mismatch".into());
+        }
+        if identity.resource_permit_ref.trim().is_empty() {
+            return Err("resource_permit_ref must not be empty".into());
+        }
+        if let Some(ref expected_permit) = self.expected_resource_permit_ref
+            && &identity.resource_permit_ref != expected_permit
+        {
+            return Err("resource_permit_ref does not match expected permit".into());
+        }
+
+        if let Some(ref linked) = self.linked_reservations {
+            linked.validate_against_ledger(&self.slot_proposal, &self.ledger)?;
+            if identity.resource_permit_ref != linked.permit_claims.permit_id
+                || request.workspace.node_id.as_str()
+                    != linked.permit_claims.identity.node_id.as_str()
+            {
+                return Err("execution request permit_ref or workspace node_id does not match linked kernel permit_claims".into());
+            }
+            if request.reservation != &linked.kernel_reservation
+                && request.reservation != &linked.inference_reservation
+            {
+                return Err(
+                    "execution request reservation does not match linked kernel or inference reservation"
+                        .into(),
+                );
+            }
+            return Ok(());
+        }
+
+        let ledger_res = self
+            .ledger
+            .reservations
+            .get(&request.reservation.id)
+            .ok_or_else(|| {
+                format!(
+                    "reservation {} missing from active ledger",
+                    request.reservation.id
+                )
+            })?;
+        if ledger_res != request.reservation
+            || ledger_res.revision == 0
+            || ledger_res.revision > self.ledger.revision
+            || ledger_res.scope != self.slot_proposal.reservation_scope
+            || ledger_res.scope.resource_claims_digest != expected_claims_digest
+            || !ledger_res.outstanding
+            || ledger_res.stop_requested
+            || ledger_res.original.get() == 0
+            || ledger_res.settled.get() >= ledger_res.original.get()
+        {
+            return Err("reservation ledger binding or active exposure check failed".into());
+        }
+        Ok(())
+    }
+}
+
+/// Observed post-run usage classification supplied to [`settle_runtime_execution_evidence`].
+/// `Unknown` and `Unpriced` observations never fabricate zero-cost (`MinorUnits(0)`) settlement.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum ObservedPostRunUsage {
+    Measured {
+        cumulative_amount: MinorUnits,
+        disposition: UsageDisposition,
+        usage_complete: Option<bool>,
+        effects_reconciled: Option<bool>,
+        resource_claims_reconciled: Option<bool>,
+        evidence_ref: String,
+    },
+    Unknown {
+        reason: String,
+        evidence_ref: String,
+    },
+    Unpriced {
+        reason: String,
+        evidence_ref: String,
+    },
+}
+
+/// Result of post-run runtime execution accounting via [`settle_runtime_execution_evidence`].
+#[derive(Clone, Debug)]
+pub struct RuntimeExecutionAccountingResult {
+    pub run_id: String,
+    pub reservation_id: String,
+    pub attempt_id: AttemptId,
+    pub model_id: String,
+    pub provider: String,
+    pub outcome: ExecutionOutcome,
+    pub settlement_proposal: ModelSlotSettlementProposal,
+    pub committed_ledger: ReservationLedger,
+    pub committed_capacity: CapacitySnapshot,
+    pub native_execution_qualified: bool,
+}
+
+fn validate_runtime_evidence_binding(
+    identity: &ExecutionIdentity,
+    slot_proposal: &SlotReservationProposal,
+    existing: &Reservation,
+) -> Result<(), ModelSelectionError> {
+    let claim = &slot_proposal.slot_claim;
+    let expected_provider = provider_snake_case(&slot_proposal.provider);
+    if identity.project_id != existing.scope.project_id
+        || identity.project_id != claim.project_id
+        || identity.root_id != existing.scope.root_id
+        || identity.root_id != claim.root_id
+        || identity.task_id != existing.scope.task_id
+        || identity.task_id != claim.task_id
+        || identity.attempt_id != existing.scope.attempt_id
+        || identity.attempt_id != claim.attempt_id
+        || identity.contract_digest != existing.scope.contract_digest
+        || identity.contract_digest != claim.contract_digest
+        || identity.model != slot_proposal.selected_model_id
+        || identity.model != claim.model_id
+        || identity.provider != expected_provider
+        || identity.run_id.trim().is_empty()
+        || identity.resource_permit_ref.trim().is_empty()
+        || existing.scope != slot_proposal.reservation_scope
+    {
+        return Err(ModelSelectionError::Reservation(
+            ReservationError::BindingMismatch,
+        ));
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_post_run_report_and_verifier(
+    outcome: &ExecutionOutcome,
+    slot_proposal: &SlotReservationProposal,
+    existing: &Reservation,
+    reservation_id: &str,
+    event_id: &str,
+    expected_revision: u64,
+    prior_settled_amount: MinorUnits,
+    observed_usage: &ObservedPostRunUsage,
+) -> Result<(UsageReconciliationReport, AuthenticatedUsageVerifier), ModelSelectionError> {
+    let scope_digest = content_digest(&existing.scope)
+        .map_err(|e| ModelSelectionError::Invalid(format!("scope digest failed: {e}")))?;
+    let resource_claims_digest = content_digest(&slot_proposal.slot_claim)
+        .map_err(|e| ModelSelectionError::Invalid(format!("slot_claim digest failed: {e}")))?;
+
+    let (
+        measured_amount,
+        disposition,
+        usage_complete,
+        effects_reconciled,
+        resource_claims_reconciled,
+        evidence_ref,
+    ) = match (outcome, observed_usage) {
+        (
+            ExecutionOutcome::Unknown { .. },
+            ObservedPostRunUsage::Measured {
+                disposition: UsageDisposition::ConfirmedNoUsage,
+                ..
+            },
+        ) => {
+            return Err(ModelSelectionError::Reservation(
+                ReservationError::InvalidSettlement,
+            ));
+        }
+        (
+            ExecutionOutcome::Unknown { .. },
+            ObservedPostRunUsage::Measured {
+                cumulative_amount,
+                evidence_ref,
+                ..
+            },
+        ) => {
+            if cumulative_amount.get() == 0 {
+                (
+                    None,
+                    UsageDisposition::IncompleteOrUnknown,
+                    Some(false),
+                    Some(false),
+                    Some(false),
+                    evidence_ref.clone(),
+                )
+            } else {
+                (
+                    Some(cumulative_amount.clone()),
+                    UsageDisposition::IncompleteOrUnknown,
+                    Some(false),
+                    Some(false),
+                    Some(false),
+                    evidence_ref.clone(),
+                )
+            }
+        }
+        (
+            _,
+            ObservedPostRunUsage::Unknown { evidence_ref, .. }
+            | ObservedPostRunUsage::Unpriced { evidence_ref, .. },
+        ) => (
+            None,
+            UsageDisposition::IncompleteOrUnknown,
+            Some(false),
+            Some(false),
+            Some(false),
+            evidence_ref.clone(),
+        ),
+        (
+            ExecutionOutcome::CandidateSuccess { .. } | ExecutionOutcome::Failed { .. },
+            ObservedPostRunUsage::Measured {
+                cumulative_amount,
+                disposition,
+                usage_complete,
+                effects_reconciled,
+                resource_claims_reconciled,
+                evidence_ref,
+            },
+        ) => (
+            Some(cumulative_amount.clone()),
+            *disposition,
+            *usage_complete,
+            *effects_reconciled,
+            *resource_claims_reconciled,
+            evidence_ref.clone(),
+        ),
+    };
+
+    let report = UsageReconciliationReport {
+        reservation_id: reservation_id.to_owned(),
+        attempt_id: slot_proposal.slot_claim.attempt_id.clone(),
+        model_id: slot_proposal.slot_claim.model_id.clone(),
+        measured_amount: measured_amount.clone(),
+        disposition,
+        usage_complete,
+        effects_reconciled,
+        resource_claims_reconciled,
+        scope_digest: scope_digest.clone(),
+        resource_claims_digest: resource_claims_digest.clone(),
+        evidence_ref: evidence_ref.clone(),
+    };
+    let verifier = AuthenticatedUsageVerifier::new().with_receipt(AuthenticatedClosureReceipt {
+        settlement_event_id: event_id.to_owned(),
+        reservation_id: reservation_id.to_owned(),
+        attempt_id: slot_proposal.slot_claim.attempt_id.clone(),
+        model_id: slot_proposal.slot_claim.model_id.clone(),
+        expected_revision,
+        prior_settled_amount,
+        measured_amount,
+        disposition,
+        usage_complete,
+        effects_reconciled,
+        resource_claims_reconciled,
+        scope_digest,
+        resource_claims_digest,
+        evidence_ref,
+    });
+    Ok((report, verifier))
+}
+
+/// Settle completed [`RuntimeEvidence`] from [`ExecutionAdapter::finish`] against the
+/// admitted [`SlotReservationProposal`], [`ReservationLedger`], and [`CapacitySnapshot`].
+///
+/// - Verifies `ExecutionIdentity` against the reservation scope and slot proposal.
+/// - Ensures `ExecutionOutcome::Unknown` or `ObservedPostRunUsage::{Unknown, Unpriced}`
+///   never fabricates zero-cost (`MinorUnits(0)`) terminal settlement.
+/// - Applies `propose_usage_settlement` and `reduce_reservation` to commit the post-run
+///   budget accounting transition while keeping `native_execution_qualified: false` honest.
+#[allow(clippy::too_many_arguments)]
+pub fn settle_runtime_execution_evidence(
+    evidence: &RuntimeEvidence,
+    slot_proposal: &SlotReservationProposal,
+    ledger: &ReservationLedger,
+    capacity: &CapacitySnapshot,
+    reservation_id: &str,
+    settlement_event_id: impl Into<String>,
+    expected_revision: u64,
+    prior_settled_amount: MinorUnits,
+    observed_usage: &ObservedPostRunUsage,
+) -> Result<RuntimeExecutionAccountingResult, ModelSelectionError> {
+    let existing = ledger
+        .reservations
+        .get(reservation_id)
+        .ok_or_else(|| ReservationError::UnknownReservation(reservation_id.to_owned()))?;
+    validate_runtime_evidence_binding(evidence.identity(), slot_proposal, existing)?;
+
+    let event_id = settlement_event_id.into();
+    let (report, verifier) = build_post_run_report_and_verifier(
+        evidence.outcome(),
+        slot_proposal,
+        existing,
+        reservation_id,
+        &event_id,
+        expected_revision,
+        prior_settled_amount,
+        observed_usage,
+    )?;
+    let settlement_proposal = propose_usage_settlement(
+        ledger,
+        capacity,
+        &slot_proposal.slot_claim,
+        reservation_id,
+        event_id,
+        &report,
+        &verifier,
+    )?;
+    let committed_ledger = match &settlement_proposal.settlement_event {
+        Some(event) => reduce_reservation(ledger, event.clone())?,
+        None => ledger.clone(),
+    };
+    debug_assert_eq!(committed_ledger, settlement_proposal.proposed_ledger);
+
+    Ok(RuntimeExecutionAccountingResult {
+        run_id: evidence.identity().run_id.clone(),
+        reservation_id: existing.id.clone(),
+        attempt_id: evidence.identity().attempt_id.clone(),
+        model_id: evidence.identity().model.clone(),
+        provider: evidence.identity().provider.clone(),
+        outcome: evidence.outcome().clone(),
+        committed_capacity: settlement_proposal.proposed_capacity.clone(),
+        committed_ledger,
+        settlement_proposal,
+        native_execution_qualified: MANAGED_EXECUTION_QUALIFIED,
     })
 }
 
@@ -4124,5 +4977,585 @@ mod tests {
             }
             other => panic!("expected Ready from async handler, got {other:?}"),
         }
+    }
+
+    #[test]
+    #[ignore]
+    fn model_admission_fake_child() {
+        let marker = std::env::args()
+            .skip(1)
+            .find(|arg| arg.starts_with("MODEL_ADMISSION_MARKER="));
+        if let Some(marker) = marker {
+            let _ = std::fs::write(
+                marker.trim_start_matches("MODEL_ADMISSION_MARKER="),
+                b"admitted\n",
+            );
+        }
+        println!("admitted model execution output");
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn build_prepared_command_for_proposal(
+        proposal: &SlotReservationProposal,
+        workspace: &std::path::Path,
+        spool_dir: &std::path::Path,
+        marker: &std::path::Path,
+        run_id: &str,
+        provider: &str,
+        model: &str,
+        permit_ref: &str,
+    ) -> PreparedCommand {
+        use admiralty_core::SourceIdentity;
+        use admiralty_runtime::session::LaunchSpec;
+
+        let identity = ExecutionIdentity {
+            project_id: proposal.slot_claim.project_id.clone(),
+            root_id: proposal.slot_claim.root_id.clone(),
+            task_id: proposal.slot_claim.task_id.clone(),
+            attempt_id: proposal.slot_claim.attempt_id.clone(),
+            contract_digest: proposal.slot_claim.contract_digest.clone(),
+            context_digest: sha256_tag('1'),
+            candidate_digest: sha256_tag('2'),
+            verification_policy_digest: sha256_tag('3'),
+            evidence_source: SourceIdentity {
+                producer_id: "model-admission-test".into(),
+                incarnation: "inc-1".into(),
+                sequence: "1".into(),
+            },
+            workspace: workspace.to_path_buf(),
+            provider: provider.into(),
+            model: model.into(),
+            run_id: run_id.into(),
+            resource_permit_ref: permit_ref.into(),
+        };
+        let spec = LaunchSpec {
+            run_id: run_id.into(),
+            program: std::env::current_exe().expect("test binary"),
+            args: vec![
+                "--exact".into(),
+                "model_selection::tests::model_admission_fake_child".into(),
+                "--ignored".into(),
+                "--nocapture".into(),
+                "--".into(),
+                format!("MODEL_ADMISSION_MARKER={}", marker.display()),
+            ],
+            cwd: workspace.to_path_buf(),
+            spool_dir: spool_dir.to_path_buf(),
+        };
+        PreparedCommand::new(identity, spec, vec![]).expect("valid prepared command")
+    }
+
+    fn sample_permit_claims_for_proposal(
+        proposal: &SlotReservationProposal,
+        permit_id: &str,
+        kernel_reservation_id: &str,
+    ) -> ResourcePermitClaims {
+        use admiralty_core::nodes::NodeId;
+
+        let node_id = proposal
+            .slot_claim
+            .node_id
+            .clone()
+            .unwrap_or_else(|| "node-ornith-1".into());
+        ResourcePermitClaims {
+            issuer_ref: "authority-kernel-1".into(),
+            permit_id: permit_id.into(),
+            reservation_ref: kernel_reservation_id.into(),
+            identity: AdmissionIdentity {
+                project_id: proposal.slot_claim.project_id.clone(),
+                task_id: proposal.slot_claim.task_id.clone(),
+                attempt_id: proposal.slot_claim.attempt_id.clone(),
+                node_id: NodeId::new(node_id).expect("valid node_id"),
+                lease_id: "lease-ornith-1".into(),
+            },
+            host_incarnation: "host-incarnation-1".into(),
+            expires_at_unix_ms: 2_000_000_000_000,
+            lease_expires_at_unix_ms: 2_000_000_000_000,
+            registered_cpu_scope: [0u32, 1u32].into_iter().collect(),
+            cpu_set: [0u32].into_iter().collect(),
+            memory_max_bytes: 512 * 1024 * 1024,
+            max_tasks: 16,
+            max_concurrency: 2,
+            launch_spec_digest: sha256_tag('a'),
+            worker_environment_digest: sha256_tag('b'),
+            backend_config_digest: sha256_tag('c'),
+        }
+    }
+
+    struct PrivateTestWorkspace(std::path::PathBuf);
+    impl Drop for PrivateTestWorkspace {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn private_temp_workspace() -> (PrivateTestWorkspace, std::path::PathBuf) {
+        use std::os::unix::fs::DirBuilderExt;
+        let dir = std::env::temp_dir().join(format!(
+            "admiralty-model-admission-test-{}",
+            uuid::Uuid::new_v4()
+        ));
+        std::fs::DirBuilder::new()
+            .mode(0o700)
+            .create(&dir)
+            .expect("private test workspace");
+        let canonical = std::fs::canonicalize(&dir).expect("canonical workspace");
+        (PrivateTestWorkspace(dir), canonical)
+    }
+
+    #[test]
+    fn runtime_execution_admission_gate_launches_and_settles_measured_and_unknown_post_run_evidence()
+     {
+        use admiralty_runtime::workspace::registry::NodeRef;
+
+        let registry = ornith_luna_registry();
+        let task = ready_task(3);
+        let observed = observed_slots(&registry, Some(1), Some(0));
+        let ledger0 = funded_ledger(1_000);
+        let proposal = match propose_model_slot_reservation(
+            &registry,
+            &task,
+            &TaskModelAttemptHistory::default(),
+            &base_policy(1, true),
+            &observed,
+            &ledger0,
+            105,
+        )
+        .expect("slot reservation proposal")
+        {
+            ModelSlotDecision::Ready { proposal } => *proposal,
+            other => panic!("expected Ready, got {other:?}"),
+        };
+
+        let permit_claims =
+            sample_permit_claims_for_proposal(&proposal, "permit-cpu-104", "res-kernel-1");
+        let linked = propose_linked_kernel_resource_reservation(
+            &proposal,
+            &proposal.next_ledger,
+            &permit_claims,
+            "evt-reserve-kernel-1",
+            "corr-kernel-1",
+            MinorUnits::new(1),
+        )
+        .expect("linked kernel resource reservation succeeds");
+
+        let expected_inference_digest =
+            content_digest(&proposal.slot_claim).expect("inference digest");
+        let expected_kernel_digest =
+            native_resource_claims_digest(&permit_claims).expect("kernel digest");
+        assert_ne!(expected_inference_digest, expected_kernel_digest);
+        assert_eq!(
+            linked.inference_reservation.scope.resource_claims_digest,
+            expected_inference_digest
+        );
+        assert_eq!(
+            linked.kernel_reservation.scope.resource_claims_digest,
+            expected_kernel_digest
+        );
+
+        let (_cleanup, workspace) = private_temp_workspace();
+        std::fs::create_dir_all(workspace.join("crates/admiralty-server/src")).expect("owned dir");
+        let node_id = proposal
+            .slot_claim
+            .node_id
+            .clone()
+            .unwrap_or_else(|| "node-ornith-1".into());
+        let workspace_spec = WorkspaceSpec {
+            node_id: NodeRef::new(node_id).expect("node_id"),
+            root_id: proposal.slot_claim.root_id.clone(),
+            project_id: proposal.slot_claim.project_id.clone(),
+            workspace: workspace.clone(),
+            owned_paths: vec![std::path::PathBuf::from("crates/admiralty-server/src")],
+            forbidden_paths: vec![],
+        };
+        let marker = workspace.join("admitted-marker");
+        let spool = workspace.join("spool-run-1");
+        let provider_str = provider_snake_case(&proposal.provider);
+        let command = build_prepared_command_for_proposal(
+            &proposal,
+            &workspace,
+            &spool,
+            &marker,
+            "run-admitted-1",
+            provider_str,
+            &proposal.selected_model_id,
+            "permit-cpu-104",
+        );
+        let inference_reservation = linked.inference_reservation.clone();
+        let kernel_reservation = linked.kernel_reservation.clone();
+        let gate = ModelExecutionAdmissionGate::new(
+            registry.clone(),
+            observed.clone(),
+            proposal.clone(),
+            linked.next_ledger.clone(),
+            105,
+        )
+        .with_linked_reservations(linked.clone());
+        let adapter = ExecutionAdapter::new(gate.clone(), 65_536);
+        adapter
+            .launch(&command, &workspace_spec, &kernel_reservation)
+            .expect(
+                "admitted execution launch succeeds with linked kernel + inference reservations",
+            );
+        let evidence = adapter
+            .finish("run-admitted-1")
+            .expect("finish admitted run");
+        assert!(matches!(
+            evidence.outcome(),
+            ExecutionOutcome::CandidateSuccess { .. }
+        ));
+        assert_eq!(
+            std::fs::read(&marker).ok().as_deref(),
+            Some(b"admitted\n".as_slice())
+        );
+
+        // Unknown / unpriced post-run usage NEVER fabricates zero-cost MinorUnits(0) settlement.
+        for unpriced in [
+            ObservedPostRunUsage::Unknown {
+                reason: "telemetry delayed".into(),
+                evidence_ref: "receipt:unknown-1".into(),
+            },
+            ObservedPostRunUsage::Unpriced {
+                reason: "missing rate card".into(),
+                evidence_ref: "receipt:unpriced-1".into(),
+            },
+        ] {
+            let held = settle_runtime_execution_evidence(
+                &evidence,
+                &proposal,
+                &linked.next_ledger,
+                &proposal.updated_capacity,
+                "res-1",
+                "evt-postrun-held",
+                inference_reservation.revision,
+                MinorUnits::new(0),
+                &unpriced,
+            )
+            .expect("unknown/unpriced usage stays held");
+            assert!(!held.settlement_proposal.slot_released);
+            assert!(held.committed_ledger.reservations["res-1"].outstanding);
+            assert_eq!(
+                held.committed_ledger.reservations["res-1"].settled,
+                MinorUnits::new(0)
+            );
+            assert_eq!(held.committed_capacity.in_use["ornith"], 2);
+            assert!(!held.native_execution_qualified);
+        }
+
+        // Measured post-run usage commits the accounting transition and releases the reserved slot.
+        let measured = ObservedPostRunUsage::Measured {
+            cumulative_amount: MinorUnits::new(7),
+            disposition: UsageDisposition::SettledAndTerminated,
+            usage_complete: Some(true),
+            effects_reconciled: Some(true),
+            resource_claims_reconciled: Some(true),
+            evidence_ref: "receipt:measured-7".into(),
+        };
+        let settled = settle_runtime_execution_evidence(
+            &evidence,
+            &proposal,
+            &linked.next_ledger,
+            &proposal.updated_capacity,
+            "res-1",
+            "evt-postrun-settle-1",
+            inference_reservation.revision,
+            MinorUnits::new(0),
+            &measured,
+        )
+        .expect("measured post-run settlement succeeds");
+        assert!(settled.settlement_proposal.slot_released);
+        assert!(!settled.committed_ledger.reservations["res-1"].outstanding);
+        assert_eq!(
+            settled.committed_ledger.reservations["res-1"].settled,
+            MinorUnits::new(7)
+        );
+        assert_eq!(settled.committed_capacity.in_use["ornith"], 1);
+        assert!(!settled.native_execution_qualified);
+
+        // ExecutionOutcome::Unknown (capture bound exceeded) never fabricates zero-cost settlement.
+        let spool_overflow = workspace.join("spool-run-overflow");
+        let cmd_overflow = build_prepared_command_for_proposal(
+            &proposal,
+            &workspace,
+            &spool_overflow,
+            &marker,
+            "run-overflow-1",
+            provider_str,
+            &proposal.selected_model_id,
+            "permit-cpu-104",
+        );
+        let tiny_adapter = ExecutionAdapter::new(gate, 2);
+        tiny_adapter
+            .launch(&cmd_overflow, &workspace_spec, &kernel_reservation)
+            .expect("launch overflow run");
+        let unknown_evidence = tiny_adapter
+            .finish("run-overflow-1")
+            .expect("finish overflow run");
+        assert!(matches!(
+            unknown_evidence.outcome(),
+            ExecutionOutcome::Unknown { .. }
+        ));
+        let zero_claim = ObservedPostRunUsage::Measured {
+            cumulative_amount: MinorUnits::new(0),
+            disposition: UsageDisposition::ConfirmedNoUsage,
+            usage_complete: Some(true),
+            effects_reconciled: Some(true),
+            resource_claims_reconciled: Some(true),
+            evidence_ref: "receipt:false-no-usage".into(),
+        };
+        assert!(
+            settle_runtime_execution_evidence(
+                &unknown_evidence,
+                &proposal,
+                &linked.next_ledger,
+                &proposal.updated_capacity,
+                "res-1",
+                "evt-postrun-unknown-zero",
+                inference_reservation.revision,
+                MinorUnits::new(0),
+                &zero_claim,
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn runtime_execution_admission_gate_rejects_drifted_registry_stale_tick_disabled_model_mismatch_and_stopped_reservation()
+     {
+        use admiralty_runtime::workspace::registry::NodeRef;
+
+        let registry = ornith_luna_registry();
+        let task = ready_task(3);
+        let observed = observed_slots(&registry, Some(1), Some(0));
+        let ledger0 = funded_ledger(1_000);
+        let proposal = match propose_model_slot_reservation(
+            &registry,
+            &task,
+            &TaskModelAttemptHistory::default(),
+            &base_policy(1, true),
+            &observed,
+            &ledger0,
+            105,
+        )
+        .expect("slot reservation proposal")
+        {
+            ModelSlotDecision::Ready { proposal } => *proposal,
+            other => panic!("expected Ready, got {other:?}"),
+        };
+
+        let permit_claims =
+            sample_permit_claims_for_proposal(&proposal, "permit-cpu-104", "res-kernel-1");
+        let linked = propose_linked_kernel_resource_reservation(
+            &proposal,
+            &proposal.next_ledger,
+            &permit_claims,
+            "evt-reserve-kernel-1",
+            "corr-kernel-1",
+            MinorUnits::new(1),
+        )
+        .expect("linked kernel resource reservation");
+
+        let (_cleanup, workspace) = private_temp_workspace();
+        std::fs::create_dir_all(workspace.join("crates/admiralty-server/src")).expect("owned dir");
+        let node_id = proposal
+            .slot_claim
+            .node_id
+            .clone()
+            .unwrap_or_else(|| "node-ornith-1".into());
+        let workspace_spec = WorkspaceSpec {
+            node_id: NodeRef::new(node_id).expect("node_id"),
+            root_id: proposal.slot_claim.root_id.clone(),
+            project_id: proposal.slot_claim.project_id.clone(),
+            workspace: workspace.clone(),
+            owned_paths: vec![std::path::PathBuf::from("crates/admiralty-server/src")],
+            forbidden_paths: vec![],
+        };
+        let marker = workspace.join("denied-marker");
+        let spool = workspace.join("spool-denied");
+        let provider_str = provider_snake_case(&proposal.provider);
+        let command = build_prepared_command_for_proposal(
+            &proposal,
+            &workspace,
+            &spool,
+            &marker,
+            "run-denied-1",
+            provider_str,
+            &proposal.selected_model_id,
+            "permit-cpu-104",
+        );
+        let reservation = proposal.next_ledger.reservations["res-1"].clone();
+
+        // 1. Drifted registry_revision rejected.
+        let mut drifted_reg = registry.clone();
+        drifted_reg.revision = "2".into();
+        let gate_drift = ModelExecutionAdmissionGate::new(
+            drifted_reg,
+            observed.clone(),
+            proposal.clone(),
+            proposal.next_ledger.clone(),
+            105,
+        );
+        assert!(matches!(
+            ExecutionAdapter::new(gate_drift, 65_536).launch(
+                &command,
+                &workspace_spec,
+                &reservation
+            ),
+            Err(ExecutionError::Denied(_))
+        ));
+
+        // 2. Expired slot observation window (current_tick > valid_through_tick) rejected.
+        let gate_stale = ModelExecutionAdmissionGate::new(
+            registry.clone(),
+            observed.clone(),
+            proposal.clone(),
+            proposal.next_ledger.clone(),
+            125,
+        );
+        assert!(matches!(
+            ExecutionAdapter::new(gate_stale, 65_536).launch(
+                &command,
+                &workspace_spec,
+                &reservation
+            ),
+            Err(ExecutionError::Denied(_))
+        ));
+
+        // 3. Disabled model rejected.
+        let mut disabled_reg = registry.clone();
+        disabled_reg
+            .models
+            .iter_mut()
+            .find(|m| m.id == "ornith")
+            .expect("ornith")
+            .enabled = false;
+        let gate_disabled = ModelExecutionAdmissionGate::new(
+            disabled_reg,
+            observed.clone(),
+            proposal.clone(),
+            proposal.next_ledger.clone(),
+            105,
+        );
+        assert!(matches!(
+            ExecutionAdapter::new(gate_disabled, 65_536).launch(
+                &command,
+                &workspace_spec,
+                &reservation
+            ),
+            Err(ExecutionError::Denied(_))
+        ));
+
+        // 4. Provider or model mismatch rejected.
+        let bad_provider_cmd = build_prepared_command_for_proposal(
+            &proposal,
+            &workspace,
+            &spool,
+            &marker,
+            "run-denied-provider",
+            "codex_cli",
+            &proposal.selected_model_id,
+            "permit-cpu-104",
+        );
+        let bad_model_cmd = build_prepared_command_for_proposal(
+            &proposal,
+            &workspace,
+            &spool,
+            &marker,
+            "run-denied-model",
+            provider_str,
+            "gpt-6-luna",
+            "permit-cpu-104",
+        );
+        let valid_gate = ModelExecutionAdmissionGate::new(
+            registry.clone(),
+            observed.clone(),
+            proposal.clone(),
+            proposal.next_ledger.clone(),
+            105,
+        );
+        assert!(matches!(
+            ExecutionAdapter::new(valid_gate.clone(), 65_536).launch(
+                &bad_provider_cmd,
+                &workspace_spec,
+                &reservation
+            ),
+            Err(ExecutionError::Denied(_))
+        ));
+        assert!(matches!(
+            ExecutionAdapter::new(valid_gate.clone(), 65_536).launch(
+                &bad_model_cmd,
+                &workspace_spec,
+                &reservation
+            ),
+            Err(ExecutionError::Denied(_))
+        ));
+
+        // 5. Conflating kernel_reservation.scope.resource_claims_digest with inference_claims_digest
+        // or stopping the linked inference reservation fails closed.
+        let mut conflated_linked = linked.clone();
+        conflated_linked
+            .kernel_reservation
+            .scope
+            .resource_claims_digest = conflated_linked
+            .inference_reservation
+            .scope
+            .resource_claims_digest
+            .clone();
+        let gate_conflated = ModelExecutionAdmissionGate::new(
+            registry.clone(),
+            observed.clone(),
+            proposal.clone(),
+            linked.next_ledger.clone(),
+            105,
+        )
+        .with_linked_reservations(conflated_linked.clone());
+        assert!(matches!(
+            ExecutionAdapter::new(gate_conflated, 65_536).launch(
+                &command,
+                &workspace_spec,
+                &conflated_linked.kernel_reservation
+            ),
+            Err(ExecutionError::Denied(_))
+        ));
+
+        let mut stopped_inference_ledger = linked.next_ledger.clone();
+        stopped_inference_ledger
+            .reservations
+            .get_mut("res-1")
+            .expect("res-1")
+            .stop_requested = true;
+        let gate_stopped_inference = ModelExecutionAdmissionGate::new(
+            registry,
+            observed,
+            proposal,
+            stopped_inference_ledger,
+            105,
+        )
+        .with_linked_reservations(linked.clone());
+        assert!(matches!(
+            ExecutionAdapter::new(gate_stopped_inference, 65_536).launch(
+                &command,
+                &workspace_spec,
+                &linked.kernel_reservation
+            ),
+            Err(ExecutionError::Denied(_))
+        ));
+
+        // 6. Reservation with stop_requested == true or outstanding == false rejected.
+        let mut stopped_res = reservation.clone();
+        stopped_res.stop_requested = true;
+        assert!(
+            ExecutionAdapter::new(valid_gate.clone(), 65_536)
+                .launch(&command, &workspace_spec, &stopped_res)
+                .is_err()
+        );
+        let mut closed_res = reservation;
+        closed_res.outstanding = false;
+        assert!(
+            ExecutionAdapter::new(valid_gate, 65_536)
+                .launch(&command, &workspace_spec, &closed_res)
+                .is_err()
+        );
+        assert!(!marker.exists());
     }
 }
