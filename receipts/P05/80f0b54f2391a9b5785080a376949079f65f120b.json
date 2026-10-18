@@ -1,0 +1,122 @@
+{
+  "source_sha": "80f0b54f2391a9b5785080a376949079f65f120b",
+  "started_at_utc": "2026-10-18T16:58:28.024684+00:00",
+  "source_inputs": {
+    "crates/admiralty-store/src/inbox.rs": "9c51b5d16d6da692f45e61ba90ede444e93be2171dac0456bc1d451fc5b0045f",
+    "crates/admiralty-store/src/lib.rs": "97f2e3f87915a96645fe1a717e8a8e8eb82a7fc1313ed0bc4dc978f7ce9aa48f",
+    "crates/admiralty-server/src/services/coordination.rs": "63f6306aa4598bf0f83db8e16936fb5714c6d949aa495c24b4ba574fc31628ea",
+    "tests/integration/coordination_delivery.rs": "c1c1a4182f85a847b57a77595fcc17ac4d8b828f1c788789af58b53b173769ad",
+    "docs/architecture/pending-inbox.md": "327698cabf57dc2c02c416973b22bd17a94e168eb280253c9057f85d1555fb84"
+  },
+  "non_runtime_uncommitted_docs": [
+    "docs/plans/admiralty-v2/EXECUTION.md",
+    "docs/plans/admiralty-v2/MASTER_PLAN.md",
+    "docs/plans/admiralty-v2/WORK_PACKETS.md"
+  ],
+  "commands": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-store",
+        "-p",
+        "admiralty-testkit",
+        "--test",
+        "coordination_delivery",
+        "--test",
+        "store_replay",
+        "--test",
+        "store_crash",
+        "--test",
+        "api_stream",
+        "--lib",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.7,
+      "log": "target/quality/pending-inbox-checkpoint/80f0b54f2391a9b5785080a376949079f65f120b/0.log",
+      "sha256": "d112ac234512c204df1c12b7e8ff1b7e59640a3d7a5c61f4e9dea6dda9154f9a",
+      "rust_test_results": [
+        {
+          "passed": 74,
+          "failed": 0
+        },
+        {
+          "passed": 34,
+          "failed": 0
+        },
+        {
+          "passed": 19,
+          "failed": 0
+        },
+        {
+          "passed": 11,
+          "failed": 0
+        },
+        {
+          "passed": 2,
+          "failed": 0
+        },
+        {
+          "passed": 11,
+          "failed": 0
+        }
+      ]
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "-p",
+        "admiralty-store",
+        "-p",
+        "admiralty-server",
+        "-p",
+        "admiralty-testkit",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.188,
+      "log": "target/quality/pending-inbox-checkpoint/80f0b54f2391a9b5785080a376949079f65f120b/1.log",
+      "sha256": "22e0df986057b9ba5be07526ac5fb348862a3dedef42108383cc3e088acbb889",
+      "rust_test_results": []
+    },
+    {
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.509,
+      "log": "target/quality/pending-inbox-checkpoint/80f0b54f2391a9b5785080a376949079f65f120b/2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "rust_test_results": []
+    }
+  ],
+  "native_execution_qualified": false,
+  "parent_acceptance": false,
+  "provider_calls": 0,
+  "finished_at_utc": "2026-10-18T16:58:31.430167+00:00",
+  "passed": true,
+  "kind": "engineering_component_verification",
+  "packet": "P05",
+  "scope": "bounded pending inbox and scoped application ACK trusted internal service",
+  "rust_checks_passed": 151,
+  "base_sha": "c0ebc0935657c21adb254ff57c777c701ff10498",
+  "raw_receipt_sha256": "cf117f623dc4dcd7aa4a8944edae4867565d50f341242f51c0f30df07843ef31",
+  "limitations": [
+    "Internal lexical live-scan cursor is not a durable offset or metadata-isolated public cursor.",
+    "Policy authorizer is a trusted injection seam, not implemented service authentication.",
+    "No HTTP route, subscriptions, recipient transport, delivery loop, native activation or full parent acceptance.",
+    "These targeted checks do not claim the full workspace, frontend, provider, release or fleet qualification suite passed on this source."
+  ],
+  "next_action": "Independent review, integrated exact-source CI and qualified authenticated delivery/subscriptions; preserve active legacy scopes."
+}
