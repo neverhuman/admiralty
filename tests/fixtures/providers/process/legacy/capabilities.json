@@ -1,0 +1,9 @@
+{
+  "scope": "existing process and Screen classifiers",
+  "sources": ["dashboard/collector.py agent_proc", "tools/bin/classify_screen.py detect_kind"],
+  "observed_argv_names": ["agy", "gemini", "grok"],
+  "observed_model_flags": ["-m", "--model"],
+  "grok_screen_signals": ["Grok banner", "session name contains grok"],
+  "capabilities": {"direct_process_lifecycle": "caller supplied", "captured_output": "caller supplied", "provider_identity": "best-effort observation", "usage": "unknown", "resume": "unsupported", "permission_semantics": "unsupported"},
+  "qualification": "Classifier-compatible identity is an observation only; it does not attach to, inject into, or adopt a legacy Screen process."
+}

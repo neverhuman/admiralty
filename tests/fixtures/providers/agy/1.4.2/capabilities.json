@@ -1,0 +1,19 @@
+{
+  "provider": "agy",
+  "version": "1.4.2",
+  "binary": "/home/ubuntu/.local/bin/agy",
+  "binary_sha256": "085f43e0d0628a8a8dabe1e547067818fa2c0adc86cfac98a3c4492918f455ef",
+  "probe": ["agy", "--version"],
+  "version_exit": 0,
+  "help_exit": 0,
+  "help_evidence": ["--input-format {text,stream-json}", "--output-format {text,json,stream-json}", "stream-json requires --output-format stream-json"],
+  "stream_fixture_kind": "synthetic parser vector, not a captured authenticated session",
+  "capabilities": {
+    "stream_json": "advertised by captured CLI help; end-to-end transport behavior not qualified",
+    "auth_status": "unsupported: version/help probes do not establish authentication state",
+    "usage": "unsupported: no usage payload has been qualified for this version",
+    "resume": "unsupported: continuation behavior has not been qualified",
+    "permission_semantics": "unsupported: permission behavior has not been qualified"
+  },
+  "qualification": "CLI help/version probe only; no authenticated task was run. Stream parsing is bounded and event payloads remain provider observations."
+}
