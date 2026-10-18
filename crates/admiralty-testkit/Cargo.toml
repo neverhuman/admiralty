@@ -71,7 +71,7 @@ name = "core_contracts"
 path = "../../tests/integration/core_contracts.rs"
 
 [[test]]
-name = "codex_accept_p12_p18"
+name = "codex_accept_p12_p18_round10"
 path = "../../tests/integration/codex_accept_p12_p18.rs"
 
 [[test]]
