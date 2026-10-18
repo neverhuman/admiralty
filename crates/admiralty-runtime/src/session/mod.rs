@@ -1376,6 +1376,7 @@ mod tests {
         const PARENT: &str = "ADMIRALTY_SESSION_PARENT_SENTINEL_2F074C";
         const SENTINEL: &str = "synthetic-parent-only-2f074c";
         const EXPLICIT: &str = "synthetic-explicit-only-609af1";
+        const COMPLETED: &[u8] = b"admiralty-explicit-environment-fixture-completed";
         if std::env::var_os(PARENT).as_deref() != Some(std::ffi::OsStr::new(SENTINEL)) {
             // Give only this separate test process a synthetic parent secret.
             // No global environment mutation can race the parallel test suite.
@@ -1384,6 +1385,7 @@ mod tests {
                     "--exact",
                     "session::tests::explicit_environment_clears_parent_and_passes_only_explicit_values",
                     "--test-threads=1",
+                    "--nocapture",
                 ])
                 .env(PARENT, SENTINEL)
                 .stdin(Stdio::null())
@@ -1403,6 +1405,13 @@ mod tests {
             assert!(
                 result.status.success(),
                 "isolated environment fixture failed"
+            );
+            assert!(
+                result
+                    .stdout
+                    .windows(COMPLETED.len())
+                    .any(|bytes| bytes == COMPLETED),
+                "isolated fixture must execute its assertions, rather than matching zero tests"
             );
             return Ok(());
         }
@@ -1448,6 +1457,7 @@ mod tests {
         host.launch(legacy)?;
         assert!(host.wait("inherited-env")?.success());
         assert_eq!(output(&host, "inherited-env"), b"legacy-kept");
+        println!("{}", std::str::from_utf8(COMPLETED)?);
         Ok(())
     }
 
