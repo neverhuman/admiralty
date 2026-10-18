@@ -946,3 +946,65 @@ The [sanitized native observer receipt](../../../receipts/integration/native-obs
 pins tested source-file, binary, log, configuration and snapshot hashes. The
 Commodore must deploy the new retained HTML as well as the React assets and Rust
 producer. Old process retirement remains a distinct recorded deployment action.
+
+## Native primary deployment and foundation closeout — 2026-10-18T23:30Z
+
+PR76 received exact-head review and merged to `fe158305d0ea49fd905fd1e7d888aa4b477e4412`.
+The Commodore deployed that source to primary port18890 at 22:42 UTC. Independent
+checks confirm the actual daemon and observer executables come from its pinned
+deployment directory; port18891 redirects to the primary origin. The feed is
+produced by Rust, reaches the four configured permitted nodes and observes the
+Admiralty manager as Gemini 4 Argon. All thirteen plots, original historical
+timestamps, retained details and mounted Commands are preserved.
+
+The exact old Admiralty-owned Python collector, rollout observer and restart
+wrapper were archived and retired. The owned hourly history-export cron was
+also archived and removed; unrelated cron entries were unchanged. Later process
+checks found no respawn. Shared fleet Admiral/ticker, unrelated project services,
+GPU jobs and runners are outside this retirement. The original private cutover
+receipt and its host-field correction remain separate evidence:
+`ADMIRALTY_NATIVE_PR76_RUST_CUTOVER_RECEIPT_20261018T2245Z.json`
+(`f5934e9670be5c0e8a91b83ab3760e0656f058a59158fdd5adb9f108c3d7c93c`)
+and `ADMIRALTY_NATIVE_PR76_RUST_CUTOVER_RECEIPT_CORRECTION_20261018T2249Z.json`
+(`2e818a375aeb10969612dfcb4221f43e116a19ef23ec77e6225c6cfa358f6b62`).
+The public observer receipt predates deployment and is not rewritten as if it
+had observed these later actions.
+
+The exact receiving main passes 1,061 Rust tests across 132 suites, with four
+intentional ignored helpers, strict workspace Clippy, 101 frontend tests and
+the production TypeScript/Vite build. Main CI run39173192206 is successful at
+that SHA. These results are reused only for unchanged source; later changes
+receive affected checks and eventual final-source validation.
+
+Criterion-specific review now closes the remaining technical foundation gaps.
+P00's immutable verifier checks 37 source blobs, counts, mirrors and secret
+absence; all eleven synthetic cases remain explicitly reconstructed. Its
+read-only inventory permits explicit unknowns. Thirteen actual legacy-import
+tests pass. P01's deterministic fake-clock/fault/forge suite passes five tests;
+its CI/toolchain/fixture/ignored-zone requirements are present. The node binary
+now implements effect-free help while normal startup remains disabled. All
+four actual binaries return zero for both help flags in an empty private
+directory, which remains unchanged. No live enrollment or provider call is a
+foundation criterion. The engineering acceptance and integration revision for
+P00/P01 will be recorded in the owned rollout after this reviewed fix lands;
+the old partial-review receipts and all historical claims remain intact.
+
+The executor also retains the original descriptor-backed `PreparedWorkspace`
+through pending/recovery ownership and consumes it together with actual closure
+evidence. Fallible closure, journal and capacity checks precede owner removal;
+unknown paths retain the host, admission and workspace. Three affected executor
+tests pass, one child helper is intentionally ignored, and strict server/runtime
+all-target Clippy passes. Independent static review finds no blocker. The
+[source-pinned handoff/foundation receipt](../../../receipts/integration/native-handoff-foundation-20261018T2330Z.json)
+separates these results from the unchanged main's broader tests.
+
+This handoff still needs a real Linux successful-execution-to-source-candidate
+proof. General native execution remains false: production launch/completion,
+durable model admission, provider credentials, source custody, trusted checks
+and Store acceptance must be composed. PR77's caller-asserted closure authority
+and expired resource leases require repair; PR78 must retain original workspace
+identity, disable Git text conversion helpers and compile portably. Their
+owners have exact findings and disjoint scopes. PR69's owner has the minimal
+UI/CSS accessibility repair scope and must pass real axe/browser/native-backend
+checks. Neither green component CI nor Screen presence completes the other
+thirty parent packets.
