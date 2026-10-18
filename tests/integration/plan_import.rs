@@ -5,7 +5,7 @@
 //! preview persists work or trusts legacy status fields.
 
 use admiralty_core::workplans::{
-    Workplan, WorkplanError, preview_workplan, preview_workplan_with_existing,
+    MAX_WORKPLAN_BYTES, Workplan, WorkplanError, preview_workplan, preview_workplan_with_existing,
 };
 use admiralty_core::{AcceptanceCriterion, CheckSpec, ProjectId, RootId, TaskContract, TaskId};
 
@@ -110,4 +110,11 @@ fn mismatched_project_scope_is_rejected_before_any_admission() {
         preview_workplan(&source(&plan)),
         Err(WorkplanError::ProjectMismatch { .. })
     ));
+}
+
+#[test]
+fn oversized_source_is_rejected_before_json_parsing() {
+    let oversized = vec![b' '; MAX_WORKPLAN_BYTES + 1];
+
+    assert_eq!(preview_workplan(&oversized), Err(WorkplanError::TooLarge));
 }

@@ -1,5 +1,5 @@
 use admiralty_runtime::{
-    providers::codex::{CodexEffort, CodexNdjsonStream, CodexTermination},
+    providers::codex::{CodexEffort, CodexError, CodexNdjsonStream, CodexTermination},
     session::{OutputChunk, OutputStream},
 };
 
@@ -62,4 +62,23 @@ fn incomplete_codex_capture_stays_unknown() {
     assert_eq!(summary.termination, CodexTermination::Unknown);
     assert!(!summary.capture_complete);
     assert!(!summary.trusted_acceptance());
+}
+
+#[test]
+fn journal_gap_poisoning_requires_reconciliation() {
+    let mut parser = CodexNdjsonStream::new("selected-model", CodexEffort::Low)
+        .expect("explicit model accepted");
+    let gap = parser.push_chunk(&OutputChunk {
+        offset: 1,
+        stream: OutputStream::Stdout,
+        bytes: b"{}\n".to_vec(),
+    });
+    assert!(matches!(gap, Err(CodexError::JournalGap)));
+
+    let retry = parser.push_chunk(&OutputChunk {
+        offset: 0,
+        stream: OutputStream::Stdout,
+        bytes: b"{}\n".to_vec(),
+    });
+    assert!(matches!(retry, Err(CodexError::Failed)));
 }

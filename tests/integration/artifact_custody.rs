@@ -179,3 +179,48 @@ fn publication_replay_and_pin_retirement_race_preserve_artifact_bytes() {
         "successful publication leaves one immutable object and no temporary file"
     );
 }
+
+#[test]
+fn stale_revision_cannot_acquire_a_custody_pin() {
+    let fixture = TempDir::new().expect("create disposable fixture root");
+    let artifact_root = fixture.path().join("objects");
+    fs::create_dir(&artifact_root).expect("create artifact root");
+    fs::set_permissions(&artifact_root, fs::Permissions::from_mode(0o700))
+        .expect("make artifact root owner-only");
+    let reference = ArtifactStore::open(&artifact_root, 1024)
+        .expect("open artifact store")
+        .publish_bytes(b"stale revision candidate")
+        .expect("publish immutable evidence");
+
+    let database_path = fixture.path().join("custody.sqlite");
+    let mut connection = connection(&database_path);
+    custody::initialize(&connection).expect("initialize custody schema");
+    let asset = binding(&reference.sha256);
+    custody::register_asset(
+        &mut connection,
+        RegisterAssetRequest {
+            command_id: "register-stale-cas".into(),
+            binding: asset.clone(),
+            expected_revision: "0".into(),
+            observation: observation(&asset, "0"),
+        },
+    )
+    .expect("register asset at revision one");
+
+    let result = custody::acquire_pin(
+        &mut connection,
+        AcquirePinRequest {
+            command_id: "stale-pin".into(),
+            binding: asset.clone(),
+            pin_id: "stale-candidate".into(),
+            expected_revision: "0".into(),
+            observation: observation(&asset, "0"),
+        },
+    );
+    assert!(matches!(result, Err(custody::CustodyError::StaleRevision)));
+
+    let pin_count: i64 = connection
+        .query_row("SELECT count(*) FROM custody_pins", [], |row| row.get(0))
+        .expect("inspect pin projection after rejected compare-and-swap");
+    assert_eq!(pin_count, 0, "stale request must not create a live pin");
+}

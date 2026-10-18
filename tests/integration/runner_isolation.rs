@@ -68,3 +68,26 @@ fn registered_workspace_validation_is_scoped_read_only_and_fail_closed() {
         WorkspaceError::InvalidRelativePath
     );
 }
+
+#[test]
+fn reserved_device_alias_is_rejected_as_owned_scope() {
+    let temp = tempfile::tempdir().expect("temporary workspace fixture");
+    let workspace = fs::canonicalize(temp.path()).expect("canonical fixture root");
+    let spec = WorkspaceSpec {
+        node_id: NodeRef::new("node-reserved").expect("node ID"),
+        root_id: RootId::new("root-reserved").expect("root ID"),
+        project_id: ProjectId::new("project-reserved").expect("project ID"),
+        workspace,
+        owned_paths: vec![PathBuf::from("src")],
+        forbidden_paths: Vec::new(),
+    };
+
+    let mut invalid = spec;
+    invalid.owned_paths.push(PathBuf::from("src/CON.txt"));
+    assert_eq!(
+        invalid
+            .validate()
+            .expect_err("reserved device alias must fail closed"),
+        WorkspaceError::InvalidRelativePath
+    );
+}

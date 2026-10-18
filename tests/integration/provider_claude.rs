@@ -563,3 +563,9 @@ fn lexical_launch_bounds_and_untrusted_flags_never_grant_admission() {
             .starts_with("unknown")
     );
 }
+
+#[test]
+fn oversized_claude_capture_is_rejected_before_parsing() {
+    let oversized = vec![b' '; MAX_STREAM_BYTES + 1];
+    assert_eq!(parse_stream(&oversized, None), Err(ClaudeError::Bounds));
+}

@@ -10,3 +10,11 @@ fn receipt_parser_rejects_forged_unknown_fields_and_registry_is_bounded() {
     assert_eq!(registry.retained_receipts(), 0);
     assert!(ReceiptRegistry::new(0).is_err());
 }
+
+#[test]
+fn receipt_parser_rejects_input_over_the_size_limit() {
+    use admiralty_core::verification::MAX_RECEIPT_BYTES;
+
+    let oversized = vec![b' '; MAX_RECEIPT_BYTES + 1];
+    assert!(parse_receipt(&oversized).is_err());
+}

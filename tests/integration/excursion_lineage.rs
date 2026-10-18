@@ -142,3 +142,33 @@ fn local_proposal_keeps_unknowns_and_scope_without_granting_effects() {
     );
     assert!(build_local_proposal(&reduced.episodes[0], &secret_bearing, &[]).is_err());
 }
+
+#[test]
+fn forged_episode_lineage_is_rejected_before_proposal_generation() {
+    let scope = scope("task-forged-lineage");
+    let reduced = reduce_excursions(
+        &None,
+        &scope,
+        &[input(&scope, event("incident-1", None, "failure"))],
+    )
+    .expect("canonical episode");
+    let mut forged = reduced.episodes[0].clone();
+    forged
+        .lineage
+        .push("injected-event-without-evidence".into());
+    let reproduction = ReproductionContract {
+        fields: BTreeMap::from([
+            ("scope".into(), "task-forged-lineage".into()),
+            ("steps".into(), "replay the recorded fixture".into()),
+            ("expected".into(), "forged lineage is rejected".into()),
+            (
+                "actual".into(),
+                "projection includes an unrecorded event".into(),
+            ),
+        ]),
+    };
+
+    let error = build_local_proposal(&forged, &reproduction, &[])
+        .expect_err("proposal must rebuild and verify immutable episode evidence");
+    assert_eq!(error.0, "proposal episode is not canonical scoped evidence");
+}

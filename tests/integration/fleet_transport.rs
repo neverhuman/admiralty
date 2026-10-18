@@ -146,6 +146,30 @@ fn expiry_boundary_unknown_clock_and_foreign_authority_are_rejected() {
 }
 
 #[test]
+fn clock_rollback_cannot_replay_an_unexpired_enrollment_token() {
+    let start = issued_token("rollback", 20, 5);
+    let enrollment = EnrollmentEvent::Enrolled {
+        event_id: "enroll-after-rollback".into(),
+        token_id: "rollback".into(),
+        scope: scope(),
+        identity: identity("node-rollback", "boot-1", 1, 'c'),
+    };
+
+    // An otherwise valid token must not admit a node when the controller's
+    // explicit clock moves behind the last durable enrollment event.
+    assert!(matches!(
+        apply(&start, &enrollment, Some(4)),
+        Err(NodeError::Invalid("clock rollback"))
+    ));
+    assert!(
+        !start
+            .nodes
+            .contains_key(&NodeId::new("node-rollback").expect("node ID fixture"))
+    );
+    assert!(start.tokens["rollback"].consumed_binding.is_none());
+}
+
+#[test]
 fn reboot_rotation_revocation_and_capacity_require_current_generation() {
     let start = issued_token("boot-a-token", 30, 1);
     let enrollment = EnrollmentEvent::Enrolled {

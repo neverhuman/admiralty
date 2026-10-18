@@ -6,7 +6,7 @@
 //! qualification.
 
 use admiralty_core::{PrincipalId, ProjectId, RootId, TaskId};
-use admiralty_runtime::workspace::registry::{Custody, NodeRef, WorkspaceSpec};
+use admiralty_runtime::workspace::registry::{Custody, NodeRef, WorkspaceError, WorkspaceSpec};
 use admiralty_store::custody::{
     self, AcquirePinRequest, AssetBinding, ClaimRetirementRequest, CustodyError,
     CustodyObservation, RegisterAssetRequest, ReleasePinRequest,
@@ -118,6 +118,36 @@ fn workspace_registry_excludes_forbidden_foreign_and_symlinked_paths() {
     assert_eq!(
         fs::read(foreign.join("keep.txt")).expect("read foreign fixture"),
         b"foreign bytes"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn workspace_registry_rejects_symlink_root_without_changing_contents() {
+    let fixture = private_fixture();
+    let real_workspace = fixture.path().join("real-workspace");
+    fs::create_dir(&real_workspace).expect("create real workspace fixture");
+    let sentinel = real_workspace.join("keep.txt");
+    fs::write(&sentinel, b"must remain unchanged").expect("write sentinel fixture");
+    let alias = fixture.path().join("workspace-alias");
+    std::os::unix::fs::symlink(&real_workspace, &alias).expect("create workspace symlink");
+
+    let spec = WorkspaceSpec {
+        node_id: NodeRef::new("node-symlink").expect("valid fixture node"),
+        root_id: RootId::new("root-symlink").expect("valid fixture root"),
+        project_id: ProjectId::new("project-symlink").expect("valid fixture project"),
+        workspace: alias,
+        owned_paths: vec![PathBuf::from("src")],
+        forbidden_paths: Vec::new(),
+    };
+
+    assert!(matches!(
+        spec.validate(),
+        Err(WorkspaceError::WorkspaceContainsSymlink)
+    ));
+    assert_eq!(
+        fs::read(sentinel).expect("read untouched sentinel fixture"),
+        b"must remain unchanged"
     );
 }
 

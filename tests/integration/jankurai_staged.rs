@@ -152,3 +152,28 @@ fn staged_index_identity_and_oracle_changes_fail_closed_without_acceptance_autho
     ));
     assert!(!proposal.acceptance_granted());
 }
+
+#[test]
+fn negative_check_with_wrong_exit_code_requires_reproduction() {
+    let policy = policy();
+    let mut staged = evidence(&policy);
+    let negative = staged
+        .check_results
+        .iter_mut()
+        .find(|result| result.check_id == "negative")
+        .expect("negative check result");
+    negative.outcome = CheckOutcome::Failed;
+    negative.exit_code = Some(0);
+
+    let proposal = evaluate_staged_audit(&scope(), &policy, &staged).expect("well-formed evidence");
+    match proposal.outcome {
+        AuditOutcome::Reproduce { ref checks, .. } => {
+            assert_eq!(checks.len(), 1);
+            assert_eq!(checks[0].id, "negative");
+        }
+        other => panic!("unexpected outcome for wrong negative exit code: {other:?}"),
+    }
+    assert!(!proposal.acceptance_granted());
+    assert!(!proposal.execution_granted());
+    assert!(!proposal.publication_granted());
+}

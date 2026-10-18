@@ -282,3 +282,37 @@ fn reservations_replay_hold_unknown_liability_settle_and_correct_exact_minor_uni
     assert_eq!(corrected.unresolved_liabilities[&scope].get(), 0);
     assert_eq!(corrected.revision, final_state.revision + 1);
 }
+
+#[test]
+fn reservation_over_limit_is_rejected_without_changing_liabilities() {
+    let scope = reservation_scope();
+    let empty = limited_ledger();
+    let within_limit = reservations::reserve_budget(
+        &empty,
+        "reserve-near-limit",
+        "reservation-near-limit",
+        scope.clone(),
+        "correlation-near-limit",
+        MinorUnits::new(999),
+    )
+    .expect("reserve amount below the configured limit");
+
+    let result = reservations::reserve_budget(
+        &within_limit,
+        "reserve-over-limit",
+        "reservation-over-limit",
+        scope.clone(),
+        "correlation-over-limit",
+        MinorUnits::new(2),
+    );
+    assert!(matches!(
+        result,
+        Err(reservations::ReservationError::LimitExceeded("account"))
+    ));
+    assert_eq!(within_limit.unresolved_liabilities[&scope].get(), 999);
+    assert!(
+        !within_limit
+            .reservations
+            .contains_key("reservation-over-limit")
+    );
+}

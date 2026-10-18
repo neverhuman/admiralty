@@ -141,3 +141,48 @@ fn human_input_advances_epoch_and_stales_queued_automation() {
             .success()
     );
 }
+
+#[test]
+fn stale_automation_rejection_does_not_append_to_the_input_journal() {
+    let temporary = private_tempdir().expect("canonical private-at-creation fixture");
+    let spool_root = private_spool(temporary.path());
+    let spool = spool_root.join("stale-epoch");
+    let host = SessionHost::new();
+    host.launch(LaunchSpec {
+        run_id: "stale-epoch".into(),
+        program: "/bin/cat".into(),
+        args: Vec::new(),
+        cwd: temporary.path().to_owned(),
+        spool_dir: spool.clone(),
+    })
+    .expect("launch cat child");
+
+    host.write_input("stale-epoch", InputKind::Human, b"human\n")
+        .expect("advance input epoch with human input");
+    let journal_path = spool.join("input.journal");
+    let journal_before_stale_write = fs::read(&journal_path).expect("read input journal");
+
+    assert!(matches!(
+        host.write_input(
+            "stale-epoch",
+            InputKind::Automation { expected_epoch: 0 },
+            b"must-not-be-delivered\n"
+        ),
+        Err(SessionError::StaleInput {
+            expected: 0,
+            current: 1
+        })
+    ));
+    assert_eq!(
+        fs::read(&journal_path).expect("read input journal after stale write"),
+        journal_before_stale_write,
+        "rejected stale automation must have no journal side effect"
+    );
+    host.close_input_if_epoch("stale-epoch", 1)
+        .expect("close owned child input");
+    assert!(
+        host.wait("stale-epoch")
+            .expect("reap child and drain capture")
+            .success()
+    );
+}

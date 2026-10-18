@@ -119,3 +119,14 @@ fn changed_scope_is_rejected_instead_of_escalating_or_claiming() {
 
     assert_eq!(result, Err(SchedulerError::ScopeMismatch));
 }
+
+#[test]
+fn tampered_contract_digest_is_rejected_before_proposal() {
+    let mut input = snapshot(scheduled("task", LeaseObservation::Absent));
+    input.tasks[0].contract_digest = "sha256:forged".into();
+
+    assert_eq!(
+        propose_ready_tasks(&input, &scope()),
+        Err(SchedulerError::ContractDigestMismatch("task".into()))
+    );
+}

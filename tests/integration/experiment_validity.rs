@@ -305,3 +305,26 @@ fn independent_recommendations_only_propose_review_or_rejection() {
         }
     ));
 }
+
+#[test]
+fn tampered_independent_receipt_cannot_authorize_even_a_review_proposal() {
+    let mut evidence = complete_evidence();
+    attach_analysis(
+        &mut evidence,
+        AnalysisRecommendation::RecommendIndependentReview,
+    );
+    evidence
+        .independent_analysis
+        .as_mut()
+        .expect("analysis receipt attached")
+        .analyzed_evidence_digest = digest('8');
+
+    assert!(matches!(
+        propose_trial_decision(&evidence, vec![digest('a')])
+            .expect("tampered receipt fails closed"),
+        TrialDecision::InsufficientEvidence {
+            promotion_authorized: false,
+            reasons,
+        } if reasons.iter().any(|reason| reason == "analysis receipt does not bind evidence")
+    ));
+}

@@ -156,6 +156,23 @@ fn stale_authority_generation_is_blocked_and_valid_proposals_grant_no_execution(
 }
 
 #[test]
+fn stale_digest_cannot_authorize_mutated_admission_evidence() {
+    let (scope, mut snapshot, generation) = fixtures();
+    let digest = publication_request_digest(&scope, &snapshot, "mutated-evidence", &generation)
+        .expect("bounded fixture digest");
+
+    // A worker cannot change the evidence after deriving the request digest and keep
+    // the earlier digest as authority for the altered publication proposal.
+    snapshot.approvals[0].provenance_ref = "fixture:substituted-approval".into();
+    let result = propose_publication(&scope, &snapshot, "mutated-evidence", &digest, &generation);
+
+    assert!(!result.eligible);
+    assert!(!result.execution_granted());
+    assert!(result.intent.is_none());
+    assert!(result.reasons.contains(&PublicationBlock::InvalidEvidence));
+}
+
+#[test]
 fn ambiguous_effect_slot_requires_matching_reconciliation_and_replays_once() {
     let (scope, snapshot, generation) = fixtures();
     let proposed = proposal(&scope, &snapshot, "intent-one", &generation);
