@@ -198,10 +198,11 @@ def audit_jopedime(sc_claims):
         sha, csha = str(r.get('sha') or ''), str(r.get('checkout_sha') or '')
         if not re.fullmatch(r'[0-9a-f]{40}', sha) or (csha and not re.fullmatch(r'[0-9a-f]{40}', csha)):
             bad['truncated_or_bad_sha'].append(tid)
-        if csha and sha and csha != sha: bad['sha_mismatch'].append(tid)
+        mism = bool(csha and sha and csha != sha)
+        if mism: bad['sha_mismatch'].append(tid)
         for k, v in r.items():
             if 'sha256' in k.lower() and isinstance(v, str) and not re.fullmatch(r'(sha256:)?[0-9a-f]{64}', v): bad['truncated_sha256'].append(tid)
-        if st != 'PASS': continue
+        if st != 'PASS' or mism: continue  # a PASS verified on a different checkout than it names is not genuine
         cases = r.get('case_to_test_map') or r.get('cases') or []
         cmds = r.get('commands') or []
         if any(c.get('exit_code') not in (0, None) for c in cmds + cases) or any(c.get('passed') is False for c in cases):
@@ -219,7 +220,7 @@ def audit_jopedime(sc_claims):
         ok_pass.append(tid)
         if main and re.fullmatch(r'[0-9a-f]{40}', sha) and is_anc(repo, sha, main): on_main_pass.append(tid)
     labels = {'truncated_or_bad_sha': ('red', 'PASS/receipt carries a truncated or malformed git sha'),
-              'sha_mismatch': ('amber', 'sha != checkout_sha'),
+              'sha_mismatch': ('red', 'sha != checkout_sha (verified a different commit than the receipt names; not counted)'),
               'truncated_sha256': ('red', 'sha256 field is truncated'),
               'pass_with_nonzero_exit': ('red', 'status PASS but a command/case has nonzero exit or passed=false'),
               'pass_on_doc_keyword_match': ('red', 'status PASS but evidence is a keyword/doc match while the criterion needs executed evidence (review/CI/run/provenance)'),
