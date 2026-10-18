@@ -26,6 +26,7 @@ Jepson (owner; his own typed prompts override everyone)
 | `captains/` | COMMON.md, MODEL_ROUTING_PLAYBOOK.md, CPU_SLICES.md, captain briefs, addenda, super_captain brief + ticker, disk-mission template, notices |
 | `tools/` | screen helpers (`bin/screen_send`, `bin/screen_snap`, `bin/kick`, `bin/status`, `classify_screen.py`), idle-only delivery scripts (`send_*.sh`), owner peek/send |
 | `runtime/` | symlinks to the live runtime dirs (git-ignored) |
+| `data/history/` | sanitized history dataset (cost index, Luna failures, in-progress per project, quota, hosts, tokens, yield) exported hourly by `tools/export_history.py`; see `data/history/README.md` |
 
 The live paths are unchanged: files in `/home/ubuntu/xbabe2_kicker/captains-dashboard/` and `/home/ubuntu/xbabe2_kicker/captains-20261017/` are **symlinks into this repo**, so agents keep using the old paths. Runtime data stays in those directories (`CDASH_RUNTIME` overrides the dashboard runtime dir).
 
