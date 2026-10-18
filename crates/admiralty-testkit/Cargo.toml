@@ -23,33 +23,121 @@ futures-util.workspace = true
 workspace = true
 
 [[test]]
-name = "legacy_import"
-path = "../../tests/integration/legacy_import.rs"
+name = "api_stream"
+path = "../../tests/integration/api_stream.rs"
 
 [[test]]
-name = "core_contracts"
-path = "../../tests/integration/core_contracts.rs"
+name = "artifact_custody"
+path = "../../tests/integration/artifact_custody.rs"
+
+[[test]]
+name = "cleanup_custody"
+path = "../../tests/integration/cleanup_custody.rs"
 
 [[test]]
 name = "context_fidelity"
 path = "../../tests/integration/context_fidelity.rs"
 
 [[test]]
-name = "store_replay"
-path = "../../tests/integration/store_replay.rs"
+name = "coordination_delivery"
+path = "../../tests/integration/coordination_delivery.rs"
 
 [[test]]
-name = "store_crash"
-path = "../../tests/integration/store_crash.rs"
+name = "core_contracts"
+path = "../../tests/integration/core_contracts.rs"
 
 [[test]]
-name = "api_stream"
-path = "../../tests/integration/api_stream.rs"
+name = "disaster_restore"
+path = "../../tests/integration/disaster_restore.rs"
+
+[[test]]
+name = "economic_conservation"
+path = "../../tests/integration/economic_conservation.rs"
+
+[[test]]
+name = "exact_candidate"
+path = "../../tests/integration/exact_candidate.rs"
+
+[[test]]
+name = "excursion_lineage"
+path = "../../tests/integration/excursion_lineage.rs"
+
+[[test]]
+name = "experiment_validity"
+path = "../../tests/integration/experiment_validity.rs"
+
+[[test]]
+name = "fleet_partition"
+path = "../../tests/integration/fleet_partition.rs"
+
+[[test]]
+name = "fleet_transport"
+path = "../../tests/integration/fleet_transport.rs"
+
+[[test]]
+name = "input_uncertainty"
+path = "../../tests/integration/input_uncertainty.rs"
+
+[[test]]
+name = "integration_train"
+path = "../../tests/integration/integration_train.rs"
+
+[[test]]
+name = "jankurai_staged"
+path = "../../tests/integration/jankurai_staged.rs"
+
+[[test]]
+name = "legacy_import"
+path = "../../tests/integration/legacy_import.rs"
+
+[[test]]
+name = "peer_handoff"
+path = "../../tests/integration/peer_handoff.rs"
+
+[[test]]
+name = "plan_import"
+path = "../../tests/integration/plan_import.rs"
 
 [[test]]
 name = "provider_claude"
 path = "../../tests/integration/provider_claude.rs"
 
 [[test]]
+name = "provider_codex"
+path = "../../tests/integration/provider_codex.rs"
+
+[[test]]
 name = "provider_matrix"
 path = "../../tests/integration/provider_matrix.rs"
+
+[[test]]
+name = "publication_gate"
+path = "../../tests/integration/publication_gate.rs"
+
+[[test]]
+name = "release_smoke"
+path = "../../tests/integration/release_smoke.rs"
+
+[[test]]
+name = "runner_isolation"
+path = "../../tests/integration/runner_isolation.rs"
+
+[[test]]
+name = "scheduler_admission"
+path = "../../tests/integration/scheduler_admission.rs"
+
+[[test]]
+name = "session_continuity"
+path = "../../tests/integration/session_continuity.rs"
+
+[[test]]
+name = "store_crash"
+path = "../../tests/integration/store_crash.rs"
+
+[[test]]
+name = "store_replay"
+path = "../../tests/integration/store_replay.rs"
+
+[[test]]
+name = "upgrade_continuity"
+path = "../../tests/integration/upgrade_continuity.rs"
