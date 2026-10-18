@@ -9,6 +9,629 @@ use std::{
 
 const OBSERVED_UTC: &str = "2026-10-18T00:00:00Z";
 
+mod native_v2 {
+    use super::*;
+    use admiralty_core::{
+        CandidateDecisionEvidence, LifecycleAction, LifecycleCommand, SchedulingState, TaskView,
+        content_digest,
+    };
+    use admiralty_store::LifecycleAuthority;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    struct FixtureAuthority(AtomicBool);
+    impl LifecycleAuthority for FixtureAuthority {
+        fn authorize(
+            &self,
+            source: &SourceIdentity,
+            command: &LifecycleCommand,
+            task: &TaskView,
+            effect: Option<&admiralty_store::LifecycleEffect<'_>>,
+        ) -> bool {
+            // A trusted test double, not runtime execution qualification. Native
+            // integration must replace this predicate with actual custody evidence.
+            self.0.load(Ordering::SeqCst)
+                && effect.is_none()
+                && source.producer_id == "trusted-service"
+                && task.contract.project_id.as_str() == "durable-project"
+                && command.actor.as_str() == "independent-verifier"
+                && match &command.action {
+                    LifecycleAction::DecideCandidate { evidence, .. } => {
+                        evidence.verification_policy_digest == digest("policy")
+                            && evidence.custody_digest == digest("custody")
+                            && evidence.closure_digest == digest("supervised-closure")
+                    }
+                    _ => true,
+                }
+        }
+    }
+    fn digest(text: &str) -> String {
+        content_digest(&text).expect("digest")
+    }
+    fn authority() -> Arc<FixtureAuthority> {
+        Arc::new(FixtureAuthority(AtomicBool::new(true)))
+    }
+    fn command(store: &Store, id: &str, action: LifecycleAction) -> LifecycleCommand {
+        let task_id = TaskId::new(id).expect("task");
+        let task = store
+            .snapshot()
+            .expect("snapshot")
+            .projection
+            .tasks
+            .remove(&task_id)
+            .expect("task exists");
+        LifecycleCommand {
+            protocol_version: 2,
+            task_id,
+            expected_task_digest: content_digest(&task).expect("CAS"),
+            actor: PrincipalId::new("independent-verifier").expect("actor"),
+            action,
+        }
+    }
+    fn execute(
+        store: &Store,
+        seq: u64,
+        command: LifecycleCommand,
+    ) -> admiralty_store::Result<admiralty_store::AppendReceipt> {
+        store.execute_lifecycle(
+            source("trusted-service", seq),
+            command,
+            OBSERVED_UTC.into(),
+            None,
+        )
+    }
+    fn running(store: &Store, id: &str) {
+        submit(store, id, 1, id);
+        append(
+            store,
+            id,
+            2,
+            task_claim(id, 1, &format!("{id}-attempt-1"), "worker"),
+        );
+        append(
+            store,
+            id,
+            3,
+            DomainEvent::TaskStarted {
+                task_id: TaskId::new(id).expect("native fixture operation"),
+                attempt_id: AttemptId::new(format!("{id}-attempt-1"))
+                    .expect("native fixture operation"),
+            },
+        );
+    }
+    fn candidate(store: &Store, id: &str) {
+        running(store, id);
+        append(
+            store,
+            id,
+            4,
+            DomainEvent::CandidateSubmitted {
+                task_id: TaskId::new(id).expect("native fixture operation"),
+                attempt_id: AttemptId::new(format!("{id}-attempt-1"))
+                    .expect("native fixture operation"),
+                candidate_ref: "candidate-one".into(),
+            },
+        );
+    }
+    fn decide(store: &Store, id: &str, accepted: bool) -> LifecycleCommand {
+        command(
+            store,
+            id,
+            LifecycleAction::DecideCandidate {
+                attempt_id: AttemptId::new(format!("{id}-attempt-1"))
+                    .expect("native fixture operation"),
+                candidate_ref: "candidate-one".into(),
+                accepted,
+                evidence: CandidateDecisionEvidence {
+                    contract_digest: content_digest(&contract(id))
+                        .expect("native fixture operation"),
+                    verification_policy_digest: digest("policy"),
+                    receipt_digest: digest("actual-checks"),
+                    custody_digest: digest("custody"),
+                    closure_digest: digest("supervised-closure"),
+                    source_commit_sha: "a".repeat(40),
+                    source_tree_sha: "b".repeat(40),
+                    verifier: PrincipalId::new("independent-verifier")
+                        .expect("native fixture operation"),
+                },
+            },
+        )
+    }
+    #[test]
+    fn protected_decision_denies_default_store_and_both_raw_append_paths() {
+        let dir = private_tempdir();
+        let store =
+            Store::open(dir.path().join("default.sqlite")).expect("native fixture operation");
+        candidate(&store, "one");
+        let cmd = decide(&store, "one", true);
+        let before = store.snapshot().expect("native fixture operation");
+        assert!(execute(&store, 1, cmd.clone()).is_err());
+        assert!(
+            store
+                .append(
+                    source("raw", 1),
+                    DomainEvent::TaskLifecycle {
+                        command: cmd.clone()
+                    },
+                    OBSERVED_UTC.into()
+                )
+                .is_err()
+        );
+        assert!(
+            store
+                .append_with_intent(
+                    source("raw", 2),
+                    DomainEvent::TaskLifecycle { command: cmd },
+                    OBSERVED_UTC.into(),
+                    admiralty_store::outbox::OutboxIntent {
+                        idempotency_key: "no-bypass".into(),
+                        payload: serde_json::json!({}),
+                        not_before: 0
+                    }
+                )
+                .is_err()
+        );
+        assert_eq!(store.snapshot().expect("native fixture operation"), before);
+    }
+    #[test]
+    fn acceptance_releases_dependencies_is_idempotent_and_replays_after_backup() {
+        let dir = private_tempdir();
+        let db = dir.path().join("accept.sqlite");
+        let auth = authority();
+        let store = Store::open_with_lifecycle_authority(&db, auth.clone())
+            .expect("native fixture operation");
+        candidate(&store, "one");
+        let mut dependent = contract("two");
+        dependent
+            .dependencies
+            .push(TaskId::new("one").expect("native fixture operation"));
+        append(
+            &store,
+            "two",
+            1,
+            DomainEvent::TaskSubmitted {
+                contract: dependent,
+            },
+        );
+        let cmd = decide(&store, "one", true);
+        let accepted = execute(&store, 1, cmd.clone()).expect("native fixture operation");
+        assert!(
+            execute(&store, 1, cmd.clone())
+                .expect("native fixture operation")
+                .duplicate
+        );
+        let snapshot = store.snapshot().expect("native fixture operation");
+        assert_eq!(snapshot.schema_version, 2);
+        assert_eq!(
+            snapshot.projection.tasks[&TaskId::new("one").expect("native fixture operation")].state,
+            SchedulingState::Accepted
+        );
+        assert_eq!(
+            snapshot.projection.tasks[&TaskId::new("two").expect("native fixture operation")].state,
+            SchedulingState::Ready
+        );
+        let mut late = contract("late");
+        late.dependencies
+            .push(TaskId::new("one").expect("native fixture operation"));
+        append(
+            &store,
+            "late",
+            1,
+            DomainEvent::TaskSubmitted { contract: late },
+        );
+        assert_eq!(
+            store
+                .snapshot()
+                .expect("native fixture operation")
+                .projection
+                .tasks[&TaskId::new("late").expect("native fixture operation")]
+                .state,
+            SchedulingState::Ready
+        );
+        auth.0.store(false, Ordering::SeqCst);
+        assert!(
+            execute(&store, 1, cmd.clone()).is_err(),
+            "revocation precedes duplicate disclosure"
+        );
+        auth.0.store(true, Ordering::SeqCst);
+        let mut collision = cmd;
+        collision.actor =
+            PrincipalId::new("independent-verifier").expect("native fixture operation");
+        if let LifecycleAction::DecideCandidate { evidence, .. } = &mut collision.action {
+            evidence.receipt_digest = digest("changed");
+        }
+        assert!(matches!(
+            execute(&store, 1, collision),
+            Err(StoreError::SourceCollision { .. })
+        ));
+        assert_eq!(accepted.event_seq, snapshot.cursor.event_seq);
+        let final_projection = store
+            .snapshot()
+            .expect("native fixture operation")
+            .projection;
+        let backup = dir.path().join("backup.sqlite");
+        store.backup(&backup).expect("native fixture operation");
+        assert_eq!(
+            store
+                .rebuild()
+                .expect("native fixture operation")
+                .projection,
+            final_projection
+        );
+        drop(store);
+        let restored = Store::open(&backup).expect("native fixture operation");
+        assert_eq!(
+            restored
+                .snapshot()
+                .expect("native fixture operation")
+                .projection,
+            final_projection
+        );
+        let reopened = Store::open(&db).expect("native fixture operation");
+        assert_eq!(
+            reopened
+                .snapshot()
+                .expect("native fixture operation")
+                .projection,
+            final_projection
+        );
+    }
+    #[test]
+    fn stale_or_forged_verifier_candidate_policy_and_contract_cannot_decide() {
+        let dir = private_tempdir();
+        let store =
+            Store::open_with_lifecycle_authority(dir.path().join("bindings.sqlite"), authority())
+                .expect("native fixture operation");
+        candidate(&store, "one");
+        let cmd = decide(&store, "one", true);
+        let before = store.snapshot().expect("native fixture operation");
+        for field in 0..8 {
+            let mut forged = cmd.clone();
+            if let LifecycleAction::DecideCandidate {
+                candidate_ref,
+                attempt_id,
+                evidence,
+                ..
+            } = &mut forged.action
+            {
+                match field {
+                    0 => *candidate_ref = "other-candidate".into(),
+                    1 => {
+                        *attempt_id =
+                            AttemptId::new("other-attempt").expect("native fixture operation")
+                    }
+                    2 => evidence.contract_digest = digest("other-contract"),
+                    3 => evidence.verification_policy_digest = digest("other-policy"),
+                    4 => evidence.custody_digest = digest("other-custody"),
+                    5 => {
+                        evidence.verifier =
+                            PrincipalId::new("worker").expect("native fixture operation");
+                        forged.actor = evidence.verifier.clone();
+                    }
+                    6 => evidence.closure_digest = digest("not-closed"),
+                    _ => forged.expected_task_digest = digest("stale"),
+                }
+            }
+            assert!(execute(&store, field + 1, forged).is_err());
+            assert_eq!(store.snapshot().expect("native fixture operation"), before);
+        }
+    }
+    #[test]
+    fn closure_retry_preserves_attempt_history_and_enforces_budget() {
+        let dir = private_tempdir();
+        let store =
+            Store::open_with_lifecycle_authority(dir.path().join("retry.sqlite"), authority())
+                .expect("native fixture operation");
+        running(&store, "one");
+        let id = AttemptId::new("one-attempt-1").expect("native fixture operation");
+        let close = command(
+            &store,
+            "one",
+            LifecycleAction::CloseAttempt {
+                attempt_id: id.clone(),
+                closure_digest: digest("closed"),
+                reason: "known child failure".into(),
+                cancelled: false,
+            },
+        );
+        execute(&store, 1, close).expect("native fixture operation");
+        let retry = command(
+            &store,
+            "one",
+            LifecycleAction::Retry {
+                attempt_id: id.clone(),
+                closure_digest: digest("closed"),
+            },
+        );
+        execute(&store, 2, retry).expect("native fixture operation");
+        assert!(
+            store
+                .append(
+                    source("one", 4),
+                    task_claim("one", 1, "one-attempt-1", "worker"),
+                    OBSERVED_UTC.into()
+                )
+                .is_err()
+        );
+        append(
+            &store,
+            "one",
+            5,
+            task_claim("one", 1, "one-attempt-2", "worker"),
+        );
+        let close = command(
+            &store,
+            "one",
+            LifecycleAction::CloseAttempt {
+                attempt_id: AttemptId::new("one-attempt-2").expect("native fixture operation"),
+                closure_digest: digest("closed-two"),
+                reason: "known spawn failure".into(),
+                cancelled: true,
+            },
+        );
+        execute(&store, 3, close).expect("native fixture operation");
+        let retry = command(
+            &store,
+            "one",
+            LifecycleAction::Retry {
+                attempt_id: AttemptId::new("one-attempt-2").expect("native fixture operation"),
+                closure_digest: digest("closed-two"),
+            },
+        );
+        assert!(execute(&store, 4, retry).is_err());
+        let task = &store
+            .snapshot()
+            .expect("native fixture operation")
+            .projection
+            .tasks[&TaskId::new("one").expect("native fixture operation")];
+        assert_eq!(
+            task.lifecycle
+                .as_ref()
+                .expect("native fixture operation")
+                .attempts
+                .len(),
+            2
+        );
+    }
+    #[test]
+    fn revision_and_pending_cancel_cannot_reinterpret_live_or_referenced_work() {
+        let dir = private_tempdir();
+        let store =
+            Store::open_with_lifecycle_authority(dir.path().join("revision.sqlite"), authority())
+                .expect("native fixture operation");
+        submit(&store, "one", 1, "one");
+        let mut revised = contract("one");
+        revised.revision = 2;
+        let revise = command(
+            &store,
+            "one",
+            LifecycleAction::ReviseContract {
+                contract: revised.clone(),
+            },
+        );
+        execute(&store, 1, revise).expect("native fixture operation");
+        let mut child = contract("child");
+        child
+            .dependencies
+            .push(TaskId::new("one").expect("native fixture operation"));
+        append(
+            &store,
+            "child",
+            1,
+            DomainEvent::TaskSubmitted { contract: child },
+        );
+        revised.revision = 3;
+        let revise = command(
+            &store,
+            "one",
+            LifecycleAction::ReviseContract { contract: revised },
+        );
+        assert!(execute(&store, 2, revise).is_err());
+        append(&store, "one", 2, task_claim("one", 2, "attempt", "worker"));
+        let cancel = command(
+            &store,
+            "one",
+            LifecycleAction::CancelPending {
+                reason: "stop".into(),
+            },
+        );
+        assert!(execute(&store, 3, cancel).is_err());
+        let cancel = command(
+            &store,
+            "child",
+            LifecycleAction::CancelPending {
+                reason: "owner cancelled pending work".into(),
+            },
+        );
+        execute(&store, 4, cancel).expect("native fixture operation");
+    }
+    #[test]
+    fn concurrent_decisions_commit_only_one_current_cas() {
+        let dir = private_tempdir();
+        let store =
+            Store::open_with_lifecycle_authority(dir.path().join("race.sqlite"), authority())
+                .expect("native fixture operation");
+        candidate(&store, "one");
+        let cmd = decide(&store, "one", true);
+        let barrier = Arc::new(Barrier::new(2));
+        let joins: Vec<_> = (1..=2)
+            .map(|seq| {
+                let store = store.clone();
+                let cmd = cmd.clone();
+                let barrier = barrier.clone();
+                thread::spawn(move || {
+                    barrier.wait();
+                    execute(&store, seq, cmd)
+                })
+            })
+            .collect();
+        let results: Vec<_> = joins
+            .into_iter()
+            .map(|t| t.join().expect("native fixture operation"))
+            .collect();
+        assert_eq!(results.iter().filter(|r| r.is_ok()).count(), 1);
+        assert_eq!(
+            store
+                .snapshot()
+                .expect("native fixture operation")
+                .cursor
+                .event_seq,
+            "5"
+        );
+    }
+
+    #[test]
+    fn optional_effect_must_match_exact_authorized_key_payload_and_schedule() {
+        use admiralty_store::{LifecycleEffect, outbox::OutboxIntent};
+        struct ExactEffectAuthority;
+        impl LifecycleAuthority for ExactEffectAuthority {
+            fn authorize(
+                &self,
+                source: &SourceIdentity,
+                command: &LifecycleCommand,
+                task: &TaskView,
+                effect: Option<&LifecycleEffect<'_>>,
+            ) -> bool {
+                FixtureAuthority(AtomicBool::new(true)).authorize(source, command, task, None)
+                    && effect.is_some_and(|effect| {
+                        effect.idempotency_key == "release-one"
+                            && effect.payload == r#"{"release":"one"}"#
+                            && effect.not_before == 7
+                    })
+            }
+        }
+        let dir = private_tempdir();
+        let db = dir.path().join("effects.sqlite");
+        let store = Store::open_with_lifecycle_authority(&db, Arc::new(ExactEffectAuthority))
+            .expect("native fixture operation");
+        candidate(&store, "one");
+        let cmd = decide(&store, "one", true);
+        let before = store.snapshot().expect("native fixture operation");
+        let intent = OutboxIntent {
+            idempotency_key: "release-one".into(),
+            payload: serde_json::json!({"release":"one"}),
+            not_before: 7,
+        };
+        let fault = rusqlite::Connection::open(&db).expect("native fixture operation");
+        fault.execute_batch("CREATE TRIGGER reject_native_binding BEFORE INSERT ON event_request_bindings BEGIN SELECT RAISE(ABORT,'native late fault'); END;").expect("native fixture operation");
+        let changes = store.subscribe_changes();
+        assert!(matches!(
+            store.execute_lifecycle(
+                source("trusted-service", 1),
+                cmd.clone(),
+                OBSERVED_UTC.into(),
+                Some(intent.clone())
+            ),
+            Err(StoreError::Sqlite(_))
+        ));
+        assert_eq!(store.snapshot().expect("native fixture operation"), before);
+        assert!(!changes.has_changed().expect("native fixture operation"));
+        let effects: i64 = fault
+            .query_row("SELECT COUNT(*) FROM outbox_intents", [], |r| r.get(0))
+            .expect("native fixture operation");
+        assert_eq!(
+            effects, 0,
+            "late SQL failure rolls back event, effect, projection and wake together"
+        );
+        fault
+            .execute_batch("DROP TRIGGER reject_native_binding;")
+            .expect("native fixture operation");
+        drop(fault);
+        for field in 0..3 {
+            let mut forged = intent.clone();
+            match field {
+                0 => forged.idempotency_key = "unrelated".into(),
+                1 => forged.payload = serde_json::json!({"publish":"main"}),
+                _ => forged.not_before = 8,
+            }
+            assert!(
+                store
+                    .execute_lifecycle(
+                        source("trusted-service", 1),
+                        cmd.clone(),
+                        OBSERVED_UTC.into(),
+                        Some(forged)
+                    )
+                    .is_err()
+            );
+            assert_eq!(store.snapshot().expect("native fixture operation"), before);
+        }
+        let receipt = store
+            .execute_lifecycle(
+                source("trusted-service", 1),
+                cmd.clone(),
+                OBSERVED_UTC.into(),
+                Some(intent.clone()),
+            )
+            .expect("native fixture operation");
+        assert!(
+            store
+                .execute_lifecycle(
+                    source("trusted-service", 1),
+                    cmd,
+                    OBSERVED_UTC.into(),
+                    Some(intent)
+                )
+                .expect("native fixture operation")
+                .duplicate
+        );
+        let connection = rusqlite::Connection::open(&db).expect("native fixture operation");
+        let associations: i64 = connection
+            .query_row(
+                "SELECT COUNT(*) FROM event_outbox_associations WHERE event_seq=?1",
+                [receipt
+                    .event_seq
+                    .parse::<i64>()
+                    .expect("native fixture operation")],
+                |r| r.get(0),
+            )
+            .expect("native fixture operation");
+        assert_eq!(associations, 1);
+    }
+
+    #[test]
+    fn revision_refuses_to_leave_a_stale_pending_assignment() {
+        use admiralty_core::{CoordinationMessage, MessageId, MessagePayload};
+        let dir = private_tempdir();
+        let store =
+            Store::open_with_lifecycle_authority(dir.path().join("assignment.sqlite"), authority())
+                .expect("native fixture operation");
+        submit(&store, "one", 1, "one");
+        append(
+            &store,
+            "one",
+            2,
+            DomainEvent::MessageQueued {
+                message: CoordinationMessage {
+                    schema_version: 1,
+                    message_id: MessageId::new("assignment").expect("native fixture operation"),
+                    project_id: contract("one").project_id,
+                    sender: PrincipalId::new("manager").expect("native fixture operation"),
+                    recipient: PrincipalId::new("worker").expect("native fixture operation"),
+                    causation_id: None,
+                    context_epoch: "epoch-one".into(),
+                    authority_ref: contract("one").authority_ref,
+                    payload: MessagePayload::TaskAssigned {
+                        task_id: TaskId::new("one").expect("native fixture operation"),
+                        revision: 1,
+                        contract_digest: content_digest(&contract("one"))
+                            .expect("native fixture operation"),
+                    },
+                },
+            },
+        );
+        let before = store.snapshot().expect("native fixture operation");
+        let mut revised = contract("one");
+        revised.revision = 2;
+        let cmd = command(
+            &store,
+            "one",
+            LifecycleAction::ReviseContract { contract: revised },
+        );
+        assert!(execute(&store, 1, cmd).is_err());
+        assert_eq!(store.snapshot().expect("native fixture operation"), before);
+    }
+}
+
 fn contract(id: &str) -> TaskContract {
     serde_json::from_value(serde_json::json!({
         "schema_version": 1,

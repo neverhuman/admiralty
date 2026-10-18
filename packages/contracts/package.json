@@ -20,6 +20,9 @@
     "./domain-event": {
       "types": "./generated/domain-event.ts"
     },
+    "./domain-event-v2": {
+      "types": "./generated/domain-event-v2.ts"
+    },
     "./validators": {
       "types": "./generated/validators.d.mts",
       "import": "./generated/validators.mjs",

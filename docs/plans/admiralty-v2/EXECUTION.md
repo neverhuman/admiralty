@@ -6,6 +6,21 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). In
 
 Latest independent remaining-work audit: [18 October, source 7bb2784d](REMAINING_AUDIT_2026-10-18.md). Its 32-packet matrix reconciles current source and live 19:16–19:20 UTC observations; older merge-window and queued-CI notes below remain historical. P00 artifact closeout and P01–P31 implementation/qualification gates remain open. No native activation or whole-packet acceptance is established by the dashboard's shared-workspace `verified` labels.
 
+Native release priority (owner steering, 18 October): I0 scoped pending index is
+merged in [PR63](https://github.com/neverhuman/admiralty/pull/63), receiving main
+`e8f11153f5d0432f6833eb3c52a432f7c15463e2`. I1 now implements the
+[authoritative lifecycle seam](../../architecture/native-lifecycle.md): version2
+CAS decisions, exact optional-effect authorization, closure-bound retry,
+conservative revisions and accepted-dependency release. It remains an inactive
+component until actual runtime authority, admitted execution, trusted checks,
+React v2 support and isolated recovery/cutover gates are integrated. Existing
+Screen workers have concrete disjoint production packets for authentication,
+execution, checks, UI, workspace preparation, resource admission, recovery and
+controller integration. Pointer delivery and passing component tests do not
+establish completed workers or parent-packet acceptance. The owner authorizes
+additional Luna fleet workers and hard cutover after operational qualification;
+registered resource limits, unrelated jobs and preserved work remain in force.
+
 | Packet | State | Owner | Integrated commit or candidate | Evidence and next action |
 | --- | --- | --- | --- | --- |
 | P00 | review | evidence lane + integration review | independently checked at `a9ba930e` | 37 pinned hashes, 11 synthetic cases, distinct 449/503 baselines and unknown-explicit inventory worksheet satisfy inspected artifact criteria; hashed current execution evidence recorded, authorized engineering receipt closeout pending |
