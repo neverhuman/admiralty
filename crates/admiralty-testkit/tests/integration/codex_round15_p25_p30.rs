@@ -1,7 +1,5 @@
+use super::recovery_fixture;
 use admiralty_runtime::recovery::{Blocker, Reconciliation, plan_recovery};
-
-#[path = "../../../../tests/integration/support/recovery.rs"]
-mod recovery_fixture;
 
 #[test]
 fn codex_round15_p25_p30_release_smoke_and_replay_stress() {
