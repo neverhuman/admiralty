@@ -229,6 +229,18 @@ fn reservations_replay_hold_unknown_liability_settle_and_correct_exact_minor_uni
     .expect("reserve one exact minor unit");
     assert_eq!(
         reservations::reserve_budget(
+            &reserved,
+            "reserve-1",
+            "reservation-1",
+            scope.clone(),
+            "correlation-1",
+            MinorUnits::new(1),
+        )
+        .expect("replaying an applied reserve returns the unchanged ledger"),
+        reserved
+    );
+    assert_eq!(
+        reservations::reserve_budget(
             &empty,
             "reserve-1",
             "reservation-1",

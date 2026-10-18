@@ -109,6 +109,34 @@ fn unknown_capacity_and_quota_do_not_create_admission() {
 }
 
 #[test]
+fn zero_capacity_and_quota_block_readiness_at_boundary() {
+    let mut input = snapshot(scheduled("task", LeaseObservation::Absent));
+    input.available_quota = Knowledge::Known(0);
+    input.available_capacity = Knowledge::Known(0);
+
+    let proposal = propose_ready_tasks(&input, &scope()).expect("valid zero-resource snapshot");
+    assert!(proposal.ready.is_empty());
+    assert!(!proposal.execution_granted);
+    let blockers = proposal
+        .blocked
+        .get(&TaskId::new("task").expect("task ID"))
+        .expect("zero resources block task");
+    assert!(blockers.contains(&ReadinessBlocker::QuotaLimit));
+    assert!(blockers.contains(&ReadinessBlocker::CapacityLimit));
+}
+
+#[test]
+fn replaying_the_same_snapshot_produces_the_same_non_authorizing_proposal() {
+    let input = snapshot(scheduled("task", LeaseObservation::Absent));
+
+    let first = propose_ready_tasks(&input, &scope()).expect("valid snapshot");
+    let replay = propose_ready_tasks(&input, &scope()).expect("identical replay");
+
+    assert_eq!(first, replay);
+    assert!(!replay.execution_granted);
+}
+
+#[test]
 fn changed_scope_is_rejected_instead_of_escalating_or_claiming() {
     let mut expected = scope();
     expected.revision += 1;
@@ -128,5 +156,16 @@ fn tampered_contract_digest_is_rejected_before_proposal() {
     assert_eq!(
         propose_ready_tasks(&input, &scope()),
         Err(SchedulerError::ContractDigestMismatch("task".into()))
+    );
+}
+
+#[test]
+fn stale_observed_contract_revision_is_rejected_before_proposal() {
+    let mut input = snapshot(scheduled("task", LeaseObservation::Absent));
+    input.tasks[0].observed_contract_revision += 1;
+
+    assert_eq!(
+        propose_ready_tasks(&input, &scope()),
+        Err(SchedulerError::StaleContractRevision("task".into()))
     );
 }

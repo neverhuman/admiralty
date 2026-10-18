@@ -87,6 +87,17 @@ fn consumer_ack_is_provisional_and_new_revision_proposes_invalidation() {
         .is_err(),
         "an acknowledgement bound to a foreign scope must be rejected"
     );
+    assert!(
+        reduce_interface_for(
+            &Some(initial.state.clone()),
+            &ack_event,
+            &scope,
+            &principal("unauthenticated-peer"),
+            &owner,
+        )
+        .is_err(),
+        "an acknowledgement from an unauthenticated peer must be rejected"
+    );
 
     let acknowledged =
         reduce_interface_for(&Some(initial.state), &ack_event, &scope, &consumer, &owner)
@@ -107,6 +118,33 @@ fn consumer_ack_is_provisional_and_new_revision_proposes_invalidation() {
     .expect("idempotent acknowledgment replay");
     assert!(replay.replayed);
     assert_eq!(replay.state, acknowledged.state);
+
+    let mut changed_replay = ack_event.clone();
+    if let InterfaceEvent::Acknowledge {
+        artifact_digest, ..
+    } = &mut changed_replay
+    {
+        *artifact_digest = digest('z');
+    }
+    assert!(
+        reduce_interface_for(
+            &Some(acknowledged.state.clone()),
+            &changed_replay,
+            &scope,
+            &consumer,
+            &owner,
+        )
+        .is_err(),
+        "reusing an event ID with a changed payload must be rejected"
+    );
+    assert_eq!(
+        acknowledged.state.evidence.get(&consumer),
+        Some(&CompatibilityEvidence::ProvisionalAck {
+            artifact_digest: digest('a'),
+            schema_digest: digest('b'),
+        }),
+        "rejected replay collision must leave accepted evidence unchanged"
+    );
 
     let revised = reduce_interface_for(
         &Some(acknowledged.state),

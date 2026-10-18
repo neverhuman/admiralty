@@ -49,6 +49,9 @@ fn backup_reopens_with_identical_snapshot_and_recovery_proposal_keeps_authority_
     let (manifest, observation, fence) = recovery_fixture::valid_recovery_evidence();
     let proposal = plan_recovery(&manifest, &observation, Some(&fence))
         .expect("compatible upgrade evidence proposes continuity");
+    let replayed = plan_recovery(&manifest, &observation, Some(&fence))
+        .expect("replaying identical recovery evidence returns a proposal");
+    assert_eq!(replayed, proposal, "recovery planning is replay-stable");
     assert!(proposal.resume_proposed);
     assert!(!proposal.restore_authorized());
     assert!(!proposal.effects_authorized());

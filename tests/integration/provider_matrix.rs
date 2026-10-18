@@ -306,6 +306,10 @@ fn caller_supplied_lifecycle_and_pass_text_never_grant_acceptance() {
         assert!(!o.parent_acceptance());
     }
     assert!(process::observe(process::Lifecycle::Running, b"", 0).is_err());
+    let exact_limit = process::observe(process::Lifecycle::Running, b"", MAX_STREAM_BYTES)
+        .expect("exact stream byte boundary is admissible");
+    assert_eq!(exact_limit.output_bytes, 0);
+    assert!(!exact_limit.output_truncated);
     assert!(process::observe(process::Lifecycle::Running, b"", MAX_STREAM_BYTES + 1).is_err());
 }
 
@@ -477,4 +481,21 @@ fn generic_process_rejects_an_oversized_argument_without_launching() {
     spec.args = vec![oversized_arg];
     let rejected = process::Launch::new(spec);
     assert!(rejected.is_err());
+}
+
+#[test]
+fn generic_process_rejects_parent_traversal_in_working_directory() {
+    let mut spec = envelope("/usr/bin/tool");
+    spec.cwd = "/fixture/work/../escape".into();
+    assert!(process::Launch::new(spec).is_err());
+}
+
+#[test]
+fn replaying_legacy_classification_is_idempotent_and_observed_only() {
+    let argv = vec!["/opt/grok".to_string(), "--model".into(), "grok-3".into()];
+    let first = process::classify_legacy(&argv, None, None).expect("bounded argv");
+    let replay = process::classify_legacy(&argv, None, None).expect("replayed bounded argv");
+    assert_eq!(replay, first);
+    assert!(replay.observed_only);
+    assert_eq!(replay.observed_provider, None);
 }

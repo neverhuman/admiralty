@@ -1,5 +1,7 @@
 use admiralty_runtime::{
-    providers::codex::{CodexEffort, CodexError, CodexNdjsonStream, CodexTermination},
+    providers::codex::{
+        CodexEffort, CodexError, CodexNdjsonStream, CodexTermination, MAX_STREAM_BYTES,
+    },
     session::{OutputChunk, OutputStream},
 };
 
@@ -81,4 +83,56 @@ fn journal_gap_poisoning_requires_reconciliation() {
         bytes: b"{}\n".to_vec(),
     });
     assert!(matches!(retry, Err(CodexError::Failed)));
+}
+
+#[test]
+fn malformed_codex_json_yields_no_observation_and_poisoning_is_sticky() {
+    let mut parser = CodexNdjsonStream::new("selected-model", CodexEffort::Low)
+        .expect("explicit model accepted");
+    let malformed = parser.push_chunk(&OutputChunk {
+        offset: 0,
+        stream: OutputStream::Stdout,
+        bytes: b"{broken}\n".to_vec(),
+    });
+    assert!(matches!(malformed, Err(CodexError::Json(_))));
+    assert!(parser.observations().is_empty());
+    assert!(matches!(
+        parser.push_chunk(&OutputChunk {
+            offset: 0,
+            stream: OutputStream::Stdout,
+            bytes: b"{}\n".to_vec(),
+        }),
+        Err(CodexError::Failed)
+    ));
+}
+
+#[test]
+fn codex_stream_limit_rejects_first_byte_over_boundary() {
+    let mut parser = CodexNdjsonStream::new("selected-model", CodexEffort::Low)
+        .expect("explicit model accepted");
+    let result = parser.push_chunk(&OutputChunk {
+        offset: 0,
+        stream: OutputStream::Stdout,
+        bytes: vec![b' '; MAX_STREAM_BYTES + 1],
+    });
+    assert!(matches!(result, Err(CodexError::Bounds)));
+    assert!(parser.observations().is_empty());
+}
+
+#[test]
+fn replaying_a_codex_journal_chunk_cannot_duplicate_observations() {
+    let mut parser = CodexNdjsonStream::new("selected-model", CodexEffort::Low)
+        .expect("explicit model accepted");
+    let chunk = OutputChunk {
+        offset: 0,
+        stream: OutputStream::Stdout,
+        bytes: b"{\"type\":\"thread.started\",\"thread_id\":\"fixture-thread\"}\n".to_vec(),
+    };
+    let first = parser.push_chunk(&chunk).expect("initial journal chunk");
+    assert_eq!(first.len(), 1);
+    assert!(matches!(
+        parser.push_chunk(&chunk),
+        Err(CodexError::JournalGap)
+    ));
+    assert_eq!(parser.observations().len(), 1);
 }

@@ -2,7 +2,7 @@ use admiralty_core::{
     ProjectId, RootId, TaskId,
     conflicts::{
         CandidateChange, CandidateConstraints, ConflictError, ConflictRisk, FileChange, HunkRange,
-        InterfaceRevision, analyze_conflicts, probe_cache_key,
+        InterfaceRevision, MAX_CANDIDATES, analyze_conflicts, probe_cache_key,
     },
 };
 
@@ -71,6 +71,19 @@ fn changed_ancestry_changes_cache_identity_even_when_tree_is_unchanged() {
 }
 
 #[test]
+fn replaying_identical_candidate_is_idempotent_and_does_not_create_a_conflict() {
+    let original = candidate("candidate", 'a', &["crates/admiralty-runtime/src/lib.rs"]);
+    let once = analyze_conflicts(std::slice::from_ref(&original), "policy-1")
+        .expect("single candidate analysis");
+    let replayed = analyze_conflicts(&[original.clone(), original], "policy-1")
+        .expect("identical candidate replay");
+
+    assert_eq!(once, replayed);
+    assert!(replayed.edges.is_empty());
+    assert_eq!(replayed.generation.candidate_ids, ["candidate"]);
+}
+
+#[test]
 fn stale_bases_are_reported_and_candidate_order_is_stable() {
     let first = candidate("first", 'a', &["crates/admiralty-runtime/src/first.rs"]);
     let second = candidate("second", 'b', &["crates/admiralty-runtime/src/second.rs"]);
@@ -105,6 +118,35 @@ fn invalid_candidate_input_is_rejected_before_analysis() {
     assert!(matches!(
         analyze_conflicts(&[invalid], "policy-1"),
         Err(ConflictError::InvalidPath(_))
+    ));
+}
+
+#[test]
+fn duplicate_file_paths_in_one_candidate_are_rejected_deterministically() {
+    let duplicate = candidate(
+        "candidate",
+        'a',
+        &[
+            "crates/admiralty-runtime/src/lib.rs",
+            "crates/admiralty-runtime/src/lib.rs",
+        ],
+    );
+
+    assert!(matches!(
+        analyze_conflicts(&[duplicate], "policy-1"),
+        Err(ConflictError::DuplicatePath(candidate_id)) if candidate_id == "candidate"
+    ));
+}
+
+#[test]
+fn candidate_count_above_the_configured_boundary_is_rejected() {
+    let oversized = (0..=MAX_CANDIDATES)
+        .map(|index| candidate(&format!("candidate-{index:03}"), 'a', &["crates/a.rs"]))
+        .collect::<Vec<_>>();
+
+    assert!(matches!(
+        analyze_conflicts(&oversized, "policy-1"),
+        Err(ConflictError::TooManyCandidates)
     ));
 }
 

@@ -74,6 +74,29 @@ fn repeated_preview_is_idempotent_and_dependency_ordered() {
 }
 
 #[test]
+fn replay_cannot_rewrite_an_existing_task_identity() {
+    let project = ProjectId::new("project").expect("valid project ID");
+    let plan = Workplan {
+        schema_version: 1,
+        plan_id: "plan".into(),
+        revision: 1,
+        project_id: project.clone(),
+        tasks: vec![contract("task", project.clone(), &[])],
+    };
+    let bytes = source(&plan);
+    let existing = preview_workplan(&bytes)
+        .expect("valid initial preview")
+        .task_digests;
+    let mut changed = plan;
+    changed.tasks[0].objective = "Changed work under the same task ID".into();
+
+    assert!(matches!(
+        preview_workplan_with_existing(&source(&changed), &existing),
+        Err(WorkplanError::TaskIdentityConflict(id)) if id == "task"
+    ));
+}
+
+#[test]
 fn legacy_pass_and_checkbox_fields_cannot_become_trusted_acceptance() {
     let project = ProjectId::new("project").expect("valid project ID");
     let plan = Workplan {
@@ -117,4 +140,41 @@ fn oversized_source_is_rejected_before_json_parsing() {
     let oversized = vec![b' '; MAX_WORKPLAN_BYTES + 1];
 
     assert_eq!(preview_workplan(&oversized), Err(WorkplanError::TooLarge));
+}
+
+#[test]
+fn source_at_byte_limit_is_accepted() {
+    let project = ProjectId::new("project").expect("valid project ID");
+    let plan = Workplan {
+        schema_version: 1,
+        plan_id: "plan".into(),
+        revision: 1,
+        project_id: project.clone(),
+        tasks: vec![contract("task", project, &[])],
+    };
+    let mut bytes = source(&plan);
+    assert!(bytes.len() <= MAX_WORKPLAN_BYTES);
+    bytes.resize(MAX_WORKPLAN_BYTES, b' ');
+
+    assert!(preview_workplan(&bytes).is_ok());
+}
+
+#[test]
+fn cyclic_dependencies_are_rejected_before_import() {
+    let project = ProjectId::new("project").expect("valid project ID");
+    let plan = Workplan {
+        schema_version: 1,
+        plan_id: "cycle".into(),
+        revision: 1,
+        project_id: project.clone(),
+        tasks: vec![
+            contract("first", project.clone(), &["second"]),
+            contract("second", project, &["first"]),
+        ],
+    };
+
+    assert_eq!(
+        preview_workplan(&source(&plan)),
+        Err(WorkplanError::DependencyCycle)
+    );
 }

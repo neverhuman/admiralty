@@ -1,5 +1,5 @@
 use admiralty_core::economics::{DecimalU128, ObservedAmount};
-use admiralty_runtime::session::{LaunchSpec, validate_launch_envelope};
+use admiralty_runtime::session::{LaunchSpec, MAX_LAUNCH_ARGS, validate_launch_envelope};
 use std::path::PathBuf;
 
 #[test]
@@ -35,6 +35,18 @@ fn p31_release_session_rejects_unbounded_or_relative_launch_envelopes() {
     let mut traversing_run_id = valid.clone();
     traversing_run_id.run_id = "../escape".into();
     assert!(validate_launch_envelope(&traversing_run_id).is_err());
+
+    let mut nul_argument = valid.clone();
+    nul_argument.args = vec!["--name\0hidden".into()];
+    assert!(validate_launch_envelope(&nul_argument).is_err());
+
+    let mut max_arg_count = valid.clone();
+    max_arg_count.args = vec![String::new(); MAX_LAUNCH_ARGS];
+    assert!(validate_launch_envelope(&max_arg_count).is_ok());
+
+    let mut too_many_args = valid.clone();
+    too_many_args.args = vec![String::new(); MAX_LAUNCH_ARGS + 1];
+    assert!(validate_launch_envelope(&too_many_args).is_err());
 
     let mut oversized_args = valid;
     oversized_args.args = vec!["x".repeat(64 * 1024 + 1)];
