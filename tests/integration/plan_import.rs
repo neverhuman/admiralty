@@ -8,6 +8,10 @@ use admiralty_core::workplans::{
     MAX_WORKPLAN_BYTES, Workplan, WorkplanError, preview_workplan, preview_workplan_with_existing,
 };
 use admiralty_core::{AcceptanceCriterion, CheckSpec, ProjectId, RootId, TaskContract, TaskId};
+use admiralty_testkit::{
+    clock::FakeClock,
+    faults::{FaultEffect, FaultPlan, FaultRule},
+};
 
 fn contract(task_id: &str, project_id: ProjectId, dependencies: &[&str]) -> TaskContract {
     TaskContract {
@@ -72,6 +76,32 @@ fn repeated_preview_is_idempotent_and_dependency_ordered() {
         first.task_order,
         ["parent", "child"].map(|id| TaskId::new(id).expect("task ID"))
     );
+}
+
+#[test]
+fn synthetic_retry_after_clock_advance_preserves_preview_identity() {
+    let project = ProjectId::new("project").expect("valid project ID");
+    let plan = Workplan {
+        schema_version: 1,
+        plan_id: "retry-plan".into(),
+        revision: 1,
+        project_id: project.clone(),
+        tasks: vec![contract("task", project, &[])],
+    };
+    let bytes = source(&plan);
+    let expected = preview_workplan(&bytes).expect("valid preview");
+    let mut faults = FaultPlan::new(vec![FaultRule {
+        point: "preview".into(),
+        occurrence: 1,
+        effect: FaultEffect::Fail,
+    }])
+    .expect("valid deterministic fault schedule");
+    let mut clock = FakeClock::new(100);
+
+    assert_eq!(faults.hit("preview"), Ok(Some(FaultEffect::Fail)));
+    assert_eq!(clock.advance_ms(5), Ok(105));
+    assert_eq!(faults.hit("preview"), Ok(None));
+    assert_eq!(preview_workplan(&bytes), Ok(expected));
 }
 
 #[test]
