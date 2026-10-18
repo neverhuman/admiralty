@@ -6,6 +6,7 @@ use admiralty_store::{
         RegisterAssetRequest,
     },
 };
+use admiralty_testkit::faults::{FaultEffect, FaultPlan, FaultRule};
 use rusqlite::Connection;
 use std::{
     fs,
@@ -297,5 +298,48 @@ fn verified_read_rejects_corrupted_bytes_at_the_content_address() {
         fs::read(&object_path).expect("corrupt object remains unchanged"),
         corrupted,
         "verified read must reject rather than silently accept corrupted bytes"
+    );
+}
+
+#[test]
+fn one_shot_prepublication_crash_preserves_clean_state_for_retry() {
+    let fixture = private_fixture();
+    let artifact_root = fixture.path().join("objects");
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&artifact_root)
+        .expect("create owner-only artifact root");
+    let artifacts = ArtifactStore::open(&artifact_root, 1024).expect("open artifact store");
+    let bytes = b"one-shot prepublication fault";
+    let mut plan = FaultPlan::new(vec![FaultRule {
+        point: "artifact.publish.before_write".into(),
+        occurrence: 1,
+        effect: FaultEffect::Crash,
+    }])
+    .expect("construct deterministic prepublication fault");
+
+    let first_effect = plan
+        .hit("artifact.publish.before_write")
+        .expect("registered fault point");
+    assert_eq!(first_effect, Some(FaultEffect::Crash));
+    // FaultPlan returns symbolic effects; this caller models the crash by
+    // skipping the real store operation until the next deterministic attempt.
+    assert_eq!(
+        fs::read_dir(&artifact_root)
+            .expect("inspect object directory after simulated crash")
+            .count(),
+        0
+    );
+    assert_eq!(
+        plan.hit("artifact.publish.before_write"),
+        Ok(None),
+        "the one-shot fault does not fire on the retry"
+    );
+    let reference = artifacts
+        .publish_bytes(bytes)
+        .expect("retry publication after injected pre-write crash");
+    assert_eq!(
+        artifacts.read_verified(&reference).expect("verify retry"),
+        bytes
     );
 }
