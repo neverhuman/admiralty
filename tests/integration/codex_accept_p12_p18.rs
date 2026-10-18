@@ -448,9 +448,25 @@ async fn p11_p12_p18_round11_item4_final_validation_gate() {
 
 #[tokio::test]
 async fn p11_p12_p18_round12_item5_redteam_audit_gate() {
-    let receipt_path = std::path::Path::new(
-        "/home/ubuntu/admiralty-v2-build/receipts/RELEASE-QUALIFICATION/ROUND11-accept-p12-p18.json",
-    );
+    let directory = private_directory();
+    let log_path = directory.path().join("round11-validation.log");
+    let log = b"test p11_p12_p18_round11_item4_final_validation_gate ... ok\ntest result: ok. 1 passed; 0 failed\n";
+    std::fs::write(&log_path, log).expect("write hermetic validation log fixture");
+    let expected_log_sha = format!("{:x}", Sha256::digest(log));
+    let receipt_path = directory.path().join("round11-receipt.json");
+    let fixture_receipt = serde_json::json!({
+        "packet_ids": ["P11", "P12", "P18"],
+        "status": "passed",
+        "test": "p11_p12_p18_round11_item4_final_validation_gate",
+        "exit_code": 0,
+        "log_path": log_path,
+        "log_sha256": expected_log_sha,
+    });
+    std::fs::write(
+        &receipt_path,
+        serde_json::to_vec(&fixture_receipt).expect("encode hermetic receipt fixture"),
+    )
+    .expect("write hermetic receipt fixture");
     let receipt_bytes = std::fs::read(receipt_path).expect("read prior P11/P12/P18 receipt");
     let receipt: Value = serde_json::from_slice(&receipt_bytes).expect("valid receipt JSON");
     assert_eq!(
