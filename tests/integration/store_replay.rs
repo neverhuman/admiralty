@@ -222,6 +222,16 @@ fn tampered_durable_payload_fails_replay_without_silent_repair() {
         .expect("append");
     drop(store);
     let database = rusqlite::Connection::open(&path).expect("fault injection connection");
+    assert!(
+        database
+            .execute("UPDATE domain_events SET payload='{}' WHERE seq=1", [])
+            .is_err()
+    );
+    // Bypass the SQL immutability guard explicitly to inject disk corruption
+    // and exercise independent replay validation below it.
+    database
+        .execute_batch("DROP TRIGGER event_immutable_update")
+        .expect("fault injection bypass");
     database
         .execute(
             "UPDATE domain_events SET payload=?1 WHERE seq=1",
@@ -322,6 +332,14 @@ fn live_event_reads_refuse_tampered_payloads() {
     let mut cursor = store.snapshot().expect("snapshot").cursor;
     cursor.event_seq = "0".into();
     let database = rusqlite::Connection::open(&path).expect("fault injection");
+    assert!(
+        database
+            .execute("UPDATE domain_events SET payload='{}' WHERE seq=1", [])
+            .is_err()
+    );
+    database
+        .execute_batch("DROP TRIGGER event_immutable_update")
+        .expect("fault injection bypass");
     database
         .execute(
             "UPDATE domain_events SET payload=?1 WHERE seq=1",
