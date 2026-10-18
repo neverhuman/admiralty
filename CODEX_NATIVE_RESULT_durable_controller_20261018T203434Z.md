@@ -1,27 +1,28 @@
-# Native durable controller result
+# Native durable controller and executor result
 
-Base: `origin/codex/native-runtime-integration` at `aab2a6af65b70a5099143777ca9b602e0ce2a80d`, rebased on top of source commits `6ba83c5`, `0f17b9f`, and `8ee2f6b`.
+Base: `origin/codex/native-runtime-integration` at `64c75fe74246f0db0f0981f25448ca81ad2161ec` (PR #70 source).
 
 ## Implemented
 
-- Added `crates/admiralty-server/src/services/controller.rs` with bounded admission that checks the current task/contract state, invokes trusted in-process admission, and atomically persists `TaskClaimed` plus an idempotent launch intent through the Store writer.
-- Added `dispatch_one`, which claims at most one due intent through `Store::claim_outbox_due`, verifies the canonical payload digest and strict schema, rechecks the exact task/attempt/owner/contract against the current projection, and invokes a process-local current-admission check before runtime dispatch.
-- Dispatch consumes a typed runtime receipt bound to task, attempt, and run. Candidate evidence and failure evidence complete only the outbox effect; they never change task acceptance or lifecycle state. Denied, malformed, mismatched, and uncertain outcomes are written as `unknown`, which the Store will not automatically redispatch.
-- Added tests using the actual Store writer for a candidate receipt, no implicit task acceptance, no redelivery after completion, and durable fail-closed denial/unknown behavior. The runtime in these tests is a deterministic fake; it verifies the dispatch protocol, not real provider execution.
-- Kept `services/mod.rs` unchanged because primary integration owns module registration. It was temporarily registered only in this private worktree to run tests and clippy.
-- Preserved the I1 lifecycle composition hook: exact authorized effects are passed via `Store::execute_lifecycle`, and attempt closure remains a separate action.
+- The source branch provides bounded admission and Store-writer outbox dispatch. `dispatch_one` checks the canonical payload digest, strict schema, current task/attempt/owner/contract projection, and current admission before calling the process-local native executor. Candidate receipts do not advance task acceptance.
+- Added `crates/admiralty-server/src/services/native_executor.rs`, a concrete adapter over `ResourceGate`, `SessionHost`, `VerifiedResourcePermit::verify_current`, and `RunningAdmission::prove_closed`.
+- Plans are process-local trusted startup objects. Before launch, the adapter validates task, attempt, owner, contract digest/revision, context/policy, configured provider/model, run ID, reservation, live workspace custody, and opaque pinned `PreparedWorkspace` evidence.
+- It writes a create-only mode-0600 recovery identity and fsyncs the containing directory before the resource-gated launch. It polls `SessionHost::status` without blocking, captures only complete bounded output after observed exit, and requires the gate's opaque closure proof before producing a receipt. The evidence journal binds the proof and output digest; declared provider/model are stored separately from explicitly absent observations.
+- Uncertain launches remain in a bounded process-local registry holding `RunningAdmission`; no code path relaunches them. Unknown outcomes remain unknown. A successful child yields only a candidate disposition, never acceptance.
+- Added a real pinned-workspace fixture test proving an unconfigured resource backend denies before spawning a deterministic child and leaves both the child marker and recovery journal absent.
+- `services/mod.rs` was changed temporarily for local verification, then restored; primary integration owns activation and startup wiring.
 
 ## Verification
 
-Using lane-local `CARGO_TARGET_DIR=target`, `CARGO_BUILD_JOBS=2`, and `TMPDIR=/home/ubuntu/.adm-native-controller-tmp`:
+Using lane-local `CARGO_TARGET_DIR=target`, `CARGO_BUILD_JOBS=2`, and `TMPDIR=/home/ubuntu/.adm-native-controller-tmp` (tightened to mode 0700 for private-config tests):
 
-- `cargo test -p admiralty-server controller::tests -- --nocapture` — 5 passed, 0 failed.
+- `cargo test -p admiralty-server services::native_executor::tests -- --nocapture` — 1 passed, 0 failed, 1 ignored helper.
+- `cargo test -p admiralty-server -- --test-threads=1` — 24 passed, 0 failed, 1 ignored helper; includes existing access/startup integration tests.
 - `cargo clippy -p admiralty-server --all-targets -- -D warnings` — passed.
-- `rustfmt --edition 2024 crates/admiralty-server/src/services/controller.rs` — passed.
-- `git diff --check` — passed.
+- One parallel full-suite attempt had a transient model-registry `busy` failure; the serial rerun passed.
 
-## Remaining production integration boundary
+## Integration and deployment status
 
-This advances actual durable native dispatch, but the checkout still has no concrete server-side `NativeRuntimeExecutor`/`DispatchAdmission` composition. Runtime `ExecutionAdapter` requires a `PreparedCommand`, validated workspace, reservation, and live resource permit. `VerifiedResourcePermit::from_authenticated_issuer` is crate-private to `admiralty-runtime`; the server cannot construct the permit from an authenticated authority with current public APIs. In addition, `ExecutionAdapter::finish` currently uses blocking `wait`, so it is not a safe bounded dispatch-loop implementation for arbitrary provider runs.
+PR #70 is still open at `64c75fe74246f0db0f0981f25448ca81ad2161ec`. No live service was stopped or replaced. The native executor file is not registered in `services/mod.rs`; primary integration must wire it into trusted startup, supply configured `ResourceGate`, current permit authority, real prepared task plans and durable source sequencing. This lane does not record `TaskStarted` or `CandidateSubmitted`; those events require the primary's trusted Store/lifecycle decision composition.
 
-Required follow-up: export a trusted runtime factory/issuer path for `VerifiedResourcePermit`, compose workspace preparation + reservation + trusted admission into a concrete server adapter, and change runtime finish to bounded observation/deadline semantics before wiring a real provider child. Until then this controller safely dispatches only when the server supplies those trusted adapters; this patch does not claim an end-to-end real-provider execution qualification. Primary integration still needs to register `services::controller` centrally.
+The only executor test is intentionally fail-closed because this environment has no qualified configured Linux systemd resource backend. A real successful native child remains gated on the P10 Linux resource qualification and primary startup composition. The handoff's next deployment instructions apply only after PR #70 review and merge; no production deploy was attempted.
