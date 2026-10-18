@@ -210,3 +210,32 @@ fn injected_codex_tail_loss_keeps_capture_unqualified() {
     assert!(!summary.capture_complete);
     assert!(!summary.trusted_acceptance());
 }
+
+#[test]
+fn p24_p29_round8_p08_telegram_worktree_qualification() {
+    // The deterministic Codex transcript may report a completed turn, but the
+    // worktree qualification remains false until the capture is complete and
+    // independently accepted by the surrounding workflow.
+    let mut parser = CodexNdjsonStream::new("round8-fixture", CodexEffort::Medium)
+        .expect("explicit fixture model accepted");
+    let observations = parser
+        .push_chunk(&OutputChunk {
+            offset: 0,
+            stream: OutputStream::Stdout,
+            bytes: TURN.to_vec(),
+        })
+        .expect("fixture transcript parses deterministically");
+
+    assert!(
+        observations
+            .iter()
+            .any(|event| event.event_type == "turn.completed")
+    );
+    assert!(observations.iter().all(|event| !event.trusted_acceptance()));
+
+    let incomplete = parser.finish(Some(0), false);
+    assert_eq!(incomplete.termination, CodexTermination::Unknown);
+    assert!(!incomplete.capture_complete);
+    assert!(!incomplete.trusted_acceptance());
+    assert!(!incomplete.native_execution_qualified());
+}
