@@ -145,3 +145,166 @@ fn p09_p16_round8_captain_orchestrator_receipt_qualification() {
     changed.score = Some(DecimalU64::new(91));
     assert!(captain.evaluate(&scope, &policy, &changed).is_err());
 }
+
+#[test]
+fn p09_p16_round9_item3_workspace_doctor_qualification() {
+    use admiralty_core::{
+        ProjectId, RootId, TaskId,
+        conflicts::{CandidateChange, ConflictRisk, FileChange, analyze_conflicts},
+        economics::DecimalU128,
+        placement::{
+            BudgetRequirement, DecimalU64 as PlacementCounter, PlacementError, PlacementPolicy,
+            PlacementRequest,
+        },
+    };
+    use admiralty_runtime::{
+        audits::decode_evidence,
+        recovery::DecimalU64 as RecoveryCounter,
+        session::{LaunchSpec, validate_launch_envelope},
+        workspace::registry::{NodeRef, WorkspaceSpec},
+    };
+    use admiralty_store::artifacts::ArtifactStore;
+    use std::{fs, path::PathBuf};
+
+    let tmp = tempfile::tempdir().expect("qualification root");
+    let workspace = fs::canonicalize(tmp.path()).expect("canonical fixture");
+
+    // P09: root registration is observational and cannot adopt traversal scopes.
+    let invalid_workspace = WorkspaceSpec {
+        node_id: NodeRef::new("doctor-node").expect("node ID"),
+        root_id: RootId::new("doctor-root").expect("root ID"),
+        project_id: ProjectId::new("doctor-project").expect("project ID"),
+        workspace: workspace.clone(),
+        owned_paths: vec![PathBuf::from("../outside")],
+        forbidden_paths: vec![],
+    };
+    assert!(invalid_workspace.validate().is_err());
+
+    // P16: worker JSON cannot smuggle receipt flags or unknown evidence fields.
+    assert!(decode_evidence(br#"{"unknown":true}"#).is_err());
+
+    // P04: immutable content-addressed evidence refuses to bless modified bytes.
+    let object_root = workspace.join("objects");
+    fs::create_dir(&object_root).expect("object root");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&object_root, fs::Permissions::from_mode(0o700))
+            .expect("private object root");
+    }
+    let objects = ArtifactStore::open(&object_root, 1024).expect("artifact store");
+    let reference = objects
+        .publish_bytes(b"verified receipt bytes")
+        .expect("publish object");
+    let hex = reference
+        .sha256
+        .strip_prefix("sha256:")
+        .expect("digest prefix");
+    fs::write(object_root.join(hex), b"modified bytes").expect("tamper fixture object");
+    assert!(objects.publish_bytes(b"verified receipt bytes").is_err());
+
+    // P07: a symlinked spool root cannot be adopted as a daemon custody root.
+    #[cfg(unix)]
+    {
+        use admiralty_runtime::session::daemon::{DaemonConfig, SessionDaemon};
+        use std::os::unix::fs::symlink;
+        let safe_target = workspace.join("safe-spool");
+        fs::create_dir(&safe_target).expect("safe spool target");
+        let linked = workspace.join("linked-spool");
+        symlink(&safe_target, &linked).expect("spool symlink");
+        assert!(
+            SessionDaemon::bind(DaemonConfig {
+                socket: workspace.join("doctor.sock"),
+                spool_root: linked,
+            })
+            .is_err()
+        );
+    }
+
+    // P18: missing ancestry remains an explicit conflict risk, never a clear graph.
+    let candidate = |id: &str, path: &str| CandidateChange {
+        project_id: ProjectId::new("doctor-project").expect("project ID"),
+        root_id: RootId::new("doctor-root").expect("root ID"),
+        task_id: TaskId::new(format!("task-{id}")).expect("task ID"),
+        candidate_id: id.into(),
+        base_sha: "1".repeat(40),
+        head_sha: "2".repeat(40),
+        tree_sha: "3".repeat(40),
+        ancestry_digest: None,
+        files: vec![FileChange {
+            path: path.into(),
+            hunks: Some(vec![]),
+        }],
+        constraints: None,
+    };
+    let graph = analyze_conflicts(
+        &[
+            candidate("candidate-a", "src/lib.rs"),
+            candidate("candidate-b", "src/lib.rs"),
+        ],
+        "doctor-policy",
+    )
+    .expect("bounded conflict graph");
+    assert!(graph.edges.iter().any(|edge| {
+        edge.risks.contains(&ConflictRisk::UnknownAncestry)
+            && edge.risks.contains(&ConflictRisk::SamePathUnknownHunks)
+    }));
+    assert_eq!(graph.generation.combined_verification_required, true);
+
+    // P21: literal argv rejects NUL before any process can be launched.
+    let launch = LaunchSpec {
+        run_id: "doctor-run".into(),
+        program: PathBuf::from("/bin/true"),
+        args: vec!["bad\0arg".into()],
+        cwd: workspace.clone(),
+        spool_dir: workspace.clone(),
+    };
+    assert!(validate_launch_envelope(&launch).is_err());
+
+    // P24: missing clock input fails closed; no placement is inferred from unknown time.
+    let placement_request = PlacementRequest {
+        project: ProjectId::new("doctor-project").expect("project ID"),
+        root: RootId::new("doctor-root").expect("root ID"),
+        task: TaskId::new("doctor-task").expect("task ID"),
+        contract_digest: format!("sha256:{}", "a".repeat(64)),
+        authority_ref: "fixture-authority".into(),
+        required_capabilities: vec![],
+        locality_refs: vec![],
+        budget_requirement: BudgetRequirement {
+            account_pool: "fixture-pool".into(),
+            amount: PlacementCounter::new(1),
+        },
+    };
+    let placement_policy = PlacementPolicy {
+        max_observation_age: PlacementCounter::new(10),
+        maximum_pressure: PlacementCounter::new(10),
+        minimum_spool_reserve: PlacementCounter::new(1),
+        disconnected_continuation_only: true,
+        ownership_revision: None,
+    };
+    let placement: Result<_, PlacementError> =
+        admiralty_core::placement::propose_placement_recorded(
+            &placement_request,
+            &[],
+            &placement_policy,
+            None,
+            None,
+        );
+    assert!(matches!(placement, Err(PlacementError::Clock)));
+
+    // P25: recovery counters reject noncanonical decimals (e.g. leading zero).
+    assert!(serde_json::from_str::<RecoveryCounter>("\"01\"").is_err());
+
+    // P26: large usage totals remain exact across JSON and never round through f64.
+    let large_usage = DecimalU128(9_007_199_254_740_993);
+    assert_eq!(
+        serde_json::to_string(&large_usage).expect("exact usage JSON"),
+        "\"9007199254740993\""
+    );
+    assert_eq!(
+        serde_json::from_str::<DecimalU128>("\"9007199254740993\"")
+            .expect("exact usage parse")
+            .as_u128(),
+        9_007_199_254_740_993
+    );
+}
