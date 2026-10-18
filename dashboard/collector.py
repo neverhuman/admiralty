@@ -3,7 +3,7 @@
 Writes status.json every INTERVAL seconds. Never types into screens; only hardcopy.
 Tolerates missing/changing files (fields become "unknown")."""
 import json, os, re, subprocess, time, glob, hashlib, traceback, datetime, collections
-from rollout import collect_rollout
+from rollout import collect_rollout, observe_rollout_workers
 
 HOME = '/home/ubuntu'
 BASE = os.environ.get('CDASH_RUNTIME', '/home/ubuntu/xbabe2_kicker/captains-dashboard')  # runtime data dir (status.json, history, tokens.db); code lives in admiralty/dashboard
@@ -109,6 +109,7 @@ def needs_jepson(p, n=3):
 # ---------------- screens ----------------
 def screen_list():
     rc, out, _ = run(['screen', '-ls'], timeout=10)
+    STATE['screen_inventory_available'] = rc == 0 or (rc == 1 and bool(re.search(r'No (?:Sockets|screen session)s? found', out, re.I)))
     res = {}
     for m in re.finditer(r'^\s+(\d+)\.(\S+)\s+\(([^)]*)\)\s+\((\w+)\)', out, re.M):
         res[m.group(1) + '.' + m.group(2)] = {'pid': int(m.group(1)), 'name': m.group(2), 'started': m.group(3), 'state': m.group(4)}
@@ -136,7 +137,7 @@ def cmdline(pid):
     except Exception:
         return []
 
-def agent_proc(spid):
+def _agent_proc_uncached(spid):
     for p in descendants(spid):
         a = cmdline(p)
         if not a: continue
@@ -160,6 +161,16 @@ def agent_proc(spid):
         if a and any('resume-stage' in x or 'supervisor' in x for x in a):
             return {'kind': 'supervised', 'pid': p, 'model': None, 'effort': None, 'prompt': ''}
     return None
+
+def agent_proc(spid):
+    # One inventory cycle gets one process observation per actual Screen PID.
+    # screen_info and extras share it rather than walking descendants twice.
+    cache = STATE.get('agent_processes')
+    if cache is None:
+        return _agent_proc_uncached(spid)
+    if spid not in cache:
+        cache[spid] = _agent_proc_uncached(spid)
+    return cache[spid]
 
 def hardcopy(sid):
     path = os.path.join(HC, sid.replace('/', '_') + '.txt')
@@ -190,13 +201,14 @@ def meaningful(text, n=8, private_guard=False):
 
 STATE = {'hc_hash': {}, 'hc_changed': {}, 'worker_info': {}, 'cycle': 0}
 
-def screen_info(sid, scr, do_hc, project, task_hint=None, private_guard=False):
+def screen_info(sid, scr, do_hc, project, task_hint=None, private_guard=False, require_change=False):
     info = {'id': sid, 'name': scr['name'] if scr else sid.split('.', 1)[-1], 'alive': bool(scr)}
     if not scr:
         return info
     ap = agent_proc(scr['pid'])
     info['agent'] = ap['kind'] if ap else None
     info['agent_running'] = bool(ap)
+    info['effort'] = ap.get('effort') if ap else None
     model = None
     if ap and ap.get('model'):
         model = ap['model'] + (' ' + ap['effort'] if ap.get('effort') else '')
@@ -206,7 +218,10 @@ def screen_info(sid, scr, do_hc, project, task_hint=None, private_guard=False):
         if text is not None:
             h = hashlib.sha1(text.encode()).hexdigest()
             if STATE['hc_hash'].get(sid) != h:
-                STATE['hc_hash'][sid] = h; STATE['hc_changed'][sid] = now_iso()
+                previous = STATE['hc_hash'].get(sid)
+                STATE['hc_hash'][sid] = h
+                if previous is not None or not require_change:
+                    STATE['hc_changed'][sid] = now_iso()
             if not model:
                 ms = MODEL_RE.findall(text[-1500:]) or MODEL_RE.findall(text)
                 if ms: model = ms[-1]
@@ -856,6 +871,7 @@ def flags_for(key, p):
 
 def cycle():
     STATE['cycle'] += 1
+    STATE['agent_processes'] = {}
     do_worker_hc = STATE['cycle'] % WORKER_HC_EVERY == 1
     screens = screen_list()
     out = {'generated_utc': now_iso(), 'interval_s': INTERVAL, 'host': 'xbabe2', 'projects': {}, 'order': list(CAPTAINS)}
@@ -886,14 +902,24 @@ def cycle():
         p['workers'] = workers
         p['flags'] = flags_for(key, p)
         out['projects'][key] = p
-    try:
-        import extras  # dashboard v2: super_captain, resources, hierarchy, token efficiency (read-only)
-        out.update(extras.collect(out, screens, {"agent_proc": agent_proc, "descendants": descendants, "screen_info": screen_info, "project_of": project_of}))
-    except Exception as e:
-        out["extras_error"] = str(e)[:300]; traceback.print_exc()
+    # Join manifest ownership to real observations before extras builds wInfo.
+    # This does not add producer projects or alter any ledger/packet counters.
     rollout_state = collect_rollout(BASE)
+    extra_winfo = {}
     if rollout_state is not None:
         out['rollout'] = rollout_state
+        live = observe_rollout_workers(rollout_state, screens, out['projects'],
+            lambda sid, scr, do_hc, project: screen_info(sid, scr, do_hc, project, require_change=True),
+            do_hc=do_worker_hc, inventory_available=STATE.get('screen_inventory_available', False),
+            local_node=out['host'], sanitize_tail=clean)
+        extra_winfo = live['winfo']
+        if rollout_state.get('state') == 'ready':
+            rollout_state['live_observation'] = live['observation']
+    try:
+        import extras  # dashboard v2: super_captain, resources, hierarchy, token efficiency (read-only)
+        out.update(extras.collect(out, screens, {"agent_proc": agent_proc, "descendants": descendants, "screen_info": screen_info, "project_of": project_of, "extra_winfo": extra_winfo}))
+    except Exception as e:
+        out["extras_error"] = str(e)[:300]; traceback.print_exc()
     wj(HIST, HISTORY)
     wj(OUT, out)
 
