@@ -10,6 +10,7 @@ admiralty-runtime.workspace = true
 admiralty-store.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+schemars.workspace = true
 sha2.workspace = true
 tempfile.workspace = true
 uuid.workspace = true
