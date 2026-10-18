@@ -79,7 +79,7 @@ fn p06_p13_p14_round12_item5_redteam_audit_gate() {
         .expect("compile complete context capsule");
     assert_eq!(
         capsule.contract_digest,
-        content_digest(registered_contract).unwrap()
+        content_digest(registered_contract).expect("registered contract digest")
     );
     assert!(compile_task_capsule(registered_contract, "redteam-epoch", 1).is_err());
     assert!(compile_task_capsule(registered_contract, " ", 4096).is_err());
@@ -87,7 +87,7 @@ fn p06_p13_p14_round12_item5_redteam_audit_gate() {
     forged_capsule.contract_digest = "sha256:forged".into();
     assert_ne!(
         forged_capsule.contract_digest,
-        content_digest(registered_contract).unwrap()
+        content_digest(registered_contract).expect("registered contract digest")
     );
 
     let scope = SchedulingScope {
@@ -110,7 +110,7 @@ fn p06_p13_p14_round12_item5_redteam_audit_gate() {
         available_capacity: Knowledge::Known(1),
     };
     let proposal = propose_ready_tasks(&snapshot, &scope).expect("valid readiness proposal");
-    assert_eq!(proposal.ready, [task_id.clone()]);
+    assert_eq!(proposal.ready.as_slice(), std::slice::from_ref(&task_id));
     assert!(!proposal.execution_granted);
     snapshot.tasks[0].contract_digest = "sha256:forged".into();
     assert!(matches!(
