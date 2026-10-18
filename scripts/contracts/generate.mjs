@@ -17,6 +17,14 @@ const specifications = [
   ['coordination-message', 'CoordinationMessage'],
   ['domain-event', 'DomainEvent'],
   ['domain-event-v2', 'DomainEventV2'],
+  ['workplan', 'Workplan'],
+  ['verification-receipt', 'VerificationReceipt'],
+  ['verification-policy', 'VerificationPolicy'],
+  ['interface-contract', 'InterfaceContract'],
+  ['config-layer', 'ConfigLayer'],
+  ['config-patch', 'ConfigPatch'],
+  ['config-layer-receipt', 'ConfigLayerReceipt'],
+  ['provenance-contribution', 'ProvenanceContribution'],
 ];
 const check = process.argv.length === 3 && process.argv[2] === '--check';
 if (process.argv.length > 2 && !check) {
@@ -56,9 +64,11 @@ function runtimeSchema(value) {
   if (!value || typeof value !== 'object') return value;
   const result = Object.fromEntries(Object.entries(value).map(([key, child]) => [key, runtimeSchema(child)]));
   if (result.format !== undefined) {
-    const maximum = { uint16: 65535, uint32: 4294967295 }[result.format];
-    if (maximum === undefined || result.type !== 'integer') throw new Error(`unsupported Rust schema format ${result.format}`);
-    result.minimum = Math.max(result.minimum ?? 0, 0);
+    const bounds = { uint16: [0, 65535], uint32: [0, 4294967295], int32: [-2147483648, 2147483647] }[result.format];
+    const integer = result.type === 'integer' || (Array.isArray(result.type) && result.type.includes('integer') && result.type.every(type => type === 'integer' || type === 'null'));
+    if (!bounds || !integer) throw new Error(`unsupported Rust schema format ${result.format}`);
+    const [minimum, maximum] = bounds;
+    result.minimum = Math.max(result.minimum ?? minimum, minimum);
     result.maximum = Math.min(result.maximum ?? maximum, maximum);
     delete result.format;
   }
@@ -134,7 +144,9 @@ async function generate() {
     const contents = await compile(schema, title, {
       bannerComment: `/**\n * Generated from schemas/${stem}.schema.json by json-schema-to-typescript@${version}.\n * Source SHA-256: ${sha256}\n * Do not edit. Rust domain validation still applies at runtime.\n */`,
       cwd: path.dirname(source),
-      additionalProperties: false,
+      // Absent additionalProperties follows JSON Schema / serde defaults.
+      // Closed Rust structs already carry explicit false in their schemas.
+      additionalProperties: true,
       unreachableDefinitions: true,
       style: { singleQuote: true, semi: true, trailingComma: 'all', printWidth: 100 },
       $refOptions: { resolve: { file: false, http: false } },

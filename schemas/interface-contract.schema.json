@@ -1,0 +1,87 @@
+{
+  "$defs": {
+    "DecimalU64": {
+      "pattern": "^(?:0|[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|1844674407370955[0-0][0-9]{3}|18446744073709551[0-5][0-9]{2}|184467440737095516[0-0][0-9]{1}|1844674407370955161[0-4]|18446744073709551615)(?![\\s\\S])",
+      "type": "string"
+    },
+    "InterfaceId": {
+      "type": "string"
+    },
+    "InterfaceScope": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_ref": {
+          "type": "string"
+        },
+        "project_id": {
+          "$ref": "#/$defs/ProjectId"
+        },
+        "root_id": {
+          "$ref": "#/$defs/RootId"
+        },
+        "task_id": {
+          "$ref": "#/$defs/TaskId"
+        }
+      },
+      "required": [
+        "project_id",
+        "root_id",
+        "task_id",
+        "authority_ref"
+      ],
+      "type": "object"
+    },
+    "PrincipalId": {
+      "type": "string"
+    },
+    "ProjectId": {
+      "type": "string"
+    },
+    "RootId": {
+      "type": "string"
+    },
+    "TaskId": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifact_digest": {
+      "type": "string"
+    },
+    "consumers": {
+      "items": {
+        "$ref": "#/$defs/PrincipalId"
+      },
+      "maxItems": 1024,
+      "type": "array"
+    },
+    "interface_id": {
+      "$ref": "#/$defs/InterfaceId"
+    },
+    "producer": {
+      "$ref": "#/$defs/PrincipalId"
+    },
+    "revision": {
+      "$ref": "#/$defs/DecimalU64"
+    },
+    "schema_digest": {
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/InterfaceScope"
+    }
+  },
+  "required": [
+    "interface_id",
+    "scope",
+    "producer",
+    "consumers",
+    "revision",
+    "artifact_digest",
+    "schema_digest"
+  ],
+  "title": "InterfaceContract",
+  "type": "object"
+}

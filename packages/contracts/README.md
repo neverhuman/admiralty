@@ -5,20 +5,45 @@ TypeScript types and browser-ready standalone validators. `pnpm contracts:check`
 regenerates expected output in memory and fails on drift without writing files.
 Use `pnpm --dir packages/contracts test` for runtime and generation checks.
 
-The runtime entry exports `validateTaskContract`, `validateCoordinationMessage`,
-`validateDomainEvent`, `SUPPORTED_SCHEMA_VERSION`, and source schema fingerprints.
+The runtime entry exports guards for the twelve public Rust roots currently
+covered by this pipeline:
+
+- `TaskContract`, `CoordinationMessage`, `DomainEvent`, `DomainEventV2`
+- `Workplan`, `VerificationReceipt`, `VerificationPolicy`, `InterfaceContract`
+- `ConfigLayer`, `ConfigPatch`, `ConfigLayerReceipt`, `ProvenanceContribution`
+
+Each guard is named `validate<Type>`. The package also exports
+`SUPPORTED_SCHEMA_VERSION` and source schema fingerprints. Root and nested types
+are available from the package root, with type-only subpaths for each schema.
 Validators are generated with pinned AJV 8.20.0 in draft 2020-12 mode. The output
 has no runtime imports, AJV compiler, evaluation, network retrieval, coercion,
 default insertion, or removal of unknown properties. AJV remains a build tool.
 
 The pipeline explicitly supports schema version **1**, including nested task
-contracts and messages. Rust `uint16` and `uint32` format annotations become
-numeric bounds in the validation copy. Source schema files remain unchanged.
+contracts and messages. Rust `uint16`, `uint32` and nullable `int32` format
+annotations become numeric bounds in the validation copy; `protocol_version` retains the separate v2 value.
+Source schema files remain unchanged by that normalization. Rust-derived schema
+annotations retain collection caps, nonzero configured limits and bounded exit
+codes. `DecimalU64` interface revisions remain canonical **decimal strings**
+through `18446744073709551615`; numeric values, overflow, whitespace and leading
+zeros are rejected without rounding. Missing optional fields and explicit nulls
+retain their serde meaning and are never rewritten by the guards. Unknown fields
+are rejected wherever Rust uses `deny_unknown_fields`; the existing extensible
+metadata roots `ConfigLayerReceipt` and `ProvenanceContribution` retain their
+serde behavior and permit extra properties.
 Unknown formats fail generation so new wire formats require an explicit review.
 
 These are complete **schema** guards, not domain acceptance or authorization.
 Rust still validates identifier rules, nonempty goals, scoped ownership, check
 bindings, transition prerequisites, provider authority and independent acceptance.
+Private configuration policy, resolved private configuration, opaque validated
+receipt results, and workplan preview results are deliberately not public input
+schemas. Work-order domain models not yet present in Rust are not invented here.
+The shared fixtures roundtrip actual Rust types and exercise the same standalone
+JavaScript guards; a shaped provider claim is still untrusted. Collection boundary
+fixtures prove schema limits only, not valid task identities, dependency graphs,
+receipt policy consistency or the combined receipt-check cap.
+
 Generated schema output cannot express every Rust semantic check; the guards
 must never promote a candidate or substitute for that authority.
 

@@ -1,0 +1,209 @@
+{
+  "$defs": {
+    "AcceptanceCriterion": {
+      "additionalProperties": false,
+      "properties": {
+        "check_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "check_ids"
+      ],
+      "type": "object"
+    },
+    "CheckSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "program": {
+          "type": "string"
+        },
+        "timeout_secs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "program",
+        "args",
+        "cwd",
+        "timeout_secs"
+      ],
+      "type": "object"
+    },
+    "ProjectId": {
+      "type": "string"
+    },
+    "RootId": {
+      "type": "string"
+    },
+    "TaskContract": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_ref": {
+          "type": "string"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/CheckSpec"
+          },
+          "type": "array"
+        },
+        "criteria": {
+          "items": {
+            "$ref": "#/$defs/AcceptanceCriterion"
+          },
+          "type": "array"
+        },
+        "dependencies": {
+          "items": {
+            "$ref": "#/$defs/TaskId"
+          },
+          "type": "array"
+        },
+        "forbidden_paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "max_attempts": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "non_goals": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "owned_paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "project_id": {
+          "$ref": "#/$defs/ProjectId"
+        },
+        "read_first": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "root_id": {
+          "$ref": "#/$defs/RootId"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "simulated": {
+          "type": "boolean"
+        },
+        "task_id": {
+          "$ref": "#/$defs/TaskId"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "root_id",
+        "task_id",
+        "revision",
+        "title",
+        "objective",
+        "non_goals",
+        "owned_paths",
+        "forbidden_paths",
+        "read_first",
+        "dependencies",
+        "criteria",
+        "checks",
+        "authority_ref",
+        "max_attempts",
+        "simulated"
+      ],
+      "type": "object"
+    },
+    "TaskId": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "plan_id": {
+      "type": "string"
+    },
+    "project_id": {
+      "$ref": "#/$defs/ProjectId"
+    },
+    "revision": {
+      "format": "uint32",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "tasks": {
+      "items": {
+        "$ref": "#/$defs/TaskContract"
+      },
+      "maxItems": 1000,
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "plan_id",
+    "revision",
+    "project_id",
+    "tasks"
+  ],
+  "title": "Workplan",
+  "type": "object"
+}

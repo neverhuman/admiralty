@@ -9,6 +9,12 @@ use admiralty_core::{
     MessageId, MessagePayload, PrincipalId, ProjectId, RootId, SourceIdentity, TaskContract,
     TaskId, compile_task_capsule, content_digest,
 };
+use admiralty_core::{
+    config::{ConfigLayer, ConfigLayerReceipt, ConfigPatch, ProvenanceContribution},
+    interfaces::InterfaceContract,
+    verification::{VerificationPolicy, VerificationReceipt},
+    workplans::Workplan,
+};
 use admiralty_server::{ServerConfig, serve};
 use admiralty_store::Store;
 use chrono::Utc;
@@ -25,11 +31,19 @@ use std::{
 
 type CliResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 const MAX_JSON_BYTES: u64 = 1024 * 1024;
-const SCHEMA_FILES: [&str; 4] = [
+const SCHEMA_FILES: [&str; 12] = [
     "task-contract.schema.json",
     "coordination-message.schema.json",
     "domain-event.schema.json",
     "domain-event-v2.schema.json",
+    "workplan.schema.json",
+    "verification-receipt.schema.json",
+    "verification-policy.schema.json",
+    "interface-contract.schema.json",
+    "config-layer.schema.json",
+    "config-patch.schema.json",
+    "config-layer-receipt.schema.json",
+    "provenance-contribution.schema.json",
 ];
 
 #[derive(Parser)]
@@ -465,6 +479,14 @@ fn schema_documents() -> CliResult<Vec<(&'static str, Vec<u8>)>> {
         serde_json::to_value(schemars::schema_for!(CoordinationMessage))?,
         serde_json::to_value(schemars::schema_for!(DomainEvent))?,
         serde_json::to_value(schemars::schema_for!(DomainEventV2))?,
+        serde_json::to_value(schemars::schema_for!(Workplan))?,
+        serde_json::to_value(schemars::schema_for!(VerificationReceipt))?,
+        serde_json::to_value(schemars::schema_for!(VerificationPolicy))?,
+        serde_json::to_value(schemars::schema_for!(InterfaceContract))?,
+        serde_json::to_value(schemars::schema_for!(ConfigLayer))?,
+        serde_json::to_value(schemars::schema_for!(ConfigPatch))?,
+        serde_json::to_value(schemars::schema_for!(ConfigLayerReceipt))?,
+        serde_json::to_value(schemars::schema_for!(ProvenanceContribution))?,
     ];
     SCHEMA_FILES
         .into_iter()
@@ -1081,6 +1103,86 @@ mod tests {
         check_schemas(directory.path())?;
         fs::write(directory.path().join(SCHEMA_FILES[0]), b"{}")?;
         assert!(check_schemas(directory.path()).is_err());
+        Ok(())
+    }
+
+    fn public_contract_fixture<T>(fixtures: &Value, name: &str, closed: bool) -> CliResult<()>
+    where
+        T: serde::de::DeserializeOwned + serde::Serialize,
+    {
+        let value = fixtures[name].clone();
+        let parsed: T = serde_json::from_value(value.clone())?;
+        assert_eq!(
+            serde_json::to_value(parsed)?,
+            value,
+            "Rust roundtrip: {name}"
+        );
+        let mut unknown = value;
+        unknown["untrusted_extra"] = true.into();
+        assert_eq!(
+            serde_json::from_value::<T>(unknown).is_err(),
+            closed,
+            "preserve actual unknown-field behavior: {name}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn public_contract_fixtures_roundtrip_actual_rust_types_without_granting_trust() -> CliResult<()>
+    {
+        let fixtures: Value = serde_json::from_str(include_str!(
+            "../../../packages/contracts/fixtures/public-roots.json"
+        ))?;
+        public_contract_fixture::<Workplan>(&fixtures, "Workplan", true)?;
+        public_contract_fixture::<VerificationReceipt>(&fixtures, "VerificationReceipt", true)?;
+        public_contract_fixture::<VerificationPolicy>(&fixtures, "VerificationPolicy", true)?;
+        public_contract_fixture::<InterfaceContract>(&fixtures, "InterfaceContract", true)?;
+        public_contract_fixture::<ConfigLayer>(&fixtures, "ConfigLayer", true)?;
+        public_contract_fixture::<ConfigPatch>(&fixtures, "ConfigPatch", true)?;
+        public_contract_fixture::<ConfigLayerReceipt>(&fixtures, "ConfigLayerReceipt", false)?;
+        public_contract_fixture::<ProvenanceContribution>(
+            &fixtures,
+            "ProvenanceContribution",
+            false,
+        )?;
+        // Exercise existing bounded parsers as well as serde; these pure
+        // parsers do not authenticate a verifier or execute any task/check.
+        admiralty_core::workplans::preview_workplan(&serde_json::to_vec(&fixtures["Workplan"])?)?;
+        admiralty_core::verification::parse_receipt(&serde_json::to_vec(
+            &fixtures["VerificationReceipt"],
+        )?)?;
+        admiralty_core::config::parse_layer(&serde_json::to_vec(&fixtures["ConfigLayer"])?)?;
+        assert_eq!(
+            fixtures["VerificationReceipt"]["producer"],
+            "provider_claim"
+        );
+        assert!(fixtures["VerificationReceipt"]["checks"][0]["exit_code"].is_null());
+        Ok(())
+    }
+
+    #[test]
+    fn shared_decimal_counter_fixtures_match_exact_rust_wire_range() -> CliResult<()> {
+        use admiralty_core::interfaces::DecimalU64;
+        let cases: Vec<Value> = serde_json::from_str(include_str!(
+            "../../../packages/contracts/fixtures/decimal-u64.json"
+        ))?;
+        for case in cases {
+            let value = case["value"].clone();
+            let parsed = serde_json::from_value::<DecimalU64>(value.clone());
+            assert_eq!(
+                parsed.is_ok(),
+                case["accepted"].as_bool().expect("fixture boolean"),
+                "counter: {value}"
+            );
+            if let Ok(parsed) = parsed {
+                assert_eq!(serde_json::to_value(parsed)?, value, "no counter rounding");
+            }
+        }
+        let omitted: ConfigPatch = serde_json::from_value(json!({}))?;
+        let explicit_nulls: ConfigPatch =
+            serde_json::from_value(json!({"listen":null,"max_agents":null,
+            "max_context_tokens":null,"nodes":null,"models":null,"denied_paths":null}))?;
+        assert_eq!(omitted, explicit_nulls, "preserve optional serde behavior");
         Ok(())
     }
 

@@ -1,0 +1,33 @@
+{
+  "$defs": {
+    "ConfigLayerName": {
+      "enum": [
+        "defaults",
+        "user",
+        "project",
+        "runtime"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "digest": {
+      "description": "Binds the complete typed public layer, including values later overridden.",
+      "type": "string"
+    },
+    "layer": {
+      "$ref": "#/$defs/ConfigLayerName"
+    },
+    "source_ref": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "layer",
+    "source_ref",
+    "digest"
+  ],
+  "title": "ConfigLayerReceipt",
+  "type": "object"
+}

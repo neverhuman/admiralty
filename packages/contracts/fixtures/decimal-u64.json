@@ -1,0 +1,102 @@
+[
+  {
+    "value": "0",
+    "accepted": true
+  },
+  {
+    "value": "1",
+    "accepted": true
+  },
+  {
+    "value": "9007199254740993",
+    "accepted": true
+  },
+  {
+    "value": "9999999999999999999",
+    "accepted": true
+  },
+  {
+    "value": "10000000000000000000",
+    "accepted": true
+  },
+  {
+    "value": "18446744073709551614",
+    "accepted": true
+  },
+  {
+    "value": "18446744073709551615",
+    "accepted": true
+  },
+  {
+    "value": "18446744073709551616",
+    "accepted": false
+  },
+  {
+    "value": "184467440737095516159",
+    "accepted": false
+  },
+  {
+    "value": "99999999999999999999",
+    "accepted": false
+  },
+  {
+    "value": "-1",
+    "accepted": false
+  },
+  {
+    "value": "+1",
+    "accepted": false
+  },
+  {
+    "value": "00",
+    "accepted": false
+  },
+  {
+    "value": "01",
+    "accepted": false
+  },
+  {
+    "value": " 1",
+    "accepted": false
+  },
+  {
+    "value": "1 ",
+    "accepted": false
+  },
+  {
+    "value": "0\n",
+    "accepted": false
+  },
+  {
+    "value": "0\r",
+    "accepted": false
+  },
+  {
+    "value": "0\u2028",
+    "accepted": false
+  },
+  {
+    "value": "1.0",
+    "accepted": false
+  },
+  {
+    "value": "1e3",
+    "accepted": false
+  },
+  {
+    "value": "",
+    "accepted": false
+  },
+  {
+    "value": 0,
+    "accepted": false
+  },
+  {
+    "value": 9007199254740992,
+    "accepted": false
+  },
+  {
+    "value": null,
+    "accepted": false
+  }
+]

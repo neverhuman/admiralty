@@ -4,6 +4,7 @@
 //! checks, authenticate the named verifier, or grant acceptance.
 
 use crate::{AttemptId, CheckSpec, PrincipalId, ProjectId, RootId, TaskContract, TaskId};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -17,7 +18,7 @@ pub const MAX_CHECK_ARG_BYTES: usize = 4_096;
 pub const MAX_CHECK_TIMEOUT_SECS: u32 = 86_400;
 const MAX_RECEIPT_ID_BYTES: usize = 128;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct VerificationInputs {
     pub project_id: ProjectId,
@@ -34,33 +35,35 @@ pub struct VerificationInputs {
     pub protected_oracle_digest: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum ReceiptProducer {
     IndependentVerifier,
     ProviderClaim,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CheckResult {
     pub check: CheckSpec,
+    #[schemars(range(min = 0, max = 255))]
     pub exit_code: Option<i32>,
     pub stdout_digest: String,
     pub stderr_digest: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct RequiredNegativeCheck {
     pub check: CheckSpec,
     /// A rejecting command can expect a nonzero exit; an assertion test that
     /// proves rejection normally expects zero. The receipt cannot choose it.
+    #[schemars(range(min = 0, max = 255))]
     pub expected_exit_code: i32,
     pub fixture_digest: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct VerificationPolicy {
     pub schema_version: u32,
@@ -68,10 +71,11 @@ pub struct VerificationPolicy {
     /// verifies custody and actor identity outside this pure component.
     pub verifier: PrincipalId,
     pub protected_oracle_digest: String,
+    #[schemars(length(min = 1, max = MAX_NEGATIVE_CHECKS))]
     pub required_negative_checks: Vec<RequiredNegativeCheck>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct VerificationReceipt {
     pub schema_version: u32,
@@ -79,7 +83,9 @@ pub struct VerificationReceipt {
     pub producer: ReceiptProducer,
     pub verifier: PrincipalId,
     pub inputs: VerificationInputs,
+    #[schemars(length(max = MAX_RECEIPT_CHECKS))]
     pub checks: Vec<CheckResult>,
+    #[schemars(length(max = MAX_NEGATIVE_CHECKS))]
     pub negative_checks: Vec<CheckResult>,
 }
 

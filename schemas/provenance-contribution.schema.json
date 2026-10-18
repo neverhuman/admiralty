@@ -1,0 +1,33 @@
+{
+  "$defs": {
+    "ProvenanceOrigin": {
+      "enum": [
+        "defaults",
+        "user",
+        "project",
+        "runtime",
+        "private"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Ordered contributors remain available even when a later public value wins.",
+  "properties": {
+    "origin": {
+      "$ref": "#/$defs/ProvenanceOrigin"
+    },
+    "source_ref": {
+      "description": "Private policy has no public source identity and is never relabeled Runtime.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "origin"
+  ],
+  "title": "ProvenanceContribution",
+  "type": "object"
+}

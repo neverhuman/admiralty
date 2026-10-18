@@ -1,0 +1,206 @@
+{
+  "Workplan": {
+    "schema_version": 1,
+    "plan_id": "plan",
+    "revision": 1,
+    "project_id": "project",
+    "tasks": [
+      {
+        "schema_version": 1,
+        "project_id": "project",
+        "root_id": "root",
+        "task_id": "task",
+        "revision": 1,
+        "title": "Scoped task",
+        "objective": "Deliver a checked change",
+        "non_goals": [
+          "No publication"
+        ],
+        "owned_paths": [
+          "src/task.rs"
+        ],
+        "forbidden_paths": [
+          "private"
+        ],
+        "read_first": [
+          "README.md"
+        ],
+        "dependencies": [],
+        "criteria": [
+          {
+            "id": "C1",
+            "text": "Named check passes",
+            "check_ids": [
+              "T1"
+            ]
+          }
+        ],
+        "checks": [
+          {
+            "id": "T1",
+            "program": "cargo",
+            "args": [
+              "test"
+            ],
+            "cwd": ".",
+            "timeout_secs": 60
+          }
+        ],
+        "authority_ref": "policy:test",
+        "max_attempts": 2,
+        "simulated": true
+      }
+    ]
+  },
+  "VerificationReceipt": {
+    "schema_version": 1,
+    "receipt_id": "receipt-one",
+    "producer": "provider_claim",
+    "verifier": "verifier",
+    "inputs": {
+      "project_id": "project",
+      "root_id": "root",
+      "task_id": "task",
+      "attempt_id": "attempt",
+      "candidate_ref": "candidate:one",
+      "contract_revision": 1,
+      "contract_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "verification_policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "source_commit_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source_tree_sha": "cccccccccccccccccccccccccccccccccccccccc",
+      "source_artifact_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "protected_oracle_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "checks": [
+      {
+        "check": {
+          "id": "T1",
+          "program": "cargo",
+          "args": [
+            "test"
+          ],
+          "cwd": ".",
+          "timeout_secs": 60
+        },
+        "exit_code": null,
+        "stdout_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "stderr_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ],
+    "negative_checks": [
+      {
+        "check": {
+          "id": "N1",
+          "program": "cargo",
+          "args": [
+            "test",
+            "rejects_foreign_scope"
+          ],
+          "cwd": ".",
+          "timeout_secs": 60
+        },
+        "exit_code": 1,
+        "stdout_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "stderr_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "VerificationPolicy": {
+    "schema_version": 1,
+    "verifier": "verifier",
+    "protected_oracle_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "required_negative_checks": [
+      {
+        "check": {
+          "id": "N1",
+          "program": "cargo",
+          "args": [
+            "test",
+            "rejects_foreign_scope"
+          ],
+          "cwd": ".",
+          "timeout_secs": 60
+        },
+        "expected_exit_code": 1,
+        "fixture_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "InterfaceContract": {
+    "interface_id": "interface-one",
+    "scope": {
+      "project_id": "project",
+      "root_id": "root",
+      "task_id": "task",
+      "authority_ref": "policy:test"
+    },
+    "producer": "producer",
+    "consumers": [
+      "consumer"
+    ],
+    "revision": "18446744073709551615",
+    "artifact_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "schema_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "ConfigLayer": {
+    "layer": "project",
+    "source_ref": "config:project",
+    "values": {
+      "listen": "127.0.0.1:18891",
+      "max_agents": 16,
+      "max_context_tokens": 4294967295,
+      "nodes": [
+        {
+          "id": "node-one",
+          "label": "Configured worker",
+          "address": null
+        }
+      ],
+      "models": [
+        {
+          "id": "own-model",
+          "provider": "openai-compatible",
+          "model_ref": "configured-model",
+          "node_id": "node-one",
+          "max_concurrency": 16
+        }
+      ],
+      "denied_paths": [
+        "private"
+      ]
+    }
+  },
+  "ConfigPatch": {
+    "listen": "127.0.0.1:18891",
+    "max_agents": 16,
+    "max_context_tokens": 4294967295,
+    "nodes": [
+      {
+        "id": "node-one",
+        "label": "Configured worker",
+        "address": null
+      }
+    ],
+    "models": [
+      {
+        "id": "own-model",
+        "provider": "openai-compatible",
+        "model_ref": "configured-model",
+        "node_id": "node-one",
+        "max_concurrency": 16
+      }
+    ],
+    "denied_paths": [
+      "private"
+    ]
+  },
+  "ConfigLayerReceipt": {
+    "layer": "project",
+    "source_ref": "config:project",
+    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "ProvenanceContribution": {
+    "origin": "private",
+    "source_ref": null
+  }
+}

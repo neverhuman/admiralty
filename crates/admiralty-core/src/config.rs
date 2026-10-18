@@ -2,6 +2,7 @@
 //! Private policy is supplied by a trusted caller and is never part of the
 //! public layer format.
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -14,7 +15,9 @@ const MAX_ITEMS: usize = 256;
 const MAX_TEXT: usize = 4096;
 const MAX_PATH_COMPONENTS: usize = 128;
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, JsonSchema,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum ConfigLayerName {
     Defaults,
@@ -34,7 +37,7 @@ impl ConfigLayerName {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct NodeConfig {
     pub id: String,
@@ -42,28 +45,34 @@ pub struct NodeConfig {
     pub address: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ModelConfig {
     pub id: String,
     pub provider: String,
     pub model_ref: String,
     pub node_id: Option<String>,
+    #[schemars(range(min = 1))]
     pub max_concurrency: u16,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigPatch {
     pub listen: Option<String>,
+    #[schemars(range(min = 1))]
     pub max_agents: Option<u16>,
+    #[schemars(range(min = 1))]
     pub max_context_tokens: Option<u32>,
+    #[schemars(length(max = MAX_ITEMS))]
     pub nodes: Option<Vec<NodeConfig>>,
+    #[schemars(length(max = MAX_ITEMS))]
     pub models: Option<Vec<ModelConfig>>,
+    #[schemars(length(max = MAX_ITEMS))]
     pub denied_paths: Option<Vec<String>>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigLayer {
     pub layer: ConfigLayerName,
@@ -79,7 +88,7 @@ pub struct PrivatePolicy {
     pub denied_paths: Vec<String>,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ProvenanceOrigin {
     Defaults,
@@ -101,14 +110,14 @@ impl From<ConfigLayerName> for ProvenanceOrigin {
 }
 
 /// Ordered contributors remain available even when a later public value wins.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct ProvenanceContribution {
     pub origin: ProvenanceOrigin,
     /// Private policy has no public source identity and is never relabeled Runtime.
     pub source_ref: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct ConfigLayerReceipt {
     pub layer: ConfigLayerName,
     pub source_ref: String,

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { readFile, mkdtemp, mkdir, cp, symlink, writeFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -7,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { validateTaskContract, validateCoordinationMessage, validateDomainEvent, validateDomainEventV2,
+  validateWorkplan, validateVerificationReceipt, validateVerificationPolicy, validateInterfaceContract,
+  validateConfigLayer, validateConfigPatch, validateConfigLayerReceipt, validateProvenanceContribution,
   SUPPORTED_SCHEMA_VERSION, CONTRACT_SCHEMA_FINGERPRINTS } from './generated/validators.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -134,4 +137,139 @@ test('generation and drift checks cover standalone code and declarations without
     const external = invoke([]);
     assert.notEqual(external.status, 0); assert.match(external.stderr, /external retrieval is disabled/);
   } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+const publicFixtures = JSON.parse(await readFile(new URL('./fixtures/public-roots.json', import.meta.url), 'utf8'));
+const publicValidators = { Workplan: validateWorkplan, VerificationReceipt: validateVerificationReceipt,
+  VerificationPolicy: validateVerificationPolicy, InterfaceContract: validateInterfaceContract,
+  ConfigLayer: validateConfigLayer, ConfigPatch: validateConfigPatch,
+  ConfigLayerReceipt: validateConfigLayerReceipt, ProvenanceContribution: validateProvenanceContribution };
+
+function rejectUnchanged(validate, value) {
+  const before = JSON.stringify(value);
+  assert.equal(validate(value), false, before);
+  assert.equal(JSON.stringify(value), before, 'guards must preserve rejected data');
+}
+
+test('all eight public roots share Rust roundtrip fixtures and package guards', async () => {
+  const publicApi = await import('@admiralty/contracts');
+  assert.equal(Object.keys(CONTRACT_SCHEMA_FINGERPRINTS).length, 12);
+  assert.deepEqual(Object.keys(publicFixtures).sort(), Object.keys(publicValidators).sort());
+  for (const [name, validate] of Object.entries(publicValidators)) {
+    const fixture = structuredClone(publicFixtures[name]);
+    const before = JSON.stringify(fixture);
+    assert.equal(publicApi[`validate${name}`], validate);
+    assert.equal(validate(fixture), true, name);
+    assert.equal(JSON.stringify(fixture), before, `roundtrip does not rewrite ${name}`);
+    const extended = { ...fixture, untrusted_extra: true };
+    if (['ConfigLayerReceipt', 'ProvenanceContribution'].includes(name)) {
+      const before = JSON.stringify(extended);
+      assert.equal(validate(extended), true, `${name} preserves serde metadata extensibility`);
+      assert.equal(JSON.stringify(extended), before);
+    } else rejectUnchanged(validate, extended);
+    const stem = name.replace(/[A-Z]/g, (letter, index) => `${index ? '-' : ''}${letter.toLowerCase()}`);
+    const schema = JSON.parse(await readFile(path.join(root, `schemas/${stem}.schema.json`), 'utf8'));
+    for (const required of schema.required ?? []) {
+      const missing = structuredClone(fixture); delete missing[required];
+      rejectUnchanged(validate, missing);
+    }
+    if ('schema_version' in fixture) rejectUnchanged(validate, { ...fixture, schema_version: 2 });
+  }
+  // A provider's shaped receipt remains a claim; neither absent exits nor
+  // forged trust/acceptance fields become successful verification evidence.
+  const receipt = structuredClone(publicFixtures.VerificationReceipt);
+  assert.equal(receipt.producer, 'provider_claim');
+  assert.equal(receipt.checks[0].exit_code, null);
+  for (const field of ['acceptance_granted', 'verifier_authenticated', 'execution_qualified', 'evidence_custody_verified']) {
+    rejectUnchanged(validateVerificationReceipt, { ...receipt, [field]: true });
+  }
+  assert.equal(validateVerificationReceipt(receipt), true);
+  assert.equal(receipt.checks[0].exit_code, null);
+});
+
+test('shared decimal-u64 fixtures retain full precision and exactly match canonical Rust range', async () => {
+  const cases = JSON.parse(await readFile(new URL('./fixtures/decimal-u64.json', import.meta.url), 'utf8'));
+  for (const item of cases) {
+    const value = { ...structuredClone(publicFixtures.InterfaceContract), revision: item.value };
+    const before = JSON.stringify(value);
+    assert.equal(validateInterfaceContract(value), item.accepted, `decimal wire value ${JSON.stringify(item.value)}`);
+    assert.equal(JSON.stringify(value), before, 'never coerce a decimal counter');
+  }
+  // Additional deterministic boundary coverage around every prefix of u64::MAX.
+  const maximum = (1n << 64n) - 1n;
+  const strings = new Set(['0', '1', maximum.toString(), (maximum + 1n).toString()]);
+  for (let power = 0n; power <= 20n; power += 1n) {
+    const boundary = 10n ** power;
+    for (const delta of [-1n, 0n, 1n]) strings.add((boundary + delta).toString());
+  }
+  for (let index = 1; index <= 20; index += 1) {
+    const prefix = maximum.toString().slice(0, index);
+    strings.add(prefix.padEnd(20, '0')); strings.add(prefix.padEnd(20, '9'));
+  }
+  for (const revision of strings) {
+    const expected = /^(0|[1-9][0-9]*)$/.test(revision) && BigInt(revision) <= maximum;
+    assert.equal(validateInterfaceContract({ ...publicFixtures.InterfaceContract, revision }), expected, revision);
+  }
+});
+
+test('public nested objects, bounded collections, optionals and integer ranges remain conservative', () => {
+  for (const [name, mutate] of [
+    ['Workplan', value => { value.tasks[0].execution_qualified = true; }],
+    ['VerificationReceipt', value => { value.inputs.accepted = true; }],
+    ['VerificationReceipt', value => { value.checks[0].exit_code = 256; }],
+    ['VerificationReceipt', value => { value.checks[0].exit_code = -1; }],
+    ['VerificationReceipt', value => { value.checks[0].exit_code = 0.5; }],
+    ['VerificationReceipt', value => { value.checks[0].check.id = false; }],
+    ['VerificationPolicy', value => { value.required_negative_checks[0].expected_exit_code = 256; }],
+    ['VerificationPolicy', value => { value.required_negative_checks = []; }],
+    ['InterfaceContract', value => { value.scope.project_id = []; }],
+    ['ConfigLayer', value => { value.values.private_policy = { max_agents: 65535 }; }],
+    ['ConfigPatch', value => { value.models[0].credentials = 'not accepted'; }],
+    ['ConfigPatch', value => { value.max_agents = 0; }],
+    ['ConfigPatch', value => { value.max_agents = 65536; }],
+    ['ConfigPatch', value => { value.max_context_tokens = 4294967296; }],
+    ['ConfigPatch', value => { value.models[0].max_concurrency = 0; }],
+    ['ConfigLayerReceipt', value => { value.layer = 'private'; }],
+    ['ProvenanceContribution', value => { value.origin = 'unknown'; }],
+  ]) {
+    const value = structuredClone(publicFixtures[name]); mutate(value);
+    rejectUnchanged(publicValidators[name], value);
+  }
+  for (const [name, key, maximum] of [
+    ['Workplan', 'tasks', 1000], ['VerificationReceipt', 'checks', 256],
+    ['VerificationReceipt', 'negative_checks', 64], ['VerificationPolicy', 'required_negative_checks', 64],
+    ['InterfaceContract', 'consumers', 1024], ['ConfigPatch', 'nodes', 256],
+    ['ConfigPatch', 'models', 256], ['ConfigPatch', 'denied_paths', 256],
+  ]) {
+    const value = structuredClone(publicFixtures[name]);
+    value[key] = Array(maximum).fill(value[key][0]);
+    assert.equal(publicValidators[name](value), true, `schema collection boundary ${name}.${key}`);
+    value[key].push(value[key][0]);
+    rejectUnchanged(publicValidators[name], value);
+  }
+  for (const value of [{}, { listen: null, max_agents: null, max_context_tokens: null,
+    nodes: null, models: null, denied_paths: null }]) {
+    const before = JSON.stringify(value);
+    assert.equal(validateConfigPatch(value), true);
+    assert.equal(JSON.stringify(value), before, 'missing optionals stay missing; explicit nulls stay null');
+  }
+  const unknownExit = structuredClone(publicFixtures.VerificationReceipt);
+  delete unknownExit.checks[0].exit_code;
+  assert.equal(validateVerificationReceipt(unknownExit), true);
+  assert.equal(Object.hasOwn(unknownExit.checks[0], 'exit_code'), false);
+  assert.equal(validateProvenanceContribution({ origin: 'private' }), true);
+});
+
+test('a real TypeScript consumer resolves every public root, subpath and precision-safe counter', () => {
+  // Reuse the pinned dashboard build tool; it is not a runtime dependency.
+  // Invoke the actual CLI so the fixture also covers the native TypeScript 7 toolchain.
+  const require = createRequire(path.join(root, 'apps/dashboard/package.json'));
+  const manifest = require('typescript/package.json');
+  const compiler = path.resolve(path.dirname(require.resolve('typescript/package.json')), manifest.bin.tsc);
+  const checked = spawnSync(process.execPath, [compiler, '--project', 'packages/contracts/tsconfig.json', '--pretty', 'false'], {
+    cwd: root, encoding: 'utf8', timeout: 30_000, maxBuffer: 1024 * 1024,
+    env: { ...process.env, GOMAXPROCS: '1' },
+  });
+  assert.ifError(checked.error);
+  assert.equal(checked.status, 0, `${checked.stdout}\n${checked.stderr}`);
 });

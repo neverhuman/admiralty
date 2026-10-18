@@ -1,6 +1,7 @@
 //! Pure, bounded interface compatibility evidence. Callers authenticate grants,
 //! durably append events and persist invalidation proposals atomically.
 use crate::{PrincipalId, ProjectId, RootId, TaskId, content_digest, limits::bounded_json_size};
+use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -21,6 +22,37 @@ impl DecimalU64 {
         self.0
     }
 }
+impl JsonSchema for DecimalU64 {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "DecimalU64".into()
+    }
+    fn json_schema(_: &mut SchemaGenerator) -> Schema {
+        // Match canonical decimal strings exactly through u64::MAX. Numeric
+        // JSON values lose precision in JS and are never this wire format.
+        let maximum = u64::MAX.to_string();
+        let mut alternatives = vec!["0".to_owned(), "[1-9][0-9]{0,18}".to_owned()];
+        for (index, digit) in maximum.bytes().enumerate() {
+            let lower = u8::from(index == 0);
+            let upper = digit - b'0';
+            if upper <= lower {
+                continue;
+            }
+            let remainder = maximum.len() - index - 1;
+            let suffix = if remainder == 0 {
+                String::new()
+            } else {
+                format!("[0-9]{{{remainder}}}")
+            };
+            alternatives.push(format!(
+                "{}[{lower}-{}]{suffix}",
+                &maximum[..index],
+                upper - 1
+            ));
+        }
+        alternatives.push(maximum);
+        json_schema!({"type":"string","pattern":format!(r"^(?:{})(?![\s\S])",alternatives.join("|"))})
+    }
+}
 impl Serialize for DecimalU64 {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.0.to_string())
@@ -37,7 +69,9 @@ impl<'de> Deserialize<'de> for DecimalU64 {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema,
+)]
 #[serde(try_from = "String", into = "String")]
 pub struct InterfaceId(String);
 impl InterfaceId {
@@ -71,7 +105,7 @@ impl From<InterfaceId> for String {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct InterfaceScope {
     pub project_id: ProjectId,
@@ -80,12 +114,13 @@ pub struct InterfaceScope {
     pub authority_ref: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct InterfaceContract {
     pub interface_id: InterfaceId,
     pub scope: InterfaceScope,
     pub producer: PrincipalId,
+    #[schemars(length(max = MAX_INTERFACE_CONSUMERS))]
     pub consumers: Vec<PrincipalId>,
     pub revision: DecimalU64,
     pub artifact_digest: String,
