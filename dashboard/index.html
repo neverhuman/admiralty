@@ -51,10 +51,13 @@ a{color:var(--acc)}.stale{color:var(--bad)}
 .mini .tt{font-size:10.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mini .vv{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mini svg{display:block;width:100%;height:34px}.mini.big{width:520px}.mini.big svg{height:150px}.mini .lg{font-size:9.5px;color:var(--mut);white-space:nowrap;overflow:hidden}
 .mini .nod{height:34px;display:flex;align-items:center;color:var(--mut);font-size:11px}.mini.big .nod{height:150px}
+.rollout{margin:14px 20px 0}.rollout[hidden]{display:none}.rollout .card{border-color:var(--acc)}
+.rollout-head{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}.rollout-counts{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.rollout-table{overflow:auto;max-height:320px;margin-top:6px}.rollout td{overflow-wrap:anywhere}.rollout summary{cursor:pointer}.rollout .receipt{max-width:580px;white-space:pre-wrap;margin:3px 0}
 </style></head><body>
 <header><h1>4 Captains · live ToDo progress <span class="mut" style="font-size:13px">+ super_captain · hierarchy · token efficiency</span></h1><div class="sum" id="sum"></div>
 <div class="mut" id="upd">loading…</div></header>
-<div class="strip" id="strip"></div><div class="layout"><div class="grid" id="grid"></div><div class="side" id="side"></div></div>
+<div class="strip" id="strip"></div><section id="rollout" class="rollout" aria-label="Implementation rollout" hidden></section><div class="layout"><div class="grid" id="grid"></div><div class="side" id="side"></div></div>
 <script>
 const INLINE=/*INLINE_DATA*/null;
 const TZ='America/Denver';
@@ -63,6 +66,27 @@ const fmt=(iso,withDate)=>{if(!iso)return'—';const d=new Date(iso);if(isNaN(d)
 const ago=iso=>{if(!iso)return'';const s=(Date.now()-new Date(iso))/1000;if(isNaN(s))return'';if(s<90)return Math.round(s)+'s ago';if(s<5400)return Math.round(s/60)+'m ago';return (s/3600).toFixed(1)+'h ago'};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const sha=s=>s?esc(String(s).slice(0,8)):'—';
+function rolloutUrl(value){try{const u=new URL(String(value));return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password?esc(u.href):''}catch(e){return''}}
+function rolloutPanel(s){const el=document.getElementById('rollout');if(!el)return;const r=s.rollout;el.hidden=!r;if(!r){el.innerHTML='';return}
+ if(r.state!=='ready'){el.innerHTML=`<div class="card"><h2>Implementation rollout</h2><div class="flag">${esc(r.error||'Rollout state unavailable')}</div><div class="mut small">Read-only manifest observation · ${esc((r.source||{}).filename||'')}</div></div>`;return}
+ const labels={planned:'planned',ready:'ready',claimed:'claimed',in_progress:'in progress',blocked:'blocked',review:'review',verified:'verification recorded',integrated:'integration recorded'};
+ const colors={planned:'',ready:'p-prog',claimed:'p-prog',in_progress:'p-prog',blocked:'p-bad',review:'p-prog',verified:'p-ok',integrated:'p-ok'};
+ const packets=Array.isArray(r.packets)?r.packets:[],lanes=Array.isArray(r.lanes)?r.lanes:[],f=r.freshness||{},src=r.source||{},pr=r.pr||{},project=r.project||{};
+ const pill=status=>`<span class="pill ${colors[status]||''}">${esc(labels[status]||status||'unknown')}</span>`;
+ const refs=p=>{const entries=[];if(p.capsule_path)entries.push('Capsule: '+p.capsule_path);if(p.verification)entries.push('Verification: '+JSON.stringify(p.verification));if(p.integration)entries.push('Integration: '+JSON.stringify(p.integration));for(const e of p.evidence||[])entries.push(JSON.stringify(e));return entries.length?`<details><summary>${entries.length} reference${entries.length===1?'':'s'}</summary><div class="mono small receipt">${entries.map(esc).join('<br>')}</div></details>`:'<span class="mut">no receipt references</span>'};
+ const priority={blocked:0,review:1,in_progress:2,claimed:3,ready:4,planned:5,verified:6,integrated:7};
+ const pending=packets.filter(p=>p.status!=='integrated').sort((a,b)=>(priority[a.status]??9)-(priority[b.status]??9));
+ const rows=p=>`<tr><td class="mono">${esc(p.id)}<br><span class="small">${esc(p.title)}</span></td><td>${pill(p.status)}${(p.warnings||[]).map(w=>`<div class="p-bad small">${esc(w)}</div>`).join('')}</td><td>${esc(p.lane||'unassigned')}<br><span class="mut small">${esc((p.claim||{}).owner||'')}</span></td><td class="small">${(p.depends_on||[]).map(esc).join(', ')||'—'}</td><td>${refs(p)}</td></tr>`;
+ const table=items=>`<div class="rollout-table"><table><thead><tr><th>Packet</th><th>Observed status</th><th>Lane / claimant</th><th>Depends on</th><th>Provenance</th></tr></thead><tbody>${items.slice(0,100).map(rows).join('')}</tbody></table></div>${items.length>100?'<div class="mut small">Showing first 100 packets; full manifest retains remaining rows.</div>':''}`;
+ const prUrl=rolloutUrl(pr.url),repoUrl=rolloutUrl(project.repository_url);
+ el.innerHTML=`<div class="card"><div class="rollout-head"><h2>${esc(project.name||project.id||'Implementation rollout')}</h2><span class="small ${f.state==='fresh'?'mut':'stale'}">${esc(f.state||'unknown')} · source ${fmt(r.updated_utc,1)} (${ago(r.updated_utc)})</span></div>
+ <div class="rollout-counts">${Object.keys(labels).map(k=>`${pill(k)} <b>${esc((r.counts||{})[k]??0)}</b>`).join(' · ')}<span class="mut">/ ${esc(r.total??packets.length)} packets</span></div>
+ <div class="mut small">Read-only manifest observation · ${esc(r.assurance||'Receipt references are not independently validated by this collector.')}</div>
+ <div class="small">${repoUrl?`<a href="${repoUrl}" target="_blank" rel="noopener noreferrer">Repository</a> · `:''}${prUrl?`<a href="${prUrl}" target="_blank" rel="noopener noreferrer">Integration PR</a>`:'PR not recorded'}${pr.head?` · head <span class="mono">${sha(pr.head)}</span>`:''}</div>
+ <details open><summary>Pending packets (${pending.length})</summary>${pending.length?table(pending):'<div class="mut">No pending packets recorded.</div>'}</details>
+ ${packets.some(p=>p.status==='integrated')?`<details><summary>Integration recorded (${(r.counts||{}).integrated||0})</summary>${table(packets.filter(p=>p.status==='integrated'))}</details>`:''}
+ ${lanes.length?`<details><summary>Execution lanes (${lanes.length})</summary><div class="rollout-table"><table><tr><th>Lane</th><th>Owner</th><th>Node</th><th>Branch</th><th>Status</th></tr>${lanes.map(l=>`<tr><td>${esc(l.id)}</td><td>${esc(l.owner)}</td><td>${esc(l.node)}</td><td class="mono">${esc(l.branch)}</td><td>${esc(l.status)}</td></tr>`).join('')}</table></div></details>`:''}
+ <details class="small mut"><summary>Manifest provenance</summary>Producer: ${esc(r.producer)} · file: ${esc(src.filename)}<br>Loaded ${fmt(src.loaded_utc,1)} · file modified ${fmt(src.mtime_utc,1)}<br><span class="mono">SHA-256 ${esc(src.sha256)}</span><br>Stale after ${esc(f.stale_after_s)} seconds. Source age, not file modification time, determines freshness.</details></div>`}
 let prevDone={};
 function ciPill(ci){if(!ci)return'<span class="pill">unknown</span>';const c=ci.counts||{};const cls=ci.state==='success'?'p-ok':ci.state==='failure'?'p-bad':ci.state==='pending'?'p-prog':'';
  return `<span class="pill ${cls}">${esc(ci.state)}</span> <span class="mut">${c.success||0}✓ ${c.pending||0}… ${c.failure||0}✗</span>`}
@@ -239,7 +263,7 @@ function yieldPanel(s){const ty=s.token_yield;if(!ty||!ty.total)return `<div cla
  return `<div class="card"><h2><span>Token yield (estimate) · last ${esc(String(ty.window_hours))}h</span><span class="mut small">tokens generated → landed on integration PR → landed on main</span></h2>${o}</div>`}
 function renderSide(s){const el=document.getElementById('side');if(!el)return;
  el.innerHTML=hierarchy(s)+tokenPanel(s)+yieldPanel(s)+superPanel(s)+(s.extras_error?`<div class="flag">extras error: ${esc(s.extras_error)}</div>`:'')}
-function render(s){try{renderStrip(s)}catch(e){document.getElementById('strip').innerHTML='<div class=flag>strip error: '+esc(e)+'</div>'}try{renderSide(s)}catch(e){document.getElementById('side').innerHTML='<div class=flag>side panel error: '+esc(e)+'</div>'}
+function render(s){try{rolloutPanel(s)}catch(e){const el=document.getElementById('rollout');if(el){el.hidden=false;el.innerHTML='<div class="flag">rollout error: '+esc(e)+'</div>'}}try{renderStrip(s)}catch(e){document.getElementById('strip').innerHTML='<div class=flag>strip error: '+esc(e)+'</div>'}try{renderSide(s)}catch(e){document.getElementById('side').innerHTML='<div class=flag>side panel error: '+esc(e)+'</div>'}
 const ps=s.order.map(k=>[k,s.projects[k]]).filter(x=>x[1]);
  document.getElementById('sum').innerHTML=ps.map(([k,p])=>{const fl=(p.flags||[]).length;return `<div class="chip"><div>${esc(p.name)} ${fl?'<span class="p-bad">⚠'+fl+'</span>':''}</div><div class="small">${stageLine(p)} <span class="mut">/ ${p.total??'?'}</span></div>${stageBar(p,1)}
   <div class="mut">PR ${p.pr&&p.pr.number?'#'+p.pr.number+' '+((p.pr.ci||{}).state||''):'—'} · captain ${(p.captain||{}).agent_running?'✓':'✗'}</div></div>`}).join('');
