@@ -2,7 +2,12 @@ use admiralty_core::interfaces::{
     CompatibilityEvidence, DecimalU64, InterfaceContract, InterfaceEvent, InterfaceId,
     InterfaceScope, RecipientEpoch, reduce_interface_for,
 };
-use admiralty_core::{MessageId, PrincipalId, ProjectId, RootId, TaskId};
+use admiralty_core::workplans::{
+    MAX_WORKPLAN_BYTES, Workplan, WorkplanError, preview_workplan, preview_workplan_with_existing,
+};
+use admiralty_core::{
+    AcceptanceCriterion, CheckSpec, MessageId, PrincipalId, ProjectId, RootId, TaskContract, TaskId,
+};
 use admiralty_runtime::session::{InputKind, LaunchSpec, SessionHost};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -28,6 +33,106 @@ struct GateAuditReceipt {
     interface_revision: u64,
     recipient_epoch: String,
     acknowledgment_event_id: String,
+}
+
+fn round13_task(task_id: &str, project_id: ProjectId, dependencies: &[&str]) -> TaskContract {
+    TaskContract {
+        schema_version: 1,
+        project_id,
+        root_id: RootId::new("round13-root").expect("root ID"),
+        task_id: TaskId::new(task_id).expect("task ID"),
+        revision: 1,
+        title: format!("Work order {task_id}"),
+        objective: "Complete the bounded work order".into(),
+        non_goals: vec![],
+        owned_paths: vec!["src".into()],
+        forbidden_paths: vec![],
+        read_first: vec![],
+        dependencies: dependencies
+            .iter()
+            .map(|id| TaskId::new(*id).expect("dependency ID"))
+            .collect(),
+        criteria: vec![AcceptanceCriterion {
+            id: "evidence".into(),
+            text: "The declared check passes".into(),
+            check_ids: vec!["check".into()],
+        }],
+        checks: vec![CheckSpec {
+            id: "check".into(),
+            program: "cargo".into(),
+            args: vec!["check".into()],
+            cwd: ".".into(),
+            timeout_secs: 30,
+        }],
+        authority_ref: "grant:round13".into(),
+        max_attempts: 1,
+        simulated: true,
+    }
+}
+
+#[test]
+fn p07_p17_round13_wo_intake_budget_schedule_bounds() {
+    let project_id = ProjectId::new("round13-project").expect("project ID");
+    let plan = Workplan {
+        schema_version: 1,
+        plan_id: "round13-plan".into(),
+        revision: 1,
+        project_id: project_id.clone(),
+        tasks: vec![
+            round13_task("release", project_id.clone(), &["build"]),
+            round13_task("build", project_id, &[]),
+        ],
+    };
+    let bytes = serde_json::to_vec(&plan).expect("serialize work order");
+    let preview = preview_workplan(&bytes).expect("bounded work-order intake");
+    assert_eq!(
+        preview.task_order,
+        ["build", "release"].map(|id| TaskId::new(id).expect("task ID")),
+        "schedule is dependency-first regardless of source order"
+    );
+    assert_eq!(
+        preview_workplan_with_existing(&bytes, &preview.task_digests)
+            .expect("identical release-evidence replay"),
+        preview,
+        "replaying the same work order preserves its schedule and evidence identity"
+    );
+    assert_eq!(
+        preview_workplan(&vec![b' '; MAX_WORKPLAN_BYTES + 1]),
+        Err(WorkplanError::TooLarge),
+        "intake budget rejects oversized work orders before parsing"
+    );
+
+    let receipt = GateAuditReceipt {
+        schema_version: 1,
+        run_id: "round13-release".into(),
+        input_epoch: 2,
+        output_offset: 128,
+        artifact_digest: digest(b"immutable release candidate"),
+        interface_id: "round13-captain-interface".into(),
+        interface_revision: 3,
+        recipient_epoch: "captain-epoch-13".into(),
+        acknowledgment_event_id: "round13-ack".into(),
+    };
+    let receipt_bytes = serde_json::to_vec(&receipt).expect("serialize release evidence");
+    let receipt_digest = digest(&receipt_bytes);
+    let decoded: GateAuditReceipt =
+        serde_json::from_slice(&receipt_bytes).expect("strict receipt decode");
+    assert_eq!(decoded, receipt);
+
+    let mut tampered = decoded.clone();
+    tampered.artifact_digest = digest(b"different candidate");
+    assert_ne!(
+        digest(&serde_json::to_vec(&tampered).expect("serialize tampered receipt")),
+        receipt_digest,
+        "candidate substitution changes the release-evidence digest"
+    );
+    let mut forged: serde_json::Value =
+        serde_json::from_slice(&receipt_bytes).expect("receipt value");
+    forged["acceptance_granted"] = serde_json::Value::Bool(true);
+    assert!(
+        serde_json::from_value::<GateAuditReceipt>(forged).is_err(),
+        "receipt cannot smuggle an authority grant"
+    );
 }
 
 #[cfg(unix)]
