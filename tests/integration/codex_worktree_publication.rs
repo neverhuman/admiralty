@@ -495,3 +495,87 @@ fn p19_p21_round9_item3_claude_provider_publication_qualification() {
             .contains(&PublicationBlock::CheckNotPassed)
     );
 }
+
+#[test]
+fn p19_p21_round10_item3_workspace_gate_audit() {
+    // A provider-reported successful turn is only an observation. Bind it to
+    // the exact retained session before evaluating independent workspace gates.
+    let bytes = include_bytes!("../fixtures/providers/claude/continuity-turn.jsonl");
+    let claude = parse_stream(bytes, Some("fixture-session")).expect("complete Claude turn");
+    assert_eq!(claude.outcome, TurnOutcome::Succeeded);
+    assert!(!claude.trusted_acceptance());
+    assert!(!claude.native_execution_qualified());
+    assert_eq!(
+        parse_stream(bytes, Some("different-session")),
+        Err(admiralty_runtime::providers::claude::ClaudeError::ResumeMismatch)
+    );
+
+    let generation = DecimalU64::new(10);
+    let scope = PublicationScope {
+        project_id: ProjectId::new("round10-workspace-audit").expect("project"),
+        root_id: RootId::new("round10-root").expect("root"),
+        task_id: TaskId::new("round10-claude-turn").expect("task"),
+        target_ref: "refs/heads/main".into(),
+        authority_generation: generation.clone(),
+    };
+    let base = "a".repeat(40);
+    let mut snapshot = PublicationSnapshot {
+        current_head: Some(base.clone()),
+        current_base: Some(base.clone()),
+        expected_head: Some(base.clone()),
+        expected_base: Some(base.clone()),
+        required_reviewers: vec!["workspace-owner".into()],
+        approvals: vec![ApprovalEvidence {
+            reviewer: "workspace-owner".into(),
+            head: base.clone(),
+            dismissed: false,
+            provenance_ref: "fixture:round10:review".into(),
+        }],
+        required_checks: vec!["workspace-state-audit".into()],
+        checks: vec![CheckEvidence {
+            check_id: "workspace-state-audit".into(),
+            head: base.clone(),
+            state: CheckState::Pending,
+            provenance_ref: "fixture:round10:pending-audit".into(),
+        }],
+        owner_only: false,
+        caller_is_owner: false,
+        unresolved_intent: false,
+    };
+
+    let proposal_for = |snapshot: &PublicationSnapshot, authority: &DecimalU64| {
+        let digest = publication_request_digest(&scope, snapshot, "claude-candidate", authority)
+            .expect("bounded exact workspace audit request");
+        propose_publication(&scope, snapshot, "claude-candidate", &digest, authority)
+    };
+
+    let pending = proposal_for(&snapshot, &generation);
+    assert!(!pending.eligible);
+    assert!(pending.intent.is_none());
+    assert!(pending.reasons.contains(&PublicationBlock::CheckNotPassed));
+
+    // A moved workspace head invalidates the earlier approval/check evidence
+    // even though the provider stream remains a well-formed successful turn.
+    snapshot.checks[0].state = CheckState::Passed;
+    snapshot.current_head = Some("b".repeat(40));
+    let moved_head = proposal_for(&snapshot, &generation);
+    assert!(!moved_head.eligible);
+    assert!(moved_head.reasons.contains(&PublicationBlock::ChangedHead));
+
+    snapshot.current_head = Some(base);
+    let stale_authority = proposal_for(&snapshot, &DecimalU64::new(9));
+    assert!(!stale_authority.eligible);
+    assert!(
+        stale_authority
+            .reasons
+            .contains(&PublicationBlock::StaleAuthorityGeneration)
+    );
+
+    let audited = proposal_for(&snapshot, &generation);
+    assert!(
+        audited.eligible,
+        "audited snapshot should be proposal eligible"
+    );
+    assert!(!audited.execution_granted());
+    assert!(audited.intent.is_some());
+}
