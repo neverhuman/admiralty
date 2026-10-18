@@ -807,6 +807,7 @@ fn checked_event(connection: &Connection, sequence: i64) -> Result<CheckedEvent>
 struct Writer {
     connection: Connection,
     projection: Projection,
+    pending_inbox: inbox::PendingInboxIndex,
     generation: String,
     _lock: File,
 }
@@ -866,6 +867,7 @@ impl Writer {
             }
         };
         let projection = replay(&connection)?;
+        let pending_inbox = inbox::PendingInboxIndex::from_projection(&projection)?;
         workplans::validate_task_contracts(
             &connection,
             projection.tasks.values().map(|task| &task.contract),
@@ -873,6 +875,7 @@ impl Writer {
         Ok(Self {
             connection,
             projection,
+            pending_inbox,
             generation,
             _lock: lock,
         })
@@ -980,6 +983,7 @@ impl Writer {
                 } => {
                     let result = inbox::pending_page(
                         &self.projection,
+                        &self.pending_inbox,
                         &self.generation,
                         &scope,
                         cursor.as_ref(),
@@ -1119,6 +1123,7 @@ impl Writer {
             workplans::validate_task_contract_in_transaction(&tx, contract)?;
         }
         let next_projection = reduce(&self.projection, &event)?;
+        let pending_update = inbox::PendingInboxIndex::prepare_update(&next_projection, &event)?;
         let mut associated_intent = None;
         if let Some(intent) = &intent {
             match outbox::enqueue_prepared_in_transaction(&tx, intent)? {
@@ -1157,6 +1162,7 @@ impl Writer {
             params![source.producer_id, source.incarnation, contiguous])?;
         tx.commit()?;
         self.projection = next_projection;
+        self.pending_inbox.apply_prepared(pending_update);
         Ok(AppendReceipt {
             event_seq: seq.to_string(),
             source_contiguous_seq: contiguous.to_string(),
@@ -1240,6 +1246,7 @@ impl Writer {
 
     fn rebuild(&mut self) -> Result<Snapshot> {
         let projection = replay(&self.connection)?;
+        let pending_inbox = inbox::PendingInboxIndex::from_projection(&projection)?;
         workplans::validate_task_contracts(
             &self.connection,
             projection.tasks.values().map(|task| &task.contract),
@@ -1250,6 +1257,7 @@ impl Writer {
             [&generation],
         )?;
         self.projection = projection;
+        self.pending_inbox = pending_inbox;
         self.generation = generation;
         self.snapshot()
     }

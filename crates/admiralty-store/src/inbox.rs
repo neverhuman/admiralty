@@ -6,17 +6,22 @@
 //! consumer watermark. Start a new pass without a cursor after reconnecting.
 
 use admiralty_core::{
-    CoordinationMessage, MessageId, PrincipalId, ProjectId, Projection, content_digest,
+    CoordinationMessage, DomainEvent, MessageId, PrincipalId, ProjectId, Projection, content_digest,
 };
 use serde::{Deserialize, Serialize};
-use std::{error::Error, fmt, ops::Bound};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    error::Error,
+    fmt,
+    ops::Bound,
+};
 
 pub const MAX_PENDING_PAGE: usize = 16;
 pub const MAX_PENDING_SCAN: usize = 256;
 pub const MAX_CONTEXT_EPOCH_BYTES: usize = 16_384;
 pub const MAX_RECOVERY_GENERATION_BYTES: usize = 64;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(deny_unknown_fields)]
 pub struct InboxScope {
     pub project_id: ProjectId,
@@ -47,7 +52,7 @@ pub struct InboxCursor {
 pub struct PendingInboxPage {
     pub recovery_generation: String,
     pub messages: Vec<CoordinationMessage>,
-    /// Continue this live scan after its last examined ID, including empty pages.
+    /// Continue this live scan after its last examined ID within this scope.
     /// A new pass/reconnect must begin without a continuation.
     pub next_cursor: Option<InboxCursor>,
     pub scanned_messages: u32,
@@ -126,15 +131,104 @@ pub fn validate_request(
     admitted_scope_digest(scope, cursor, limit).map(|_| ())
 }
 
+/// Derived state owned exclusively by the serialized Store writer. Reconstructed
+/// from durable message/ACK facts; never a separate source of delivery authority.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct PendingInboxIndex {
+    scopes: BTreeMap<InboxScope, BTreeSet<MessageId>>,
+}
+
+/// Prepared before committing SQL; application afterward is infallible. Fields
+/// are private so the writer cannot invent an unvalidated index mutation.
+pub(crate) struct PendingInboxUpdate(Option<(InboxScope, MessageId, bool)>);
+
+impl PendingInboxIndex {
+    pub(crate) fn from_projection(projection: &Projection) -> Result<Self, InboxError> {
+        let mut index = Self::default();
+        for (id, message) in &projection.messages {
+            let (scope, pending) = indexed_message(projection, id, message)?;
+            if pending {
+                index.scopes.entry(scope).or_default().insert(id.clone());
+            }
+        }
+        if projection
+            .acknowledgments
+            .keys()
+            .any(|id| !projection.messages.contains_key(id))
+        {
+            return Err(InboxError::CorruptProjection);
+        }
+        Ok(index)
+    }
+
+    /// Validate against the post-reduce projection while the SQL transaction
+    /// can still roll back. Business-level queue replay after an ACK must retain
+    /// that ACK, rather than putting the historical message back in pending.
+    pub(crate) fn prepare_update(
+        projection: &Projection,
+        event: &DomainEvent,
+    ) -> Result<PendingInboxUpdate, InboxError> {
+        let id = match event {
+            DomainEvent::MessageQueued { message } => &message.message_id,
+            DomainEvent::MessageAcknowledged { message_id, .. } => message_id,
+            _ => return Ok(PendingInboxUpdate(None)),
+        };
+        let message = projection
+            .messages
+            .get(id)
+            .ok_or(InboxError::CorruptProjection)?;
+        let (scope, pending) = indexed_message(projection, id, message)?;
+        Ok(PendingInboxUpdate(Some((scope, id.clone(), pending))))
+    }
+
+    pub(crate) fn apply_prepared(&mut self, update: PendingInboxUpdate) {
+        let Some((scope, id, pending)) = update.0 else {
+            return;
+        };
+        if pending {
+            self.scopes.entry(scope).or_default().insert(id);
+        } else if let Some(ids) = self.scopes.get_mut(&scope) {
+            ids.remove(&id);
+            if ids.is_empty() {
+                self.scopes.remove(&scope);
+            }
+        }
+    }
+}
+
+fn indexed_message(
+    projection: &Projection,
+    id: &MessageId,
+    message: &CoordinationMessage,
+) -> Result<(InboxScope, bool), InboxError> {
+    if id != &message.message_id || message.validate().is_err() {
+        return Err(InboxError::CorruptProjection);
+    }
+    let pending = match projection.acknowledgments.get(id) {
+        None => true,
+        Some(epoch) if epoch == &message.context_epoch => false,
+        Some(_) => return Err(InboxError::CorruptProjection),
+    };
+    Ok((
+        InboxScope {
+            project_id: message.project_id.clone(),
+            recipient: message.recipient.clone(),
+            context_epoch: message.context_epoch.clone(),
+        },
+        pending,
+    ))
+}
+
 /// Observe pending messages in one serialized Store-writer turn.
 ///
-/// At most 256 borrowed message records are examined and at most 16 validated
-/// envelopes are cloned. One borrowed key lookahead determines continuation.
-/// Unrelated or ACKed messages still advance the scan cursor. Neither a cursor
-/// nor an empty/complete page acknowledges anything. The trusted service must
-/// authorize the exact actor and scope before invoking this storage seam.
-pub fn pending_page(
+/// Only the exact scope's pending index is consulted. At most 16 validated
+/// envelopes are cloned; one borrowed own-scope key determines continuation.
+/// Foreign or ACKed history cannot affect cursor IDs, counts or page boundaries.
+/// Neither a read nor a cursor acknowledges anything. Actor authorization still
+/// belongs to the trusted service before invoking this storage seam.
+pub(crate) fn pending_page(
     projection: &Projection,
+    index: &PendingInboxIndex,
     generation: &str,
     scope: &InboxScope,
     cursor: Option<&InboxCursor>,
@@ -148,40 +242,38 @@ pub fn pending_page(
         return Err(InboxError::SnapshotRequired);
     }
 
+    let Some(ids) = index.scopes.get(scope) else {
+        return Ok(PendingInboxPage {
+            recovery_generation: generation.to_owned(),
+            messages: Vec::new(),
+            next_cursor: None,
+            scanned_messages: 0,
+        });
+    };
     let lower = cursor.map_or(Bound::Unbounded, |cursor| {
         Bound::Excluded(&cursor.after_message_id)
     });
-    let mut records = projection
-        .messages
+    let mut records = ids
         .range::<MessageId, _>((lower, Bound::Unbounded))
         .peekable();
     let mut messages = Vec::new();
     let mut scanned_messages = 0_u32;
     let mut last_examined = None;
     while scanned_messages < MAX_PENDING_SCAN as u32 && messages.len() < limit {
-        let Some((id, message)) = records.next() else {
+        let Some(id) = records.next() else {
             break;
         };
         scanned_messages += 1;
         last_examined = Some(id);
-        if id != &message.message_id {
+        let message = projection
+            .messages
+            .get(id)
+            .ok_or(InboxError::CorruptProjection)?;
+        let (actual_scope, pending) = indexed_message(projection, id, message)?;
+        if &actual_scope != scope || !pending {
             return Err(InboxError::CorruptProjection);
         }
-        let acknowledged = match projection.acknowledgments.get(id) {
-            Some(epoch) if epoch == &message.context_epoch => true,
-            Some(_) => return Err(InboxError::CorruptProjection),
-            None => false,
-        };
-        if !acknowledged
-            && message.project_id == scope.project_id
-            && message.recipient == scope.recipient
-            && message.context_epoch == scope.context_epoch
-        {
-            message
-                .validate()
-                .map_err(|_| InboxError::CorruptProjection)?;
-            messages.push(message.clone());
-        }
+        messages.push(message.clone());
     }
     // peek borrows one key/value pair; it does not inspect or clone that next
     // envelope. No additional record contributes to scanned_messages.
@@ -209,6 +301,20 @@ mod tests {
     use admiralty_core::{MessagePayload, TaskId};
 
     const GENERATION: &str = "recovery-one";
+
+    // Projection-only fixtures rebuild a fresh derived index. Store tests below
+    // exercise incremental updates through the actual serialized SQL writer.
+    fn pending_page(
+        projection: &Projection,
+        generation: &str,
+        scope: &InboxScope,
+        cursor: Option<&InboxCursor>,
+        limit: usize,
+    ) -> Result<PendingInboxPage, InboxError> {
+        validate_request(scope, cursor, limit)?;
+        let index = PendingInboxIndex::from_projection(projection)?;
+        super::pending_page(projection, &index, generation, scope, cursor, limit)
+    }
 
     fn scope() -> InboxScope {
         InboxScope {
@@ -259,6 +365,20 @@ mod tests {
         }
     }
 
+    fn task_event() -> DomainEvent {
+        let contract = serde_json::from_value(serde_json::json!({
+            "schema_version":1,"project_id":"project-one","root_id":"root-one",
+            "task_id":"TASK-ONE","revision":1,"title":"Indexed inbox fixture",
+            "objective":"Preserve scoped pending delivery and durable history","non_goals":[],
+            "owned_paths":["src/inbox.rs"],"forbidden_paths":[],"read_first":[],
+            "dependencies":[],"criteria":[{"id":"C1","text":"Scoped replay","check_ids":["unit"]}],
+            "checks":[{"id":"unit","program":"cargo","args":["test"],"cwd":".","timeout_secs":30}],
+            "authority_ref":"grant:task-one-exact","max_attempts":1,"simulated":true
+        }))
+        .expect("valid fixture task");
+        DomainEvent::TaskSubmitted { contract }
+    }
+
     #[test]
     fn exact_project_recipient_and_epoch_preserve_original_protected_facts() {
         let original = message("matching");
@@ -280,7 +400,7 @@ mod tests {
             serde_json::to_vec(&page.messages[0]).expect("returned envelope"),
             serde_json::to_vec(&original).expect("original envelope")
         );
-        assert_eq!(page.scanned_messages, 4);
+        assert_eq!(page.scanned_messages, 1);
         assert!(page.next_cursor.is_none());
         assert_eq!(projection, before);
     }
@@ -320,7 +440,7 @@ mod tests {
     }
 
     #[test]
-    fn sparse_or_acknowledged_records_advance_empty_pages_at_the_scan_bound() {
+    fn foreign_and_acknowledged_history_does_not_create_empty_scan_pages() {
         let mut projection = Projection::default();
         for index in 0..MAX_PENDING_SCAN * 2 {
             let id = format!("a-{index:04}");
@@ -337,31 +457,9 @@ mod tests {
         insert(&mut projection, message("z-pending"));
         let before = projection.clone();
         let first = pending_page(&projection, GENERATION, &scope(), None, 16).expect("scan one");
-        assert!(first.messages.is_empty());
-        assert_eq!(first.scanned_messages, MAX_PENDING_SCAN as u32);
-        assert_eq!(first.next_cursor, Some(cursor("a-0255")));
-        let second = pending_page(
-            &projection,
-            GENERATION,
-            &scope(),
-            first.next_cursor.as_ref(),
-            16,
-        )
-        .expect("scan two");
-        assert!(second.messages.is_empty());
-        assert_eq!(second.scanned_messages, MAX_PENDING_SCAN as u32);
-        assert_eq!(second.next_cursor, Some(cursor("a-0511")));
-        let last = pending_page(
-            &projection,
-            GENERATION,
-            &scope(),
-            second.next_cursor.as_ref(),
-            16,
-        )
-        .expect("scan last");
-        assert_eq!(last.messages, vec![message("z-pending")]);
-        assert_eq!(last.scanned_messages, 1);
-        assert!(last.next_cursor.is_none());
+        assert_eq!(first.messages, vec![message("z-pending")]);
+        assert_eq!(first.scanned_messages, 1);
+        assert!(first.next_cursor.is_none());
         assert_eq!(projection, before);
     }
 
@@ -392,7 +490,7 @@ mod tests {
         let exhausted =
             pending_page(&only_foreign, GENERATION, &scope(), None, 16).expect("exact scan limit");
         assert!(exhausted.messages.is_empty());
-        assert_eq!(exhausted.scanned_messages, MAX_PENDING_SCAN as u32);
+        assert_eq!(exhausted.scanned_messages, 0);
         assert!(exhausted.next_cursor.is_none());
     }
 
@@ -605,5 +703,215 @@ mod tests {
         .expect("page JSON");
         encoded_page["application_ack_recorded"] = true.into();
         assert!(serde_json::from_value::<PendingInboxPage>(encoded_page).is_err());
+    }
+
+    #[test]
+    fn foreign_history_cannot_change_own_cursor_counts_or_page_boundaries() {
+        let mut projection = Projection::default();
+        insert(&mut projection, message("own-a"));
+        insert(&mut projection, message("own-z"));
+        let original =
+            pending_page(&projection, GENERATION, &scope(), None, 1).expect("original scoped page");
+        for number in 0..1024 {
+            let mut foreign = message(&format!("foreign-{number:04}"));
+            match number % 3 {
+                0 => foreign.project_id = ProjectId::new("other-project").expect("project"),
+                1 => foreign.recipient = PrincipalId::new("other-recipient").expect("recipient"),
+                _ => foreign.context_epoch = "other-epoch".into(),
+            }
+            insert(&mut projection, foreign);
+        }
+        assert_eq!(
+            pending_page(&projection, GENERATION, &scope(), None, 1),
+            Ok(original)
+        );
+    }
+
+    #[test]
+    fn prepared_deltas_match_rebuild_and_queue_replay_never_resurrects_acked_message() {
+        let mut projection = admiralty_core::reduce(&Projection::default(), &task_event())
+            .expect("task for actual reducer validation");
+        let mut index = PendingInboxIndex::default();
+        let queued = DomainEvent::MessageQueued {
+            message: message("one"),
+        };
+        let acknowledged = DomainEvent::MessageAcknowledged {
+            message_id: message("one").message_id,
+            recipient: scope().recipient,
+            context_epoch: scope().context_epoch,
+        };
+        for event in [queued.clone(), acknowledged.clone(), acknowledged] {
+            let next = admiralty_core::reduce(&projection, &event).expect("valid event");
+            let before = index.clone();
+            let delta = PendingInboxIndex::prepare_update(&next, &event).expect("precommit delta");
+            assert_eq!(index, before, "preparation must not mutate committed index");
+            index.apply_prepared(delta);
+            projection = next;
+            assert_eq!(
+                index,
+                PendingInboxIndex::from_projection(&projection).expect("replay index")
+            );
+        }
+        assert!(
+            admiralty_core::reduce(&projection, &queued).is_err(),
+            "current reducer rejects a new-source queue replay"
+        );
+        // Even if a future reducer admits an exact business replay, derive the
+        // update from the final ACK state rather than resurrecting the message.
+        index.apply_prepared(
+            PendingInboxIndex::prepare_update(&projection, &queued).expect("retained ACK delta"),
+        );
+        assert!(index.scopes.is_empty(), "ACKed history is not pending");
+        assert_eq!(projection.messages.len(), 1, "history is retained");
+    }
+
+    #[test]
+    fn corrupted_index_references_and_unknown_ack_fail_without_partial_page() {
+        let mut projection = Projection::default();
+        insert(&mut projection, message("a-valid"));
+        let mut foreign = message("z-foreign");
+        foreign.project_id = ProjectId::new("other-project").expect("project");
+        insert(&mut projection, foreign);
+        let original = PendingInboxIndex::from_projection(&projection).expect("index");
+        for id in ["z-foreign", "z-missing", "z-acked"] {
+            let mut broken = original.clone();
+            if id == "z-acked" {
+                let row = message(id);
+                projection
+                    .acknowledgments
+                    .insert(row.message_id.clone(), row.context_epoch.clone());
+                insert(&mut projection, row);
+            }
+            broken
+                .scopes
+                .entry(scope())
+                .or_default()
+                .insert(MessageId::new(id).expect("ID"));
+            assert_eq!(
+                super::pending_page(&projection, &broken, GENERATION, &scope(), None, 16),
+                Err(InboxError::CorruptProjection)
+            );
+        }
+        projection
+            .acknowledgments
+            .insert(MessageId::new("unknown").expect("ID"), "epoch-one".into());
+        assert_eq!(
+            PendingInboxIndex::from_projection(&projection),
+            Err(InboxError::CorruptProjection)
+        );
+    }
+
+    #[test]
+    fn real_writer_keeps_index_atomic_across_outbox_rejection_ack_replay_and_reopen() {
+        use crate::{Store, outbox::OutboxIntent};
+        use admiralty_core::SourceIdentity;
+        let directory = tempfile::tempdir().expect("private fixture");
+        let database = directory.path().join("indexed.sqlite");
+        let source = |sequence: u64| SourceIdentity {
+            producer_id: "indexed-test".into(),
+            incarnation: "boot-one".into(),
+            sequence: sequence.to_string(),
+        };
+        let event = |id: &str| DomainEvent::MessageQueued {
+            message: message(id),
+        };
+        let observed = || "2026-10-18T00:00:00Z".to_owned();
+        let store = Store::open(&database).expect("writer");
+        store
+            .append(
+                SourceIdentity {
+                    producer_id: "task-registration".into(),
+                    incarnation: "boot-one".into(),
+                    sequence: "1".into(),
+                },
+                task_event(),
+                observed(),
+            )
+            .expect("register real immutable task");
+        let intent = OutboxIntent {
+            idempotency_key: "one-effect".into(),
+            payload: serde_json::json!({"fixture":true}),
+            not_before: 0,
+        };
+        store
+            .append_with_intent(source(1), event("one"), observed(), intent.clone())
+            .expect("first commit");
+        assert!(
+            store
+                .append_with_intent(source(2), event("rejected"), observed(), intent)
+                .is_err()
+        );
+        let page = store
+            .pending_messages(scope(), None, 16)
+            .expect("committed pending");
+        assert_eq!(
+            page.messages,
+            vec![message("one")],
+            "rejected event never enters index"
+        );
+        store
+            .acknowledge_scoped_message(source(3), scope(), message("one").message_id, observed())
+            .expect("ACK");
+        assert!(
+            store
+                .append_with_intent(
+                    source(1),
+                    event("one"),
+                    observed(),
+                    OutboxIntent {
+                        idempotency_key: "one-effect".into(),
+                        payload: serde_json::json!({"fixture":true}),
+                        not_before: 0
+                    }
+                )
+                .expect("lost source reply")
+                .duplicate
+        );
+        assert!(
+            store.append(source(4), event("one"), observed()).is_err(),
+            "new-source queue replay remains rejected"
+        );
+        assert_eq!(
+            store
+                .pending_messages(scope(), None, 16)
+                .expect("ACK retained")
+                .scanned_messages,
+            0
+        );
+        for (sequence, id) in [(5, "pending-a"), (6, "pending-b")] {
+            store
+                .append(source(sequence), event(id), observed())
+                .expect("queue");
+        }
+        let first = store
+            .pending_messages(scope(), None, 1)
+            .expect("first page");
+        let snapshot = store.rebuild().expect("rebuild and index swap");
+        assert!(matches!(
+            store.pending_messages(scope(), first.next_cursor.clone(), 1),
+            Err(crate::StoreError::Inbox(InboxError::SnapshotRequired))
+        ));
+        let expected = pending_page(
+            &snapshot.projection,
+            &snapshot.cursor.recovery_generation,
+            &scope(),
+            None,
+            16,
+        )
+        .expect("rebuilt reference");
+        assert_eq!(
+            store
+                .pending_messages(scope(), None, 16)
+                .expect("indexed query"),
+            expected
+        );
+        drop(store);
+        let reopened = Store::open(&database).expect("reopen index");
+        assert_eq!(
+            reopened
+                .pending_messages(scope(), None, 16)
+                .expect("replayed query"),
+            expected
+        );
     }
 }

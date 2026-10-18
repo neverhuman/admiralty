@@ -963,8 +963,8 @@ fn pending_service_preserves_payload_and_scoped_ack_across_reopen_and_recovery()
     let mine = assignment(&task, "m-assignment");
     let scope = pending_scope(&mine);
     let policy = pending_policy(&scope);
-    // More unrelated records than a scan. An empty first page must still
-    // advance rather than treating foreign data as an empty recipient inbox.
+    // More unrelated records than the old global scan bound. Exact-scope
+    // indexed pages must not reveal those IDs/counts or waste empty pages.
     for index in 0..=MAX_PENDING_SCAN {
         service
             .enqueue_durable(
@@ -1011,10 +1011,11 @@ fn pending_service_preserves_payload_and_scoped_ack_across_reopen_and_recovery()
     let before_read = store.snapshot().expect("snapshot before pending reads");
     let first = service
         .pending_messages(&scope.recipient, &policy, scope.clone(), None, 1)
-        .expect("first bounded sparse page");
-    assert!(first.messages.is_empty());
-    assert_eq!(first.scanned_messages, MAX_PENDING_SCAN as u32);
-    let old_cursor = first.next_cursor.expect("sparse page has continuation");
+        .expect("first bounded scoped page");
+    assert_eq!(first.messages, vec![mine.clone()]);
+    assert_eq!(first.scanned_messages, 1);
+    let old_cursor = first.next_cursor.expect("own pending messages remain");
+    assert_eq!(old_cursor.after_message_id, mine.message_id);
     let second = service
         .pending_messages(
             &scope.recipient,
@@ -1023,9 +1024,9 @@ fn pending_service_preserves_payload_and_scoped_ack_across_reopen_and_recovery()
             Some(old_cursor.clone()),
             1,
         )
-        .expect("seek past unrelated records");
-    assert_eq!(second.messages, vec![mine.clone()]);
-    assert_eq!(second.scanned_messages, 4);
+        .expect("next exact-scope message");
+    assert_eq!(second.messages, vec![question.clone()]);
+    assert_eq!(second.scanned_messages, 1);
     // Simulate a lost read response: discard it, start a fresh pass without a
     // cursor, and observe all unacknowledged bytes again. No read executes work.
     drop(second);
