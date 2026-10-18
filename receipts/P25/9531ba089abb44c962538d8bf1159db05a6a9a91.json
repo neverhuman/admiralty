@@ -1,0 +1,111 @@
+{
+  "packet": "P25",
+  "state": "partial_review",
+  "owner": "batch integration reviewer",
+  "base_sha": "3927b3f9a824b97027fa9db46500441a96361e27",
+  "head_sha": "9531ba089abb44c962538d8bf1159db05a6a9a91",
+  "branch": "codex/batch-item3-p04-p07-p18-p21-p24-p25-p26",
+  "observed_utc": "2026-10-18T17:12:12Z",
+  "source_worker_commits": [
+    "e1cda48ee09a7b823016222906128d38893d1d4e",
+    "e1da37d6f34748746770540ff3ac66f72996828a",
+    "fdf5a39596304e66107d386e2388c99ad6225b9e",
+    "f640ee0a4d2c076c3ab51bf8d1c903780054935e",
+    "61394310a2ce45a46eb783f328d41d8dadb0d128",
+    "c6134770dd40c398ba20e1b20fd9a260e1958a91",
+    "8b8772effa669785ade40f0917102ee2b7d78d6f",
+    "5fe408c4632670473b1b91850d8614a8a0dd49ea",
+    "306f9b066c4d723c09e0cc2613d0a3ed90a64f86",
+    "c5f00c6f9b7d64c3877a6be5f752068098a1f8bd",
+    "4aa9e8b384a930851a43d455c45e6579e7454d75",
+    "ebb65669755ab2fbd2abc5e7bb4506a912d83b4b",
+    "f809527b1aee17bccd5982e787995469a921cda8",
+    "c560b8b984686238ab237a2897071152cd60563e",
+    "d525e94e58dacd7e815a89840ffa0a660a24fbad",
+    "15a3ad8fd23a9438216c7d775f30187858c5564e",
+    "23ef05834b112d71edb1869fba6598929299c4d1",
+    "9b37e4b2361b70d5639ca3866d0761767bd23d53",
+    "ce3c2b4ee4c83da5ae396e55f0781c7dd5f0301c",
+    "3dfd8f62295a7a0083c1fdbf35cae42b46139c69",
+    "0e7d673dcd06b808d412c3a22e554841e349215e"
+  ],
+  "changed_paths": [
+    "tests/integration/codex_round8.rs",
+    "tests/integration/codex_round9.rs",
+    "tests/integration/codex_worktree_lease.rs"
+  ],
+  "criteria": [
+    {
+      "name": "recovery fencing and effects authorization",
+      "result": "pass",
+      "evidence": [
+        "Exact workspace checks passed on the batch source tree; this is candidate evidence only."
+      ]
+    }
+  ],
+  "validation": [
+    {
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "result": "721 passed; 0 failed; 1 ignored across 66 test suites",
+      "artifact": "/home/ubuntu/admiralty-v2-build/logs/item3-cargo-test.log",
+      "artifact_sha256": "e72741deb4efd3c1cfc0e1111eb952fee3d910262ea89417c69233879d6dba03"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "result": "passed",
+      "artifact": "/home/ubuntu/admiralty-v2-build/logs/item3-clippy.log",
+      "artifact_sha256": "508ede97cb0b246d4b6caa5799c50371547336a614e594cf811948c30a16eb20"
+    },
+    {
+      "argv": [
+        "pnpm",
+        "contracts:check"
+      ],
+      "exit_code": 0,
+      "result": "passed; generated contract files unchanged",
+      "artifact": "/home/ubuntu/admiralty-v2-build/logs/item3-contracts.log",
+      "artifact_sha256": "afafbe0f113d1c5c735a73678c73cbe59c170160f85dd4b1d3c3c5867e486058"
+    }
+  ],
+  "environment": {
+    "os": "Linux",
+    "rust": "1.95.0",
+    "cargo_target_dir": "/home/ubuntu/admiralty-v2-build/targets/main-acceptance",
+    "tmpdir": "/home/ubuntu/.adm-main-acceptance-tmp"
+  },
+  "limitations": [
+    "Branch is not merged to main; this receipt does not replace post-merge packet acceptance.",
+    "Full-suite checks establish batch-tree health, not native execution qualification."
+  ],
+  "packet_accepted": false,
+  "native_execution_qualified": false,
+  "main_merge_held": true,
+  "next_action": "Hold main merge until the 17:30Z-17:35Z batched window; perform exact-head review and post-merge acceptance separately."
+}
