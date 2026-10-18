@@ -1,9 +1,7 @@
-//! Round 8 P08/P19 qualification for publishing a Codex-owned worktree candidate.
-//! Git and forge effects are confined to temporary, deterministic fixtures.
-
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
-use std::process::{Command, Output};
+#![cfg(unix)]
+//! Offline publication regressions using retained provider bytes and a fake forge.
+//! Local Git fixtures never launch a provider or touch a real forge. These
+//! component checks confer no P08/P19/P21 native qualification or acceptance.
 
 use admiralty_core::{
     ProjectId, RootId, TaskId,
@@ -31,94 +29,33 @@ use admiralty_store::artifacts::ArtifactStore;
 use admiralty_testkit::forge::{
     Fault as ForgeFault, ForgeKey, ForgeOutcome, ForgeReply, ForgeRequest, ForgeSimulator,
 };
-use tempfile::tempdir;
+#[path = "support/git_fixture.rs"]
+mod git_fixture;
+use git_fixture::{commit, git, private_directory, private_fixture, text};
 
 #[path = "support/recovery.rs"]
 mod recovery_fixture;
 
-fn git(repository: &std::path::Path, args: &[&str]) -> Output {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repository)
-        .args(args)
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .output()
-        .expect("git fixture command starts");
-    assert!(
-        output.status.success(),
-        "git {args:?} failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    output
-}
-
-fn text(output: Output) -> String {
-    String::from_utf8(output.stdout)
-        .expect("git output is utf-8")
-        .trim()
-        .to_owned()
-}
-
-fn commit(repository: &std::path::Path, message: &str, timestamp: &str) -> String {
-    git(
-        repository,
-        &[
-            "-c",
-            "user.name=Qualification Fixture",
-            "-c",
-            "user.email=fixture@example.invalid",
-            "add",
-            "--",
-            ".",
-        ],
-    );
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repository)
-        .args([
-            "-c",
-            "user.name=Qualification Fixture",
-            "-c",
-            "user.email=fixture@example.invalid",
-            "commit",
-            "-m",
-            message,
-        ])
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_AUTHOR_DATE", timestamp)
-        .env("GIT_COMMITTER_DATE", timestamp)
-        .output()
-        .expect("git commit fixture command starts");
-    assert!(
-        output.status.success(),
-        "git commit failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    text(git(repository, &["rev-parse", "HEAD"]))
-}
-
 fn eligible_intent(
     scope: &PublicationScope,
     snapshot: &PublicationSnapshot,
-    candidate_head: &str,
+    intent_key: &str,
 ) -> PublicationIntent {
     let generation = DecimalU64::new(8);
-    let digest = publication_request_digest(scope, snapshot, candidate_head, &generation)
+    let digest = publication_request_digest(scope, snapshot, intent_key, &generation)
         .expect("fixture request digest");
-    let result = propose_publication(scope, snapshot, candidate_head, &digest, &generation);
+    let result = propose_publication(scope, snapshot, intent_key, &digest, &generation);
     assert!(result.eligible, "proposal rejected: {:?}", result.reasons);
     assert!(!result.execution_granted());
     result.intent.expect("eligible proposal returns an intent")
 }
 
 #[test]
-fn p19_round8_p08_worktree_publication_qualification() {
-    let fixture = tempdir().expect("temporary repository root");
+fn immutable_worktree_candidate_drives_only_a_simulated_publication() {
+    let fixture = private_fixture();
     let repository = fixture.path().join("repository");
     let worktree = fixture.path().join("codex-worktree");
-    std::fs::create_dir(&repository).expect("repository directory");
+    private_directory(&repository);
     git(&repository, &["init", "--quiet", "--initial-branch=main"]);
     std::fs::create_dir(repository.join("src")).expect("initial source directory");
     std::fs::write(
@@ -161,21 +98,21 @@ fn p19_round8_p08_worktree_publication_qualification() {
         authority_generation: generation.clone(),
     };
     let snapshot = PublicationSnapshot {
-        current_head: Some(base.clone()),
+        current_head: Some(candidate.clone()),
         current_base: Some(base.clone()),
-        expected_head: Some(base.clone()),
+        expected_head: Some(candidate.clone()),
         expected_base: Some(base.clone()),
         required_reviewers: vec!["maintainer".into()],
         approvals: vec![ApprovalEvidence {
             reviewer: "maintainer".into(),
-            head: base.clone(),
+            head: candidate.clone(),
             dismissed: false,
             provenance_ref: "fixture:round8:approval".into(),
         }],
         required_checks: vec!["worktree-integrity".into()],
         checks: vec![CheckEvidence {
             check_id: "worktree-integrity".into(),
-            head: base.clone(),
+            head: candidate.clone(),
             state: CheckState::Passed,
             provenance_ref: "fixture:round8:check".into(),
         }],
@@ -183,8 +120,41 @@ fn p19_round8_p08_worktree_publication_qualification() {
         caller_is_owner: false,
         unresolved_intent: false,
     };
-    let intent = eligible_intent(&scope, &snapshot, &candidate);
-    assert_eq!(intent.expected_head, base);
+    let intent = eligible_intent(&scope, &snapshot, "offline-worktree-publication");
+    assert_eq!(intent.expected_head, candidate);
+    assert_eq!(intent.expected_base, base);
+
+    // A new, valid Git candidate cannot inherit the original candidate's
+    // approval/check evidence, even with an otherwise refreshed snapshot.
+    std::fs::write(worktree.join("src/lib.rs"), b"pub fn value() -> u8 { 3 }\n")
+        .expect("changed synthetic candidate source");
+    let changed_head = commit(&worktree, "changed candidate", "2000-01-01T00:00:02Z");
+    let mut changed = snapshot.clone();
+    changed.current_head = Some(changed_head.clone());
+    changed.expected_head = Some(changed_head);
+    let changed_digest = publication_request_digest(
+        &scope,
+        &changed,
+        "changed-worktree-publication",
+        &generation,
+    )
+    .expect("changed candidate request digest");
+    let rejected = propose_publication(
+        &scope,
+        &changed,
+        "changed-worktree-publication",
+        &changed_digest,
+        &generation,
+    );
+    assert!(!rejected.eligible);
+    assert!(rejected.intent.is_none());
+    assert!(!rejected.execution_granted());
+    assert!(rejected.reasons.contains(&PublicationBlock::WrongReviewer));
+    assert!(
+        rejected
+            .reasons
+            .contains(&PublicationBlock::MissingOrUnknownCheck)
+    );
 
     let key = ForgeKey {
         repository: "fixture/round8".into(),
@@ -193,8 +163,8 @@ fn p19_round8_p08_worktree_publication_qualification() {
     let request = ForgeRequest {
         id: intent.intent_key,
         key: key.clone(),
-        expected_head: base.clone(),
-        new_head: candidate.clone(),
+        expected_head: intent.expected_base,
+        new_head: intent.expected_head,
     };
     let mut forge = ForgeSimulator::new(1, 1).expect("bounded forge simulator");
     forge
@@ -213,14 +183,11 @@ fn p19_round8_p08_worktree_publication_qualification() {
 }
 
 #[test]
-fn p19_p21_round9_item3_claude_provider_publication_qualification() {
+fn provider_observation_and_cross_component_uncertainty_do_not_grant_publication() {
     // P04: preserve immutable candidate evidence and reject an over-limit object.
-    let artifact_fixture = tempdir().expect("private artifact fixture");
+    let artifact_fixture = private_fixture();
     let artifact_root = artifact_fixture.path().join("objects");
-    std::fs::create_dir(&artifact_root).expect("artifact root");
-    #[cfg(unix)]
-    std::fs::set_permissions(&artifact_root, std::fs::Permissions::from_mode(0o700))
-        .expect("restrict artifact root to its owner");
+    private_directory(&artifact_root);
     let artifacts = ArtifactStore::open(&artifact_root, 64).expect("bounded artifact store");
     let candidate_bytes = b"Claude candidate source fixture";
     let reference = artifacts
@@ -497,7 +464,7 @@ fn p19_p21_round9_item3_claude_provider_publication_qualification() {
 }
 
 #[test]
-fn p19_p21_round10_item3_workspace_gate_audit() {
+fn synthetic_workspace_gate_requires_current_checks_and_authority() {
     // A provider-reported successful turn is only an observation. Bind it to
     // the exact retained session before evaluating independent workspace gates.
     let bytes = include_bytes!("../fixtures/providers/claude/continuity-turn.jsonl");
