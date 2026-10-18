@@ -33,6 +33,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "admiralty-integration-tests"
+version = "0.1.0"
+dependencies = [
+ "admiralty-core",
+]
+
+[[package]]
 name = "admiralty-runtime"
 version = "0.1.0"
 dependencies = [

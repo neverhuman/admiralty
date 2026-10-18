@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit"]
+members = ["crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests"]
 resolver = "2"
 
 [workspace.package]
