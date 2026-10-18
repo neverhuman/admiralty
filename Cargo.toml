@@ -25,7 +25,19 @@ path = "tests/integration/codex_round16_p20.rs"
 
 [workspace]
 members = ["crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests"]
+default-members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests"]
 resolver = "2"
+
+[package]
+name = "admiralty-release-qualification"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+admiralty-core.workspace = true
+admiralty-runtime.workspace = true
 
 [workspace.package]
 version = "0.1.0"
@@ -75,3 +87,7 @@ unwrap_used = "warn"
 [profile.release]
 lto = "thin"
 strip = true
+
+[[test]]
+name = "codex_round16_p25_p30"
+path = "tests/integration/codex_round16_p25_p30.rs"
