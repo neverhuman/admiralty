@@ -308,3 +308,83 @@ fn p09_p16_round9_item3_workspace_doctor_qualification() {
         9_007_199_254_740_993
     );
 }
+
+#[test]
+fn p09_p16_round10_item3_workspace_gate_audit() {
+    use admiralty_core::{
+        ProjectId, RootId, TaskId,
+        conflicts::{
+            CandidateChange, CandidateConstraints, ConflictError, ConflictRisk, FileChange,
+            HunkRange, analyze_conflicts,
+        },
+    };
+    use admiralty_runtime::{audits::decode_evidence, workspace::registry::WorkspaceSpec};
+    use std::{fs, path::PathBuf};
+
+    let temp = tempfile::tempdir().expect("bounded workspace fixture");
+    let workspace = fs::canonicalize(temp.path()).expect("canonical workspace fixture");
+    let validated = WorkspaceSpec {
+        node_id: admiralty_runtime::workspace::registry::NodeRef::new("round10-captain")
+            .expect("node ID"),
+        root_id: RootId::new("round10-root").expect("root ID"),
+        project_id: ProjectId::new("round10-project").expect("project ID"),
+        workspace,
+        owned_paths: vec![PathBuf::from("src")],
+        forbidden_paths: vec![PathBuf::from(".git")],
+    }
+    .validate()
+    .expect("P09 workspace registration validates");
+    assert!(validated.owns(std::path::Path::new("src/lib.rs")));
+    assert!(!validated.owns(std::path::Path::new(".git/config")));
+    assert!(!validated.owns(std::path::Path::new("src/../.git/config")));
+
+    // P16 input decoding is closed to worker supplied authority or receipt flags.
+    assert!(decode_evidence(br#"{"acceptance_granted":true}"#).is_err());
+    assert!(decode_evidence(br#"{"audit_id":"audit-1","unknown":true}"#).is_err());
+
+    let candidate = |id: &str, path: &str, start: u32, end: u32| CandidateChange {
+        project_id: ProjectId::new("round10-project").expect("project ID"),
+        root_id: RootId::new("round10-root").expect("root ID"),
+        task_id: TaskId::new(format!("task-{id}")).expect("task ID"),
+        candidate_id: id.into(),
+        base_sha: "1".repeat(40),
+        head_sha: "2".repeat(40),
+        tree_sha: "3".repeat(40),
+        ancestry_digest: Some(format!("sha256:{}", "a".repeat(64))),
+        files: vec![FileChange {
+            path: path.into(),
+            hunks: Some(vec![HunkRange { start, end }]),
+        }],
+        constraints: Some(CandidateConstraints {
+            contract_revision: 1,
+            contract_digest: format!("sha256:{}", "b".repeat(64)),
+            owned_paths: vec!["src".into()],
+            denied_paths: vec![".git".into()],
+            interfaces: vec![],
+        }),
+    };
+
+    // P18 cannot admit a candidate that writes outside P09's registered scope.
+    let denied = candidate("denied", ".git/config", 1, 2);
+    assert!(matches!(
+        analyze_conflicts(&[denied], "round10-policy"),
+        Err(ConflictError::DeniedWrite { .. })
+    ));
+
+    // Overlapping edits remain a combined-verification risk, even in one root.
+    let graph = analyze_conflicts(
+        &[
+            candidate("left", "src/lib.rs", 2, 6),
+            candidate("right", "src/lib.rs", 5, 8),
+        ],
+        "round10-policy",
+    )
+    .expect("scoped conflict graph");
+    assert_eq!(graph.edges.len(), 1);
+    assert!(
+        graph.edges[0]
+            .risks
+            .contains(&ConflictRisk::OverlappingHunks)
+    );
+    assert!(graph.generation.combined_verification_required);
+}
