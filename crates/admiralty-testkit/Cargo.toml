@@ -131,6 +131,10 @@ name = "codex_worktree_lease"
 path = "../../tests/integration/codex_worktree_lease.rs"
 
 [[test]]
+name = "codex_worktree_publication"
+path = "../../tests/integration/codex_worktree_publication.rs"
+
+[[test]]
 name = "provider_matrix"
 path = "../../tests/integration/provider_matrix.rs"
 
