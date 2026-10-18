@@ -114,6 +114,7 @@ enum Request {
 struct Inner {
     sender: mpsc::SyncSender<Request>,
     worker: Mutex<Option<JoinHandle<()>>>,
+    changes: tokio::sync::watch::Sender<()>,
 }
 
 impl Drop for Inner {
@@ -138,12 +139,7 @@ impl Store {
         let path = canonical_database_path(path.as_ref())?;
         let mut lock_path = path.as_os_str().to_os_string();
         lock_path.push(".writer.lock");
-        let lock = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open(PathBuf::from(lock_path))?;
+        let lock = private_file(&PathBuf::from(lock_path), false)?;
         lock.try_lock_exclusive().map_err(|error| {
             if error.kind() == std::io::ErrorKind::WouldBlock {
                 StoreError::AlreadyOwned
@@ -153,12 +149,14 @@ impl Store {
         })?;
         let (sender, receiver) = mpsc::sync_channel(QUEUE_CAPACITY);
         let (ready_tx, ready_rx) = mpsc::channel();
+        let (changes, _) = tokio::sync::watch::channel(());
+        let writer_changes = changes.clone();
         let worker = thread::Builder::new()
             .name("admiralty-store-writer".into())
             .spawn(move || match Writer::open(&path, lock) {
                 Ok(mut writer) => {
                     if ready_tx.send(Ok(())).is_ok() {
-                        writer.run(receiver);
+                        writer.run(receiver, writer_changes);
                     }
                 }
                 Err(error) => {
@@ -170,6 +168,7 @@ impl Store {
                 inner: Arc::new(Inner {
                     sender,
                     worker: Mutex::new(Some(worker)),
+                    changes,
                 }),
             }),
             Err(error) => {
@@ -225,6 +224,11 @@ impl Store {
         })
     }
 
+    /// Coalesced wake hints only; callers must read durable state with their cursor.
+    pub fn subscribe_changes(&self) -> tokio::sync::watch::Receiver<()> {
+        self.inner.changes.subscribe()
+    }
+
     pub fn snapshot(&self) -> Result<Snapshot> {
         self.ask(Request::Snapshot)
     }
@@ -263,19 +267,86 @@ impl Store {
     }
 }
 
+// Existing parents may be searchable, but never writable by another Unix user.
+// Newly created data directories are private. SQLite inherits the0600 database
+// mode for WAL/SHM; reject pre-existing unsafe sidecars before opening SQLite.
 fn canonical_database_path(path: &Path) -> Result<PathBuf> {
-    if path.exists() {
-        return Ok(path.canonicalize()?);
-    }
     let parent = path
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
-    fs::create_dir_all(parent)?;
+    let mut builder = fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder.create(parent)?;
+    let parent = parent.canonicalize()?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if parent.metadata()?.permissions().mode() & 0o022 != 0 {
+            return Err(StoreError::Invalid(
+                "database parent must not be group/world writable".into(),
+            ));
+        }
+    }
     let name = path
         .file_name()
         .ok_or_else(|| StoreError::Invalid("database path requires a filename".into()))?;
-    Ok(parent.canonicalize()?.join(name))
+    let path = parent.join(name);
+    drop(private_file(&path, false)?);
+    for suffix in ["-wal", "-shm"] {
+        let mut sidecar = path.as_os_str().to_os_string();
+        sidecar.push(suffix);
+        validate_private_file(&PathBuf::from(sidecar))?;
+    }
+    Ok(path)
+}
+
+fn validate_private_file(path: &Path) -> Result<()> {
+    match path.symlink_metadata() {
+        Ok(metadata) => {
+            if !metadata.is_file() || metadata.file_type().is_symlink() {
+                return Err(StoreError::Invalid(
+                    "database files must be regular files, never symlinks".into(),
+                ));
+            }
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::{MetadataExt, PermissionsExt};
+                if metadata.permissions().mode() & 0o077 != 0 || metadata.nlink() != 1 {
+                    return Err(StoreError::Invalid(
+                        "database files require private0600 permissions and one link".into(),
+                    ));
+                }
+            }
+            Ok(())
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn private_file(path: &Path, create_new: bool) -> Result<File> {
+    validate_private_file(path)?;
+    let mut options = OpenOptions::new();
+    options.read(true).write(true).truncate(false);
+    if create_new {
+        options.create_new(true);
+    } else {
+        options.create(true);
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let file = options.open(path)?;
+    validate_private_file(path)?;
+    Ok(file)
 }
 
 fn digest(payload: &str) -> String {
@@ -351,7 +422,7 @@ impl Writer {
         })
     }
 
-    fn run(&mut self, receiver: mpsc::Receiver<Request>) {
+    fn run(&mut self, receiver: mpsc::Receiver<Request>, changes: tokio::sync::watch::Sender<()>) {
         while let Ok(request) = receiver.recv() {
             match request {
                 Request::Append {
@@ -365,6 +436,9 @@ impl Writer {
                 } => {
                     let result =
                         self.append(source, source_seq, *event, payload, digest, observed_utc);
+                    if result.as_ref().is_ok_and(|receipt| !receipt.duplicate) {
+                        changes.send_replace(());
+                    }
                     let _ = reply.send(result);
                 }
                 Request::Snapshot(reply) => {
@@ -384,7 +458,11 @@ impl Writer {
                     let _ = reply.send(self.backup(&destination));
                 }
                 Request::Rebuild(reply) => {
-                    let _ = reply.send(self.rebuild());
+                    let result = self.rebuild();
+                    if result.is_ok() {
+                        changes.send_replace(());
+                    }
+                    let _ = reply.send(result);
                 }
                 Request::Shutdown => break,
             }
@@ -476,13 +554,20 @@ impl Writer {
 
     fn events_after(&self, seq: i64, limit: usize) -> Result<Vec<EventRecord>> {
         let mut query = self.connection.prepare(
-            "SELECT seq,observed_utc,payload FROM domain_events WHERE seq>?1 ORDER BY seq LIMIT ?2",
+            "SELECT seq,observed_utc,payload,digest FROM domain_events WHERE seq>?1 ORDER BY seq LIMIT ?2",
         )?;
         let mut rows = query.query(params![seq, limit as i64])?;
         let mut events = Vec::new();
         while let Some(row) = rows.next()? {
             let seq: i64 = row.get(0)?;
             let payload: String = row.get(2)?;
+            let expected: String = row.get(3)?;
+            if payload.len() > MAX_EVENT_BYTES || digest(&payload) != expected {
+                return Err(StoreError::Replay {
+                    sequence: seq.to_string(),
+                    reason: "stored event size/digest mismatch".into(),
+                });
+            }
             events.push(EventRecord {
                 seq: seq.to_string(),
                 observed_utc: row.get(1)?,
@@ -545,10 +630,7 @@ impl Writer {
             .filter(|p| !p.as_os_str().is_empty())
             .unwrap_or_else(|| Path::new("."));
         let stage = parent.join(format!(".admiralty-backup-{}.sqlite", uuid::Uuid::new_v4()));
-        let stage_file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&stage)?;
+        let stage_file = private_file(&stage, true)?;
         drop(stage_file);
         let result = (|| {
             if destination.symlink_metadata().is_ok() {

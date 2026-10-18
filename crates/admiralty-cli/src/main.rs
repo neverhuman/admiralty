@@ -354,7 +354,7 @@ fn seed_demo(store: &Store) -> CliResult<()> {
                 recipient: owner.clone(),
                 causation_id: None,
                 context_epoch: "demo-epoch-1".into(),
-                authority_ref: "demo:synthetic".into(),
+                authority_ref: "demo:synthetic-no-live-authority".into(),
                 payload: MessagePayload::TaskAssigned {
                     task_id: first_id.clone(),
                     revision: 1,
@@ -376,7 +376,7 @@ fn seed_demo(store: &Store) -> CliResult<()> {
                 recipient: PrincipalId::new("demo-interface-owner")?,
                 causation_id: Some(assignment_id),
                 context_epoch: "demo-epoch-1".into(),
-                authority_ref: "demo:synthetic".into(),
+                authority_ref: "demo:synthetic-no-live-authority".into(),
                 payload: MessagePayload::Question {
                     task_id: first_id,
                     requirement: "Versioned interface before dependent work".into(),

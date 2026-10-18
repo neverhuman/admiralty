@@ -9,16 +9,22 @@
 //! adoption and durable process reattachment are intentionally unsupported.
 //! A run ID reservation persists in the spool root, preventing a second launch
 //! with that ID even if its original child outcome still needs reconciliation.
+//! Capture, input and reader pages have hard prototype limits. Input timeout is
+//! an unknown outcome, never permission to retry. Process-group escape, restart
+//! adoption and continuity across host destruction remain unsupported.
+//! After the direct child is reaped, descendant cleanup is unknown: historical
+//! numeric process groups are never signalled, and retained pipes detach boundedly.
 
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::{self, File, OpenOptions},
-    io::{self, Read, Seek, Write},
+    io::{self, Read, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
     process::{Child, ChildStdin, Command, ExitStatus, Stdio},
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, mpsc},
     thread::{self, JoinHandle},
+    time::{Duration, Instant},
 };
 use thiserror::Error;
 
@@ -26,6 +32,16 @@ const JOURNAL_FILE: &str = "output.journal";
 const INPUT_JOURNAL_FILE: &str = "input.journal";
 const MANIFEST_FILE: &str = "run.json";
 const MAX_RECORD: usize = 64 * 1024;
+const MAX_CAPTURE_BYTES: u64 = 8 * 1024 * 1024;
+const MAX_JOURNAL_RECORDS: usize = 8192;
+const MAX_TAIL_BYTES: usize = 256 * 1024;
+const MAX_INPUT_BYTES: usize = 4096;
+const MAX_INPUT_JOURNAL_BYTES: u64 = 1024 * 1024;
+const MAX_SESSIONS: usize = 32;
+const INPUT_TIMEOUT: Duration = Duration::from_millis(250);
+const TERM_GRACE: Duration = Duration::from_millis(200);
+const KILL_GRACE: Duration = Duration::from_secs(1);
+const CAPTURE_DRAIN_GRACE: Duration = Duration::from_millis(500);
 
 #[derive(Clone, Debug)]
 pub struct LaunchSpec {
@@ -116,6 +132,8 @@ struct RunManifest {
     process_identity: Option<ProcessIdentity>,
     input_epoch: u64,
     input_outcome_unknown: bool,
+    #[serde(default)]
+    capture_error: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -142,25 +160,59 @@ impl InputJournal {
         phase: &'static str,
         bytes: &[u8],
     ) -> io::Result<()> {
-        serde_json::to_writer(
-            &mut self.0,
-            &InputRecord {
-                epoch,
-                owner,
-                phase,
-                bytes,
-            },
-        )
+        let data = serde_json::to_vec(&InputRecord {
+            epoch,
+            owner,
+            phase,
+            bytes,
+        })
         .map_err(io::Error::other)?;
+        if self.0.metadata()?.len() + data.len() as u64 + 1 > MAX_INPUT_JOURNAL_BYTES {
+            return Err(io::Error::new(
+                io::ErrorKind::StorageFull,
+                "input journal limit reached",
+            ));
+        }
+        self.0.write_all(&data)?;
         self.0.write_all(b"\n")?;
         self.0.sync_data()
     }
+
+    fn reserve_delivery(&self, bytes: &[u8]) -> io::Result<()> {
+        // Reserve both the prepared record and the largest outcome record before
+        // any possible input write; accounting includes JSON byte-array expansion.
+        let record = InputRecord {
+            epoch: u64::MAX,
+            owner: "automation",
+            phase: "outcome_unknown",
+            bytes,
+        };
+        let maximum = serde_json::to_vec(&record).map_err(io::Error::other)?.len() as u64 + 1;
+        if self.0.metadata()?.len() + maximum * 2 > MAX_INPUT_JOURNAL_BYTES {
+            return Err(io::Error::new(
+                io::ErrorKind::StorageFull,
+                "input journal cannot reserve delivery outcome",
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Copy)]
+struct RecordIndex {
+    raw_offset: u64,
+    file_offset: u64,
+    len: usize,
+    stream: OutputStream,
 }
 
 struct Journal {
     file: File,
     path: PathBuf,
     next_offset: u64,
+    file_bytes: u64,
+    index: Vec<RecordIndex>,
+    failure: Option<String>,
 }
 
 impl Journal {
@@ -173,10 +225,36 @@ impl Journal {
             file,
             path,
             next_offset: 0,
+            file_bytes: 0,
+            index: Vec::new(),
+            failure: None,
         })
     }
 
     fn append(&mut self, stream: OutputStream, bytes: &[u8]) -> io::Result<()> {
+        if let Some(error) = &self.failure {
+            return Err(io::Error::other(error.clone()));
+        }
+        let records = bytes.len().div_ceil(MAX_RECORD);
+        let needed = bytes.len() as u64 + records as u64 * 13;
+        if self.file_bytes + needed > MAX_CAPTURE_BYTES
+            || self.index.len() + records > MAX_JOURNAL_RECORDS
+        {
+            self.failure =
+                Some("output capture limit reached; acknowledged prefix preserved".into());
+            return Err(io::Error::new(
+                io::ErrorKind::StorageFull,
+                "output capture limit reached",
+            ));
+        }
+        let result = self.append_records(stream, bytes);
+        if let Err(error) = &result {
+            self.failure = Some(format!("output capture failed: {error}"));
+        }
+        result
+    }
+
+    fn append_records(&mut self, stream: OutputStream, bytes: &[u8]) -> io::Result<()> {
         for part in bytes.chunks(MAX_RECORD) {
             let offset = self.next_offset;
             self.file.write_all(&offset.to_le_bytes())?;
@@ -189,6 +267,13 @@ impl Journal {
             // Each complete record is a durability boundary. A torn final record
             // is detected by tail() and is never reported as acknowledged output.
             self.file.sync_data()?;
+            self.index.push(RecordIndex {
+                raw_offset: offset,
+                file_offset: self.file_bytes,
+                len: part.len(),
+                stream,
+            });
+            self.file_bytes += 13 + part.len() as u64;
             self.next_offset += part.len() as u64;
         }
         Ok(())
@@ -196,25 +281,25 @@ impl Journal {
 
     fn tail(&self, from: u64, max_bytes: usize) -> io::Result<Tail> {
         let mut file = File::open(&self.path)?;
+        if file.metadata()?.len() != self.file_bytes {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "output journal length differs from durable record boundary",
+            ));
+        }
         let mut chunks = Vec::new();
-        let mut journal_end = 0_u64;
-        let mut next_offset = 0_u64;
-        let mut remaining = max_bytes;
-        loop {
-            let mut header = [0_u8; 13];
-            match file.read_exact(&mut header) {
-                Ok(()) => {}
-                Err(error) if error.kind() == io::ErrorKind::UnexpectedEof => {
-                    if file.stream_position()? == file.metadata()?.len() {
-                        break;
-                    }
-                    return Err(io::Error::new(
-                        io::ErrorKind::UnexpectedEof,
-                        "truncated output journal header",
-                    ));
-                }
-                Err(error) => return Err(error),
+        let mut next_offset = from.min(self.next_offset);
+        let mut remaining = max_bytes.min(MAX_TAIL_BYTES);
+        let start = self
+            .index
+            .partition_point(|record| record.raw_offset + record.len as u64 <= from);
+        for record in &self.index[start..] {
+            if remaining == 0 {
+                break;
             }
+            file.seek(SeekFrom::Start(record.file_offset))?;
+            let mut header = [0_u8; 13];
+            file.read_exact(&mut header)?;
             let mut offset_bytes = [0_u8; 8];
             offset_bytes.copy_from_slice(&header[0..8]);
             let record_offset = u64::from_le_bytes(offset_bytes);
@@ -231,30 +316,29 @@ impl Journal {
             let mut length_bytes = [0_u8; 4];
             length_bytes.copy_from_slice(&header[9..13]);
             let len = u32::from_le_bytes(length_bytes) as usize;
-            if len > MAX_RECORD || record_offset != journal_end {
+            if len == 0
+                || len > MAX_RECORD
+                || record_offset != record.raw_offset
+                || len != record.len
+                || stream != record.stream
+            {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     "invalid journal record",
                 ));
             }
-            let mut bytes = vec![0; len];
+            let start = from.saturating_sub(record_offset) as usize;
+            let take = (len - start).min(remaining);
+            file.seek(SeekFrom::Current(start as i64))?;
+            let mut bytes = vec![0; take];
             file.read_exact(&mut bytes)?;
-            let record_end = record_offset + len as u64;
-            journal_end = record_end;
-            if record_end > from && remaining > 0 {
-                let start = from.saturating_sub(record_offset) as usize;
-                let take = (len - start).min(remaining);
-                chunks.push(OutputChunk {
-                    offset: record_offset + start as u64,
-                    stream,
-                    bytes: bytes[start..start + take].to_vec(),
-                });
-                remaining -= take;
-                next_offset = record_offset + start as u64 + take as u64;
-            }
-        }
-        if next_offset == 0 {
-            next_offset = from.min(journal_end);
+            chunks.push(OutputChunk {
+                offset: record_offset + start as u64,
+                stream,
+                bytes,
+            });
+            remaining -= take;
+            next_offset = record_offset + start as u64 + take as u64;
         }
         Ok(Tail {
             chunks,
@@ -264,7 +348,7 @@ impl Journal {
 }
 
 struct InputState {
-    stdin: ChildStdin,
+    stdin: Option<ChildStdin>,
     epoch: u64,
     outcome_unknown: bool,
     manifest_path: PathBuf,
@@ -281,6 +365,65 @@ struct Session {
 
 pub struct SessionHost {
     sessions: Mutex<HashMap<String, Arc<Session>>>,
+}
+
+impl Drop for Session {
+    fn drop(&mut self) {
+        let child = match self.child.get_mut() {
+            Ok(child) => child,
+            Err(error) => error.into_inner(),
+        };
+        let status = match child.try_wait() {
+            Ok(Some(status)) => Some((status, false)),
+            _ => terminate_owned_child(child)
+                .ok()
+                .map(|status| (status, true)),
+        };
+        let input = match self.input.get_mut() {
+            Ok(input) => input,
+            Err(error) => error.into_inner(),
+        };
+        drop(input.stdin.take());
+        if let Some((status, terminated)) = status {
+            input.manifest.state = if terminated {
+                RunState::Terminated {
+                    code: status.code(),
+                    success: status.success(),
+                }
+            } else {
+                RunState::Exited {
+                    code: status.code(),
+                    success: status.success(),
+                }
+            };
+            let _ = write_manifest_replace(&input.manifest_path, &input.manifest);
+        }
+        let readers = match self.readers.get_mut() {
+            Ok(readers) => readers,
+            Err(error) => error.into_inner(),
+        };
+        // A reaped child's numeric PID/group may be reused. Never signal that
+        // historical group to clean up inherited pipes: descendant custody is
+        // unknown without a separately qualified identity boundary.
+        let deadline = Instant::now() + CAPTURE_DRAIN_GRACE;
+        while readers.iter().any(|reader| !reader.is_finished()) && Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(5));
+        }
+        if readers.iter().any(|reader| !reader.is_finished()) {
+            input.manifest.capture_error = Some(
+                "capture EOF unavailable; descendant cleanup unknown after direct-child exit"
+                    .into(),
+            );
+            let _ = write_manifest_replace(&input.manifest_path, &input.manifest);
+        }
+        for reader in readers.drain(..) {
+            if reader.is_finished() {
+                let _ = reader.join();
+            }
+            // Escaped descendants are explicitly unsupported; never block Drop
+            // forever waiting for a pipe holder outside this owned process group.
+        }
+    }
 }
 
 impl Default for SessionHost {
@@ -301,6 +444,11 @@ impl SessionHost {
     pub fn launch(&self, spec: LaunchSpec) -> Result<(), SessionError> {
         validate_spec(&spec)?;
         let mut sessions = self.sessions.lock().map_err(|_| SessionError::Poisoned)?;
+        if sessions.len() >= MAX_SESSIONS {
+            return Err(SessionError::InvalidSpec(
+                "prototype session capacity reached",
+            ));
+        }
         if sessions.contains_key(&spec.run_id) {
             return Err(SessionError::DuplicateRun(spec.run_id));
         }
@@ -324,6 +472,7 @@ impl SessionHost {
             process_identity: None,
             input_epoch: 0,
             input_outcome_unknown: false,
+            capture_error: None,
         };
         write_manifest_new(&manifest_path, &manifest)?;
         let journal = Arc::new(Mutex::new(Journal::create(
@@ -373,15 +522,21 @@ impl SessionHost {
         ];
         if let Err(error) = write_manifest_replace(&manifest_path, &manifest) {
             let _ = terminate_owned_child(&mut child);
+            let deadline = Instant::now() + CAPTURE_DRAIN_GRACE;
+            while readers.iter().any(|reader| !reader.is_finished()) && Instant::now() < deadline {
+                thread::sleep(Duration::from_millis(5));
+            }
             for reader in readers {
-                let _ = reader.join();
+                if reader.is_finished() {
+                    let _ = reader.join();
+                }
             }
             return Err(error);
         }
         let session = Arc::new(Session {
             child: Mutex::new(child),
             input: Mutex::new(InputState {
-                stdin,
+                stdin: Some(stdin),
                 epoch: 0,
                 outcome_unknown: false,
                 manifest_path,
@@ -403,18 +558,27 @@ impl SessionHost {
         kind: InputKind,
         bytes: &[u8],
     ) -> Result<InputReceipt, SessionError> {
+        if bytes.len() > MAX_INPUT_BYTES {
+            return Err(SessionError::InvalidSpec(
+                "input exceeds prototype 4096-byte limit",
+            ));
+        }
         let session = self.get(run_id)?;
         let mut input = session.input.lock().map_err(|_| SessionError::Poisoned)?;
         if input.outcome_unknown {
             return Err(SessionError::InputOutcomeUnknown);
         }
+        input.journal.reserve_delivery(bytes)?;
         let owner = match kind {
             InputKind::Human => "human",
             InputKind::Automation { .. } => "automation",
         };
         match kind {
             InputKind::Human => {
-                input.epoch += 1;
+                input.epoch = input
+                    .epoch
+                    .checked_add(1)
+                    .ok_or(SessionError::InvalidSpec("input epoch exhausted"))?;
                 input.manifest.input_epoch = input.epoch;
                 write_manifest_replace(&input.manifest_path, &input.manifest)?;
             }
@@ -428,12 +592,27 @@ impl SessionHost {
         }
         let epoch = input.epoch;
         input.journal.record(epoch, owner, "prepared", bytes)?;
-        match input
+        let mut stdin = input
             .stdin
-            .write_all(bytes)
-            .and_then(|()| input.stdin.flush())
-        {
-            Ok(()) => {
+            .take()
+            .ok_or(SessionError::InputOutcomeUnknown)?;
+        let payload = bytes.to_vec();
+        let (sender, receiver) = mpsc::sync_channel(1);
+        let worker = thread::Builder::new()
+            .name("admiralty-input".into())
+            .spawn(move || {
+                let result = stdin.write_all(&payload).and_then(|()| stdin.flush());
+                let _ = sender.send((result, stdin));
+            });
+        if worker.is_err() {
+            input.outcome_unknown = true;
+            input.manifest.input_outcome_unknown = true;
+            write_manifest_replace(&input.manifest_path, &input.manifest)?;
+            return Err(SessionError::InputOutcomeUnknown);
+        }
+        match receiver.recv_timeout(INPUT_TIMEOUT) {
+            Ok((Ok(()), stdin)) => {
+                input.stdin = Some(stdin);
                 if input
                     .journal
                     .record(epoch, owner, "delivered", bytes)
@@ -449,14 +628,24 @@ impl SessionHost {
                     bytes_written: bytes.len(),
                 })
             }
-            Err(error) => {
+            result => {
+                let error = match result {
+                    Ok((Err(error), stdin)) => {
+                        input.stdin = Some(stdin);
+                        Some(error)
+                    }
+                    _ => None,
+                };
                 input.outcome_unknown = true;
                 input.manifest.input_outcome_unknown = true;
                 write_manifest_replace(&input.manifest_path, &input.manifest)?;
                 input
                     .journal
                     .record(epoch, owner, "outcome_unknown", bytes)?;
-                Err(SessionError::Io(error))
+                match error {
+                    Some(error) => Err(SessionError::Io(error)),
+                    None => Err(SessionError::InputOutcomeUnknown),
+                }
             }
         }
     }
@@ -469,18 +658,36 @@ impl SessionHost {
 
     pub fn wait(&self, run_id: &str) -> Result<ExitStatus, SessionError> {
         let session = self.get(run_id)?;
-        let status = session
-            .child
-            .lock()
-            .map_err(|_| SessionError::Poisoned)?
-            .wait()?;
-        self.finish_capture(&session)?;
-        let mut input = session.input.lock().map_err(|_| SessionError::Poisoned)?;
-        input.manifest.state = RunState::Exited {
-            code: status.code(),
-            success: status.success(),
+        let status = loop {
+            if let Some(status) = session
+                .child
+                .lock()
+                .map_err(|_| SessionError::Poisoned)?
+                .try_wait()?
+            {
+                break status;
+            }
+            let failed = session
+                .journal
+                .lock()
+                .map_err(|_| SessionError::Poisoned)?
+                .failure
+                .is_some();
+            if failed {
+                let mut child = session.child.lock().map_err(|_| SessionError::Poisoned)?;
+                break terminate_owned_child(&mut child)?;
+            }
+            thread::sleep(Duration::from_millis(5));
         };
-        write_manifest_replace(&input.manifest_path, &input.manifest)?;
+        {
+            let mut input = session.input.lock().map_err(|_| SessionError::Poisoned)?;
+            input.manifest.state = RunState::Exited {
+                code: status.code(),
+                success: status.success(),
+            };
+            write_manifest_replace(&input.manifest_path, &input.manifest)?;
+        }
+        self.finish_capture(&session)?;
         Ok(status)
     }
 
@@ -493,29 +700,50 @@ impl SessionHost {
                 None => terminate_owned_child(&mut child)?,
             }
         };
+        {
+            let mut input = session.input.lock().map_err(|_| SessionError::Poisoned)?;
+            input.manifest.state = RunState::Terminated {
+                code: status.code(),
+                success: status.success(),
+            };
+            write_manifest_replace(&input.manifest_path, &input.manifest)?;
+        }
         self.finish_capture(&session)?;
-        let mut input = session.input.lock().map_err(|_| SessionError::Poisoned)?;
-        input.manifest.state = RunState::Terminated {
-            code: status.code(),
-            success: status.success(),
-        };
-        write_manifest_replace(&input.manifest_path, &input.manifest)?;
         Ok(status)
     }
 
     fn finish_capture(&self, session: &Session) -> Result<(), SessionError> {
-        let readers =
-            std::mem::take(&mut *session.readers.lock().map_err(|_| SessionError::Poisoned)?);
+        let mut guard = session.readers.lock().map_err(|_| SessionError::Poisoned)?;
+        let deadline = Instant::now() + CAPTURE_DRAIN_GRACE;
+        while guard.iter().any(|reader| !reader.is_finished()) {
+            if Instant::now() >= deadline {
+                // Leave handles owned by the Session so Drop can perform cleanup.
+                let mut input = session.input.lock().map_err(|_| SessionError::Poisoned)?;
+                input.manifest.capture_error = Some(
+                    "capture EOF unavailable; descendant process reconciliation required".into(),
+                );
+                write_manifest_replace(&input.manifest_path, &input.manifest)?;
+                return Err(SessionError::Io(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "capture did not reach EOF; process-group escape is unsupported",
+                )));
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+        let readers = std::mem::take(&mut *guard);
+        let mut failure = None;
         for reader in readers {
             match reader.join() {
                 Ok(Ok(())) => {}
-                Ok(Err(error)) => return Err(SessionError::Io(error)),
-                Err(_) => {
-                    return Err(SessionError::Io(io::Error::other(
-                        "output capture thread panicked",
-                    )));
-                }
+                Ok(Err(error)) => failure = Some(error),
+                Err(_) => failure = Some(io::Error::other("output capture thread panicked")),
             }
+        }
+        if let Some(error) = failure {
+            let mut input = session.input.lock().map_err(|_| SessionError::Poisoned)?;
+            input.manifest.capture_error = Some(error.to_string());
+            write_manifest_replace(&input.manifest_path, &input.manifest)?;
+            return Err(SessionError::Io(error));
         }
         session
             .journal
@@ -537,29 +765,72 @@ impl SessionHost {
 }
 
 #[cfg(unix)]
-fn terminate_owned_child(child: &mut Child) -> io::Result<ExitStatus> {
-    let process_group = format!("-{}", child.id());
-    let term = Command::new("/bin/kill")
-        .args(["-TERM", "--", process_group.as_str()])
-        .status()?;
-    if !term.success() {
-        child.kill()?;
-    }
-    let status = child.wait()?;
-    // The group was created exclusively for this session. Remove descendants
-    // that retained inherited pipe handles so capture can observe EOF.
-    let _ = Command::new("/bin/kill")
-        .args(["-KILL", "--", process_group.as_str()])
+fn signal_owned_group(pid: u32, signal: &str) -> io::Result<bool> {
+    // macOS /bin/kill supports a negative numeric group after its signal; unlike
+    // external GNU kill it need not accept the optional '--' separator.
+    Ok(Command::new("/bin/kill")
+        .args([format!("-{signal}"), format!("-{pid}")])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .status();
-    Ok(status)
+        .status()?
+        .success())
+}
+
+fn poll_exit(child: &mut Child, grace: Duration) -> io::Result<Option<ExitStatus>> {
+    let deadline = Instant::now() + grace;
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return Ok(Some(status));
+        }
+        if Instant::now() >= deadline {
+            return Ok(None);
+        }
+        thread::sleep(Duration::from_millis(5));
+    }
+}
+
+#[cfg(unix)]
+fn terminate_owned_child(child: &mut Child) -> io::Result<ExitStatus> {
+    terminate_owned_child_with_signal(child, signal_owned_group)
+}
+
+#[cfg(unix)]
+fn terminate_owned_child_with_signal(
+    child: &mut Child,
+    mut signal: impl FnMut(u32, &str) -> io::Result<bool>,
+) -> io::Result<ExitStatus> {
+    // The Child mutex excludes another local reaper. A None observation leaves
+    // the PID reserved by the live child or its eventual unreaped zombie.
+    // Once try_wait returns Some, no numeric process-group signal is safe.
+    if let Some(status) = child.try_wait()? {
+        return Ok(status);
+    }
+    let pid = child.id();
+    let _ = signal(pid, "TERM");
+    // Standard Child offers no non-reaping wait. Retain its kernel identity for
+    // this bounded grace, then signal the group before the first possible reap.
+    thread::sleep(TERM_GRACE);
+    let _ = signal(pid, "KILL");
+    let kill_result = child.kill();
+    if let Some(status) = poll_exit(child, KILL_GRACE)? {
+        return Ok(status);
+    }
+    kill_result?;
+    Err(io::Error::new(
+        io::ErrorKind::TimedOut,
+        "owned child did not exit after KILL; ownership retained",
+    ))
 }
 
 #[cfg(not(unix))]
 fn terminate_owned_child(child: &mut Child) -> io::Result<ExitStatus> {
     child.kill()?;
-    child.wait()
+    poll_exit(child, KILL_GRACE)?.ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::TimedOut,
+            "owned child did not exit after termination; ownership retained",
+        )
+    })
 }
 
 fn validate_spec(spec: &LaunchSpec) -> Result<(), SessionError> {
@@ -663,7 +934,7 @@ fn capture_thread<R: Read + Send + 'static>(
 ) -> JoinHandle<io::Result<()>> {
     thread::spawn(move || {
         let mut buffer = [0_u8; 8192];
-        loop {
+        let result: io::Result<()> = (|| loop {
             let count = reader.read(&mut buffer)?;
             if count == 0 {
                 return Ok(());
@@ -672,7 +943,14 @@ fn capture_thread<R: Read + Send + 'static>(
                 .lock()
                 .map_err(|_| io::Error::other("output journal lock poisoned"))?
                 .append(stream, &buffer[..count])?;
+        })();
+        if let Err(error) = &result
+            && let Ok(mut journal) = journal.lock()
+            && journal.failure.is_none()
+        {
+            journal.failure = Some(format!("output reader failed: {error}"));
         }
+        result
     })
 }
 
@@ -707,30 +985,304 @@ mod tests {
 
     fn output(host: &SessionHost, id: &str) -> Vec<u8> {
         host.tail(id, 0, usize::MAX)
-            .unwrap()
+            .expect("session fixture setup or observation should succeed")
             .chunks
             .into_iter()
             .flat_map(|c| c.bytes)
             .collect()
     }
 
+    fn await_output(host: &SessionHost, id: &str, expected: &[u8]) {
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while output(host, id) != expected {
+            assert!(
+                Instant::now() < deadline,
+                "fixture output was not captured before deadline"
+            );
+            thread::sleep(Duration::from_millis(5));
+        }
+    }
+
+    #[test]
+    fn partial_header_and_body_are_never_clean_eof() -> Result<(), Box<dyn std::error::Error>> {
+        let temporary = TempDir::new()?;
+        let path = temporary.path().join("torn.journal");
+        let journal = Journal::create(path.clone())?;
+        OpenOptions::new()
+            .append(true)
+            .open(&path)?
+            .write_all(&[1, 2, 3])?;
+        assert_eq!(
+            journal
+                .tail(0, 10)
+                .expect_err("torn header must fail")
+                .kind(),
+            io::ErrorKind::UnexpectedEof
+        );
+        let path = temporary.path().join("torn-body.journal");
+        let mut journal = Journal::create(path.clone())?;
+        journal.append(OutputStream::Stdout, b"body")?;
+        journal.file.set_len(journal.file_bytes - 1)?;
+        assert_eq!(
+            journal.tail(0, 10).expect_err("torn body must fail").kind(),
+            io::ErrorKind::UnexpectedEof
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn tail_uses_index_and_caps_bytes_without_scanning_old_records()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temporary = TempDir::new()?;
+        let path = temporary.path().join("indexed.journal");
+        let mut journal = Journal::create(path.clone())?;
+        journal.append(OutputStream::Stdout, b"a")?;
+        journal.append(OutputStream::Stderr, b"b")?;
+        let mut corrupt = OpenOptions::new().write(true).open(&path)?;
+        corrupt.seek(SeekFrom::Start(8))?;
+        corrupt.write_all(&[255])?;
+        assert_eq!(journal.tail(1, 1)?.chunks[0].bytes, b"b");
+        assert!(journal.tail(0, 1).is_err());
+        let mut large = Journal::create(temporary.path().join("large.journal"))?;
+        large.append(OutputStream::Stdout, &vec![b'x'; MAX_TAIL_BYTES + 50])?;
+        let page = large.tail(0, usize::MAX)?;
+        assert_eq!(page.next_offset, MAX_TAIL_BYTES as u64);
+        assert_eq!(
+            page.chunks.iter().map(|c| c.bytes.len()).sum::<usize>(),
+            MAX_TAIL_BYTES
+        );
+        assert_eq!(
+            large.tail(page.next_offset, usize::MAX)?.chunks[0]
+                .bytes
+                .len(),
+            50
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn input_and_capture_limits_fail_before_silent_growth() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let temporary = TempDir::new()?;
+        let mut journal = Journal::create(temporary.path().join("bounded.journal"))?;
+        assert_eq!(
+            journal
+                .append(
+                    OutputStream::Stdout,
+                    &vec![b'x'; MAX_CAPTURE_BYTES as usize]
+                )
+                .expect_err("capture budget must include framing")
+                .kind(),
+            io::ErrorKind::StorageFull
+        );
+        assert_eq!(journal.file.metadata()?.len(), 0);
+        let mut input = InputJournal::create(temporary.path().join("input.journal"))?;
+        input.0.set_len(MAX_INPUT_JOURNAL_BYTES - 1)?;
+        assert!(input.reserve_delivery(b"x").is_err());
+        assert!(input.record(0, "human", "prepared", b"x").is_err());
+        let host = SessionHost::new();
+        host.launch(spec(&temporary, "bounded-input", &["-c", "cat"]))?;
+        assert!(matches!(
+            host.write_input(
+                "bounded-input",
+                InputKind::Human,
+                &vec![b'x'; MAX_INPUT_BYTES + 1]
+            ),
+            Err(SessionError::InvalidSpec(_))
+        ));
+        assert_eq!(
+            host.get("bounded-input")?
+                .input
+                .lock()
+                .map_err(|_| "poisoned fixture")?
+                .epoch,
+            0
+        );
+        host.terminate("bounded-input")?;
+        Ok(())
+    }
+
+    #[test]
+    fn termination_escalates_when_term_is_ignored_and_drop_cleans_owned_child()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temporary = TempDir::new()?;
+        let host = SessionHost::new();
+        host.launch(spec(
+            &temporary,
+            "ignores-term",
+            &[
+                "-c",
+                "trap '' TERM; printf ready; while :; do sleep 1; done",
+            ],
+        ))?;
+        await_output(&host, "ignores-term", b"ready");
+        let started = Instant::now();
+        assert!(!host.terminate("ignores-term")?.success());
+        assert!(started.elapsed() < Duration::from_secs(2));
+        let host = SessionHost::new();
+        host.launch(spec(
+            &temporary,
+            "drop-cleanup",
+            &[
+                "-c",
+                "trap '' TERM; printf owned; while :; do sleep 1; done",
+            ],
+        ))?;
+        await_output(&host, "drop-cleanup", b"owned");
+        let session = host.get("drop-cleanup")?;
+        let pid = session.child.lock().map_err(|_| "poisoned fixture")?.id();
+        let weak = Arc::downgrade(&session);
+        drop(session);
+        let started = Instant::now();
+        drop(host);
+        assert!(started.elapsed() < Duration::from_secs(2));
+        assert!(
+            weak.upgrade().is_none(),
+            "host destruction must release its owned session"
+        );
+        assert!(
+            !Command::new("/bin/kill")
+                .args(["-0".to_owned(), pid.to_string()])
+                .stderr(Stdio::null())
+                .status()?
+                .success(),
+            "Drop must terminate and reap the owned fixture PID"
+        );
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn already_reaped_cleanup_never_signals_historical_process_group()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut child = Command::new("/bin/sh").args(["-c", "exit 0"]).spawn()?;
+        let reaped = child.wait()?;
+        let mut signals = Vec::new();
+        let observed = terminate_owned_child_with_signal(&mut child, |pid, signal| {
+            signals.push((pid, signal.to_owned()));
+            Ok(true)
+        })?;
+        assert_eq!(observed, reaped);
+        assert!(
+            signals.is_empty(),
+            "reaped children cannot authorize numeric group signals"
+        );
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn group_signals_complete_before_reaping_child_identity()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut child = Command::new("/bin/sh").args(["-c", "exit 0"]).spawn()?;
+        let mut signals = Vec::new();
+        // No actual group signal is sent. The direct fixture exits itself while
+        // its Child retains the unreaped identity through TERM/KILL callbacks.
+        terminate_owned_child_with_signal(&mut child, |pid, signal| {
+            signals.push((pid, signal.to_owned()));
+            Ok(true)
+        })?;
+        assert!(
+            signals.is_empty()
+                || signals
+                    .iter()
+                    .map(|(_, signal)| signal.as_str())
+                    .collect::<Vec<_>>()
+                    == ["TERM", "KILL"]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn nonreading_input_is_bounded_and_unknown_delivery_cannot_retry()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temporary = TempDir::new()?;
+        let host = SessionHost::new();
+        host.launch(spec(
+            &temporary,
+            "no-reader",
+            &["-c", "printf ready; sleep 10"],
+        ))?;
+        await_output(&host, "no-reader", b"ready");
+        let started = Instant::now();
+        let mut blocked = false;
+        for _ in 0..100 {
+            match host.write_input("no-reader", InputKind::Human, &[b'x'; MAX_INPUT_BYTES]) {
+                Ok(_) => {}
+                Err(SessionError::InputOutcomeUnknown) => {
+                    blocked = true;
+                    assert!(matches!(
+                        host.write_input("no-reader", InputKind::Human, b"retry"),
+                        Err(SessionError::InputOutcomeUnknown)
+                    ));
+                    break;
+                }
+                Err(SessionError::Io(error)) if error.kind() == io::ErrorKind::StorageFull => {
+                    blocked = true;
+                    break;
+                }
+                Err(error) => return Err(error.into()),
+            }
+        }
+        assert!(blocked, "unread input must hit timeout or journal budget");
+        assert!(started.elapsed() < Duration::from_secs(3));
+        host.terminate("no-reader")?;
+        Ok(())
+    }
+
+    #[test]
+    fn capture_reader_errors_remain_visible_to_owner() -> Result<(), Box<dyn std::error::Error>> {
+        struct FailingReader;
+        impl Read for FailingReader {
+            fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
+                Err(io::Error::other("injected read failure"))
+            }
+        }
+        let temporary = TempDir::new()?;
+        let journal = Arc::new(Mutex::new(Journal::create(
+            temporary.path().join("failure.journal"),
+        )?));
+        let reader = capture_thread(FailingReader, OutputStream::Stdout, Arc::clone(&journal));
+        assert!(
+            reader
+                .join()
+                .map_err(|_| "capture fixture panicked")?
+                .is_err()
+        );
+        assert!(
+            journal
+                .lock()
+                .map_err(|_| "poisoned fixture")?
+                .failure
+                .is_some()
+        );
+        Ok(())
+    }
+
     #[test]
     fn captures_split_stream_output_and_supports_offsets() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("session fixture setup or observation should succeed");
         let host = SessionHost::new();
         host.launch(spec(
             &temp,
             "split",
             &["-c", "printf ab; sleep 0.02; printf cd >&2"],
         ))
-        .unwrap();
-        host.wait("split").unwrap();
-        let all = host.tail("split", 0, 100).unwrap();
+        .expect("session fixture setup or observation should succeed");
+        host.wait("split")
+            .expect("session fixture setup or observation should succeed");
+        let all = host
+            .tail("split", 0, 100)
+            .expect("session fixture setup or observation should succeed");
         assert_eq!(all.next_offset, 4);
         assert_eq!(all.chunks.iter().map(|c| c.bytes.len()).sum::<usize>(), 4);
-        let first_page = host.tail("split", 0, 2).unwrap();
+        let first_page = host
+            .tail("split", 0, 2)
+            .expect("session fixture setup or observation should succeed");
         assert_eq!(first_page.next_offset, 2);
-        let suffix = host.tail("split", first_page.next_offset, 100).unwrap();
+        let suffix = host
+            .tail("split", first_page.next_offset, 100)
+            .expect("session fixture setup or observation should succeed");
         assert_eq!(
             suffix.chunks.iter().map(|c| c.bytes.len()).sum::<usize>(),
             2
@@ -739,17 +1291,21 @@ mod tests {
 
     #[test]
     fn quiet_child_completes_without_output() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("session fixture setup or observation should succeed");
         let host = SessionHost::new();
         host.launch(spec(&temp, "quiet", &["-c", "sleep 0.02"]))
-            .unwrap();
-        host.wait("quiet").unwrap();
+            .expect("session fixture setup or observation should succeed");
+        host.wait("quiet")
+            .expect("session fixture setup or observation should succeed");
         assert!(output(&host, "quiet").is_empty());
         let manifest: RunManifest = serde_json::from_slice(
-            &fs::read(temp.path().join("spool-quiet").join(MANIFEST_FILE)).unwrap(),
+            &fs::read(temp.path().join("spool-quiet").join(MANIFEST_FILE))
+                .expect("session fixture setup or observation should succeed"),
         )
-        .unwrap();
-        let identity = manifest.process_identity.unwrap();
+        .expect("session fixture setup or observation should succeed");
+        let identity = manifest
+            .process_identity
+            .expect("session fixture setup or observation should succeed");
         assert!(identity.pid > 0);
         #[cfg(target_os = "linux")]
         assert!(identity.start_identity.is_some());
@@ -757,11 +1313,12 @@ mod tests {
 
     #[test]
     fn output_is_journaled_without_a_viewer_and_duplicate_spool_is_rejected() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("session fixture setup or observation should succeed");
         let host = SessionHost::new();
         host.launch(spec(&temp, "unwatched", &["-c", "printf durable"]))
-            .unwrap();
-        host.wait("unwatched").unwrap();
+            .expect("session fixture setup or observation should succeed");
+        host.wait("unwatched")
+            .expect("session fixture setup or observation should succeed");
         assert_eq!(output(&host, "unwatched"), b"durable");
         let duplicate = LaunchSpec {
             spool_dir: temp.path().join("spool-unwatched"),
@@ -775,28 +1332,35 @@ mod tests {
 
     #[test]
     fn human_epoch_invalidates_stale_automation_input() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("session fixture setup or observation should succeed");
         let host = SessionHost::new();
-        host.launch(spec(&temp, "input", &["-c", "cat"])).unwrap();
-        let human = host.write_input("input", InputKind::Human, b"H").unwrap();
+        host.launch(spec(&temp, "input", &["-c", "cat"]))
+            .expect("session fixture setup or observation should succeed");
+        let human = host
+            .write_input("input", InputKind::Human, b"H")
+            .expect("session fixture setup or observation should succeed");
         assert_eq!(human.input_epoch, 1);
-        let journal =
-            fs::read_to_string(temp.path().join("spool-input").join(INPUT_JOURNAL_FILE)).unwrap();
+        let journal = fs::read_to_string(temp.path().join("spool-input").join(INPUT_JOURNAL_FILE))
+            .expect("session fixture setup or observation should succeed");
         assert!(journal.contains("\"phase\":\"delivered\""));
         assert!(matches!(
             host.write_input("input", InputKind::Automation { expected_epoch: 0 }, b"A"),
             Err(SessionError::StaleInput { .. })
         ));
-        host.terminate("input").unwrap();
+        await_output(&host, "input", b"H");
+        host.terminate("input")
+            .expect("session fixture setup or observation should succeed");
         assert_eq!(output(&host, "input"), b"H");
     }
 
     #[test]
     fn failed_pipe_write_is_marked_unknown_and_not_replayed() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("session fixture setup or observation should succeed");
         let host = SessionHost::new();
-        host.launch(spec(&temp, "closed", &["-c", "true"])).unwrap();
-        host.wait("closed").unwrap();
+        host.launch(spec(&temp, "closed", &["-c", "true"]))
+            .expect("session fixture setup or observation should succeed");
+        host.wait("closed")
+            .expect("session fixture setup or observation should succeed");
         assert!(matches!(
             host.write_input("closed", InputKind::Human, b"once"),
             Err(SessionError::Io(_))
@@ -810,19 +1374,22 @@ mod tests {
             Err(SessionError::InputOutcomeUnknown)
         ));
         let manifest: RunManifest = serde_json::from_slice(
-            &fs::read(temp.path().join("spool-closed").join(MANIFEST_FILE)).unwrap(),
+            &fs::read(temp.path().join("spool-closed").join(MANIFEST_FILE))
+                .expect("session fixture setup or observation should succeed"),
         )
-        .unwrap();
+        .expect("session fixture setup or observation should succeed");
         assert!(manifest.input_outcome_unknown);
     }
 
     #[test]
     fn a_launch_result_gap_is_not_relaunched() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("session fixture setup or observation should succeed");
         let host = SessionHost::new();
         let launch = spec(&temp, "unique", &["-c", "printf once"]);
-        host.launch(launch.clone()).unwrap();
-        host.wait("unique").unwrap();
+        host.launch(launch.clone())
+            .expect("session fixture setup or observation should succeed");
+        host.wait("unique")
+            .expect("session fixture setup or observation should succeed");
         let new_host = SessionHost::new();
         assert!(matches!(
             new_host.launch(launch),
@@ -838,15 +1405,17 @@ mod tests {
 
     #[test]
     fn launch_uses_literal_argv_and_validates_run_ids() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("session fixture setup or observation should succeed");
         let host = SessionHost::new();
         let mut launch = spec(
             &temp,
             "literal",
             &["-c", "printf '%s' \"$1\"", "sh", "a; touch marker"],
         );
-        host.launch(launch.clone()).unwrap();
-        host.wait("literal").unwrap();
+        host.launch(launch.clone())
+            .expect("session fixture setup or observation should succeed");
+        host.wait("literal")
+            .expect("session fixture setup or observation should succeed");
         assert_eq!(output(&host, "literal"), b"a; touch marker");
         launch.run_id = "../escape".to_owned();
         launch.spool_dir = temp.path().join("escape");
