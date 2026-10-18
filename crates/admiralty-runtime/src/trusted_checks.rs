@@ -12,7 +12,7 @@ use admiralty_core::{
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::{
-    ffi::OsStr,
+    ffi::{OsStr, OsString},
     fs,
     path::{Path, PathBuf},
     thread,
@@ -24,6 +24,7 @@ pub const MAX_CHECK_OUTPUT_BYTES: usize = 1024 * 1024;
 pub const MAX_CHECK_TIMEOUT_SECS: u32 = 300;
 const MAX_STATUS_OUTPUT_BYTES: usize = 256 * 1024;
 const MAX_TAIL_PAGE_BYTES: usize = 256 * 1024;
+const MAX_TRUSTED_PATH_BYTES: usize = 16 * 1024;
 const SOURCE_PROBE_TIMEOUT_SECS: u32 = 10;
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
 
@@ -80,6 +81,15 @@ struct SourceIdentity {
     tree: String,
 }
 
+struct RunContext<'a> {
+    host: &'a SessionHost,
+    candidate: &'a Path,
+    spool: &'a Path,
+    search_path: &'a OsStr,
+    run_prefix: &'a str,
+    sequence: &'a mut u32,
+}
+
 /// Execute exact argv checks from a trusted contract and protected policy.
 /// `host` must be the caller's live SessionHost; this function never adopts a
 /// spool or claims ownership of a process started elsewhere.
@@ -98,56 +108,35 @@ pub fn execute_checks(
     if candidate.starts_with(&spool) || spool.starts_with(&candidate) {
         return Err(TrustedCheckError::CandidateCustody);
     }
-    let git_program = resolve_program("git", &candidate)?;
+    let search_path = trusted_search_path()?;
+    let git_program = resolve_trusted_git(&search_path)?;
     let mut sequence = 0_u32;
-    let before = source_identity(
+    let mut run = RunContext {
         host,
-        &git_program,
-        &candidate,
-        &spool,
+        candidate: &candidate,
+        spool: &spool,
+        search_path: &search_path,
         run_prefix,
-        &mut sequence,
-    )?;
+        sequence: &mut sequence,
+    };
+    let before = source_identity(&mut run, &git_program)?;
     if before.commit != inputs.source_commit_sha || before.tree != inputs.source_tree_sha {
         return Err(TrustedCheckError::CandidateDrift);
     }
 
     let mut results = Vec::with_capacity(contract.checks.len());
     for check in &contract.checks {
-        let output = execute_one(
-            host,
-            check,
-            0,
-            &candidate,
-            &spool,
-            run_prefix,
-            &mut sequence,
-        )?;
+        let output = execute_one(&mut run, check, 0)?;
         results.push(check_result(check, output));
     }
 
     let mut negative_results = Vec::with_capacity(policy.required_negative_checks.len());
     for negative in &policy.required_negative_checks {
-        let output = execute_one(
-            host,
-            &negative.check,
-            negative.expected_exit_code,
-            &candidate,
-            &spool,
-            run_prefix,
-            &mut sequence,
-        )?;
+        let output = execute_one(&mut run, &negative.check, negative.expected_exit_code)?;
         negative_results.push(check_result(&negative.check, output));
     }
 
-    let after = source_identity(
-        host,
-        &git_program,
-        &candidate,
-        &spool,
-        run_prefix,
-        &mut sequence,
-    )?;
+    let after = source_identity(&mut run, &git_program)?;
     if after != before {
         return Err(TrustedCheckError::CandidateDrift);
     }
@@ -195,15 +184,6 @@ fn validate_request(
     {
         return Err(TrustedCheckError::Invalid(
             "contract, input identity, policy binding, run ID, or check count is invalid",
-        ));
-    }
-    if std::env::vars_os().any(|(key, _)| {
-        key.to_string_lossy()
-            .to_ascii_uppercase()
-            .starts_with("GIT_")
-    }) {
-        return Err(TrustedCheckError::Invalid(
-            "Git environment overrides are not permitted",
         ));
     }
     if content_digest(contract).map_err(|_| TrustedCheckError::Invalid("contract digest failed"))?
@@ -282,29 +262,159 @@ fn validate_private_directory(path: &Path) -> Result<PathBuf, TrustedCheckError>
     Ok(canonical)
 }
 
+fn trusted_search_path() -> Result<OsString, TrustedCheckError> {
+    let inherited = std::env::var_os("PATH")
+        .ok_or(TrustedCheckError::Invalid("trusted PATH is unavailable"))?;
+    if inherited.is_empty() || inherited.len() > MAX_TRUSTED_PATH_BYTES {
+        return Err(TrustedCheckError::Invalid(
+            "trusted PATH is invalid or oversized",
+        ));
+    }
+    let mut trusted_directories = Vec::new();
+    for directory in std::env::split_paths(&inherited) {
+        if directory.as_os_str().is_empty() || !directory.is_absolute() {
+            continue;
+        }
+        let Ok(canonical) = directory.canonicalize() else {
+            continue;
+        };
+        let Ok(metadata) = fs::metadata(&canonical) else {
+            continue;
+        };
+        if !metadata.is_dir() {
+            continue;
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::{MetadataExt, PermissionsExt};
+            let uid = metadata.uid();
+            if (uid != 0 && uid != rustix::process::geteuid().as_raw())
+                || metadata.permissions().mode() & 0o022 != 0
+            {
+                continue;
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            return Err(TrustedCheckError::Invalid(
+                "trusted check environment is unsupported on this platform",
+            ));
+        }
+        if !trusted_directories.contains(&canonical) {
+            trusted_directories.push(canonical);
+        }
+        if trusted_directories.len() > 64 {
+            return Err(TrustedCheckError::Invalid(
+                "trusted PATH has too many entries",
+            ));
+        }
+    }
+    if trusted_directories.is_empty() {
+        return Err(TrustedCheckError::Invalid("trusted PATH is empty"));
+    }
+    std::env::join_paths(trusted_directories)
+        .map_err(|_| TrustedCheckError::Invalid("trusted PATH could not be encoded"))
+}
+
+fn resolve_trusted_git(search_path: &OsStr) -> Result<PathBuf, TrustedCheckError> {
+    for directory in std::env::split_paths(search_path) {
+        let Ok(program) = directory.join("git").canonicalize() else {
+            continue;
+        };
+        let Ok(metadata) = fs::metadata(&program) else {
+            continue;
+        };
+        if !executable_file(&program) {
+            continue;
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::{MetadataExt, PermissionsExt};
+            if metadata.uid() != 0 || metadata.permissions().mode() & 0o022 != 0 {
+                continue;
+            }
+        }
+        return Ok(program);
+    }
+    Err(TrustedCheckError::Invalid(
+        "trusted system Git executable is unavailable",
+    ))
+}
+
+fn source_git_args(args: &[&str]) -> Vec<String> {
+    let mut result = [
+        "--no-pager",
+        "-c",
+        "core.fsmonitor=false",
+        "-c",
+        "core.untrackedCache=false",
+        "-c",
+        "core.excludesFile=/dev/null",
+        "-c",
+        "core.hooksPath=/dev/null",
+    ]
+    .into_iter()
+    .map(str::to_owned)
+    .collect::<Vec<_>>();
+    result.extend(args.iter().map(|arg| (*arg).to_owned()));
+    result
+}
+
+fn prepare_child_environment(
+    spool_root: &Path,
+    run_id: &str,
+    search_path: &OsStr,
+) -> Result<Vec<(OsString, OsString)>, TrustedCheckError> {
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+
+    let environment_root = spool_root.join(format!(".trusted-env-{run_id}"));
+    fs::create_dir(&environment_root).map_err(|_| TrustedCheckError::CandidateCustody)?;
+    #[cfg(unix)]
+    fs::set_permissions(&environment_root, fs::Permissions::from_mode(0o700))
+        .map_err(|_| TrustedCheckError::CandidateCustody)?;
+    let environment_root = validate_private_directory(&environment_root)?;
+
+    let home = environment_root.join("home");
+    let temporary = environment_root.join("tmp");
+    for directory in [&home, &temporary] {
+        fs::create_dir(directory).map_err(|_| TrustedCheckError::CandidateCustody)?;
+        #[cfg(unix)]
+        fs::set_permissions(directory, fs::Permissions::from_mode(0o700))
+            .map_err(|_| TrustedCheckError::CandidateCustody)?;
+        validate_private_directory(directory)?;
+    }
+    let home = home
+        .canonicalize()
+        .map_err(|_| TrustedCheckError::CandidateCustody)?;
+    let temporary = temporary
+        .canonicalize()
+        .map_err(|_| TrustedCheckError::CandidateCustody)?;
+
+    Ok(vec![
+        (OsString::from("PATH"), search_path.to_os_string()),
+        (OsString::from("HOME"), home.into_os_string()),
+        (OsString::from("TMPDIR"), temporary.into_os_string()),
+        (OsString::from("LANG"), OsString::from("C")),
+        (OsString::from("LC_ALL"), OsString::from("C")),
+    ])
+}
+
 fn source_identity(
-    host: &SessionHost,
+    run: &mut RunContext<'_>,
     git_program: &Path,
-    candidate: &Path,
-    spool: &Path,
-    run_prefix: &str,
-    sequence: &mut u32,
 ) -> Result<SourceIdentity, TrustedCheckError> {
+    let candidate = run.candidate.to_path_buf();
     let status = run_owned(
-        host,
+        run,
         git_program,
-        &[
-            "-c".into(),
-            "core.fsmonitor=false".into(),
-            "status".into(),
-            "--porcelain=v2".into(),
-            "--branch".into(),
-            "--untracked-files=all".into(),
-        ],
-        candidate,
-        spool,
-        run_prefix,
-        sequence,
+        &source_git_args(&[
+            "status",
+            "--porcelain=v2",
+            "--branch",
+            "--untracked-files=all",
+        ]),
+        &candidate,
         SOURCE_PROBE_TIMEOUT_SECS,
         MAX_STATUS_OUTPUT_BYTES,
     )?;
@@ -318,13 +428,10 @@ fn source_identity(
         return Err(TrustedCheckError::CandidateDrift);
     }
     let tree = run_owned(
-        host,
+        run,
         git_program,
-        &["rev-parse".into(), "--verify".into(), "HEAD^{tree}".into()],
-        candidate,
-        spool,
-        run_prefix,
-        sequence,
+        &source_git_args(&["rev-parse", "--verify", "HEAD^{tree}"]),
+        &candidate,
         SOURCE_PROBE_TIMEOUT_SECS,
         256,
     )?;
@@ -347,20 +454,15 @@ fn source_identity(
         return Err(TrustedCheckError::CandidateDrift);
     }
     let status_after_tree = run_owned(
-        host,
+        run,
         git_program,
-        &[
-            "-c".into(),
-            "core.fsmonitor=false".into(),
-            "status".into(),
-            "--porcelain=v2".into(),
-            "--branch".into(),
-            "--untracked-files=all".into(),
-        ],
-        candidate,
-        spool,
-        run_prefix,
-        sequence,
+        &source_git_args(&[
+            "status",
+            "--porcelain=v2",
+            "--branch",
+            "--untracked-files=all",
+        ]),
+        &candidate,
         SOURCE_PROBE_TIMEOUT_SECS,
         MAX_STATUS_OUTPUT_BYTES,
     )?;
@@ -387,33 +489,26 @@ fn valid_git_object_id(value: &str) -> bool {
 }
 
 fn execute_one(
-    host: &SessionHost,
+    run: &mut RunContext<'_>,
     check: &CheckSpec,
     expected_exit: i32,
-    candidate: &Path,
-    spool: &Path,
-    run_prefix: &str,
-    sequence: &mut u32,
 ) -> Result<ProcessOutput, TrustedCheckError> {
-    let cwd = candidate.join(&check.cwd);
+    let cwd = run.candidate.join(&check.cwd);
     let cwd = cwd
         .canonicalize()
         .map_err(|_| TrustedCheckError::Invalid("check cwd is unavailable"))?;
-    if !cwd.starts_with(candidate) || !cwd.is_dir() {
+    if !cwd.starts_with(run.candidate) || !cwd.is_dir() {
         return Err(TrustedCheckError::Invalid(
             "check cwd escapes the candidate checkout",
         ));
     }
-    let program = resolve_program(&check.program, &cwd)?;
+    let program = resolve_program(&check.program, &cwd, run.search_path)?;
     let timeout = check.timeout_secs.min(MAX_CHECK_TIMEOUT_SECS);
     let output = run_owned(
-        host,
+        run,
         &program,
         &check.args,
         &cwd,
-        spool,
-        run_prefix,
-        sequence,
         timeout,
         MAX_CHECK_OUTPUT_BYTES,
     )?;
@@ -424,26 +519,24 @@ fn execute_one(
 }
 
 fn run_owned(
-    host: &SessionHost,
+    run: &mut RunContext<'_>,
     program: &Path,
     args: &[String],
     cwd: &Path,
-    spool_root: &Path,
-    run_prefix: &str,
-    sequence: &mut u32,
     timeout_secs: u32,
     output_limit: usize,
 ) -> Result<ProcessOutput, TrustedCheckError> {
-    *sequence = sequence
+    *run.sequence = run
+        .sequence
         .checked_add(1)
         .ok_or(TrustedCheckError::Invalid("process sequence exhausted"))?;
-    let run_id = format!("{run_prefix}-{sequence}");
+    let run_id = format!("{}-{}", run.run_prefix, *run.sequence);
     if run_id.len() > 128 {
         return Err(TrustedCheckError::Invalid(
             "run ID exceeds SessionHost bound",
         ));
     }
-    let spool_dir = spool_root.join(&run_id);
+    let spool_dir = run.spool.join(&run_id);
     let spec = LaunchSpec {
         run_id: run_id.clone(),
         program: program.to_path_buf(),
@@ -451,52 +544,55 @@ fn run_owned(
         cwd: cwd.to_path_buf(),
         spool_dir,
     };
-    host.launch(spec).map_err(session_error)?;
-    if let Err(error) = host.close_input(&run_id) {
-        let _ = host.terminate(&run_id);
+    let environment = prepare_child_environment(run.spool, &run_id, run.search_path)?;
+    run.host
+        .launch_with_environment(spec, &environment)
+        .map_err(session_error)?;
+    if let Err(error) = run.host.close_input(&run_id) {
+        let _ = run.host.terminate(&run_id);
         return Err(session_error(error));
     }
     let deadline = Instant::now() + Duration::from_secs(u64::from(timeout_secs));
     loop {
-        let status = match host.status(&run_id) {
+        if Instant::now() >= deadline {
+            run.host.terminate(&run_id).map_err(session_error)?;
+            return Err(TrustedCheckError::TimedOut);
+        }
+        let status = match run.host.status(&run_id) {
             Ok(status) => status,
             Err(SessionError::Busy) => {
                 thread::sleep(POLL_INTERVAL);
                 continue;
             }
             Err(error) => {
-                let _ = host.terminate(&run_id);
+                let _ = run.host.terminate(&run_id);
                 return Err(session_error(error));
             }
         };
         if status.input_outcome_unknown || status.capture_failed {
-            let _ = host.terminate(&run_id);
+            let _ = run.host.terminate(&run_id);
             return Err(TrustedCheckError::CaptureIncomplete);
         }
         if status.output_offset > output_limit as u64 {
-            let _ = host.terminate(&run_id);
+            let _ = run.host.terminate(&run_id);
             return Err(TrustedCheckError::OutputLimit);
         }
         if status.exit.is_some() {
             break;
         }
-        if Instant::now() >= deadline {
-            host.terminate(&run_id).map_err(session_error)?;
-            return Err(TrustedCheckError::TimedOut);
-        }
         thread::sleep(POLL_INTERVAL);
     }
-    let exit = match host.wait(&run_id) {
+    let exit = match run.host.wait(&run_id) {
         Ok(exit) => exit,
         Err(error) => {
-            let _ = host.terminate(&run_id);
+            let _ = run.host.terminate(&run_id);
             return Err(session_error(error));
         }
     };
-    let status = match host.status(&run_id) {
+    let status = match run.host.status(&run_id) {
         Ok(status) => status,
         Err(error) => {
-            let _ = host.terminate(&run_id);
+            let _ = run.host.terminate(&run_id);
             return Err(session_error(error));
         }
     };
@@ -511,7 +607,7 @@ fn run_owned(
     }
     let exit_code = exit.code().ok_or(TrustedCheckError::CaptureIncomplete)?;
     let (stdout, stderr) =
-        read_complete_output(host, &run_id, status.final_output_offset.unwrap_or(0))?;
+        read_complete_output(run.host, &run_id, status.final_output_offset.unwrap_or(0))?;
     Ok(ProcessOutput {
         exit_code,
         stdout,
@@ -574,16 +670,18 @@ fn sha256(bytes: &[u8]) -> String {
     format!("sha256:{:x}", Sha256::digest(bytes))
 }
 
-fn resolve_program(program: &str, candidate_dir: &Path) -> Result<PathBuf, TrustedCheckError> {
+fn resolve_program(
+    program: &str,
+    candidate_dir: &Path,
+    search_path: &OsStr,
+) -> Result<PathBuf, TrustedCheckError> {
     let requested = Path::new(program);
     let resolved = if requested.is_absolute() {
         requested.to_path_buf()
     } else if program.contains('/') || program.contains('\\') {
         candidate_dir.join(requested)
     } else {
-        let path = std::env::var_os("PATH")
-            .ok_or(TrustedCheckError::Invalid("execution PATH is unavailable"))?;
-        std::env::split_paths(&path)
+        std::env::split_paths(search_path)
             .map(|directory| directory.join(OsStr::new(program)))
             .find(|path| executable_file(path))
             .ok_or(TrustedCheckError::Invalid(
@@ -652,8 +750,19 @@ mod tests {
         policy: VerificationPolicy,
     }
 
+    fn fixture_command(program: &str, home: &Path) -> Command {
+        let mut command = Command::new(program);
+        command.env_clear();
+        if let Some(path) = std::env::var_os("PATH") {
+            command.env("PATH", path);
+        }
+        command.env("HOME", home).env("GIT_CONFIG_NOSYSTEM", "1");
+        command
+    }
+
     fn git(path: &Path, args: &[&str]) -> io::Result<Vec<u8>> {
-        let output = Command::new("git")
+        let home = path.parent().unwrap_or(path);
+        let output = fixture_command("git", home)
             .arg("-C")
             .arg(path)
             .args(args)
@@ -666,13 +775,14 @@ mod tests {
 
     fn fixture(positive_program: &str, positive_args: Vec<String>) -> io::Result<GitFixture> {
         let temp = tempfile::tempdir()?;
+        fs::set_permissions(temp.path(), fs::Permissions::from_mode(0o700))?;
         let checkout = temp.path().join("candidate");
         let spool = temp.path().join("spool");
         fs::create_dir(&checkout)?;
         fs::create_dir(&spool)?;
         fs::set_permissions(&checkout, fs::Permissions::from_mode(0o700))?;
         fs::set_permissions(&spool, fs::Permissions::from_mode(0o700))?;
-        let output = Command::new("git")
+        let output = fixture_command("git", temp.path())
             .arg("-C")
             .arg(&checkout)
             .args(["init", "--quiet"])
@@ -687,7 +797,7 @@ mod tests {
             vec!["add", "README.md"],
             vec!["commit", "--quiet", "-m", "fixture"],
         ] {
-            let output = Command::new("git")
+            let output = fixture_command("git", temp.path())
                 .arg("-C")
                 .arg(&checkout)
                 .args(args)
