@@ -1,0 +1,270 @@
+{
+  "head_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+  "base_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+  "observed_utc": "2026-10-18T13:48:26.697562+00:00",
+  "state": "partial_review",
+  "packet_accepted": false,
+  "native_execution_qualified": false,
+  "validation": [
+    {
+      "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "started_utc": "2026-10-18T13:45:06.587623+00:00",
+      "duration_s": 0.55,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/ebec880b34abb2d2b67011f8473160a6cd737795/fmt.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started_utc": "2026-10-18T13:45:07.138218+00:00",
+      "duration_s": 2.85,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/ebec880b34abb2d2b67011f8473160a6cd737795/clippy.log",
+      "log_sha256": "042459c8c3cbbb697800f9b9a945c701d150ef0c07821b5395d03d88ab7932a6"
+    },
+    {
+      "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "-q"
+      ],
+      "started_utc": "2026-10-18T13:45:09.988093+00:00",
+      "duration_s": 19.215,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/ebec880b34abb2d2b67011f8473160a6cd737795/rust.log",
+      "log_sha256": "7ec37e7ce893245958c93a523a5d462f41e01f92cb745a83cbd8ed4d884f60a8",
+      "checks_passed": 463
+    },
+    {
+      "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+      "argv": [
+        "cargo",
+        "build",
+        "-p",
+        "admiralty-cli",
+        "-p",
+        "admiralty-server",
+        "--locked"
+      ],
+      "started_utc": "2026-10-18T13:45:29.204054+00:00",
+      "duration_s": 0.142,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/ebec880b34abb2d2b67011f8473160a6cd737795/build.log",
+      "log_sha256": "4cf86278c1e6d659943a46a3d7e3da429ac15be90f0f17742e24ef85228e7d3e"
+    },
+    {
+      "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+      "argv": [
+        "python3",
+        "scripts/check/canary-smoke.py",
+        "--admiraltyd-binary",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd",
+        "--admiralty-binary",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty",
+        "--scratch-root",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/ebec880b34abb2d2b67011f8473160a6cd737795/smoke-root"
+      ],
+      "started_utc": "2026-10-18T13:45:29.346417+00:00",
+      "duration_s": 0.708,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/ebec880b34abb2d2b67011f8473160a6cd737795/binary-smoke.log",
+      "log_sha256": "bc869713af7299dd6e16cfb25660e98ab076b76c3f95dbc5f1f9989ed2605058"
+    },
+    {
+      "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+      "argv": [
+        "cargo",
+        "run",
+        "-p",
+        "admiralty-cli",
+        "--locked",
+        "--",
+        "contracts",
+        "check"
+      ],
+      "started_utc": "2026-10-18T13:45:30.054825+00:00",
+      "duration_s": 0.374,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/ebec880b34abb2d2b67011f8473160a6cd737795/schema.log",
+      "log_sha256": "8484fffdfcbf87b7e980d19dc3e00694df7cbea204ddbb676892ccf7e69dc9d5"
+    }
+  ],
+  "rust_checks_passed": 463,
+  "rust_compile_fail_doctests_included": 2,
+  "actual_binary_smoke_checks_passed": 15,
+  "unchanged_source_reuse": {
+    "apps/dashboard": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "3488f6bf7cd14f506bdc018657ad4908a3b672d5",
+      "current_object": "3488f6bf7cd14f506bdc018657ad4908a3b672d5",
+      "unchanged": true
+    },
+    "packages/contracts": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "c1b85bc834151b86919bda4b5c0fcbc8d3a476a1",
+      "current_object": "c1b85bc834151b86919bda4b5c0fcbc8d3a476a1",
+      "unchanged": true
+    },
+    "schemas": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "current_object": "57c3205059e970ff63e5fbd1d2b0fda416f6cfd2",
+      "unchanged": true
+    },
+    "package.json": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "11db476204136b8f180828c6ebc1a02878fb6b59",
+      "current_object": "11db476204136b8f180828c6ebc1a02878fb6b59",
+      "unchanged": true
+    },
+    "pnpm-lock.yaml": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "7681223a6442bb9dd3ed8646f6fecdbbf8abc26f",
+      "current_object": "7681223a6442bb9dd3ed8646f6fecdbbf8abc26f",
+      "unchanged": true
+    },
+    "pnpm-workspace.yaml": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+      "current_object": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+      "unchanged": true
+    },
+    "tests/legacy": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "b5607bda6e691c08754bf3bd6fddb5b56881f2ad",
+      "current_object": "b5607bda6e691c08754bf3bd6fddb5b56881f2ad",
+      "unchanged": true
+    },
+    "tests/fixtures/legacy": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "64751dfd485b7e1b1773362f0e5fd9076e54e4b5",
+      "current_object": "64751dfd485b7e1b1773362f0e5fd9076e54e4b5",
+      "unchanged": true
+    },
+    "scripts/release/package.py": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "current_object": "5efe7b9e45635de71b6cbab5578483650cd0a6fb",
+      "unchanged": true
+    },
+    "scripts/check/canary-smoke.py": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "current_object": "3f0b40ec60cfc708c2822eef053f14ab3404cc38",
+      "unchanged": true
+    },
+    "dashboard": {
+      "reference_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "reference_object": "4af50da206e66b61c0b0560b2a3b9aacdfd0e3a9",
+      "current_object": "4af50da206e66b61c0b0560b2a3b9aacdfd0e3a9",
+      "unchanged": true
+    }
+  },
+  "reused_checks": {
+    "react_tests": 75,
+    "react_typecheck": "pass",
+    "react_build": "pass",
+    "ui_receipt": "/home/ubuntu/admiralty-v2-build/receipts/react-assets.json",
+    "legacy_linux_tests": 74,
+    "package_self_tests": 10,
+    "smoke_harness_self_tests": 18,
+    "source_hashes": 37,
+    "synthetic_fixture_cases": 11,
+    "linux_reference_receipt": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/9debe5ddde0b0b455dd6d96e37c70a06ec02c09c/b793be45a934490aa27feb713a43dac3-full-rust-legacy.json",
+    "linux_reference_receipt_sha256": "9c3faa3a1d748ac659852674db9686a2be79fc6daf64a2af56c8f9fcf0da1a8c",
+    "contract_runtime_checks": 5,
+    "contract_runtime_note": "Previously passing unchanged contract sources; no new Linux Node job claimed."
+  },
+  "provider_candidates": {
+    "P21": {
+      "candidate_sha": "9cbd02104b6d8c9770b43d55e84e3c74c2e77b3d",
+      "imported": false,
+      "review": "receipts/reviews/p21-9cbd02104b6d8c9770b43d55e84e3c74c2e77b3d.md",
+      "original_tests": 4,
+      "offline_counterexample_probes": 14,
+      "disposition": "changes_required"
+    },
+    "P22": {
+      "candidate_sha": "f5a34805196d4b9d87ccbf5c7be705e684104d55",
+      "imported": false,
+      "review": "receipts/reviews/p22-f5a34805196d4b9d87ccbf5c7be705e684104d55.json",
+      "disposition": "changes_required_static_review"
+    }
+  },
+  "worker_observation": {
+    "observed_idle_owned_luna_processes": 15,
+    "cpu_104_through_109_owned_process_count_each": 3,
+    "idle_is_released_capacity": false,
+    "new_luna_processes_launched_this_checkpoint": 0,
+    "implementation_method": "Three authorized scoped local subagents plus integrator fallback; existing fleet lanes and other projects preserved."
+  },
+  "manager_observation": {
+    "exact_screen": "2062267.agy_captain_admiralty",
+    "observed_model": "Gemini 4 Argon",
+    "requested_label_substitution": false,
+    "evidence_receipt": "/home/ubuntu/admiralty-v2-build/receipts/ci-investigation/9debe5ddde0b0b455dd6d96e37c70a06ec02c09c/56eee9e4ed5249689c37c66a787e20d0.json"
+  },
+  "live": {
+    "healthz_status": 200,
+    "legacy_status": 200,
+    "native_execution_qualified": false,
+    "binary_source": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4",
+    "ui_source": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+    "deployed_new_binary": false
+  },
+  "hosted_ci": {
+    "run_id": 39128735146,
+    "head_sha": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+    "state_at_investigation": "pending",
+    "assigned_runner_ids": [
+      0,
+      0
+    ],
+    "underlying_queue_cause": "undisclosed",
+    "success_claimed": false
+  },
+  "linux_exact_source_gate": {
+    "source_sha": "ebec880b34abb2d2b67011f8473160a6cd737795",
+    "state": "failed",
+    "failed_step": "workspace-tests",
+    "failed_test": "admiralty-cli tests::isolated_demo_has_bounded_coordination_and_no_acceptance",
+    "reason": "Default tempfile permissions inherited observed Linux umask0002, making the database parent group writable. Custody guard correctly rejected it.",
+    "partial_results": {
+      "fmt": "pass",
+      "strict_workspace_clippy": "pass",
+      "cli_tests_passed_before_stop": 16,
+      "cli_tests_failed": 1,
+      "later_rust_suites": "not_reached"
+    },
+    "receipt": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/ebec880b34abb2d2b67011f8473160a6cd737795/da29b7ab879d449193a5b5a22cd235e8-integrated-rust.json",
+    "receipt_sha256": "b36250b1c9bda6408553fb3d73439e5fe764fa29e7b0baf265d5e461ea031959",
+    "log_sha256": "e0f19a6f9ff84ff8abdc1393b3edfa12f3087881a6179dffaa1df7e6802aee34",
+    "correction_source_sha": "455ee5f4867886752d168fa4d2a651c531101640",
+    "correction": "Explicit0700 at private directory creation; owned-child umask0002 regression; corrected affected Store/harness fixtures. Never loosened the Store guard."
+  },
+  "limitations": [
+    "Every P00-P31 parent remains partially implemented or in review; zero full packet acceptance inferred.",
+    "Native execution, general provider qualification, full fleet rollout and economic savings remain unqualified.",
+    "Old failed Linux cleanup evidence at997513f6 is retained; corrected native signal implementation already passed Linux at e2b540fb."
+  ]
+}
