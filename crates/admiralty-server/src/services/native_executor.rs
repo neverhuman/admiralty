@@ -899,7 +899,11 @@ mod tests {
         workspace::preparation::{WorkspacePreparation, prepare_workspace},
         workspace::registry::NodeRef,
     };
-    use std::{collections::BTreeSet, fs, os::unix::fs::PermissionsExt};
+    use std::{
+        collections::BTreeSet,
+        fs,
+        os::unix::fs::{DirBuilderExt, PermissionsExt},
+    };
 
     struct CurrentPermit;
     impl ResourcePermitAuthority for CurrentPermit {
@@ -910,12 +914,7 @@ mod tests {
 
     #[test]
     fn unconfigured_resource_gate_denies_before_child_spawn_and_keeps_marker_absent() {
-        let temp = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../target")
-            .join(format!("native-executor-test-{}", uuid::Uuid::new_v4()));
-        fs::create_dir_all(temp.parent().expect("target parent")).expect("lane target directory");
-        fs::create_dir(&temp).expect("private fixture");
-        fs::set_permissions(&temp, fs::Permissions::from_mode(0o700)).expect("private root");
+        let temp = private_fixture("native-executor-test");
         let source = temp.join("source");
         let managed_parent = temp.join("managed");
         let journal = temp.join("journal");
@@ -1178,14 +1177,20 @@ mod tests {
         fs::remove_dir_all(temp).expect("remove private fixture");
     }
 
+    fn private_fixture(prefix: &str) -> PathBuf {
+        // CI checkouts may have shared or differently owned ancestors. The
+        // production journal/source custody guard must still reject them.
+        // Create the fixture private at creation under the canonical temp root.
+        let parent = fs::canonicalize(std::env::temp_dir()).expect("canonical temp root");
+        let root = parent.join(format!("{prefix}-{}", uuid::Uuid::new_v4()));
+        fs::DirBuilder::new()
+            .mode(0o700)
+            .create(&root)
+            .expect("create private fixture");
+        root
+    }
     fn journal_fixture() -> PathBuf {
-        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../target")
-            .join(format!("native-journal-test-{}", uuid::Uuid::new_v4()));
-        fs::create_dir(&root).expect("new private fixture");
-        fs::set_permissions(&root, fs::Permissions::from_mode(0o700))
-            .expect("private fixture permissions");
-        fs::canonicalize(root).expect("canonical fixture")
+        private_fixture("native-journal-test")
     }
     #[test]
     fn journal_descriptor_stays_with_original_directory_after_path_substitution() {

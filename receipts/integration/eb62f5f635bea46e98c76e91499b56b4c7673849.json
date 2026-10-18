@@ -1,0 +1,63 @@
+{
+  "schema": "admiralty.native-integration-proof/v1",
+  "recorded_utc": "2026-10-18T21:44:57.984266+00:00",
+  "admiralty_source_commit": "eb62f5f635bea46e98c76e91499b56b4c7673849",
+  "binary_sha256": "46d0f2c4c2aba7789fd0e0ee6560781025427fc3977b42a4ce642a61939fec69",
+  "actual_probe_exit": 0,
+  "scope": "isolated deterministic native lifecycle integration",
+  "actual_checks": {
+    "positive_check_exit": 0,
+    "required_wrong_oracle_exit": 17,
+    "modified_resource_claim_denied": true,
+    "actual_opaque_runtime_closure": true,
+    "actual_checks_executed": true,
+    "immutable_artifact_custody": true,
+    "store_acceptance_event": "5",
+    "exact_duplicate": true,
+    "revocation_denied": true,
+    "reopen_projection_matched": true
+  },
+  "fixture_candidate_source": {
+    "commit": "eb241a28b2cbc8316ae3cbd1ff9031ef074828ed",
+    "tree": "1e770f3827616eea8f9961555bf1c61cec3cdcc2"
+  },
+  "evidence_objects": {
+    "sha256:f7dc554cdbe4caeb06b90ad175b24cefe0014560e2dcc23d9996a21f6ff4bf9b": {
+      "sha256": "sha256:f7dc554cdbe4caeb06b90ad175b24cefe0014560e2dcc23d9996a21f6ff4bf9b",
+      "size": 2024
+    },
+    "sha256:7743de6553d24852e347dbd38dbd6614222bd166e611c595c8b826268efaf4b7": {
+      "sha256": "sha256:7743de6553d24852e347dbd38dbd6614222bd166e611c595c8b826268efaf4b7",
+      "size": 1202
+    },
+    "sha256:ea29270d5f7d96437b2cb2af51111a5d144fca06b1a550d60f9dbb964d9e4d26": {
+      "sha256": "sha256:ea29270d5f7d96437b2cb2af51111a5d144fca06b1a550d60f9dbb964d9e4d26",
+      "size": 2176
+    }
+  },
+  "private_wrapped_receipt_sha256": "4ff5a15632a1f8730d700b77f0a511bb393990df23d63f7ba08cc148f357165c",
+  "cpu_enforcement": "Actual service kernel-effective CPUs0-1 inherited from its dedicated owned parent slice. Transient AllowedCPUs did not apply; arbitrary per-unit CPU assignment and exclusive CPU reservation remain unqualified.",
+  "retained_failures": [
+    {
+      "source": "2cbf040378e989d5deb94c2f160472e8ef76fa94",
+      "status": "enforcement mismatch; original diagnostic preserved; authorization consumed"
+    },
+    {
+      "source": "5a31a1c21fbda4f93fe6c93884a160acdcfc3657",
+      "status": "actualCPU6 vs permitted2; consumed grant retained; no limits relaxed"
+    },
+    {
+      "source": "5a31a1c21fbda4f93fe6c93884a160acdcfc3657",
+      "status": "CPU2 live observation and computation passed; collected service closure unknown; consumed grant retained"
+    }
+  ],
+  "native_execution_qualified": false,
+  "full_packet_acceptance": false,
+  "remaining": [
+    "production startup issuer and configured provider-plan composition",
+    "closed coding-task source packaging, checks and authenticated acceptance",
+    "durable atomic model capacity/budget accounting and correction replay",
+    "live command UI repair/mount and real browser/a11y qualification",
+    "full parent packet and fleet rollout criteria"
+  ]
+}

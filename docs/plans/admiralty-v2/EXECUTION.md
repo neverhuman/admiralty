@@ -791,3 +791,63 @@ Every full P00–P31 packet remains subject to its original acceptance criteria.
 Component counts, idle Screens, mocks, passing unit tests and deployment do not
 by themselves complete those packets. General native execution is explicitly
 reported false until the real admission/provider/check/recovery path is proven.
+
+## Actual native integration proof and continued cleanup — 2026-10-18T21:46Z
+
+The actual Linux deterministic integration at source
+`eb62f5f635bea46e98c76e91499b56b4c7673849` passes (exit zero). It observes the
+real owned service and kernel limits, captures opaque closure, executes the
+positive check and required wrong-oracle negative control, verifies immutable
+source/oracle/check/closure custody, accepts through the real Store writer and
+confirms exact retry, revocation denial and reopened projection equality.
+The fixture candidate Git commit is separate from the Admiralty build commit.
+[Sanitized proof receipt](../../../receipts/integration/eb62f5f635bea46e98c76e91499b56b4c7673849.json)
+records both identities and artifact hashes; private detailed evidence remains
+in the owned deployment proof area.
+
+Three failed fresh authorizations are preserved and never replayed. Diagnostics
+first isolated CPU enforcement: transient systemd AllowedCPUs reported two CPUs
+but the actual service cpuset and affinity allowed six. The original resource
+owner verified an empty owned probe slice and tightened only that slice from
+0–5 to 0–1; ancestors and other workloads were unchanged. The passing run proves
+a fixed inherited CPU restriction. It does not qualify arbitrary per-service
+CPU assignment, exclusive reservations or a working transient property on this
+host. Another real failure revealed successful show(not-found) returns exit zero
+with empty invocation identity; closure now requires its exact property shape
+and two independent positive absence checks in addition to retained live
+identity, exited owned client, unchanged boot and empty/gone observed cgroup.
+Generic failed/malformed manager probes remain unknown.
+
+Workspace preparation is repaired at `35e20a7`: bounded nonblocking Git pipe I/O,
+materialized directory/file quotas, explicit unsupported SHA256 source rejection
+and actual macOS pinned-directory traversal. The final Mac run passes all 13
+preparation tests and the runtime package. Combined source `35e20a7` passes
+1,002 Rust tests, four intentional helpers ignored, across 129 suites. The sole
+later production delta is the closure helper; its 11 resource tests, strict
+workspace Clippy and formatting pass at `eb62f5f` with unchanged source hashes
+during each check. A sequential harness's original attribution of later Clippy
+to the starting commit was corrected and its original retained, then exact-head
+checks rerun.
+
+Hosted CI at `eb62f5f` exposes three executor test fixtures created beneath the CI
+checkout's shared/differently owned ancestry. Production journal/source guards
+correctly refuse that custody. The narrow test repair creates fixtures mode0700
+at creation under the canonical temporary directory; it does not relax any
+production check. The failed CI log is retained and the affected Linux tests
+are rerun on the repaired source before integration.
+
+Root also refreshed the old browser document through the native redirect. It
+now reads the primary origin with fresh producer samples and all 13 temporal
+plots rather than retaining its stale old-origin snapshot after failed fetches.
+Grok's command UI remains with S1 for digest ordering, exact lost-response retry
+and full-contract revision preservation; actual Rust golden fixtures are
+provided without editing those files. S3's exact protected replay metadata clears
+proposal-component registration; correction-after-settlement replay and atomic
+writer integration still require work. S2 retains browser sandbox protection
+while qualifying the actual browser/axe/v2 journeys.
+
+This proof does not install the production controller/provider issuer, qualify
+a coding provider, automate model-budget/capacity transactions, publish source
+candidates or complete the P00–P31 parent packets. General native execution
+remains explicitly false. Those implementation steps continue under their
+existing owners; the primary Rust/React dashboard is already live.
