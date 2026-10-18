@@ -473,3 +473,163 @@ fn p20_p24_round10_item3_workspace_gate_audit() {
     assert!(!expired.publication_granted);
     assert!(!expired.authority_granted);
 }
+
+#[test]
+fn p20_round11_item4_final_validation_gate() {
+    let fixture = tempfile::Builder::new()
+        .prefix("adm-p20-round11-")
+        .tempdir()
+        .expect("create disposable retirement fixture");
+    let root = fs::canonicalize(fixture.path()).expect("canonical fixture root");
+    let workspace = root.join("workspace");
+    fs::create_dir_all(workspace.join("owned")).expect("create owned workspace scope");
+    fs::create_dir_all(workspace.join("ignored")).expect("create forbidden workspace scope");
+    let owned = workspace.join("owned/candidate.bin");
+    let ignored = workspace.join("ignored/keep.bin");
+    fs::write(&owned, b"retirement evidence must survive").expect("write owned evidence");
+    fs::write(&ignored, b"ignored evidence must survive").expect("write ignored evidence");
+
+    let workspace_spec = WorkspaceSpec {
+        node_id: NodeRef::new("round11-node").expect("node id"),
+        root_id: RootId::new("round11-root").expect("root id"),
+        project_id: ProjectId::new("round11-project").expect("project id"),
+        workspace: workspace.clone(),
+        owned_paths: vec![PathBuf::from("owned")],
+        forbidden_paths: vec![PathBuf::from("ignored")],
+    };
+    let registered_scope = workspace_spec.validate().expect("validate workspace scope");
+    assert_eq!(registered_scope.custody, Custody::RegisteredOnly);
+    assert!(registered_scope.owns(&PathBuf::from("owned/candidate.bin")));
+    assert!(!registered_scope.owns(&PathBuf::from("ignored/keep.bin")));
+    assert!(!registered_scope.owns(&PathBuf::from("../outside")));
+
+    let binding = AssetBinding {
+        project_id: ProjectId::new("round11-project").expect("project id"),
+        root_id: RootId::new("round11-root").expect("root id"),
+        task_id: TaskId::new("round11-task").expect("task id"),
+        asset_id: "round11-workspace-asset".into(),
+        owner_id: PrincipalId::new("round11-owner").expect("owner id"),
+        sha256: format!("sha256:{}", "d".repeat(64)),
+        generation: "1".into(),
+    };
+    let db_path = root.join("custody.sqlite");
+    let mut db = Connection::open(&db_path).expect("open durable custody database");
+    custody::initialize(&db).expect("initialize custody schema");
+
+    let registration = RegisterAssetRequest {
+        command_id: "round11-register".into(),
+        binding: binding.clone(),
+        expected_revision: "0".into(),
+        observation: observation(&binding, false, 10),
+    };
+    let registered = custody::register_asset(&mut db, registration.clone())
+        .expect("register scoped workspace asset");
+    assert_eq!(
+        custody::register_asset(&mut db, registration).expect("idempotent registration replay"),
+        registered
+    );
+
+    let pin = AcquirePinRequest {
+        command_id: "round11-pin".into(),
+        binding: binding.clone(),
+        pin_id: "active-review".into(),
+        expected_revision: "1".into(),
+        observation: observation(&binding, true, 11),
+    };
+    let acquired = custody::acquire_pin(&mut db, pin.clone()).expect("pin active review evidence");
+    assert_eq!(
+        custody::acquire_pin(&mut db, pin).expect("idempotent pin replay"),
+        acquired
+    );
+
+    let blocked = ClaimRetirementRequest {
+        command_id: "round11-retire-blocked".into(),
+        binding: binding.clone(),
+        claim_id: "round11-claim".into(),
+        expected_revision: "2".into(),
+        observation: observation(&binding, true, 12),
+    };
+    assert!(matches!(
+        custody::claim_retirement(&mut db, blocked),
+        Err(CustodyError::ActivePins)
+    ));
+    assert!(matches!(
+        custody::claim_retirement(
+            &mut db,
+            ClaimRetirementRequest {
+                command_id: "round11-stale-claim".into(),
+                binding: binding.clone(),
+                claim_id: "stale-claim".into(),
+                expected_revision: "1".into(),
+                observation: observation(&binding, true, 12),
+            }
+        ),
+        Err(CustodyError::StaleRevision)
+    ));
+
+    let mut foreign = binding.clone();
+    foreign.root_id = RootId::new("round11-foreign-root").expect("foreign root id");
+    assert!(matches!(
+        custody::claim_retirement(
+            &mut db,
+            ClaimRetirementRequest {
+                command_id: "round11-foreign-claim".into(),
+                binding: foreign.clone(),
+                claim_id: "foreign-claim".into(),
+                expected_revision: "2".into(),
+                observation: observation(&foreign, true, 12),
+            }
+        ),
+        Err(CustodyError::ForeignAsset)
+    ));
+
+    custody::release_pin(
+        &mut db,
+        ReleasePinRequest {
+            command_id: "round11-unpin".into(),
+            binding: binding.clone(),
+            pin_id: "active-review".into(),
+            expected_revision: "2".into(),
+            observation: observation(&binding, true, 12),
+        },
+    )
+    .expect("release review pin");
+    let retirement = ClaimRetirementRequest {
+        command_id: "round11-retire".into(),
+        binding: binding.clone(),
+        claim_id: "round11-claim".into(),
+        expected_revision: "3".into(),
+        observation: observation(&binding, true, 13),
+    };
+    let claim = custody::claim_retirement(&mut db, retirement.clone())
+        .expect("claim retirement after all references release");
+    assert_eq!(
+        custody::claim_retirement(&mut db, retirement).expect("exact retirement replay"),
+        claim
+    );
+    assert!(matches!(
+        custody::acquire_pin(
+            &mut db,
+            AcquirePinRequest {
+                command_id: "round11-pin-after-retirement".into(),
+                binding: binding.clone(),
+                pin_id: "late-reference".into(),
+                expected_revision: "4".into(),
+                observation: observation(&binding, true, 14),
+            }
+        ),
+        Err(CustodyError::RetirementClaimed)
+    ));
+
+    drop(db);
+    let reopened = Connection::open(&db_path).expect("reopen durable custody database");
+    custody::initialize(&reopened).expect("validate reopened custody schema");
+    assert_eq!(
+        fs::read(&owned).expect("owned evidence remains"),
+        b"retirement evidence must survive"
+    );
+    assert_eq!(
+        fs::read(&ignored).expect("ignored evidence remains"),
+        b"ignored evidence must survive"
+    );
+}
