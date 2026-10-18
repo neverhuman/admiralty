@@ -1210,8 +1210,6 @@ def MA(sev, scope, code, text, evidence=None):
 def tail_busy(text):
     raw_lines = text.rstrip('\n').split('\n')
     recent_indexes = [i for i, line in enumerate(raw_lines) if line.strip()][-12:]
-    if BUSY_RE.search('\n'.join(raw_lines[i] for i in recent_indexes)):
-        return True
     recent_start = recent_indexes[0] if recent_indexes else len(raw_lines)
     # Do not interpret quoted documentation or fenced examples as background UI.
     fence = None; visible = []
@@ -1232,6 +1230,8 @@ def tail_busy(text):
             return False
         if BACKGROUND_STATUS_RE.fullmatch(line):
             return bool(BACKGROUND_BUSY_RE.fullmatch(line))
+        if BUSY_RE.search(line):
+            return True
     return False
 
 def tail_hash(text):

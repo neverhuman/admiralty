@@ -10,18 +10,43 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   rust-and-legacy:
-    runs-on: ubuntu-latest
+    runs-on:
+      group: neverhuman-lan
+      labels: [self-hosted, Linux, X64, lan-ci]
     timeout-minutes: 15
     steps:
+      - name: Record selected runner
+        run: printf 'runner=%s os=%s arch=%s\n' "$RUNNER_NAME" "$RUNNER_OS" "$RUNNER_ARCH"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
       - name: Prepare private test scratch outside the checkout
         run: |
-          install -d -m 700 "$RUNNER_TEMP/admiralty-tests"
-          printf 'TMPDIR=%s\n' "$RUNNER_TEMP/admiralty-tests" >> "$GITHUB_ENV"
+          umask 077
+          # Session custody checks every ancestor; runner _work may be shared.
+          scratch=$(mktemp -d /tmp/adm.XXXXXX)
+          test "$(stat -c %a "$scratch")" = 700
+          printf 'TMPDIR=%s\n' "$scratch" >> "$GITHUB_ENV"
+          stat -c 'scratch-ancestor=%n uid=%u mode=%a' / /tmp "$scratch"
       - name: Install pinned Rust
-        run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
+        run: |
+          export CARGO_HOME="$RUNNER_TEMP/admiralty-cargo"
+          export RUSTUP_HOME="$RUNNER_TEMP/admiralty-rustup"
+          installer_dir="$RUNNER_TEMP/admiralty-rustup-bootstrap"
+          install -d -m 700 "$CARGO_HOME" "$RUSTUP_HOME" "$installer_dir"
+          printf 'CARGO_HOME=%s\nRUSTUP_HOME=%s\n' "$CARGO_HOME" "$RUSTUP_HOME" >> "$GITHUB_ENV"
+          printf '%s\n' "$CARGO_HOME/bin" >> "$GITHUB_PATH"
+          installer="$installer_dir/rustup-init"
+          # Official versioned Rust archive and its published SHA-256 metadata:
+          # https://static.rust-lang.org/rustup/archive/1.29.0/x86_64-unknown-linux-gnu/rustup-init.sha256
+          curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --silent --show-error --location \
+            --retry 3 --retry-delay 2 --retry-max-time 120 --connect-timeout 10 --max-time 90 --max-filesize 33554432 \
+            --output "$installer" https://static.rust-lang.org/rustup/archive/1.29.0/x86_64-unknown-linux-gnu/rustup-init
+          printf '%s  %s\n' 4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10 "$installer" | sha256sum --check --status
+          chmod u+x "$installer"
+          "$installer" -y --no-modify-path --profile minimal --default-toolchain none
+          export PATH="$CARGO_HOME/bin:$PATH"
+          rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
@@ -33,18 +58,26 @@ jobs:
       - run: cargo build -p admiralty-server -p admiralty-cli --locked
       - name: Smoke actual isolated binaries
         run: |
-          install -d -m 700 "$RUNNER_TEMP/admiralty-canary"
-          python3 scripts/check/canary-smoke.py --admiraltyd-binary "$GITHUB_WORKSPACE/target/debug/admiraltyd" --admiralty-binary "$GITHUB_WORKSPACE/target/debug/admiralty" --scratch-root "$RUNNER_TEMP/admiralty-canary"
+          install -d -m 700 "$TMPDIR/canary"
+          python3 scripts/check/canary-smoke.py --admiraltyd-binary "$GITHUB_WORKSPACE/target/debug/admiraltyd" --admiralty-binary "$GITHUB_WORKSPACE/target/debug/admiralty" --scratch-root "$TMPDIR/canary"
       - run: cargo run -p admiralty-cli --locked -- contracts check
   contracts:
-    runs-on: ubuntu-latest
+    runs-on:
+      group: neverhuman-lan
+      labels: [self-hosted, Linux, X64, lan-ci]
     timeout-minutes: 10
     steps:
+      - name: Record selected runner
+        run: printf 'runner=%s os=%s arch=%s\n' "$RUNNER_NAME" "$RUNNER_OS" "$RUNNER_ARCH"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
-      - run: npm install --global pnpm@11.15.1
+      - name: Prepare pinned pnpm in job scratch
+        run: |
+          install -d -m 700 "$RUNNER_TEMP/admiralty-pnpm"
+          npm install --global --prefix "$RUNNER_TEMP/admiralty-pnpm" pnpm@11.15.1 --ignore-scripts --no-audit --no-fund
+          printf '%s\n' "$RUNNER_TEMP/admiralty-pnpm/bin" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm contracts:check
       - run: pnpm --dir packages/contracts test

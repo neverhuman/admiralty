@@ -71,6 +71,17 @@ class Watch(unittest.TestCase):
             with self.subTest(later=later):
                 self.assertFalse(sc.tail_busy(prior + later + '>\n'))
         self.assertTrue(sc.tail_busy(prior + '>\n'))
+    def test_foreground_examples_are_not_live_ui(self):
+        example = 'esc to cancel      Gemini 4 Argon · high'
+        for text in ['> ' + example, '`' + example + '`',
+                     '```text\n' + example + '\n```',
+                     '~~~text\n' + example + '\n~~~']:
+            with self.subTest(text=text):
+                self.assertFalse(sc.tail_busy(text + '\n >\n'))
+        self.assertTrue(sc.tail_busy(AGY_BUSY))
+    def test_newer_completed_status_overrides_old_foreground_busy_hint(self):
+        self.assertFalse(sc.tail_busy(AGY_BUSY + CLAUDE_IDLE))
+        self.assertTrue(sc.tail_busy(CLAUDE_IDLE + AGY_BUSY))
     def test_parked_and_positional_lane_lines_are_managed(self):
         scs = {'captains': {'jopedime': {'state': 'jopedime_flywheel working on spec', 'pr': '1061448.jopedime_flywheel ETA 15:05Z'}}}
         m = sc.managed_screens(scs, {'jopedime': {'jopedime_agy': 'LANE | 2830191.jopedime_agy | X | active'}})

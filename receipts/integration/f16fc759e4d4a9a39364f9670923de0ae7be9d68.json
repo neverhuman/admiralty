@@ -1,0 +1,811 @@
+{
+  "audit_checks_each_platform": 69,
+  "external_merge": {
+    "head": "bea32822",
+    "main": "2f693b1a",
+    "note": "Other integrator rebased then merged35 after exact-head neverhumanbot approval; root did not forcepush or perform that merge. Earlier880 evidence does not cover e171 additions; current checks do.",
+    "observed_source": "target/quality/testkit-checkpoint/ci-own-review.json",
+    "pr": 35
+  },
+  "failure_evidence": {
+    "log": "target/quality/testkit-checkpoint/own-review-foreground-before.log",
+    "result": "19 tests, five failing subcases before repair",
+    "sha256": "0f5d4f15a8539fee05020536557a2b5a665f3fd71ae6fdfb2844c3eae0ea48d3"
+  },
+  "findings_fixed": [
+    "Quoted/fenced foreground esc hints must not suppress idle detection; most recent completed footer overrides old foreground busy hint.",
+    "New corrupted-artifact test reuses canonical private-at-creation fixture and mutates one byte at identical length, so a size mismatch cannot falsely prove digest verification."
+  ],
+  "kind": "root_independent_review_repairs",
+  "legacy_checks": {
+    "linux_pass": 88,
+    "mac_pass": 87,
+    "mac_skip": 1
+  },
+  "native_execution_qualified": false,
+  "observed_utc": "2026-10-18T16:29:32.331313+00:00",
+  "paid_provider_calls": 0,
+  "parent_acceptance": false,
+  "prior_full_receipt": "receipts/integration/880b685be4f003028aa377798a6058014ad5e7e3.json",
+  "remaining": "All full P00-P31 acceptance/native activation gates remain separate. CI runner routing and todoq research are ongoing authorized work.",
+  "reuse_note": "Rust production/testkit helper inputs, UI/contracts/package/smoke inputs unchanged; fresh fullRust includes later e171 harnesses. Fresh audit/legacy/fixture checks cover changed watcher. Prior binary/schema/actualsmoke checks remain source-attributed, not additional tests.",
+  "source_sha": "f16fc759e4d4a9a39364f9670923de0ae7be9d68",
+  "validation": [
+    {
+      "checks": 684,
+      "commands": [
+        {
+          "argv": [
+            "cargo",
+            "fmt",
+            "--all",
+            "--",
+            "--check"
+          ],
+          "elapsed_s": 0.504,
+          "exit_code": 0,
+          "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/own-review-checkpoint/fmt.log",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "name": "fmt",
+          "rust_test_results": [],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "cargo",
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "elapsed_s": 3.035,
+          "exit_code": 0,
+          "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/own-review-checkpoint/clippy.log",
+          "log_sha256": "a6fe3331a19f91d1cec0d5ffdba131236908ca192cefec49f7ab39c00c349324",
+          "name": "clippy",
+          "rust_test_results": [],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "cargo",
+            "test",
+            "--workspace",
+            "--locked"
+          ],
+          "elapsed_s": 21.204,
+          "exit_code": 0,
+          "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/own-review-checkpoint/workspace-tests.log",
+          "log_sha256": "ed94edb9caa1936bc6c505292d8167b13f0c348e24e0bdfd2cc3450fbb4d8b5c",
+          "name": "workspace-tests",
+          "rust_test_results": [
+            {
+              "failed": 0,
+              "passed": 17,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 176,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 126,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 63,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 34,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 19,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 8,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 14,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 8,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 10,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 10,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 10,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 13,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 8,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 24,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 7,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 16,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 8,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 8,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 11,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            }
+          ],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "python3",
+            "tests/fixtures/legacy/verify.py"
+          ],
+          "elapsed_s": 0.562,
+          "exit_code": 0,
+          "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/own-review-checkpoint/legacy-fixtures.log",
+          "log_sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12",
+          "name": "legacy-fixtures",
+          "rust_test_results": [],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests/legacy",
+            "-v"
+          ],
+          "elapsed_s": 1.412,
+          "exit_code": 0,
+          "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/own-review-checkpoint/legacy-tests.log",
+          "log_sha256": "37beefe75040be2474636d34a7be2a9ea968ce52ba8e0f9e0e61568021075f09",
+          "name": "legacy-tests",
+          "rust_test_results": [],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_sc_audit*.py",
+            "-v"
+          ],
+          "elapsed_s": 1.803,
+          "exit_code": 0,
+          "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/own-review-checkpoint/audit-tests.log",
+          "log_sha256": "26e2942f1ad361e2901229cc43d7556ac26d01c0b6cf8270e8d50a3886d49b23",
+          "name": "audit-tests",
+          "rust_test_results": [],
+          "timed_out": false
+        }
+      ],
+      "platform": "mac",
+      "receipt_path": "target/quality/own-review-checkpoint/mac-gate.json",
+      "receipt_sha256": "9132409981aa05b883e3680aa415107e402ced708f37e0354fb689a76c3dafe6",
+      "source_sha": "f16fc759e4d4a9a39364f9670923de0ae7be9d68"
+    },
+    {
+      "checks": 686,
+      "commands": [
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "/home/ubuntu/.cargo/bin/cargo",
+            "fmt",
+            "--all",
+            "--",
+            "--check"
+          ],
+          "elapsed_s": 0.802,
+          "exit_code": 0,
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/f16fc759e4d4a9a39364f9670923de0ae7be9d68/02c1447b0f8e41ecb6c1afb6b044c504-fmt.log",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "name": "fmt",
+          "oversized_output": false,
+          "rust_test_results": [],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "/home/ubuntu/.cargo/bin/cargo",
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "elapsed_s": 31.424,
+          "exit_code": 0,
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/f16fc759e4d4a9a39364f9670923de0ae7be9d68/02c1447b0f8e41ecb6c1afb6b044c504-clippy.log",
+          "log_sha256": "3e07c964724eb516b32e535e28b475985b48d1aa541a24ea8727a19a208888fc",
+          "name": "clippy",
+          "oversized_output": false,
+          "rust_test_results": [],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "/home/ubuntu/.cargo/bin/cargo",
+            "test",
+            "--workspace",
+            "--locked"
+          ],
+          "elapsed_s": 112.285,
+          "exit_code": 0,
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/f16fc759e4d4a9a39364f9670923de0ae7be9d68/02c1447b0f8e41ecb6c1afb6b044c504-workspace-tests.log",
+          "log_sha256": "1fb85d97a96a10f27da67516471b6b279494c2219e0d0bcec9078c98ea4d06c2",
+          "name": "workspace-tests",
+          "oversized_output": false,
+          "rust_test_results": [
+            {
+              "failed": 0,
+              "passed": 17,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 176,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 127,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 63,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 34,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 19,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 8,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 14,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 8,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 6,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 10,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 10,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 10,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 5,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 13,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 8,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 24,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 7,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 16,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 8,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 4,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 8,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 2,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 11,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 3,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 1,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            },
+            {
+              "failed": 0,
+              "passed": 0,
+              "result": "ok"
+            }
+          ],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "python3",
+            "tests/fixtures/legacy/verify.py"
+          ],
+          "elapsed_s": 0.401,
+          "exit_code": 0,
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/f16fc759e4d4a9a39364f9670923de0ae7be9d68/02c1447b0f8e41ecb6c1afb6b044c504-legacy-fixtures.log",
+          "log_sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12",
+          "name": "legacy-fixtures",
+          "oversized_output": false,
+          "rust_test_results": [],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests/legacy",
+            "-v"
+          ],
+          "elapsed_s": 28.623,
+          "exit_code": 0,
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/f16fc759e4d4a9a39364f9670923de0ae7be9d68/02c1447b0f8e41ecb6c1afb6b044c504-legacy-tests.log",
+          "log_sha256": "b4dbbae597cc8e8695c6acb0d67a00431e24338d1a6586cf10de47cfd6d9177a",
+          "name": "legacy-tests",
+          "oversized_output": false,
+          "rust_test_results": [],
+          "timed_out": false
+        },
+        {
+          "argv": [
+            "taskset",
+            "-c",
+            "102,103",
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_sc_audit*.py",
+            "-v"
+          ],
+          "elapsed_s": 1.202,
+          "exit_code": 0,
+          "log": "/home/ubuntu/admiralty-v2-build/receipts/linux-quality/f16fc759e4d4a9a39364f9670923de0ae7be9d68/02c1447b0f8e41ecb6c1afb6b044c504-audit-tests.log",
+          "log_sha256": "7f70bfe68b37d13560e28c1091c0a6a9c013d9038257b9041468740ec6c9ab1b",
+          "name": "audit-tests",
+          "oversized_output": false,
+          "rust_test_results": [],
+          "timed_out": false
+        }
+      ],
+      "platform": "linux",
+      "receipt_path": "target/quality/own-review-checkpoint/linux-gate.json",
+      "receipt_sha256": "f133927c8fa920a767f63a7994ef026928d2ac8bcdbdbfc8bd4f0b1ad4d79539",
+      "source_sha": "f16fc759e4d4a9a39364f9670923de0ae7be9d68"
+    }
+  ]
+}
