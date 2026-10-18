@@ -33,6 +33,7 @@ AGENT_RANGE = '0-50,64-114'
 OVERFLOW = '44-50,64-67,102-109,112-114'
 RESERVED_NON_JOIL = '0-5,16-21,32-43,68-77,90-91,110-111'
 JE = HOME + '/jope-evidence/spec-integration-20261017'
+JE_MR = HOME + '/jope-evidence/major-release-20261018'
 DOPE_P = HOME + '/dope/target/unified-spec-workplan-20261017/packet-v2-9e11fd166f5f'
 JOIL_WT = HOME + '/joil/.private/worktrees/v5-engineering-plan'
 
@@ -198,6 +199,89 @@ EXEC = re.compile(r'\b(cargo|nextest|pytest|just|npm|pnpm|make|ctest|uv run|go t
 MEASURE = re.compile(r'\b(benchmark\w*|experiment run\w*|real (run|measurement|workload)|measured (reduction|saving|improvement|speedup|information/byte|cost|bytes?)|cost (reduction|saving|improvement)|cheaper|wall.?clock|on (the )?GPU)\b', re.I)
 EXEC_CRIT = re.compile(r'\b(review|CI|exact.head|provenance|receiving|merge|run|runs|tested|tests?|measured|executes?|hash|sha256|receipt)\b', re.I)
 
+def audit_jopedime_major_release(repo, main):
+    tracker_candidates = [
+        repo + '/docs/plans/major-release-20261018/MAJOR_RELEASE_TRACKER.json',
+        JE_MR + '/tasks.json',
+        KICK + '/jopedime_major_release_20261018/MAJOR_RELEASE_TRACKER.json',
+    ]
+    tpath = next((p for p in tracker_candidates if os.path.isfile(p)), tracker_candidates[0])
+    tdata = rj(tpath) or {}
+    vdir = str(tdata.get('verify_dir') or (JE_MR + '/verify'))
+    tlist = [t for t in (tdata.get('tasks') or []) if isinstance(t, dict) and t.get('id')]
+    tmap = {t['id']: t for t in tlist}
+    req_task_keys = ('id', 'owner_screen', 'deps', 'gate', 'exact_acceptance_test', 'receipt_format')
+    bad = collections.defaultdict(list)
+    for tid, t in tmap.items():
+        if any(k not in t or t.get(k) in (None, '') for k in req_task_keys):
+            bad['schema_incomplete_task'].append(tid)
+    files = sorted(glob.glob(vdir + '/MR[0-9][0-9].json'))
+    ok_pass, on_main_pass = [], []
+    raw_pass = {}
+    for f in files:
+        tid = os.path.basename(f)[:-5]
+        r = rj(f)
+        if r is None:
+            bad['unreadable'].append(tid); continue
+        st = str(r.get('status', '')).upper()
+        sha, csha = str(r.get('sha') or ''), str(r.get('checkout_sha') or '')
+        if not re.fullmatch(r'[0-9a-f]{40}', sha) or not re.fullmatch(r'[0-9a-f]{40}', csha):
+            bad['truncated_or_bad_sha'].append(tid); continue
+        if sha != csha:
+            bad['sha_mismatch'].append(tid); continue
+        if st != 'PASS':
+            continue
+        va = parse_utc(r.get('verified_at_utc') or r.get('verified_at'))
+        ct = commit_time(repo, sha)
+        if va and ct and va < ct:
+            bad['receipt_predates_sha'].append(tid); continue
+        if main and sha != main:
+            bad['sha_not_current_main'].append(tid); continue
+        t_spec = tmap.get(tid) or {}
+        exp_cmd = str(t_spec.get('exact_acceptance_test') or '').strip()
+        exp_ac = [str(x).strip() for x in (t_spec.get('acceptance_cases') or []) if str(x).strip()]
+        cases = r.get('case_to_test_map') or r.get('cases') or []
+        if not cases or any(c.get('exit_code') != 0 or c.get('passed') is False for c in cases):
+            bad['pass_with_nonzero_exit'].append(tid); continue
+        act_ac = [str(c.get('acceptance_case') or '').strip() for c in cases]
+        act_cmds = [str(c.get('command') or '').strip() for c in cases]
+        if (exp_ac and not set(exp_ac).issubset(set(act_ac))) or (exp_cmd and not any(exp_cmd in c for c in act_cmds)):
+            bad['unmapped_exact_acceptance_test'].append(tid); continue
+        if not all(EXEC.search(c) for c in act_cmds if c):
+            bad['non_executable_command'].append(tid); continue
+        lbad = False
+        for c in cases:
+            lp, hs = c.get('log_path'), c.get('log_sha256')
+            if not lp or not hs or not re.fullmatch(r'[0-9a-f]{64}', str(hs)):
+                lbad = True; break
+            try:
+                if hashlib.sha256(open(lp, 'rb').read()).hexdigest() != hs:
+                    lbad = True; break
+            except OSError:
+                lbad = True; break
+        if lbad:
+            bad['log_sha256_mismatch'].append(tid); continue
+        raw_pass[tid] = sha
+    for tid, sha in sorted(raw_pass.items()):
+        deps = (tmap.get(tid) or {}).get('deps') or []
+        if any(d not in raw_pass for d in deps):
+            bad['deps_not_passed'].append(tid); continue
+        ok_pass.append(tid)
+        if main and sha == main:
+            on_main_pass.append(tid)
+    for k, ids in bad.items():
+        F('red', 'jopedime', 'MR_' + k.upper(), f'major-release tracker {k}: {" ".join(sorted(set(ids)))}', vdir)
+    return {
+        'source': tpath,
+        'verify_dir': vdir,
+        'total': len(tmap),
+        'receipts': len(files),
+        'genuine_pass': len(ok_pass),
+        'genuine_pass_on_main': len(on_main_pass),
+        'done_recomputed': len(on_main_pass),
+        'suspect': {k: sorted(set(v)) for k, v in bad.items()},
+    }
+
 def audit_jopedime(sc_claims):
     res = {'source': JE + '/verify/*.json'}
     vdir = JE + '/verify'
@@ -346,6 +430,7 @@ def audit_jopedime(sc_claims):
         if int(m.group(4)) > len(ok_pass):
             F('amber', 'jopedime', 'VERIFIED_OVERCLAIM', f'captain STATUS says acceptance_verified={m.group(4)} but audit finds {len(ok_pass)} genuine PASS receipts', vdir)
     res['done_recomputed'] = len(on_main_pass)
+    res['major_release'] = audit_jopedime_major_release(repo, main)
     return res
 
 # ---------------- DOPE per-task receipts (super_captain request 2026-10-18 ~06:00 MDT) ----------------
