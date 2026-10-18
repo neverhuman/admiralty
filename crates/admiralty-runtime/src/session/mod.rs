@@ -15,6 +15,10 @@
 //! After the direct child is reaped, descendant cleanup is unknown: historical
 //! numeric process groups are never signalled, and retained pipes detach boundedly.
 
+#[cfg(unix)]
+pub mod daemon;
+
+use admiralty_core::limits::bounded_json_size;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -43,13 +47,64 @@ const TERM_GRACE: Duration = Duration::from_millis(200);
 const KILL_GRACE: Duration = Duration::from_secs(1);
 const CAPTURE_DRAIN_GRACE: Duration = Duration::from_millis(500);
 
-#[derive(Clone, Debug)]
+// One shared envelope for direct host, daemon and prepared provider launches.
+pub const MAX_LAUNCH_ARG_BYTES: usize = 64 * 1024;
+pub const MAX_LAUNCH_ARGV_BYTES: usize = 128 * 1024;
+pub const MAX_LAUNCH_ARGS: usize = 128;
+pub const MAX_LAUNCH_SPEC_BYTES: usize = 240 * 1024;
+pub const MAX_LAUNCH_REQUEST_BYTES: usize = 256 * 1024;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct LaunchSpec {
     pub run_id: String,
     pub program: PathBuf,
     pub args: Vec<String>,
     pub cwd: PathBuf,
     pub spool_dir: PathBuf,
+}
+
+/// Pure wire-envelope validation; filesystem existence/custody is separate.
+/// The wrapper is the exact serialized daemon Launch request, including escaping.
+pub fn validate_launch_envelope(spec: &LaunchSpec) -> Result<(), SessionError> {
+    if !safe_run_id(&spec.run_id)
+        || !spec.program.is_absolute()
+        || !spec.cwd.is_absolute()
+        || !spec.spool_dir.is_absolute()
+        || [&spec.program, &spec.cwd, &spec.spool_dir]
+            .iter()
+            .any(|p| p.as_os_str().len() > 4096)
+        || spec.args.len() > MAX_LAUNCH_ARGS
+        || spec
+            .args
+            .iter()
+            .any(|arg| arg.contains('\0') || arg.len() > MAX_LAUNCH_ARG_BYTES)
+        || spec
+            .args
+            .iter()
+            .try_fold(0_usize, |total, arg| total.checked_add(arg.len()))
+            .is_none_or(|n| n > MAX_LAUNCH_ARGV_BYTES)
+    {
+        return Err(SessionError::InvalidSpec(
+            "launch arguments or paths exceed shared envelope",
+        ));
+    }
+    bounded_json_size(spec, MAX_LAUNCH_SPEC_BYTES)
+        .map_err(|_| SessionError::InvalidSpec("serialized launch spec exceeds envelope"))?;
+    #[derive(Serialize)]
+    struct Request<'a> {
+        command: &'static str,
+        spec: &'a LaunchSpec,
+    }
+    bounded_json_size(
+        &Request {
+            command: "launch",
+            spec,
+        },
+        MAX_LAUNCH_REQUEST_BYTES,
+    )
+    .map_err(|_| SessionError::InvalidSpec("serialized launch request exceeds envelope"))?;
+    Ok(())
 }
 
 #[derive(Debug, Error)]
@@ -64,12 +119,16 @@ pub enum SessionError {
     StaleInput { expected: u64, current: u64 },
     #[error("input outcome is unknown; the session requires reconciliation")]
     InputOutcomeUnknown,
+    #[error("session input is already closed")]
+    InputClosed,
     #[error("session I/O failed: {0}")]
     Io(#[from] io::Error),
     #[error("manifest serialization failed: {0}")]
     Json(#[from] serde_json::Error),
     #[error("session lock was poisoned")]
     Poisoned,
+    #[error("session observation is busy; retry without changing identity")]
+    Busy,
     #[error("child process did not provide {0}")]
     MissingPipe(&'static str),
 }
@@ -97,7 +156,37 @@ pub struct Tail {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InputKind {
     Human,
-    Automation { expected_epoch: u64 },
+    Automation {
+        expected_epoch: u64,
+    },
+    /// Daemon delivery compares and advances the epoch atomically, preventing a
+    /// disconnected client's retry from writing the same input twice.
+    CompareAndAdvance {
+        expected_epoch: u64,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SessionStatus {
+    pub pid: u32,
+    pub start_identity: Option<String>,
+    pub exit: Option<(Option<i32>, bool)>,
+    pub input_epoch: u64,
+    pub input_outcome_unknown: bool,
+    pub input_closed: bool,
+    pub output_offset: u64,
+    pub capture_failed: bool,
+    pub capture_state: CaptureState,
+    /// Fixed producer EOF boundary. A consumer must still drain through it.
+    pub final_output_offset: Option<u64>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CaptureState {
+    Capturing,
+    Complete,
+    Failed,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -132,6 +221,8 @@ struct RunManifest {
     process_identity: Option<ProcessIdentity>,
     input_epoch: u64,
     input_outcome_unknown: bool,
+    #[serde(default)]
+    input_closed: bool,
     #[serde(default)]
     capture_error: Option<String>,
 }
@@ -213,6 +304,9 @@ struct Journal {
     file_bytes: u64,
     index: Vec<RecordIndex>,
     failure: Option<String>,
+    stdout_eof: bool,
+    stderr_eof: bool,
+    final_output_offset: Option<u64>,
 }
 
 impl Journal {
@@ -228,12 +322,22 @@ impl Journal {
             file_bytes: 0,
             index: Vec::new(),
             failure: None,
+            stdout_eof: false,
+            stderr_eof: false,
+            final_output_offset: None,
         })
     }
 
     fn append(&mut self, stream: OutputStream, bytes: &[u8]) -> io::Result<()> {
         if let Some(error) = &self.failure {
             return Err(io::Error::other(error.clone()));
+        }
+        if match stream {
+            OutputStream::Stdout => self.stdout_eof,
+            OutputStream::Stderr => self.stderr_eof,
+        } {
+            self.failure = Some("output after recorded stream EOF".into());
+            return Err(io::Error::other("output after recorded stream EOF"));
         }
         let records = bytes.len().div_ceil(MAX_RECORD);
         let needed = bytes.len() as u64 + records as u64 * 13;
@@ -252,6 +356,19 @@ impl Journal {
             self.failure = Some(format!("output capture failed: {error}"));
         }
         result
+    }
+    fn mark_eof(&mut self, stream: OutputStream) {
+        match stream {
+            OutputStream::Stdout => self.stdout_eof = true,
+            OutputStream::Stderr => self.stderr_eof = true,
+        }
+        if self.stdout_eof
+            && self.stderr_eof
+            && self.failure.is_none()
+            && self.final_output_offset.is_none()
+        {
+            self.final_output_offset = Some(self.next_offset);
+        }
     }
 
     fn append_records(&mut self, stream: OutputStream, bytes: &[u8]) -> io::Result<()> {
@@ -351,6 +468,7 @@ struct InputState {
     stdin: Option<ChildStdin>,
     epoch: u64,
     outcome_unknown: bool,
+    closed: bool,
     manifest_path: PathBuf,
     manifest: RunManifest,
     journal: InputJournal,
@@ -472,6 +590,7 @@ impl SessionHost {
             process_identity: None,
             input_epoch: 0,
             input_outcome_unknown: false,
+            input_closed: false,
             capture_error: None,
         };
         write_manifest_new(&manifest_path, &manifest)?;
@@ -539,6 +658,7 @@ impl SessionHost {
                 stdin: Some(stdin),
                 epoch: 0,
                 outcome_unknown: false,
+                closed: false,
                 manifest_path,
                 manifest,
                 journal: input_journal,
@@ -568,13 +688,24 @@ impl SessionHost {
         if input.outcome_unknown {
             return Err(SessionError::InputOutcomeUnknown);
         }
+        if input.closed {
+            return Err(SessionError::InputClosed);
+        }
         input.journal.reserve_delivery(bytes)?;
         let owner = match kind {
             InputKind::Human => "human",
-            InputKind::Automation { .. } => "automation",
+            InputKind::Automation { .. } | InputKind::CompareAndAdvance { .. } => "automation",
         };
+        if let InputKind::CompareAndAdvance { expected_epoch } = kind
+            && expected_epoch != input.epoch
+        {
+            return Err(SessionError::StaleInput {
+                expected: expected_epoch,
+                current: input.epoch,
+            });
+        }
         match kind {
-            InputKind::Human => {
+            InputKind::Human | InputKind::CompareAndAdvance { .. } => {
                 input.epoch = input
                     .epoch
                     .checked_add(1)
@@ -654,6 +785,142 @@ impl SessionHost {
         let session = self.get(run_id)?;
         let journal = session.journal.lock().map_err(|_| SessionError::Poisoned)?;
         Ok(journal.tail(from, max_bytes)?)
+    }
+
+    /// Explicit EOF to the currently owned child's stdin. It writes no bytes,
+    /// adds no newline, and repeating a successful close has no further effect.
+    pub fn close_input(&self, run_id: &str) -> Result<InputReceipt, SessionError> {
+        self.close_input_at(run_id, None)
+    }
+    /// Compare before EOF. Daemon argv-prompt clients require initial epoch0.
+    /// Legacy direct Automation writes need not advance epochs; this comparison
+    /// alone cannot attest untouched stdin for arbitrary direct-host callers.
+    pub fn close_input_if_epoch(
+        &self,
+        run_id: &str,
+        expected_epoch: u64,
+    ) -> Result<InputReceipt, SessionError> {
+        self.close_input_at(run_id, Some(expected_epoch))
+    }
+
+    fn close_input_at(
+        &self,
+        run_id: &str,
+        expected_epoch: Option<u64>,
+    ) -> Result<InputReceipt, SessionError> {
+        let session = self.get(run_id)?;
+        let mut input = session.input.lock().map_err(|_| SessionError::Poisoned)?;
+        if input.outcome_unknown {
+            return Err(SessionError::InputOutcomeUnknown);
+        }
+        if let Some(expected) = expected_epoch
+            && expected != input.epoch
+            && !(input.closed && expected.checked_add(1) == Some(input.epoch))
+        {
+            return Err(SessionError::StaleInput {
+                expected,
+                current: input.epoch,
+            });
+        }
+        if input.closed {
+            return Ok(InputReceipt {
+                input_epoch: input.epoch,
+                bytes_written: 0,
+            });
+        }
+        input.journal.reserve_delivery(b"")?;
+        let epoch = input
+            .epoch
+            .checked_add(1)
+            .ok_or(SessionError::InvalidSpec("input epoch exhausted"))?;
+        input.epoch = epoch;
+        input.manifest.input_epoch = epoch;
+        write_manifest_replace(&input.manifest_path, &input.manifest)?;
+        input
+            .journal
+            .record(epoch, "automation", "eof_prepared", b"")?;
+        let stdin = input
+            .stdin
+            .take()
+            .ok_or(SessionError::InputOutcomeUnknown)?;
+        drop(stdin);
+        input.closed = true;
+        input.manifest.input_closed = true;
+        let result = write_manifest_replace(&input.manifest_path, &input.manifest).and_then(|()| {
+            input
+                .journal
+                .record(epoch, "automation", "eof_closed", b"")
+                .map_err(SessionError::Io)
+        });
+        if result.is_err() {
+            input.outcome_unknown = true;
+            input.manifest.input_outcome_unknown = true;
+            let _ = write_manifest_replace(&input.manifest_path, &input.manifest);
+            return Err(SessionError::InputOutcomeUnknown);
+        }
+        Ok(InputReceipt {
+            input_epoch: epoch,
+            bytes_written: 0,
+        })
+    }
+
+    /// Observe the owned direct child without waiting for its exit or joining
+    /// capture threads. Contended state returns Busy instead of queueing behind
+    /// a launch/input operation. An exited PID is historical and grants no signal.
+    pub fn status(&self, run_id: &str) -> Result<SessionStatus, SessionError> {
+        fn observe_lock<T>(lock: &Mutex<T>) -> Result<std::sync::MutexGuard<'_, T>, SessionError> {
+            lock.try_lock().map_err(|error| match error {
+                std::sync::TryLockError::WouldBlock => SessionError::Busy,
+                std::sync::TryLockError::Poisoned(_) => SessionError::Poisoned,
+            })
+        }
+        let session = observe_lock(&self.sessions)?
+            .get(run_id)
+            .cloned()
+            .ok_or_else(|| SessionError::UnknownRun(run_id.to_owned()))?;
+        let mut child = observe_lock(&session.child)?;
+        let input = observe_lock(&session.input)?;
+        let readers = observe_lock(&session.readers)?;
+        let mut journal = observe_lock(&session.journal)?;
+        // A finished reader without its EOF marker failed/panicked. Joining is
+        // unnecessary here: status never waits for a reader or filesystem sync.
+        if journal.failure.is_none()
+            && readers.iter().enumerate().any(|(index, reader)| {
+                reader.is_finished()
+                    && !match index {
+                        0 => journal.stdout_eof,
+                        1 => journal.stderr_eof,
+                        _ => false,
+                    }
+            })
+        {
+            journal.failure = Some("output reader ended without recorded EOF".into());
+        }
+        let capture_failed = journal.failure.is_some() || input.manifest.capture_error.is_some();
+        let capture_state = if capture_failed {
+            CaptureState::Failed
+        } else if journal.final_output_offset.is_some() {
+            CaptureState::Complete
+        } else {
+            CaptureState::Capturing
+        };
+        let status = child.try_wait()?;
+        Ok(SessionStatus {
+            pid: child.id(),
+            start_identity: input
+                .manifest
+                .process_identity
+                .as_ref()
+                .and_then(|identity| identity.start_identity.clone()),
+            exit: status.map(|exit| (exit.code(), exit.success())),
+            input_epoch: input.epoch,
+            input_outcome_unknown: input.outcome_unknown,
+            input_closed: input.closed,
+            output_offset: journal.next_offset,
+            capture_failed,
+            capture_state,
+            final_output_offset: journal.final_output_offset,
+        })
     }
 
     pub fn wait(&self, run_id: &str) -> Result<ExitStatus, SessionError> {
@@ -745,12 +1012,11 @@ impl SessionHost {
             write_manifest_replace(&input.manifest_path, &input.manifest)?;
             return Err(SessionError::Io(error));
         }
-        session
-            .journal
-            .lock()
-            .map_err(|_| SessionError::Poisoned)?
-            .file
-            .sync_all()?;
+        let mut journal = session.journal.lock().map_err(|_| SessionError::Poisoned)?;
+        if let Err(error) = journal.file.sync_all() {
+            journal.failure = Some(format!("final output journal sync failed: {error}"));
+            return Err(SessionError::Io(error));
+        }
         Ok(())
     }
 
@@ -834,6 +1100,7 @@ fn terminate_owned_child(child: &mut Child) -> io::Result<ExitStatus> {
 }
 
 fn validate_spec(spec: &LaunchSpec) -> Result<(), SessionError> {
+    validate_launch_envelope(spec)?;
     if !safe_run_id(&spec.run_id) {
         return Err(SessionError::InvalidSpec(
             "run_id must be a safe path component",
@@ -937,6 +1204,10 @@ fn capture_thread<R: Read + Send + 'static>(
         let result: io::Result<()> = (|| loop {
             let count = reader.read(&mut buffer)?;
             if count == 0 {
+                journal
+                    .lock()
+                    .map_err(|_| io::Error::other("output journal lock poisoned"))?
+                    .mark_eof(stream);
                 return Ok(());
             }
             journal
@@ -1256,6 +1527,10 @@ mod tests {
                 .failure
                 .is_some()
         );
+        let mut journal = journal.lock().map_err(|_| "poisoned fixture")?;
+        journal.mark_eof(OutputStream::Stderr);
+        assert!(!journal.stdout_eof);
+        assert_eq!(journal.final_output_offset, None);
         Ok(())
     }
 
@@ -1331,6 +1606,74 @@ mod tests {
     }
 
     #[test]
+    fn explicit_close_is_idempotent_and_status_never_waits_for_child_or_input_lock()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temporary = TempDir::new()?;
+        let host = SessionHost::new();
+        host.launch(spec(&temporary, "explicit-eof", &["-c", "cat"]))?;
+        assert!(host.status("explicit-eof")?.exit.is_none());
+        let session = host.get("explicit-eof")?;
+        let input = session.input.lock().map_err(|_| "poisoned fixture input")?;
+        assert!(matches!(
+            host.status("explicit-eof"),
+            Err(SessionError::Busy)
+        ));
+        drop(input);
+        let readers = session
+            .readers
+            .lock()
+            .map_err(|_| "poisoned fixture readers")?;
+        assert!(matches!(
+            host.status("explicit-eof"),
+            Err(SessionError::Busy)
+        ));
+        drop(readers);
+        let receipt = host.close_input("explicit-eof")?;
+        assert_eq!(receipt.input_epoch, 1);
+        assert_eq!(receipt.bytes_written, 0);
+        assert_eq!(host.close_input("explicit-eof")?, receipt);
+        assert!(host.wait("explicit-eof")?.success());
+        let status = host.status("explicit-eof")?;
+        assert_eq!(status.capture_state, CaptureState::Complete);
+        assert_eq!(status.final_output_offset, Some(0));
+        assert!(!status.capture_failed);
+        assert!(output(&host, "explicit-eof").is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn shared_launch_envelope_counts_escaped_json_and_refuses_before_reservation()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temporary = TempDir::new()?;
+        let mut launch = spec(&temporary, "too-large", &[]);
+        launch.args = vec!["\u{1}".repeat(41 * 1024)];
+        assert!(launch.args[0].len() < MAX_LAUNCH_ARG_BYTES);
+        assert!(serde_json::to_vec(&launch)?.len() > MAX_LAUNCH_SPEC_BYTES);
+        assert!(validate_launch_envelope(&launch).is_err());
+        let host = SessionHost::new();
+        assert!(matches!(
+            host.launch(launch.clone()),
+            Err(SessionError::InvalidSpec(_))
+        ));
+        assert!(!launch.spool_dir.exists());
+        assert!(
+            !launch
+                .spool_dir
+                .parent()
+                .ok_or("parent absent")?
+                .join(".admiralty-run-too-large.lock")
+                .exists()
+        );
+        launch.args = vec!["x".repeat(48 * 1024); 3];
+        assert!(validate_launch_envelope(&launch).is_err());
+        launch.args = vec!["x".repeat(MAX_LAUNCH_ARG_BYTES + 1)];
+        assert!(validate_launch_envelope(&launch).is_err());
+        launch.args = vec!["x".repeat(MAX_LAUNCH_ARG_BYTES)];
+        assert!(validate_launch_envelope(&launch).is_ok());
+        Ok(())
+    }
+
+    #[test]
     fn human_epoch_invalidates_stale_automation_input() {
         let temp = TempDir::new().expect("session fixture setup or observation should succeed");
         let host = SessionHost::new();
@@ -1340,6 +1683,12 @@ mod tests {
             .write_input("input", InputKind::Human, b"H")
             .expect("session fixture setup or observation should succeed");
         assert_eq!(human.input_epoch, 1);
+        assert!(matches!(
+            host.close_input_if_epoch("input", 0),
+            Err(SessionError::StaleInput { current: 1, .. })
+        ));
+        let owned = host.get("input").expect("owned fixture");
+        assert!(!owned.input.lock().expect("fixture input lock").closed);
         let journal = fs::read_to_string(temp.path().join("spool-input").join(INPUT_JOURNAL_FILE))
             .expect("session fixture setup or observation should succeed");
         assert!(journal.contains("\"phase\":\"delivered\""));

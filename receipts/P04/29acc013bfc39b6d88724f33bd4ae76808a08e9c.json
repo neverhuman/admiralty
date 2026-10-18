@@ -1,0 +1,93 @@
+{
+  "packet": "P04",
+  "state": "in_progress",
+  "owner": "local integration reviewer",
+  "base_sha": "0b8b8cb2c0a5d62b49a3af995280cbb3128fae9f",
+  "head_sha": "29acc013bfc39b6d88724f33bd4ae76808a08e9c",
+  "observed_utc": "2026-10-18T12:25:51.036368+00:00",
+  "contract_version": "durable-follow-up/v1",
+  "changed_paths": [
+    "crates/admiralty-store/src/custody.rs",
+    "docs/architecture/asset-pins.md"
+  ],
+  "sha256": {
+    "crates/admiralty-store/src/custody.rs": "a690aba8425f3de7e0d5603fae3d45b4fb7578b12ba38b4b3ae9132b94faab93",
+    "docs/architecture/asset-pins.md": "c5f39084664639e610540cfa9152f5fd80dbc048ee413d95d63a5880ae459aa6"
+  },
+  "criteria": [
+    {
+      "name": "Full asset/revision observation binding and immutable clock/freshness policy",
+      "result": "pass",
+      "evidence": [
+        "Strong review and offline SQLite checks; no full parent acceptance"
+      ]
+    },
+    {
+      "name": "Canonical historical receipts and pin/retirement closure checked before mutation/replay",
+      "result": "pass",
+      "evidence": [
+        "Strong review and offline SQLite checks; no full parent acceptance"
+      ]
+    },
+    {
+      "name": "Real SQLite competing pin/retirement CAS tests",
+      "result": "pass",
+      "evidence": [
+        "Strong review and offline SQLite checks; no full parent acceptance"
+      ]
+    },
+    {
+      "name": "Complete parent packet acceptance",
+      "result": "not_run",
+      "evidence": [
+        "Caller-recorded observations are not trusted filesystem custody",
+        "No startup activation, actual cleanup, destructive permission or old custody schema migration"
+      ]
+    }
+  ],
+  "validation": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-store",
+        "--all-targets",
+        "--locked",
+        "-q"
+      ],
+      "exit_code": 0,
+      "checks_passed": 62,
+      "source": "component reviewer report and root combined test output; relevant Store source exactly matches this commit",
+      "artifact": null
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "observation": "Root combined-tree check; uncommitted runtime follow-ups were included, so this does not attest the whole workspace at this SHA",
+      "artifact": null
+    }
+  ],
+  "environment": {
+    "platform": "macOS-15.7.5-arm64-arm-64bit-Mach-O",
+    "rust": "1.95.0",
+    "calls": "offline; no provider inference or production scheduling"
+  },
+  "limitations": [
+    "Caller-recorded observations are not trusted filesystem custody",
+    "No startup activation, actual cleanup, destructive permission or old custody schema migration"
+  ],
+  "blockers": [],
+  "accepted": false,
+  "native_execution_qualified": false,
+  "next_action": "Integrate admitted services and satisfy parent qualification gates before acceptance."
+}

@@ -9,12 +9,12 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). In
 | P00 | review | local evidence agent | candidate, not integrated | 13 legacy tests and 37-source hash verifier pass; integration receipt pending |
 | P01 | in_progress | local integrator + remote fixture lane | candidate, not integrated | Six crates, pinned tools, CI and fake-process lane; native qualification pending |
 | P02 | in_progress | local integrator | candidate, not integrated | Typed contracts/reducer/schema/TS pipeline with core scope tests; complete policy model pending |
-| P03 | in_progress | local store agent | PR prototype | Single-owner WAL writer, replay/collision/ACK/backup; fenced durable outbox initialized on startup, atomic domain/effect admission still pending |
-| P04 | in_progress | artifact + custody lanes | candidate `93ee957` | Bounded file publication imported; transactional asset/pin catalog is next isolated implementation slice |
-| P05 | in_progress | local coordination team | question candidate `9655f63`, imported `14d4810` | Durable scoped messages/ACK plus independently reviewed question reducer; durable question service/subscriptions still pending |
+| P03 | in_progress | local store agent + integration reviewer | reviewed `29acc013` | Atomic domain/outbox admission, immutable request/effect associations, replay and receive-time retry compatibility tested; durable executor admission loop pending |
+| P04 | in_progress | artifact + custody lanes + strong review | reviewed `29acc013` | Transactional asset/pin catalog with full observation binding, fixed clock policy and receipt closure; trusted filesystem observation/startup activation pending |
+| P05 | in_progress | local coordination team + strong review | reviewed `29acc013` | Durable scoped messages/ACK and question journal with canonical receipt/task-scope checks; delivery service/subscriptions pending |
 | P06 | in_progress | local context team | PR prototype | Constraint-preserving capsules, epochs and bounded attention governor; durable governor/outbox activation and retrieval pending |
-| P07 | in_progress | remote session lane + local reviewer | candidate `2d9cc760`, imported as `5a0f639` | Pipe/journal prototype under boundedness review; restart adoption and independent custody unqualified |
-| P08 | in_progress | Luna candidate + strong review | candidate `a01214f`, imported `50d367b` | Scoped replay-safe supervision component reviewed; real managed provider qualification remains pending |
+| P07 | in_progress | remote session lane + local reviewer | session-daemon follow-up under integration review | Independent private Unix-socket host with explicit EOF and reconnect continuity; final capture evidence and transport envelope review underway; restart adoption unqualified |
+| P08 | in_progress | Luna candidate + strong review | reviewed supervision `17c7a76d`; Codex adapter follow-up under integration review | Bounded literal launch builder and NDJSON decoding; daemon envelope/final capture seam fixes underway; real managed provider qualification pending |
 | P09 | in_progress | remote workspace lane + local reviewer | candidate `f0d15a82`, imported `d637bfe` | Read-only custody registration; real runner/resource isolation pending |
 | P10 | in_progress | usage/reservation lanes + strong review | candidate `99f05b0`, imported `61e888b` | Segmented usage plus conservative scoped reservations reviewed; runtime reservation activation pending |
 | P11 | in_progress | local API team | candidate, not integrated | Read-only authenticated API/SSE, generation/precision/security tests; commands pending |
@@ -69,18 +69,18 @@ The receipt is engineering evidence, not product acceptance. Integrator verifies
 The existing legacy dashboard has a generic rollout summary and expanded agent
 table. Rust and React now serve real producer observations on loopback18891;
 the original dashboard stays available on18890 and under `/legacy/`. React assets
-and the legacy worker roster bridge are pinned to `4a12943a`; the running Rust
-binary remains pinned to `7277293f`. These are unmerged PR canaries. The default page
+are pinned to `0b8b8cb2`; the legacy roster bridge is `b2523eb2` and the running Rust
+binary is `17c7a76d`. These are unmerged PR canaries. The default page
 is the detailed real fleet; synthetic demo now defaults to18892.
 
 A bounded observer joins captain reports into runtime JSON every15 seconds
 without model turns. It independently checks owned `adm_` Screen identities and
 bounded candidate-path/HEAD metadata; producer report age is preserved. The
-collector consumes that projection on its next cycle. Three actual GNU Screens
-run Luna with enforced CPU pairs104–109 in isolated worktrees. Startup trust
+collector consumes that projection on its next cycle. The initial three GNU Screens
+ran Luna with enforced CPU pairs104–109 in isolated worktrees. Startup trust
 prompts were independently observed and cleared for this checkout before edits
-began. The first three candidates are imported for independent review; a second
-three-packet batch is building scheduler, verifier and config components. Process
+began. Those candidates and the subsequent scheduler, verifier and config batch
+are imported for independent review. Later pool results are recorded below. Process
 presence, file edits and passing candidate tests never complete parent packets.
 
 Current native read path: max 16 SSE bodies, max 8 concurrent reads; a coalesced
@@ -161,6 +161,29 @@ the last observation; no hosted CI success is claimed.
 
 The exact live roster bridge is now `b2523eb2`; it validates activity timestamps
 against the observation after Screen capture rather than the earlier manifest
-read, while retaining unknown/future/rollback safeguards. React stays at
-`4a12943a` and the running Rust binary at `7277293f` until the next owned canary
-upgrade. No other project was dispatched or upgraded.
+read, while retaining unknown/future/rollback safeguards. The subsequently upgraded
+canary runs binary `17c7a76d` with React assets `0b8b8cb2`. No other project was
+dispatched or upgraded.
+
+## Current review and manager identity
+
+All six follow-up integration-test lanes and all three durable storage lanes
+produced scoped candidates. Their imports received stronger review and root
+combined-tree validation. Store hardening is committed at `29acc013`; its partial
+P03/P04/P05 receipts preserve activation gaps. Session-host and Codex adapter
+follow-ups are under integration review; prompt-envelope compatibility and final
+capture evidence are required before their components can be connected.
+
+React assets `0b8b8cb2` pass75 tests, typecheck and production build. The live
+Commodore card now uses the explicitly configured, observed manager's exact
+Screen ID/PID rather than a hardcoded naming assumption. The actual Gemini 4
+Argon manager was independently observed and verified in the browser; the older
+Luna session remains a worker observation. Missing/mismatched managers stay
+unknown. Admiral/Commodore UX labels, the Grokbot asset and browser-local profile
+photo upload are deployed. These are display/selection changes, not model-name
+substitution or native provider qualification.
+
+Smoke harness `5e1bc679` fixes deadline shutdown appearing as successful EOF and
+rejects truncated HTTP bodies. All18 harness checks and15 actual isolated binary
+HTTP/CLI checks pass. The native canary remains read-only; no complete packet,
+production execution or hosted CI success is inferred from these checks.
