@@ -79,6 +79,19 @@ class RolloutLoaderTests(unittest.TestCase):
         self.assertEqual(state["freshness"]["state"], "stale")
         self.assertEqual(state["freshness"]["age_s"], 301)
 
+    def test_lane_identity_and_source_age_reach_react_without_claiming_acceptance(self):
+        value = manifest()
+        value["lanes"] = [{"id": "build-lane", "screen": "custom_worker", "model": "local-model",
+            "packet_id": "P01A", "source_updated_utc": "original timestamp", "status": "stale; screen present",
+            "screen_state": "present", "untrusted_extra": "discard"}]
+        lane = self.load(value)["lanes"][0]
+        self.assertEqual(lane["screen"], "custom_worker")
+        self.assertEqual(lane["model"], "local-model")
+        self.assertEqual(lane["packet_id"], "P01A")
+        self.assertEqual(lane["source_updated_utc"], "original timestamp")
+        self.assertNotIn("untrusted_extra", lane)
+        self.assertNotIn("verification", lane)
+
     def test_future_source_is_flagged(self):
         value = manifest()
         value["updated_utc"] = (NOW + datetime.timedelta(minutes=10)).isoformat()
