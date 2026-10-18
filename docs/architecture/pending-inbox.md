@@ -3,7 +3,7 @@
 `admiralty_store::inbox` observes unacknowledged messages from the Store writer's
 existing message/ACK projection. Durability comes from the existing
 `MessageQueued` and `MessageAcknowledged` SQLite events and their checked replay.
-This pure helper introduces no second queue, SQL table or event type. It never
+The derived index introduces no second durable queue, SQL table or event type. It never
 reads a clock, authenticates a caller, launches a provider, records delivery or
 acknowledges processing.
 
@@ -23,21 +23,29 @@ all scope fields exactly. Invalid or differently scoped cursors reject;
 recovery-generation mismatch requires a fresh snapshot/pass. A matching digest
 is an identity check, not a grant.
 
-One serialized writer turn seeks the borrowed `BTreeMap` directly after the
-cursor's message ID, examines at most 256 message records and clones at most 16
-matching unacknowledged envelopes. It does not clone a snapshot/map or scan all
-history in one call. One additional borrowed key lookahead determines whether a
-continuation exists. `scanned_messages` counts examined records, not this
-lookahead. A visited key/message-ID contradiction or ACK epoch mismatch fails
-closed; malformed selected envelopes also fail, without returning partial data.
-This is not a complete audit of unvisited projection records: durable replay is
-responsible for the whole stored history.
+The writer owns a derived `BTreeMap<InboxScope, BTreeSet<MessageId>>` containing
+only pending IDs. Open/replay validates the complete message/ACK projection and
+reconstructs the index once. Each append prepares its validated index delta from
+the post-reduce projection before committing SQL; only a successful commit
+applies that delta. Failed transactions and exact-source replay do not alter it.
+Explicit projection rebuild constructs the replacement before publishing its
+new recovery generation. The index has no independent persistence or authority.
 
-Unrelated and already acknowledged messages advance the scan too. Therefore a
-page may contain no messages yet supply `next_cursor`; continue it to finish that
-pass. ACK suppression requires the stored ACK's epoch to equal the message's
-epoch. The returned messages preserve original IDs, authority/causation, units,
-negation and payload bytes without summarization.
+One serialized writer turn seeks only the requested scope's pending IDs after
+the cursor, examines/clones at most the requested 1..16 envelopes and borrows one
+additional own-scope key to determine continuation. It does not clone a snapshot,
+rebuild the index or scan global history per read. `scanned_messages` counts
+visited own-scope pending records, excluding the borrowed lookahead. Foreign and
+ACKed histories do not change returned cursor IDs, counts or page boundaries.
+An absent scope returns zero examined records and no continuation.
+
+Every selected index reference is checked against the authoritative projection;
+missing or foreign records, malformed envelopes and ACK contradictions fail the
+whole page with a generic error. This does not claim to detect arbitrary missing
+index entries in constant time: private writer ownership and precommit updates
+maintain completeness; checked replay/rebuild reconstructs it from durable facts.
+The returned messages preserve original IDs, authority/causation, units, negation
+and payload bytes without summarization.
 
 Ordering is lexical message ID, not enqueue time, priority or causal order. A
 continuation is a position in a live scan, not a stable snapshot, durable
@@ -48,18 +56,14 @@ as if it acknowledged preceding work could otherwise skip pending work.
 Likewise, an ACK between pages can remove a message from that live observation.
 Neither a read nor an empty/finished page records an ACK.
 
-The per-call scan bound also limits writer occupancy for sparse scopes, but it
-is not a recipient index. A scope with many unrelated or ACKed records ahead of
-it may require multiple empty pages. This prototype does not claim qualified
-fleet throughput or bounded total durable-history size.
-
-The current continuation is for trusted internal callers. Its
-`after_message_id` is the last globally scanned key and can therefore reveal a
-message ID from another scope; `scanned_messages` also describes global scan
-work. Exact payload filtering does not establish cross-project metadata
-isolation. No new HTTP route exposes this cursor. An untrusted agent transport
-requires an opaque server-owned continuation or a scope index, plus separately
-qualified authentication and grants, before claiming scoped privacy.
+The index removes global-scan metadata and sparse empty-page amplification. Its
+memory grows with pending scopes/IDs; durable history and the full projection
+retain their existing growth policy. Startup replay and the reducer's full-state
+clone are unchanged. This component does not establish fleet throughput or a
+bounded total durable-history size. The helper is crate-private so callers use
+the writer-owned index through `Store::pending_messages`. No new HTTP route
+exposes cursors; actual agent authentication and grants still require separate
+qualification before untrusted transport is enabled.
 
 `Store::pending_messages` validates admission before entering the existing
 bounded request queue and invokes the helper while holding writer ownership, so
