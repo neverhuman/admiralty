@@ -297,8 +297,15 @@ pub fn update(config: &ObserveConfig, snapshot: &Value) -> crate::Result<Value> 
 }
 fn update_at(config: &ObserveConfig, snapshot: &Value, now: i64) -> crate::Result<Value> {
     let destination = config.output_dir.join("history.jsonl");
+    let initialize = match fs::symlink_metadata(&destination) {
+        Ok(_) => false,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => true,
+        Err(_) => return Err("history destination metadata is unavailable".into()),
+    };
     let mut source_rows = Vec::new();
-    if let Some(source) = &config.history_source {
+    // Migration is a one-time seed. An independently running old producer must
+    // never move the native sampling clock or overwrite native rows afterward.
+    if initialize && let Some(source) = &config.history_source {
         let path = if source.is_dir() {
             source.join("history.jsonl")
         } else {
@@ -332,7 +339,7 @@ fn update_at(config: &ObserveConfig, snapshot: &Value, now: i64) -> crate::Resul
     let rows = bounded(unique.into_values().collect());
     // Persist imported timestamps once, and fresh rows only at the bounded
     // interval. Repeated polls and process restarts do not invent observations.
-    if append.is_some() || !destination.exists() {
+    if append.is_some() || initialize {
         persist(&destination, &rows)?;
     }
     let visible = displayed(&rows);
@@ -376,6 +383,59 @@ mod tests {
         assert_eq!(
             update_at(&c, &json!({"generated_utc":"1970-01-01T00:05:10Z"}), 1000).unwrap()["rows"],
             second["rows"]
+        );
+    }
+    #[test]
+    fn external_history_is_imported_once_and_cannot_suppress_native_samples_after_restart() {
+        let temp = tempfile::tempdir().unwrap();
+        let mut c = config(temp.path());
+        let source = temp.path().join("live-old-history.jsonl");
+        fs::write(
+            &source,
+            "{\"ts\":100,\"cost_index\":1}\n{\"ts\":200,\"cost_index\":2}\n",
+        )
+        .unwrap();
+        c.history_source = Some(source.clone());
+        let seed = update_at(&c, &json!({"generated_utc":"1970-01-01T00:05:00Z"}), 300).unwrap();
+        assert_eq!(seed["rows"].as_array().unwrap().len(), 2);
+        assert_eq!(seed["rows"][0]["ts"], 100);
+        assert_eq!(seed["rows"][1]["ts"], 200);
+
+        // The old producer keeps writing. Neither its later sample nor a
+        // changed earlier metric may enter the already initialized native file.
+        fs::write(&source,"{\"ts\":100,\"cost_index\":999}\n{\"ts\":200,\"cost_index\":999}\n{\"ts\":309,\"cost_index\":999}\n").unwrap();
+        let native = update_at(&c,&json!({"generated_utc":"1970-01-01T00:05:10Z","token_efficiency":{"cost_index_vs_all_luna":3}}),310).unwrap();
+        let rows = native["rows"].as_array().unwrap();
+        assert_eq!(
+            rows.iter()
+                .map(|v| v["ts"].as_i64().unwrap())
+                .collect::<Vec<_>>(),
+            vec![100, 200, 310]
+        );
+        assert_eq!(rows[0]["cost_index"], 1);
+        assert_eq!(rows[2]["cost_index"], 3);
+
+        fs::write(
+            &source,
+            "{\"ts\":310,\"cost_index\":888}\n{\"ts\":419,\"cost_index\":888}\n",
+        )
+        .unwrap();
+        let mut restarted = config(temp.path());
+        restarted.history_source = Some(source);
+        let snapshot = json!({"generated_utc":"1970-01-01T00:07:00Z","token_efficiency":{"cost_index_vs_all_luna":4}});
+        let after_restart = update_at(&restarted, &snapshot, 420).unwrap();
+        let rows = after_restart["rows"].as_array().unwrap();
+        assert_eq!(
+            rows.iter()
+                .map(|v| v["ts"].as_i64().unwrap())
+                .collect::<Vec<_>>(),
+            vec![100, 200, 310, 420]
+        );
+        assert_eq!(rows[2]["cost_index"], 3);
+        assert_eq!(rows[3]["cost_index"], 4);
+        assert_eq!(
+            update_at(&restarted, &snapshot, 421).unwrap()["rows"],
+            after_restart["rows"]
         );
     }
     #[test]

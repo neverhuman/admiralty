@@ -802,37 +802,66 @@ fn safe_tail(text: &str) -> String {
 fn observed_footer(text: &str) -> Option<(String, Option<String>)> {
     for line in text.lines().rev().take(16) {
         let lower = line.to_ascii_lowercase();
+        let trimmed = line.trim_start();
+        let cancel_footer = trimmed
+            .get(..13)
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("esc to cancel"))
+            && trimmed
+                .get(13..)
+                .is_some_and(|rest| rest.chars().next().is_some_and(char::is_whitespace));
         if !(lower.contains("context left")
             || line.contains('│')
             || line.contains('·')
+            || cancel_footer
             || lower.trim_start().starts_with("model:"))
             || lower.contains("withheld")
         {
             continue;
         }
-        let tokens = line
+        // GNU Screen can decode the UI separator into U+FFFD. The exact known
+        // footer prefix still identifies the status row, without interpreting
+        // requested models from command lines or prose as observed identity.
+        let body = if cancel_footer { &trimmed[13..] } else { line };
+        let tokens = body
             .split_whitespace()
             .map(|t| t.trim_matches(|c: char| !(c.is_ascii_alphanumeric() || "-._/".contains(c))))
             .collect::<Vec<_>>();
         for (i, t) in tokens.iter().enumerate() {
-            let model = if t.starts_with("gpt-") || t.starts_with("claude-") {
-                (*t).to_owned()
+            let model_label = i == 1 && lower.trim_start().starts_with("model:");
+            if (cancel_footer && i != 0)
+                || (!model_label && !tokens[..i].iter().all(|token| token.is_empty()))
+            {
+                continue;
+            }
+            let (model, consumed) = if t.starts_with("gpt-") || t.starts_with("claude-") {
+                ((*t).to_owned(), 1)
             } else if matches!(
                 t.to_ascii_lowercase().as_str(),
                 "haiku" | "sonnet" | "opus" | "fable"
             ) {
-                tokens
+                let version = tokens
                     .get(i + 1)
-                    .filter(|s| s.chars().next().is_some_and(|c| c.is_ascii_digit()))
-                    .map_or_else(|| (*t).to_owned(), |version| format!("{t} {version}"))
+                    .filter(|s| s.chars().next().is_some_and(|c| c.is_ascii_digit()));
+                version.map_or_else(
+                    || ((*t).to_owned(), 1),
+                    |version| (format!("{t} {version}"), 2),
+                )
             } else if *t == "Gemini"
-                && tokens
-                    .get(i + 1)
-                    .is_some_and(|s| s.chars().next().is_some_and(|c| c.is_ascii_digit()))
+                && tokens.get(i + 1).is_some_and(|s| {
+                    s.chars().next().is_some_and(|c| c.is_ascii_digit())
+                        && s.chars().all(|c| c.is_ascii_digit() || c == '.')
+                })
+                && tokens.get(i + 2).is_some_and(|s| {
+                    s.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+                        && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+                })
             {
-                format!("{} {} {}", t, tokens.get(i + 1)?, tokens.get(i + 2)?)
+                (
+                    format!("{} {} {}", t, tokens.get(i + 1)?, tokens.get(i + 2)?),
+                    3,
+                )
             } else if i == 1 && lower.trim_start().starts_with("model:") {
-                (*t).to_owned()
+                ((*t).to_owned(), 1)
             } else {
                 continue;
             };
@@ -840,7 +869,9 @@ fn observed_footer(text: &str) -> Option<(String, Option<String>)> {
                 continue;
             }
             let effort = tokens
-                .get(i + 1)
+                .iter()
+                .skip(i + consumed)
+                .find(|token| !token.is_empty() && **token != "-")
                 .filter(|s| matches!(**s, "low" | "medium" | "high" | "xhigh" | "max" | "ultra"))
                 .map(|s| (*s).to_owned());
             return Some((model, effort));
@@ -1035,6 +1066,30 @@ mod tests {
             observed_footer("│ Gemini 4 Argon · ready │"),
             Some(("Gemini 4 Argon".into(), None))
         );
+    }
+    #[test]
+    fn actual_gemini_cancel_footer_survives_replacement_separator_bytes() {
+        for footer in [
+            "esc to cancel                         Gemini 4 Argon � high � 1 task(s) � /tasks",
+            "esc to cancel                                              Gemini 4 Argon � high",
+            "  esc to cancel  Gemini 4 Argon · high",
+        ] {
+            assert_eq!(
+                observed_footer(&safe_tail(footer)),
+                Some(("Gemini 4 Argon".into(), Some("high".into())))
+            );
+        }
+        for prose in [
+            "Please use Gemini 4 Argon high",
+            "Requested Gemini 4 Argon � high",
+            "Please use Gemini 4 Argon · high",
+            "--model gpt-6-luna medium · 80% context left",
+            "esc to cancel requested Gemini 4 Argon high",
+            "The footer says esc to cancel Gemini 4 Argon high",
+            "> esc to cancel Gemini 4 Argon high",
+        ] {
+            assert_eq!(observed_footer(&safe_tail(prose)), None);
+        }
     }
     #[tokio::test]
     async fn invalid_target_and_unsupported_os_return_unknown_without_commands() {
