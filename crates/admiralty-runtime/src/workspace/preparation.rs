@@ -3,18 +3,48 @@
 //! A [`PreparedWorkspace`] is evidence of what was materialized. Its
 //! [`Custody`](registry::Custody) remains `RegisteredOnly`; this module grants
 //! no execution, cleanup, or sandbox capability.
+//!
+//! Preparation assumes a trusted local caller and a private mode-0700 parent.
+//! Descriptor-relative creation and validation narrow pathname races, but do
+//! not isolate against a hostile same-UID process or provide a sandbox. Git
+//! work and output are deadline- and size-bounded; the pinned snapshot is
+//! limited to 100,000 objects and 512 MiB of object and materialized file data.
 
 use super::registry::{Custody, NodeRef, ValidatedWorkspace, WorkspaceError, WorkspaceSpec};
 use admiralty_core::{AttemptId, ProjectId, RootId, TaskId};
 use std::{
     fs,
-    os::unix::fs::{MetadataExt, PermissionsExt},
+    io::{self, Read, Write},
+    os::{
+        fd::{AsRawFd, OwnedFd},
+        unix::{
+            fs::{MetadataExt, PermissionsExt},
+            process::CommandExt,
+        },
+    },
     path::{Path, PathBuf},
-    process::{Command, Output},
+    process::{Child, Command, Output, Stdio},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    thread,
+    time::{Duration, Instant},
 };
 use thiserror::Error;
 
 const TRUSTED_GIT: [&str; 3] = ["/usr/bin/git", "/bin/git", "/usr/local/bin/git"];
+const GIT_TIMEOUT: Duration = Duration::from_secs(30);
+const GIT_TRANSFER_TIMEOUT: Duration = Duration::from_secs(120);
+const MAX_GIT_OUTPUT: usize = 2 * 1024 * 1024;
+const MAX_GIT_STDERR: usize = 64 * 1024;
+const MAX_TREE_LISTING: usize = 8 * 1024 * 1024;
+const MAX_OBJECTS: usize = 100_000;
+const MAX_SNAPSHOT_BYTES: u64 = 512 * 1024 * 1024;
+const DISK_RESERVE_BYTES: u64 = 16 * 1024 * 1024;
+const DISK_BYTES_PER_OBJECT: u64 = 4 * 1024;
+const DISK_BYTES_PER_FILE: u64 = 4 * 1024;
+const DISK_INODE_RESERVE: u64 = 64;
 
 /// All caller supplied identity and scope for one create-only preparation.
 #[derive(Clone, Debug)]
@@ -45,6 +75,8 @@ pub struct PreparedWorkspace {
     tree_oid: String,
     task_id: TaskId,
     attempt_id: AttemptId,
+    _managed_parent: OwnedFd,
+    _workspace_dir: OwnedFd,
 }
 
 impl PreparedWorkspace {
@@ -103,6 +135,14 @@ pub enum PreparationError {
     OverlappingPaths,
     #[error("destination Git metadata changed or is unsafe")]
     UnsafeDestinationMetadata,
+    #[error("Git operation exceeded its deadline")]
+    GitTimeout,
+    #[error("Git operation exceeded its output limit")]
+    GitOutputLimit,
+    #[error("pinned snapshot exceeds the configured object or byte limit")]
+    SnapshotLimit,
+    #[error("managed filesystem has insufficient admitted free space")]
+    InsufficientSpace,
     #[error("Git operation failed: {0}")]
     Git(String),
     #[error("filesystem operation failed: {0}")]
@@ -114,78 +154,116 @@ pub enum PreparationError {
 /// The destination is created atomically beneath an existing private managed
 /// parent. Failed operations preserve the newly created destination for
 /// inspection; this function never deletes, resets, cleans, or overwrites it.
+/// This operation is for trusted local preparation and does not grant execution
+/// or protect against a hostile process running as the same user.
 pub fn prepare_workspace(
     request: WorkspacePreparation,
 ) -> Result<PreparedWorkspace, PreparationError> {
     let git = trusted_git()?;
     validate_destination_name(&request.destination_name)?;
     let source = validate_source(&git, &request)?;
-    validate_private_parent(&request.managed_parent)?;
-    let parent = fs::canonicalize(&request.managed_parent)?;
-    let destination = parent.join(&request.destination_name);
-    if source.starts_with(&destination) || destination.starts_with(&source) {
+    let (parent_path, parent_fd) = validate_private_parent(&request.managed_parent)?;
+    if source.path.starts_with(&parent_path) || parent_path.starts_with(&source.path) {
         return Err(PreparationError::OverlappingPaths);
     }
-    match fs::symlink_metadata(&destination) {
-        Ok(_) => return Err(PreparationError::DestinationExists),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => return Err(error.into()),
+    let (available, available_inodes) = available_capacity(&parent_fd)?;
+    let admitted_bytes = source
+        .snapshot_bytes
+        .checked_add(source.working_tree_bytes)
+        .and_then(|bytes| {
+            bytes.checked_add((source.object_count as u64).checked_mul(DISK_BYTES_PER_OBJECT)?)
+        })
+        .and_then(|bytes| {
+            bytes.checked_add((source.file_count as u64).checked_mul(DISK_BYTES_PER_FILE)?)
+        })
+        .and_then(|bytes| bytes.checked_add(DISK_RESERVE_BYTES))
+        .ok_or(PreparationError::SnapshotLimit)?;
+    let admitted_inodes = (source.object_count as u64)
+        .checked_add(source.file_count as u64)
+        .and_then(|count| count.checked_add(DISK_INODE_RESERVE))
+        .ok_or(PreparationError::SnapshotLimit)?;
+    if available < admitted_bytes || available_inodes < admitted_inodes {
+        return Err(PreparationError::InsufficientSpace);
     }
-
-    // create_dir is the exclusive claim; a racing creator makes this fail.
-    fs::create_dir(&destination)?;
-    fs::set_permissions(&destination, fs::Permissions::from_mode(0o700))?;
-    ensure_private_directory(&destination)?;
-
-    let source_text = source.to_str().ok_or(PreparationError::InvalidSource)?;
-    let destination_text = destination
-        .to_str()
-        .ok_or(PreparationError::InvalidDestinationName)?;
-    run_git(
-        &git,
-        None,
-        &[
-            "-c",
-            "core.hooksPath=/dev/null",
-            "-c",
-            "protocol.file.allow=always",
-            "clone",
-            "--no-hardlinks",
-            "--no-checkout",
-            "--no-recurse-submodules",
-            "--",
-            source_text,
-            destination_text,
-        ],
-    )?;
-
-    let git_dir = destination.join(".git");
-    let git_dir_metadata =
+    ensure_path_points_to_fd(&parent_path, &parent_fd)?;
+    match statat_entry(&parent_fd, &request.destination_name) {
+        Ok(_) => return Err(PreparationError::DestinationExists),
+        Err(error) if error == rustix::io::Errno::NOENT => {}
+        Err(error) => return Err(io::Error::from(error).into()),
+    }
+    rustix::fs::mkdirat(
+        &parent_fd,
+        request.destination_name.as_str(),
+        rustix::fs::Mode::from_bits_truncate(0o700),
+    )
+    .map_err(io::Error::from)?;
+    let destination_fd = rustix::fs::openat(
+        &parent_fd,
+        request.destination_name.as_str(),
+        rustix::fs::OFlags::RDONLY
+            | rustix::fs::OFlags::DIRECTORY
+            | rustix::fs::OFlags::NOFOLLOW
+            | rustix::fs::OFlags::CLOEXEC,
+        rustix::fs::Mode::empty(),
+    )
+    .map_err(io::Error::from)?;
+    rustix::fs::fchmod(&destination_fd, rustix::fs::Mode::from_bits_truncate(0o700))
+        .map_err(io::Error::from)?;
+    ensure_private_fd(&destination_fd)?;
+    ensure_same_directory(&parent_fd, &request.destination_name, &destination_fd)?;
+    let destination = parent_path.join(&request.destination_name);
+    let destination_cwd = fd_path(&destination_fd);
+    run_git(&git, Some(&destination_cwd), &["init", "--quiet"])?;
+    let git_dir = destination_cwd.join(".git");
+    let git_dir_meta =
         fs::symlink_metadata(&git_dir).map_err(|_| PreparationError::UnsafeDestinationMetadata)?;
-    let uid = rustix::process::geteuid().as_raw();
-    if git_dir_metadata.file_type().is_symlink()
-        || !git_dir_metadata.is_dir()
-        || git_dir_metadata.uid() != uid
+    if git_dir_meta.file_type().is_symlink()
+        || !git_dir_meta.is_dir()
+        || git_dir_meta.uid() != rustix::process::geteuid().as_raw()
     {
         return Err(PreparationError::UnsafeDestinationMetadata);
     }
     fs::set_permissions(&git_dir, fs::Permissions::from_mode(0o700))?;
-    let config_path = git_dir.join("config");
-    let config_meta = fs::symlink_metadata(&config_path)
+    let destination_config = git_dir.join("config");
+    let destination_config_meta = fs::symlink_metadata(&destination_config)
         .map_err(|_| PreparationError::UnsafeDestinationMetadata)?;
-    if config_meta.file_type().is_symlink() || !config_meta.is_file() || config_meta.uid() != uid {
+    if destination_config_meta.file_type().is_symlink()
+        || !destination_config_meta.is_file()
+        || destination_config_meta.uid() != rustix::process::geteuid().as_raw()
+    {
         return Err(PreparationError::UnsafeDestinationMetadata);
     }
-    fs::set_permissions(&config_path, fs::Permissions::from_mode(0o600))?;
-    let config = read_safe_config(&config_path)?;
-    if git_dir.join("objects/info/alternates").exists() {
-        return Err(PreparationError::UnsafeDestinationMetadata);
-    }
+    fs::set_permissions(&destination_config, fs::Permissions::from_mode(0o600))?;
+    let initial_config = read_safe_config(&destination_config)?;
+    let source_path_text = source.path.to_string_lossy().into_owned();
 
-    let commit = request.pinned_commit.as_str();
+    run_git_with_input(
+        &git,
+        Some(&destination_cwd),
+        &[
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "core.attributesFile=/dev/null",
+            "-c",
+            "core.fsmonitor=false",
+            "-c",
+            "protocol.file.allow=always",
+            "fetch",
+            "--quiet",
+            "--depth=1",
+            "--no-tags",
+            "--no-recurse-submodules",
+            &source_path_text,
+            &request.pinned_commit,
+        ],
+        None,
+        GIT_TRANSFER_TIMEOUT,
+        MAX_GIT_OUTPUT,
+    )?;
     run_git(
         &git,
-        Some(&destination),
+        Some(&destination_cwd),
         &[
             "-c",
             "core.hooksPath=/dev/null",
@@ -194,37 +272,77 @@ pub fn prepare_workspace(
             "-c",
             "core.fsmonitor=false",
             "checkout",
+            "--quiet",
             "--detach",
             "--no-recurse-submodules",
-            commit,
+            &request.pinned_commit,
         ],
     )?;
 
+    let git_dir = destination_cwd.join(".git");
+    let git_dir_meta =
+        fs::symlink_metadata(&git_dir).map_err(|_| PreparationError::UnsafeDestinationMetadata)?;
+    let uid = rustix::process::geteuid().as_raw();
+    if git_dir_meta.file_type().is_symlink() || !git_dir_meta.is_dir() || git_dir_meta.uid() != uid
+    {
+        return Err(PreparationError::UnsafeDestinationMetadata);
+    }
+    let config_path = git_dir.join("config");
+    let config = read_safe_config(&config_path)?;
+    if config != initial_config {
+        return Err(PreparationError::UnsafeDestinationMetadata);
+    }
+    if has_incomplete_object_metadata(&git_dir)? {
+        return Err(PreparationError::UnsafeDestinationMetadata);
+    }
+    if git_text(
+        &git,
+        Some(&destination_cwd),
+        &["rev-parse", "--is-shallow-repository"],
+    )?
+    .trim()
+        != "true"
+        || git_text(
+            &git,
+            Some(&destination_cwd),
+            &["rev-list", "--count", "HEAD"],
+        )?
+        .trim()
+            != "1"
+    {
+        return Err(PreparationError::UnsafeDestinationMetadata);
+    }
+    let object_stats = git_text(&git, Some(&destination_cwd), &["count-objects", "-v"])?;
+    validate_object_store_stats(&object_stats, source.snapshot_bytes, source.object_count)?;
     let after_config = read_safe_config(&config_path)?;
     if config != after_config {
         return Err(PreparationError::UnsafeDestinationMetadata);
     }
-    ensure_private_directory(&destination)?;
-    let root = git_text(&git, Some(&destination), &["rev-parse", "--show-toplevel"])?;
-    let root = PathBuf::from(root.trim());
-    if root != destination {
-        return Err(PreparationError::UnsafeDestinationMetadata);
-    }
-    let head = git_text(&git, Some(&destination), &["rev-parse", "HEAD"])?;
-    let head = head.trim().to_owned();
+    ensure_private_fd(&destination_fd)?;
+    ensure_same_directory(&parent_fd, &request.destination_name, &destination_fd)?;
+    ensure_source_unchanged(&git, &source)?;
+    let head = git_text(&git, Some(&destination_cwd), &["rev-parse", "HEAD"])?
+        .trim()
+        .to_owned();
     if head != request.pinned_commit {
         return Err(PreparationError::UnsafeDestinationMetadata);
     }
-    let tree = git_text(&git, Some(&destination), &["rev-parse", "HEAD^{tree}"])?
+    let tree = git_text(&git, Some(&destination_cwd), &["rev-parse", "HEAD^{tree}"])?
         .trim()
         .to_owned();
-    if !valid_oid_for(&head, head.len()) || !valid_oid_for(&tree, head.len()) {
+    if tree != source.tree_oid || !valid_oid_for(&head, source.oid_len) {
         return Err(PreparationError::UnsafeDestinationMetadata);
     }
     let status = git_text(
         &git,
-        Some(&destination),
+        Some(&destination_cwd),
         &[
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "core.attributesFile=/dev/null",
+            "-c",
+            "core.fsmonitor=false",
             "status",
             "--porcelain=v2",
             "--untracked-files=all",
@@ -247,12 +365,16 @@ pub fn prepare_workspace(
     if workspace.custody != Custody::RegisteredOnly {
         return Err(PreparationError::UnsafeDestinationMetadata);
     }
+    ensure_path_points_to_fd(&parent_path, &parent_fd)?;
+    ensure_same_directory(&parent_fd, &request.destination_name, &destination_fd)?;
     Ok(PreparedWorkspace {
         workspace,
         head_oid: head,
         tree_oid: tree,
         task_id: request.task_id,
         attempt_id: request.attempt_id,
+        _managed_parent: parent_fd,
+        _workspace_dir: destination_fd,
     })
 }
 
@@ -288,11 +410,13 @@ fn base_command(git: &Path, cwd: Option<&Path>) -> Command {
         .env("HOME", "/nonexistent")
         .env("PATH", "/usr/bin:/bin")
         .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_TERMINAL_PROMPT", "0")
         .env("GIT_OPTIONAL_LOCKS", "0")
         .env("GIT_NO_REPLACE_OBJECTS", "1")
-        .env("GIT_PROTOCOL_FROM_USER", "0");
+        .env("GIT_PROTOCOL_FROM_USER", "0")
+        .env("GIT_ALLOW_PROTOCOL", "file");
     if let Some(directory) = cwd {
         command.current_dir(directory);
     }
@@ -300,13 +424,147 @@ fn base_command(git: &Path, cwd: Option<&Path>) -> Command {
 }
 
 fn run_git(git: &Path, cwd: Option<&Path>, args: &[&str]) -> Result<Output, PreparationError> {
-    let output = base_command(git, cwd).args(args).output()?;
+    run_git_with_input(git, cwd, args, None, GIT_TIMEOUT, MAX_GIT_OUTPUT)
+}
+
+fn run_git_with_input(
+    git: &Path,
+    cwd: Option<&Path>,
+    args: &[&str],
+    input: Option<&[u8]>,
+    timeout: Duration,
+    output_limit: usize,
+) -> Result<Output, PreparationError> {
+    run_git_with_options(git, cwd, args, input, timeout, output_limit)
+}
+
+fn run_git_with_options(
+    git: &Path,
+    cwd: Option<&Path>,
+    args: &[&str],
+    input: Option<&[u8]>,
+    timeout: Duration,
+    output_limit: usize,
+) -> Result<Output, PreparationError> {
+    let mut command = base_command(git, cwd);
+    command
+        .args(args)
+        .stdin(if input.is_some() {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        })
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .process_group(0);
+    let mut child = command.spawn()?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| PreparationError::Git("missing stdout pipe".into()))?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| PreparationError::Git("missing stderr pipe".into()))?;
+    let oversized = Arc::new(AtomicBool::new(false));
+    let stdout_reader = read_bounded(stdout, output_limit, Arc::clone(&oversized));
+    let stderr_reader = read_bounded(stderr, MAX_GIT_STDERR, Arc::clone(&oversized));
+    let input_writer = if let Some(bytes) = input {
+        let Some(mut pipe) = child.stdin.take() else {
+            terminate_git_group(&mut child);
+            return Err(PreparationError::Git("missing stdin pipe".into()));
+        };
+        let bytes = bytes.to_vec();
+        Some(thread::spawn(move || pipe.write_all(&bytes)))
+    } else {
+        None
+    };
+    let deadline = Instant::now() + timeout;
+    let mut timed_out = false;
+    let status = loop {
+        if oversized.load(Ordering::Relaxed) {
+            terminate_git_group(&mut child);
+            break child.wait()?;
+        }
+        if let Some(status) = child.try_wait()? {
+            break status;
+        }
+        if Instant::now() >= deadline {
+            timed_out = true;
+            terminate_git_group(&mut child);
+            break child.wait()?;
+        }
+        thread::sleep(Duration::from_millis(10));
+    };
+    let stdout = stdout_reader
+        .join()
+        .map_err(|_| PreparationError::Git("stdout reader panicked".into()))??;
+    let stderr = stderr_reader
+        .join()
+        .map_err(|_| PreparationError::Git("stderr reader panicked".into()))??;
+    if let Some(writer) = input_writer {
+        writer
+            .join()
+            .map_err(|_| PreparationError::Git("stdin writer panicked".into()))?
+            .map_err(PreparationError::Io)?;
+    }
+    if timed_out {
+        return Err(PreparationError::GitTimeout);
+    }
+    if oversized.load(Ordering::Relaxed) {
+        return Err(PreparationError::GitOutputLimit);
+    }
+    let output = Output {
+        status,
+        stdout,
+        stderr,
+    };
     if output.status.success() {
         Ok(output)
     } else {
         let detail = String::from_utf8_lossy(&output.stderr);
-        Err(PreparationError::Git(detail.chars().take(512).collect()))
+        let operation = args.join(" ");
+        Err(PreparationError::Git(format!(
+            "{}: {}",
+            operation.chars().take(128).collect::<String>(),
+            detail.chars().take(320).collect::<String>()
+        )))
     }
+}
+
+fn read_bounded<R: Read + Send + 'static>(
+    mut reader: R,
+    limit: usize,
+    oversized: Arc<AtomicBool>,
+) -> thread::JoinHandle<io::Result<Vec<u8>>> {
+    thread::spawn(move || {
+        let mut retained = Vec::with_capacity(limit.min(8192));
+        let mut buffer = [0u8; 8192];
+        loop {
+            let count = reader.read(&mut buffer)?;
+            if count == 0 {
+                break;
+            }
+            let available = limit.saturating_sub(retained.len());
+            let keep = count.min(available);
+            retained.extend_from_slice(&buffer[..keep]);
+            if keep < count {
+                oversized.store(true, Ordering::Relaxed);
+            }
+        }
+        Ok(retained)
+    })
+}
+
+fn terminate_git_group(child: &mut Child) {
+    use rustix::process::{Pid, Signal, kill_process_group};
+    if let Ok(raw_pid) = i32::try_from(child.id())
+        && let Some(pid) = Pid::from_raw(raw_pid)
+        && raw_pid > 1
+    {
+        let _ = kill_process_group(pid, Signal::KILL);
+    }
+    let _ = child.kill();
 }
 
 fn git_text(git: &Path, cwd: Option<&Path>, args: &[&str]) -> Result<String, PreparationError> {
@@ -314,10 +572,23 @@ fn git_text(git: &Path, cwd: Option<&Path>, args: &[&str]) -> Result<String, Pre
     String::from_utf8(output.stdout).map_err(|_| PreparationError::Git("non-UTF-8 output".into()))
 }
 
+struct ValidatedSource {
+    path: PathBuf,
+    source_fd: OwnedFd,
+    config: Vec<u8>,
+    source_head: String,
+    tree_oid: String,
+    oid_len: usize,
+    snapshot_bytes: u64,
+    object_count: usize,
+    working_tree_bytes: u64,
+    file_count: usize,
+}
+
 fn validate_source(
     git: &Path,
     request: &WorkspacePreparation,
-) -> Result<PathBuf, PreparationError> {
+) -> Result<ValidatedSource, PreparationError> {
     let source = request.source.as_path();
     if !source.is_absolute() {
         return Err(PreparationError::InvalidSource);
@@ -334,7 +605,9 @@ fn validate_source(
     .validate()
     .map_err(|_| PreparationError::InvalidSource)?;
     let source = validated.workspace;
-    let git_dir = source.join(".git");
+    let source_fd = open_directory_chain(&source).map_err(|_| PreparationError::InvalidSource)?;
+    let source_cwd = fd_path(&source_fd);
+    let git_dir = source_cwd.join(".git");
     let meta = fs::symlink_metadata(&git_dir).map_err(|_| PreparationError::InvalidSource)?;
     if meta.file_type().is_symlink() || !meta.is_dir() {
         return Err(PreparationError::InvalidSource);
@@ -344,13 +617,14 @@ fn validate_source(
     }
     let config = read_safe_config(&git_dir.join("config"))
         .map_err(|_| PreparationError::UnsafeSourceMetadata)?;
-    let top = git_text(git, Some(&source), &["rev-parse", "--show-toplevel"])?;
+    validate_source_git_metadata(&git_dir, &config)?;
+    let top = git_text(git, Some(&source_cwd), &["rev-parse", "--show-toplevel"])?;
     if Path::new(top.trim()) != source {
         return Err(PreparationError::InvalidSource);
     }
     let status = git_text(
         git,
-        Some(&source),
+        Some(&source_cwd),
         &[
             "-c",
             "core.hooksPath=/dev/null",
@@ -368,7 +642,11 @@ fn validate_source(
     if !status.is_empty() {
         return Err(PreparationError::DirtySource);
     }
-    let format = git_text(git, Some(&source), &["rev-parse", "--show-object-format"])?;
+    let format = git_text(
+        git,
+        Some(&source_cwd),
+        &["rev-parse", "--show-object-format"],
+    )?;
     let oid_len = match format.trim() {
         "sha1" => 40,
         "sha256" => 64,
@@ -379,7 +657,7 @@ fn validate_source(
     }
     let kind = git_text(
         git,
-        Some(&source),
+        Some(&source_cwd),
         &["cat-file", "-t", &request.pinned_commit],
     )
     .map_err(|_| PreparationError::CommitUnavailable)?;
@@ -388,19 +666,63 @@ fn validate_source(
     }
     let resolved = git_text(
         git,
-        Some(&source),
+        Some(&source_cwd),
         &["rev-parse", "--verify", &request.pinned_commit],
     )?;
     if resolved.trim() != request.pinned_commit {
         return Err(PreparationError::InvalidObjectId);
     }
+    let source_head = git_text(git, Some(&source_cwd), &["rev-parse", "HEAD"])?
+        .trim()
+        .to_owned();
+    let tree_oid = git_text(
+        git,
+        Some(&source_cwd),
+        &[
+            "rev-parse",
+            "--verify",
+            &format!("{}^{{tree}}", request.pinned_commit),
+        ],
+    )?
+    .trim()
+    .to_owned();
+    let listing = run_git_with_input(
+        git,
+        Some(&source_cwd),
+        &["ls-tree", "-r", "-t", "-z", "--full-tree", &tree_oid],
+        None,
+        GIT_TIMEOUT,
+        MAX_TREE_LISTING,
+    )?
+    .stdout;
+    let (snapshot_bytes, object_count, working_tree_bytes, file_count) = measure_object_closure(
+        git,
+        &source_cwd,
+        &request.pinned_commit,
+        &tree_oid,
+        &listing,
+        oid_len,
+    )?;
     let config_after = read_safe_config(&git_dir.join("config"))
         .map_err(|_| PreparationError::UnsafeSourceMetadata)?;
     if config != config_after {
         return Err(PreparationError::UnsafeSourceMetadata);
     }
-    // Git arguments are passed as individual argv values, never through a shell.
-    Ok(source)
+    if snapshot_bytes > MAX_SNAPSHOT_BYTES || working_tree_bytes > MAX_SNAPSHOT_BYTES {
+        return Err(PreparationError::SnapshotLimit);
+    }
+    Ok(ValidatedSource {
+        path: source,
+        source_fd,
+        config,
+        source_head,
+        tree_oid,
+        oid_len,
+        snapshot_bytes,
+        object_count,
+        working_tree_bytes,
+        file_count,
+    })
 }
 
 fn read_safe_config(path: &Path) -> Result<Vec<u8>, PreparationError> {
@@ -416,13 +738,364 @@ fn read_safe_config(path: &Path) -> Result<Vec<u8>, PreparationError> {
     }
     let bytes = fs::read(path)?;
     let lower = String::from_utf8_lossy(&bytes).to_ascii_lowercase();
-    if lower.contains("[include") || lower.contains("[filter") || lower.contains("fsmonitor") {
+    if lower.contains("[include")
+        || lower.contains("[filter")
+        || lower.contains("fsmonitor")
+        || lower.contains("promisor")
+        || lower.contains("partialclone")
+        || lower.contains("protocol.")
+        || lower.contains("insteadof")
+        || lower.contains("credential.helper")
+        || lower.contains("sshcommand")
+        || lower.contains("ext::")
+    {
         return Err(PreparationError::UnsafeDestinationMetadata);
     }
     Ok(bytes)
 }
 
-fn validate_private_parent(path: &Path) -> Result<(), PreparationError> {
+fn validate_source_git_metadata(git_dir: &Path, config: &[u8]) -> Result<(), PreparationError> {
+    let lower = String::from_utf8_lossy(config).to_ascii_lowercase();
+    if lower.contains("remote.") && lower.contains("promisor")
+        || lower.contains("partialclone")
+        || lower.contains("partialclonefilter")
+    {
+        return Err(PreparationError::UnsafeSourceMetadata);
+    }
+    for relative in [
+        Path::new("shallow"),
+        Path::new("objects/info/alternates"),
+        Path::new("objects/info/http-alternates"),
+    ] {
+        if path_entry_exists(&git_dir.join(relative))? {
+            return Err(PreparationError::UnsafeSourceMetadata);
+        }
+    }
+    for relative in [Path::new("HEAD"), Path::new("index")] {
+        let metadata = fs::symlink_metadata(git_dir.join(relative))?;
+        if metadata.file_type().is_symlink()
+            || !metadata.is_file()
+            || metadata.uid() != rustix::process::geteuid().as_raw()
+            || metadata.mode() & 0o022 != 0
+        {
+            return Err(PreparationError::UnsafeSourceMetadata);
+        }
+    }
+    let objects = git_dir.join("objects");
+    check_owned_git_directory(&objects)?;
+    let mut entries_seen = 0usize;
+    for entry in fs::read_dir(&objects)? {
+        entries_seen += 1;
+        if entries_seen > MAX_OBJECTS {
+            return Err(PreparationError::SnapshotLimit);
+        }
+        let entry = entry?;
+        let name = entry.file_name();
+        let name_text = name.to_string_lossy();
+        let path = entry.path();
+        if name_text == "info"
+            || name_text == "pack"
+            || (name_text.len() == 2 && is_lower_hex(&name_text))
+        {
+            check_owned_git_directory(&path)?;
+            if name_text == "pack" {
+                for pack_entry in fs::read_dir(&path)? {
+                    entries_seen += 1;
+                    if entries_seen > MAX_OBJECTS {
+                        return Err(PreparationError::SnapshotLimit);
+                    }
+                    let pack_entry = pack_entry?;
+                    let metadata = fs::symlink_metadata(pack_entry.path())?;
+                    if pack_entry
+                        .file_name()
+                        .to_string_lossy()
+                        .ends_with(".promisor")
+                        || metadata.file_type().is_symlink()
+                        || !metadata.is_file()
+                        || metadata.uid() != rustix::process::geteuid().as_raw()
+                        || metadata.mode() & 0o022 != 0
+                    {
+                        return Err(PreparationError::UnsafeSourceMetadata);
+                    }
+                }
+            } else if name_text != "info" {
+                for object in fs::read_dir(&path)? {
+                    entries_seen += 1;
+                    if entries_seen > MAX_OBJECTS {
+                        return Err(PreparationError::SnapshotLimit);
+                    }
+                    let object = object?;
+                    let metadata = fs::symlink_metadata(object.path())?;
+                    let object_name = object.file_name();
+                    let object_name = object_name.to_string_lossy();
+                    if metadata.file_type().is_symlink()
+                        || !metadata.is_file()
+                        || metadata.uid() != rustix::process::geteuid().as_raw()
+                        || metadata.mode() & 0o022 != 0
+                        || object_name.len() != 38
+                        || !is_lower_hex(&object_name)
+                    {
+                        return Err(PreparationError::UnsafeSourceMetadata);
+                    }
+                }
+            }
+        } else {
+            return Err(PreparationError::UnsafeSourceMetadata);
+        }
+    }
+    Ok(())
+}
+
+fn check_owned_git_directory(path: &Path) -> Result<(), PreparationError> {
+    let metadata = fs::symlink_metadata(path)?;
+    if metadata.file_type().is_symlink()
+        || !metadata.is_dir()
+        || metadata.uid() != rustix::process::geteuid().as_raw()
+        || metadata.mode() & 0o022 != 0
+    {
+        return Err(PreparationError::UnsafeSourceMetadata);
+    }
+    Ok(())
+}
+
+fn is_lower_hex(value: &str) -> bool {
+    value
+        .bytes()
+        .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+fn has_incomplete_object_metadata(git_dir: &Path) -> Result<bool, PreparationError> {
+    if path_entry_exists(&git_dir.join("objects/info/alternates"))?
+        || path_entry_exists(&git_dir.join("objects/info/http-alternates"))?
+    {
+        return Ok(true);
+    }
+    let pack_dir = git_dir.join("objects/pack");
+    match fs::symlink_metadata(&pack_dir) {
+        Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_dir() => return Ok(true),
+        Ok(_) => {
+            for entry in fs::read_dir(pack_dir)? {
+                if entry?.file_name().to_string_lossy().ends_with(".promisor") {
+                    return Ok(true);
+                }
+            }
+        }
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error.into()),
+    }
+    Ok(false)
+}
+
+fn path_entry_exists(path: &Path) -> Result<bool, PreparationError> {
+    match fs::symlink_metadata(path) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn measure_object_closure(
+    git: &Path,
+    source_cwd: &Path,
+    commit: &str,
+    tree: &str,
+    listing: &[u8],
+    oid_len: usize,
+) -> Result<(u64, usize, u64, usize), PreparationError> {
+    if listing.len() > MAX_TREE_LISTING {
+        return Err(PreparationError::SnapshotLimit);
+    }
+    let mut objects = std::collections::BTreeSet::new();
+    let mut blob_references = std::collections::BTreeMap::<String, usize>::new();
+    let mut file_count = 0usize;
+    objects.insert(commit.to_owned());
+    objects.insert(tree.to_owned());
+    for record in listing
+        .split(|byte| *byte == 0)
+        .filter(|record| !record.is_empty())
+    {
+        let tab = record
+            .iter()
+            .position(|byte| *byte == b'\t')
+            .ok_or(PreparationError::UnsafeSourceMetadata)?;
+        let header = std::str::from_utf8(&record[..tab])
+            .map_err(|_| PreparationError::UnsafeSourceMetadata)?;
+        let mut fields = header.split_ascii_whitespace();
+        let _mode = fields
+            .next()
+            .ok_or(PreparationError::UnsafeSourceMetadata)?;
+        let kind = fields
+            .next()
+            .ok_or(PreparationError::UnsafeSourceMetadata)?;
+        let oid = fields
+            .next()
+            .ok_or(PreparationError::UnsafeSourceMetadata)?;
+        if fields.next().is_some() || !valid_oid_for(oid, oid_len) || kind == "commit" {
+            return Err(PreparationError::UnsafeSourceMetadata);
+        }
+        if !matches!(kind, "blob" | "tree") {
+            return Err(PreparationError::UnsafeSourceMetadata);
+        }
+        if kind == "blob" {
+            file_count = file_count
+                .checked_add(1)
+                .ok_or(PreparationError::SnapshotLimit)?;
+            if file_count > MAX_OBJECTS {
+                return Err(PreparationError::SnapshotLimit);
+            }
+            let multiplicity = blob_references.entry(oid.to_owned()).or_default();
+            *multiplicity = multiplicity
+                .checked_add(1)
+                .ok_or(PreparationError::SnapshotLimit)?;
+        }
+        objects.insert(oid.to_owned());
+        if objects.len() > MAX_OBJECTS {
+            return Err(PreparationError::SnapshotLimit);
+        }
+    }
+    let mut input = Vec::with_capacity(objects.len().saturating_mul(oid_len + 1));
+    for oid in &objects {
+        input.extend_from_slice(oid.as_bytes());
+        input.push(b'\n');
+    }
+    let output = run_git_with_input(
+        git,
+        Some(source_cwd),
+        &[
+            "cat-file",
+            "--batch-check=%(objectname) %(objecttype) %(objectsize)",
+        ],
+        Some(&input),
+        GIT_TIMEOUT,
+        MAX_GIT_OUTPUT,
+    )?;
+    let mut total = 0u64;
+    let mut count = 0usize;
+    let mut sizes = std::collections::BTreeMap::new();
+    for line in output
+        .stdout
+        .split(|byte| *byte == b'\n')
+        .filter(|line| !line.is_empty())
+    {
+        let line = std::str::from_utf8(line).map_err(|_| PreparationError::UnsafeSourceMetadata)?;
+        let mut fields = line.split_ascii_whitespace();
+        let oid = fields
+            .next()
+            .ok_or(PreparationError::UnsafeSourceMetadata)?;
+        let kind = fields
+            .next()
+            .ok_or(PreparationError::UnsafeSourceMetadata)?;
+        let size = fields
+            .next()
+            .and_then(|value| value.parse::<u64>().ok())
+            .ok_or(PreparationError::UnsafeSourceMetadata)?;
+        if fields.next().is_some()
+            || !objects.contains(oid)
+            || !matches!(kind, "blob" | "tree" | "commit")
+        {
+            return Err(PreparationError::UnsafeSourceMetadata);
+        }
+        total = total
+            .checked_add(size)
+            .ok_or(PreparationError::SnapshotLimit)?;
+        sizes.insert(oid.to_owned(), size);
+        count += 1;
+        if total > MAX_SNAPSHOT_BYTES || count > MAX_OBJECTS {
+            return Err(PreparationError::SnapshotLimit);
+        }
+    }
+    if count != objects.len() {
+        return Err(PreparationError::UnsafeSourceMetadata);
+    }
+    let working_tree_bytes = blob_references
+        .iter()
+        .try_fold(0u64, |sum, (oid, copies)| {
+            let size = sizes
+                .get(oid)
+                .copied()
+                .ok_or(PreparationError::UnsafeSourceMetadata)?;
+            sum.checked_add(
+                size.checked_mul(*copies as u64)
+                    .ok_or(PreparationError::SnapshotLimit)?,
+            )
+            .ok_or(PreparationError::SnapshotLimit)
+        })?;
+    Ok((total, count, working_tree_bytes, file_count))
+}
+
+fn ensure_source_unchanged(git: &Path, source: &ValidatedSource) -> Result<(), PreparationError> {
+    let cwd = fd_path(&source.source_fd);
+    let config_path = cwd.join(".git/config");
+    let config_after =
+        read_safe_config(&config_path).map_err(|_| PreparationError::UnsafeSourceMetadata)?;
+    if config_after != source.config {
+        return Err(PreparationError::UnsafeSourceMetadata);
+    }
+    let status = git_text(
+        git,
+        Some(&cwd),
+        &[
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "core.attributesFile=/dev/null",
+            "-c",
+            "core.fsmonitor=false",
+            "status",
+            "--porcelain=v2",
+            "--untracked-files=all",
+            "--ignored=matching",
+            "--ignore-submodules=none",
+        ],
+    )?;
+    let source_head = git_text(git, Some(&cwd), &["rev-parse", "HEAD"])?;
+    if !status.is_empty() || source_head.trim() != source.source_head {
+        return Err(PreparationError::DirtySource);
+    }
+    Ok(())
+}
+
+fn validate_object_store_stats(
+    stats: &str,
+    expected_bytes: u64,
+    expected_objects: usize,
+) -> Result<(), PreparationError> {
+    let values = stats
+        .lines()
+        .filter_map(|line| line.split_once(':'))
+        .map(|(key, value)| (key.trim(), value.trim()));
+    let mut map = std::collections::BTreeMap::new();
+    for (key, value) in values {
+        map.insert(
+            key,
+            value
+                .parse::<u64>()
+                .map_err(|_| PreparationError::UnsafeDestinationMetadata)?,
+        );
+    }
+    let objects = map
+        .get("count")
+        .copied()
+        .unwrap_or(0)
+        .checked_add(map.get("in-pack").copied().unwrap_or(0))
+        .ok_or(PreparationError::SnapshotLimit)?;
+    let loose_kib = map.get("size").copied().unwrap_or(0);
+    let packed_kib = map.get("size-pack").copied().unwrap_or(0);
+    let stored_bytes = loose_kib
+        .checked_add(packed_kib)
+        .and_then(|kib| kib.checked_mul(1024))
+        .ok_or(PreparationError::SnapshotLimit)?;
+    if objects > expected_objects as u64
+        || stored_bytes > expected_bytes.saturating_add(2 * 1024 * 1024)
+        || map.get("garbage").copied().unwrap_or(0) != 0
+        || map.get("size-garbage").copied().unwrap_or(0) != 0
+    {
+        return Err(PreparationError::UnsafeDestinationMetadata);
+    }
+    Ok(())
+}
+
+fn validate_private_parent(path: &Path) -> Result<(PathBuf, OwnedFd), PreparationError> {
     if !path.is_absolute() {
         return Err(PreparationError::InvalidManagedParent);
     }
@@ -435,23 +1108,105 @@ fn validate_private_parent(path: &Path) -> Result<(), PreparationError> {
         owned_paths: Vec::new(),
         forbidden_paths: Vec::new(),
     };
-    spec.validate()
+    let validated = spec
+        .validate()
         .map_err(|_| PreparationError::InvalidManagedParent)?;
-    ensure_private_directory(path)
+    let canonical = validated.workspace;
+    let directory =
+        open_directory_chain(&canonical).map_err(|_| PreparationError::InvalidManagedParent)?;
+    ensure_private_fd(&directory).map_err(|_| PreparationError::InvalidManagedParent)?;
+    Ok((canonical, directory))
 }
 
-fn ensure_private_directory(path: &Path) -> Result<(), PreparationError> {
-    let metadata =
-        fs::symlink_metadata(path).map_err(|_| PreparationError::InvalidManagedParent)?;
-    let uid = rustix::process::geteuid().as_raw();
-    if metadata.file_type().is_symlink()
-        || !metadata.is_dir()
-        || metadata.uid() != uid
-        || metadata.mode() & 0o7777 != 0o700
+fn open_directory_chain(path: &Path) -> Result<OwnedFd, PreparationError> {
+    let mut directory = rustix::fs::open(
+        "/",
+        rustix::fs::OFlags::RDONLY | rustix::fs::OFlags::DIRECTORY | rustix::fs::OFlags::CLOEXEC,
+        rustix::fs::Mode::empty(),
+    )
+    .map_err(io::Error::from)?;
+    for component in path.components() {
+        match component {
+            std::path::Component::RootDir => {}
+            std::path::Component::Normal(name) => {
+                directory = rustix::fs::openat(
+                    &directory,
+                    name,
+                    rustix::fs::OFlags::RDONLY
+                        | rustix::fs::OFlags::DIRECTORY
+                        | rustix::fs::OFlags::NOFOLLOW
+                        | rustix::fs::OFlags::CLOEXEC,
+                    rustix::fs::Mode::empty(),
+                )
+                .map_err(io::Error::from)?;
+            }
+            _ => return Err(PreparationError::InvalidManagedParent),
+        }
+    }
+    Ok(directory)
+}
+
+fn fd_path(fd: &OwnedFd) -> PathBuf {
+    #[cfg(target_os = "linux")]
+    let prefix = "/proc/self/fd";
+    #[cfg(not(target_os = "linux"))]
+    let prefix = "/dev/fd";
+    PathBuf::from(format!("{prefix}/{}", fd.as_raw_fd()))
+}
+
+fn ensure_private_fd(fd: &OwnedFd) -> Result<(), PreparationError> {
+    let metadata = rustix::fs::fstat(fd).map_err(io::Error::from)?;
+    let is_directory =
+        rustix::fs::FileType::from_raw_mode(metadata.st_mode) == rustix::fs::FileType::Directory;
+    if !is_directory
+        || metadata.st_uid != rustix::process::geteuid().as_raw()
+        || metadata.st_mode & 0o7777 != 0o700
     {
-        return Err(PreparationError::InvalidManagedParent);
+        return Err(PreparationError::UnsafeDestinationMetadata);
     }
     Ok(())
+}
+
+fn statat_entry(parent: &OwnedFd, name: &str) -> Result<rustix::fs::Stat, rustix::io::Errno> {
+    rustix::fs::statat(parent, name, rustix::fs::AtFlags::SYMLINK_NOFOLLOW)
+}
+
+fn ensure_same_directory(
+    parent: &OwnedFd,
+    name: &str,
+    directory: &OwnedFd,
+) -> Result<(), PreparationError> {
+    let path_stat =
+        statat_entry(parent, name).map_err(|_| PreparationError::UnsafeDestinationMetadata)?;
+    let fd_stat = rustix::fs::fstat(directory).map_err(io::Error::from)?;
+    if path_stat.st_dev != fd_stat.st_dev
+        || path_stat.st_ino != fd_stat.st_ino
+        || path_stat.st_uid != fd_stat.st_uid
+        || rustix::fs::FileType::from_raw_mode(path_stat.st_mode) != rustix::fs::FileType::Directory
+    {
+        return Err(PreparationError::UnsafeDestinationMetadata);
+    }
+    Ok(())
+}
+
+fn ensure_path_points_to_fd(path: &Path, fd: &OwnedFd) -> Result<(), PreparationError> {
+    let current =
+        open_directory_chain(path).map_err(|_| PreparationError::UnsafeDestinationMetadata)?;
+    let expected_stat = rustix::fs::fstat(fd).map_err(io::Error::from)?;
+    let current_stat = rustix::fs::fstat(&current).map_err(io::Error::from)?;
+    if expected_stat.st_dev != current_stat.st_dev || expected_stat.st_ino != current_stat.st_ino {
+        return Err(PreparationError::UnsafeDestinationMetadata);
+    }
+    Ok(())
+}
+
+fn available_capacity(directory: &OwnedFd) -> Result<(u64, u64), PreparationError> {
+    let usage = rustix::fs::fstatvfs(directory).map_err(io::Error::from)?;
+    let bytes = usage
+        .f_bavail
+        .checked_mul(usage.f_frsize)
+        .ok_or(PreparationError::SnapshotLimit)?;
+    Ok((bytes, usage.f_favail))
 }
 
 fn validate_destination_name(name: &str) -> Result<(), PreparationError> {
@@ -515,8 +1270,7 @@ mod tests {
             .expect("read commit")
             .trim()
             .to_owned();
-        fs::set_permissions(source.join(".git"), fs::Permissions::from_mode(0o700))
-            .expect("private source metadata");
+        privatize_git_metadata(&source.join(".git")).expect("private source metadata");
         Fixture {
             _temp: temp,
             source,
@@ -553,11 +1307,31 @@ mod tests {
         );
     }
 
+    fn privatize_git_metadata(path: &Path) -> std::io::Result<()> {
+        let metadata = fs::symlink_metadata(path)?;
+        if metadata.file_type().is_symlink() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "symlink in fixture Git metadata",
+            ));
+        }
+        if metadata.is_dir() {
+            for entry in fs::read_dir(path)? {
+                privatize_git_metadata(&entry?.path())?;
+            }
+            fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
+        } else if metadata.is_file() {
+            fs::set_permissions(path, fs::Permissions::from_mode(0o600))?;
+        }
+        Ok(())
+    }
+
     #[test]
     fn creates_private_detached_workspace_with_exact_commit_and_scope() {
         let fixture = fixture();
         let prepared = prepare_workspace(request(&fixture, "attempt-one")).expect("prepare");
         let path = prepared.workspace().workspace.clone();
+        let git = trusted_git().expect("trusted git");
         assert_eq!(prepared.head_oid(), fixture.commit);
         assert_eq!(prepared.workspace().custody, Custody::RegisteredOnly);
         assert_eq!(prepared.project_id().as_str(), "project-a");
@@ -575,6 +1349,18 @@ mod tests {
             0o700
         );
         assert!(!path.join(".git/objects/info/alternates").exists());
+        assert_eq!(
+            git_text(&git, Some(&path), &["rev-list", "--count", "HEAD"])
+                .expect("shallow history count")
+                .trim(),
+            "1"
+        );
+        assert_eq!(
+            git_text(&git, Some(&path), &["rev-parse", "--is-shallow-repository"])
+                .expect("shallow repository state")
+                .trim(),
+            "true"
+        );
     }
 
     #[test]
@@ -651,5 +1437,69 @@ mod tests {
             Err(PreparationError::UnsafeSourceMetadata)
         ));
         assert!(!fixture.source.join("injected").exists());
+    }
+
+    #[test]
+    fn rejects_alternates_shallow_and_promisor_source_metadata() {
+        let alternate_fixture = fixture();
+        let info = alternate_fixture.source.join(".git/objects/info");
+        fs::create_dir_all(&info).expect("object info directory");
+        fs::write(info.join("alternates"), "/foreign/objects\n").expect("alternates file");
+        assert!(matches!(
+            prepare_workspace(request(&alternate_fixture, "alternate-source")),
+            Err(PreparationError::UnsafeSourceMetadata)
+        ));
+
+        let promisor_fixture = fixture();
+        let pack = promisor_fixture.source.join(".git/objects/pack");
+        fs::create_dir_all(&pack).expect("pack directory");
+        fs::set_permissions(&pack, fs::Permissions::from_mode(0o700))
+            .expect("private pack directory");
+        fs::write(pack.join("pack-fixture.promisor"), "").expect("promisor marker");
+        assert!(matches!(
+            prepare_workspace(request(&promisor_fixture, "promisor-source")),
+            Err(PreparationError::UnsafeSourceMetadata)
+        ));
+
+        let shallow_fixture = fixture();
+        fs::write(shallow_fixture.source.join(".git/shallow"), "incomplete\n")
+            .expect("shallow marker");
+        assert!(matches!(
+            prepare_workspace(request(&shallow_fixture, "shallow-source")),
+            Err(PreparationError::UnsafeSourceMetadata)
+        ));
+    }
+
+    #[test]
+    fn output_capture_is_bounded_and_reports_overflow() {
+        let oversized = Arc::new(AtomicBool::new(false));
+        let captured = read_bounded(
+            std::io::Cursor::new(b"abcdef".to_vec()),
+            3,
+            Arc::clone(&oversized),
+        )
+        .join()
+        .expect("reader thread")
+        .expect("read output");
+        assert_eq!(captured, b"abc");
+        assert!(oversized.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn parent_descriptor_keeps_creation_anchored_after_path_replacement() {
+        let fixture = fixture();
+        let parent_fd = open_directory_chain(&fixture.parent).expect("open parent handle");
+        let moved = fixture._temp.path().join("managed-moved");
+        fs::rename(&fixture.parent, &moved).expect("rename private parent");
+        std::os::unix::fs::symlink(&fixture.source, &fixture.parent)
+            .expect("replace path with symlink");
+        rustix::fs::mkdirat(
+            &parent_fd,
+            "pinned-child",
+            rustix::fs::Mode::from_bits_truncate(0o700),
+        )
+        .expect("create beneath pinned parent");
+        assert!(moved.join("pinned-child").is_dir());
+        assert!(!fixture.source.join("pinned-child").exists());
     }
 }
