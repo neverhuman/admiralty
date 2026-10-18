@@ -1,14 +1,15 @@
 //! Authorized pending observations, scoped application ACKs and historical replay.
 //!
-//! This prototype does not authenticate callers, run a delivery loop, or confer
-//! authority. A trusted service caller must inject current actor/scope grants.
+//! Configured opaque credentials map to exact service-local coordination grants.
+//! This module does not run a delivery loop or infer authority from request labels.
 use admiralty_core::{
     CoordinationMessage, DomainEvent, MessageId, PrincipalId, ProjectId, SourceIdentity,
     coordination::mailbox::{BoundedMailbox, DeliveryOutcome},
 };
 use admiralty_store::inbox::{InboxCursor, InboxScope, PendingInboxPage, validate_request};
 use admiralty_store::{AppendReceipt, Cursor, Store, StoreError};
-use std::collections::BTreeSet;
+use serde::Serialize;
+use std::{collections::BTreeSet, sync::Arc};
 
 /// Bound both underlying durable events examined and returned message allocation.
 pub const MAX_COORDINATION_SCAN_EVENTS: usize = 16;
@@ -103,6 +104,7 @@ struct CredentialRecord {
 /// `Debug` implementation because it retains bearer credentials.
 pub struct CoordinationCredentialAuthority {
     credentials: Vec<CredentialRecord>,
+    incarnation: Arc<()>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -114,11 +116,22 @@ pub enum CoordinationCredentialError {
 
 /// Constructed only by successful token authentication. Request-supplied
 /// principal labels cannot create this identity.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct AuthenticatedCoordinationActor {
     credential_id: String,
     principal: PrincipalId,
+    incarnation: Arc<()>,
 }
+
+impl PartialEq for AuthenticatedCoordinationActor {
+    fn eq(&self, other: &Self) -> bool {
+        self.credential_id == other.credential_id
+            && self.principal == other.principal
+            && Arc::ptr_eq(&self.incarnation, &other.incarnation)
+    }
+}
+
+impl Eq for AuthenticatedCoordinationActor {}
 
 impl AuthenticatedCoordinationActor {
     pub fn principal(&self) -> &PrincipalId {
@@ -190,6 +203,7 @@ impl CoordinationCredentialAuthority {
         }
         Ok(Self {
             credentials: records,
+            incarnation: Arc::new(()),
         })
     }
 
@@ -208,6 +222,7 @@ impl CoordinationCredentialAuthority {
             .map(|credential| AuthenticatedCoordinationActor {
                 credential_id: credential.credential_id.clone(),
                 principal: credential.actor.clone(),
+                incarnation: self.incarnation.clone(),
             })
             .ok_or(CoordinationCredentialError::Unauthorized)
     }
@@ -233,7 +248,9 @@ impl CoordinationCredentialAuthority {
         message: Option<&MessageId>,
         source: Option<&SourceIdentity>,
     ) -> bool {
-        if actor != &authenticated.principal {
+        if actor != &authenticated.principal
+            || !Arc::ptr_eq(&self.incarnation, &authenticated.incarnation)
+        {
             return false;
         }
         self.credentials
@@ -302,7 +319,7 @@ impl CoordinationReadAuthorizer for AuthenticatedAuthorizer<'_> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct QueuedMessageBatch {
     /// Advances over the bounded scanned durable page, even if none match.
     pub cursor: Cursor,
@@ -786,6 +803,65 @@ mod tests {
             );
         }
         cleanup_store(&path);
+    }
+
+    #[test]
+    fn authenticated_handle_is_bound_to_issuer_incarnation_across_rotation() {
+        let source = source("1");
+        let mut old_authority =
+            CoordinationCredentialAuthority::new(vec![CoordinationCredential::configured(
+                "same-credential-id".into(),
+                TOKEN.into(),
+                scope().recipient.clone(),
+                vec![read_grant(scope())],
+            )])
+            .expect("old credential authority");
+        let old_actor = old_authority
+            .authenticate(TOKEN)
+            .expect("old token authenticates");
+
+        let replacement_token = "replacement-opaque-coordination-token-32-bytes";
+        let replacement_authority =
+            CoordinationCredentialAuthority::new(vec![CoordinationCredential::configured(
+                "same-credential-id".into(),
+                replacement_token.into(),
+                scope().recipient.clone(),
+                vec![ack_grant(scope(), source.clone())],
+            )])
+            .expect("replacement has stronger ACK grant");
+        let replacement_actor = replacement_authority
+            .authenticate(replacement_token)
+            .expect("replacement token authenticates");
+
+        assert!(old_actor != replacement_actor);
+        assert!(!replacement_authority.permits(
+            &old_actor,
+            old_actor.principal(),
+            CoordinationAction::AcknowledgeApplication,
+            &scope(),
+            Some(&message().message_id),
+            Some(&source),
+        ));
+
+        old_authority
+            .revoke("same-credential-id")
+            .expect("revoke old credential");
+        assert!(!old_authority.permits(
+            &old_actor,
+            old_actor.principal(),
+            CoordinationAction::ReadPending,
+            &scope(),
+            None,
+            None,
+        ));
+        assert!(!replacement_authority.permits(
+            &old_actor,
+            old_actor.principal(),
+            CoordinationAction::AcknowledgeApplication,
+            &scope(),
+            Some(&message().message_id),
+            Some(&source),
+        ));
     }
 
     #[test]
