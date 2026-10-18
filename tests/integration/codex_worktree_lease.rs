@@ -1,3 +1,4 @@
+use admiralty_core::coordination::questions::{QuestionEvent, QuestionStatus};
 use admiralty_core::{
     AcceptanceCriterion, AttemptId, CheckSpec, PrincipalId, ProjectId, RootId, TaskContract,
     TaskId, content_digest,
@@ -12,6 +13,11 @@ use admiralty_runtime::{
         supervision::SupervisionScope,
     },
 };
+use admiralty_store::questions::{
+    JournalScope, append as append_question, initialize as initialize_questions,
+    reconstruct as reconstruct_question,
+};
+use rusqlite::Connection;
 use std::collections::BTreeSet;
 
 fn fixture() -> (TaskContract, ModelSpec) {
@@ -132,4 +138,240 @@ fn p05_p15_round8_p08_worktree_lease_qualification() {
         ),
         Err(CodexError::Clock)
     ));
+}
+
+fn question_scope(id: &str) -> JournalScope {
+    JournalScope {
+        root_id: RootId::new("root-recovery").unwrap(),
+        question: admiralty_core::coordination::questions::QuestionScope {
+            question_id: admiralty_core::MessageId::new(id).unwrap(),
+            project_id: ProjectId::new("project-recovery").unwrap(),
+            task_id: TaskId::new("task-recovery").unwrap(),
+        },
+        authority_ref: "grant:task-recovery:r3".into(),
+    }
+}
+
+fn question_open(scope: &JournalScope, event_id: &str, deadline_utc: Option<u64>) -> QuestionEvent {
+    QuestionEvent::Open {
+        event_id: admiralty_core::MessageId::new(event_id).unwrap(),
+        scope: scope.question.clone(),
+        authority_ref: scope.authority_ref.clone(),
+        asker: admiralty_core::PrincipalId::new("asker").unwrap(),
+        recipient: admiralty_core::PrincipalId::new("worker").unwrap(),
+        allowed_recipients: vec![
+            admiralty_core::PrincipalId::new("worker").unwrap(),
+            admiralty_core::PrincipalId::new("reviewer").unwrap(),
+        ],
+        requirement: "Resolve the scoped question with retained evidence".into(),
+        question: "Which artifact revision is authoritative?".into(),
+        options: vec!["r1".into(), "r2".into()],
+        deadline_utc,
+    }
+}
+
+#[test]
+fn p05_p15_round9_item3_question_routing_recovery_qualification() {
+    let directory = tempfile::tempdir().expect("private question journal directory");
+    let database = directory.path().join("questions.sqlite3");
+    let scope = question_scope("question-route");
+    let open = question_open(&scope, "event-open", None);
+    let route = QuestionEvent::Route {
+        event_id: admiralty_core::MessageId::new("event-route").unwrap(),
+        scope: scope.question.clone(),
+        expected_revision: 1,
+        authority_ref: scope.authority_ref.clone(),
+        actor: admiralty_core::PrincipalId::new("worker").unwrap(),
+        recipient: admiralty_core::PrincipalId::new("reviewer").unwrap(),
+    };
+
+    let mut connection = Connection::open(&database).expect("open durable question journal");
+    initialize_questions(&connection).expect("initialize deterministic question schema");
+    let opened = append_question(
+        &mut connection,
+        &scope,
+        &admiralty_core::MessageId::new("command-open").unwrap(),
+        &open,
+    )
+    .expect("open question in its exact root/project/task/authority scope");
+    assert_eq!(opened.revision, "1");
+    assert!(!opened.duplicate);
+
+    let before_route = reconstruct_question(&connection, &scope)
+        .unwrap()
+        .expect("opened question reconstructs");
+    let unauthorized = QuestionEvent::Route {
+        event_id: admiralty_core::MessageId::new("event-unauthorized").unwrap(),
+        scope: scope.question.clone(),
+        expected_revision: 1,
+        authority_ref: scope.authority_ref.clone(),
+        actor: admiralty_core::PrincipalId::new("intruder").unwrap(),
+        recipient: admiralty_core::PrincipalId::new("reviewer").unwrap(),
+    };
+    assert!(
+        append_question(
+            &mut connection,
+            &scope,
+            &admiralty_core::MessageId::new("command-unauthorized").unwrap(),
+            &unauthorized,
+        )
+        .is_err()
+    );
+    assert!(
+        append_question(
+            &mut connection,
+            &scope,
+            &admiralty_core::MessageId::new("command-stale").unwrap(),
+            &QuestionEvent::Route {
+                event_id: admiralty_core::MessageId::new("event-stale").unwrap(),
+                scope: scope.question.clone(),
+                expected_revision: 0,
+                authority_ref: scope.authority_ref.clone(),
+                actor: admiralty_core::PrincipalId::new("worker").unwrap(),
+                recipient: admiralty_core::PrincipalId::new("reviewer").unwrap(),
+            },
+        )
+        .is_err()
+    );
+    assert_eq!(
+        reconstruct_question(&connection, &scope).unwrap().unwrap(),
+        before_route,
+        "rejected routing commands leave journal and projection unchanged"
+    );
+
+    let routed = append_question(
+        &mut connection,
+        &scope,
+        &admiralty_core::MessageId::new("command-route").unwrap(),
+        &route,
+    )
+    .expect("allowlisted current recipient can route to reviewer");
+    assert_eq!(routed.revision, "2");
+    assert_eq!(
+        append_question(
+            &mut connection,
+            &scope,
+            &admiralty_core::MessageId::new("command-route").unwrap(),
+            &route,
+        )
+        .unwrap(),
+        routed,
+        "exact command retry returns the retained receipt"
+    );
+    let replay = append_question(
+        &mut connection,
+        &scope,
+        &admiralty_core::MessageId::new("command-route-replay").unwrap(),
+        &route,
+    )
+    .expect("event replay under a new command is idempotent");
+    assert!(replay.duplicate);
+    assert_eq!(replay.revision, "2");
+    assert!(matches!(
+        append_question(
+            &mut connection,
+            &scope,
+            &admiralty_core::MessageId::new("command-route").unwrap(),
+            &QuestionEvent::Route {
+                event_id: admiralty_core::MessageId::new("event-route").unwrap(),
+                scope: scope.question.clone(),
+                expected_revision: 1,
+                authority_ref: scope.authority_ref.clone(),
+                actor: admiralty_core::PrincipalId::new("worker").unwrap(),
+                recipient: admiralty_core::PrincipalId::new("worker").unwrap(),
+            },
+        ),
+        Err(admiralty_store::questions::QuestionStoreError::IdentityCollision)
+    ));
+    drop(connection);
+
+    let mut connection =
+        Connection::open(&database).expect("reopen question journal after restart");
+    let restored = reconstruct_question(&connection, &scope)
+        .unwrap()
+        .expect("routed state rebuilds from durable event history");
+    assert_eq!(restored.state.revision, 2);
+    assert_eq!(restored.state.status, QuestionStatus::Routed);
+    assert_eq!(restored.state.recipient.as_str(), "reviewer");
+    assert!(
+        append_question(
+            &mut connection,
+            &scope,
+            &admiralty_core::MessageId::new("command-route-cycle").unwrap(),
+            &QuestionEvent::Route {
+                event_id: admiralty_core::MessageId::new("event-route-cycle").unwrap(),
+                scope: scope.question.clone(),
+                expected_revision: 2,
+                authority_ref: scope.authority_ref.clone(),
+                actor: admiralty_core::PrincipalId::new("reviewer").unwrap(),
+                recipient: admiralty_core::PrincipalId::new("worker").unwrap(),
+            },
+        )
+        .is_err(),
+        "a visited recipient cannot be routed back to after restart"
+    );
+
+    let expiry_scope = question_scope("question-expiry");
+    let expiring = question_open(&expiry_scope, "event-expiry-open", Some(100));
+    append_question(
+        &mut connection,
+        &expiry_scope,
+        &admiralty_core::MessageId::new("command-expiry-open").unwrap(),
+        &expiring,
+    )
+    .expect("open second scoped question with deterministic deadline");
+    let deadline = QuestionEvent::EvaluateDeadline {
+        event_id: admiralty_core::MessageId::new("event-expiry-eval").unwrap(),
+        scope: expiry_scope.question.clone(),
+        expected_revision: 1,
+        authority_ref: expiry_scope.authority_ref.clone(),
+        actor: admiralty_core::PrincipalId::new("asker").unwrap(),
+        observed_utc: Some(101),
+    };
+    let escalation = append_question(
+        &mut connection,
+        &expiry_scope,
+        &admiralty_core::MessageId::new("command-expiry-eval").unwrap(),
+        &deadline,
+    )
+    .expect("strictly expired deadline creates a durable escalation proposal");
+    let escalation_ref = escalation
+        .escalation_ref
+        .expect("first deadline transition persists escalation reference");
+    let expiry_replay = append_question(
+        &mut connection,
+        &expiry_scope,
+        &admiralty_core::MessageId::new("command-expiry-replay").unwrap(),
+        &deadline,
+    )
+    .expect("deadline event replay is idempotent");
+    assert!(expiry_replay.duplicate);
+    assert_eq!(
+        expiry_replay.escalation_ref.as_deref(),
+        Some(escalation_ref.as_str())
+    );
+    assert!(matches!(
+        append_question(
+            &mut connection,
+            &expiry_scope,
+            &admiralty_core::MessageId::new("command-answer-expired").unwrap(),
+            &QuestionEvent::Answer {
+                event_id: admiralty_core::MessageId::new("event-answer-expired").unwrap(),
+                scope: expiry_scope.question.clone(),
+                expected_revision: 2,
+                authority_ref: expiry_scope.authority_ref.clone(),
+                actor: admiralty_core::PrincipalId::new("worker").unwrap(),
+                answer: "r2".into(),
+            },
+        ),
+        Err(admiralty_store::questions::QuestionStoreError::Reducer(_))
+    ));
+    assert_eq!(
+        reconstruct_question(&connection, &expiry_scope)
+            .unwrap()
+            .unwrap()
+            .escalation_ref,
+        Some(escalation_ref),
+        "recovery retains the one recorded escalation reference"
+    );
 }
