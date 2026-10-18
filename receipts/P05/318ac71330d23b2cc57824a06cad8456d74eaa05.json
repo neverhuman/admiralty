@@ -1,0 +1,87 @@
+{
+  "base_sha": "b3a28c32f76550cf1ededde1539c5b2aa9f69c92",
+  "changed_paths": [
+    {
+      "blob": "1307461f30961b6f6a32b0359734bf3a82e6e63c",
+      "path": "crates/admiralty-core/src/coordination/mailbox.rs",
+      "sha256": "e787becd1930cf458a92590ab39a4d6c2552a1191f54763d76618886e7a43873"
+    },
+    {
+      "blob": "4ac5cb854ce8476b02241c06d3ef3a4fcb89a264",
+      "path": "crates/admiralty-core/src/coordination/message.rs",
+      "sha256": "b70a7554e8488f618a355ba372972d3f42a227ac7010382dcb6173f523a8a471"
+    },
+    {
+      "blob": "013a3e2d1f83998cd1d86bfd10a6b93cdd577209",
+      "path": "crates/admiralty-core/src/coordination/topics.rs",
+      "sha256": "ddea87cc57e38ac8afb7cf2d33948abe885d011c14dd5f72dab3673e116d2a3e"
+    },
+    {
+      "blob": "a03f6c8484e79bc4db19e00e78a1837ef20c8e0b",
+      "path": "crates/admiralty-server/src/services/coordination.rs",
+      "sha256": "b2f9a5922953aef957783fb98051afa442e9a438b7b9d77573bcaebfe310e055"
+    },
+    {
+      "blob": "1a04b85adef0c1490c05cf6b97a08f172b85799e",
+      "path": "tests/integration/coordination_delivery.rs",
+      "sha256": "7cc30e325467b5755aa3d9e5f39514118b3f998d27800c6dd16271ea9fa8110c"
+    },
+    {
+      "blob": "981e079f6eaca08ba24fd5a6e0829bc83654cd28",
+      "path": "docs/architecture/coordination-observation-limits.md",
+      "sha256": "0fe5075ae0f46dc8f788465201f7546d4d993fc60277b51d2acfb4ddf38cca8f"
+    }
+  ],
+  "criteria": {
+    "bounded_recipient_queue_observation_replay": "pass; not pending delivery or activation",
+    "complete_envelope_validation": "pass",
+    "coordination_integration_tests": 6,
+    "immutable_ID_sequence_content_collision_checks": "pass",
+    "inline_mailbox_envelope_tests": 10,
+    "inline_topic_tests": 9,
+    "mandatory_topic_policy_and_bounded_pages": "pass",
+    "retained_ACK_history_capacity": "pass; explicit resnapshot, no eviction",
+    "sequence_zero_and_checked_watermark": "pass"
+  },
+  "independent_reviews": [
+    {
+      "result": "clear",
+      "scope": "topics",
+      "sha256": "ddea87cc57e38ac8afb7cf2d33948abe885d011c14dd5f72dab3673e116d2a3e"
+    },
+    {
+      "result": "root read-only review clear and combined tests pass",
+      "scope": "mailbox/envelope"
+    },
+    {
+      "hashes": [
+        {
+          "blob": "a03f6c8484e79bc4db19e00e78a1837ef20c8e0b",
+          "path": "crates/admiralty-server/src/services/coordination.rs",
+          "sha256": "b2f9a5922953aef957783fb98051afa442e9a438b7b9d77573bcaebfe310e055"
+        },
+        {
+          "blob": "1a04b85adef0c1490c05cf6b97a08f172b85799e",
+          "path": "tests/integration/coordination_delivery.rs",
+          "sha256": "7cc30e325467b5755aa3d9e5f39514118b3f998d27800c6dd16271ea9fa8110c"
+        }
+      ],
+      "result": "independent clear after correcting unbounded cursor clone admission",
+      "scope": "server + shared harness"
+    }
+  ],
+  "limitations": [
+    "These are bounded offline/in-memory building blocks with injected trusted service policy, not authentication/grant issuance.",
+    "Queued observation pages include ACKed history and advance across filtered events; no pending-delivery or application-ACK claim.",
+    "Durable subscription/replay, delivery journal/expiry/unknown state, priority reserves/coalescing and service-authority activation remain pending."
+  ],
+  "native_execution_qualified": false,
+  "next_action": "Pin the durable delivery/subscription command interface against existing Store outbox/recipient-epoch ACK and trusted service authority before implementing its executor; preserve native execution disabled.",
+  "observed_utc": "2026-10-18T15:35:23.883934+00:00",
+  "packet": "P05",
+  "packet_accepted": false,
+  "paid_provider_calls": 0,
+  "prior_review": "receipts/reviews/429595d196fcb6b730d5683e04d479faa1ec968c-P05.json",
+  "source_sha": "318ac71330d23b2cc57824a06cad8456d74eaa05",
+  "state": "partial_review"
+}
