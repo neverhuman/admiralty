@@ -1080,6 +1080,14 @@ export function draftToContractCandidate(draft: IntakeDraft): unknown {
   const checkId = draft.check_id.trim();
   const parsedArgs = parseCheckArgs(draft.check_args);
 
+  const originalFirstCheckId = draft.full_checks?.[0]?.id;
+  const renamedFirstCheck =
+    Boolean(originalFirstCheckId && checkId && checkId !== originalFirstCheckId);
+  const remapCriterionCheckIds = (ids: readonly string[]): string[] =>
+    renamedFirstCheck
+      ? ids.map(id => (id === originalFirstCheckId ? checkId : id))
+      : [...ids];
+
   const checks: CheckSpec[] =
     draft.full_checks && draft.full_checks.length > 0
       ? draft.full_checks.map((chk, idx) =>
@@ -1114,12 +1122,12 @@ export function draftToContractCandidate(draft: IntakeDraft): unknown {
                 text: draft.criterion_text.trim(),
                 check_ids:
                   crit.check_ids.length > 0
-                    ? [checkId || crit.check_ids[0], ...crit.check_ids.slice(1)]
+                    ? remapCriterionCheckIds(crit.check_ids)
                     : checkId
                       ? [checkId]
                       : [],
               }
-            : { ...crit, check_ids: [...crit.check_ids] },
+            : { ...crit, check_ids: remapCriterionCheckIds(crit.check_ids) },
         )
       : draft.criterion_id.trim() || draft.criterion_text.trim()
         ? [
@@ -2354,7 +2362,11 @@ export async function executeIntakeCommand(params: {
         : await submitNativeLifecycle(envelope.request, params.token, undefined, params.fetcher);
 
   params.retainedRef.current = null;
-  await params.onRefreshSnapshot?.();
+  try {
+    await params.onRefreshSnapshot?.();
+  } catch {
+    /* post-commit refresh failure must not present a persisted command as unpersisted */
+  }
   return receipt;
 }
 
@@ -2449,7 +2461,11 @@ export async function executeTaskDetailLifecycleCommand(params: {
         : await submitNativeLifecycle(request, params.token, undefined, params.fetcher);
 
   params.retainedRef.current = null;
-  await params.onRefreshSnapshot?.();
+  try {
+    await params.onRefreshSnapshot?.();
+  } catch {
+    /* post-commit refresh failure must not present a persisted command as unpersisted */
+  }
   return receipt;
 }
 
