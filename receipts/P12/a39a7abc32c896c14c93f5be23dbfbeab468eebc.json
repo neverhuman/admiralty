@@ -1,0 +1,81 @@
+{
+  "packet": "P12",
+  "state": "partial_review",
+  "owner": "local integrator",
+  "head_sha": "a39a7abc32c896c14c93f5be23dbfbeab468eebc",
+  "base_sha": "c513a4e38092ac6c2e4e8464537aa1988744c02f",
+  "batch_branch": "codex/batch-item2-p08-p09-p12",
+  "tested_tree_sha": "a39a7abc32c896c14c93f5be23dbfbeab468eebc",
+  "observed_utc": "2026-10-18T16:43:27Z",
+  "validation": [
+    {
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "note": "Cold first attempt had one timing assertion timeout and one fixture scratch-path refusal; rerun with TMPDIR=/home/ubuntu/admiralty-v2-build/targets/batch-item2-tmp passed. No repository code changed for rerun."
+    },
+    {
+      "argv": [
+        "pnpm",
+        "contracts:check"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "native_execution_qualified": false,
+  "packet_accepted": false,
+  "integration_status": "staged_on_batch_branch; main merge held for coordinated window",
+  "source_worker_commit": "55b2661aa5d85547087f4303ba413a9988478b4d",
+  "origin_main_equivalent_commit": "1c6bb63637313a7be7e45110c3cd9542f8f0262e",
+  "focused_checks": [
+    "pnpm --dir apps/dashboard typecheck",
+    "pnpm --dir apps/dashboard exec vitest run"
+  ],
+  "limitations": [
+    "Round 7 evidence is supplemental; no new product acceptance. Candidate packet work was already integrated on main through the equivalent commit shown; batch holds only the new worker test commits."
+  ],
+  "qualification_evidence": {
+    "receipt_root": "/home/ubuntu/admiralty-v2-build/receipts/ITEM2-BATCH/c513a4e38092ac6c2e4e8464537aa1988744c02f",
+    "logs_sha256": {
+      "clippy.log": "b72370be6a423448fe4693e88696de86a459b0aa13f82e81efea0a37f3eebc6f",
+      "contracts.log": "afafbe0f113d1c5c735a73678c73cbe59c170160f85dd4b1d3c3c5867e486058",
+      "diff-check.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "workspace-test.log": "76f53cb761f7df4cef113b775b5a13b64b972f3af7685b3d2b59845c4e2907de"
+    },
+    "exit_codes": {
+      "fmt": 0,
+      "clippy": 0,
+      "workspace-test": 0,
+      "contracts": 0,
+      "diff-check": 0
+    }
+  }
+}
