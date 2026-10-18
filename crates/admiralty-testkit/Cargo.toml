@@ -22,6 +22,8 @@ tokio.workspace = true
 tower = { version = "0.5", features = ["util"] }
 rusqlite.workspace = true
 futures-util.workspace = true
+[dev-dependencies]
+schemars.workspace = true
 [lints]
 workspace = true
 
