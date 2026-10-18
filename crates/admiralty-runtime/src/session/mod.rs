@@ -1539,7 +1539,7 @@ mod tests {
         host.launch(spec(
             &temporary,
             "no-reader",
-            &["-c", "printf ready; sleep 10"],
+            &["-c", "printf ready; sleep 30"],
         ))?;
         await_output(&host, "no-reader", b"ready");
         let started = Instant::now();

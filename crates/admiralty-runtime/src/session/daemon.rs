@@ -744,7 +744,18 @@ mod tests {
         stream.write_all(&body)
     }
     fn exchange(socket: &Path, request: &Value) -> io::Result<Value> {
-        let mut stream = UnixStream::connect(socket)?;
+        let deadline = Instant::now() + Duration::from_secs(3);
+        let mut stream = loop {
+            match UnixStream::connect(socket) {
+                Ok(stream) => break stream,
+                Err(error)
+                    if error.kind() == io::ErrorKind::WouldBlock && Instant::now() < deadline =>
+                {
+                    thread::sleep(Duration::from_millis(5));
+                }
+                Err(error) => return Err(error),
+            }
+        };
         send(&mut stream, request)?;
         read_response(&mut stream)
     }
