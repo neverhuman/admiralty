@@ -1,34 +1,27 @@
 # Native durable controller result
 
-Base: `origin/main` at `f7ae3c1c86b46911051931dcbad0178ca4075d81` (after fetching and rebasing).
+Base: `origin/codex/native-runtime-integration` at `aab2a6af65b70a5099143777ca9b602e0ce2a80d`, rebased on top of source commits `6ba83c5`, `0f17b9f`, and `8ee2f6b`.
 
 ## Implemented
 
-- Added `crates/admiralty-server/src/services/controller.rs` with a one-task bounded admission tick. It checks current task/contract state, calls a trusted in-process scoped admission adapter, then records `TaskClaimed` and a typed, idempotent launch outbox intent atomically through the real Store writer.
-- Added fail-closed `DenyAdmission` for configurations without a qualified P14/resource adapter.
-- Added an I1 lifecycle composition hook using `LifecycleAuthority`, `Store::execute_lifecycle`, and the exact optional `OutboxIntent`. Attempt closure is passed as its own lifecycle action and is not inferred from candidate checks or child exit. Candidate evidence continues to carry its separate closure digest.
-- Added tests for actual Store persistence/replay across reopen, denial and stale contract no-write behavior, and I1 writer authorization of exact effect key/payload/digests/schedule with separate closure semantics.
-- Did not retain module registration; `services/mod.rs` remains owned by primary integration. It was registered temporarily in this private checkout only while compiling and running the in-file tests.
+- Added `crates/admiralty-server/src/services/controller.rs` with bounded admission that checks the current task/contract state, invokes trusted in-process admission, and atomically persists `TaskClaimed` plus an idempotent launch intent through the Store writer.
+- Added `dispatch_one`, which claims at most one due intent through `Store::claim_outbox_due`, verifies the canonical payload digest and strict schema, rechecks the exact task/attempt/owner/contract against the current projection, and invokes a process-local current-admission check before runtime dispatch.
+- Dispatch consumes a typed runtime receipt bound to task, attempt, and run. Candidate evidence and failure evidence complete only the outbox effect; they never change task acceptance or lifecycle state. Denied, malformed, mismatched, and uncertain outcomes are written as `unknown`, which the Store will not automatically redispatch.
+- Added tests using the actual Store writer for a candidate receipt, no implicit task acceptance, no redelivery after completion, and durable fail-closed denial/unknown behavior. The runtime in these tests is a deterministic fake; it verifies the dispatch protocol, not real provider execution.
+- Kept `services/mod.rs` unchanged because primary integration owns module registration. It was temporarily registered only in this private worktree to run tests and clippy.
+- Preserved the I1 lifecycle composition hook: exact authorized effects are passed via `Store::execute_lifecycle`, and attempt closure remains a separate action.
 
 ## Verification
 
 Using lane-local `CARGO_TARGET_DIR=target`, `CARGO_BUILD_JOBS=2`, and `TMPDIR=/home/ubuntu/.adm-native-controller-tmp`:
 
-- `cargo test -p admiralty-server --lib services::controller::tests` — 3 passed, 0 failed.
+- `cargo test -p admiralty-server controller::tests -- --nocapture` — 5 passed, 0 failed.
 - `cargo clippy -p admiralty-server --all-targets -- -D warnings` — passed.
-- `cargo fmt --all -- --check` — passed with temporary module wiring; wiring was then restored to the committed baseline.
+- `rustfmt --edition 2024 crates/admiralty-server/src/services/controller.rs` — passed.
 - `git diff --check` — passed.
 
-## Integration boundary and required APIs
+## Remaining production integration boundary
 
-This candidate ends at the durable pending intent. Current Store exposes `outbox::claim_due` over a raw SQLite connection, but has no Store-writer request for claiming/completing an intent. I did not open a second production writer or spawn a child without a fenced claim. As a result this branch does not claim to launch, record `TaskStarted`/candidate, run checks, or qualify native execution; the fake-child spine remains unimplemented until those production seams are integrated.
+This advances actual durable native dispatch, but the checkout still has no concrete server-side `NativeRuntimeExecutor`/`DispatchAdmission` composition. Runtime `ExecutionAdapter` requires a `PreparedCommand`, validated workspace, reservation, and live resource permit. `VerifiedResourcePermit::from_authenticated_issuer` is crate-private to `admiralty-runtime`; the server cannot construct the permit from an authenticated authority with current public APIs. In addition, `ExecutionAdapter::finish` currently uses blocking `wait`, so it is not a safe bounded dispatch-loop implementation for arbitrary provider runs.
 
-Primary integration needs:
-
-1. Add a writer-serialized Store API to claim one due intent with a fenced token and trusted clock, and to record completed/rejected/unknown outcomes. Expired or ambiguous launch claims must become unknown and must not be automatically retried.
-2. Provide the integrated P14 admission/resource-gate adapter that atomically binds task read set, budgets, workspace custody and a live resource permit to the attempt and intent. The controller's `CurrentAdmission` is a trusted in-process seam; it is not a substitute for the transaction.
-3. Integrate a runtime launcher adapter that accepts only the live Store claim plus current validated workspace/resource permit. The pushed execution candidate currently exposes `PreparedCommand`, `ExecutionAdmissionValidator`, and `ExecutionAdapter::{launch,finish}`; the server needs its exact module/export and durable-start evidence contract.
-4. Integrate the independent trusted-check adapter and bind its opaque execution evidence, exact candidate, custody, and supervised closure into `LifecycleAuthority`. The I1 writer must continue to authorize `CloseAttempt` separately from `DecideCandidate`, including exact effect identity on retries.
-5. Register `services::controller` centrally after the primary chooses the final module wiring. No source routes, `lib.rs`, or manifests were changed here.
-
-The implementation is a durable launch-intent admission slice, not an end-to-end production controller qualification.
+Required follow-up: export a trusted runtime factory/issuer path for `VerifiedResourcePermit`, compose workspace preparation + reservation + trusted admission into a concrete server adapter, and change runtime finish to bounded observation/deadline semantics before wiring a real provider child. Until then this controller safely dispatches only when the server supplies those trusted adapters; this patch does not claim an end-to-end real-provider execution qualification. Primary integration still needs to register `services::controller` centrally.
