@@ -161,7 +161,10 @@ def _normalize(value, now, source):
     for lane in raw_lanes:
         if not isinstance(lane, dict) or not _text(lane.get("id"), 200):
             raise ManifestError("Each lane requires a nonempty string id.")
-        lanes.append({key: _text(lane.get(key), 200) for key in ("id", "owner", "node", "branch", "status")})
+        lanes.append({key: _text(lane.get(key), 200) for key in (
+            "id", "owner", "node", "branch", "status", "screen", "model", "effort", "tier", "packet_id",
+            "source_updated_utc", "observed_utc", "screen_state",
+        )})
         activity = _activity(lane.get("activity"))
         if activity:
             lanes[-1]["activity"] = activity
