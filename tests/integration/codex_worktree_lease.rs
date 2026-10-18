@@ -17,9 +17,9 @@ use std::collections::BTreeSet;
 fn fixture() -> (TaskContract, ModelSpec) {
     let contract = TaskContract {
         schema_version: 1,
-        project_id: ProjectId::new("project").unwrap(),
-        root_id: RootId::new("root").unwrap(),
-        task_id: TaskId::new("task").unwrap(),
+        project_id: ProjectId::new("project").expect("project fixture"),
+        root_id: RootId::new("root").expect("root fixture"),
+        task_id: TaskId::new("task").expect("task fixture"),
         revision: 2,
         title: "Scoped worktree lease".into(),
         objective: "Prepare a bounded Codex launch under a live lease".into(),
@@ -74,22 +74,22 @@ fn p05_p15_round8_p08_worktree_lease_qualification() {
         "--no-daemon --ask-for-approval",
         Some(10),
     )
-    .unwrap();
+    .expect("CLI help fixture parses");
     let admission = || CodexAdmission {
         scope: SupervisionScope {
             project_id: contract.project_id.clone(),
             root_id: contract.root_id.clone(),
             task_id: contract.task_id.clone(),
-            attempt_id: AttemptId::new("attempt").unwrap(),
-            owner: PrincipalId::new("captain").unwrap(),
+            attempt_id: AttemptId::new("attempt").expect("attempt fixture"),
+            owner: PrincipalId::new("captain").expect("captain fixture"),
             incarnation: "incarnation".into(),
             authority_ref: contract.authority_ref.clone(),
-            contract_digest: content_digest(&contract).unwrap(),
+            contract_digest: content_digest(&contract).expect("contract digest"),
             revision: contract.revision,
         },
         attempt_ordinal: 1,
         registry_revision: "17".into(),
-        selected_model_digest: content_digest(&model).unwrap(),
+        selected_model_digest: content_digest(&model).expect("model digest"),
         cli_observation_digest: cli.fingerprint().into(),
         node_id: "node".into(),
         working_dir: base.join("worktree"),

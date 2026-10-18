@@ -6,7 +6,6 @@ use admiralty_core::nodes::{
 };
 use admiralty_core::{PrincipalId, ProjectId, RootId, TaskId};
 use admiralty_runtime::{
-    MANAGED_EXECUTION_QUALIFIED,
     providers::codex::{CodexEffort, CodexNdjsonStream},
     session::{OutputChunk, OutputStream},
 };
@@ -61,7 +60,9 @@ fn p23_round8_p12_tui_node_telemetry_qualification() {
         usage.as_ref().and_then(|u| u.output_tokens.as_deref()),
         Some("3")
     );
-    assert!(!parser.finish(Some(0), true).trusted_acceptance());
+    let codex_summary = parser.finish(Some(0), true);
+    assert!(!codex_summary.trusted_acceptance());
+    assert!(!codex_summary.native_execution_qualified());
 
     // P23's capacity telemetry is scoped to the enrolled node and explicit tick.
     let admission_scope = scope();
@@ -125,7 +126,6 @@ fn p23_round8_p12_tui_node_telemetry_qualification() {
             .expect("exact telemetry replay")
             == observed
     );
-    assert!(!MANAGED_EXECUTION_QUALIFIED);
 }
 
 // This cross-packet qualification keeps the cockpit read-only, preserves exact
@@ -166,4 +166,3 @@ fn p26_p31_round8_p12_hitl_cockpit_qualification() {
     oversized.args = vec!["x".repeat(64 * 1024 + 1)];
     assert!(validate_launch_envelope(&oversized).is_err());
 }
-
