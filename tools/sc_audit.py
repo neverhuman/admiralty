@@ -195,7 +195,7 @@ def rev(repo, ref):
 
 # ---------------- per-project ledgers ----------------
 EXEC = re.compile(r'\b(cargo|nextest|pytest|just|npm|pnpm|make|ctest|uv run|go test|gh run|gh api|bash\s+\S+\.sh|\./\S+)\b|\bpython3?\s+(-m\s+\w+|[\w/.-]+\.py)\b')
-MEASURE = re.compile(r'\b(benchmark\w*|experiment run\w*|real (run|measurement|workload)|measured (reduction|saving|improvement|speedup)|cost (reduction|saving|improvement)|wall.?clock|on (the )?GPU)\b', re.I)
+MEASURE = re.compile(r'\b(benchmark\w*|experiment run\w*|real (run|measurement|workload)|measured (reduction|saving|improvement|speedup|information/byte|cost|bytes?)|cost (reduction|saving|improvement)|cheaper|wall.?clock|on (the )?GPU)\b', re.I)
 EXEC_CRIT = re.compile(r'\b(review|CI|exact.head|provenance|receiving|merge|run|runs|tested|tests?|measured|executes?|hash|sha256|receipt)\b', re.I)
 
 def audit_jopedime(sc_claims):
@@ -206,10 +206,11 @@ def audit_jopedime(sc_claims):
     res['main_sha'] = main
     files = sorted(glob.glob(vdir + '/I[0-9][0-9].json'))
     tasks = rj(JE + '/packet-v4-921643bc3ae0/tasks.json') or {}
-    total = len(tasks.get('tasks') or []) or 66
+    tmap = {t['id']: t for t in (tasks.get('tasks') or []) if isinstance(t, dict) and t.get('id')}
+    total = len(tmap) or 66
     res['total'] = total; res['receipts'] = len(files)
     present = {os.path.basename(f)[:-5] for f in files}
-    expected = {t['id'] for t in tasks.get('tasks') or []}
+    expected = set(tmap.keys())
     missing = sorted(expected - present) if expected else []
     if missing: F('amber', 'jopedime', 'RECEIPT_MISSING', f'{len(missing)} verify receipts missing: {" ".join(missing[:20])}', vdir)
     ok_pass, on_main_pass, bad = [], [], collections.defaultdict(list)
@@ -245,9 +246,40 @@ def audit_jopedime(sc_claims):
             # doc-only evidence: fatal when the criterion asks for something executed (review, CI, run, provenance...)
             bad['pass_on_doc_keyword_match' if EXEC_CRIT.search(crit) else 'pass_doc_only_doc_criterion'].append(tid)
             if EXEC_CRIT.search(crit): continue
-        if MEASURE.search(crit) and not any('measure' in k.lower() for k in r) and 'measurement' not in json.dumps(r).lower():
-            bad['measurement_criterion_unit_tests_only'].append(tid)
+        # Audit Gap 4: A receipt sha that is only an ancestor of main (e.g. I47 on d5b18bc) is not current main
+        if main and sha != main:
+            bad['sha_not_current_main'].append(tid); continue
+        # Audit Gap 3: Empty completion_criterion or blank/unmapped acceptance_case compared against packet-v4 tasks.json
+        t_spec = tmap.get(tid) or {}
+        exp_crit = str(t_spec.get('completion_criterion') or '').strip()
+        exp_ac = [str(x).strip() for x in (t_spec.get('acceptance_cases') or []) if str(x).strip()]
+        act_ac = [str(c.get('acceptance_case') or '').strip() for c in cases]
+        if not crit.strip() or (exp_crit and crit.strip() != exp_crit) or any(not a for a in act_ac) or (exp_ac and not set(exp_ac).issubset(set(act_ac))):
+            bad['empty_or_unmapped_criterion_cases'].append(tid); continue
         if len(cases) == 0: bad['pass_without_cases'].append(tid); continue
+        # Audit Gap 1: Script-edited receipt without a real log_path + matching log_sha256 (e.g. finalize_66_of_66.py on I63/I64)
+        exec_cases = [c for c in cases if EXEC.search(' '.join(str(c.get(k, '')) for k in ('command', 'test_or_code')))]
+        if exec_cases and not any(c.get('log_path') and c.get('log_sha256') for c in cases + cmds):
+            bad['relabeled_without_log'].append(tid); continue
+        # Audit Gap 2: Rewritten proof SHAs (proof names only main_sha while referencing evidence dirs under other SHAs or stripping prior SHAs from *.relabeled*.json without prior_evidence_sha)
+        raw_r = json.dumps(r)
+        ev_shas = set(re.findall(r'work-packets/evidence/I\d+/([0-9a-f]{40})', raw_r)) - {sha}
+        proof_shas = set(re.findall(r'\b[0-9a-f]{40}\b', proof))
+        prior_ev = r.get('prior_evidence_sha')
+        prior_set = set(prior_ev) if isinstance(prior_ev, list) else ({str(prior_ev)} if prior_ev else set())
+        rewritten = False
+        if ev_shas and proof_shas == {sha} and not (ev_shas <= prior_set):
+            rewritten = True
+        for rf in glob.glob(vdir + '/' + tid + '.relabeled*.json'):
+            rr = rj(rf) or {}
+            rproof = str(rr.get('completion_criterion_proof') or '')
+            rshas = set(re.findall(r'\b[0-9a-f]{40}\b', rproof)) - {sha}
+            if rshas and not (rshas <= (proof_shas | prior_set)):
+                rewritten = True
+        if rewritten:
+            bad['rewritten_proof_sha'].append(tid)
+        if MEASURE.search(crit) and not any('measure' in k.lower() for k in r) and 'measurement' not in raw_r.lower():
+            bad['measurement_criterion_unit_tests_only'].append(tid); continue
         # proof honesty: a proof that says every command uses --exact while a cargo test command does not is a false receipt
         allcmds = [str(c.get('command', '')) for c in cases + cmds if c.get('command')]
         if re.search(r'\b(each|every|all)\b[^.]*--exact', proof, re.I) and any('cargo test' in c and '--exact' not in c for c in allcmds):
@@ -277,14 +309,18 @@ def audit_jopedime(sc_claims):
                     lbad = True
         if lbad: bad['log_sha256_mismatch'].append(tid); continue
         ok_pass.append(tid)
-        if main and re.fullmatch(r'[0-9a-f]{40}', sha) and is_anc(repo, sha, main): on_main_pass.append(tid)
+        if main and sha == main: on_main_pass.append(tid)
     labels = {'truncated_or_bad_sha': ('red', 'PASS/receipt carries a truncated or malformed git sha'),
               'sha_mismatch': ('red', 'sha != checkout_sha (verified a different commit than the receipt names; not counted)'),
               'truncated_sha256': ('red', 'sha256 field is truncated'),
               'pass_with_nonzero_exit': ('red', 'status PASS but a command/case has nonzero exit or passed=false'),
               'pass_on_doc_keyword_match': ('red', 'status PASS but evidence is a keyword/doc match while the criterion needs executed evidence (review/CI/run/provenance)'),
               'pass_doc_only_doc_criterion': ('info', 'PASS on doc text only (criterion is itself a document deliverable; spot-check)'),
-              'measurement_criterion_unit_tests_only': ('amber', 'criterion needs a real measurement/run; receipt shows tests only'),
+              'measurement_criterion_unit_tests_only': ('red', 'criterion needs a real measurement/run or explicit hypothesis qualification; receipt shows unit tests only (not counted)'),
+              'sha_not_current_main': ('red', 'receipt sha is an older ancestor commit, not current main (not counted)'),
+              'empty_or_unmapped_criterion_cases': ('red', 'empty completion_criterion or blank/unmapped/reworded acceptance_case vs packet-v4 tasks.json (not counted)'),
+              'relabeled_without_log': ('red', 'receipt edited by script (finalize_*) without a new log_path and matching log_sha256 (relabeled; not counted)'),
+              'rewritten_proof_sha': ('amber', 'completion_criterion_proof rewrote prior commit SHAs to main_sha without preserving prior_evidence_sha'),
               'pass_without_cases': ('red', 'status PASS with no acceptance cases mapped'),
               'receipt_predates_sha': ('red', 'verified_at is older than the commit the receipt names (relabeled to a newer sha, not re-run; not counted)'),
               'proof_names_other_sha': ('red', 'proof says the tests ran at a different full sha than the receipt names (not counted)'),
