@@ -5,10 +5,11 @@
 
 use crate::{PrincipalId, ProjectId, RootId, TaskId};
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::{collections::BTreeMap, fmt};
 
 pub const MAX_RETIREMENT_JSON_BYTES: usize = 1024 * 1024;
 pub const MAX_RETIREMENT_ITEMS: usize = 1024;
+pub const MAX_REPLAY_RECORDS: usize = 8;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
@@ -103,6 +104,7 @@ pub struct AssetIdentity {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AssetObservation {
+    pub scope: Option<RetirementScope>,
     pub registered: Option<bool>,
     pub identity: Option<AssetIdentity>,
     pub pins_revision: Option<DecimalU64>,
@@ -143,6 +145,8 @@ pub struct RetirementState {
     pub generation: DecimalU64,
     pub claim: Option<RetirementClaim>,
     pub last_command: Option<ReplayRecord>,
+    #[serde(default)]
+    pub replay_history: BTreeMap<String, ReplayRecord>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -169,12 +173,17 @@ pub enum RetirementCommand {
     ProposeDelete { observation: AssetObservation },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct RetirementProposal {
     pub stage: RetirementStage,
     pub reasons: Vec<String>,
-    pub deletion_authorized: bool,
+    deletion_authorized: bool,
+}
+impl RetirementProposal {
+    pub fn deletion_authorized(&self) -> bool {
+        self.deletion_authorized
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
@@ -213,7 +222,12 @@ pub fn parse_observation_json(bytes: &[u8]) -> Result<AssetObservation, Retireme
 }
 
 pub fn plan_retirement(observation: &AssetObservation) -> RetirementProposal {
-    let reasons = blocking_reasons(observation);
+    let reasons =
+        if crate::limits::bounded_json_size(observation, MAX_RETIREMENT_JSON_BYTES).is_err() {
+            vec!["unknown:input_limit".into()]
+        } else {
+            blocking_reasons(observation)
+        };
     RetirementProposal {
         stage: if reasons.is_empty() {
             RetirementStage::Preview
@@ -226,7 +240,8 @@ pub fn plan_retirement(observation: &AssetObservation) -> RetirementProposal {
 }
 
 /// Apply one keyed command. `expected_generation` is an explicit CAS token;
-/// an exact command replay returns the recorded result without advancing it.
+/// an exact command replay preserves the current projection without advancing
+/// or rewinding it. All retained command identities remain collision checked.
 pub fn reduce_retirement(
     state: &RetirementState,
     expected_generation: &DecimalU64,
@@ -236,30 +251,52 @@ pub fn reduce_retirement(
     if key.is_empty() || key.len() > 128 {
         return Err(RetirementError::InvalidInput);
     }
-    let command_bytes = serde_json::to_vec(command).map_err(|_| RetirementError::InvalidInput)?;
-    if command_bytes.len() > MAX_RETIREMENT_JSON_BYTES {
+    crate::limits::bounded_json_size(
+        &(state, expected_generation, key, command),
+        MAX_RETIREMENT_JSON_BYTES,
+    )
+    .map_err(|_| RetirementError::InvalidInput)?;
+    let command_digest = crate::content_digest(&("admiralty-retirement-v1", &state.scope, command))
+        .map_err(|_| RetirementError::InvalidInput)?;
+    if state
+        .replay_history
+        .iter()
+        .any(|(key, record)| key != &record.key || !valid_digest(&record.command_digest))
+    {
         return Err(RetirementError::InvalidInput);
     }
-    let command_digest =
-        crate::content_digest(command).map_err(|_| RetirementError::InvalidInput)?;
-    if let Some(previous) = &state.last_command
-        && previous.key == key
-    {
+    let mut replay_history = state.replay_history.clone();
+    if let Some(previous) = &state.last_command {
+        if !valid_digest(&previous.command_digest)
+            || replay_history
+                .get(&previous.key)
+                .is_some_and(|entry| entry != previous)
+        {
+            return Err(RetirementError::InvalidInput);
+        }
+        replay_history.insert(previous.key.clone(), previous.clone());
+    }
+    if let Some(previous) = replay_history.get(key) {
         if previous.command_digest != command_digest {
             return Err(RetirementError::IdempotencyCollision);
         }
-        return Ok(RetirementState {
-            scope: state.scope.clone(),
-            stage: previous.resulting_state.stage,
-            generation: previous.resulting_state.generation.clone(),
-            claim: previous.resulting_state.claim.clone(),
-            last_command: Some(previous.clone()),
-        });
+        return Ok(state.clone());
+    }
+    if replay_history.len() >= MAX_REPLAY_RECORDS {
+        return Err(RetirementError::InvalidInput);
     }
     if state.generation != *expected_generation {
         return Err(RetirementError::CompareAndSwap);
     }
     let next_generation = state.generation.checked_next()?;
+    let observation = match command {
+        RetirementCommand::Claim { observation }
+        | RetirementCommand::Recheck { observation }
+        | RetirementCommand::ProposeDelete { observation } => observation,
+    };
+    if observation.scope.as_ref() != Some(&state.scope) {
+        return Err(RetirementError::Preserve);
+    }
     let (stage, claim) = match command {
         RetirementCommand::Claim { observation } => {
             if state.stage != RetirementStage::Preview {
@@ -290,16 +327,19 @@ pub fn reduce_retirement(
         generation: next_generation.clone(),
         claim: claim.clone(),
     };
+    let record = ReplayRecord {
+        key: key.to_owned(),
+        command_digest,
+        resulting_state: Box::new(snapshot),
+    };
+    replay_history.insert(key.to_owned(), record.clone());
     Ok(RetirementState {
         scope: state.scope.clone(),
         stage,
         generation: next_generation,
         claim,
-        last_command: Some(ReplayRecord {
-            key: key.to_owned(),
-            command_digest,
-            resulting_state: Box::new(snapshot),
-        }),
+        last_command: Some(record),
+        replay_history,
     })
 }
 
@@ -308,7 +348,7 @@ fn claim_from(observation: &AssetObservation) -> Result<RetirementClaim, Retirem
         .identity
         .clone()
         .ok_or(RetirementError::UnknownEvidence)?;
-    if identity.registration_digest.is_empty() || identity.registration_digest.len() > 4096 {
+    if !valid_digest(&identity.registration_digest) {
         return Err(RetirementError::InvalidInput);
     }
     identity.device.parse()?;
@@ -374,6 +414,16 @@ fn blocking_reasons(observation: &AssetObservation) -> Vec<String> {
     if observation.identity.is_none() {
         reasons.push("unknown:identity".into());
     }
+    if observation.scope.is_none() {
+        reasons.push("unknown:scope".into());
+    }
+    if observation
+        .identity
+        .as_ref()
+        .is_some_and(|identity| !valid_digest(&identity.registration_digest))
+    {
+        reasons.push("unknown:registration_digest".into());
+    }
     if observation.pins_revision.is_none() {
         reasons.push("unknown:pins_revision".into());
     }
@@ -388,17 +438,27 @@ fn blocking_reasons(observation: &AssetObservation) -> Vec<String> {
     reasons
 }
 
+fn valid_digest(value: &str) -> bool {
+    value.strip_prefix("sha256:").is_some_and(|hex| {
+        hex.len() == 64
+            && hex
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn observation() -> AssetObservation {
         AssetObservation {
+            scope: Some(state().scope),
             registered: Some(true),
             identity: Some(AssetIdentity {
                 device: DecimalU64::new(1),
                 inode: DecimalU64::new(2),
-                registration_digest: "sha256:abc".into(),
+                registration_digest: format!("sha256:{}", "a".repeat(64)),
                 custody_generation: DecimalU64::new(3),
             }),
             pins_revision: Some(DecimalU64::new(4)),
@@ -426,6 +486,7 @@ mod tests {
             generation: DecimalU64::new(0),
             claim: None,
             last_command: None,
+            replay_history: BTreeMap::new(),
         }
     }
 
@@ -590,6 +651,82 @@ mod tests {
         );
         assert_eq!(
             parse_observation_json(br#"{"extra":true}"#),
+            Err(RetirementError::InvalidInput)
+        );
+    }
+    #[test]
+    fn earlier_replay_never_rewinds_and_legacy_last_key_is_retained() {
+        let initial = state();
+        let claim = RetirementCommand::Claim {
+            observation: observation(),
+        };
+        let mut first =
+            reduce_retirement(&initial, &initial.generation, "claim", &claim).expect("claim");
+        // Migrate a legacy projection that retained only last_command.
+        first.replay_history.clear();
+        let second = reduce_retirement(
+            &first,
+            &first.generation,
+            "recheck",
+            &RetirementCommand::Recheck {
+                observation: observation(),
+            },
+        )
+        .expect("recheck");
+        assert_eq!(second.replay_history.len(), 2);
+        assert_eq!(
+            reduce_retirement(&second, &initial.generation, "claim", &claim).expect("old replay"),
+            second
+        );
+        let altered = RetirementCommand::Claim {
+            observation: AssetObservation {
+                dirty: Some(true),
+                ..observation()
+            },
+        };
+        assert_eq!(
+            reduce_retirement(&second, &second.generation, "claim", &altered),
+            Err(RetirementError::IdempotencyCollision)
+        );
+    }
+    #[test]
+    fn foreign_scope_invalid_digest_and_typed_oversize_fail_closed() {
+        let initial = state();
+        let mut foreign = observation();
+        foreign.scope.as_mut().expect("scope").root = RootId::new("other").expect("root");
+        assert_eq!(
+            reduce_retirement(
+                &initial,
+                &initial.generation,
+                "foreign",
+                &RetirementCommand::Claim {
+                    observation: foreign
+                }
+            ),
+            Err(RetirementError::Preserve)
+        );
+        let mut invalid = observation();
+        invalid
+            .identity
+            .as_mut()
+            .expect("identity")
+            .registration_digest = "sha256:short".into();
+        assert_eq!(plan_retirement(&invalid).stage, RetirementStage::Refused);
+        invalid
+            .identity
+            .as_mut()
+            .expect("identity")
+            .registration_digest = "x".repeat(MAX_RETIREMENT_JSON_BYTES);
+        assert_eq!(plan_retirement(&invalid).stage, RetirementStage::Refused);
+        assert_eq!(
+            reduce_retirement(
+                &initial,
+                &initial.generation,
+                "huge",
+                &RetirementCommand::Claim {
+                    observation: invalid
+                }
+            ),
             Err(RetirementError::InvalidInput)
         );
     }

@@ -1,5 +1,9 @@
 # Local excursion proposals
 
+Scope includes the original positive contract revision and full contract/protected-oracle digests. Episode identities hash this scope and their originating event; proposals bind typed scope and the exact episode digest. Current projections are reconstructed from events and compared with stored receipts before reuse. Forged receipt keys, changed episodes, invalid evidence digests, unsafe identifiers and known causal clocks running backward fail closed. Cumulative history is capped at 1,024 events with explicit backpressure and replay at capacity; state/input/output use streaming JSON bounds.
+
+Investigation proposals allow at most eight steps and one proposed model turn, with `execution_granted: false`; admission and reservations remain external. Titles use fixed text instead of echoing unfamiliar family strings. Required reproduction fields cannot be blank or contain terminal controls, and unsafe inputs are refused rather than silently stripping constraints.
+
 This protocol describes a pure, bounded local reducer and proposal builder. It records scoped incident events, groups events into episodes only when an explicit causal parent links them, and retains independent later recurrence as a separate episode. An identical event ID and canonical content is replay-safe; reusing an ID with different content is an integrity error. Causal traversal is iterative and depth bounded. Unknown parents, cross-scope inputs, cycles, and mismatched lineage families are rejected.
 
 Inputs use the existing project, root, and task identifiers. The serialized input is limited to 1 MiB, collections to 1,024 items, event identifiers to 128 bytes, and reproduction values to 4,096 bytes. Optional tick values are canonical decimal `u64` strings. Clock observations are caller supplied; absence stays unknown. Missing attribution remains unknown, and time proximity is never treated as causation.

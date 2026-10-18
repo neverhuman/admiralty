@@ -1,6 +1,6 @@
 //! Bounded, pure excursion episode reduction and local proposal construction.
 //! Callers authenticate evidence and persist these projections; this module has no effects.
-use crate::{ProjectId, RootId, TaskId, content_digest};
+use crate::{ProjectId, RootId, TaskId, content_digest, limits::bounded_json_size};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -16,6 +16,9 @@ pub struct ExcursionScope {
     pub project: ProjectId,
     pub root: RootId,
     pub task: TaskId,
+    pub contract_revision: u32,
+    pub contract_digest: String,
+    pub protected_oracle_digest: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -36,6 +39,7 @@ pub struct IncidentEvent {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Episode {
+    pub scope: ExcursionScope,
     pub episode_id: String,
     pub lineage: Vec<String>,
     pub family: String,
@@ -58,12 +62,17 @@ pub struct ReproductionContract {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct LocalProposal {
+    pub scope: ExcursionScope,
+    pub episode_digest: String,
     pub title: String,
     pub reproduction_contract: ReproductionContract,
     pub evidence_digests: Vec<String>,
     pub uncertainty: String,
     pub diagnosis: String,
     pub external_publication_allowed: bool,
+    pub execution_granted: bool,
+    pub proposed_investigator_max_steps: u16,
+    pub proposed_investigator_max_model_turns: u16,
 }
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("{0}")]
@@ -82,9 +91,79 @@ pub fn reduce_excursions(
     scope: &ExcursionScope,
     input: &[ScopedIncident],
 ) -> Result<ExcursionState, ExcursionError> {
-    let encoded =
-        serde_json::to_vec(input).map_err(|_| ExcursionError("cannot encode incident input"))?;
-    if encoded.len() > MAX_INPUT_BYTES || input.len() > MAX_ITEMS {
+    validate_scope(scope)?;
+    bounded(input)?;
+    if input.len() > MAX_ITEMS {
+        return Err(ExcursionError("incident count exceeds bound"));
+    }
+    if let Some(previous) = current {
+        bounded(previous)?;
+        if previous.scope != *scope {
+            return Err(ExcursionError("excursion scope mismatch"));
+        }
+        let mut events = Vec::new();
+        for episode in &previous.episodes {
+            if episode.events.is_empty()
+                || episode.events.len() > MAX_ITEMS
+                || events
+                    .len()
+                    .checked_add(episode.events.len())
+                    .is_none_or(|count| count > MAX_ITEMS)
+            {
+                return Err(ExcursionError("state count exceeds bound"));
+            }
+            for event in &episode.events {
+                events.push(ScopedIncident {
+                    scope: scope.clone(),
+                    event: event.clone(),
+                });
+            }
+        }
+        let canonical = reduce_inner(&None, scope, &events)?;
+        if &canonical != previous {
+            return Err(ExcursionError(
+                "stored episode/receipt projection is not canonical",
+            ));
+        }
+        let existing: BTreeSet<_> = events
+            .iter()
+            .map(|row| row.event.event_id.as_str())
+            .collect();
+        let new: BTreeSet<_> = input
+            .iter()
+            .map(|row| row.event.event_id.as_str())
+            .filter(|id| !existing.contains(id))
+            .collect();
+        if existing
+            .len()
+            .checked_add(new.len())
+            .is_none_or(|count| count > MAX_ITEMS)
+        {
+            return Err(ExcursionError("cumulative incident count exceeds bound"));
+        }
+    }
+    let result = reduce_inner(current, scope, input)?;
+    bounded(&result)?;
+    Ok(result)
+}
+fn bounded<T: Serialize + ?Sized>(value: &T) -> Result<(), ExcursionError> {
+    bounded_json_size(value, MAX_INPUT_BYTES)
+        .map(|_| ())
+        .map_err(|_| ExcursionError("invalid or oversized serialized excursion input"))
+}
+fn validate_scope(scope: &ExcursionScope) -> Result<(), ExcursionError> {
+    if scope.contract_revision == 0 {
+        return Err(ExcursionError("contract revision required"));
+    }
+    validate_digest(&scope.contract_digest)?;
+    validate_digest(&scope.protected_oracle_digest)
+}
+fn reduce_inner(
+    current: &Option<ExcursionState>,
+    scope: &ExcursionScope,
+    input: &[ScopedIncident],
+) -> Result<ExcursionState, ExcursionError> {
+    if input.len() > MAX_ITEMS {
         return Err(ExcursionError("incident input exceeds bound"));
     }
     let mut state = current.clone().unwrap_or_else(|| ExcursionState {
@@ -141,6 +220,17 @@ pub fn reduce_excursions(
             let Some((_, parent_episode, _)) = all.get(parent) else {
                 return Err(ExcursionError("unknown or foreign-scope causal parent"));
             };
+            if let Some(parent_event) = state
+                .episodes
+                .iter()
+                .find(|episode| &episode.episode_id == parent_episode)
+                .and_then(|episode| episode.events.iter().find(|value| value.event_id == parent))
+                && let (Some(child), Some(parent_tick)) =
+                    (&event.observed_tick, &parent_event.observed_tick)
+                && canonical_decimal(child)? < canonical_decimal(parent_tick)?
+            {
+                return Err(ExcursionError("causal child predates its recorded parent"));
+            }
             cursor = state
                 .episodes
                 .iter()
@@ -166,8 +256,11 @@ pub fn reduce_excursions(
             ep.events.push(event.clone());
             ep.unknown_attribution |= event.cause_parent.is_none();
         } else {
-            let id = format!("episode-{}", event.event_id);
+            let identity = content_digest(&(scope, &event.event_id))
+                .map_err(|_| ExcursionError("cannot bind episode scope"))?;
+            let id = format!("episode-{}", &identity[7..]);
             state.episodes.push(Episode {
+                scope: scope.clone(),
                 episode_id: id.clone(),
                 lineage: vec![event.event_id.clone()],
                 family: event.family_signature.clone(),
@@ -176,13 +269,12 @@ pub fn reduce_excursions(
                 evidence: Vec::new(),
             });
         }
-        let episode_id = format!("episode-{}", event.event_id);
         let owning = state
             .episodes
             .iter()
             .find(|ep| ep.events.iter().any(|e| e.event_id == event.event_id))
             .map(|ep| ep.episode_id.clone())
-            .unwrap_or(episode_id);
+            .ok_or(ExcursionError("episode identity missing"))?;
         let index = state
             .episodes
             .iter()
@@ -196,17 +288,36 @@ pub fn reduce_excursions(
 
 fn validate_event(event: &IncidentEvent) -> Result<(), ExcursionError> {
     for id in [&event.event_id, &event.family_signature, &event.kind] {
-        if id.is_empty() || id.len() > MAX_ID_BYTES {
+        if !safe_identifier(id) {
             return Err(ExcursionError("missing or oversized incident identifier"));
         }
     }
+    if event
+        .cause_parent
+        .as_ref()
+        .is_some_and(|parent| !safe_identifier(parent))
+    {
+        return Err(ExcursionError("invalid causal parent identity"));
+    }
     if event.evidence_digests.len() > MAX_ITEMS {
         return Err(ExcursionError("evidence collection exceeds bound"));
+    }
+    for digest in &event.evidence_digests {
+        validate_digest(digest)?;
     }
     if let Some(tick) = &event.observed_tick {
         canonical_decimal(tick)?;
     }
     Ok(())
+}
+fn safe_identifier(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= MAX_ID_BYTES
+        && id != "."
+        && id != ".."
+        && id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || b"_.-".contains(&byte))
 }
 fn canonical_decimal(value: &str) -> Result<u64, ExcursionError> {
     value
@@ -223,6 +334,8 @@ pub fn build_local_proposal(
     reproduction: &ReproductionContract,
     evidence: &[EvidenceRef],
 ) -> Result<LocalProposal, ExcursionError> {
+    bounded(&(episode, reproduction, evidence))?;
+    validate_scope(&episode.scope)?;
     if episode.events.is_empty()
         || episode.events.len() > MAX_ITEMS
         || reproduction.fields.len() > 32
@@ -230,11 +343,29 @@ pub fn build_local_proposal(
     {
         return Err(ExcursionError("proposal input exceeds bound"));
     }
+    let rows: Vec<_> = episode
+        .events
+        .iter()
+        .map(|event| ScopedIncident {
+            scope: episode.scope.clone(),
+            event: event.clone(),
+        })
+        .collect();
+    let rebuilt = reduce_inner(&None, &episode.scope, &rows)?;
+    if rebuilt.episodes.as_slice() != std::slice::from_ref(episode) {
+        return Err(ExcursionError(
+            "proposal episode is not canonical scoped evidence",
+        ));
+    }
     let mut clean = BTreeMap::new();
     for (key, value) in &reproduction.fields {
         if key.is_empty()
             || key.len() > 128
             || value.len() > MAX_TEXT_BYTES
+            || value.trim().is_empty()
+            || value
+                .chars()
+                .any(|character| character.is_control() && character != '\n' && character != '\t')
             || !permitted_field(key)
             || unsafe_value(value)
         {
@@ -252,7 +383,13 @@ pub fn build_local_proposal(
     let mut digests = BTreeSet::new();
     for r in evidence {
         validate_digest(&r.digest)?;
-        if r.media_type.is_empty() || r.media_type.len() > 128 {
+        if r.media_type.is_empty()
+            || r.media_type.len() > 128
+            || !r
+                .media_type
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || b"/.-+".contains(&byte))
+        {
             return Err(ExcursionError("invalid evidence reference"));
         }
         digests.insert(r.digest.clone());
@@ -271,7 +408,10 @@ pub fn build_local_proposal(
         _ => "Unfamiliar signature: bounded investigator proposal; no inquiry was launched.",
     };
     Ok(LocalProposal {
-        title: format!("Investigate excursion family {}", episode.family),
+        scope: episode.scope.clone(),
+        episode_digest: content_digest(episode)
+            .map_err(|_| ExcursionError("cannot bind proposal episode"))?,
+        title: "Investigate recorded excursion".into(),
         reproduction_contract: ReproductionContract { fields: clean },
         evidence_digests: digests.into_iter().collect(),
         uncertainty: if episode.unknown_attribution {
@@ -281,6 +421,9 @@ pub fn build_local_proposal(
         },
         diagnosis: known.into(),
         external_publication_allowed: false,
+        execution_granted: false,
+        proposed_investigator_max_steps: 8,
+        proposed_investigator_max_model_turns: 1,
     })
 }
 fn permitted_field(key: &str) -> bool {
@@ -315,7 +458,9 @@ fn unsafe_value(value: &str) -> bool {
 fn validate_digest(value: &str) -> Result<(), ExcursionError> {
     if let Some(hex) = value.strip_prefix("sha256:")
         && hex.len() == 64
-        && hex.bytes().all(|b| b.is_ascii_hexdigit())
+        && hex
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
     {
         return Ok(());
     }
@@ -332,6 +477,9 @@ mod tests {
             project: ProjectId::new("p").expect("fixture project"),
             root: RootId::new("r").expect("fixture root"),
             task: TaskId::new("t").expect("fixture task"),
+            contract_revision: 1,
+            contract_digest: format!("sha256:{}", "a".repeat(64)),
+            protected_oracle_digest: format!("sha256:{}", "b".repeat(64)),
         }
     }
     fn event(id: &str, parent: Option<&str>, kind: &str) -> IncidentEvent {
@@ -394,14 +542,17 @@ mod tests {
     }
     #[test]
     fn proposal_rejects_secrets_and_never_grants_publication() {
-        let ep = Episode {
-            episode_id: "ep".into(),
-            lineage: vec![],
-            family: "new".into(),
-            events: vec![event("e", None, "failure")],
-            unknown_attribution: true,
-            evidence: vec![],
-        };
+        let ep = reduce_excursions(
+            &None,
+            &scope(),
+            &[ScopedIncident {
+                scope: scope(),
+                event: event("e", None, "failure"),
+            }],
+        )
+        .expect("canonical episode")
+        .episodes
+        .remove(0);
         let good = ReproductionContract {
             fields: BTreeMap::from([
                 ("scope".into(), "task t".into()),
@@ -417,5 +568,92 @@ mod tests {
         let mut bad = good;
         bad.fields.insert("steps".into(), "token=secret".into());
         assert!(build_local_proposal(&ep, &bad, &[]).is_err());
+    }
+    #[test]
+    fn stored_receipt_or_projection_forgery_cannot_hide_an_incident() {
+        let s = scope();
+        let row = ScopedIncident {
+            scope: s.clone(),
+            event: event("a", None, "failure"),
+        };
+        let good =
+            reduce_excursions(&None, &s, std::slice::from_ref(&row)).expect("canonical state");
+        let mut forged = good.clone();
+        forged
+            .receipts
+            .insert("phantom".into(), format!("sha256:{}", "c".repeat(64)));
+        assert!(reduce_excursions(&Some(forged), &s, &[]).is_err());
+        let mut forged = good.clone();
+        forged.episodes[0].events.clear();
+        assert!(reduce_excursions(&Some(forged), &s, std::slice::from_ref(&row)).is_err());
+        let mut forged = good;
+        forged.episodes[0].scope.contract_revision = 2;
+        assert!(reduce_excursions(&Some(forged), &s, &[]).is_err());
+    }
+    #[test]
+    fn original_scope_digest_and_causal_clocks_are_exact() {
+        let s = scope();
+        let mut first = event("a", None, "failure");
+        first.observed_tick = Some("10".into());
+        let one = reduce_excursions(
+            &None,
+            &s,
+            &[ScopedIncident {
+                scope: s.clone(),
+                event: first,
+            }],
+        )
+        .expect("parent");
+        let child = ScopedIncident {
+            scope: s.clone(),
+            event: event("b", Some("a"), "escalate"),
+        };
+        assert!(reduce_excursions(&Some(one.clone()), &s, &[child]).is_err());
+        let mut other = s.clone();
+        other.contract_revision = 2;
+        assert!(reduce_excursions(&Some(one.clone()), &other, &[]).is_err());
+        let mut bad = event("bad", None, "failure");
+        bad.evidence_digests.push("sha256:not-immutable".into());
+        assert!(
+            reduce_excursions(
+                &None,
+                &s,
+                &[ScopedIncident {
+                    scope: s.clone(),
+                    event: bad
+                }]
+            )
+            .is_err()
+        );
+        let foreign = reduce_excursions(
+            &None,
+            &other,
+            &[ScopedIncident {
+                scope: other.clone(),
+                event: event("a", None, "failure"),
+            }],
+        )
+        .expect("separate scope");
+        assert_ne!(one.episodes[0].episode_id, foreign.episodes[0].episode_id);
+    }
+    #[test]
+    fn cumulative_state_limit_preserves_replay_without_unbounded_growth() {
+        let s = scope();
+        let rows: Vec<_> = (0..MAX_ITEMS)
+            .map(|index| ScopedIncident {
+                scope: s.clone(),
+                event: event(&format!("event-{index}"), None, "failure"),
+            })
+            .collect();
+        let full = reduce_excursions(&None, &s, &rows).expect("bounded complete state");
+        assert_eq!(
+            reduce_excursions(&Some(full.clone()), &s, &rows[..1]).expect("replay at capacity"),
+            full
+        );
+        let more = ScopedIncident {
+            scope: s.clone(),
+            event: event("new", None, "failure"),
+        };
+        assert!(reduce_excursions(&Some(full), &s, &[more]).is_err());
     }
 }

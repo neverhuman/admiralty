@@ -116,6 +116,7 @@ pub struct PublicationIntent {
     pub expected_head: String,
     pub expected_base: String,
     pub authority_generation: DecimalU64,
+    pub admission_snapshot: PublicationSnapshot,
     pub stage: IntentStage,
     pub effect_receipt: Option<ReconciliationReceipt>,
 }
@@ -135,16 +136,20 @@ pub enum IntentStage {
 pub struct ReconciliationReceipt {
     pub intent_key: String,
     pub request_digest: String,
+    pub scope: PublicationScope,
+    pub expected_head: String,
+    pub expected_base: String,
+    pub authority_generation: DecimalU64,
     pub observed_head: String,
     pub effect_occurred: bool,
     pub provenance_ref: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct PublicationProposal {
     pub eligible: bool,
-    pub execution_granted: bool,
+    execution_granted: bool,
     pub reasons: Vec<PublicationBlock>,
     pub intent: Option<PublicationIntent>,
 }
@@ -201,6 +206,32 @@ pub fn validate_input_size(bytes: &[u8]) -> Result<(), PublicationError> {
     Ok(())
 }
 
+impl PublicationProposal {
+    pub fn execution_granted(&self) -> bool {
+        self.execution_granted
+    }
+}
+
+/// Binds all frozen admission observations, policy, scope, key and generation.
+/// A digest establishes consistency only; it does not authenticate an observer.
+pub fn publication_request_digest(
+    scope: &PublicationScope,
+    snapshot: &PublicationSnapshot,
+    intent_key: &str,
+    generation: &DecimalU64,
+) -> Result<String, PublicationError> {
+    let request = (
+        "admiralty-publication-v1",
+        scope,
+        snapshot,
+        intent_key,
+        generation,
+    );
+    crate::limits::bounded_json_size(&request, MAX_JSON_BYTES)
+        .map_err(|_| PublicationError::LimitExceeded)?;
+    crate::content_digest(&request).map_err(|_| PublicationError::LimitExceeded)
+}
+
 pub fn propose_publication(
     scope: &PublicationScope,
     snapshot: &PublicationSnapshot,
@@ -208,51 +239,63 @@ pub fn propose_publication(
     request_digest: &str,
     proposed_generation: &DecimalU64,
 ) -> PublicationProposal {
-    let mut reasons = Vec::new();
-    let valid_strings = [scope.target_ref.as_str(), intent_key, request_digest]
-        .iter()
-        .all(|s| !s.is_empty() && s.len() <= MAX_STRING_BYTES);
-    let evidence_strings_valid = snapshot
-        .current_head
-        .iter()
-        .chain(snapshot.current_base.iter())
-        .chain(snapshot.expected_head.iter())
-        .chain(snapshot.expected_base.iter())
-        .chain(snapshot.required_reviewers.iter())
-        .chain(snapshot.required_checks.iter())
-        .chain(
-            snapshot
-                .approvals
-                .iter()
-                .flat_map(|a| [&a.reviewer, &a.head, &a.provenance_ref]),
-        )
-        .chain(
-            snapshot
-                .checks
-                .iter()
-                .flat_map(|c| [&c.check_id, &c.head, &c.provenance_ref]),
-        )
-        .all(|s| !s.is_empty() && s.len() <= MAX_STRING_BYTES);
-    if !valid_strings
-        || !evidence_strings_valid
-        || snapshot.required_reviewers.len() > MAX_ITEMS
-        || snapshot.required_checks.len() > MAX_ITEMS
-        || snapshot.approvals.len() > MAX_ITEMS
-        || snapshot.checks.len() > MAX_ITEMS
+    if crate::limits::bounded_json_size(
+        &(
+            scope,
+            snapshot,
+            intent_key,
+            request_digest,
+            proposed_generation,
+        ),
+        MAX_JSON_BYTES,
+    )
+    .is_err()
+        || !valid_ref(&scope.target_ref)
+        || !valid_text(intent_key)
+        || !valid_digest(request_digest)
+        || snapshot.required_reviewers.is_empty()
+        || snapshot.required_checks.is_empty()
+        || [
+            snapshot.required_reviewers.len(),
+            snapshot.required_checks.len(),
+            snapshot.approvals.len(),
+            snapshot.checks.len(),
+        ]
+        .into_iter()
+        .any(|n| n > MAX_ITEMS)
     {
-        reasons.push(PublicationBlock::InvalidEvidence);
+        return blocked(vec![PublicationBlock::InvalidEvidence]);
     }
+    let text_valid = snapshot
+        .required_reviewers
+        .iter()
+        .chain(snapshot.required_checks.iter())
+        .all(|s| valid_text(s))
+        && snapshot.approvals.iter().all(|a| {
+            valid_text(&a.reviewer) && valid_oid(&a.head) && valid_text(&a.provenance_ref)
+        })
+        && snapshot.checks.iter().all(|c| {
+            valid_text(&c.check_id) && valid_oid(&c.head) && valid_text(&c.provenance_ref)
+        });
+    if !text_valid
+        || publication_request_digest(scope, snapshot, intent_key, proposed_generation).as_deref()
+            != Ok(request_digest)
+    {
+        return blocked(vec![PublicationBlock::InvalidEvidence]);
+    }
+    let mut reasons = Vec::new();
     let (head, base, expected_head, expected_base) = match (
         &snapshot.current_head,
         &snapshot.current_base,
         &snapshot.expected_head,
         &snapshot.expected_base,
     ) {
-        (Some(h), Some(b), Some(eh), Some(eb)) => (h, b, eh, eb),
-        _ => {
-            reasons.push(PublicationBlock::MissingHeadOrBase);
-            return blocked(reasons);
+        (Some(h), Some(b), Some(eh), Some(eb))
+            if [h, b, eh, eb].into_iter().all(|s| valid_oid(s)) =>
+        {
+            (h, b, eh, eb)
         }
+        _ => return blocked(vec![PublicationBlock::MissingHeadOrBase]),
     };
     if head != expected_head {
         reasons.push(PublicationBlock::ChangedHead);
@@ -261,9 +304,14 @@ pub fn propose_publication(
         reasons.push(PublicationBlock::ChangedBase);
     }
     let configured: BTreeSet<_> = snapshot.required_reviewers.iter().collect();
-    if snapshot.approvals.iter().any(|approval| {
-        !configured.contains(&approval.reviewer) && !approval.provenance_ref.is_empty()
-    }) {
+    if configured.len() != snapshot.required_reviewers.len() {
+        reasons.push(PublicationBlock::InvalidEvidence);
+    }
+    if snapshot
+        .approvals
+        .iter()
+        .any(|a| !configured.contains(&a.reviewer))
+    {
         reasons.push(PublicationBlock::WrongReviewer);
     }
     for reviewer in configured {
@@ -274,30 +322,25 @@ pub fn propose_publication(
             .collect();
         if matching.iter().any(|a| a.dismissed) {
             reasons.push(PublicationBlock::DismissedApproval);
-            continue;
-        }
-        if matching
-            .iter()
-            .any(|a| a.head == *head && !a.provenance_ref.is_empty())
-        {
-            continue;
-        }
-        if matching.iter().any(|a| !a.provenance_ref.is_empty()) {
-            reasons.push(PublicationBlock::WrongReviewer);
-        } else {
+        } else if matching.is_empty() {
             reasons.push(PublicationBlock::MissingApproval);
+        } else if matching.iter().any(|a| a.head != *head) {
+            reasons.push(PublicationBlock::WrongReviewer);
         }
     }
     let checks: BTreeSet<_> = snapshot.required_checks.iter().collect();
+    if checks.len() != snapshot.required_checks.len() {
+        reasons.push(PublicationBlock::InvalidEvidence);
+    }
     for id in checks {
         let found: Vec<_> = snapshot
             .checks
             .iter()
-            .filter(|c| &c.check_id == id && c.head == *head && !c.provenance_ref.is_empty())
+            .filter(|c| &c.check_id == id && c.head == *head)
             .collect();
         if found.is_empty() || found.iter().any(|c| c.state == CheckState::Unknown) {
             reasons.push(PublicationBlock::MissingOrUnknownCheck);
-        } else if !found.iter().any(|c| c.state == CheckState::Passed) {
+        } else if found.iter().any(|c| c.state != CheckState::Passed) {
             reasons.push(PublicationBlock::CheckNotPassed);
         }
     }
@@ -307,12 +350,10 @@ pub fn propose_publication(
     if snapshot.unresolved_intent {
         reasons.push(PublicationBlock::UnresolvedEffectSlot);
     }
-    match (
-        scope.authority_generation.parse(),
-        proposed_generation.parse(),
-    ) {
-        (Ok(current), Ok(proposed)) if proposed == current => (),
-        _ => reasons.push(PublicationBlock::StaleAuthorityGeneration),
+    if scope.authority_generation.parse().is_err()
+        || scope.authority_generation != *proposed_generation
+    {
+        reasons.push(PublicationBlock::StaleAuthorityGeneration);
     }
     if !reasons.is_empty() {
         return blocked(reasons);
@@ -328,6 +369,7 @@ pub fn propose_publication(
             expected_head: head.clone(),
             expected_base: base.clone(),
             authority_generation: proposed_generation.clone(),
+            admission_snapshot: snapshot.clone(),
             stage: IntentStage::Proposed,
             effect_receipt: None,
         }),
@@ -342,65 +384,142 @@ fn blocked(reasons: Vec<PublicationBlock>) -> PublicationProposal {
         intent: None,
     }
 }
+fn valid_text(s: &str) -> bool {
+    !s.is_empty() && s.len() <= MAX_STRING_BYTES && !s.chars().any(char::is_control)
+}
+fn valid_oid(s: &str) -> bool {
+    matches!(s.len(), 40 | 64)
+        && s.bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+fn valid_digest(s: &str) -> bool {
+    s.strip_prefix("sha256:").is_some_and(|v| {
+        v.len() == 64
+            && v.bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    })
+}
+fn valid_ref(s: &str) -> bool {
+    valid_text(s)
+        && s.starts_with("refs/heads/")
+        && !s.ends_with('/')
+        && !s.ends_with('.')
+        && !s.contains("..")
+        && !s.contains("@{")
+        && !s.contains("//")
+        && !s
+            .chars()
+            .any(|c| c.is_whitespace() || "~^:?*[\\".contains(c))
+        && s.split('/')
+            .all(|part| !part.is_empty() && !part.starts_with('.') && !part.ends_with(".lock"))
+}
+fn valid_receipt(intent: &PublicationIntent, proof: &ReconciliationReceipt) -> bool {
+    proof.intent_key == intent.intent_key
+        && proof.request_digest == intent.request_digest
+        && proof.scope == intent.scope
+        && proof.expected_head == intent.expected_head
+        && proof.expected_base == intent.expected_base
+        && proof.authority_generation == intent.authority_generation
+        && valid_text(&proof.provenance_ref)
+        && valid_oid(&proof.observed_head)
+        && if proof.effect_occurred {
+            proof.observed_head != intent.expected_base
+        } else {
+            proof.observed_head == intent.expected_base
+        }
+}
+fn valid_intent(intent: &PublicationIntent) -> bool {
+    let admitted = propose_publication(
+        &intent.scope,
+        &intent.admission_snapshot,
+        &intent.intent_key,
+        &intent.request_digest,
+        &intent.authority_generation,
+    );
+    let Some(mut expected) = admitted.intent else {
+        return false;
+    };
+    expected.stage = intent.stage.clone();
+    expected.effect_receipt = intent.effect_receipt.clone();
+    expected == *intent
+        && match intent.stage {
+            IntentStage::ReconciledSuccess => intent
+                .effect_receipt
+                .as_ref()
+                .is_some_and(|r| r.effect_occurred && valid_receipt(intent, r)),
+            IntentStage::ReconciledNoEffect => intent
+                .effect_receipt
+                .as_ref()
+                .is_some_and(|r| !r.effect_occurred && valid_receipt(intent, r)),
+            _ => intent.effect_receipt.is_none(),
+        }
+}
 
-/// Applies an idempotent local intent transition; an ambiguous slot is freed only by independent reconciliation.
+/// Pure local consistency check; a trusted durable gateway must authenticate all evidence.
+/// Ambiguous effects hold their slot until a scope-bound reconciliation observation.
 pub fn reduce_publication_intent(
     existing: Option<&PublicationIntent>,
     incoming: &PublicationIntent,
     receipt: Option<&ReconciliationReceipt>,
 ) -> Result<PublicationIntent, PublicationError> {
-    if incoming.intent_key.is_empty() || incoming.request_digest.is_empty() {
-        return Err(PublicationError::LimitExceeded);
-    }
-    let Some(old) = existing else {
-        if incoming.stage != IntentStage::Proposed {
+    crate::limits::bounded_json_size(&(existing, incoming, receipt), MAX_JSON_BYTES)
+        .map_err(|_| PublicationError::LimitExceeded)?;
+    if let Some(old) = existing {
+        if old.intent_key != incoming.intent_key {
+            return Err(PublicationError::EffectSlotOccupied);
+        }
+        if old.request_digest != incoming.request_digest
+            || old.scope != incoming.scope
+            || old.expected_head != incoming.expected_head
+            || old.expected_base != incoming.expected_base
+            || old.authority_generation != incoming.authority_generation
+            || old.admission_snapshot != incoming.admission_snapshot
+        {
+            return Err(PublicationError::KeyCollision);
+        }
+        if !valid_intent(old) || !valid_intent(incoming) {
             return Err(PublicationError::InvalidReconciliation);
         }
-        return Ok(incoming.clone());
-    };
-    if old.intent_key != incoming.intent_key {
-        return Err(PublicationError::EffectSlotOccupied);
-    }
-    if old.request_digest != incoming.request_digest
-        || old.scope != incoming.scope
-        || old.expected_head != incoming.expected_head
-        || old.expected_base != incoming.expected_base
-    {
-        return Err(PublicationError::KeyCollision);
-    }
-    if old == incoming && matches!(old.stage, IntentStage::Proposed | IntentStage::Claimed)
-        || old == incoming && old.stage == IntentStage::Ambiguous && receipt.is_none()
-    {
-        return Ok(old.clone());
-    }
-    match old.stage {
-        IntentStage::Proposed if incoming.stage == IntentStage::Claimed => Ok(incoming.clone()),
-        IntentStage::Claimed if incoming.stage == IntentStage::Ambiguous => Ok(incoming.clone()),
-        IntentStage::Ambiguous => {
-            let proof = receipt.ok_or(PublicationError::InvalidReconciliation)?;
-            if proof.intent_key != old.intent_key
-                || proof.request_digest != old.request_digest
-                || proof.provenance_ref.is_empty()
-            {
-                return Err(PublicationError::InvalidReconciliation);
-            }
-            let mut result = old.clone();
-            result.stage = if proof.effect_occurred {
-                IntentStage::ReconciledSuccess
-            } else {
-                IntentStage::ReconciledNoEffect
-            };
-            result.effect_receipt = Some(proof.clone());
-            Ok(result)
-        }
-        IntentStage::ReconciledSuccess | IntentStage::ReconciledNoEffect => {
-            if old.effect_receipt.as_ref() == receipt {
+        if matches!(
+            old.stage,
+            IntentStage::ReconciledSuccess | IntentStage::ReconciledNoEffect
+        ) {
+            return if old == incoming && old.effect_receipt.as_ref() == receipt {
                 Ok(old.clone())
             } else {
                 Err(PublicationError::ReceiptCollision)
-            }
+            };
         }
-        _ => Err(PublicationError::InvalidReconciliation),
+        if old == incoming && receipt.is_none() {
+            return Ok(old.clone());
+        }
+        match (&old.stage, &incoming.stage) {
+            (IntentStage::Proposed, IntentStage::Claimed)
+            | (IntentStage::Claimed, IntentStage::Ambiguous)
+                if receipt.is_none() =>
+            {
+                Ok(incoming.clone())
+            }
+            (IntentStage::Ambiguous, IntentStage::Ambiguous) if old == incoming => {
+                let proof = receipt
+                    .filter(|r| valid_receipt(old, r))
+                    .ok_or(PublicationError::InvalidReconciliation)?;
+                let mut result = old.clone();
+                result.stage = if proof.effect_occurred {
+                    IntentStage::ReconciledSuccess
+                } else {
+                    IntentStage::ReconciledNoEffect
+                };
+                result.effect_receipt = Some(proof.clone());
+                Ok(result)
+            }
+            _ => Err(PublicationError::InvalidReconciliation),
+        }
+    } else if incoming.stage == IntentStage::Proposed && receipt.is_none() && valid_intent(incoming)
+    {
+        Ok(incoming.clone())
+    } else {
+        Err(PublicationError::InvalidReconciliation)
     }
 }
 
@@ -416,21 +535,21 @@ mod tests {
             authority_generation: DecimalU64::new(9),
         };
         let snapshot = PublicationSnapshot {
-            current_head: Some("h1".into()),
-            current_base: Some("b1".into()),
-            expected_head: Some("h1".into()),
-            expected_base: Some("b1".into()),
+            current_head: Some("a".repeat(40)),
+            current_base: Some("b".repeat(40)),
+            expected_head: Some("a".repeat(40)),
+            expected_base: Some("b".repeat(40)),
             required_reviewers: vec!["reviewer".into()],
             approvals: vec![ApprovalEvidence {
                 reviewer: "reviewer".into(),
-                head: "h1".into(),
+                head: "a".repeat(40),
                 dismissed: false,
                 provenance_ref: "forge:approval:1".into(),
             }],
             required_checks: vec!["ci".into()],
             checks: vec![CheckEvidence {
                 check_id: "ci".into(),
-                head: "h1".into(),
+                head: "a".repeat(40),
                 state: CheckState::Passed,
                 provenance_ref: "forge:check:1".into(),
             }],
@@ -442,15 +561,33 @@ mod tests {
     }
     fn proposal() -> PublicationIntent {
         let (s, p, g) = fixtures();
-        propose_publication(&s, &p, "k", "sha256:request", &g)
-            .intent
-            .expect("valid evidence proposes an intent")
+        propose_publication(
+            &s,
+            &p,
+            "k",
+            &publication_request_digest(&s, &p, "k", &g).expect("digest"),
+            &g,
+        )
+        .intent
+        .expect("valid evidence proposes an intent")
     }
     #[test]
     fn eligible_is_proposal_only_and_replay_is_deterministic() {
         let (s, p, g) = fixtures();
-        let a = propose_publication(&s, &p, "k", "d", &g);
-        let b = propose_publication(&s, &p, "k", "d", &g);
+        let a = propose_publication(
+            &s,
+            &p,
+            "k",
+            &publication_request_digest(&s, &p, "k", &g).expect("digest"),
+            &g,
+        );
+        let b = propose_publication(
+            &s,
+            &p,
+            "k",
+            &publication_request_digest(&s, &p, "k", &g).expect("digest"),
+            &g,
+        );
         assert!(a.eligible);
         assert!(!a.execution_granted);
         assert_eq!(a, b);
@@ -460,39 +597,90 @@ mod tests {
         let (s, mut p, g) = fixtures();
         p.approvals[0].reviewer = "stranger".into();
         assert!(
-            propose_publication(&s, &p, "k", "d", &g)
-                .reasons
-                .contains(&PublicationBlock::WrongReviewer)
+            propose_publication(
+                &s,
+                &p,
+                "k",
+                &publication_request_digest(&s, &p, "k", &g).expect("digest"),
+                &g
+            )
+            .reasons
+            .contains(&PublicationBlock::WrongReviewer)
         );
         let (s, mut p, g) = fixtures();
-        p.current_head = Some("h2".into());
-        assert!(!propose_publication(&s, &p, "k", "d", &g).eligible);
+        p.current_head = Some("c".repeat(40));
+        assert!(
+            !propose_publication(
+                &s,
+                &p,
+                "k",
+                &publication_request_digest(&s, &p, "k", &g).expect("digest"),
+                &g
+            )
+            .eligible
+        );
         let (s, mut p, g) = fixtures();
-        p.current_base = Some("b2".into());
-        assert!(!propose_publication(&s, &p, "k", "d", &g).eligible);
+        p.current_base = Some("d".repeat(40));
+        assert!(
+            !propose_publication(
+                &s,
+                &p,
+                "k",
+                &publication_request_digest(&s, &p, "k", &g).expect("digest"),
+                &g
+            )
+            .eligible
+        );
         let (s, mut p, g) = fixtures();
         p.checks[0].state = CheckState::Pending;
-        assert!(!propose_publication(&s, &p, "k", "d", &g).eligible);
+        assert!(
+            !propose_publication(
+                &s,
+                &p,
+                "k",
+                &publication_request_digest(&s, &p, "k", &g).expect("digest"),
+                &g
+            )
+            .eligible
+        );
         let (s, mut p, g) = fixtures();
         p.checks[0].state = CheckState::Unknown;
         assert!(
-            propose_publication(&s, &p, "k", "d", &g)
-                .reasons
-                .contains(&PublicationBlock::MissingOrUnknownCheck)
+            propose_publication(
+                &s,
+                &p,
+                "k",
+                &publication_request_digest(&s, &p, "k", &g).expect("digest"),
+                &g
+            )
+            .reasons
+            .contains(&PublicationBlock::MissingOrUnknownCheck)
         );
         let (s, mut p, g) = fixtures();
         p.owner_only = true;
         assert!(
-            propose_publication(&s, &p, "k", "d", &g)
-                .reasons
-                .contains(&PublicationBlock::OwnerOnly)
+            propose_publication(
+                &s,
+                &p,
+                "k",
+                &publication_request_digest(&s, &p, "k", &g).expect("digest"),
+                &g
+            )
+            .reasons
+            .contains(&PublicationBlock::OwnerOnly)
         );
         let (s, mut p, g) = fixtures();
         p.approvals[0].dismissed = true;
         assert!(
-            propose_publication(&s, &p, "k", "d", &g)
-                .reasons
-                .contains(&PublicationBlock::DismissedApproval)
+            propose_publication(
+                &s,
+                &p,
+                "k",
+                &publication_request_digest(&s, &p, "k", &g).expect("digest"),
+                &g
+            )
+            .reasons
+            .contains(&PublicationBlock::DismissedApproval)
         );
     }
     #[test]
@@ -500,15 +688,27 @@ mod tests {
         let (s, p, _) = fixtures();
         let stale = DecimalU64::new(8);
         assert!(
-            propose_publication(&s, &p, "k", "d", &stale)
-                .reasons
-                .contains(&PublicationBlock::StaleAuthorityGeneration)
+            propose_publication(
+                &s,
+                &p,
+                "k",
+                &publication_request_digest(&s, &p, "k", &stale).expect("digest"),
+                &stale
+            )
+            .reasons
+            .contains(&PublicationBlock::StaleAuthorityGeneration)
         );
         let newer = DecimalU64::new(10);
         assert!(
-            propose_publication(&s, &p, "k", "d", &newer)
-                .reasons
-                .contains(&PublicationBlock::StaleAuthorityGeneration)
+            propose_publication(
+                &s,
+                &p,
+                "k",
+                &publication_request_digest(&s, &p, "k", &newer).expect("digest"),
+                &newer
+            )
+            .reasons
+            .contains(&PublicationBlock::StaleAuthorityGeneration)
         );
         let max = DecimalU64::try_from(u64::MAX.to_string()).expect("max counter parses exactly");
         assert_eq!(
@@ -536,8 +736,12 @@ mod tests {
         );
         let proof = ReconciliationReceipt {
             intent_key: "k".into(),
-            request_digest: "sha256:request".into(),
-            observed_head: "h2".into(),
+            request_digest: first.request_digest.clone(),
+            scope: first.scope.clone(),
+            expected_head: first.expected_head.clone(),
+            expected_base: first.expected_base.clone(),
+            authority_generation: first.authority_generation.clone(),
+            observed_head: "c".repeat(40),
             effect_occurred: true,
             provenance_ref: "forge:receipt:2".into(),
         };
@@ -563,8 +767,12 @@ mod tests {
         ambiguous.stage = IntentStage::Ambiguous;
         let proof = ReconciliationReceipt {
             intent_key: "k".into(),
-            request_digest: "sha256:request".into(),
-            observed_head: "h".into(),
+            request_digest: first.request_digest.clone(),
+            scope: first.scope.clone(),
+            expected_head: first.expected_head.clone(),
+            expected_base: first.expected_base.clone(),
+            authority_generation: first.authority_generation.clone(),
+            observed_head: "b".repeat(40),
             effect_occurred: false,
             provenance_ref: "forge:r".into(),
         };
@@ -578,5 +786,109 @@ mod tests {
             reduce_publication_intent(Some(&reconciled), &reconciled, Some(&changed)),
             Err(PublicationError::ReceiptCollision)
         );
+    }
+    #[test]
+    fn contradictory_checks_empty_policy_and_changed_request_are_blocked() {
+        let (scope, mut snapshot, generation) = fixtures();
+        snapshot.checks.push(CheckEvidence {
+            state: CheckState::Failed,
+            ..snapshot.checks[0].clone()
+        });
+        let digest =
+            publication_request_digest(&scope, &snapshot, "k", &generation).expect("digest");
+        assert!(
+            propose_publication(&scope, &snapshot, "k", &digest, &generation)
+                .reasons
+                .contains(&PublicationBlock::CheckNotPassed)
+        );
+        let (scope, mut snapshot, generation) = fixtures();
+        let digest =
+            publication_request_digest(&scope, &snapshot, "k", &generation).expect("digest");
+        snapshot.owner_only = true;
+        assert!(!propose_publication(&scope, &snapshot, "k", &digest, &generation).eligible);
+        snapshot.required_checks.clear();
+        snapshot.required_reviewers.clear();
+        let digest =
+            publication_request_digest(&scope, &snapshot, "k", &generation).expect("digest");
+        assert!(!propose_publication(&scope, &snapshot, "k", &digest, &generation).eligible);
+    }
+    fn receipt(intent: &PublicationIntent, effect: bool) -> ReconciliationReceipt {
+        ReconciliationReceipt {
+            intent_key: intent.intent_key.clone(),
+            request_digest: intent.request_digest.clone(),
+            scope: intent.scope.clone(),
+            expected_head: intent.expected_head.clone(),
+            expected_base: intent.expected_base.clone(),
+            authority_generation: intent.authority_generation.clone(),
+            observed_head: if effect {
+                "c".repeat(40)
+            } else {
+                intent.expected_base.clone()
+            },
+            effect_occurred: effect,
+            provenance_ref: "forge:receipt".into(),
+        }
+    }
+    #[test]
+    fn reconciliation_binds_scope_generation_and_observed_target() {
+        let mut intent = proposal();
+        intent.stage = IntentStage::Ambiguous;
+        let proof = receipt(&intent, false);
+        assert!(reduce_publication_intent(Some(&intent), &intent, Some(&proof)).is_ok());
+        let mut foreign = proof.clone();
+        foreign.scope.root_id = RootId::new("foreign").expect("root");
+        assert_eq!(
+            reduce_publication_intent(Some(&intent), &intent, Some(&foreign)),
+            Err(PublicationError::InvalidReconciliation)
+        );
+        foreign = proof.clone();
+        foreign.authority_generation = DecimalU64::new(8);
+        assert_eq!(
+            reduce_publication_intent(Some(&intent), &intent, Some(&foreign)),
+            Err(PublicationError::InvalidReconciliation)
+        );
+        foreign = proof;
+        foreign.observed_head = "d".repeat(40);
+        assert_eq!(
+            reduce_publication_intent(Some(&intent), &intent, Some(&foreign)),
+            Err(PublicationError::InvalidReconciliation)
+        );
+        let mut altered = intent.clone();
+        altered.authority_generation = DecimalU64::new(10);
+        assert_eq!(
+            reduce_publication_intent(Some(&intent), &altered, None),
+            Err(PublicationError::KeyCollision)
+        );
+    }
+    #[test]
+    fn receipt_injection_and_typed_oversize_are_refused() {
+        let first = proposal();
+        let mut forged = first.clone();
+        forged.effect_receipt = Some(receipt(&first, true));
+        assert_eq!(
+            reduce_publication_intent(None, &forged, None),
+            Err(PublicationError::InvalidReconciliation)
+        );
+        let mut claimed = first.clone();
+        claimed.stage = IntentStage::Claimed;
+        assert_eq!(
+            reduce_publication_intent(Some(&first), &claimed, Some(&receipt(&first, true))),
+            Err(PublicationError::InvalidReconciliation)
+        );
+        forged = first;
+        forged.admission_snapshot.checks[0].provenance_ref = "x".repeat(MAX_JSON_BYTES);
+        assert_eq!(
+            reduce_publication_intent(None, &forged, None),
+            Err(PublicationError::LimitExceeded)
+        );
+        for invalid in [
+            "refs/heads/x.lock",
+            "refs/heads/x..y",
+            "refs/heads/.hidden",
+            "refs/heads/a b",
+            "main",
+        ] {
+            assert!(!valid_ref(invalid));
+        }
     }
 }

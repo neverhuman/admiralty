@@ -78,3 +78,10 @@ python3 scripts/release/package.py --self-test
 They cover deterministic output, manifest content and tar metadata, path and
 credential rejection, symlinks and hard links, size and metadata bounds, output
 no-replace behavior under a creation race, and source mutation during capture.
+
+Review hardening: archive names are portable NFC paths with case-insensitive and
+file/ancestor collision checks; manifest/device names are reserved. Duplicate
+JSON keys fail. Source and manifest reads walk directories through no-follow
+handles, so swapping an ancestor cannot redirect a capture into a foreign tree.
+The explicit file allowlist and filename exclusions do not detect secrets inside
+arbitrary file contents; release inputs must already be approved build outputs.

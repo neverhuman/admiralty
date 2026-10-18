@@ -1,6 +1,6 @@
 # Admiralty implementation work packets
 
-Read [MASTER_PLAN.md](MASTER_PLAN.md) first. Root: `/Users/bentaylor/Documents/ChatGPT/admiralty`. Baseline: `1e8ed17eff27ed3ab80dc6860fc8eda301406aee`. All packets are planned, not implemented.
+Read [MASTER_PLAN.md](MASTER_PLAN.md) first. Root: `/Users/bentaylor/Documents/ChatGPT/admiralty`. Baseline: `1e8ed17eff27ed3ab80dc6860fc8eda301406aee`. These are full acceptance contracts; current partial implementation and qualification state is recorded in EXECUTION.md.
 
 ## Execution contract
 

@@ -1,5 +1,9 @@
 # Pure cohort economics component
 
+Every fixed root has one `RootBinding` naming its original task, positive contract revision, full contract digest and protected-oracle digest. Usage and outcomes must match that binding and project exactly; foreign records are rejected. A succeeded stage without an independently authenticated acceptance-receipt digest leaves accepted yield unknown. This module checks consistency; the caller authenticates receipt custody.
+
+Corrections change amount and revision, never observation identity or scope. Missing inclusive parents remain unknown, cycles/cross-scope inclusion fail, and interval overlap is checked within the root/provider/role/purpose stream. Typed inputs use streaming JSON byte bounds. Summaries bind the exact cohort digest; comparisons reject unrelated or internally inconsistent summaries. Subtask usage is attributed to the original root binding and cannot manufacture new root value.
+
 This document describes the bounded, pure API in `admiralty_core::economics`. It is a component candidate: it does not collect provider usage, assign work, reserve budgets, determine acceptance, or make execution decisions.
 
 ## Fixed assignment and evidence

@@ -1,5 +1,5 @@
 //! Pure fleet placement proposals. This module never grants execution authority.
-use crate::{ProjectId, RootId, TaskId};
+use crate::{ProjectId, RootId, TaskId, content_digest, limits::bounded_json_size};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -81,6 +81,7 @@ pub struct PlacementRequest {
     pub root: RootId,
     pub task: TaskId,
     pub contract_digest: String,
+    pub authority_ref: String,
     pub required_capabilities: Vec<String>,
     pub locality_refs: Vec<String>,
     pub budget_requirement: BudgetRequirement,
@@ -126,6 +127,11 @@ pub struct ActiveRoot {
 pub struct IsolatedPermit {
     pub permit_id: String,
     pub root: RootId,
+    pub project: ProjectId,
+    pub task: TaskId,
+    pub node_id: NodeId,
+    pub authority_ref: String,
+    pub expires_at: DecimalU64,
     pub immutable_digest: String,
     pub authority_generation: DecimalU64,
     pub reboot_id: String,
@@ -151,6 +157,10 @@ pub struct NodeOffer {
     pub locality_refs: Vec<String>,
     pub continuation_permit: Option<IsolatedPermit>,
     pub reconciliation_required: bool,
+    #[serde(default)]
+    pub ownership_observed_at: Option<DecimalU64>,
+    #[serde(default)]
+    pub ownership_revision: Option<DecimalU64>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
@@ -160,6 +170,9 @@ pub struct PlacementPolicy {
     pub maximum_pressure: DecimalU64,
     pub minimum_spool_reserve: DecimalU64,
     pub disconnected_continuation_only: bool,
+    /// Expected canonical ownership snapshot revision, not a node-supplied grant.
+    #[serde(default)]
+    pub ownership_revision: Option<DecimalU64>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
@@ -168,6 +181,9 @@ pub struct PlacementProposal {
     pub project: ProjectId,
     pub root: RootId,
     pub task: TaskId,
+    pub contract_digest: String,
+    pub authority_ref: String,
+    pub source_digest: String,
     pub candidates: Vec<PlacementCandidate>,
     pub rejected: Vec<Rejection>,
     pub execution_granted: bool,
@@ -202,6 +218,38 @@ pub enum PlacementError {
     DuplicateRootEvidence,
     #[error("serialized placement input exceeds 1 MiB")]
     JsonOversize,
+    #[error("decision clock unknown or rolled back")]
+    Clock,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct PlacementInput {
+    pub request: PlacementRequest,
+    pub offers: Vec<NodeOffer>,
+    pub policy: PlacementPolicy,
+    pub now: Option<DecimalU64>,
+    pub previous_tick: Option<DecimalU64>,
+}
+
+pub fn decode_input(bytes: &[u8]) -> Result<PlacementInput, PlacementError> {
+    if bytes.len() > MAX_JSON_BYTES {
+        return Err(PlacementError::JsonOversize);
+    }
+    let input: PlacementInput =
+        serde_json::from_slice(bytes).map_err(|_| PlacementError::Invalid("placement JSON"))?;
+    propose_placement_recorded(
+        &input.request,
+        &input.offers,
+        &input.policy,
+        input.now.as_ref().map(DecimalU64::parse).transpose()?,
+        input
+            .previous_tick
+            .as_ref()
+            .map(DecimalU64::parse)
+            .transpose()?,
+    )?;
+    Ok(input)
 }
 
 pub fn propose_placement(
@@ -210,35 +258,51 @@ pub fn propose_placement(
     policy: &PlacementPolicy,
     explicit_now: u64,
 ) -> Result<PlacementProposal, PlacementError> {
-    let encoded_size = serde_json::to_vec(&(request, offers, policy, explicit_now))
-        .map_err(|_| PlacementError::Invalid("placement input serialization"))?
-        .len();
-    if encoded_size > MAX_JSON_BYTES {
-        return Err(PlacementError::JsonOversize);
-    }
+    propose_placement_recorded(request, offers, policy, Some(explicit_now), None)
+}
+
+pub fn propose_placement_recorded(
+    request: &PlacementRequest,
+    offers: &[NodeOffer],
+    policy: &PlacementPolicy,
+    explicit_now: Option<u64>,
+    previous_tick: Option<u64>,
+) -> Result<PlacementProposal, PlacementError> {
     if offers.len() > MAX_OFFERS {
         return Err(PlacementError::Oversize("offers"));
     }
-    if request.contract_digest.len() > 128 || !request.contract_digest.starts_with("sha256:") {
+    bounded_json_size(
+        &(request, offers, policy, explicit_now, previous_tick),
+        MAX_JSON_BYTES,
+    )
+    .map_err(|_| PlacementError::JsonOversize)?;
+    let now = explicit_now.ok_or(PlacementError::Clock)?;
+    if previous_tick.is_some_and(|previous| now < previous) {
+        return Err(PlacementError::Clock);
+    }
+    if !valid_digest(&request.contract_digest) {
         return Err(PlacementError::Invalid("contract_digest"));
     }
+    validate_text(&request.authority_ref)?;
+    validate_text(&request.budget_requirement.account_pool)?;
     if request.required_capabilities.len() > MAX_COLLECTION
         || request.locality_refs.len() > MAX_COLLECTION
     {
         return Err(PlacementError::Oversize("request collections"));
     }
-    if request
-        .required_capabilities
-        .iter()
-        .chain(&request.locality_refs)
-        .any(|s| s.len() > MAX_TEXT)
-    {
-        return Err(PlacementError::Oversize("request string"));
-    }
-    let now = explicit_now;
+    validate_unique(&request.required_capabilities)?;
+    validate_unique(&request.locality_refs)?;
     let max_age = policy.max_observation_age.parse()?;
     let max_pressure = policy.maximum_pressure.parse()?;
     let budget = request.budget_requirement.amount.parse()?;
+    let ownership_revision = policy
+        .ownership_revision
+        .as_ref()
+        .map(DecimalU64::parse)
+        .transpose()?;
+    if ownership_revision == Some(0) {
+        return Err(PlacementError::Invalid("ownership revision"));
+    }
     let mut nodes = HashSet::new();
     let mut roots = HashSet::new();
     for o in offers {
@@ -255,20 +319,41 @@ pub fn propose_placement(
             return Err(PlacementError::Oversize("offer collections"));
         }
         for active in &o.existing_active_roots {
-            if active.ordinary && !roots.insert(active.root.clone()) {
+            if !roots.insert(active.root.clone()) {
                 return Err(PlacementError::DuplicateRootEvidence);
             }
         }
         validate_text(&o.boot_id)?;
         validate_text(&o.account_pool.value)?;
+        if o.authority_generation.parse()? == 0 {
+            return Err(PlacementError::Invalid("authority generation"));
+        }
+        validate_unique(&o.visible_scopes.value)?;
+        validate_unique(&o.capabilities.value)?;
+        validate_unique(&o.locality_refs)?;
+        for reason in [
+            unknown_reason(&o.capacity.value),
+            unknown_reason(&o.current_pressure.value),
+            unknown_reason(&o.spool_free.value),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            validate_text(reason)?;
+        }
         if let Some(permit) = &o.continuation_permit {
             for value in [
                 &permit.permit_id,
                 &permit.immutable_digest,
                 &permit.reboot_id,
+                &permit.authority_ref,
             ] {
                 validate_text(value)?;
             }
+            if !valid_digest(&permit.immutable_digest) {
+                return Err(PlacementError::Invalid("permit contract digest"));
+            }
+            permit.expires_at.parse()?;
         }
         for s in o
             .visible_scopes
@@ -285,6 +370,20 @@ pub fn propose_placement(
     }
     let mut candidates = Vec::new();
     let mut rejected = Vec::new();
+    let ownership_reconciled = ownership_revision.is_some()
+        && offers.iter().all(|offer| {
+            !offer.reconciliation_required
+                && offer
+                    .ownership_revision
+                    .as_ref()
+                    .and_then(|revision| revision.parse().ok())
+                    == ownership_revision
+                && offer
+                    .ownership_observed_at
+                    .as_ref()
+                    .and_then(|tick| tick.parse().ok())
+                    .is_some_and(|at| at <= now && now - at <= max_age)
+        });
     for o in offers {
         let mut reject = |reason: &str| {
             rejected.push(Rejection {
@@ -292,17 +391,22 @@ pub fn propose_placement(
                 reason: reason.to_owned(),
             })
         };
-        if o.reconciliation_required {
-            reject("reconciliation required");
+        if !ownership_reconciled {
+            reject("topology ownership unknown, stale, or unreconciled");
             continue;
         }
         let has_local_root = o
             .existing_active_roots
             .iter()
-            .any(|r| r.ordinary && r.root == request.root);
+            .any(|r| r.root == request.root);
         let valid_continuation_binding = !o.controller_connected
             && o.continuation_permit.as_ref().is_some_and(|p| {
-                p.root == request.root && p.immutable_digest == request.contract_digest
+                p.root == request.root
+                    && p.project == request.project
+                    && p.task == request.task
+                    && p.node_id == o.node_id
+                    && p.authority_ref == request.authority_ref
+                    && p.immutable_digest == request.contract_digest
             });
         // A known active root blocks new placement topology-wide. Only its own disconnected
         // node can be considered for bounded continuation under the matching permit.
@@ -373,23 +477,22 @@ pub fn propose_placement(
             reject("capacity or budget insufficient");
             continue;
         }
-        let permit_id = if o.controller_connected {
-            if !fresh(&o.spool_free, now, max_age)? {
-                reject("spool observation stale");
+        if !fresh(&o.spool_free, now, max_age)? {
+            reject("spool observation stale");
+            continue;
+        }
+        match &o.spool_free.value {
+            Known::Known { value } if value.parse()? >= policy.minimum_spool_reserve.parse()? => {}
+            Known::Known { .. } => {
+                reject("spool reserve insufficient");
                 continue;
             }
-            match &o.spool_free.value {
-                Known::Known { value }
-                    if value.parse()? >= policy.minimum_spool_reserve.parse()? => {}
-                Known::Known { .. } => {
-                    reject("spool reserve insufficient");
-                    continue;
-                }
-                Known::Unknown { .. } => {
-                    reject("spool unknown");
-                    continue;
-                }
+            Known::Unknown { .. } => {
+                reject("spool unknown");
+                continue;
             }
+        }
+        let permit_id = if o.controller_connected {
             None
         } else {
             if !policy.disconnected_continuation_only {
@@ -400,8 +503,16 @@ pub fn propose_placement(
                 reject("no prior isolated permit");
                 continue;
             };
-            if p.root != request.root || p.immutable_digest != request.contract_digest {
-                reject("permit does not bind immutable root contract");
+            if !has_local_root {
+                reject("disconnected node has no existing active root to continue");
+                continue;
+            }
+            if !valid_continuation_binding {
+                reject("permit does not bind exact project/root/task/node/authority/contract");
+                continue;
+            }
+            if now >= p.expires_at.parse()? {
+                reject("continuation permit expired");
                 continue;
             }
             if p.reboot_id != o.boot_id
@@ -440,10 +551,18 @@ pub fn propose_placement(
             .then_with(|| a.node_id.cmp(&b.node_id))
     });
     rejected.sort_by(|a, b| a.node_id.cmp(&b.node_id));
+    let mut sorted_offers: Vec<_> = offers.iter().collect();
+    sorted_offers.sort_by(|a, b| a.node_id.cmp(&b.node_id));
+    let source_digest =
+        content_digest(&(request, sorted_offers, policy, explicit_now, previous_tick))
+            .map_err(|_| PlacementError::Invalid("placement input digest"))?;
     Ok(PlacementProposal {
         project: request.project.clone(),
         root: request.root.clone(),
         task: request.task.clone(),
+        contract_digest: request.contract_digest.clone(),
+        authority_ref: request.authority_ref.clone(),
+        source_digest,
         candidates,
         rejected,
         execution_granted: false,
@@ -456,8 +575,31 @@ pub fn propose_placement(
 fn validate_text(s: &str) -> Result<(), PlacementError> {
     if s.len() > MAX_TEXT {
         Err(PlacementError::Oversize("string"))
+    } else if s.trim().is_empty() || s.chars().any(char::is_control) {
+        Err(PlacementError::Invalid("empty or control string"))
     } else {
         Ok(())
+    }
+}
+fn valid_digest(value: &str) -> bool {
+    value
+        .strip_prefix("sha256:")
+        .is_some_and(|hex| hex.len() == 64 && hex.bytes().all(|byte| byte.is_ascii_hexdigit()))
+}
+fn validate_unique(values: &[String]) -> Result<(), PlacementError> {
+    let mut seen = HashSet::new();
+    for value in values {
+        validate_text(value)?;
+        if !seen.insert(value) {
+            return Err(PlacementError::Invalid("duplicate collection entry"));
+        }
+    }
+    Ok(())
+}
+fn unknown_reason<T>(known: &Known<T>) -> Option<&str> {
+    match known {
+        Known::Unknown { reason } => Some(reason),
+        Known::Known { .. } => None,
     }
 }
 fn fresh<T>(o: &Observation<T>, now: u64, age: u64) -> Result<bool, PlacementError> {
@@ -480,7 +622,8 @@ mod tests {
             project: ProjectId::new("p").expect("valid project fixture"),
             root: RootId::new(root).expect("valid root fixture"),
             task: TaskId::new("t").expect("valid task fixture"),
-            contract_digest: "sha256:abc".into(),
+            contract_digest: format!("sha256:{}", "a".repeat(64)),
+            authority_ref: "grant-1".into(),
             required_capabilities: vec!["rust".into()],
             locality_refs: vec!["src".into()],
             budget_requirement: BudgetRequirement {
@@ -528,6 +671,8 @@ mod tests {
             locality_refs: vec!["src".into()],
             continuation_permit: None,
             reconciliation_required: false,
+            ownership_observed_at: Some(d(10)),
+            ownership_revision: Some(d(1)),
         }
     }
     fn policy() -> PlacementPolicy {
@@ -536,6 +681,7 @@ mod tests {
             maximum_pressure: d(5),
             minimum_spool_reserve: d(2),
             disconnected_continuation_only: true,
+            ownership_revision: Some(d(1)),
         }
     }
     #[test]
@@ -573,7 +719,12 @@ mod tests {
         a.continuation_permit = Some(IsolatedPermit {
             permit_id: "permit".into(),
             root: request("r").root,
-            immutable_digest: "sha256:abc".into(),
+            immutable_digest: request("r").contract_digest,
+            project: request("r").project,
+            task: request("r").task,
+            node_id: a.node_id.clone(),
+            authority_ref: "grant-1".into(),
+            expires_at: d(20),
             authority_generation: d(1),
             reboot_id: "boot".into(),
             remaining_budget: d(5),
@@ -616,10 +767,19 @@ mod tests {
     fn continuation_rejects_authority_generation_budget_and_spool_mismatch() {
         let mut a = offer("node");
         a.controller_connected = false;
+        a.existing_active_roots.push(ActiveRoot {
+            root: request("r").root.clone(),
+            ordinary: true,
+        });
         a.continuation_permit = Some(IsolatedPermit {
             permit_id: "permit".into(),
             root: request("r").root,
-            immutable_digest: "sha256:abc".into(),
+            immutable_digest: request("r").contract_digest,
+            project: request("r").project,
+            task: request("r").task,
+            node_id: a.node_id.clone(),
+            authority_ref: "grant-1".into(),
+            expires_at: d(20),
             authority_generation: d(2),
             reboot_id: "boot".into(),
             remaining_budget: d(4),
@@ -653,5 +813,239 @@ mod tests {
         a.visible_scopes.observed_at = d(0);
         let p = propose_placement(&request("r"), &[a], &policy(), 100).expect("proposal");
         assert!(p.candidates.is_empty());
+    }
+
+    fn continuing_offer() -> NodeOffer {
+        let mut node = offer("continuing-node");
+        let request = request("r");
+        node.controller_connected = false;
+        node.existing_active_roots = vec![ActiveRoot {
+            root: request.root.clone(),
+            ordinary: true,
+        }];
+        node.continuation_permit = Some(IsolatedPermit {
+            permit_id: "permit".into(),
+            root: request.root,
+            project: request.project,
+            task: request.task,
+            node_id: node.node_id.clone(),
+            authority_ref: request.authority_ref,
+            immutable_digest: request.contract_digest,
+            expires_at: d(20),
+            authority_generation: d(1),
+            reboot_id: node.boot_id.clone(),
+            remaining_budget: d(10),
+            spool_reserve: d(5),
+            minimum_spool_reserve: d(2),
+        });
+        node
+    }
+
+    #[test]
+    fn unknown_or_unreconciled_ownership_blocks_the_entire_topology_not_just_one_node() {
+        for variant in ["unknown_time", "future", "stale", "revision", "reconcile"] {
+            let mut unknown = offer("unknown");
+            match variant {
+                "unknown_time" => unknown.ownership_observed_at = None,
+                "future" => unknown.ownership_observed_at = Some(d(11)),
+                "stale" => unknown.ownership_observed_at = Some(d(0)),
+                "revision" => unknown.ownership_revision = Some(d(2)),
+                _ => unknown.reconciliation_required = true,
+            }
+            let now = if variant == "stale" { 20 } else { 10 };
+            let proposal = propose_placement(
+                &request("r"),
+                &[offer("otherwise-ready"), unknown],
+                &policy(),
+                now,
+            )
+            .expect("explicit ownership rejection");
+            assert!(proposal.candidates.is_empty(), "accepted {variant}");
+            assert_eq!(proposal.rejected.len(), 2);
+            assert!(
+                proposal
+                    .rejected
+                    .iter()
+                    .all(|row| row.reason.contains("ownership"))
+            );
+        }
+        let mut unknown = policy();
+        unknown.ownership_revision = None;
+        assert!(
+            propose_placement(&request("r"), &[offer("ready")], &unknown, 10)
+                .expect("unknown topology revision")
+                .candidates
+                .is_empty()
+        );
+        let mut owner = offer("owner");
+        owner.existing_active_roots = vec![ActiveRoot {
+            root: request("r").root,
+            ordinary: false,
+        }];
+        assert!(
+            propose_placement(&request("r"), &[offer("ready"), owner], &policy(), 10)
+                .expect("nonordinary ownership is not free")
+                .candidates
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn offline_continuation_cannot_be_rebound_extended_or_used_to_start_a_new_root() {
+        let original = continuing_offer();
+        assert_eq!(
+            propose_placement(
+                &request("r"),
+                std::slice::from_ref(&original),
+                &policy(),
+                10
+            )
+            .expect("bound continuation proposal")
+            .candidates
+            .len(),
+            1
+        );
+        for variant in [
+            "project",
+            "root",
+            "task",
+            "node",
+            "authority",
+            "contract",
+            "expired",
+            "new_root",
+            "spool_unknown",
+        ] {
+            let mut node = original.clone();
+            let permit = node.continuation_permit.as_mut().expect("permit");
+            match variant {
+                "project" => permit.project = ProjectId::new("foreign").expect("project"),
+                "root" => permit.root = RootId::new("foreign").expect("root"),
+                "task" => permit.task = TaskId::new("foreign").expect("task"),
+                "node" => permit.node_id = NodeId::new("foreign").expect("node"),
+                "authority" => permit.authority_ref = "foreign-grant".into(),
+                "contract" => permit.immutable_digest = format!("sha256:{}", "b".repeat(64)),
+                "expired" => permit.expires_at = d(10),
+                "new_root" => node.existing_active_roots.clear(),
+                _ => {
+                    node.spool_free.value = Known::Unknown {
+                        reason: "unobserved".into(),
+                    }
+                }
+            }
+            let proposal = propose_placement(&request("r"), &[node], &policy(), 10)
+                .expect("continuation rejection");
+            assert!(proposal.candidates.is_empty(), "accepted {variant}");
+            assert!(
+                !proposal.execution_granted
+                    && !proposal.publication_granted
+                    && !proposal.authority_granted
+            );
+        }
+        assert_eq!(original, continuing_offer());
+    }
+
+    #[test]
+    fn recorded_clocks_parser_bounds_and_source_bindings_are_explicit() {
+        let input = PlacementInput {
+            request: request("r"),
+            offers: vec![offer("b"), offer("a")],
+            policy: policy(),
+            now: Some(d(10)),
+            previous_tick: Some(d(9)),
+        };
+        let bytes = serde_json::to_vec(&input).expect("JSON");
+        assert_eq!(decode_input(&bytes).expect("bounded input"), input);
+        assert_eq!(
+            propose_placement_recorded(&input.request, &input.offers, &input.policy, None, None),
+            Err(PlacementError::Clock)
+        );
+        assert_eq!(
+            propose_placement_recorded(
+                &input.request,
+                &input.offers,
+                &input.policy,
+                Some(10),
+                Some(11)
+            ),
+            Err(PlacementError::Clock)
+        );
+        let proposal = propose_placement_recorded(
+            &input.request,
+            &input.offers,
+            &input.policy,
+            Some(10),
+            Some(9),
+        )
+        .expect("recorded proposal");
+        let mut reversed = input.offers.clone();
+        reversed.reverse();
+        assert_eq!(
+            proposal,
+            propose_placement_recorded(&input.request, &reversed, &input.policy, Some(10), Some(9))
+                .expect("stable offer delivery")
+        );
+        assert_ne!(
+            proposal.source_digest,
+            propose_placement_recorded(
+                &input.request,
+                &input.offers,
+                &input.policy,
+                Some(10),
+                Some(10)
+            )
+            .expect("changed clock receipt")
+            .source_digest
+        );
+        assert_eq!(proposal.contract_digest, input.request.contract_digest);
+        assert_eq!(proposal.authority_ref, input.request.authority_ref);
+        let mut foreign = input.request.clone();
+        foreign.project = ProjectId::new("foreign-project").expect("project");
+        assert!(
+            propose_placement(&foreign, &input.offers, &input.policy, 10)
+                .expect("foreign visibility is not a candidate")
+                .candidates
+                .is_empty()
+        );
+        let mut invalid = input.request.clone();
+        invalid.contract_digest = "sha256:abc".into();
+        assert_eq!(
+            propose_placement(&invalid, &input.offers, &input.policy, 10),
+            Err(PlacementError::Invalid("contract_digest"))
+        );
+        invalid = input.request.clone();
+        invalid.locality_refs.push(invalid.locality_refs[0].clone());
+        assert_eq!(
+            propose_placement(&invalid, &input.offers, &input.policy, 10),
+            Err(PlacementError::Invalid("duplicate collection entry"))
+        );
+        let mut extra = serde_json::to_value(&input).expect("value");
+        extra["execution_granted"] = true.into();
+        assert!(decode_input(&serde_json::to_vec(&extra).expect("JSON")).is_err());
+        assert_eq!(
+            decode_input(&vec![b' '; MAX_JSON_BYTES + 1]),
+            Err(PlacementError::JsonOversize)
+        );
+        let mut oversized = input.request.clone();
+        oversized.authority_ref = "x".repeat(MAX_JSON_BYTES);
+        assert_eq!(
+            propose_placement(&oversized, &input.offers, &input.policy, 10),
+            Err(PlacementError::JsonOversize)
+        );
+        let mut zero = offer("zero");
+        zero.visible_scopes.observed_at = d(0);
+        zero.capabilities.observed_at = d(0);
+        zero.account_pool.observed_at = d(0);
+        zero.capacity.observed_at = d(0);
+        zero.current_pressure.observed_at = d(0);
+        zero.spool_free.observed_at = d(0);
+        zero.ownership_observed_at = Some(d(0));
+        assert_eq!(
+            propose_placement_recorded(&request("r"), &[zero], &policy(), Some(0), Some(0))
+                .expect("logical clock zero is known")
+                .candidates
+                .len(),
+            1
+        );
     }
 }

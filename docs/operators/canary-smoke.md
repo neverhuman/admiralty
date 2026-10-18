@@ -64,3 +64,8 @@ unknown; do not substitute a build, a guessed path, a running service, or a
 protected legacy port. Fleet rollout still requires the complete P31 inventory,
 backup, shadow, observed-session, bounded new-task canary, staged expansion and
 rollback evidence from the deployment owner.
+
+The HTTP deadline also covers a peer that slowly drips response headers: a
+monotonic watchdog shuts down only the connection opened by this request. Tests
+resolve their own temporary-root aliases before passing strict no-symlink paths;
+production input validation still refuses symlink components.

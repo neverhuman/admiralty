@@ -1,4 +1,4 @@
-use crate::{PrincipalId, ProjectId, RootId, TaskId, content_digest};
+use crate::{PrincipalId, ProjectId, RootId, TaskId, content_digest, limits::bounded_json_size};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 const MAX_JSON_BYTES: usize = 1024 * 1024;
 const MAX_COLLECTION: usize = 1024;
 const MAX_ID: usize = 128;
+const MAX_REGISTRY_BYTES: usize = 8 * MAX_JSON_BYTES;
 
 #[derive(
     Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
@@ -151,6 +152,10 @@ pub struct NodeRegistry {
     pub revoked_generations: BTreeMap<NodeId, DecimalU64>,
     pub capacity: BTreeMap<NodeId, CapacityObservation>,
     pub applied_events: BTreeMap<String, String>,
+    #[serde(default)]
+    pub scopes: BTreeMap<NodeId, NodeScope>,
+    #[serde(default)]
+    pub last_tick: Option<DecimalU64>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -192,7 +197,7 @@ pub fn decode_event(bytes: &[u8]) -> Result<EnrollmentEvent, NodeError> {
     Ok(event)
 }
 fn validate_text(value: &str, max: usize) -> Result<(), NodeError> {
-    if value.is_empty() || value.len() > max || value.contains('\0') {
+    if value.trim().is_empty() || value.len() > max || value.chars().any(char::is_control) {
         Err(NodeError::Invalid("invalid or oversized string"))
     } else {
         Ok(())
@@ -216,6 +221,8 @@ fn validate_scope(scope: &NodeScope) -> Result<(), NodeError> {
     Ok(())
 }
 fn validate_event(event: &EnrollmentEvent) -> Result<(), NodeError> {
+    bounded_json_size(event, MAX_JSON_BYTES)
+        .map_err(|_| NodeError::Invalid("event exceeds 1 MiB"))?;
     let id = match event {
         EnrollmentEvent::TokenIssued { event_id, .. }
         | EnrollmentEvent::Enrolled { event_id, .. }
@@ -224,14 +231,19 @@ fn validate_event(event: &EnrollmentEvent) -> Result<(), NodeError> {
         | EnrollmentEvent::CapacityObserved { event_id, .. } => event_id,
     };
     validate_text(id, MAX_ID)?;
+    crate::MessageId::new(id.clone())
+        .map_err(|_| NodeError::Invalid("invalid event identifier"))?;
     match event {
         EnrollmentEvent::TokenIssued { token, .. } => {
             validate_text(&token.token_id, MAX_ID)?;
+            crate::MessageId::new(token.token_id.clone())
+                .map_err(|_| NodeError::Invalid("invalid token identifier"))?;
             validate_digest(&token.token_digest)?;
             validate_scope(&token.scope)?;
             token.expires_tick.parse()?;
             if let Some(binding) = &token.consumed_binding {
                 validate_binding(binding)?;
+                return Err(NodeError::Invalid("new token cannot be pre-consumed"));
             }
         }
         EnrollmentEvent::Enrolled {
@@ -283,9 +295,54 @@ fn validate_binding(binding: &EnrollmentBinding) -> Result<(), NodeError> {
 }
 fn validate_identity(identity: &NodeIdentity) -> Result<(), NodeError> {
     validate_text(&identity.boot_id, MAX_ID)?;
-    identity.generation.parse()?;
+    if identity.generation.parse()? == 0 {
+        return Err(NodeError::Invalid("generation must be positive"));
+    }
     validate_digest(&identity.public_key_digest)?;
     validate_digest(&identity.capability_digest)
+}
+
+/// Controller-side admission under an independently authenticated authority.
+/// This context must never be copied from the same untrusted enrollment event.
+pub fn reduce_enrollment_for(
+    state: &NodeRegistry,
+    event: &EnrollmentEvent,
+    expected_scope: &NodeScope,
+    authenticated_actor: &PrincipalId,
+    explicit_now: Option<u64>,
+) -> Result<NodeRegistry, NodeError> {
+    let scope = match event {
+        EnrollmentEvent::TokenIssued { token, .. } => &token.scope,
+        EnrollmentEvent::Enrolled { scope, .. } => scope,
+        EnrollmentEvent::Rotated { node_id, .. }
+        | EnrollmentEvent::Revoked { node_id, .. }
+        | EnrollmentEvent::CapacityObserved { node_id, .. } => {
+            state.scopes.get(node_id).ok_or(NodeError::ForeignScope)?
+        }
+    };
+    if scope != expected_scope || authenticated_actor != &expected_scope.authority {
+        return Err(NodeError::ForeignScope);
+    }
+    reduce_enrollment(state, event, explicit_now)
+}
+
+fn validate_registry(state: &NodeRegistry) -> Result<(), NodeError> {
+    if [
+        state.tokens.len(),
+        state.nodes.len(),
+        state.capacity.len(),
+        state.revoked_generations.len(),
+        state.scopes.len(),
+        state.applied_events.len(),
+    ]
+    .into_iter()
+    .any(|length| length > MAX_COLLECTION)
+    {
+        return Err(NodeError::Invalid("collection exceeds 1024 entries"));
+    }
+    bounded_json_size(state, MAX_REGISTRY_BYTES)
+        .map_err(|_| NodeError::Invalid("registry exceeds 8 MiB"))?;
+    Ok(())
 }
 
 /// Apply one recorded enrollment event. Time is explicit; `None` never means tick zero.
@@ -295,6 +352,7 @@ pub fn reduce_enrollment(
     explicit_now: Option<u64>,
 ) -> Result<NodeRegistry, NodeError> {
     validate_event(event)?;
+    validate_registry(state)?;
     let event_id = match event {
         EnrollmentEvent::TokenIssued { event_id, .. }
         | EnrollmentEvent::Enrolled { event_id, .. }
@@ -302,8 +360,8 @@ pub fn reduce_enrollment(
         | EnrollmentEvent::Revoked { event_id, .. }
         | EnrollmentEvent::CapacityObserved { event_id, .. } => event_id,
     };
-    let digest =
-        content_digest(event).map_err(|_| NodeError::Invalid("event serialization failed"))?;
+    let digest = content_digest(&(event, explicit_now))
+        .map_err(|_| NodeError::Invalid("event serialization failed"))?;
     if let Some(previous) = state.applied_events.get(event_id) {
         return if previous == &digest {
             Ok(state.clone())
@@ -311,9 +369,36 @@ pub fn reduce_enrollment(
             Err(NodeError::Collision)
         };
     }
+    if state.last_tick.is_none()
+        && (!state.tokens.is_empty()
+            || !state.nodes.is_empty()
+            || !state.applied_events.is_empty()
+            || !state.revoked_generations.is_empty()
+            || !state.capacity.is_empty()
+            || !state.scopes.is_empty())
+    {
+        return Err(NodeError::Invalid("recorded clock history missing"));
+    }
+    let now = explicit_now.ok_or(if matches!(event, EnrollmentEvent::Enrolled { .. }) {
+        NodeError::TokenExpired
+    } else {
+        NodeError::Invalid("clock unknown")
+    })?;
+    if state
+        .last_tick
+        .as_ref()
+        .map(DecimalU64::parse)
+        .transpose()?
+        .is_some_and(|previous| now < previous)
+    {
+        return Err(NodeError::Invalid("clock rollback"));
+    }
     let mut next = state.clone();
     match event {
         EnrollmentEvent::TokenIssued { token, .. } => {
+            if now >= token.expires_tick.parse()? {
+                return Err(NodeError::TokenExpired);
+            }
             if next
                 .tokens
                 .get(&token.token_id)
@@ -334,6 +419,13 @@ pub fn reduce_enrollment(
             if &token.scope != scope {
                 return Err(NodeError::ForeignScope);
             }
+            if next
+                .scopes
+                .get(&identity.node_id)
+                .is_some_and(|old| old != scope)
+            {
+                return Err(NodeError::ForeignScope);
+            }
             if now >= token.expires_tick.parse()? {
                 return Err(NodeError::TokenExpired);
             }
@@ -343,7 +435,7 @@ pub fn reduce_enrollment(
                 public_key_digest: identity.public_key_digest.clone(),
             };
             if let Some(consumed) = &token.consumed_binding
-                && consumed != &binding
+                && (consumed != &binding || next.nodes.get(&identity.node_id) != Some(identity))
             {
                 return Err(NodeError::Consumed);
             }
@@ -353,6 +445,12 @@ pub fn reduce_enrollment(
                 .is_some_and(|old| old != identity)
             {
                 return Err(NodeError::Consumed);
+            }
+            if !next.nodes.contains_key(&identity.node_id)
+                && !next.revoked_generations.contains_key(&identity.node_id)
+                && identity.generation.parse()? != 1
+            {
+                return Err(NodeError::StaleNode);
             }
             if next
                 .revoked_generations
@@ -366,6 +464,7 @@ pub fn reduce_enrollment(
             next.tokens.insert(token_id.clone(), consumed_token);
             next.nodes
                 .insert(identity.node_id.clone(), identity.clone());
+            next.scopes.insert(identity.node_id.clone(), scope.clone());
         }
         EnrollmentEvent::Rotated {
             node_id,
@@ -409,10 +508,7 @@ pub fn reduce_enrollment(
             ..
         } => {
             let node = next.nodes.get(node_id).ok_or(NodeError::StaleNode)?;
-            if &node.boot_id != boot_id
-                || node.generation != *generation
-                || next.revoked_generations.contains_key(node_id)
-            {
+            if &node.boot_id != boot_id || node.generation != *generation {
                 return Err(NodeError::StaleNode);
             }
             let at = observed_tick
@@ -427,26 +523,28 @@ pub fn reduce_enrollment(
                     "capacity observation stale or from future",
                 ));
             }
-            next.capacity.insert(
-                node_id.clone(),
-                CapacityObservation {
-                    boot_id: boot_id.clone(),
-                    generation: generation.clone(),
-                    observed_tick: DecimalU64::new(at),
-                    fresh_for_ticks: fresh_for_ticks.clone(),
-                    capacity_digest: capacity_digest.clone(),
-                },
-            );
+            let observation = CapacityObservation {
+                boot_id: boot_id.clone(),
+                generation: generation.clone(),
+                observed_tick: DecimalU64::new(at),
+                fresh_for_ticks: fresh_for_ticks.clone(),
+                capacity_digest: capacity_digest.clone(),
+            };
+            if let Some(previous) = next.capacity.get(node_id) {
+                let previous_tick = previous.observed_tick.parse()?;
+                if at < previous_tick {
+                    return Err(NodeError::Invalid("capacity observation rollback"));
+                }
+                if at == previous_tick && previous != &observation {
+                    return Err(NodeError::Collision);
+                }
+            }
+            next.capacity.insert(node_id.clone(), observation);
         }
     }
     next.applied_events.insert(event_id.clone(), digest);
-    if next.tokens.len() > MAX_COLLECTION
-        || next.nodes.len() > MAX_COLLECTION
-        || next.capacity.len() > MAX_COLLECTION
-        || next.applied_events.len() > MAX_COLLECTION
-    {
-        return Err(NodeError::Invalid("collection exceeds 1024 entries"));
-    }
+    next.last_tick = Some(DecimalU64::new(now));
+    validate_registry(&next)?;
     Ok(next)
 }
 
@@ -757,6 +855,7 @@ mod tests {
         };
         let mut state = NodeRegistry::default();
         state.nodes.insert(max.node_id.clone(), max.clone());
+        state.last_tick = Some(DecimalU64::new(0));
         assert!(matches!(
             reduce_enrollment(
                 &state,
@@ -770,5 +869,190 @@ mod tests {
             ),
             Err(NodeError::Overflow)
         ));
+    }
+
+    #[test]
+    fn recorded_clock_is_part_of_event_identity_and_new_mutations_cannot_roll_back() {
+        let start = issue();
+        let enrolled =
+            enroll(&start, "enroll", identity(), scope(), "token-a", Some(2)).expect("enroll");
+        let issued = EnrollmentEvent::TokenIssued {
+            event_id: "issue".into(),
+            token: token(),
+        };
+        assert_eq!(
+            reduce_enrollment(&enrolled, &issued, Some(0)).expect("exact historical replay"),
+            enrolled
+        );
+        assert_eq!(
+            reduce_enrollment(&enrolled, &issued, Some(1)),
+            Err(NodeError::Collision)
+        );
+        let rotate = EnrollmentEvent::Rotated {
+            event_id: "rotate".into(),
+            node_id: identity().node_id,
+            expected_generation: DecimalU64::new(1),
+            new_public_key_digest: d('d'),
+        };
+        assert!(matches!(
+            reduce_enrollment(&enrolled, &rotate, Some(1)),
+            Err(NodeError::Invalid("clock rollback"))
+        ));
+        assert!(reduce_enrollment(&enrolled, &rotate, None).is_err());
+        assert_eq!(start.last_tick, Some(DecimalU64::new(0)));
+        assert_eq!(enrolled.last_tick, Some(DecimalU64::new(2)));
+        let mut missing_history = enrolled.clone();
+        missing_history.last_tick = None;
+        assert_eq!(
+            reduce_enrollment(&missing_history, &rotate, Some(0)),
+            Err(NodeError::Invalid("recorded clock history missing"))
+        );
+    }
+
+    #[test]
+    fn revoked_identity_requires_fresh_token_exact_scope_and_next_generation() {
+        let enrolled =
+            enroll(&issue(), "enroll", identity(), scope(), "token-a", Some(1)).expect("enroll");
+        let revoke = EnrollmentEvent::Revoked {
+            event_id: "revoke".into(),
+            node_id: identity().node_id,
+            expected_generation: DecimalU64::new(1),
+        };
+        assert_eq!(
+            reduce_enrollment_for(
+                &enrolled,
+                &revoke,
+                &scope(),
+                &PrincipalId::new("stranger").expect("principal"),
+                Some(2)
+            ),
+            Err(NodeError::ForeignScope)
+        );
+        let revoked =
+            reduce_enrollment_for(&enrolled, &revoke, &scope(), &scope().authority, Some(2))
+                .expect("authorized revoke");
+        let next_identity = NodeIdentity {
+            generation: DecimalU64::new(2),
+            ..identity()
+        };
+        assert_eq!(
+            enroll(
+                &revoked,
+                "resurrect",
+                next_identity.clone(),
+                scope(),
+                "token-a",
+                Some(3)
+            ),
+            Err(NodeError::Consumed)
+        );
+        let replacement = EnrollmentToken {
+            token_id: "new-token".into(),
+            expires_tick: DecimalU64::new(30),
+            ..token()
+        };
+        let issued = reduce_enrollment(
+            &revoked,
+            &EnrollmentEvent::TokenIssued {
+                event_id: "new-issue".into(),
+                token: replacement,
+            },
+            Some(3),
+        )
+        .expect("new token");
+        let renewed = enroll(
+            &issued,
+            "renew",
+            next_identity.clone(),
+            scope(),
+            "new-token",
+            Some(4),
+        )
+        .expect("new generation enrollment");
+        let observation = EnrollmentEvent::CapacityObserved {
+            event_id: "new-capacity".into(),
+            node_id: next_identity.node_id.clone(),
+            boot_id: next_identity.boot_id,
+            generation: next_identity.generation,
+            observed_tick: Some(DecimalU64::new(5)),
+            fresh_for_ticks: DecimalU64::new(3),
+            capacity_digest: d('f'),
+        };
+        let capacity = reduce_enrollment_for(
+            &renewed,
+            &observation,
+            &scope(),
+            &scope().authority,
+            Some(5),
+        )
+        .expect("renewed identity capacity");
+        assert!(capacity.capacity.contains_key(&identity().node_id));
+        let foreign = NodeScope {
+            root_id: RootId::new("foreign").expect("root"),
+            ..scope()
+        };
+        assert_eq!(
+            reduce_enrollment_for(
+                &renewed,
+                &observation,
+                &foreign,
+                &scope().authority,
+                Some(5)
+            ),
+            Err(NodeError::ForeignScope)
+        );
+    }
+
+    #[test]
+    fn capacity_rollback_equivocation_and_preconsumed_tokens_fail_without_changes() {
+        let enrolled =
+            enroll(&issue(), "enroll", identity(), scope(), "token-a", Some(1)).expect("enroll");
+        let cap = |id: &str, at: u64, digest| EnrollmentEvent::CapacityObserved {
+            event_id: id.into(),
+            node_id: identity().node_id,
+            boot_id: identity().boot_id,
+            generation: DecimalU64::new(1),
+            observed_tick: Some(DecimalU64::new(at)),
+            fresh_for_ticks: DecimalU64::new(10),
+            capacity_digest: d(digest),
+        };
+        let state =
+            reduce_enrollment(&enrolled, &cap("cap", 3, 'a'), Some(3)).expect("observation");
+        let before = state.clone();
+        assert!(matches!(
+            reduce_enrollment(&state, &cap("old", 2, 'b'), Some(4)),
+            Err(NodeError::Invalid("capacity observation rollback"))
+        ));
+        assert_eq!(
+            reduce_enrollment(&state, &cap("changed", 3, 'b'), Some(4)),
+            Err(NodeError::Collision)
+        );
+        assert_eq!(state, before);
+        let mut consumed = token();
+        consumed.consumed_binding = Some(EnrollmentBinding {
+            node_id: identity().node_id,
+            boot_id: identity().boot_id,
+            public_key_digest: identity().public_key_digest,
+        });
+        assert!(
+            reduce_enrollment(
+                &NodeRegistry::default(),
+                &EnrollmentEvent::TokenIssued {
+                    event_id: "preconsumed".into(),
+                    token: consumed
+                },
+                Some(0)
+            )
+            .is_err()
+        );
+        let mut oversized = cap("large", 3, 'b');
+        if let EnrollmentEvent::CapacityObserved { boot_id, .. } = &mut oversized {
+            *boot_id = "x".repeat(MAX_JSON_BYTES);
+        }
+        assert!(reduce_enrollment(&state, &oversized, Some(4)).is_err());
+        let duplicate = serde_json::to_string(&cap("duplicate", 3, 'b'))
+            .expect("JSON")
+            .replacen("{", "{\"kind\":\"capacity_observed\",", 1);
+        assert!(decode_event(duplicate.as_bytes()).is_err());
     }
 }

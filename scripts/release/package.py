@@ -14,6 +14,8 @@ import stat
 import tarfile
 import tempfile
 import unittest
+import unicodedata
+from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 from typing import BinaryIO
 
@@ -52,11 +54,18 @@ def _bounded_text(value: object, label: str) -> str:
 
 def _archive_path(value: object) -> str:
     raw = _bounded_text(value, "archive_path")
-    if "\\" in raw or raw.startswith("/") or ":" in raw:
-        raise PackageError("archive_path must be a relative POSIX path")
+    if "\\" in raw or raw.startswith("/") or any(c in raw for c in '<>:"|?*'):
+        raise PackageError("archive_path must be a portable relative POSIX path")
+    if unicodedata.normalize("NFC", raw) != raw:
+        raise PackageError("archive_path must use NFC Unicode normalization")
     parts = raw.split("/")
     if any(part in ("", ".", "..") for part in parts):
         raise PackageError("archive_path must not contain empty, dot, or parent components")
+    if any(len(part.encode("utf-8")) > 255 or part.endswith((".", " ")) for part in parts):
+        raise PackageError("archive_path component is not portable")
+    reserved = {"con", "prn", "aux", "nul", *(f"com{i}" for i in range(1,10)), *(f"lpt{i}" for i in range(1,10))}
+    if any(part.split(".")[0].casefold() in reserved for part in parts):
+        raise PackageError("archive_path names a reserved device")
     lowered = [part.lower() for part in parts]
     for part in lowered:
         if part in DENIED_COMPONENTS or part == ".env" or part.startswith(".env.") or SENSITIVE_NAME.search(part):
@@ -64,7 +73,7 @@ def _archive_path(value: object) -> str:
         if part.endswith((".pem", ".key", ".token", ".p12", ".pfx")):
             raise PackageError("archive_path names a private or credential-bearing file")
     normalized = PurePosixPath(*parts).as_posix()
-    if normalized == MANIFEST_PATH:
+    if normalized.casefold() == MANIFEST_PATH.casefold():
         raise PackageError("archive_path is reserved for the package manifest")
     return normalized
 
@@ -105,12 +114,58 @@ def _validate_root(root: Path) -> Path:
     return absolute
 
 
+def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise PackageError("duplicate JSON key")
+        result[key] = value
+    return result
+
+
+@contextmanager
+def _pinned_parent(path: Path):
+    """Walk with directory handles; a swapped ancestor cannot redirect an open."""
+    absolute = Path(os.path.abspath(path))
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    descriptor = os.open(absolute.anchor, flags)
+    try:
+        for part in absolute.parts[1:-1]:
+            next_descriptor = os.open(part, flags, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = next_descriptor
+        yield descriptor, absolute.name
+    finally:
+        os.close(descriptor)
+
+
+def _read_input_json(path: Path) -> bytes:
+    with _pinned_parent(path) as (parent, name):
+        try:
+            fd = os.open(name, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW, dir_fd=parent)
+        except OSError as exc:
+            raise PackageError("input JSON could not be opened without following links") from exc
+        try:
+            before = os.fstat(fd)
+            if not stat.S_ISREG(before.st_mode):
+                raise PackageError("--inputs must be a regular file")
+            with os.fdopen(fd, "rb", closefd=False) as stream:
+                raw = stream.read(MAX_INPUT_JSON + 1)
+            after = os.fstat(fd)
+            named = os.stat(name, dir_fd=parent, follow_symlinks=False)
+            if _identity(before) != _identity(after) or _identity(after) != _identity(named):
+                raise PackageError("input JSON changed during read")
+            return raw
+        finally:
+            os.close(fd)
+
+
 def _parse_inputs(raw: bytes) -> list[dict[str, object]]:
     if len(raw) > MAX_INPUT_JSON:
         raise PackageError("input JSON exceeds 1 MiB")
     try:
-        document = json.loads(raw)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        document = json.loads(raw, object_pairs_hook=_unique_object)
+    except (UnicodeDecodeError, ValueError, RecursionError) as exc:
         raise PackageError(f"invalid input JSON: {exc}") from exc
     if not isinstance(document, dict) or set(document) != {"files"} or not isinstance(document["files"], list):
         raise PackageError("input JSON must contain only a files array")
@@ -127,9 +182,10 @@ def _parse_inputs(raw: bytes) -> list[dict[str, object]]:
         mode = item["mode"]
         if isinstance(mode, bool) or not isinstance(mode, int) or mode not in (0o644, 0o755):
             raise PackageError(f"files[{index}].mode must be 420 (0644) or 493 (0755)")
-        if archive in seen:
-            raise PackageError(f"duplicate normalized archive path: {archive}")
-        seen.add(archive)
+        folded = archive.casefold()
+        if any(folded == other or folded.startswith(other + "/") or other.startswith(folded + "/") for other in seen):
+            raise PackageError(f"colliding portable archive path: {archive}")
+        seen.add(folded)
         parsed.append({"source": source, "archive_path": archive, "mode": mode})
     return sorted(parsed, key=lambda record: str(record["archive_path"]))
 
@@ -168,51 +224,50 @@ def _hash_fd(fd: int) -> tuple[str, int]:
 
 def _capture_source(root: Path, relative: str, spool: BinaryIO) -> tuple[str, int]:
     candidate = root.joinpath(*relative.split("/"))
-    _no_symlink_components(candidate)
-    before_path = candidate.lstat()
-    if not stat.S_ISREG(before_path.st_mode):
-        raise PackageError(f"input is not a regular file: {relative}")
-    if before_path.st_nlink != 1:
-        raise PackageError(f"hard-linked input is ambiguous: {relative}")
-    if before_path.st_size > MAX_FILE_BYTES:
-        raise PackageError(f"input file exceeds the per-file byte limit: {relative}")
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-    fd = os.open(candidate, flags)
-    try:
-        before_fd = os.fstat(fd)
-        if not stat.S_ISREG(before_fd.st_mode) or _identity(before_fd) != _identity(before_path):
-            raise PackageError(f"input changed while opening: {relative}")
-        digest = hashlib.sha256()
-        total = 0
-        os.lseek(fd, 0, os.SEEK_SET)
-        while True:
-            chunk = os.read(fd, CHUNK_BYTES)
-            if not chunk:
-                break
-            total += len(chunk)
-            if total > MAX_FILE_BYTES:
-                raise PackageError(f"input file exceeds the per-file byte limit: {relative}")
-            spool.write(chunk)
-            digest.update(chunk)
-        after_copy = os.fstat(fd)
-        named_after = candidate.lstat()
-        if _identity(before_fd) != _identity(after_copy) or _identity(before_fd) != _identity(named_after):
-            raise PackageError(f"input changed during capture: {relative}")
-        if total != before_fd.st_size:
-            raise PackageError(f"input size changed during capture: {relative}")
-        first_digest = digest.hexdigest()
-        second_digest, second_size = _hash_fd(fd)
-        if second_digest != first_digest or second_size != total:
-            raise PackageError(f"input content changed during capture: {relative}")
-        after_verify = os.fstat(fd)
-        named_verified = candidate.lstat()
-        if _identity(before_fd) != _identity(after_verify) or _identity(before_fd) != _identity(named_verified):
-            raise PackageError(f"input changed during verification: {relative}")
-        spool.seek(0)
-        return first_digest, total
-    finally:
-        os.close(fd)
-
+    with _pinned_parent(candidate) as (parent, name):
+        before_path = os.stat(name, dir_fd=parent, follow_symlinks=False)
+        if not stat.S_ISREG(before_path.st_mode):
+            raise PackageError(f"input is not a regular file: {relative}")
+        if before_path.st_nlink != 1:
+            raise PackageError(f"hard-linked input is ambiguous: {relative}")
+        if before_path.st_size > MAX_FILE_BYTES:
+            raise PackageError(f"input file exceeds the per-file byte limit: {relative}")
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(name, flags | os.O_NONBLOCK, dir_fd=parent)
+        try:
+            before_fd = os.fstat(fd)
+            if not stat.S_ISREG(before_fd.st_mode) or _identity(before_fd) != _identity(before_path):
+                raise PackageError(f"input changed while opening: {relative}")
+            digest = hashlib.sha256()
+            total = 0
+            os.lseek(fd, 0, os.SEEK_SET)
+            while True:
+                chunk = os.read(fd, CHUNK_BYTES)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX_FILE_BYTES:
+                    raise PackageError(f"input file exceeds the per-file byte limit: {relative}")
+                spool.write(chunk)
+                digest.update(chunk)
+            after_copy = os.fstat(fd)
+            named_after = os.stat(name, dir_fd=parent, follow_symlinks=False)
+            if _identity(before_fd) != _identity(after_copy) or _identity(before_fd) != _identity(named_after):
+                raise PackageError(f"input changed during capture: {relative}")
+            if total != before_fd.st_size:
+                raise PackageError(f"input size changed during capture: {relative}")
+            first_digest = digest.hexdigest()
+            second_digest, second_size = _hash_fd(fd)
+            if second_digest != first_digest or second_size != total:
+                raise PackageError(f"input content changed during capture: {relative}")
+            after_verify = os.fstat(fd)
+            named_verified = os.stat(name, dir_fd=parent, follow_symlinks=False)
+            if _identity(before_fd) != _identity(after_verify) or _identity(before_fd) != _identity(named_verified):
+                raise PackageError(f"input changed during verification: {relative}")
+            spool.seek(0)
+            return first_digest, total
+        finally:
+            os.close(fd)
 
 def _tar_info(name: str, size: int, mode: int) -> tarfile.TarInfo:
     info = tarfile.TarInfo(name)
@@ -238,12 +293,7 @@ def build_package(
     """Build an archive atomically. Refuses all pre-existing destination paths."""
     version_text, target_text, commit_text = _validate_metadata(version, target, source_commit)
     root = _validate_root(input_root)
-    _no_symlink_components(inputs_json)
-    input_stat = inputs_json.lstat()
-    if not stat.S_ISREG(input_stat.st_mode):
-        raise PackageError("--inputs must be a non-symlink regular file")
-    with inputs_json.open("rb") as input_stream:
-        input_bytes = input_stream.read(MAX_INPUT_JSON + 1)
+    input_bytes = _read_input_json(inputs_json)
     records = _parse_inputs(input_bytes)
     total_declared = 0
     for record in records:
@@ -515,6 +565,38 @@ class PackageTests(unittest.TestCase):
         self.write_inputs([{"source": "bin/demo", "archive_path": "bin/demo", "mode": 420}])
         with self.assertRaises(PackageError):
             self.package()
+
+    def test_portable_case_prefix_reserved_and_duplicate_json_collisions(self) -> None:
+        for names in [("bin/Foo","bin/foo"),("bin/demo","bin/demo/child"),("manifest.JSON","ok"),("bin/CON.exe","ok")]:
+            self.write_inputs([{**self.records[0],"archive_path":names[0]},{**self.records[1],"archive_path":names[1]}])
+            with self.assertRaises(PackageError):
+                self.package()
+        self.inputs.write_bytes(b'{"files":[],"files":[]}')
+        with self.assertRaises(PackageError):
+            self.package()
+
+    def test_pinned_source_parent_survives_ancestor_swap_without_following_link(self) -> None:
+        import unittest.mock
+        original_open = os.open
+        fired = False
+        source_dir = self.root / "bin"
+        moved_dir = self.root / "moved-bin"
+        outside = self.base / "outside"
+        outside.mkdir()
+        (outside / "demo").write_bytes(b"foreign")
+        def swapping_open(path, flags, *args, **kwargs):
+            nonlocal fired
+            if path == "demo" and kwargs.get("dir_fd") is not None and not fired:
+                fired = True
+                source_dir.rename(moved_dir)
+                source_dir.symlink_to(outside, target_is_directory=True)
+            return original_open(path, flags, *args, **kwargs)
+        with unittest.mock.patch("os.open", side_effect=swapping_open):
+            self.package()
+        _, contents = self.members(self.output)
+        self.assertEqual(contents["bin/demo"], b"binary-one")
+        self.assertTrue(fired)
+
 
 
 def _self_test() -> int:
