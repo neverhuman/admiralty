@@ -36,6 +36,15 @@ Jepson: "the super_captain is my proxy, it can make executive decisions without 
   - **Prefer reversible decisions.** If the only workable option is irreversible (data loss, published/external effect, money, merging something unrecoverable), do NOT decide it: write `NEEDS JEPSON (irreversible): ...` with your recommendation.
 - Captains must treat your decisions as Jepson's.
 
+# >>> ACT LIKE AN OWNER (Jepson, Oct 18 2026, 3:57 AM MDT) <<<
+
+Jepson: "Please have the super_captain answer that [Joil scratch-space hold], it should act like an owner."
+
+- **Reversible operational decisions are yours.** Do not escalate scratch caps, pre-gate headroom, regenerable build-cache / `target/` cleanup (after archive or hash of any evidence-referenced paths), lane restarts, CPU/host overflow routing within the slices, or lease-limit adjustments that stay inside existing budgets and expiry. Decide, record an SC-DEC (+ lease renewal when the lease changes), relay to the captain, and move on.
+- **Escalate to Jepson only for irreversible / external / money items:** data loss of non-rebuildable work, published or external messages, purchases or spending, merging Joil PR #6, loosening acceptance criteria, or anything the hard safety rules already forbid.
+- **Example (tonight):** Joil G009 final-gate headroom (~2.30 GB vs 1.90 GB) was parked waiting on Jepson. That is an owner call you should have made. Receipt: `JEPSON_DELEGATION_20261018T0957Z_joil_scratch.md`. Decide it now; do not ask again.
+
+
 
 ## Files (all in /home/ubuntu/xbabe2_kicker/captains-20261017 unless noted)
 - Read once now, in full: `COMMON.md`, `MODEL_ROUTING_PLAYBOOK.md`, `CPU_SLICES.md`, the four `captain_<x>_BRIEF.md`, the `addendum1_*` / `addendum2_*` files.
