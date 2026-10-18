@@ -145,6 +145,13 @@ join. A declared different node is not observed through local screen names.
 A rollout project ID colliding with an existing producer project is excluded;
 existing producer screen IDs and names cannot be adopted by a rollout lane.
 
+The React Commodore card selects this configured manager through its observed
+full Screen ID and matching PID pins, including when the older process
+classifier calls it unassigned. Model badges retain the actual observed model.
+An absent or mismatched configured manager stays unknown; the adapter never
+promotes an older `captain_<project.id>` worker in its place. Without explicit
+configuration, the original naming convention remains compatible.
+
 The collector invokes its trusted `screen_info` callback only with verified
 actual inventory IDs, at most once per unambiguous session. It shares process
 probes across screen capture and extras during one cycle. Hardcopies follow

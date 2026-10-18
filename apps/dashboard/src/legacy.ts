@@ -73,6 +73,17 @@ function warnings(project: Data): string[] {
   return [...new Set([...list(project.flags), ...list(project.blockers), ...list(project.needs_jepson),
     ...Object.entries(data(project.blocked_detail)).map(([id, value]) => `${id}: ${text(value)}`)].map(text).filter(Boolean))];
 }
+function observedManagerId(observed: Data, identity: Data): string {
+  if (observed.identity_state !== 'observed') return '';
+  const id = text(observed.id), match = /^([1-9]\d*)\.(.+)$/.exec(id);
+  if (!match || text(observed.name) !== match[2] || number(observed.pid) !== Number(match[1])) return '';
+  const configured = text(identity.captain_screen);
+  if (configured && configured !== id && configured !== match[2]) return '';
+  for (const pin of [identity.captain_screen_pid, identity.reported_captain_screen_pid]) {
+    if (pin !== undefined && pin !== null && pin !== Number(match[1])) return '';
+  }
+  return id;
+}
 export function projectDetails(snapshot: LegacySnapshot): ProjectDetailModel[] {
   const order = [...new Set([...(snapshot.order ?? []), ...Object.keys(snapshot.projects)])];
   const projects: ProjectDetailModel[] = order.filter(id => Object.hasOwn(snapshot.projects, id)).map(id => {
@@ -87,7 +98,17 @@ export function projectDetails(snapshot: LegacySnapshot): ProjectDetailModel[] {
     const id = text(identity.id), existing = projects.find(project => project.id === id);
     const allAgents = list(snapshot.agents).map(data);
     const agents = allAgents.filter(agent => agent.project === id);
-    const captain = agents.find(agent => agent.screen === `captain_${id}`) ?? {};
+    const observedCaptain = data(data(rollout.live_observation).captain);
+    const configuredCaptain = text(identity.captain_screen);
+    // A configured manager is selected by its observed full identity. A screen
+    // naming convention must not silently promote an implementation worker.
+    const observedCaptainId = observedManagerId(observedCaptain, identity);
+    const captainAgent = observedCaptainId ? allAgents.find(agent => agent.id === observedCaptainId)
+      : configuredCaptain ? undefined : agents.find(agent => agent.screen === `captain_${id}`);
+    const captain: Data = observedCaptainId ? { ...observedCaptain, ...captainAgent,
+      screen: observedCaptain.name,
+      model: text(captainAgent?.model) && !/unknown/i.test(text(captainAgent?.model)) ? captainAgent?.model : observedCaptain.model,
+    } : configuredCaptain ? { name: configuredCaptain, screen: configuredCaptain, state: 'unknown', model: 'unknown' } : captainAgent ?? {};
     // Rollout lanes own the project-to-screen mapping. The legacy process
     // classifier can still call a newly named screen "unassigned".
     const lanes = list(rollout.lanes).map(data);
@@ -100,7 +121,7 @@ export function projectDetails(snapshot: LegacySnapshot): ProjectDetailModel[] {
         lane_report_status: lane.status, screen_changed_utc: agent.last_token_utc ?? lane.source_updated_utc,
       };
     });
-    for (const agent of agents.filter(agent => agent !== captain)) {
+    for (const agent of agents.filter(agent => agent !== captainAgent)) {
       if (!workers.some(worker => worker.screen === agent.screen)) workers.push(agent);
     }
     const extra: DetailSection[] = [{ title: 'Work packets', value: rollout.packets, open: true }, { title: 'Execution lanes', value: rollout.lanes, open: false },
