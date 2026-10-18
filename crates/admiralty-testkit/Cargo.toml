@@ -19,6 +19,7 @@ tokio.workspace = true
 tower = { version = "0.5", features = ["util"] }
 rusqlite.workspace = true
 futures-util.workspace = true
+schemars.workspace = true
 [lints]
 workspace = true
 
@@ -169,6 +170,10 @@ path = "../../tests/integration/codex_round16_p09_p16.rs"
 [[test]]
 name = "codex_round17_p09_p16"
 path = "../../tests/integration/codex_round17_p09_p16.rs"
+
+[[test]]
+name = "codex_round18_p09_p16"
+path = "../../tests/integration/codex_round18_p09_p16.rs"
 
 [[test]]
 name = "codex_worktree_lease"
