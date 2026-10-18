@@ -74,7 +74,7 @@ def verify():
     base = manifest["repository"]["base_sha"]
     # Check the object, not HEAD: implementation commits may legitimately advance HEAD.
     actual = subprocess.check_output(
-        ["rtk", "proxy", "git", "rev-parse", f"{base}^{{commit}}"], cwd=ROOT, text=True
+        ["git", "rev-parse", f"{base}^{{commit}}"], cwd=ROOT, text=True
     ).strip()
     assert actual == base, "Pinned source commit is unavailable"
     working_tree_drift = []
@@ -82,7 +82,7 @@ def verify():
     for expected in manifest["sources"]:
         path = ROOT / expected["path"]
         pinned[expected["path"]] = subprocess.check_output(
-            ["rtk", "proxy", "git", "show", f"{base}:{expected['path']}"], cwd=ROOT
+            ["git", "show", f"{base}:{expected['path']}"], cwd=ROOT
         )
         assert describe(path, pinned[expected["path"]]) == expected, f"Pinned source drift: {expected['path']}"
         if not path.is_file() or describe(path) != expected:
