@@ -9,6 +9,7 @@ use admiralty_runtime::reservations::{
     self, AccountId, CurrencyUnit, FinalEvidence, MinorUnits, ReconciliationEvidence,
     ReservationEvent, ReservationLedger, ReservationScope, ScopeLimits, StopReason,
 };
+use admiralty_testkit::faults::{FaultEffect, FaultPlan, FaultRule};
 
 fn id(value: &str) -> BoundedId {
     BoundedId::new(value).expect("valid economics fixture identifier")
@@ -353,4 +354,50 @@ fn reservation_over_limit_is_rejected_without_changing_liabilities() {
         serde_json::from_str::<MinorUnits>("\"01\"").is_err(),
         "minor-unit values with noncanonical leading zeros must be rejected"
     );
+}
+
+#[test]
+fn one_shot_pre_settlement_crash_keeps_exposure_until_retry() {
+    let scope = reservation_scope();
+    let reserved = reservations::reserve_budget(
+        &limited_ledger(),
+        "reserve-before-simulated-crash",
+        "reservation-before-simulated-crash",
+        scope.clone(),
+        "correlation-before-simulated-crash",
+        MinorUnits::new(7),
+    )
+    .expect("reserve exact amount before simulated failure");
+    let mut plan = FaultPlan::new(vec![FaultRule {
+        point: "reservation.settle.before_apply".into(),
+        occurrence: 1,
+        effect: FaultEffect::Crash,
+    }])
+    .expect("construct deterministic pre-settlement fault");
+
+    assert_eq!(
+        plan.hit("reservation.settle.before_apply"),
+        Ok(Some(FaultEffect::Crash))
+    );
+    // A symbolic crash means this caller does not apply settlement; liability
+    // remains in the real ledger proposal until the retry below.
+    assert_eq!(reserved.unresolved_liabilities[&scope].get(), 7);
+    assert_eq!(
+        plan.hit("reservation.settle.before_apply"),
+        Ok(None),
+        "the one-shot fault does not fire on the retry"
+    );
+    let settled = reservations::settle_usage(
+        &reserved,
+        "settle-after-simulated-crash",
+        "reservation-before-simulated-crash",
+        MinorUnits::new(7),
+        Some(FinalEvidence::SettledAndTerminated {
+            evidence_ref: "settlement-reconciled-after-retry".into(),
+            reconciliation: reconciliation(&scope),
+        }),
+    )
+    .expect("settlement retry after one-shot fault");
+    assert_eq!(settled.unresolved_liabilities[&scope].get(), 0);
+    assert_eq!(settled.settled[&scope].get(), 7);
 }
