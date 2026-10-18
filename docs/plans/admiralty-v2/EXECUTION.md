@@ -14,11 +14,11 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). In
 | P05 | in_progress | local coordination team + strong review | reviewed `318ac713` | Mailbox collision/history/envelope bounds, authorized bounded topics and scoped queue-history pages reviewed and tested; trusted service authentication and durable delivery/subscription activation pending |
 | P06 | in_progress | local context team | PR prototype | Constraint-preserving capsules, epochs and bounded attention governor; durable governor/outbox activation and retrieval pending |
 | P07 | in_progress | remote session lane + local reviewer | runtime `e2b540fb`; fixture `661bf36f` | Private socket fixture now bounds framing, connect, I/O and owned-child cleanup; same-daemon client reconnect passes; control-service restart adoption and admitted fleet activation unqualified |
-| P08 | in_progress | provider + integration review | reviewed `455ee5f4`; Round 7 batch `b28a7f7` | Round 7 provider fault tests are batched on `codex/batch-item2-p08-p09-p12`; exact-main focused checks and full branch gates pass. Main merge is held for the coordinated window; packet remains unaccepted |
-| P09 | in_progress | remote workspace lane + local reviewer | candidate `f0d15a82`, imported `d637bfe`; Round 7 batch `3a71e82` | Round 7 runner-isolation fault cases are batched on `codex/batch-item2-p08-p09-p12`; workspace-registry checks and full branch gates pass. Main merge is held for the coordinated window; packet remains unaccepted |
+| P08 | in_progress | provider + integration review | reviewed `455ee5f4`; Round 7 `b28a7f7`; Round 8 `8c588ad`, `d755b8f`, `d069cf8` | Round 7 provider fault tests and Round 8 worktree isolation/publication/Codex capture qualifications are batched on `codex/batch-item2-p08-p09-p12`; exact-main focused checks and full branch gates pass. Main merge is held for the coordinated window; packet remains unaccepted |
+| P09 | in_progress | remote workspace lane + local reviewer | candidate `f0d15a82`, imported `d637bfe`; Round 7 `3a71e82`; Round 8 `35810f5`, `75d07d4`, `a8c1885` | Round 7 runner-isolation fault cases and Round 8 P09/P16, P09/P20, and P09/P25/P30 qualifications are batched on `codex/batch-item2-p08-p09-p12`; workspace-registry checks and full branch gates pass. Main merge is held for the coordinated window; packet remains unaccepted |
 | P10 | in_progress | usage/reservation lanes + strong review | candidate `99f05b0`, imported `61e888b` | Segmented usage plus conservative scoped reservations reviewed; runtime reservation activation pending |
 | P11 | in_progress | API + integration review | reviewed `17c7a76d` | Authenticated bounded read API/SSE and offline CLI are tested; live command envelopes, terminal input and agent tools pending |
-| P12 | in_progress | frontend + integration review | live assets `9debe5dd`; Round 7 batch `a39a7ab` | Round 7 integration-generation clock-skew test is batched on `codex/batch-item2-p08-p09-p12`; dashboard and full branch gates pass. Main merge is held for the coordinated window; packet remains unaccepted |
+| P12 | in_progress | frontend + integration review | live assets `9debe5dd`; Round 7 `a39a7ab`; Round 8 `93ea210`, `453d49e`, `7c6b3ee`, `23fa33d` | Round 7 integration-generation clock-skew test and Round 8 P12/P18, P12/P23, P12/P26/P31, and cross-packet packaging qualifications are batched on `codex/batch-item2-p08-p09-p12`; dashboard and full branch gates pass. Main merge is held for the coordinated window; packet remains unaccepted |
 | P13 | in_progress | store + integration review | reviewed `455ee5f4` | Durable immutable JSON revisions, CAS/retry, reciprocal task identity, writer/CLI and backup/rebuild tests; TOML/Markdown, import UI and live admission pending |
 | P14 | in_progress | scheduler lane + strong review | candidate `4aa3abe`, imported `2ef27f4` | Pure scheduler independently hardened at `03772f94`; durable scheduling and launches remain pending |
 | P15 | in_progress | verifier lane + strong review | candidate `a4c358`, imported `1f8b32c` | Scoped evidence consistency hardened at `03772f94`; trusted independent verifier execution pending |
@@ -74,6 +74,20 @@ focused checks passed on `c513a4e`; full workspace format, clippy, tests, and
 contract checks passed on the batch code. P08/P09/P12 remain in progress and
 not packet-accepted. Main merge is held for the coordinated window; PR #38
 remains local-CI-only until its main workflow is green.
+
+
+
+### Queue item 2 Round 8 consolidation (2026-10-18)
+
+All 12 Round 8 worker commits named in the captain order are integrated as
+single-parent commits on `codex/batch-item2-p08-p09-p12`, based on
+`c513a4e38092ac6c2e4e8464537aa1988744c02f`. The P08/P09/P12 packet receipts
+record their worker commit mapping and the full workspace qualification at
+`b7a0ceeb01d51dca5861eeada5b2dfbf79809614`. Formatting, workspace clippy,
+workspace tests (712 passed, 0 failed, 1 ignored), and `pnpm contracts:check`
+passed using the specified shared acceptance target and private scratch path.
+Packet status remains in progress/unaccepted; main merge is held for the
+17:00Z–17:05Z batched window.
 
 The receipt is engineering evidence, not product acceptance. Integrator verifies actual resulting tree/tests and records the integrated SHA. Reconcile planning estimates after P08/P15 establish real provider/verifier throughput; preserve earlier estimates as history rather than silently changing a committed delivery promise.
 

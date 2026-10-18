@@ -1,0 +1,148 @@
+{
+  "state": "partial_review",
+  "owner": "local integrator",
+  "base_sha": "c513a4e38092ac6c2e4e8464537aa1988744c02f",
+  "batch_branch": "codex/batch-item2-p08-p09-p12",
+  "tested_head_sha": "b7a0ceeb01d51dca5861eeada5b2dfbf79809614",
+  "observed_utc": "2026-10-18T16:53:21Z",
+  "round8_worker_commits": [
+    {
+      "source": "8c588ad322d86df3f8658161582f83e380b3a684",
+      "integrated": "82a04c92f0793d0b4c88975140a8b07600d26908",
+      "scope": "P08 worktree isolation"
+    },
+    {
+      "source": "c51b771bb77dfa7d4b380f9a9fd99a8394af4282",
+      "integrated": "bf10dfc849aae49064c6a233e86ab359416e1eb4",
+      "scope": "P05/P15 worktree lease"
+    },
+    {
+      "source": "35810f5e1900dd2f2e0eef4a9bd726b253c2965b",
+      "integrated": "b35b3b9bb2b53b247baf99e1a2c2094cca8aed05",
+      "scope": "P09/P16 captain receipt qualification"
+    },
+    {
+      "source": "07a12eeef864b10013878b90edff689eb248a050",
+      "integrated": "09601ea3c9b1b09b282e3eb8300421db9cc920ad",
+      "scope": "captain interface handoff"
+    },
+    {
+      "source": "93ea2107e73419edf3f8d5f66e327d0f82c0edd2",
+      "integrated": "88679a0f4e618294553c6135962a9b94c4693109",
+      "scope": "P12/P18 API cockpit doctor boundaries"
+    },
+    {
+      "source": "d755b8f9478da8119646671718c5c0d680811ddf",
+      "integrated": "acb5d9f4e31e20a3b1cd8c160c221615c2285c9e",
+      "scope": "P08 worktree publication through P19"
+    },
+    {
+      "source": "75d07d414e2cae8a2fcd99d8a14301069b159d6e",
+      "integrated": "6d90e119ece8f1e280717f6fdbe024ffee6b5c65",
+      "scope": "P09/P20 retirement flow"
+    },
+    {
+      "source": "453d49e147044ed1c5dc19112905f32c3a56592d",
+      "integrated": "d20250cc767a971ac667041bc9ca1f84276054e7",
+      "scope": "P12/P23 telemetry"
+    },
+    {
+      "source": "d069cf8eca55031b595e385abdef8da5bc5d6012",
+      "integrated": "f6caf29fef406bf482ef25200a4af94291fae8af",
+      "scope": "Codex worktree capture"
+    },
+    {
+      "source": "a8c18851e4aa59f0ac4988c7d9b759673341118f",
+      "integrated": "564c7267d5fbfd04e8627b4dea8b2bc01b307414",
+      "scope": "P09/P25/P30 integration"
+    },
+    {
+      "source": "7c6b3ee880028395675aff8aa64159267eb7bd61",
+      "integrated": "edacdc82024bc037bfaac0f229fba8a8a67805ee",
+      "scope": "P12/P26/P31 cockpit"
+    },
+    {
+      "source": "23fa33d1dc399f38b0870ec77954353dd1240fe0",
+      "integrated": "e9c59265aaeb66d96ef2ced58ea2fa0d3a3b8e04",
+      "scope": "cross-packet packaging"
+    }
+  ],
+  "workspace_test_summary": {
+    "suites": 63,
+    "passed": 712,
+    "failed": 0,
+    "ignored": 1
+  },
+  "qualification": {
+    "receipt_root": "/home/ubuntu/admiralty-v2-build/receipts/ITEM2-BATCH/R8-c513a4e38092ac6c2e4e8464537aa1988744c02f",
+    "log_sha256": {
+      "clippy.log": "299f16a2c523be18fef769975d2df00e0505521db047540feea3a74b94666887",
+      "contracts.log": "afafbe0f113d1c5c735a73678c73cbe59c170160f85dd4b1d3c3c5867e486058",
+      "fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "workspace-test.log": "472fde0589255c693edaf522b8757263e4f1ee6a32b80be3803c75b9310b184a"
+    },
+    "exit_codes": {
+      "fmt": 0,
+      "clippy": 0,
+      "workspace-test": 0,
+      "contracts": 0
+    },
+    "commands": [
+      [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      [
+        "pnpm",
+        "contracts:check"
+      ]
+    ],
+    "environment": {
+      "CARGO_TARGET_DIR": "/home/ubuntu/admiralty-v2-build/targets/main-acceptance",
+      "TMPDIR": "/home/ubuntu/.adm-main-acceptance-tmp",
+      "CARGO_INCREMENTAL": "0",
+      "CARGO_PROFILE_DEV_DEBUG": "line-tables-only"
+    },
+    "all_exit_codes_zero": true
+  },
+  "packet_accepted": false,
+  "native_execution_qualified": false,
+  "integration_status": "staged_on_batch_branch; main merge held until 17:00Z-17:05Z",
+  "packet": "P09",
+  "packet_specific_worker_commits": [
+    {
+      "source": "35810f5e1900dd2f2e0eef4a9bd726b253c2965b",
+      "integrated": "b35b3b9bb2b53b247baf99e1a2c2094cca8aed05",
+      "scope": "P09/P16 captain receipt qualification"
+    },
+    {
+      "source": "75d07d414e2cae8a2fcd99d8a14301069b159d6e",
+      "integrated": "6d90e119ece8f1e280717f6fdbe024ffee6b5c65",
+      "scope": "P09/P20 retirement flow"
+    },
+    {
+      "source": "a8c18851e4aa59f0ac4988c7d9b759673341118f",
+      "integrated": "564c7267d5fbfd04e8627b4dea8b2bc01b307414",
+      "scope": "P09/P25/P30 integration"
+    }
+  ]
+}
