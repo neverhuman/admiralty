@@ -316,6 +316,7 @@ export function discoverChromiumBinary(): string {
 
 export interface BrowserHarness {
   binaryPath: string;
+  resetPage(): Promise<void>;
   goto(url: string): Promise<void>;
   setViewportSize(width: number, height: number): Promise<void>;
   emulateReducedMotion(reduce: boolean): Promise<void>;
@@ -459,6 +460,13 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
 
   return {
     binaryPath,
+    async resetPage() {
+      await sendCdp('Page.navigate', { url: 'about:blank' }, sessionId);
+      await waitForCondition(
+        `window.location.href === 'about:blank' && document.readyState === 'complete'`,
+        'reset to about:blank',
+      );
+    },
     async goto(url: string) {
       await sendCdp('Page.navigate', { url }, sessionId);
       await waitForCondition(

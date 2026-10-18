@@ -37,6 +37,9 @@ describe('Admiralty release qualification browser E2E and axe accessibility suit
   }, 30_000);
 
   beforeEach(async () => {
+    await browser.resetPage();
+    server.closeActiveSseStreams();
+    await new Promise((r) => setTimeout(r, 60));
     server.setRequireBearerToken(null);
     server.setFleet(createFleetFixture(4));
     server.setLegacy(createLegacyFixture(4), 200);
@@ -130,6 +133,7 @@ describe('Admiralty release qualification browser E2E and axe accessibility suit
   it(
     'maintains a single SSE event stream without 15s polling and reconciles domain events and snapshot_required recovery',
     async () => {
+      server.clearRequests();
       await browser.goto(server.baseUrl);
       await browser.clickNav('Overview');
       await browser.waitForText('Live updates');
