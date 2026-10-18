@@ -58,7 +58,10 @@ fn p13_p14_round9_item3_claude_workplan_dispatch_qualification() {
     };
     let workplan_json = serde_json::to_vec(&workplan).expect("serialize fixed workplan");
     let preview = preview_workplan(&workplan_json).expect("valid canonical workplan preview");
-    assert_eq!(preview.task_order, [contract.task_id.clone()]);
+    assert_eq!(
+        preview.task_order.as_slice(),
+        std::slice::from_ref(&contract.task_id)
+    );
 
     let scope = SchedulingScope {
         project_id,

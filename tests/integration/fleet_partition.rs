@@ -119,7 +119,8 @@ fn disconnected_node_can_only_propose_its_existing_permitted_continuation() {
         minimum_spool_reserve: d(2),
     });
 
-    let proposal = propose_placement(&request, &[node.clone()], &policy(), 10).expect("proposal");
+    let proposal =
+        propose_placement(&request, std::slice::from_ref(&node), &policy(), 10).expect("proposal");
     assert_eq!(proposal.candidates.len(), 1);
     assert_eq!(
         proposal.candidates[0].continuation_permit_id.as_deref(),
@@ -211,8 +212,8 @@ fn disconnected_continuation_expiring_at_decision_time_is_rejected() {
         minimum_spool_reserve: d(2),
     });
 
-    let proposal =
-        propose_placement(&request, &[node.clone()], &policy(), 10).expect("safe rejection");
+    let proposal = propose_placement(&request, std::slice::from_ref(&node), &policy(), 10)
+        .expect("safe rejection");
     assert!(proposal.candidates.is_empty());
     assert!(!proposal.execution_granted);
     assert!(!proposal.publication_granted);

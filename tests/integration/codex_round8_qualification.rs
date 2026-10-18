@@ -432,8 +432,13 @@ fn p20_p24_round10_item3_workspace_gate_audit() {
     // without an exact continuation permit for an already active root.
     let request = placement_request();
     let node = placement_offer();
-    let proposal = propose_placement(&request, &[node.clone()], &placement_policy(), 10)
-        .expect("deterministic placement proposal");
+    let proposal = propose_placement(
+        &request,
+        std::slice::from_ref(&node),
+        &placement_policy(),
+        10,
+    )
+    .expect("deterministic placement proposal");
     assert!(proposal.candidates.is_empty());
     assert!(!proposal.execution_granted);
     assert!(!proposal.publication_granted);

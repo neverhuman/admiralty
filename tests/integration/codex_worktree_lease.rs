@@ -428,16 +428,16 @@ fn p05_p15_round10_item3_workspace_gate_audit() {
         .expect("publish immutable candidate evidence");
 
     let binding = AssetBinding {
-        project_id: ProjectId::new("project-recovery").unwrap(),
-        root_id: RootId::new("root-recovery").unwrap(),
-        task_id: TaskId::new("task-recovery").unwrap(),
+        project_id: ProjectId::new("project-recovery").expect("valid round ten fixture"),
+        root_id: RootId::new("root-recovery").expect("valid round ten fixture"),
+        task_id: TaskId::new("task-recovery").expect("valid round ten fixture"),
         asset_id: "candidate-evidence".into(),
-        owner_id: PrincipalId::new("captain").unwrap(),
+        owner_id: PrincipalId::new("captain").expect("valid round ten fixture"),
         sha256: artifact.sha256.clone(),
         generation: "1".into(),
     };
     let observation = |revision: &str| {
-        let observed_at = 10 + revision.parse::<u64>().unwrap();
+        let observed_at = 10 + revision.parse::<u64>().expect("valid round ten fixture");
         CustodyObservation {
             binding: binding.clone(),
             asset_revision: revision.into(),
@@ -482,14 +482,14 @@ fn p05_p15_round10_item3_workspace_gate_audit() {
 
     let scope = question_scope("workspace-gate-review");
     let open = QuestionEvent::Open {
-        event_id: admiralty_core::MessageId::new("gate-open").unwrap(),
+        event_id: admiralty_core::MessageId::new("gate-open").expect("valid round ten fixture"),
         scope: scope.question.clone(),
         authority_ref: scope.authority_ref.clone(),
-        asker: PrincipalId::new("captain").unwrap(),
-        recipient: PrincipalId::new("worker").unwrap(),
+        asker: PrincipalId::new("captain").expect("valid round ten fixture"),
+        recipient: PrincipalId::new("worker").expect("valid round ten fixture"),
         allowed_recipients: vec![
-            PrincipalId::new("worker").unwrap(),
-            PrincipalId::new("reviewer").unwrap(),
+            PrincipalId::new("worker").expect("valid round ten fixture"),
+            PrincipalId::new("reviewer").expect("valid round ten fixture"),
         ],
         requirement: format!("Audit candidate artifact sha256:{}", artifact.sha256),
         question: "Does this exact candidate evidence satisfy the workspace gate?".into(),
@@ -499,22 +499,22 @@ fn p05_p15_round10_item3_workspace_gate_audit() {
     append_question(
         &mut connection,
         &scope,
-        &admiralty_core::MessageId::new("gate-open-command").unwrap(),
+        &admiralty_core::MessageId::new("gate-open-command").expect("valid round ten fixture"),
         &open,
     )
     .expect("record scoped audit question");
     let route = QuestionEvent::Route {
-        event_id: admiralty_core::MessageId::new("gate-route").unwrap(),
+        event_id: admiralty_core::MessageId::new("gate-route").expect("valid round ten fixture"),
         scope: scope.question.clone(),
         expected_revision: 1,
         authority_ref: scope.authority_ref.clone(),
-        actor: PrincipalId::new("worker").unwrap(),
-        recipient: PrincipalId::new("reviewer").unwrap(),
+        actor: PrincipalId::new("worker").expect("valid round ten fixture"),
+        recipient: PrincipalId::new("reviewer").expect("valid round ten fixture"),
     };
     append_question(
         &mut connection,
         &scope,
-        &admiralty_core::MessageId::new("gate-route-command").unwrap(),
+        &admiralty_core::MessageId::new("gate-route-command").expect("valid round ten fixture"),
         &route,
     )
     .expect("route review to an explicitly allowed independent reviewer");
@@ -533,7 +533,9 @@ fn p05_p15_round10_item3_workspace_gate_audit() {
         Err(custody::CustodyError::ActivePins)
     ));
     assert_eq!(
-        artifacts.read_verified(&artifact).unwrap(),
+        artifacts
+            .read_verified(&artifact)
+            .expect("valid round ten fixture"),
         bytes,
         "a held review artifact remains byte-identical while retirement is blocked"
     );
@@ -546,21 +548,22 @@ fn p05_p15_round10_item3_workspace_gate_audit() {
     append_question(
         &mut connection,
         &scope,
-        &admiralty_core::MessageId::new("gate-answer-command").unwrap(),
+        &admiralty_core::MessageId::new("gate-answer-command").expect("valid round ten fixture"),
         &QuestionEvent::Answer {
-            event_id: admiralty_core::MessageId::new("gate-answer").unwrap(),
+            event_id: admiralty_core::MessageId::new("gate-answer")
+                .expect("valid round ten fixture"),
             scope: scope.question.clone(),
             expected_revision: 2,
             authority_ref: scope.authority_ref.clone(),
-            actor: PrincipalId::new("reviewer").unwrap(),
+            actor: PrincipalId::new("reviewer").expect("valid round ten fixture"),
             answer: "hold: forged acceptance evidence is not trusted".into(),
         },
     )
     .expect("reviewer records a scoped answer without granting task acceptance");
     assert_eq!(
         reconstruct_question(&connection, &scope)
-            .unwrap()
-            .unwrap()
+            .expect("valid round ten fixture")
+            .expect("valid round ten fixture")
             .state
             .status,
         QuestionStatus::Answered {
@@ -593,8 +596,8 @@ fn p05_p15_round10_item3_workspace_gate_audit() {
     let connection = Connection::open(&database).expect("recover shared journals after restart");
     assert_eq!(
         reconstruct_question(&connection, &scope)
-            .unwrap()
-            .unwrap()
+            .expect("valid round ten fixture")
+            .expect("valid round ten fixture")
             .state
             .status,
         QuestionStatus::Answered {
@@ -603,7 +606,9 @@ fn p05_p15_round10_item3_workspace_gate_audit() {
         "the durable answer remains after the workspace gate database reopens"
     );
     assert_eq!(
-        artifacts.read_verified(&artifact).unwrap(),
+        artifacts
+            .read_verified(&artifact)
+            .expect("valid round ten fixture"),
         bytes,
         "custody retirement records a claim and never mutates artifact bytes"
     );
