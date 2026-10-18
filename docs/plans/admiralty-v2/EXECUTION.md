@@ -929,3 +929,20 @@ work starts from current main rather than stacking unmerged branches. Shared
 Admiral/ticker, other projects, GPU jobs, runners and preserved data stay outside
 the observer retirement scope. General native controller/provider/candidate
 publication and atomic model-admission composition remain separate open work.
+
+Final real-source qualification at 22:37:39 UTC passes 49 observer tests on Mac
+and Linux and strict Linux all-target Clippy. Live observation reaches all four
+configured nodes and the actual Admiralty manager footer reads Gemini 4 Argon,
+high effort. Native history now imports the original only at initialization;
+later legacy writes cannot suppress native samples or overwrite prior data.
+The final feed appends its own current sample at 22:37:35 UTC while retaining
+the original historical timestamps. Both shipped React rendering (all thirteen
+plots) and retained HTML render the actual feed, including null costs and unknown
+resources. Eight additional unknown/identity render checks pass; 88 legacy tests
+pass with one Linux-only check skipped on Mac. These are collection/rendering
+proofs, not autonomous execution or full parent-packet acceptance.
+
+The [sanitized native observer receipt](../../../receipts/integration/native-observer-20261018T223739Z.json)
+pins tested source-file, binary, log, configuration and snapshot hashes. The
+Commodore must deploy the new retained HTML as well as the React assets and Rust
+producer. Old process retirement remains a distinct recorded deployment action.
