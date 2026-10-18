@@ -10,6 +10,9 @@ use admiralty_core::{
         reduce_publication_intent,
     },
 };
+use admiralty_testkit::forge::{
+    Fault as ForgeFault, ForgeKey, ForgeOutcome, ForgeReply, ForgeRequest, ForgeSimulator,
+};
 
 const HEAD: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const BASE: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
@@ -204,6 +207,79 @@ fn malformed_target_ref_is_rejected_at_admission_boundary() {
 #[test]
 fn noncanonical_authority_generation_is_rejected_on_json_input() {
     assert!(serde_json::from_str::<DecimalU64>("\"09\"").is_err());
+}
+
+#[test]
+fn injected_lost_forge_reply_reconciles_and_replays_without_second_mutation() {
+    let (scope, snapshot, generation) = fixtures();
+    let proposed = proposal(&scope, &snapshot, "faulted-publication", &generation);
+    let staged = reduce_publication_intent(None, &proposed, None).expect("stage proposal");
+    let mut claimed = staged.clone();
+    claimed.stage = IntentStage::Claimed;
+    let claimed = reduce_publication_intent(Some(&staged), &claimed, None).expect("claim intent");
+    let mut ambiguous = claimed.clone();
+    ambiguous.stage = IntentStage::Ambiguous;
+    let ambiguous =
+        reduce_publication_intent(Some(&claimed), &ambiguous, None).expect("record uncertainty");
+
+    let key = ForgeKey {
+        repository: "fixture/p19".into(),
+        target: scope.target_ref.clone(),
+    };
+    let request = ForgeRequest {
+        id: ambiguous.intent_key.clone(),
+        key: key.clone(),
+        expected_head: ambiguous.expected_head.clone(),
+        new_head: NEXT_HEAD.into(),
+    };
+    let mut forge = ForgeSimulator::new(1, 1).expect("bounded forge fixture");
+    forge
+        .seed_ref(key.clone(), HEAD.into())
+        .expect("seed initial target");
+
+    let lost_reply = forge
+        .submit(request.clone(), ForgeFault::LoseReplyAfterMutation)
+        .expect("fault records a simulated request");
+    assert_eq!(lost_reply, ForgeReply::OutcomeUnknown);
+    assert!(!lost_reply.execution_granted());
+    assert_eq!(forge.head(&key), Some(NEXT_HEAD));
+    assert_eq!(forge.applied_mutations(), 1);
+
+    let observation = forge
+        .reconcile(&request.id)
+        .expect("independent simulated probe finds recorded outcome")
+        .clone();
+    assert_eq!(
+        observation,
+        ForgeOutcome::Applied {
+            previous_head: HEAD.into(),
+            new_head: NEXT_HEAD.into(),
+        }
+    );
+    let receipt = ReconciliationReceipt {
+        intent_key: ambiguous.intent_key.clone(),
+        request_digest: ambiguous.request_digest.clone(),
+        scope: ambiguous.scope.clone(),
+        expected_head: ambiguous.expected_head.clone(),
+        expected_base: ambiguous.expected_base.clone(),
+        authority_generation: ambiguous.authority_generation.clone(),
+        observed_head: NEXT_HEAD.into(),
+        effect_occurred: true,
+        provenance_ref: "fixture:forge-probe:p19".into(),
+    };
+    let completed = reduce_publication_intent(Some(&ambiguous), &ambiguous, Some(&receipt))
+        .expect("independent observation resolves ambiguous intent");
+    assert_eq!(completed.stage, IntentStage::ReconciledSuccess);
+
+    assert_eq!(
+        forge.submit(request, ForgeFault::None),
+        Ok(ForgeReply::Observed(observation))
+    );
+    assert_eq!(forge.applied_mutations(), 1);
+    assert_eq!(
+        reduce_publication_intent(Some(&completed), &completed, Some(&receipt)),
+        Ok(completed)
+    );
 }
 
 #[test]
