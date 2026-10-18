@@ -79,6 +79,10 @@ name = "codex_round8_interfaces"
 path = "../../tests/integration/codex_round8_interfaces.rs"
 
 [[test]]
+name = "codex_round10_workspace_gate"
+path = "../../tests/integration/codex_round10_workspace_gate.rs"
+
+[[test]]
 name = "disaster_restore"
 path = "../../tests/integration/disaster_restore.rs"
 
