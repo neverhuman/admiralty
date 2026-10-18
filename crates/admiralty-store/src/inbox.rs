@@ -316,6 +316,17 @@ mod tests {
         super::pending_page(projection, &index, generation, scope, cursor, limit)
     }
 
+    fn private_tempdir() -> tempfile::TempDir {
+        let directory = tempfile::tempdir().expect("private fixture directory");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(directory.path(), std::fs::Permissions::from_mode(0o700))
+                .expect("restrict fixture directory permissions");
+        }
+        directory
+    }
+
     fn scope() -> InboxScope {
         InboxScope {
             project_id: ProjectId::new("project-one").expect("fixture project"),
@@ -805,7 +816,7 @@ mod tests {
     fn real_writer_keeps_index_atomic_across_outbox_rejection_ack_replay_and_reopen() {
         use crate::{Store, outbox::OutboxIntent};
         use admiralty_core::SourceIdentity;
-        let directory = tempfile::tempdir().expect("private fixture");
+        let directory = private_tempdir();
         let database = directory.path().join("indexed.sqlite");
         let source = |sequence: u64| SourceIdentity {
             producer_id: "indexed-test".into(),
@@ -919,7 +930,7 @@ mod tests {
     fn late_sql_failure_rolls_back_queue_and_ack_index_changes_in_the_live_writer() {
         use crate::Store;
         use admiralty_core::SourceIdentity;
-        let directory = tempfile::tempdir().expect("private fixture");
+        let directory = private_tempdir();
         let database = directory.path().join("late-fault.sqlite");
         let source = |sequence: u64| SourceIdentity {
             producer_id: "late-fault".into(),
