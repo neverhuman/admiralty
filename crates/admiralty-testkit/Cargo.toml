@@ -243,14 +243,6 @@ name = "codex_p19_round13_workorder_release"
 path = "../../tests/integration/codex_p19_round13_workorder_release.rs"
 
 [[test]]
-name = "integration"
-path = "tests/integration/mod.rs"
-
-[[test]]
-name = "codex_round15_p19"
-path = "tests/integration.rs"
-
-[[test]]
 name = "codex_round8_packaging"
 path = "../../tests/integration/codex_round8_packaging.rs"
 
