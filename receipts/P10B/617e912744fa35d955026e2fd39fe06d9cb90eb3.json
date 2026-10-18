@@ -1,0 +1,47 @@
+{
+  "packet": "P10B",
+  "state": "partial_review",
+  "owner": "local integrator",
+  "head_sha": "617e912744fa35d955026e2fd39fe06d9cb90eb3",
+  "base_sha": "14d48107384b3a112a751d04d7d24d4e88b19134",
+  "observed_utc": "2026-10-18T11:07:46.150318+00:00",
+  "changed_paths": [
+    "crates/admiralty-runtime/src/strategies.rs",
+    "configs/examples/best-of.json"
+  ],
+  "validation": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "passed_tests": 184
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "environment": {
+    "platform": "macOS",
+    "rust_toolchain": "1.95.0"
+  },
+  "limitations": [
+    "Pure bounded two-candidate/synthesis proposals; actual execution, capacity admission and fresh independent verification remain external."
+  ],
+  "native_execution_qualified": false,
+  "packet_accepted": false,
+  "next_action": "Review component and complete its parent packet integration/qualification gates."
+}

@@ -6,7 +6,8 @@
   "scripts": {
     "contracts:generate": "node scripts/contracts/generate.mjs",
     "contracts:check": "node scripts/contracts/generate.mjs --check",
-    "demo": "bash scripts/dev/demo.sh"
+    "demo": "bash scripts/dev/demo.sh",
+    "live": "bash scripts/dev/live.sh"
   },
   "devDependencies": {
     "json-schema-to-typescript": "16.0.0",

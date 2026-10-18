@@ -9,19 +9,19 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). In
 | P00 | review | local evidence agent | candidate, not integrated | 13 legacy tests and 37-source hash verifier pass; integration receipt pending |
 | P01 | in_progress | local integrator + remote fixture lane | candidate, not integrated | Six crates, pinned tools, CI and fake-process lane; native qualification pending |
 | P02 | in_progress | local integrator | candidate, not integrated | Typed contracts/reducer/schema/TS pipeline with core scope tests; complete policy model pending |
-| P03 | in_progress | local store agent | candidate, not integrated | Single-owner WAL writer, replay/collision/ACK/backup tests; outbox and full recovery pending |
+| P03 | in_progress | local store agent | PR prototype | Single-owner WAL writer, replay/collision/ACK/backup; fenced durable outbox initialized on startup, atomic domain/effect admission still pending |
 | P04 | in_progress | remote artifact lane | scoped candidate pending | P04A bounded file publication; transactional pins/assets remain pending |
-| P05 | in_progress | local coordination team | candidate, not integrated | Durable scoped messages/ACK; full subscriptions/question lifecycle pending |
-| P06 | in_progress | local context team | candidate, not integrated | Constraint-preserving capsules and epoch checks; full governor/retrieval pending |
+| P05 | in_progress | local coordination team | question candidate `9655f63`, imported `14d4810` | Durable scoped messages/ACK plus independently reviewed question reducer; durable question service/subscriptions still pending |
+| P06 | in_progress | local context team | PR prototype | Constraint-preserving capsules, epochs and bounded attention governor; durable governor/outbox activation and retrieval pending |
 | P07 | in_progress | remote session lane + local reviewer | candidate `2d9cc760`, imported as `5a0f639` | Pipe/journal prototype under boundedness review; restart adoption and independent custody unqualified |
 | P08 | planned | unassigned | — | Qualify first provider |
-| P09 | planned | unassigned | — | Implement runner/resource boundaries |
+| P09 | in_progress | remote workspace lane + local reviewer | candidate `f0d15a82`, imported `d637bfe` | Read-only custody registration; real runner/resource isolation pending |
 | P10 | in_progress | remote usage lane | scoped candidate pending | P10A segmented cumulative usage accumulator; prices/reservations remain pending |
 | P11 | in_progress | local API team | candidate, not integrated | Read-only authenticated API/SSE, generation/precision/security tests; commands pending |
 | P12 | in_progress | remote UI lane + local refinement | candidate `ae57d6d`, imported as `6a62db2` | React/Vite shell, single SSE stream, runtime guards and branding; read-only parity/qualification still pending |
-| P13 | planned | unassigned | — | Implement workplan import/lint |
-| P14 | planned | unassigned | — | Implement scheduler/recovery |
-| P15 | planned | unassigned | — | Implement trusted exact verifier |
+| P13 | in_progress | remote workplan lane + local reviewer | candidate `d54ea23a`, imported `d0275c5` | Bounded dependency preview and CLI entry point; durable plan submission/revision service pending |
+| P14 | in_progress | remote scheduler lane | scoped candidate pending | Pure scheduling proposal capsule dispatched; recovery and real launch not implemented |
+| P15 | in_progress | remote verifier lane | scoped candidate pending | Exact receipt validation capsule dispatched; trusted execution/verifier custody pending |
 | P16 | planned | unassigned | — | Qualify Jankurai/staged audit |
 | P17 | planned | unassigned | — | Implement peer coordination/tools |
 | P18 | planned | unassigned | — | Implement conflict/train flow |
@@ -36,7 +36,7 @@ Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). In
 | P27 | planned | unassigned | — | Implement excursion/proposal loop |
 | P28 | planned | unassigned | — | Implement independent trials |
 | P29 | planned | unassigned | — | Finish operational UX |
-| P30 | planned | unassigned | — | Complete packaging/brand/docs |
+| P30 | in_progress | local integrator | source preview | Source launchers, logo, docs and separate live/demo ports; release bundles/installers pending |
 | P31 | planned | unassigned | — | Qualify and roll out by gates |
 
 ## Receipt template
@@ -66,15 +66,22 @@ The receipt is engineering evidence, not product acceptance. Integrator verifies
 
 ## Live build visibility
 
-The existing legacy dashboard has a generic implementation rollout summary and
-expanded agent table. The static update is deployed from `697a284e` as a read-only
-PR canary. A bounded observer joins captain lane reports into runtime JSON every
-15 seconds without model turns; the existing collector consumes that projection
-on its next cycle. Internal agents report no independently exposed OS PID, and
-CPU reservations are explicitly distinguished from enforced affinity. The panel
-shows reported work, candidate review and packet acceptance separately. Three
-remote candidates (UI, synthetic provider and pipe session prototype) have been
-imported for integration review; that does not complete their parent packets.
+The existing legacy dashboard has a generic rollout summary and expanded agent
+table. Rust and React now serve real producer observations on loopback18891;
+the original dashboard stays available on18890 and under `/legacy/`. React assets
+are pinned to `8474dec9`, the running Rust binary to `7277293f`, and the legacy
+worker projection to `bd33d23a`. These are unmerged PR canaries. The default page
+is the detailed real fleet; synthetic demo now defaults to18892.
+
+A bounded observer joins captain reports into runtime JSON every15 seconds
+without model turns. It independently checks owned `adm_` Screen identities and
+bounded candidate-path/HEAD metadata; producer report age is preserved. The
+collector consumes that projection on its next cycle. Three actual GNU Screens
+run Luna with enforced CPU pairs104–109 in isolated worktrees. Startup trust
+prompts were independently observed and cleared for this checkout before edits
+began. The first three candidates are imported for independent review; a second
+three-packet batch is building scheduler, verifier and config components. Process
+presence, file edits and passing candidate tests never complete parent packets.
 
 Current native read path: max 16 SSE bodies, max 8 concurrent reads; a coalesced
 writer notification wakes subscribers, which then re-read durable cursor pages.
@@ -102,3 +109,17 @@ artifact-file and segmented-usage candidates have been imported for review.
 Additional independent local workers implement a captain attention governor and
 an outbox component while the UI/model/provider integration is deployed. Parent
 packets remain partial; no full-fleet cutover or merge gate is bypassed.
+
+
+## Dense console restoration and expanded execution
+
+At code `617e9127`,184 Rust tests, strict workspace Clippy and formatting pass.
+Partial component receipts name the tested commit and keep parent acceptance
+false. UI code `8474dec9` restores the black fleet console, bright model badges,
+compact hierarchy, model-mix and usage tables, plus all13 expandable temporal
+metrics.65 React tests, typecheck and production build pass; this exact asset
+revision is deployed on18891 and verified against real producer history.
+The user explicitly requested aggressive Admiralty-first Luna parallelism; an
+expanded pool is being admitted within the existing worker CPU reservation.
+Record actual starts in the private lane manifest before describing workers as
+running. Strong integration review and existing CI remain in effect.
