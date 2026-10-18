@@ -4,7 +4,7 @@ use admiralty_core::nodes::{
     DecimalU64, EnrollmentEvent, EnrollmentToken, NodeError, NodeId, NodeIdentity, NodeRegistry,
     NodeScope, decode_event, reduce_enrollment_for,
 };
-use admiralty_core::{PrincipalId, ProjectId, RootId, TaskId};
+use admiralty_core::{PrincipalId, ProjectId, RootId, TaskId, content_digest};
 use admiralty_runtime::MANAGED_EXECUTION_QUALIFIED;
 
 fn digest(ch: char) -> String {
@@ -220,5 +220,126 @@ fn p23_round11_item4_final_validation_gate() {
     assert!(!rebooted.tokens.contains_key("round11-rollback"));
 
     // This reducer gate does not qualify an authenticated node transport or runner.
+    assert!(!MANAGED_EXECUTION_QUALIFIED);
+}
+
+#[test]
+fn p23_round12_item5_redteam_audit_gate() {
+    let empty = NodeRegistry::default();
+    let issued_event = EnrollmentEvent::TokenIssued {
+        event_id: "round12-receipt-issue".into(),
+        token: token("round12-token", 12),
+    };
+    let issued = apply(&empty, &issued_event, Some(1)).expect("valid scoped token issue");
+
+    // The reducer's durable event receipt binds both the exact event and its explicit clock.
+    let receipt = content_digest(&(issued_event.clone(), Some(1))).expect("event receipt digest");
+    assert_eq!(issued.applied_events["round12-receipt-issue"], receipt);
+    assert_eq!(
+        apply(&issued, &issued_event, Some(1)).expect("identical event receipt replay"),
+        issued
+    );
+    assert_eq!(
+        apply(&issued, &issued_event, Some(2)),
+        Err(NodeError::Collision),
+        "the event receipt also binds the clock"
+    );
+
+    let mut forged_receipt = issued.clone();
+    forged_receipt
+        .applied_events
+        .insert("round12-receipt-issue".into(), digest('f'));
+    assert_eq!(
+        apply(&forged_receipt, &issued_event, Some(1)),
+        Err(NodeError::Collision),
+        "a forged stored receipt cannot authorize replay"
+    );
+    assert_eq!(
+        forged_receipt.applied_events["round12-receipt-issue"],
+        digest('f'),
+        "failed replay does not repair or mutate forged history"
+    );
+
+    let mut missing_clock = issued.clone();
+    missing_clock.last_tick = None;
+    let next_issue = EnrollmentEvent::TokenIssued {
+        event_id: "round12-missing-clock".into(),
+        token: token("round12-next-token", 20),
+    };
+    assert_eq!(
+        apply(&missing_clock, &next_issue, Some(3)),
+        Err(NodeError::Invalid("recorded clock history missing"))
+    );
+
+    let mut foreign_scope = scope();
+    foreign_scope.project_id = ProjectId::new("untrusted-project").expect("project");
+    let foreign_event = EnrollmentEvent::TokenIssued {
+        event_id: "round12-foreign-scope".into(),
+        token: EnrollmentToken {
+            token_id: "round12-foreign-token".into(),
+            token_digest: digest('a'),
+            scope: foreign_scope,
+            expires_tick: DecimalU64::new(12),
+            consumed_binding: None,
+        },
+    };
+    assert_eq!(
+        reduce_enrollment_for(
+            &empty,
+            &foreign_event,
+            &scope(),
+            &scope().authority,
+            Some(1)
+        ),
+        Err(NodeError::ForeignScope),
+        "event-provided scope cannot replace the authenticated controller scope"
+    );
+
+    let malformed_digest = EnrollmentEvent::TokenIssued {
+        event_id: "round12-malformed-digest".into(),
+        token: EnrollmentToken {
+            token_id: "round12-malformed-token".into(),
+            token_digest: "sha256:NOT-HEX".into(),
+            scope: scope(),
+            expires_tick: DecimalU64::new(12),
+            consumed_binding: None,
+        },
+    };
+    assert!(
+        decode_event(
+            &serde_json::to_vec(&malformed_digest).expect("encode malformed digest event")
+        )
+        .is_err()
+    );
+
+    let expired = EnrollmentEvent::TokenIssued {
+        event_id: "round12-expired-token".into(),
+        token: token("round12-expired", 2),
+    };
+    assert_eq!(
+        apply(&empty, &expired, Some(2)),
+        Err(NodeError::TokenExpired)
+    );
+    assert!(!empty.tokens.contains_key("round12-expired"));
+
+    let stale_node = EnrollmentEvent::CapacityObserved {
+        event_id: "round12-stale-node".into(),
+        node_id: NodeId::new("unregistered-round12-node").expect("node ID"),
+        boot_id: "untrusted-boot".into(),
+        generation: DecimalU64::new(1),
+        observed_tick: Some(DecimalU64::new(1)),
+        fresh_for_ticks: DecimalU64::new(10),
+        capacity_digest: digest('b'),
+    };
+    assert_eq!(
+        reduce_enrollment_for(&issued, &stale_node, &scope(), &scope().authority, Some(2)),
+        Err(NodeError::ForeignScope),
+        "an unregistered node cannot create a scope or capacity receipt"
+    );
+    assert!(
+        !issued
+            .capacity
+            .contains_key(&NodeId::new("unregistered-round12-node").expect("node ID"))
+    );
     assert!(!MANAGED_EXECUTION_QUALIFIED);
 }
