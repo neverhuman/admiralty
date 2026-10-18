@@ -546,4 +546,3 @@ fn synthetic_workspace_gate_requires_current_checks_and_authority() {
     assert!(!audited.execution_granted());
     assert!(audited.intent.is_some());
 }
-
