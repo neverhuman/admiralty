@@ -54,6 +54,44 @@ describe('detailed project source adapters', () => {
     expect(project.workers[0]).toMatchObject({ screen: 'custom_lane', model: 'observed model', task: 'P13A',
       state: 'stale; reported in_progress; screen present', screen_changed_utc: 'original time' });
   });
+  it('selects the explicitly pinned observed manager instead of an older Luna session', () => {
+    const source = snapshot();
+    source.agents = [
+      { id: '101.captain_build-project', screen: 'captain_build-project', project: 'build-project', model: 'gpt-6-luna', effort: 'medium', tier: 'T0' },
+      { id: '202.agy_manager', screen: 'agy_manager', project: 'unassigned', model: 'agy Gemini 4 Argon', tier: 'planner', state: 'idle' },
+    ];
+    source.rollout = { ...source.rollout as object, project: { id: 'build-project', name: 'Admiralty', captain_screen: 'agy_manager', captain_screen_pid: 202 },
+      live_observation: { captain: { identity_state: 'observed', id: '202.agy_manager', pid: 202, name: 'agy_manager', model: 'Gemini 4 Argon', agent_running: true } } };
+    const project = projectDetails(source).at(-1)!;
+    expect(project.captain).toMatchObject({ id: '202.agy_manager', screen: 'agy_manager', model: 'agy Gemini 4 Argon', tier: 'planner', state: 'idle' });
+    expect(project.captain.effort).toBeUndefined();
+    expect(project.workers).toHaveLength(1);
+    expect(project.workers[0]).toMatchObject({ model: 'gpt-6-luna' });
+    expect(hierarchyCaptains(source).at(-1)).toMatchObject({ name: 'Admiralty', screen: 'agy_manager', model: 'agy Gemini 4 Argon' });
+    const html = renderToStaticMarkup(<LegacyFleetView snapshot={source} selected="build-project" />);
+    expect(html).toContain('agy Gemini 4 Argon');
+  });
+  it('preserves the observed manager model when the same-session roster model is unknown', () => {
+    const source = snapshot();
+    source.agents = [{ id: '202.agy_manager', screen: 'agy_manager', project: 'build-project', model: 'agy Gemini (model unknown)' }];
+    source.rollout = { ...source.rollout as object, project: { id: 'build-project', captain_screen: '202.agy_manager' },
+      live_observation: { captain: { identity_state: 'observed', id: '202.agy_manager', pid: 202, name: 'agy_manager', model: 'Gemini 4 Argon' } } };
+    expect(projectDetails(source).at(-1)!.captain.model).toBe('Gemini 4 Argon');
+    expect(projectDetails(source).at(-1)!.workers).toHaveLength(0);
+  });
+  it('keeps a missing or mismatched configured manager unknown without promoting a worker', () => {
+    for (const observed of [undefined, { identity_state: 'absent' },
+      { identity_state: 'observed', id: '303.agy_manager', pid: 303, name: 'agy_manager', model: 'wrong session' },
+      { identity_state: 'observed', id: '202.wrong_manager', pid: 202, name: 'wrong_manager', model: 'wrong name' },
+      { identity_state: 'observed', id: '202.agy_manager', pid: 303, name: 'agy_manager', model: 'inconsistent PID' }]) {
+      const source = snapshot();
+      source.agents = [{ id: '101.captain_build-project', screen: 'captain_build-project', project: 'build-project', model: 'gpt-6-luna' }];
+      source.rollout = { ...source.rollout as object, project: { id: 'build-project', captain_screen: 'agy_manager', captain_screen_pid: 202 },
+        live_observation: { captain: observed } };
+      expect(projectDetails(source).at(-1)!.captain).toMatchObject({ screen: 'agy_manager', model: 'unknown', state: 'unknown' });
+      expect(projectDetails(source).at(-1)!.workers).toHaveLength(1);
+    }
+  });
   it('preserves source counts and timestamps; unknown total remains unknown', () => {
     const source = snapshot(); delete source.projects.alpha.total;
     const project = projectDetails(source)[0];
