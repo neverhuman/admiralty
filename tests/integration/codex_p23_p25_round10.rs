@@ -108,9 +108,7 @@ fn p23_p25_round10_item3_workspace_gate_audit() {
     assert!(cleared.resume_proposed);
     assert!(!cleared.restore_authorized());
     assert!(!cleared.effects_authorized());
-    const {
-        assert!(!MANAGED_EXECUTION_QUALIFIED);
-    }
+    const { assert!(!MANAGED_EXECUTION_QUALIFIED) };
 }
 
 fn enrolled_event_identity(event: &EnrollmentEvent) -> &str {

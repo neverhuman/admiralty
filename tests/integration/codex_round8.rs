@@ -265,6 +265,7 @@ fn p26_p31_round8_p12_hitl_cockpit_qualification() {
     let mut oversized = safe;
     oversized.args = vec!["x".repeat(64 * 1024 + 1)];
     assert!(validate_launch_envelope(&oversized).is_err());
+    const { assert!(!MANAGED_EXECUTION_QUALIFIED) };
 }
 
 #[test]
@@ -445,4 +446,5 @@ fn p23_p25_round9_item3_webhook_node_ingest_qualification() {
     })
     .expect("serialize unknown economics");
     assert_eq!(cost["kind"], "unknown");
+    const { assert!(!MANAGED_EXECUTION_QUALIFIED) };
 }
