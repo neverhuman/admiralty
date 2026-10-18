@@ -74,6 +74,22 @@ fn consumer_ack_is_provisional_and_new_revision_proposes_invalidation() {
     )
     .expect("publish interface contract");
     let ack_event = acknowledge();
+    let mut corrupted_digest = ack_event.clone();
+    if let InterfaceEvent::Acknowledge { schema_digest, .. } = &mut corrupted_digest {
+        *schema_digest = "sha256:not-a-digest".into();
+    }
+    assert!(
+        reduce_interface_for(
+            &Some(initial.state.clone()),
+            &corrupted_digest,
+            &scope,
+            &consumer,
+            &owner,
+        )
+        .is_err(),
+        "cross-boundary acknowledgment with a corrupted schema digest must be rejected"
+    );
+
     let mut foreign_scope = scope.clone();
     foreign_scope.authority_ref = "other-grant".into();
     assert!(

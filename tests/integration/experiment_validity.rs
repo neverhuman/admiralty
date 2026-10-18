@@ -389,3 +389,16 @@ fn decision_proposal_is_idempotent_for_identical_evidence() {
         }
     ));
 }
+
+#[test]
+fn truncated_feature_digest_is_rejected_at_the_sha256_boundary() {
+    let mut evidence = complete_evidence();
+    evidence.features[0].digest = format!("sha256:{}", "a".repeat(63));
+
+    assert_eq!(
+        validate_trial(&evidence)
+            .expect_err("truncated feature digests must be rejected")
+            .to_string(),
+        "invalid trial input: full lowercase SHA-256 digest required"
+    );
+}

@@ -499,3 +499,17 @@ fn replaying_legacy_classification_is_idempotent_and_observed_only() {
     assert!(replay.observed_only);
     assert_eq!(replay.observed_provider, None);
 }
+
+#[test]
+fn grok_rejects_invalid_utf8_split_across_stream_chunks() {
+    let mut decoder = grok::StreamDecoder::new();
+    let corrupted =
+        b"{\"jsonrpc\":\"2.0\",\"method\":\"session/update\",\"params\":{\"text\":\"\xc3(\"}}\n";
+    let split = corrupted
+        .windows(2)
+        .position(|pair| pair == b"\xc3(")
+        .expect("corrupt UTF-8 sequence");
+    assert!(decoder.push(&corrupted[..split + 1]).is_ok());
+    assert!(decoder.push(&corrupted[split + 1..]).is_err());
+    assert!(decoder.finish().is_err());
+}

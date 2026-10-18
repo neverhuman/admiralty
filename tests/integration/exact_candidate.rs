@@ -9,6 +9,10 @@ fn receipt_parser_rejects_forged_unknown_fields_and_registry_is_bounded() {
         "replayed forged claims stay rejected"
     );
     assert!(parse_receipt(br#"{"unknown":true}"#).is_err());
+    assert!(
+        parse_receipt(&[0xff]).is_err(),
+        "invalid UTF-8 receipt bytes are rejected"
+    );
 
     let registry = ReceiptRegistry::new(1).expect("bounded receipt history");
     assert_eq!(registry.retained_receipts(), 0);

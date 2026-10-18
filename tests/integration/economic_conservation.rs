@@ -321,10 +321,33 @@ fn reservation_over_limit_is_rejected_without_changing_liabilities() {
         result,
         Err(reservations::ReservationError::LimitExceeded("account"))
     ));
+    assert!(matches!(
+        reservations::reserve_budget(
+            &within_limit,
+            "reserve-over-limit",
+            "reservation-over-limit",
+            scope.clone(),
+            "correlation-over-limit",
+            MinorUnits::new(2),
+        ),
+        Err(reservations::ReservationError::LimitExceeded("account"))
+    ));
     assert_eq!(within_limit.unresolved_liabilities[&scope].get(), 999);
     assert!(
         !within_limit
             .reservations
             .contains_key("reservation-over-limit")
+    );
+    assert_eq!(
+        within_limit.revision, 1,
+        "rejected reservation must not advance the ledger"
+    );
+    assert!(
+        serde_json::from_str::<MinorUnits>("\"18446744073709551616\"").is_err(),
+        "minor-unit values one above u64::MAX must be rejected"
+    );
+    assert!(
+        serde_json::from_str::<MinorUnits>("\"01\"").is_err(),
+        "minor-unit values with noncanonical leading zeros must be rejected"
     );
 }

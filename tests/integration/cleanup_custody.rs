@@ -169,6 +169,22 @@ fn durable_active_pin_blocks_retirement_claim_until_release() {
         },
     )
     .expect("register fixture asset");
+    let mut over_age_observation = observation(&binding, true, 11);
+    over_age_observation.max_age = (custody::MAX_OBSERVATION_AGE + 1).to_string();
+    assert!(matches!(
+        custody::acquire_pin(
+            &mut connection,
+            AcquirePinRequest {
+                command_id: "acquire-over-age-observation".into(),
+                binding: binding.clone(),
+                pin_id: "pin-over-age".into(),
+                expected_revision: "1".into(),
+                observation: over_age_observation,
+            }
+        ),
+        Err(CustodyError::UnsafeObservation)
+    ));
+
     assert!(matches!(
         custody::acquire_pin(
             &mut connection,
@@ -195,6 +211,20 @@ fn durable_active_pin_blocks_retirement_claim_until_release() {
     let replayed = custody::acquire_pin(&mut connection, acquire_request)
         .expect("exact replay returns recorded receipt");
     assert_eq!(replayed, acquired);
+
+    assert!(matches!(
+        custody::release_pin(
+            &mut connection,
+            ReleasePinRequest {
+                command_id: "release-missing".into(),
+                binding: binding.clone(),
+                pin_id: "missing-pin".into(),
+                expected_revision: "2".into(),
+                observation: observation(&binding, true, 12),
+            }
+        ),
+        Err(CustodyError::InvalidPin)
+    ));
 
     assert!(matches!(
         custody::release_pin(

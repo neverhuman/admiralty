@@ -97,6 +97,25 @@ fn replay_cannot_rewrite_an_existing_task_identity() {
 }
 
 #[test]
+fn truncated_json_is_rejected_without_a_partial_preview() {
+    let project = ProjectId::new("project").expect("valid project ID");
+    let plan = Workplan {
+        schema_version: 1,
+        plan_id: "plan".into(),
+        revision: 1,
+        project_id: project.clone(),
+        tasks: vec![contract("task", project, &[])],
+    };
+    let mut bytes = source(&plan);
+    bytes.pop();
+
+    assert!(matches!(
+        preview_workplan(&bytes),
+        Err(WorkplanError::Json(_))
+    ));
+}
+
+#[test]
 fn legacy_pass_and_checkbox_fields_cannot_become_trusted_acceptance() {
     let project = ProjectId::new("project").expect("valid project ID");
     let plan = Workplan {

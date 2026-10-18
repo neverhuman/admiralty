@@ -134,6 +134,17 @@ fn causal_depth_accepts_the_limit_and_rejects_one_more_link() {
 }
 
 #[test]
+fn noncanonical_observation_tick_is_rejected_as_corrupted_input() {
+    let scope = scope("task-corrupt-tick");
+    let mut malformed = event("incident-corrupt-tick", None, "failure");
+    malformed.observed_tick = Some("042".into());
+
+    let error = reduce_excursions(&None, &scope, &[input(&scope, malformed)])
+        .expect_err("leading zero makes the observation tick noncanonical");
+    assert_eq!(error.0, "tick must be a canonical decimal u64");
+}
+
+#[test]
 fn local_proposal_keeps_unknowns_and_scope_without_granting_effects() {
     let scope = scope("task-proposal");
     let evidence_digest = digest('c');

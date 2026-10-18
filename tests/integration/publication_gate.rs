@@ -202,6 +202,11 @@ fn malformed_target_ref_is_rejected_at_admission_boundary() {
 }
 
 #[test]
+fn noncanonical_authority_generation_is_rejected_on_json_input() {
+    assert!(serde_json::from_str::<DecimalU64>("\"09\"").is_err());
+}
+
+#[test]
 fn ambiguous_effect_slot_requires_matching_reconciliation_and_replays_once() {
     let (scope, snapshot, generation) = fixtures();
     let proposed = proposal(&scope, &snapshot, "intent-one", &generation);

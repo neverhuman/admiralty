@@ -227,3 +227,15 @@ fn exact_audit_replay_is_idempotent_and_changed_evidence_collides() {
         "same audit ID cannot replay different evidence"
     );
 }
+
+#[test]
+fn corrupted_evidence_reference_is_rejected_before_proposal() {
+    let policy = policy();
+    let mut staged = evidence(&policy);
+    staged.evidence_refs[0] = "sha256:truncated".into();
+
+    assert!(
+        evaluate_staged_audit(&scope(), &policy, &staged).is_err(),
+        "malformed evidence digest must not produce a proposal"
+    );
+}

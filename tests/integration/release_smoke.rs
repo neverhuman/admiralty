@@ -7,6 +7,7 @@ fn p26_economics_counters_preserve_full_u128_and_unknown_costs() {
     let largest = DecimalU128::parse("340282366920938463463374607431768211455")
         .expect("u128 maximum is an exact decimal counter");
     assert_eq!(largest.as_u128(), u128::MAX);
+    assert!(DecimalU128::parse("340282366920938463463374607431768211456").is_err());
     assert!(DecimalU128::parse("01").is_err());
 
     let unknown = ObservedAmount::Unknown {

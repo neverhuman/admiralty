@@ -122,6 +122,17 @@ fn invalid_candidate_input_is_rejected_before_analysis() {
 }
 
 #[test]
+fn corrupted_base_digest_is_rejected_before_conflict_analysis() {
+    let mut corrupted = candidate("candidate", 'a', &["crates/admiralty-runtime/src/lib.rs"]);
+    corrupted.base_sha = format!("sha256:{}", "z".repeat(64));
+
+    assert!(matches!(
+        analyze_conflicts(&[corrupted], "policy-1"),
+        Err(ConflictError::InvalidCandidate(candidate_id)) if candidate_id == "candidate"
+    ));
+}
+
+#[test]
 fn duplicate_file_paths_in_one_candidate_are_rejected_deterministically() {
     let duplicate = candidate(
         "candidate",

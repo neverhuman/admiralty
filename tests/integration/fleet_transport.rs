@@ -233,6 +233,24 @@ fn token_issue_replay_is_idempotent_and_mutated_payload_collides() {
 }
 
 #[test]
+fn uppercase_digest_corruption_is_rejected_without_mutating_registry() {
+    let state = NodeRegistry::default();
+    let mut corrupted_token = token("corrupted-digest", 20);
+    corrupted_token.token_digest = format!("sha256:{}", "A".repeat(64));
+    let corrupted_event = EnrollmentEvent::TokenIssued {
+        event_id: "issue-corrupted-digest".into(),
+        token: corrupted_token,
+    };
+
+    assert_eq!(
+        apply(&state, &corrupted_event, Some(1)),
+        Err(NodeError::Invalid("malformed SHA-256 digest"))
+    );
+    assert!(state.tokens.is_empty());
+    assert!(state.applied_events.is_empty());
+}
+
+#[test]
 fn reboot_rotation_revocation_and_capacity_require_current_generation() {
     let start = issued_token("boot-a-token", 30, 1);
     let enrollment = EnrollmentEvent::Enrolled {

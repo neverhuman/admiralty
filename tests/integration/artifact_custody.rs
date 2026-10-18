@@ -265,3 +265,31 @@ fn publication_rejects_object_one_byte_over_configured_limit() {
         "oversize publication must not leave an object or temporary file"
     );
 }
+
+#[test]
+fn verified_read_rejects_corrupted_bytes_at_the_content_address() {
+    let fixture = TempDir::new().expect("create disposable fixture root");
+    let artifact_root = fixture.path().join("objects");
+    fs::create_dir(&artifact_root).expect("create artifact root");
+    fs::set_permissions(&artifact_root, fs::Permissions::from_mode(0o700))
+        .expect("make artifact root owner-only");
+    let artifacts = ArtifactStore::open(&artifact_root, 1024).expect("open artifact store");
+    let reference = artifacts
+        .publish_bytes(b"verified source bytes")
+        .expect("publish content-addressed bytes");
+    let object_path = artifact_root.join(
+        reference
+            .sha256
+            .strip_prefix("sha256:")
+            .expect("artifact digest has canonical prefix"),
+    );
+    fs::write(&object_path, b"cross-boundary corruption")
+        .expect("simulate corrupted object at its digest path");
+
+    assert!(artifacts.read_verified(&reference).is_err());
+    assert_eq!(
+        fs::read(&object_path).expect("corrupt object remains unchanged"),
+        b"cross-boundary corruption",
+        "verified read must reject rather than silently accept corrupted bytes"
+    );
+}

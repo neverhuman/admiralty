@@ -833,10 +833,24 @@ fn scoped_envelope_rejects_foreign_project_before_delivery() {
 
 #[test]
 fn mailbox_capacity_accepts_limit_and_rejects_first_value_over_it() {
-    use admiralty_core::coordination::mailbox::{BoundedMailbox, MAX_MAILBOX_ENTRIES};
+    use admiralty_core::coordination::mailbox::{
+        BoundedMailbox, DeliveryOutcome, MAX_MAILBOX_ENTRIES,
+    };
 
     let project = ProjectId::new("capacity-project").expect("valid fixture project");
     let worker = PrincipalId::new("capacity-worker").expect("valid fixture principal");
     assert!(BoundedMailbox::new(project.clone(), worker.clone(), MAX_MAILBOX_ENTRIES).is_ok());
     assert!(BoundedMailbox::new(project, worker, MAX_MAILBOX_ENTRIES + 1).is_err());
+
+    let project = ProjectId::new("sequence-project").expect("valid fixture project");
+    let worker = PrincipalId::new("sequence-worker").expect("valid fixture principal");
+    let mut mailbox = BoundedMailbox::new(project, worker, 1).expect("valid mailbox capacity");
+    assert!(matches!(
+        admiralty_server::services::coordination::CoordinationService::route_to_mailbox(
+            &mut mailbox,
+            0,
+            assignment(&contract(), "zero-sequence")
+        ),
+        DeliveryOutcome::InvalidSequence { seq: 0 }
+    ));
 }

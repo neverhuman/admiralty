@@ -2,7 +2,8 @@ use admiralty_core::{
     ProjectId, RootId, TaskId,
     placement::{
         ActiveRoot, BudgetRequirement, Capacity, DecimalU64, IsolatedPermit, Known, NodeId,
-        NodeOffer, Observation, PlacementPolicy, PlacementRequest, propose_placement,
+        NodeOffer, Observation, PlacementError, PlacementInput, PlacementPolicy, PlacementRequest,
+        decode_input, propose_placement,
     },
 };
 
@@ -203,5 +204,24 @@ fn disconnected_continuation_expiring_at_decision_time_is_rejected() {
     assert_eq!(
         proposal,
         propose_placement(&request, &[node], &policy(), 10).expect("deterministic replay")
+    );
+}
+
+#[test]
+fn corrupted_placement_snapshot_with_unknown_field_is_rejected() {
+    let input = PlacementInput {
+        request: request(),
+        offers: vec![offer()],
+        policy: policy(),
+        now: Some(d(10)),
+        previous_tick: Some(d(9)),
+    };
+    let mut value = serde_json::to_value(input).expect("valid snapshot");
+    value["unexpected_authority"] = serde_json::Value::Bool(true);
+
+    let corrupted = serde_json::to_vec(&value).expect("corrupted snapshot JSON");
+    assert_eq!(
+        decode_input(&corrupted),
+        Err(PlacementError::Invalid("placement JSON"))
     );
 }
