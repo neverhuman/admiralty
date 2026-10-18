@@ -5,6 +5,7 @@ use admiralty_core::{
         InterfaceRevision, MAX_CANDIDATES, analyze_conflicts, probe_cache_key,
     },
 };
+use admiralty_testkit::clock::{ClockError, FakeClock};
 
 fn digest(byte: char) -> String {
     format!("sha256:{}", byte.to_string().repeat(64))
@@ -100,6 +101,26 @@ fn combined_verification_flag_tracks_unique_frozen_candidate_count() {
         analyze_conflicts(&[right, left], "policy-1").expect("multi-candidate generation");
     assert_eq!(multiple.generation.candidate_ids, ["left", "right"]);
     assert!(multiple.generation.combined_verification_required);
+}
+
+#[test]
+fn rejected_clock_skew_preserves_time_and_the_frozen_generation() {
+    let mut clock = FakeClock::new(500);
+    let candidate = candidate("candidate", 'a', &["crates/admiralty-runtime/src/lib.rs"]);
+    let before = analyze_conflicts(std::slice::from_ref(&candidate), "policy-1")
+        .expect("generation before skew");
+
+    assert_eq!(
+        clock.advance_to_ms(499),
+        Err(ClockError::Backwards {
+            now_ms: 500,
+            target_ms: 499,
+        })
+    );
+    assert_eq!(clock.now_ms(), 500);
+
+    let after = analyze_conflicts(&[candidate], "policy-1").expect("generation after skew");
+    assert_eq!(after, before);
 }
 
 #[test]
