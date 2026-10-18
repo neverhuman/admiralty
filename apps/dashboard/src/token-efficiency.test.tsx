@@ -18,7 +18,7 @@ const snapshot = () => parseLegacy({
       '15': { credits_per_hour_est: 306.5 },
     },
     quota: { used_percent: 41, window_minutes: 10080, observed_utc: '2026-10-18T18:12:00Z',
-      resets_at_utc: '2026-10-24T21:40:00Z', credits_balance: '9691', burn_pct_per_hour: 2.68, burn_window_min: 179, hours_to_100pct: 22.1 },
+      resets_at_utc: '2026-10-24T21:40:00Z', credits_balance: '9691.1815655000', burn_pct_per_hour: 2.68, burn_window_min: 179, hours_to_100pct: 22.1 },
     flags: [{ screen: 'custom_worker', project: 'custom-project', text: 'Model too costly for SIMPLE task' }],
     ledger: { model_lines: 780, escalated: 19, lane_lines_with_class: 31, outcomes: { pass: 744, escalated: 19 },
       class_at_tier: { 'simple@T2': 2 }, note: 'MODEL usage ledger source' },
@@ -38,7 +38,7 @@ const render = (source = snapshot()) => renderToStaticMarkup(<TokenEfficiency sn
 describe('source-faithful token efficiency panel', () => {
   it('renders dense KPIs, bright model bars and source-window provenance', () => {
     const html = render();
-    for (const value of ['44.4%', '20.4×', '411.5', '306.5', 'Weekly quota used', '41%', '9,691',
+    for (const value of ['44.4%', '20.4×', '411.5', '306.5', 'Weekly quota used', '41%', '9691.1815655000',
       '2026-10-24T21:40:00Z', 'Observed agents by model', 'te-fill', 'te-luna', 'te-astra',
       'session turn_context', 'custom-observer-node', 'last 3h', 'not token weighted']) expect(html).toContain(value);
     expect(html).toContain('gpt-6-luna baseline');

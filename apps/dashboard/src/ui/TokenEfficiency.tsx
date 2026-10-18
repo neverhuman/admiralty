@@ -7,7 +7,7 @@ const fmt = (value: number | null, digits = 1): string => value === null ? 'Unkn
 const metric = (value: unknown, digits = 1): string => fmt(number(value), digits);
 const percent = (value: unknown): string => number(value) === null || Number(value) > 100 ? 'Unknown' : `${metric(value)}%`;
 const signed = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) ? value : null;
-const balance = (value: unknown): number | null => typeof value === 'string' && /^\d{1,18}(?:\.\d{1,8})?$/.test(value) ? number(Number(value)) : number(value);
+const formatBalance = (value: unknown): string => typeof value === 'string' && /^\d{1,18}(?:\.\d{1,32})?$/.test(value) ? value : fmt(number(value), 0);
 const compact = (value: unknown): string => {
   const n = number(value);
   return n === null ? 'Unknown' : n >= 1e9 ? `${fmt(n / 1e9, 2)}B` : n >= 1e6 ? `${fmt(n / 1e6, 2)}M` : n >= 1e3 ? `${fmt(n / 1e3, 1)}k` : fmt(n, 0);
@@ -75,7 +75,7 @@ export function TokenEfficiency({ snapshot }: { snapshot: LegacySnapshot }) {
       <Kpi label={quotaLabel(quota)} accent={used === null || used > 100 ? 'neutral' : used >= 85 ? 'astra' : used >= 60 ? 'sol' : 'luna'} value={percent(quota.used_percent)}
         note={<>Measured Codex limit{number(quota.window_minutes) === null ? ' · window unknown' : ''}<br />{quotaBurn === null ? 'Burn rate unknown' : `${fmt(quotaBurn, 2)}%/h over ${metric(quota.burn_window_min, 0)}m`}{number(quota.hours_to_100pct) !== null ? ` · ~${metric(quota.hours_to_100pct)}h to 100%` : ''}</>} />
     </div>
-    <p className="te-source te-quota-source">Quota observed {text(quota.observed_utc) || 'Unknown'} · resets {text(quota.resets_at_utc) || 'Unknown'} · credit balance {fmt(balance(quota.credits_balance), 0)}</p>
+    <p className="te-source te-quota-source">Quota observed {text(quota.observed_utc) || 'Unknown'} · resets {text(quota.resets_at_utc) || 'Unknown'} · credit balance {formatBalance(quota.credits_balance)}</p>
 
     <div className="te-section-heading"><h3>Observed agents by model</h3><span>{metric(efficiency.agents_total, 0)} agent processes{!hasModelAggregate && models.length ? ' · mix from agent records' : ''}</span></div>
     <div className="te-models">{models.slice(0, modelLimit).map(([model, rawCount]) => {
