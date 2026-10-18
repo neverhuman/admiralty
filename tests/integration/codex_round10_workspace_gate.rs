@@ -4,6 +4,7 @@ use admiralty_core::interfaces::{
 };
 use admiralty_core::{MessageId, PrincipalId, ProjectId, RootId, TaskId};
 use admiralty_runtime::session::{InputKind, LaunchSpec, SessionHost};
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{fs, path::PathBuf};
 
@@ -13,6 +14,20 @@ fn principal(value: &str) -> PrincipalId {
 
 fn digest(bytes: &[u8]) -> String {
     format!("sha256:{:x}", Sha256::digest(bytes))
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+struct GateAuditReceipt {
+    schema_version: u32,
+    run_id: String,
+    input_epoch: u64,
+    output_offset: u64,
+    artifact_digest: String,
+    interface_id: String,
+    interface_revision: u64,
+    recipient_epoch: String,
+    acknowledgment_event_id: String,
 }
 
 #[cfg(unix)]
@@ -328,4 +343,185 @@ fn p07_p17_round11_item4_final_validation_gate() {
         invalidated.invalidations[0].new_revision,
         DecimalU64::new(2)
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn p07_p17_round12_item5_redteam_audit_gate() {
+    let temp = tempfile::tempdir().expect("red-team session workspace");
+    let workspace = fs::canonicalize(temp.path()).expect("canonical workspace");
+    let host = SessionHost::new();
+    host.launch(LaunchSpec {
+        run_id: "round12-redteam".into(),
+        program: PathBuf::from("/bin/cat"),
+        args: Vec::new(),
+        cwd: workspace.clone(),
+        spool_dir: workspace.join("spool"),
+    })
+    .expect("launch local fixture process");
+    let payload = b"audited candidate payload\n";
+    assert_eq!(
+        host.write_input(
+            "round12-redteam",
+            InputKind::CompareAndAdvance { expected_epoch: 0 },
+            payload,
+        )
+        .expect("first epoch input")
+        .input_epoch,
+        1
+    );
+    assert!(
+        host.write_input(
+            "round12-redteam",
+            InputKind::CompareAndAdvance { expected_epoch: 0 },
+            payload,
+        )
+        .is_err(),
+        "replayed input with a stale epoch must fail closed"
+    );
+    host.close_input_if_epoch("round12-redteam", 1)
+        .expect("close at current epoch");
+    assert!(
+        host.wait("round12-redteam")
+            .expect("owned process exit")
+            .success()
+    );
+    let tail = host
+        .tail("round12-redteam", 0, 1024)
+        .expect("session journal tail");
+    let output = tail
+        .chunks
+        .iter()
+        .flat_map(|chunk| chunk.bytes.iter().copied())
+        .collect::<Vec<_>>();
+    assert_eq!(output, payload);
+    let artifact_digest = digest(&output);
+
+    let scope = InterfaceScope {
+        project_id: ProjectId::new("round12-project").expect("project ID"),
+        root_id: RootId::new("round12-root").expect("root ID"),
+        task_id: TaskId::new("round12-task").expect("task ID"),
+        authority_ref: "grant:round12".into(),
+    };
+    let producer = principal("round12-worker");
+    let recipient = principal("round12-captain");
+    let owner = principal("round12-owner");
+    let contract = InterfaceContract {
+        interface_id: InterfaceId::new("redteam-interface").expect("interface ID"),
+        scope: scope.clone(),
+        producer: producer.clone(),
+        consumers: vec![recipient.clone()],
+        revision: DecimalU64::new(1),
+        artifact_digest: artifact_digest.clone(),
+        schema_digest: digest(b"redteam-schema-v1"),
+    };
+    let publish = InterfaceEvent::Publish {
+        event_id: MessageId::new("round12-publish").expect("publish ID"),
+        contract: contract.clone(),
+        actor: producer.clone(),
+        authority_owner: owner.clone(),
+        recipient_epochs: vec![RecipientEpoch {
+            recipient: recipient.clone(),
+            epoch: "captain-epoch-12".into(),
+        }],
+        expected_state_revision: None,
+    };
+    let published = reduce_interface_for(&None, &publish, &scope, &producer, &owner)
+        .expect("publish session-bound artifact");
+    let ack = InterfaceEvent::Acknowledge {
+        event_id: MessageId::new("round12-ack").expect("ack ID"),
+        interface_id: contract.interface_id.clone(),
+        scope: scope.clone(),
+        actor: recipient.clone(),
+        recipient_epoch: "captain-epoch-12".into(),
+        interface_revision: DecimalU64::new(1),
+        artifact_digest: artifact_digest.clone(),
+        schema_digest: contract.schema_digest.clone(),
+        expected_state_revision: DecimalU64::new(1),
+        authority_ref: scope.authority_ref.clone(),
+    };
+
+    let mut forged_scope = scope.clone();
+    forged_scope.project_id = ProjectId::new("foreign-project").expect("foreign project");
+    assert!(
+        reduce_interface_for(
+            &Some(published.state.clone()),
+            &ack,
+            &forged_scope,
+            &recipient,
+            &owner,
+        )
+        .is_err(),
+        "foreign project cannot consume a scoped artifact"
+    );
+    assert!(
+        reduce_interface_for(
+            &Some(published.state.clone()),
+            &ack,
+            &scope,
+            &principal("forged-peer"),
+            &owner,
+        )
+        .is_err(),
+        "peer identity is authenticated independently of event fields"
+    );
+    let mut tampered_ack = ack.clone();
+    if let InterfaceEvent::Acknowledge {
+        artifact_digest, ..
+    } = &mut tampered_ack
+    {
+        *artifact_digest = digest(b"altered candidate");
+    }
+    assert!(
+        reduce_interface_for(
+            &Some(published.state.clone()),
+            &tampered_ack,
+            &scope,
+            &recipient,
+            &owner,
+        )
+        .is_err(),
+        "changed artifact digest cannot pass the interface gate"
+    );
+
+    let accepted = reduce_interface_for(&Some(published.state), &ack, &scope, &recipient, &owner)
+        .expect("authorized matching ACK");
+    let collision = reduce_interface_for(
+        &Some(accepted.state.clone()),
+        &tampered_ack,
+        &scope,
+        &recipient,
+        &owner,
+    );
+    assert!(collision.is_err(), "ACK event identity cannot be rebound");
+
+    let receipt = GateAuditReceipt {
+        schema_version: 1,
+        run_id: "round12-redteam".into(),
+        input_epoch: host
+            .status("round12-redteam")
+            .expect("session status")
+            .input_epoch,
+        output_offset: tail.next_offset,
+        artifact_digest,
+        interface_id: "redteam-interface".into(),
+        interface_revision: accepted.state.revision.get(),
+        recipient_epoch: "captain-epoch-12".into(),
+        acknowledgment_event_id: "round12-ack".into(),
+    };
+    let receipt_bytes = serde_json::to_vec(&receipt).expect("serialize exact audit receipt");
+    let receipt_digest = digest(&receipt_bytes);
+    let decoded: GateAuditReceipt =
+        serde_json::from_slice(&receipt_bytes).expect("strict receipt round trip");
+    assert_eq!(decoded, receipt);
+    let mut altered = decoded.clone();
+    altered.output_offset += 1;
+    assert_ne!(
+        digest(&serde_json::to_vec(&altered).expect("serialize alteration")),
+        receipt_digest
+    );
+    let mut unknown_field: serde_json::Value =
+        serde_json::from_slice(&receipt_bytes).expect("receipt JSON value");
+    unknown_field["authority_granted"] = serde_json::Value::Bool(true);
+    assert!(serde_json::from_value::<GateAuditReceipt>(unknown_field).is_err());
 }
