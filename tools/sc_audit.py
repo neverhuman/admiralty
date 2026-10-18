@@ -715,9 +715,188 @@ def audit_joil():
                 try: dm += sum(1 for v in json.loads(js)['tasks'].values() if v.get('status') == 'done')
                 except Exception: pass
             res['done_on_main'] = dm
+            try:
+                fa = audit_joil_flips(REPOS['joil'], 'origin/main')
+                res['flip_audit'] = fa
+                res['done_on_main_unflagged'] = fa['done_unflagged_on_main']
+            except Exception as e:
+                F('amber', 'joil', 'FLIP_AUDIT_ERROR', str(e)[:200])
     except Exception as e:
         F('amber', 'joil', 'LEDGER_UNREADABLE', str(e)[:200])
     return res
+
+# ---------------- Joil status-flip dones (GB red-team 2026-10-18, Joil PR #9 85->155) ----------------
+# A Joil task that sat blocked on external causes (Cause B measured data / Cause E owner authority) must
+# not become "done" merely because a Fleet Admiral decision unblocked it. Flags, read-only on origin/main:
+#   JOIL_DONE_STATUS_FLIP        red   task turned done in a first-parent commit that added < JOIL_FLIP_MIN_PROD_LINES
+#                                      production (non-test, non-doc) lines per newly-done task, after an external-cause block
+#                                      or a Fleet Admiral (SC-DEC) unblock; waived only by joil_flip_waived()
+#   JOIL_DONE_DECISION_SAYS_OPEN red   the disposition for a done task itself says its verification remains open / not executed
+#   JOIL_SUBSTITUTE_UNLABELLED   red   disposition is substitute:/rescope: but the task's progress entry carries no such label
+#   JOIL_DONE_SHARED_RECEIPT     amber no receipt names the task with <= 2 task_ids (only packet-wide aggregate receipts)
+#   JOIL_LOG_SUMMARY_ONLY        amber every test log behind the task is a one-line summary (no individual test names)
+JOIL_FLIP_MIN_PROD_LINES = 10
+JOIL_EXTERNAL_CAUSE = re.compile(r'Cause [BE]\b|measured|metrology|unsigned|signed|owner|authority|physical|accession|SC-DEC-\d+|Fleet Admiral|unblocked by', re.I)
+JOIL_OPEN_RX = re.compile(r'remains? open|not yet executed|not executed|verification remains', re.I)
+JOIL_PROGRESS_DIR = 'docs/v5-plan/progress'
+
+def joil_is_prod_path(p):
+    if not p.endswith(('.rs', '.py', '.ts', '.tsx', '.js')): return False
+    base = p.rsplit('/', 1)[-1]
+    if p.startswith(('docs/', 'tests/', 'experiments/')) or '/tests/' in p: return False
+    if base.startswith('test_') or base.endswith(('_test.py', '.test.ts', '.test.tsx', '.spec.ts')): return False
+    return True
+
+def joil_prod_added_lines(repo, base, head):
+    """Added production lines base..head; Rust lines at/after the first #[cfg(test)] count as test code."""
+    rc, out, _ = run(['git', '-C', repo, 'diff', '-U0', '--no-color', base, head], timeout=90)
+    total, per, cur, cut = 0, {}, None, None
+    for line in out.splitlines():
+        if line.startswith('+++ '):
+            path = line[6:] if line.startswith('+++ b/') else None
+            cur = path if path and joil_is_prod_path(path) else None
+            cut = None
+            if cur and cur.endswith('.rs'):
+                rc2, src, _ = run(['git', '-C', repo, 'show', f'{head}:{cur}'], timeout=15)
+                for i, l in enumerate(src.splitlines(), 1):
+                    if l.strip() == '#[cfg(test)]': cut = i; break
+            continue
+        if cur and line.startswith('@@'):
+            m = re.search(r'\+(\d+)(?:,(\d+))?', line)
+            if not m: continue
+            start, n = int(m.group(1)), int(m.group(2) if m.group(2) is not None else 1)
+            if cut: n = max(0, min(n, cut - start))
+            if n: per[cur] = per.get(cur, 0) + n; total += n
+    return total, per
+
+def _joil_progress_at(repo, rev, files=None):
+    if files is None:
+        rc, out, _ = run(['git', '-C', repo, 'ls-tree', '--name-only', rev, JOIL_PROGRESS_DIR + '/'], timeout=15)
+        files = out.split() if rc == 0 else []
+    tasks = {}
+    for f in files:
+        rc, js, _ = run(['git', '-C', repo, 'show', f'{rev}:{f}'], timeout=15)
+        try: tasks.update(json.loads(js).get('tasks') or {})
+        except Exception: pass
+    return tasks
+
+def joil_done_transitions(repo, ref='origin/main', max_commits=200):
+    """First-parent walk of progress-touching commits -> {task: {commit, prev_status, blocked_note}}."""
+    rc, out, _ = run(['git', '-C', repo, 'log', '--first-parent', '--format=%H', '-n', str(max_commits), ref, '--', JOIL_PROGRESS_DIR], timeout=30)
+    commits = list(reversed(out.split())) if rc == 0 else []
+    trans, blocked_note = {}, {}
+    for c in commits:
+        rc, par, _ = run(['git', '-C', repo, 'rev-parse', c + '^1'], timeout=10)
+        par = par.strip() if rc == 0 else None
+        if par:
+            rc, ch, _ = run(['git', '-C', repo, 'diff', '--name-only', par, c, '--', JOIL_PROGRESS_DIR], timeout=15)
+            files = ch.split()
+            before = _joil_progress_at(repo, par, files)
+        else:
+            files, before = None, {}
+        after = _joil_progress_at(repo, c, files)
+        for k, v in list(before.items()) + list(after.items()):
+            if (v or {}).get('status') == 'blocked': blocked_note[k] = (v or {}).get('note') or ''
+        for k, v in after.items():
+            prev = (before.get(k) or {}).get('status')
+            if (v or {}).get('status') == 'done' and prev != 'done':
+                trans[k] = {'commit': c, 'parent': par, 'prev_status': prev, 'prev_note': (before.get(k) or {}).get('note') or ''}
+    for k in trans: trans[k]['blocked_note'] = blocked_note.get(k, '')
+    return trans
+
+def _joil_receipts_at(repo, ref):
+    rc, out, _ = run(['git', '-C', repo, 'ls-tree', '-r', '--name-only', ref, 'docs/receipts'], timeout=15)
+    recs = {}
+    for f in (out.split() if rc == 0 else []):
+        if not f.endswith('.json'): continue
+        rc2, js, _ = run(['git', '-C', repo, 'show', f'{ref}:{f}'], timeout=15)
+        try:
+            d = json.loads(js)
+            if isinstance(d, dict) and d.get('task_ids'): recs[f] = d
+        except Exception: pass
+    return recs
+
+def _joil_dispositions_at(repo, ref):
+    rc, out, _ = run(['git', '-C', repo, 'ls-tree', '-r', '--name-only', ref, 'docs/release'], timeout=15)
+    by_task = {}
+    for f in (out.split() if rc == 0 else []):
+        if 'DISPOSITIONS' not in f.upper() or not f.endswith('.json'): continue
+        rc2, js, _ = run(['git', '-C', repo, 'show', f'{ref}:{f}'], timeout=15)
+        try: rows = json.loads(js).get('decisions') or []
+        except Exception: rows = []
+        for r in rows:
+            for t in re.findall(r'V5-\d\d-\d\d', str(r.get('task_id', '')) + ' ' + ' '.join(r.get('task_ids') or [])):
+                by_task.setdefault(t, []).append(r)
+    return by_task
+
+def _joil_log_is_summary(path):
+    try:
+        with open(path, errors='replace') as fh: txt = fh.read()
+    except Exception:
+        return None
+    return not re.search(r'^test \S+ \.\.\. ', txt, re.M) and not re.search(r'^(test_\w+|\w+ \(\S+\)) \.\.\. ', txt, re.M)
+
+def joil_flip_waived(mine):
+    """A decision-unblocked done is cleared only by its own receipt (<= 2 task_ids) that says how the external
+    blocker was satisfied (decision_resolution) and carries >= 1 passing test command with a full per-test log."""
+    for f, d in mine:
+        if len(d.get('task_ids', [])) > 2 or not str(d.get('decision_resolution') or '').strip(): continue
+        for cmd in d.get('commands') or []:
+            s = cmd.get('command') or ' '.join(cmd.get('argv') or [])
+            if ('cargo test' in s or 'unittest' in s or 'pytest' in s) and cmd.get('exit_code') == 0 and _joil_log_is_summary(cmd.get('log_path') or '') is False:
+                return True
+    return False
+
+def audit_joil_flips(repo, ref='origin/main', emit=True):
+    progress = _joil_progress_at(repo, ref)
+    done = sorted(k for k, v in progress.items() if (v or {}).get('status') == 'done')
+    trans = joil_done_transitions(repo, ref)
+    recs = _joil_receipts_at(repo, ref)
+    disp = _joil_dispositions_at(repo, ref)
+    flags = {k: [] for k in done}
+    prod_cache = {}
+    by_commit = {}
+    for k in done:
+        t = trans.get(k)
+        if t: by_commit.setdefault(t['commit'], []).append(k)
+    for c, ks in by_commit.items():
+        par = trans[ks[0]]['parent']
+        prod_cache[c] = joil_prod_added_lines(repo, par, c)[0] if par else 10 ** 9
+    for k in done:
+        t = trans.get(k)
+        mine = [(f, d) for f, d in recs.items() if k in d.get('task_ids', [])]
+        if t and t['parent'] and JOIL_EXTERNAL_CAUSE.search((t['blocked_note'] or '') + ' ' + (t.get('prev_note') or '')):
+            per_task = prod_cache[t['commit']] / max(1, len(by_commit[t['commit']]))
+            if per_task < JOIL_FLIP_MIN_PROD_LINES and not joil_flip_waived(mine): flags[k].append('JOIL_DONE_STATUS_FLIP')
+        entry = json.dumps(progress.get(k) or {})
+        for r in disp.get(k, []):
+            mode = str(r.get('disposition_mode') or r.get('disposition') or '')
+            if JOIL_OPEN_RX.search(str(r.get('summary', '')) + ' ' + str(r.get('rationale', ''))):
+                flags[k].append('JOIL_DONE_DECISION_SAYS_OPEN')
+            if re.search(r'substitute:|rescope:', mode) and not re.search(r'substitute:|rescope:', entry):
+                flags[k].append('JOIL_SUBSTITUTE_UNLABELLED')
+        if mine and not any(len(d.get('task_ids', [])) <= 2 for f, d in mine):
+            flags[k].append('JOIL_DONE_SHARED_RECEIPT')
+        logs = []
+        for f, d in mine:
+            for cmd in d.get('commands') or []:
+                s = cmd.get('command') or ' '.join(cmd.get('argv') or [])
+                if ('cargo test' in s or 'unittest' in s or 'pytest' in s) and cmd.get('log_path'):
+                    logs.append(_joil_log_is_summary(cmd['log_path']))
+        known = [x for x in logs if x is not None]
+        if known and all(known): flags[k].append('JOIL_LOG_SUMMARY_ONLY')
+        flags[k] = sorted(set(flags[k]))
+    red_codes = {'JOIL_DONE_STATUS_FLIP', 'JOIL_DONE_DECISION_SAYS_OPEN', 'JOIL_SUBSTITUTE_UNLABELLED'}
+    red = sorted(k for k, v in flags.items() if red_codes & set(v))
+    if emit:
+        agg = {}
+        for k, v in flags.items():
+            for code in v: agg.setdefault(code, []).append(k)
+        for code, ks in sorted(agg.items()):
+            sev = 'red' if code in red_codes else 'amber'
+            F(sev, 'joil', code, f'{len(ks)} done-on-main task(s): {" ".join(sorted(ks)[:40])}{" ..." if len(ks) > 40 else ""}', repo + ' ' + ref)
+    return {'done_on_main': len(done), 'done_red_flagged': len(red), 'done_unflagged_on_main': len(done) - len(red),
+            'red_flagged_tasks': red, 'flags': {k: v for k, v in flags.items() if v}}
 
 # ---------------- progress accountability (Jepson 2026-10-18 04:59 MDT) ----------------
 # "The job of the super_captain is to hold captains accountable if they haven't made serious progress since the latest check-in."
