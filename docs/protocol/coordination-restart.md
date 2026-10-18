@@ -1,0 +1,11 @@
+# Coordination restart evidence
+
+`crates/admiralty-store/tests/coordination_restart.rs` exercises the existing `Store::append`, `snapshot`, close/reopen, `DomainEvent::MessageQueued`, and `DomainEvent::MessageAcknowledged` APIs against real temporary SQLite files. It records a fixed fixture observation timestamp, checks private fixture permissions, submits and claims a task, queues a task assignment whose revision and SHA-256 contract digest match that exact contract, and verifies that the pending message and its later ACK survive reopening.
+
+The test also checks the reducer's actual scoped assignment validation (project, task, authority, revision and contract digest), ACK recipient/current epoch checks, exact source event replay, changed message ID reuse, source identity collision, and a producer sequence gap filled after reopening. Rejected reducer events leave the durable event cursor and task/message projection unchanged. A source identity collision is intentionally recorded as an integrity incident, so its incident count increases while event cursor and projection remain unchanged.
+
+## Activation and API gaps
+
+This is a storage and reducer restart test, not a transport activation test. It does not deliver the pending message to a worker, prove agent receipt or comprehension, or start provider input. The store projection survives restart, but no coordination router, recipient delivery service, recipient inbox, or delivery replay loop is wired here. The existing ACK event contains only message ID, recipient, and context epoch; it has no project, task, or authority fields. Consequently, project/task/authority mismatches are tested at assignment enqueue validation, while the ACK itself can only be checked for known message ID, recipient, and epoch. An ACK is not task acceptance and does not imply terminal input.
+
+The store's recovery generation is created internally on first open; the test records and checks its persisted value across reopen. The API offers no injected generation source or deterministic recovery-generation fixture. These tests do not qualify SQLite durability under power loss, filesystem faults, linked SQLite build provenance, or deployment/service restart behavior. No activation, integration, acceptance, or merge grant follows from this candidate.
