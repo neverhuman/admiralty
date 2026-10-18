@@ -1,0 +1,446 @@
+{
+  "schema_version": 1,
+  "kind": "independent_remaining_work_audit",
+  "observed_utc": "2026-10-18T19:24:06.081145+00:00",
+  "source_sha": "7bb2784dc740faa3c07dd8c0ad72769dfa344927",
+  "comparison_base_sha": "96ab86317aaeaa553f79386098dc55ff05399d5d",
+  "report": {
+    "path": "docs/plans/admiralty-v2/REMAINING_AUDIT_2026-10-18.md",
+    "sha256": "723175d13b966cd512edd571274872840999b11a8753c1038e401ee8b6138693"
+  },
+  "scope": "Admiralty implementation, full acceptance criteria, live observational state and CI",
+  "method": [
+    "Three independent read-only source reviews",
+    "Integration verification of source boundaries and static test registration",
+    "Read-only GitHub current main, PR, run, job, annotation and failed-log queries",
+    "Bounded loopback health/legacy snapshot reads",
+    "Read-only configured fleet process identity and owned worktree metadata",
+    "Bounded no-follow read of all32 dashboard-referenced reconciliation receipts"
+  ],
+  "packets": [
+    {
+      "id": "P00",
+      "title": "Sources/fixtures",
+      "component_evidence": "Pinned manifests, 37-source/11-case verifier, distinct historical baselines and unknown-explicit inventory.",
+      "remaining": "Final independent artifact/receipt closeout and current deployment inventory. Preserve synthetic labels and source provenance.",
+      "ledger_state": "review",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P01",
+      "title": "Workspace/CI",
+      "component_evidence": "Rust/React workspace, binaries, deterministic clock/fault/provider/forge testkit, substantive CI.",
+      "remaining": "Stable exact-source passing pipeline, registration audit and final matrix reconciliation. Node enrollment/help behavior remains incomplete.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P02",
+      "title": "Contracts",
+      "component_evidence": "Typed tasks/messages, pure reducer, schema/TS generation and configuration precedence.",
+      "remaining": "Full lifecycle/authority/policy negotiation; versioned work-order, intake, schedule and delivery contracts.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P03",
+      "title": "Writer/replay",
+      "component_evidence": "Serialized SQLite writer, WAL/durability checks, atomic domain/outbox operations, replay, backup and workplan registry.",
+      "remaining": "Actual effect admission/execution/reconciliation; writer/transaction/WAL observability; bounded growth/query performance. Reducer still clones the full projection per append.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P04",
+      "title": "Artifacts/custody",
+      "component_evidence": "Durable content-addressed bytes; transactional custody/pin helpers.",
+      "remaining": "Writer-integrated trusted filesystem observations and availability; scoped range reads, orphan/missing-object reconciliation, storage reserve and complete lifecycle. Standalone helpers are not an activated artifact service.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P05",
+      "title": "Coordination",
+      "component_evidence": "Durable message/ACK facts, scoped internal pending/ACK service, question journal and bounded mailbox/topic components.",
+      "remaining": "Scope index; actual actor/grant authentication; durable subscriptions/delivery/question/decision service, expiry/unknown/retry, priorities/coalescing and attention integration.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P06",
+      "title": "Context",
+      "component_evidence": "Protected task capsule, epochs and pure bounded governor.",
+      "remaining": "Other capsule forms, persisted exact render/baseline/epoch state, alias/fallback, structured tool/failed-approach memory, bounded retrieval and real role/purpose/token accounting.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P07",
+      "title": "Sessions",
+      "component_evidence": "Real pipe host, private socket daemon, durable output/input journals and reconnect fixtures.",
+      "remaining": "Restart adoption, admitted launch reconciliation and independent service supervision; PTY path where advertised. Existing module explicitly limits ownership to the host lifetime.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P08",
+      "title": "First provider",
+      "component_evidence": "Codex launch/parser/usage/supervision helpers and controlled transport harness.",
+      "remaining": "Register admitted real execution; bind executable/config/model/custody; qualify the declared supported tuple and complete task outcome. Conformance evidence is narrower than native acceptance.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P09",
+      "title": "Workspaces/resources",
+      "component_evidence": "Read-only registered workspace checks and metadata observations.",
+      "remaining": "Managed workspace/private-clone creation, rootless isolated runner, mounts/network/credentials, enforced CPU/memory/PID/disk/GPU/inference permits and qualified caches/images.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P10",
+      "title": "Economics/budgets",
+      "component_evidence": "Native usage primitives, conservative reservation/settlement and cohort reducers.",
+      "remaining": "Durable ledger/CAS and actual ingestion/correction lineage; atomic reserve/dispatch/settle/reconcile, resource custody and query service.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P11",
+      "title": "API/CLI",
+      "component_evidence": "Loopback bearer-protected reads, bounded SSE, assets and offline commands.",
+      "remaining": "Scoped actors/commands/idempotent durable jobs, browser auth/origin/CSRF design, terminal WS/input lease and agent tools. Current fleet token reads the whole projection.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P12",
+      "title": "React parity",
+      "component_evidence": "Dense detailed real-data view, project tabs, colored models, hierarchy, profile/Grok assets, temporal plots and original legacy page.",
+      "remaining": "Browser reconnect/E2E, URL-backed navigation/filters, large-fleet performance, accessibility/responsiveness evidence; replace full legacy polling where useful.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P13",
+      "title": "Workplans",
+      "component_evidence": "JSON preview, immutable offline register/show/list and validation; searchable read-only task table.",
+      "remaining": "TOML/bounded Markdown/adapters, ambiguity/import-diff and revision/dependency UI, full admission lint, canonical authority and live service wiring.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P14",
+      "title": "Scheduling",
+      "component_evidence": "Pure readiness/routing logic and fixtures.",
+      "remaining": "Atomic claim/budget/resources/outbox, durable scheduler/launch recovery, fair aging/finish mode under real work, environment waits and timezone/DST schedules.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P15",
+      "title": "Verification",
+      "component_evidence": "Bounded receipt consistency/replay validation.",
+      "remaining": "Frozen candidates/oracles, independent check execution in clean reserved runners, authenticated issuer/evidence custody and durable accept/reject transitions.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P16",
+      "title": "Jankurai",
+      "component_evidence": "Pure staged-audit evaluation.",
+      "remaining": "Actual tool/profile qualification, exact-index materialization, hook preservation, trusted execution, enrollment/ratchet and repair proposals.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P17",
+      "title": "Peer/tools",
+      "component_evidence": "Interface compatibility/invalidation reducer.",
+      "remaining": "Durable claims/interfaces; narrow authenticated MCP/CLI handlers; safe-turn capsules; coordination timeline/packet inspector and producer\u2192consumer handoff without manager relay.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P18",
+      "title": "Integration",
+      "component_evidence": "Conservative conflict graph and frozen-generation proposals.",
+      "remaining": "Real Git merge probes, one durable train writer, combined checks, ancestry-aware proof caching, culprit isolation and stale-base recovery.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P19",
+      "title": "Publication",
+      "component_evidence": "Exact-evidence admission/fencing/reconciliation contracts and offline forge regressions.",
+      "remaining": "Credential-isolated executor, durable unresolved target slot, real forge reconciliation and disposable-repository qualification; per-target delivery evidence.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P20",
+      "title": "Retirement",
+      "component_evidence": "Custody helpers and conservative retirement proposals.",
+      "remaining": "Actual registered-asset preview/claim/recheck/quarantine/delete/receipt executor, stable identities, unique-work protection and crash recovery. Manual cleanup does not implement this product feature.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P21",
+      "title": "Claude",
+      "component_evidence": "Launch proposal, strict stream parser and usage fixtures.",
+      "remaining": "Admitted launch/input/resume/config/journal continuity, native nested-usage qualification and bounded real continuity receipt.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P22",
+      "title": "Other providers",
+      "component_evidence": "AGY/Grok/generic/OpenCode SSH observation/proposal components; working legacy workflows.",
+      "remaining": "Capability-specific native executable/version/transport/lifecycle qualification. Current Gemini manager and Ornith service observations remain separate from native admission.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P23",
+      "title": "Enrollment/transport",
+      "component_evidence": "Pure enrollment/revocation contracts.",
+      "remaining": "Persistent node keys/certificates, one-use enrollment service, mTLS, producer incarnation/contiguous ACK/replay/backpressure and resumable verified artifacts.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P24",
+      "title": "Placement",
+      "component_evidence": "Pure capacity/partition proposals.",
+      "remaining": "Authenticated live reports, reserved dispatch, partition authority enforcement and reconnect/reboot/claim reconciliation; real arbitrary-topology fault qualification.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P25",
+      "title": "Upgrade/recovery",
+      "component_evidence": "Backup primitive and recovery manifest/fence/closure validation.",
+      "remaining": "Complete signed bundles/service packaging; stage/activate/retire jobs; real drain/handoff/session survival; restore executor and independently verified old-executor fencing.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P26",
+      "title": "Explorer",
+      "component_evidence": "Accounting/cohort primitives and restored legacy token/cost/history panels.",
+      "remaining": "Native role/purpose/provider/project/cache explorer, manager share/harness floor/rotation, fixed-cohort/maturity views, definitions, dimensional units and bounded export.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P27",
+      "title": "Incidents",
+      "component_evidence": "Bounded episode/recurrence reducer and sanitized local proposal builder.",
+      "remaining": "Durable observation\u2192diagnosis\u2192bounded investigator\u2192proposal lifecycle, scoped evidence and UI; separately authorized gateway publication.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P28",
+      "title": "Trials",
+      "component_evidence": "Deterministic fixed-cohort assignments and independent decision proposals.",
+      "remaining": "Bundle/dataset registry, actual controlled trials, independent promotion/rollback for new work, reproducible exports and experiment UI.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P29",
+      "title": "Operator UX",
+      "component_evidence": "Recorded diagnostic CLI and legacy operational facts; requested hierarchy styling.",
+      "remaining": "Train/check/review, quality, assets, enrollment/drain/update blockers; durable actions/jobs, command palette, Needs attention/delivery, E2E and accessibility.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P30",
+      "title": "Distribution",
+      "component_evidence": "Isolated demo, source launchers, capability doctor and deterministic archive builder.",
+      "remaining": "Clean-machine setup/install, complete binaries/assets/migrations/profiles, signing/SBOM/provenance, support matrix and full operator/contributor/security docs. Code/data/logo rights and release license remain unresolved.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    },
+    {
+      "id": "P31",
+      "title": "Release proof",
+      "component_evidence": "Actual isolated HTTP/CLI smoke and synthetic invariants/faults.",
+      "remaining": "Complete managed task, actual providers/transport/restarts, load/24-hour soak, clean install, prospective cost/context study, restore/rollback, fenced canary/fleet cutover and deployed handoff.",
+      "ledger_state": "in_progress",
+      "full_acceptance_established": false
+    }
+  ],
+  "work_order_subpackets": [
+    {
+      "id": "WO1",
+      "state": "planned",
+      "remaining": "Versioned request/provenance/source-span/outcome/preview/duplicate/delivery contracts and bounded synthetic intake preview."
+    },
+    {
+      "id": "WO2",
+      "state": "planned",
+      "remaining": "Sole-writer request/binding registry, work-order AND plan CAS, source custody, exact retry and bounded all-state duplicate search; restart/lost-reply proofs."
+    },
+    {
+      "id": "WO3",
+      "state": "planned",
+      "remaining": "Inert pinned-snapshot todoq family adapters and provenance diagnostics. Imported text/commands must remain data."
+    },
+    {
+      "id": "WO4",
+      "state": "planned",
+      "remaining": "Configured timezone/DST window resolution and distinct setup/toolchain/resource eligibility/waits."
+    },
+    {
+      "id": "WO5",
+      "state": "planned",
+      "remaining": "Exact task/contract/candidate/target delivery joins; desired, merged, installed, running and released dimensions; stable attention reasons/ages."
+    },
+    {
+      "id": "WO6",
+      "state": "planned",
+      "remaining": "CLI intake preview/record/show/search and React Intake/Attention/Delivery journeys through authorized services; intake itself must not silently dispatch."
+    }
+  ],
+  "observations": {
+    "native_execution_qualified": false,
+    "dashboard_generated_utc": "2026-10-18T19:16:13+00:00",
+    "reported_verified_labels": 32,
+    "referenced_receipt_types": {
+      "verified_shared_workspace_qualification": 32
+    },
+    "full_packet_acceptance_inferred_from_labels": false,
+    "observed_commodore_model": "Gemini 4 Argon",
+    "screen_identity_stable_workers": 15,
+    "worker_trees_with_tracked_changes": 7,
+    "open_pull_requests_at_observation": 0,
+    "current_ci_run": 39157164561,
+    "current_ci_result": "failure",
+    "contracts_result": "success",
+    "rust_job_failure_annotation": "self-hosted runner lost communication",
+    "previous_source_cli_timeout_failures": 3,
+    "org_runner_inventory": "HTTP403; no privilege escalation attempted"
+  },
+  "validation": {
+    "report_packet_rows": 32,
+    "report_work_order_rows": 6,
+    "relative_links": "pass",
+    "diff_whitespace": "pass",
+    "source_delta_counts": "pass",
+    "private_evidence_parse_and_observation_consistency": "pass",
+    "test_suites": "not_run_audit_only"
+  },
+  "artifacts": [
+    {
+      "path": "target/quality/remaining-audit/117762645844-annotations.json",
+      "sha256": "b84e576b9e31a650cd8a293988c99ae2f666c3c0540b34f1a166dbb448fecef5",
+      "bytes": 530,
+      "visibility": "private_ignored_local"
+    },
+    {
+      "path": "target/quality/remaining-audit/117762667430-annotations.json",
+      "sha256": "64477a04240ef24197eeb71b16f8c17f5dc5b9a0c4ae2c5a2354b866780ed72f",
+      "bytes": 852,
+      "visibility": "private_ignored_local"
+    },
+    {
+      "path": "target/quality/remaining-audit/39157123935-failed.log",
+      "sha256": "4bfcbeb39c72ffe37066ac6f28f0b558f5fe917bb26d872ad131802267108925",
+      "bytes": 21174,
+      "visibility": "private_ignored_local"
+    },
+    {
+      "path": "target/quality/remaining-audit/39157123935-jobs.json",
+      "sha256": "7e048d69f1edcaf5d69e13e93771b07e61e03ab7cf8b5049c0007abcb5dbb776",
+      "bytes": 7788,
+      "visibility": "private_ignored_local"
+    },
+    {
+      "path": "target/quality/remaining-audit/39157123935.json",
+      "sha256": "658e830cdfaedfa0aafd1d638e98964cb4577e35fe07d6f27e1a3e11ada83c07",
+      "bytes": 6591,
+      "visibility": "private_ignored_local"
+    },
+    {
+      "path": "target/quality/remaining-audit/39157164561-failed.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "visibility": "private_ignored_local"
+    },
+    {
+      "path": "target/quality/remaining-audit/39157164561-jobs.json",
+      "sha256": "57d8e66abb3012332c63989d44e77f492e30501c9f09c2e379a31feed5f1ce33",
+      "bytes": 7177,
+      "visibility": "private_ignored_local"
+    },
+    {
+      "path": "target/quality/remaining-audit/39157164561.json",
+      "sha256": "875c4f62c362ae5454fdb3cc2ee3941c64d6b0a7019d50f3e079d71b51640958",
+      "bytes": 6353,
+      "visibility": "private_ignored_local"
+    },
+    {
+      "path": "target/quality/remaining-audit/fleet.json",
+      "sha256": "2e8a1a865f0542c2325728ebe3b2ade28761f62422ed3f6aaa8bc9351249bea4",
+      "bytes": 9445,
+      "visibility": "private_ignored_local"
+    },
+    {
+      "path": "target/quality/remaining-audit/health.json",
+      "sha256": "d07f5621aa0a3e34b101c6862dff8614f5293cbdb84d1d4209101db452d5320f",
+      "bytes": 68,
+      "visibility": "private_ignored_local"
+    },
+    {
+      "path": "target/quality/remaining-audit/legacy.json",
+      "sha256": "7716386c126e82e4a7b1e4bc33e6c701a562234741c472cac4e7e6a54fba870b",
+      "bytes": 468463,
+      "visibility": "private_ignored_local"
+    },
+    {
+      "path": "target/quality/remaining-audit/observe-fleet.py",
+      "sha256": "2119854cfc3c3328d918dfd053c1a1358e2a1005bc9c7c85310d402892838db9",
+      "bytes": 6172,
+      "visibility": "private_ignored_local"
+    },
+    {
+      "path": "target/quality/remaining-audit/observed-processes.json",
+      "sha256": "e754e8592dbcbe8bbd832b0e481d3b8aba96e47ab5245642edabb5e3ce23a52e",
+      "bytes": 2323,
+      "visibility": "private_ignored_local"
+    },
+    {
+      "path": "target/quality/remaining-audit/reported-packet-receipts.json",
+      "sha256": "244399ca3b75f79eb61f54f85d1176a5646a6a7f4111c263e34c2fd02830dbcd",
+      "bytes": 48324,
+      "visibility": "private_ignored_local"
+    },
+    {
+      "path": "target/quality/remaining-audit/runs.json",
+      "sha256": "2acb32a0f56e69c548788bfad6b7ee820f0d4a2bf2d37c5fa9c518b83d176cc6",
+      "bytes": 14706,
+      "visibility": "private_ignored_local"
+    }
+  ],
+  "limitations": [
+    "Source review and observational metadata do not establish native execution or full acceptance.",
+    "No new test execution or prospective performance/context-savings measurement.",
+    "Current org-wide runner registry access unavailable with current CLI identity.",
+    "Worker tracked-status observations are point-in-time; untracked/private contents are not inventoried.",
+    "Additional private worker receipts not referenced by the inspected dashboard may exist and require independent source/criterion review."
+  ],
+  "actions": {
+    "provider_calls": false,
+    "screen_input_or_stop": false,
+    "remote_writes": false,
+    "production_deployment": false,
+    "native_activation": false,
+    "pull_request_mutations": false
+  },
+  "next_action": "Replace repetitive qualification fanout with disjoint implementation of versioned lifecycle, scoped durable coordination and one complete admitted task; repair exact-source CI independently."
+}

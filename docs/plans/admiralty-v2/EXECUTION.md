@@ -4,6 +4,8 @@ Planning baseline: `1e8ed17eff27ed3ab80dc6860fc8eda301406aee`. Implementation st
 
 Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). Integrator assigns one current base/interface version and exact write scope per packet. Update this table from evidence; do not infer completion from agent messages.
 
+Latest independent remaining-work audit: [18 October, source 7bb2784d](REMAINING_AUDIT_2026-10-18.md). Its 32-packet matrix reconciles current source and live 19:16–19:20 UTC observations; older merge-window and queued-CI notes below remain historical. P00 artifact closeout and P01–P31 implementation/qualification gates remain open. No native activation or whole-packet acceptance is established by the dashboard's shared-workspace `verified` labels.
+
 | Packet | State | Owner | Integrated commit or candidate | Evidence and next action |
 | --- | --- | --- | --- | --- |
 | P00 | review | evidence lane + integration review | independently checked at `a9ba930e` | 37 pinned hashes, 11 synthetic cases, distinct 449/503 baselines and unknown-explicit inventory worksheet satisfy inspected artifact criteria; hashed current execution evidence recorded, authorized engineering receipt closeout pending |
