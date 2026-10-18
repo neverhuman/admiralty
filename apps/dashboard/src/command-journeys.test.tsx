@@ -12,11 +12,15 @@ import CommandJourneys, {
   canCancelPendingTask,
   canReviseTaskContract,
   computeTaskViewDigest,
+  contractFromTaskForRevision,
   deriveAttentionItems,
   deriveCoordinationLedger,
   deriveTaskDetail,
+  draftFromTaskForRevision,
   draftToContractCandidate,
   emptyIntakeDraft,
+  executeIntakeCommand,
+  executeTaskDetailLifecycleCommand,
   findDuplicateCandidates,
   generateCanonicalRequestId,
   getCommandFleet,
@@ -31,12 +35,15 @@ import CommandJourneys, {
   parseNativeFleet,
   replayEventsToCursor,
   selectModelDryRun,
+  serializeAttemptsBTreeMap,
+  serializeTaskViewForDigest,
   splitArgv,
   submitNativeLifecycle,
   submitNativeTask,
   type AnyDomainRecord,
   type AnyFleet,
   type AnyFleetTask,
+  type RetainedCommandEnvelope,
 } from './ui/CommandJourneys';
 
 const sampleContract = (patch: Partial<TaskContract> = {}): TaskContract => ({
@@ -1065,3 +1072,467 @@ describe('Gate 8 attention, coordination triage, and operator actions', () => {
     expect(rootHtml).toContain('Operator actions');
   });
 });
+
+describe('PR #71 review repairs: Rust BTreeMap TaskView golden digests, full-contract revision, and lost-reply retained retries', () => {
+  it('matches all 7 Rust admiralty_core::content_digest(&task_view) golden fixtures including numeric ("10", "2") and "__proto__" attempt keys', () => {
+    const goldenContract: TaskContract = {
+      schema_version: 1,
+      project_id: 'golden-project',
+      root_id: 'golden-root',
+      task_id: 'numeric-map-cas',
+      revision: 1,
+      title: 'TaskView CAS golden: "quoted" \\ slash / <>& café 😀',
+      objective:
+        'Preserve literal Unicode\u2028line separator\u2029paragraph separator; newline\n tab\t; map order and explicit null.',
+      non_goals: ['Serialization fixture only; never a runtime acceptance grant'],
+      owned_paths: ['src'],
+      forbidden_paths: ['secrets'],
+      read_first: ['README.md'],
+      dependencies: [],
+      criteria: [
+        {
+          id: 'criterion',
+          text: 'Rust and browser serialize the same TaskView bytes',
+          check_ids: ['check'],
+        },
+      ],
+      checks: [
+        {
+          id: 'check',
+          program: 'fixture-no-execution',
+          args: ['--quoted="value"', '\\literal\\'],
+          cwd: '.',
+          timeout_secs: 1,
+        },
+      ],
+      authority_ref: 'fixture-only:serialization',
+      max_attempts: 3,
+      simulated: false,
+    };
+
+    const twoAttempts = JSON.parse('{"2":"worker-two","10":"worker-ten"}') as Record<string, string>;
+    expect(serializeAttemptsBTreeMap(twoAttempts)).toBe('{"10":"worker-ten","2":"worker-two"}');
+
+    const threeAttemptsWithProto = JSON.parse(
+      '{"2":"worker-two","10":"worker-ten","__proto__":"worker-prototype-key"}',
+    ) as Record<string, string>;
+    expect(serializeAttemptsBTreeMap(threeAttemptsWithProto)).toBe(
+      '{"10":"worker-ten","2":"worker-two","__proto__":"worker-prototype-key"}',
+    );
+
+    const cases: Array<{ name: string; task: AnyFleetTask; digest: string }> = [
+      {
+        name: 'v1-ready-absent-lifecycle',
+        task: {
+          contract: goldenContract,
+          state: 'ready',
+          attempt_id: null,
+          owner: null,
+          candidate_ref: null,
+        },
+        digest: 'sha256:a43b9bec5de4116b9147103909597eccdbfb3b57d837a77f01ac60107b433a7c',
+      },
+      {
+        name: 'v1-running-absent-lifecycle',
+        task: {
+          contract: goldenContract,
+          state: 'running',
+          attempt_id: '10',
+          owner: 'worker-ten',
+          candidate_ref: null,
+        },
+        digest: 'sha256:59717d5422005f3a44675c876af45b968ad6e1edc7a935f2c571d97a5e852614',
+      },
+      {
+        name: 'native-ready-two-attempts-null-fields',
+        task: {
+          contract: goldenContract,
+          state: 'ready',
+          attempt_id: null,
+          owner: null,
+          candidate_ref: null,
+          lifecycle: {
+            revision: 5,
+            attempts: twoAttempts,
+            closure_digest: null,
+            decision: null,
+            reason: null,
+          },
+        },
+        digest: 'sha256:431ce5ecfb4e02ef95f5a877fc974ec7eb3305a81200ab00eabf3b0c2c6cf4bf',
+      },
+      {
+        name: 'native-failed-two-attempts',
+        task: {
+          contract: goldenContract,
+          state: 'failed',
+          attempt_id: '2',
+          owner: 'worker-two',
+          candidate_ref: null,
+          lifecycle: {
+            revision: 4,
+            attempts: twoAttempts,
+            closure_digest: 'sha256:2cf0d9a99ffaeb43b5d291ded1f164df04ab851ee50ff552cf111a4ba79efe0c',
+            decision: null,
+            reason: 'Fixture 2 closed; reason has "quotes" and café 😀',
+          },
+        },
+        digest: 'sha256:4727b42f03ed5d3c21301f8c80229a1872d41a7b50a7b989c85b07b04bf2cc11',
+      },
+      {
+        name: 'native-running-three-attempts-prototype-key',
+        task: {
+          contract: goldenContract,
+          state: 'running',
+          attempt_id: '__proto__',
+          owner: 'worker-prototype-key',
+          candidate_ref: null,
+          lifecycle: {
+            revision: 7,
+            attempts: threeAttemptsWithProto,
+            closure_digest: null,
+            decision: null,
+            reason: null,
+          },
+        },
+        digest: 'sha256:310bc1a1e0de1ac8ecfb8b03eb31e3a21e669c6dfda490868b3b1d4725ac58a6',
+      },
+      {
+        name: 'native-awaiting-three-attempts',
+        task: {
+          contract: goldenContract,
+          state: 'awaiting_verification',
+          attempt_id: '__proto__',
+          owner: 'worker-prototype-key',
+          candidate_ref: 'sha256:295d2c45a691be33eb201fb057dbe881b3a64282acbdfca732d56ad1b5959461',
+          lifecycle: {
+            revision: 8,
+            attempts: threeAttemptsWithProto,
+            closure_digest: null,
+            decision: null,
+            reason: null,
+          },
+        },
+        digest: 'sha256:49a072d243f457579c397da929094838bba8f57cc6f7e84d13ed5e740953a390',
+      },
+      {
+        name: 'native-accepted-complete-decision',
+        task: {
+          contract: goldenContract,
+          state: 'accepted',
+          attempt_id: '__proto__',
+          owner: 'worker-prototype-key',
+          candidate_ref: 'sha256:295d2c45a691be33eb201fb057dbe881b3a64282acbdfca732d56ad1b5959461',
+          lifecycle: {
+            revision: 9,
+            attempts: threeAttemptsWithProto,
+            closure_digest: 'sha256:74e957884aeea317b5cea69d553f1cc845daec2b9425c6fbd728ea5a8d88b7ff',
+            decision: {
+              contract_digest: 'sha256:5b75ffa79792afd78c74396be48914a01a5d4facd7bcf58be0a0a7db1732418c',
+              verification_policy_digest:
+                'sha256:44da8685dbd9b56ab183dad041d47a17f9d76afeab7b2a015953659ef3e06b76',
+              receipt_digest: 'sha256:845af683f75482b2dcf42e62c275304937be43395d9b9b643abda8f158c0d73e',
+              custody_digest: 'sha256:ea66ad93d9e3738b6c7f460df06fb154c757f773eb62f769575f8d1e32b05c6e',
+              closure_digest: 'sha256:74e957884aeea317b5cea69d553f1cc845daec2b9425c6fbd728ea5a8d88b7ff',
+              source_commit_sha: 'eb62f5f635bea46e98c76e91499b56b4c7673849',
+              source_tree_sha: 'e1bbf5df822c9e03915654edef7f1093af88ad51',
+              verifier: 'fixture-independent-verifier',
+            },
+            reason: null,
+          },
+        },
+        digest: 'sha256:9875eb2c879bd993740d6745fd471738e8088518f42086b4ffbbd388baa317a8',
+      },
+    ];
+
+    for (const item of cases) {
+      expect(computeTaskViewDigest(item.task), item.name).toBe(item.digest);
+      if (
+        item.task.lifecycle &&
+        Object.prototype.hasOwnProperty.call(item.task.lifecycle.attempts, '__proto__')
+      ) {
+        expect(serializeTaskViewForDigest(item.task)).toContain(
+          '"attempts":{"10":"worker-ten","2":"worker-two","__proto__":"worker-prototype-key"}',
+        );
+      }
+    }
+  });
+
+  it('preserves all criteria, all checks, and comma-containing values when revising a multi-criterion/multi-check contract', () => {
+    const multiTask: AnyFleetTask = {
+      contract: sampleContract({
+        task_id: 'task-multi-rev',
+        revision: 1,
+        non_goals: ['Do not split commas, such as a,b,c', 'Keep second non-goal'],
+        owned_paths: ['apps/dashboard/src/ui/CommandJourneys.tsx', 'apps/dashboard/src/command-journeys.test.tsx'],
+        forbidden_paths: ['crates/admiralty-core/src/events.rs', 'crates/admiralty-server/src/operator_commands.rs'],
+        read_first: ['docs/plan,part1.md', 'docs/plan,part2.md'],
+        dependencies: [],
+        criteria: [
+          {
+            id: 'crit-1',
+            text: 'First criterion, with commas, preserved',
+            check_ids: ['chk-1', 'chk-2'],
+          },
+          {
+            id: 'crit-2',
+            text: 'Second criterion must never be dropped on revision',
+            check_ids: ['chk-2'],
+          },
+        ],
+        checks: [
+          {
+            id: 'chk-1',
+            program: 'pnpm',
+            args: ['--filter', 'a,b', 'test'],
+            cwd: 'apps/dashboard',
+            timeout_secs: 90,
+          },
+          {
+            id: 'chk-2',
+            program: 'cargo',
+            args: ['test', '--', '--exact', 'case_a,case_b'],
+            cwd: '.',
+            timeout_secs: 180,
+          },
+        ],
+      }),
+      state: 'ready',
+      attempt_id: null,
+      owner: null,
+      candidate_ref: null,
+    };
+
+    const revDraft = draftFromTaskForRevision(multiTask);
+    expect(revDraft.revision).toBe('2');
+    revDraft.title = 'Revised multi-check contract title';
+
+    const candidate = draftToContractCandidate(revDraft) as TaskContract;
+    expect(candidate.revision).toBe(2);
+    expect(candidate.title).toBe('Revised multi-check contract title');
+    expect(candidate.non_goals).toEqual(['Do not split commas, such as a,b,c', 'Keep second non-goal']);
+    expect(candidate.read_first).toEqual(['docs/plan,part1.md', 'docs/plan,part2.md']);
+    expect(candidate.criteria).toEqual(multiTask.contract.criteria);
+    expect(candidate.checks).toEqual(multiTask.contract.checks);
+    expect(contractFromTaskForRevision(multiTask, { title: 'Revised multi-check contract title' })).toEqual(candidate);
+
+    const preview = buildIntakePreview(revDraft, [multiTask]);
+    expect(preview.valid).toBe(true);
+    expect(preview.operation).toBe('revise_contract');
+    expect(preview.contract?.criteria).toHaveLength(2);
+    expect(preview.contract?.checks).toHaveLength(2);
+    expect(preview.contract?.non_goals).toEqual(multiTask.contract.non_goals);
+  });
+
+  it('retries retained create, cancel_pending, and revise_contract envelopes with unchanged UUID and body after server commit + lost reply + snapshot advancement', async () => {
+    // 1. CREATE: attempt 1 persists on server then throws network error; snapshot advances to include created task; retry sends exact same body & UUID
+    const createDraft = emptyIntakeDraft('admiralty');
+    createDraft.task_id = 'task-lost-create';
+    const initialCreatePreview = buildIntakePreview(createDraft, []);
+    expect(initialCreatePreview.valid).toBe(true);
+
+    const createRetainedRef: { current: RetainedCommandEnvelope | null } = { current: null };
+    const createBodies: string[] = [];
+    let createAttempt = 0;
+    const createFetcher = vi.fn<typeof fetch>(async (_url, init) => {
+      createBodies.push(String(init?.body ?? ''));
+      createAttempt++;
+      if (createAttempt === 1) {
+        throw new Error('Network lost after server persisted task-lost-create');
+      }
+      return Response.json({
+        event_seq: '21',
+        source_contiguous_seq: '1',
+        duplicate: true,
+        execution_granted: false,
+        acceptance_granted: false,
+      });
+    });
+
+    await expect(
+      executeIntakeCommand({
+        retainedRef: createRetainedRef,
+        preview: initialCreatePreview,
+        effectiveCasDigest: null,
+        token: 'owner-token',
+        fetcher: createFetcher,
+      }),
+    ).rejects.toThrow('Network lost after server persisted task-lost-create');
+    expect(createRetainedRef.current?.kind).toBe('create');
+    const firstCreateRequestId = createRetainedRef.current!.request_id;
+
+    // Snapshot advances: task-lost-create now exists at revision 1, making new-command preview invalid!
+    const advancedCreateFleetTasks: AnyFleetTask[] = [
+      {
+        contract: initialCreatePreview.contract!,
+        state: 'ready',
+        attempt_id: null,
+        owner: null,
+        candidate_ref: null,
+      },
+    ];
+    const advancedCreatePreview = buildIntakePreview(createDraft, advancedCreateFleetTasks);
+    expect(advancedCreatePreview.valid).toBe(false);
+
+    // IntakeJourney with retained envelope keeps retry button enabled despite !advancedCreatePreview.valid
+    const createRetryHtml = renderToStaticMarkup(
+      <IntakeJourney
+        fleet={{ ...sampleFleet(), tasks: advancedCreateFleetTasks as Fleet['tasks'] }}
+        initialDraft={createDraft}
+        initialRetainedEnvelope={createRetainedRef.current}
+      />,
+    );
+    expect(createRetryHtml).toContain('Retry retained task submission');
+    expect(createRetryHtml).not.toContain('disabled=""');
+
+    const createRetryReceipt = await executeIntakeCommand({
+      retainedRef: createRetainedRef,
+      preview: advancedCreatePreview,
+      effectiveCasDigest: null,
+      token: 'owner-token',
+      fetcher: createFetcher,
+    });
+    expect(createRetryReceipt.duplicate).toBe(true);
+    expect(createBodies).toHaveLength(2);
+    expect(createBodies[1]).toBe(createBodies[0]);
+    expect(JSON.parse(createBodies[1]).request_id).toBe(firstCreateRequestId);
+    expect(createRetainedRef.current).toBeNull();
+
+    // 2. CANCEL_PENDING: attempt 1 persists cancellation then loses reply; snapshot advances to state='cancelled'; retry sends exact retained body
+    const baseFleet = sampleFleet();
+    const readyTask = baseFleet.tasks[2]; // task-ready
+    const initialDetail = deriveTaskDetail(readyTask, baseFleet, []);
+    expect(initialDetail.canCancelPending).toBe(true);
+
+    const cancelRetainedRef: { current: RetainedCommandEnvelope | null } = { current: null };
+    const cancelBodies: string[] = [];
+    let cancelAttempt = 0;
+    const cancelFetcher = vi.fn<typeof fetch>(async (_url, init) => {
+      cancelBodies.push(String(init?.body ?? ''));
+      cancelAttempt++;
+      if (cancelAttempt === 1) {
+        throw new Error('Network lost after server persisted cancel_pending');
+      }
+      return Response.json({
+        event_seq: '22',
+        source_contiguous_seq: '1',
+        duplicate: true,
+        execution_granted: false,
+        acceptance_granted: false,
+      });
+    });
+
+    await expect(
+      executeTaskDetailLifecycleCommand({
+        kind: 'cancel_pending',
+        retainedRef: cancelRetainedRef,
+        detail: initialDetail,
+        boundDigest: initialDetail.taskDigest,
+        cancelReason: 'Cancel before worker claim',
+        token: 'owner-token',
+        fetcher: cancelFetcher,
+      }),
+    ).rejects.toThrow('Network lost after server persisted cancel_pending');
+    expect(cancelRetainedRef.current?.kind).toBe('cancel_pending');
+
+    // Snapshot advances: task-ready is now state='cancelled' (canCancelPending === false, new taskDigest)
+    const cancelledTask: AnyFleetTask = { ...readyTask, state: 'cancelled' };
+    const cancelledFleet: AnyFleet = { ...baseFleet, tasks: [baseFleet.tasks[0], baseFleet.tasks[1], cancelledTask] };
+    const advancedCancelDetail = deriveTaskDetail(cancelledTask, cancelledFleet, []);
+    expect(advancedCancelDetail.canCancelPending).toBe(false);
+    expect(advancedCancelDetail.taskDigest).not.toBe(initialDetail.taskDigest);
+
+    const cancelRetryHtml = renderToStaticMarkup(
+      <TaskDetailEvidenceJourney
+        fleet={cancelledFleet}
+        records={[]}
+        selectedTaskId="task-ready"
+        initialRetainedEnvelope={cancelRetainedRef.current}
+      />,
+    );
+    expect(cancelRetryHtml).toContain('Retry retained pending cancellation');
+
+    const cancelRetryReceipt = await executeTaskDetailLifecycleCommand({
+      kind: 'cancel_pending',
+      retainedRef: cancelRetainedRef,
+      detail: advancedCancelDetail,
+      boundDigest: advancedCancelDetail.taskDigest,
+      cancelReason: 'Cancel before worker claim',
+      token: 'owner-token',
+      fetcher: cancelFetcher,
+    });
+    expect(cancelRetryReceipt.duplicate).toBe(true);
+    expect(cancelBodies).toHaveLength(2);
+    expect(cancelBodies[1]).toBe(cancelBodies[0]);
+    expect(cancelRetainedRef.current).toBeNull();
+
+    // 3. REVISE_CONTRACT: attempt 1 persists rev 2 then loses reply; snapshot advances to rev 2 (and running); retry sends exact retained rev 2 envelope
+    const reviseRetainedRef: { current: RetainedCommandEnvelope | null } = { current: null };
+    const reviseBodies: string[] = [];
+    let reviseAttempt = 0;
+    const reviseFetcher = vi.fn<typeof fetch>(async (_url, init) => {
+      reviseBodies.push(String(init?.body ?? ''));
+      reviseAttempt++;
+      if (reviseAttempt === 1) {
+        throw new Error('Network lost after server persisted revise_contract');
+      }
+      return Response.json({
+        event_seq: '23',
+        source_contiguous_seq: '1',
+        duplicate: true,
+        execution_granted: false,
+        acceptance_granted: false,
+      });
+    });
+
+    await expect(
+      executeTaskDetailLifecycleCommand({
+        kind: 'revise_contract',
+        retainedRef: reviseRetainedRef,
+        detail: initialDetail,
+        boundDigest: initialDetail.taskDigest,
+        reviseTitle: 'Revised title rev 2',
+        reviseObjective: 'Revised objective rev 2',
+        token: 'owner-token',
+        fetcher: reviseFetcher,
+      }),
+    ).rejects.toThrow('Network lost after server persisted revise_contract');
+    expect(reviseRetainedRef.current?.kind).toBe('revise_contract');
+
+    // Snapshot advances: task-ready is now at revision 2 and claimed/running (canReviseContract === false, new digest)
+    const rev2RunningTask: AnyFleetTask = {
+      ...readyTask,
+      contract: {
+        ...readyTask.contract,
+        revision: 2,
+        title: 'Revised title rev 2',
+        objective: 'Revised objective rev 2',
+      },
+      state: 'running',
+      attempt_id: 'att-rev2',
+      owner: 'worker-1',
+    };
+    const rev2Fleet: AnyFleet = { ...baseFleet, tasks: [baseFleet.tasks[0], baseFleet.tasks[1], rev2RunningTask] };
+    const advancedReviseDetail = deriveTaskDetail(rev2RunningTask, rev2Fleet, []);
+    expect(advancedReviseDetail.canReviseContract).toBe(false);
+
+    const reviseRetryReceipt = await executeTaskDetailLifecycleCommand({
+      kind: 'revise_contract',
+      retainedRef: reviseRetainedRef,
+      detail: advancedReviseDetail,
+      boundDigest: advancedReviseDetail.taskDigest,
+      reviseTitle: 'Revised title rev 2',
+      reviseObjective: 'Revised objective rev 2',
+      token: 'owner-token',
+      fetcher: reviseFetcher,
+    });
+    expect(reviseRetryReceipt.duplicate).toBe(true);
+    expect(reviseBodies).toHaveLength(2);
+    expect(reviseBodies[1]).toBe(reviseBodies[0]);
+    expect(JSON.parse(reviseBodies[1]).action.contract.revision).toBe(2);
+    expect(JSON.parse(reviseBodies[1]).expected_task_digest).toBe(initialDetail.taskDigest);
+    expect(reviseRetainedRef.current).toBeNull();
+  });
+});
+
+
