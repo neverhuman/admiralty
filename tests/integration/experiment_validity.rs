@@ -5,6 +5,7 @@ use admiralty_core::trials::{
     propose_trial_decision, trial_evidence_digest, validate_trial,
 };
 use admiralty_core::{PrincipalId, ProjectId, RootId, TaskId};
+use admiralty_testkit::clock::{ClockError, FakeClock};
 
 fn digest(fill: char) -> String {
     format!("sha256:{}", fill.to_string().repeat(64))
@@ -418,5 +419,33 @@ fn outcome_clock_must_advance_past_trial_assignment() {
             .expect_err("outcomes cannot be observed at the assignment transition")
             .to_string(),
         "invalid trial input: outcome outside recorded assignment/analysis clock interval"
+    );
+}
+
+#[test]
+fn fake_clock_rejects_skew_that_would_backdate_a_trial_outcome() {
+    let mut clock = FakeClock::new(50);
+    let mut evidence = complete_evidence();
+    let outcome_tick = clock
+        .advance_ms(1)
+        .expect("advance from assignment to the first valid outcome tick");
+    evidence.outcomes[0].observed_tick = DecimalU64::new(outcome_tick);
+    assert!(validate_trial(&evidence).is_ok());
+
+    assert_eq!(
+        clock.advance_to_ms(50),
+        Err(ClockError::Backwards {
+            now_ms: 51,
+            target_ms: 50,
+        })
+    );
+    assert_eq!(
+        clock.now_ms(),
+        51,
+        "rejected skew leaves the clock unchanged"
+    );
+    assert!(
+        validate_trial(&evidence).is_ok(),
+        "rejected skew must not invalidate or backdate accepted evidence"
     );
 }
