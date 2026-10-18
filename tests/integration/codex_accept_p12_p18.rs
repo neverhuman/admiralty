@@ -6,6 +6,7 @@ use admiralty_runtime::providers::claude::{TurnOutcome, parse_stream};
 use admiralty_server::{ServerConfig, app};
 use admiralty_store::{Store, artifacts::ArtifactStore};
 use admiralty_testkit::{clock::ClockError, clock::FakeClock, task_fixture};
+use futures_util::StreamExt;
 use axum::{
     body::{Body, to_bytes},
     http::{Request, StatusCode},
@@ -15,6 +16,8 @@ use sha2::{Digest, Sha256};
 use std::net::SocketAddr;
 use tempfile::TempDir;
 use tower::ServiceExt;
+
+const ROUND11_TOKEN: &str = "round-eleven-private-read-token-at-least-32-chars";
 
 fn private_directory() -> TempDir {
     let mut builder = tempfile::Builder::new();
