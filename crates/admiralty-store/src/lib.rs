@@ -36,6 +36,16 @@ fn reject_raw_lifecycle(event: &DomainEvent) -> Result<()> {
     Ok(())
 }
 
+fn validate_outbox_token_envelope(token: &outbox::ClaimToken) -> Result<()> {
+    if [&token.intent_id, &token.fence].iter().any(|v| v.is_empty() || v.len() > 19
+        || !v.bytes().all(|b| b.is_ascii_digit()))
+        || [&token.owner, &token.nonce].iter().any(|v| v.is_empty() || v.len() > 128
+            || v.chars().any(char::is_control)) {
+        return Err(StoreError::Invalid("outbox claim token is outside bounds".into()));
+    }
+    Ok(())
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
     #[error("SQLite error: {0}")]
@@ -134,6 +144,9 @@ pub trait LifecycleAuthority: Send + Sync {
 }
 
 enum Request {
+    ClaimOutbox { now: Option<u64>, owner: String, lease_secs: u64, reply: Reply<Option<outbox::Claim>> },
+    CompleteOutbox { token: outbox::ClaimToken, receipt_ref: String, now: Option<u64>, reply: Reply<()> },
+    UnknownOutbox { token: outbox::ClaimToken, reason: String, reply: Reply<()> },
     ExecuteLifecycle {
         input: Box<AppendInput>,
         reply: Reply<AppendReceipt>,
@@ -341,6 +354,37 @@ impl Store {
             input: Box::new(input),
             reply,
         })
+    }
+
+    /// Trusted in-process dispatcher seam on the single writer connection.
+    /// A claim is not execution authority. Admit the exact typed effect and
+    /// logical clock independently; never expose this as a raw network tool.
+    /// Expired claims remain unknown rather than automatically redispatched.
+    pub fn claim_outbox_due(&self, now: Option<u64>, owner: String, lease_secs: u64)
+        -> Result<Option<outbox::Claim>> {
+        if owner.is_empty() || owner.len() > 128 || owner.chars().any(char::is_control) {
+            return Err(StoreError::Invalid("outbox owner is outside bounds".into()));
+        }
+        self.ask(|reply| Request::ClaimOutbox { now, owner, lease_secs, reply })
+    }
+
+    /// Effect receipt only, never task acceptance or permission to retry.
+    pub fn complete_outbox(&self, token: outbox::ClaimToken, receipt_ref: String, now: Option<u64>)
+        -> Result<()> {
+        validate_outbox_token_envelope(&token)?;
+        if receipt_ref.is_empty() || receipt_ref.len() > 1024 || receipt_ref.chars().any(char::is_control) {
+            return Err(StoreError::Invalid("outbox receipt is outside bounds".into()));
+        }
+        self.ask(|reply| Request::CompleteOutbox { token, receipt_ref, now, reply })
+    }
+
+    /// Preserve an ambiguous effect durably; it does not become runnable again.
+    pub fn fail_outbox_unknown(&self, token: outbox::ClaimToken, reason: String) -> Result<()> {
+        validate_outbox_token_envelope(&token)?;
+        if reason.is_empty() || reason.len() > 1024 || reason.chars().any(char::is_control) {
+            return Err(StoreError::Invalid("outbox reason is outside bounds".into()));
+        }
+        self.ask(|reply| Request::UnknownOutbox { token, reason, reply })
     }
 
     fn append_inner(
@@ -1019,6 +1063,18 @@ impl Writer {
                         workplans::list(&mut self.connection, &project, after.as_deref(), limit)
                             .map_err(StoreError::from),
                     );
+                }
+                Request::ClaimOutbox { now, owner, lease_secs, reply } => {
+                    let result = outbox::claim_due(&mut self.connection, now, &owner, lease_secs).map_err(StoreError::from);
+                    let _ = reply.send(result);
+                }
+                Request::CompleteOutbox { token, receipt_ref, now, reply } => {
+                    let result = outbox::complete(&mut self.connection, &token, &receipt_ref, now).map_err(StoreError::from);
+                    let _ = reply.send(result);
+                }
+                Request::UnknownOutbox { token, reason, reply } => {
+                    let result = outbox::fail_unknown(&mut self.connection, &token, &reason).map_err(StoreError::from);
+                    let _ = reply.send(result);
                 }
                 Request::Append {
                     source,
