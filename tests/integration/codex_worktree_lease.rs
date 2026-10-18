@@ -898,3 +898,183 @@ fn p02_p05_p15_round12_item5_redteam_audit_gate() {
         .expect("tamper durable P05 event payload");
     assert!(reconstruct_question(&connection, &scope).is_err());
 }
+
+#[test]
+fn p02_p05_p15_round13_wo_intake_multi_paragraph_preview() {
+    use admiralty_core::verification::{
+        CheckResult, ReceiptProducer, RequiredNegativeCheck, VerificationInputs,
+        VerificationPolicy, VerificationReceipt, parse_receipt, validate_receipt,
+    };
+    use admiralty_core::workplans::{Workplan, preview_workplan, preview_workplan_with_existing};
+
+    let (mut contract, _) = fixture();
+    contract.objective = "Preserve the original request as one work order.\n\nKeep each paragraph intact; previewing must not split it into tasks.".into();
+    let plan = Workplan {
+        schema_version: 1,
+        plan_id: "round13-work-order".into(),
+        revision: 1,
+        project_id: contract.project_id.clone(),
+        tasks: vec![contract.clone()],
+    };
+    let source = serde_json::to_vec(&plan).expect("serialize immutable work-order preview input");
+    let preview = preview_workplan(&source).expect("P02 bounded multi-paragraph preview");
+    let replay = preview_workplan_with_existing(&source, &preview.task_digests)
+        .expect("exact work-order preview replay");
+    assert_eq!(
+        preview, replay,
+        "preview and source identity are deterministic"
+    );
+    assert_eq!(preview.task_order, [contract.task_id.clone()]);
+    assert_eq!(preview.source_digest, replay.source_digest);
+    assert_eq!(
+        preview.task_digests[&contract.task_id],
+        content_digest(&contract).unwrap()
+    );
+    let restored: Workplan = serde_json::from_slice(&source).unwrap();
+    assert_eq!(
+        restored.tasks.len(),
+        1,
+        "paragraph boundaries do not multiply work orders"
+    );
+    assert_eq!(restored.tasks[0].objective, contract.objective);
+    let mut forged_source: serde_json::Value = serde_json::from_slice(&source).unwrap();
+    forged_source["tasks"][0]["accepted"] = serde_json::json!(true);
+    assert!(preview_workplan(&serde_json::to_vec(&forged_source).unwrap()).is_err());
+
+    // P05 retains request review under exact work-order scope and recovers it
+    // from its durable event log after a restart.
+    let directory = tempfile::tempdir().expect("private work-order journal");
+    let database = directory.path().join("work-order.sqlite3");
+    let mut connection = Connection::open(&database).expect("open journal");
+    initialize_questions(&connection).expect("initialize journal");
+    let question_scope = admiralty_core::coordination::questions::QuestionScope {
+        question_id: admiralty_core::MessageId::new("round13-work-order-review").unwrap(),
+        project_id: contract.project_id.clone(),
+        task_id: contract.task_id.clone(),
+    };
+    let journal_scope = JournalScope {
+        root_id: contract.root_id.clone(),
+        question: question_scope.clone(),
+        authority_ref: contract.authority_ref.clone(),
+    };
+    let requirement = format!(
+        "Review work-order digest {}",
+        preview.task_digests[&contract.task_id]
+    );
+    let open = QuestionEvent::Open {
+        event_id: admiralty_core::MessageId::new("round13-open-event").unwrap(),
+        scope: question_scope.clone(),
+        authority_ref: journal_scope.authority_ref.clone(),
+        asker: PrincipalId::new("captain").unwrap(),
+        recipient: PrincipalId::new("worker").unwrap(),
+        allowed_recipients: vec![
+            PrincipalId::new("worker").unwrap(),
+            PrincipalId::new("reviewer").unwrap(),
+        ],
+        requirement: requirement.clone(),
+        question: contract.objective.clone(),
+        options: vec!["hold".into(), "review".into()],
+        deadline_utc: None,
+    };
+    append_question(
+        &mut connection,
+        &journal_scope,
+        &admiralty_core::MessageId::new("round13-open-command").unwrap(),
+        &open,
+    )
+    .expect("record question in exact work-order scope");
+    append_question(
+        &mut connection,
+        &journal_scope,
+        &admiralty_core::MessageId::new("round13-route-command").unwrap(),
+        &QuestionEvent::Route {
+            event_id: admiralty_core::MessageId::new("round13-route-event").unwrap(),
+            scope: question_scope.clone(),
+            expected_revision: 1,
+            authority_ref: journal_scope.authority_ref.clone(),
+            actor: PrincipalId::new("worker").unwrap(),
+            recipient: PrincipalId::new("reviewer").unwrap(),
+        },
+    )
+    .expect("route only to allowed reviewer");
+    drop(connection);
+    let connection = Connection::open(&database).expect("reopen work-order journal");
+    let recovered = reconstruct_question(&connection, &journal_scope)
+        .unwrap()
+        .expect("reconstruct durable review");
+    assert_eq!(recovered.state.revision, 2);
+    assert_eq!(recovered.state.requirement, requirement);
+    assert_eq!(recovered.state.question, contract.objective);
+
+    // P15 binds release evidence to the previewed immutable task and pinned
+    // verifier policy, while a valid receipt remains non-authorizing evidence.
+    let oracle_digest = format!("sha256:{}", "d".repeat(64));
+    let policy = VerificationPolicy {
+        schema_version: 1,
+        verifier: PrincipalId::new("reviewer").unwrap(),
+        protected_oracle_digest: oracle_digest.clone(),
+        required_negative_checks: vec![RequiredNegativeCheck {
+            check: CheckSpec {
+                id: "negative".into(),
+                program: "fixture-negative".into(),
+                args: vec![],
+                cwd: ".".into(),
+                timeout_secs: 1,
+            },
+            expected_exit_code: 1,
+            fixture_digest: format!("sha256:{}", "9".repeat(64)),
+        }],
+    };
+    let inputs = VerificationInputs {
+        project_id: contract.project_id.clone(),
+        root_id: contract.root_id.clone(),
+        task_id: contract.task_id.clone(),
+        attempt_id: AttemptId::new("round13-attempt").unwrap(),
+        candidate_ref: "candidate:round13".into(),
+        contract_revision: contract.revision,
+        contract_digest: preview.task_digests[&contract.task_id].clone(),
+        verification_policy_digest: content_digest(&policy).unwrap(),
+        source_commit_sha: "1".repeat(40),
+        source_tree_sha: "2".repeat(40),
+        source_artifact_digest: format!("sha256:{}", "c".repeat(64)),
+        protected_oracle_digest: oracle_digest,
+    };
+    let evidence = VerificationReceipt {
+        schema_version: 1,
+        receipt_id: "round13-release-evidence".into(),
+        producer: ReceiptProducer::IndependentVerifier,
+        verifier: PrincipalId::new("reviewer").unwrap(),
+        inputs: inputs.clone(),
+        checks: contract
+            .checks
+            .iter()
+            .cloned()
+            .map(|check| CheckResult {
+                check,
+                exit_code: Some(0),
+                stdout_digest: format!("sha256:{}", "e".repeat(64)),
+                stderr_digest: format!("sha256:{}", "f".repeat(64)),
+            })
+            .collect(),
+        negative_checks: policy
+            .required_negative_checks
+            .iter()
+            .map(|negative| CheckResult {
+                check: negative.check.clone(),
+                exit_code: Some(1),
+                stdout_digest: format!("sha256:{}", "1".repeat(64)),
+                stderr_digest: format!("sha256:{}", "2".repeat(64)),
+            })
+            .collect(),
+    };
+    assert!(parse_receipt(&serde_json::to_vec(&evidence).unwrap()).is_ok());
+    let validated = validate_receipt(&contract, &inputs, &policy, &evidence)
+        .expect("receipt matches exact work-order and release policy");
+    assert!(validated.all_checks_passed());
+    assert!(!validated.acceptance_granted());
+    assert!(!validated.execution_qualified());
+    assert!(!validated.evidence_custody_verified());
+    let mut forged_release_claim = serde_json::to_value(evidence).unwrap();
+    forged_release_claim["release_granted"] = serde_json::json!(true);
+    assert!(parse_receipt(&serde_json::to_vec(&forged_release_claim).unwrap()).is_err());
+}
