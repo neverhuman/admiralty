@@ -274,11 +274,23 @@ def bounded_http(
     require(remaining > 0, "whole-smoke deadline elapsed")
     connection = http.client.HTTPConnection(address.compressed, port, timeout=remaining)
     watchdog: threading.Timer | None = None
+    expired = threading.Event()
+    response: http.client.HTTPResponse | None = None
+
+    def check_deadline() -> float:
+        remaining = request_deadline - time.monotonic()
+        require(not expired.is_set() and remaining > 0, "per-request HTTP deadline elapsed")
+        return remaining
+
     try:
         connection.connect()
+        check_deadline()
         wire_socket = connection.sock
         require(wire_socket is not None, "HTTP socket was not created")
         def abort_request() -> None:
+            # shutdown may wake a buffered read as EOF rather than an exception.
+            # Keep an independent expiry marker and check after blocking I/O.
+            expired.set()
             try:
                 wire_socket.shutdown(socket.SHUT_RDWR)
             except OSError:
@@ -286,30 +298,47 @@ def bounded_http(
         watchdog = threading.Timer(max(0.001, request_deadline - time.monotonic()), abort_request)
         watchdog.daemon = True
         watchdog.start()
+        wire_socket.settimeout(check_deadline())
         connection.request(method, path, body=body, headers=headers or {})
+        wire_socket.settimeout(check_deadline())
         response = connection.getresponse()
+        check_deadline()
         size = response.getheader("Content-Length")
         if size is not None:
             require(size.isascii() and size.isdecimal(), "invalid HTTP content length")
             require(int(size) <= MAX_HTTP_BYTES, "HTTP response exceeds byte bound")
+        # http.client normalizes HEAD/204/304 and chunked semantics here. read1
+        # itself does not reject a premature EOF for a declared body length.
+        expected_length = response.length
         data = bytearray()
         while True:
-            remaining = request_deadline - time.monotonic()
-            require(remaining > 0, "per-request HTTP deadline elapsed")
-            if connection.sock is not None:
-                connection.sock.settimeout(remaining)
+            # HTTP/1.0 close semantics can clear connection.sock while the
+            # response still owns a file reference to this exact wire socket.
+            remaining = check_deadline()
             amount = min(16 * 1024, MAX_HTTP_BYTES + 1 - len(data))
-            chunk = response.read1(amount)
+            # A completed close-delimited response may already have released its
+            # final socket reference. Do not set a timeout on that closed socket.
+            if response.isclosed():
+                chunk = b""
+            else:
+                wire_socket.settimeout(remaining)
+                chunk = response.read1(amount)
+            check_deadline()
             if not chunk:
+                require(expected_length is None or len(data) == expected_length,
+                        "HTTP response ended before declared content length")
                 break
             data.extend(chunk)
             require(len(data) <= MAX_HTTP_BYTES, "HTTP response exceeds byte bound")
+        check_deadline()
         return response.status, {key.lower(): value for key, value in response.getheaders()}, bytes(data)
     except (OSError, http.client.HTTPException, TimeoutError) as error:
         raise SmokeError("bounded loopback HTTP request failed") from error
     finally:
         if watchdog is not None:
             watchdog.cancel()
+        if response is not None:
+            response.close()
         connection.close()
 
 
@@ -814,6 +843,100 @@ class HarnessTests(unittest.TestCase):
             with self.assertRaises(SmokeError):
                 bounded_http("127.0.0.1",server.server_address[1],"GET","/",deadline=before+0.08)
             self.assertLess(time.monotonic()-before,0.5)
+        finally:
+            server.shutdown()
+            server.server_close()
+
+    def test_eof_after_deadline_cannot_be_reported_as_success(self) -> None:
+        from unittest.mock import patch
+
+        for expiry in ("clock", "watchdog"):
+            with self.subTest(expiry=expiry):
+                clock = [100.0]
+                callbacks: list[Any] = []
+
+                class FakeTimer:
+                    def __init__(self, interval: float, callback: Any) -> None:
+                        callbacks.append(callback)
+                    def start(self) -> None:
+                        pass
+                    def cancel(self) -> None:
+                        pass
+
+                class FakeSocket:
+                    def settimeout(self, timeout: float) -> None:
+                        pass
+                    def shutdown(self, how: int) -> None:
+                        pass
+
+                class FakeResponse:
+                    status = 200
+                    length = None
+                    closed = False
+                    def getheader(self, name: str) -> None:
+                        return None
+                    def getheaders(self) -> list[Any]:
+                        return []
+                    def isclosed(self) -> bool:
+                        return self.closed
+                    def read1(self, amount: int) -> bytes:
+                        # A deterministic stand-in for shutdown waking read1 as
+                        # EOF, without relying on OS timeout/Timer scheduling.
+                        if expiry == "clock":
+                            clock[0] = 101.0
+                        else:
+                            callbacks[0]()
+                        return b""
+                    def close(self) -> None:
+                        self.closed = True
+
+                response = FakeResponse()
+
+                class FakeConnection:
+                    sock = FakeSocket()
+                    closed = False
+                    def connect(self) -> None:
+                        pass
+                    def request(self, *_: Any, **__: Any) -> None:
+                        pass
+                    def getresponse(self) -> FakeResponse:
+                        return response
+                    def close(self) -> None:
+                        self.closed = True
+
+                connection = FakeConnection()
+                with patch.object(time, "monotonic", side_effect=lambda: clock[0]), \
+                        patch.object(threading, "Timer", FakeTimer), \
+                        patch.object(http.client, "HTTPConnection", return_value=connection):
+                    with self.assertRaisesRegex(SmokeError, "per-request HTTP deadline"):
+                        bounded_http("127.0.0.1", 12345, "GET", "/", deadline=100.05)
+                self.assertTrue(response.closed)
+                self.assertTrue(connection.closed)
+
+    def test_clean_close_delimited_response_and_premature_content_length_eof(self) -> None:
+        import http.server
+
+        class BodyHandler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                self.send_response(200)
+                self.send_header("Content-Length", "2" if self.path == "/complete" else "3")
+                self.end_headers()
+                self.wfile.write(b"{}")
+                self.wfile.flush()
+            def log_message(self, *_: Any) -> None:
+                pass
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), BodyHandler)
+        server.daemon_threads = True
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            status, _, body = bounded_http("127.0.0.1", server.server_port, "GET", "/complete",
+                                          deadline=time.monotonic() + 1)
+            self.assertEqual((status, body), (200, b"{}"))
+            with self.assertRaisesRegex(SmokeError, "before declared content length"):
+                bounded_http("127.0.0.1", server.server_port, "GET", "/truncated",
+                             deadline=time.monotonic() + 1)
         finally:
             server.shutdown()
             server.server_close()
