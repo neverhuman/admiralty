@@ -5,13 +5,15 @@
 //! It does not run a browser build or authorize production rollout.
 
 use admiralty_core::{
-    ProjectId, RootId, TaskId,
-    conflicts::{CandidateChange, FileChange, analyze_conflicts},
+    PrincipalId, ProjectId, RootId, TaskId,
+    conflicts::{CandidateChange, ConflictError, FileChange, analyze_conflicts},
     economics::{DecimalU128, ObservedAmount},
     placement::decode_input,
     trials::{
-        ClusterAssignment, ClusterId, ClusterMember, DecimalU64, TrialId, TrialSpec, VariantId,
-        assign_trial,
+        AnalysisReceipt, AnalysisRecommendation, ClusterAssignment, ClusterId, ClusterMember,
+        DecimalU64, DecisionPhase, FeatureId, FeatureManifest, Missingness, Outcome, OutcomeLabel,
+        TrialDecision, TrialEvidence, TrialId, TrialSpec, VariantId, assign_trial,
+        propose_trial_decision, trial_evidence_digest,
     },
 };
 use admiralty_runtime::{
@@ -408,4 +410,122 @@ fn p28_p32_round11_item4_final_validation_gate() {
         edge.risks
             .contains(&admiralty_core::conflicts::ConflictRisk::UnknownWriteScope)
     }));
+}
+
+#[test]
+fn p28_p32_round12_item5_redteam_audit_gate() {
+    // P28: an otherwise well-formed analysis receipt cannot authorize a
+    // proposal after its bound evidence has changed.
+    let variants = [
+        VariantId::new("control").expect("control variant"),
+        VariantId::new("candidate").expect("candidate variant"),
+    ];
+    let clusters = [
+        ClusterId::new("audit-a").expect("cluster A"),
+        ClusterId::new("audit-b").expect("cluster B"),
+    ];
+    let cohort = [("audit-root-a", 0), ("audit-root-b", 1)]
+        .into_iter()
+        .map(|(root, cluster)| ClusterMember {
+            root_id: RootId::new(root).expect("cohort root"),
+            cluster_id: clusters[cluster].clone(),
+        })
+        .collect::<Vec<_>>();
+    let spec = TrialSpec {
+        trial_id: TrialId::new("round12-redteam").expect("trial ID"),
+        project_id: ProjectId::new("redteam").expect("project ID"),
+        scope_root_id: RootId::new("audit-scope").expect("scope root"),
+        scope_task_id: TaskId::new("audit-task").expect("scope task"),
+        contract_revision: 1,
+        contract_digest: digest('a'),
+        fixed_cohort: cohort.clone(),
+        immutable_bundle_digests: vec![digest('b')],
+        protected_oracle_digest: digest('c'),
+        pre_registered_seed: "round12-redteam-seed".into(),
+        decision_tick: DecimalU64::new(50),
+        cluster_assignments: clusters
+            .iter()
+            .map(|cluster_id| ClusterAssignment {
+                cluster_id: cluster_id.clone(),
+                variants: variants.to_vec(),
+            })
+            .collect(),
+        required_maturity: DecimalU64::new(2),
+        planned_looks: DecimalU64::new(1),
+    };
+    let assignments = assign_trial(&spec, &cohort, 1, 2).expect("assign fixed cohort");
+    let outcomes = assignments
+        .iter()
+        .map(|assignment| Outcome {
+            root_id: assignment.root_id.clone(),
+            label: OutcomeLabel::Mature,
+            observed_tick: DecimalU64::new(55),
+            heldout_contaminated: false,
+            rework: false,
+            analysis_value_micros: Some(DecimalU64::new(1200)),
+        })
+        .collect();
+    let mut evidence = TrialEvidence {
+        bundle_digests_at_analysis: spec.immutable_bundle_digests.clone(),
+        protected_oracle_digest_at_analysis: spec.protected_oracle_digest.clone(),
+        trial: spec,
+        features: vec![FeatureManifest {
+            feature_id: FeatureId::new("redteam-feature").expect("feature ID"),
+            digest: digest('f'),
+            available_tick: DecimalU64::new(49),
+            decision_phase: DecisionPhase::InitialAssignment,
+            missingness: Missingness::Known,
+            extraction_cost_micros: Some(DecimalU64::new(25)),
+        }],
+        assignments,
+        outcomes,
+        look_count: DecimalU64::new(1),
+        analysis_tick: DecimalU64::new(60),
+        independent_analysis: None,
+    };
+    let bound_digest = trial_evidence_digest(&evidence).expect("digest evidence");
+    evidence.independent_analysis = Some(AnalysisReceipt {
+        receipt_digest: digest('7'),
+        analyst: PrincipalId::new("redteam-reviewer").expect("analyst ID"),
+        analyzed_evidence_digest: bound_digest,
+        recommendation: AnalysisRecommendation::RecommendIndependentReview,
+    });
+    evidence.outcomes[0].analysis_value_micros = Some(DecimalU64::new(1201));
+    assert!(matches!(
+        propose_trial_decision(&evidence, vec![digest('b')]).expect("fail-closed decision"),
+        TrialDecision::InsufficientEvidence {
+            promotion_authorized: false,
+            reasons,
+        } if reasons.iter().any(|reason| reason == "analysis receipt does not bind evidence")
+    ));
+
+    // P32: invalid paths and conflicting reuse of a candidate identity are
+    // rejected before a conflict generation can be emitted.
+    let candidate = CandidateChange {
+        project_id: ProjectId::new("redteam").expect("project ID"),
+        root_id: RootId::new("audit-scope").expect("root ID"),
+        task_id: TaskId::new("audit-candidate").expect("task ID"),
+        candidate_id: "audit-candidate".into(),
+        base_sha: digest('d'),
+        head_sha: digest('e'),
+        tree_sha: digest('f'),
+        ancestry_digest: Some(digest('0')),
+        files: vec![FileChange {
+            path: "src/handler.rs".into(),
+            hunks: None,
+        }],
+        constraints: None,
+    };
+    let mut traversal = candidate.clone();
+    traversal.files[0].path = "../escape.rs".into();
+    assert!(matches!(
+        analyze_conflicts(&[traversal], "round12-audit"),
+        Err(ConflictError::InvalidPath(_))
+    ));
+    let mut collision = candidate.clone();
+    collision.files[0].path = "src/changed.rs".into();
+    assert_eq!(
+        analyze_conflicts(&[candidate, collision], "round12-audit"),
+        Err(ConflictError::CandidateCollision("audit-candidate".into()))
+    );
 }
