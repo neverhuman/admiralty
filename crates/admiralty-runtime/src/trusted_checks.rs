@@ -197,6 +197,15 @@ fn validate_request(
             "contract, input identity, policy binding, run ID, or check count is invalid",
         ));
     }
+    if std::env::vars_os().any(|(key, _)| {
+        key.to_string_lossy()
+            .to_ascii_uppercase()
+            .starts_with("GIT_")
+    }) {
+        return Err(TrustedCheckError::Invalid(
+            "Git environment overrides are not permitted",
+        ));
+    }
     if content_digest(contract).map_err(|_| TrustedCheckError::Invalid("contract digest failed"))?
         != inputs.contract_digest
         || content_digest(policy).map_err(|_| TrustedCheckError::Invalid("policy digest failed"))?
@@ -285,6 +294,8 @@ fn source_identity(
         host,
         git_program,
         &[
+            "-c".into(),
+            "core.fsmonitor=false".into(),
             "status".into(),
             "--porcelain=v2".into(),
             "--branch".into(),
@@ -339,6 +350,8 @@ fn source_identity(
         host,
         git_program,
         &[
+            "-c".into(),
+            "core.fsmonitor=false".into(),
             "status".into(),
             "--porcelain=v2".into(),
             "--branch".into(),
