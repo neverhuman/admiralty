@@ -140,18 +140,19 @@ fn consumer_ack_is_provisional_and_new_revision_proposes_invalidation() {
         artifact_digest, ..
     } = &mut changed_replay
     {
-        *artifact_digest = digest('z');
+        *artifact_digest = digest('c');
     }
-    assert!(
-        reduce_interface_for(
-            &Some(acknowledged.state.clone()),
-            &changed_replay,
-            &scope,
-            &consumer,
-            &owner,
-        )
-        .is_err(),
-        "reusing an event ID with a changed payload must be rejected"
+    let collision = reduce_interface_for(
+        &Some(acknowledged.state.clone()),
+        &changed_replay,
+        &scope,
+        &consumer,
+        &owner,
+    )
+    .expect_err("a valid changed digest must reach immutable event collision detection");
+    assert_eq!(
+        collision.0, "event ID reused with different content",
+        "reusing an event ID must fail for a collision, not malformed digest syntax"
     );
     assert_eq!(
         acknowledged.state.evidence.get(&consumer),

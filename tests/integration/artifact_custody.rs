@@ -182,11 +182,12 @@ fn publication_replay_and_pin_retirement_race_preserve_artifact_bytes() {
 
 #[test]
 fn stale_revision_cannot_acquire_a_custody_pin() {
-    let fixture = TempDir::new().expect("create disposable fixture root");
+    let fixture = private_fixture();
     let artifact_root = fixture.path().join("objects");
-    fs::create_dir(&artifact_root).expect("create artifact root");
-    fs::set_permissions(&artifact_root, fs::Permissions::from_mode(0o700))
-        .expect("make artifact root owner-only");
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&artifact_root)
+        .expect("create owner-only artifact root");
     let reference = ArtifactStore::open(&artifact_root, 1024)
         .expect("open artifact store")
         .publish_bytes(b"stale revision candidate")
@@ -238,11 +239,12 @@ fn stale_revision_cannot_acquire_a_custody_pin() {
 
 #[test]
 fn publication_rejects_object_one_byte_over_configured_limit() {
-    let fixture = TempDir::new().expect("create disposable fixture root");
+    let fixture = private_fixture();
     let artifact_root = fixture.path().join("objects");
-    fs::create_dir(&artifact_root).expect("create artifact root");
-    fs::set_permissions(&artifact_root, fs::Permissions::from_mode(0o700))
-        .expect("make artifact root owner-only");
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&artifact_root)
+        .expect("create owner-only artifact root");
     let artifacts = ArtifactStore::open(&artifact_root, 1).expect("open one-byte artifact store");
 
     let at_limit = artifacts

@@ -24,6 +24,53 @@ class Watch(unittest.TestCase):
     def test_claude_background_monitor_counts_as_busy(self):
         txt = " The five runs are in progress.\n Brewed for 39s · done 3:46 PM · 1 monitor still running\n >\n  auto mode on · 1 monitor · ↓ to manage\n"
         self.assertTrue(sc.tail_busy(txt)); self.assertFalse(sc.tail_busy(CLAUDE_IDLE))
+    def test_positive_running_background_ui_footer_is_busy(self):
+        for label in ['1 monitor still running', '2 monitors running',
+                      '1 background task running', '2 shells still running']:
+            with self.subTest(label=label):
+                self.assertTrue(sc.tail_busy(f' Brewed for 1m 39s · done 3:46 PM · {label}\n >\n'))
+    def test_zero_completed_and_plaintext_counts_do_not_suppress_idle(self):
+        for text in [
+            'auto mode on · 0 monitors · ↓ to manage',
+            'Brewed for 39s · done 3:46 PM · 0 monitors still running',
+            'Brewed for 39s · done 3:46 PM · 0 background tasks running',
+            'Brewed for 39s · done 3:46 PM · 1 monitor completed',
+            'auto mode on · 1 monitor · ↓ to manage',
+            'A previous task had 1 monitor running.',
+            '1 monitor still running',
+            'Documentation: 2 background tasks running',
+        ]:
+            with self.subTest(text=text):
+                self.assertFalse(sc.tail_busy(text + '\n >\n'))
+    def test_quoted_or_fenced_busy_examples_are_not_live_ui(self):
+        example = 'Brewed for 39s · done 3:46 PM · 1 monitor still running'
+        for text in ['> ' + example, '`' + example + '`',
+                     '```text\n' + example + '\n```',
+                     '~~~text\n' + example + '\n~~~']:
+            with self.subTest(text=text):
+                self.assertFalse(sc.tail_busy(text + '\n >\n'))
+    def test_zero_monitor_footer_stays_red_after_twenty_minutes(self):
+        text = CLAUDE_IDLE + 'auto mode on · 0 monitors · ↓ to manage\n'
+        prev = {'watch:fixture_worker': {'hash': sc.tail_hash(text), 'since': '2026-10-18T14:32:00+00:00'}}
+        watched = sc.idle_watch({'fixture_worker': 'x'}, {'fixture_worker': 'fixture-project'},
+                                prev, {}, NOW, hc=lambda n, p: text)
+        self.assertFalse(watched['fixture_worker']['busy'])
+        self.assertEqual(codes(), ['MANAGED_SCREEN_IDLE'])
+    def test_newer_completed_or_zero_footer_overrides_old_running_footer(self):
+        prior = 'Brewed for 39s · done 3:46 PM · 1 monitor still running\n'
+        for current in ['Cooked for 2s · done 3:48 PM\n',
+                        'auto mode on · 0 monitors · ↓ to manage\n',
+                        'Cooked for 2s · done 3:48 PM · 1 monitor completed\n']:
+            with self.subTest(current=current):
+                self.assertFalse(sc.tail_busy(prior + current + '>\n'))
+    def test_old_running_footer_outside_raw_tail_is_not_revived_by_filtering(self):
+        prior = 'Brewed for 39s · done 3:46 PM · 1 monitor still running\n'
+        quoted = ''.join(f'> archived quotation line {i}\n' for i in range(20))
+        fenced = '```text\n' + ''.join(f'archived example line {i}\n' for i in range(20)) + '```\n'
+        for later in [quoted, fenced]:
+            with self.subTest(later=later):
+                self.assertFalse(sc.tail_busy(prior + later + '>\n'))
+        self.assertTrue(sc.tail_busy(prior + '>\n'))
     def test_parked_and_positional_lane_lines_are_managed(self):
         scs = {'captains': {'jopedime': {'state': 'jopedime_flywheel working on spec', 'pr': '1061448.jopedime_flywheel ETA 15:05Z'}}}
         m = sc.managed_screens(scs, {'jopedime': {'jopedime_agy': 'LANE | 2830191.jopedime_agy | X | active'}})

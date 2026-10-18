@@ -1,0 +1,30 @@
+{
+  "head_sha": "880b685be4f003028aa377798a6058014ad5e7e3",
+  "implemented_or_verified": [
+    "Bounded explicit FakeClock, occurrence FaultPlan and immutable CAS ForgeSimulator; pure symbolic offline effects.",
+    "Seeded valid fragmented UTF-8 JSONL and typed/decimal cumulative unknown/duplicate/reset fixtures.",
+    "Five shared integration tests exercise actual mailbox, strict decoder and UsageAccumulator plus simulated forge reconciliation."
+  ],
+  "integration_receipt": "receipts/integration/880b685be4f003028aa377798a6058014ad5e7e3.json",
+  "integration_receipt_sha256": "5cdb83c12b2e1fa60d71412be7feefcd5a67be35b35463c855341710ed2a57ae",
+  "limitations": [
+    "Scoped deterministic fixture infrastructure is now implemented and tested; full bootstrap/CI acceptance requires its own issuer and completed hosted/clean-install gates.",
+    "Clock/fault/forge fixtures are offline infrastructure, not runtime timers, real transport/forge or provider qualification. Cached forge retries do not reinject reply-loss faults.",
+    "Cumulative fixture has eight frames/six semantic usage events; unknown opening balance remains unknown. No complete-session token savings claim.",
+    "All31 named targets pass component checks; target names and generic boundary assertions do not establish whole P00-P31 acceptance."
+  ],
+  "native_execution_qualified": false,
+  "observed_utc": "2026-10-18T16:13:06.791424+00:00",
+  "packet": "P01",
+  "packet_accepted": false,
+  "state": "partial_review",
+  "validation": {
+    "fmt": "pass",
+    "linux_rust_checks": 672,
+    "mac_rust_checks": 670,
+    "named_integration_targets": 31,
+    "shared_deterministic_tests": 5,
+    "strict_clippy": "pass",
+    "testkit_unit_tests": 34
+  }
+}

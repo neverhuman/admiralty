@@ -1,5 +1,8 @@
 //! Offline invariant and process fixtures; no paid provider calls.
+pub mod clock;
 pub mod fake_provider;
+pub mod faults;
+pub mod forge;
 
 use admiralty_core::*;
 
