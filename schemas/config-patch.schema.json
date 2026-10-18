@@ -1,0 +1,118 @@
+{
+  "$defs": {
+    "ModelConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "max_concurrency": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "model_ref": {
+          "type": "string"
+        },
+        "node_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "provider",
+        "model_ref",
+        "max_concurrency"
+      ],
+      "type": "object"
+    },
+    "NodeConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "denied_paths": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 256,
+      "type": [
+        "array",
+        "null"
+      ]
+    },
+    "listen": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "max_agents": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 1,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "max_context_tokens": {
+      "format": "uint32",
+      "minimum": 1,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "models": {
+      "items": {
+        "$ref": "#/$defs/ModelConfig"
+      },
+      "maxItems": 256,
+      "type": [
+        "array",
+        "null"
+      ]
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/NodeConfig"
+      },
+      "maxItems": 256,
+      "type": [
+        "array",
+        "null"
+      ]
+    }
+  },
+  "title": "ConfigPatch",
+  "type": "object"
+}

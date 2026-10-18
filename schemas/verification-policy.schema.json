@@ -1,0 +1,96 @@
+{
+  "$defs": {
+    "CheckSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "program": {
+          "type": "string"
+        },
+        "timeout_secs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "program",
+        "args",
+        "cwd",
+        "timeout_secs"
+      ],
+      "type": "object"
+    },
+    "PrincipalId": {
+      "type": "string"
+    },
+    "RequiredNegativeCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "check": {
+          "$ref": "#/$defs/CheckSpec"
+        },
+        "expected_exit_code": {
+          "description": "A rejecting command can expect a nonzero exit; an assertion test that\nproves rejection normally expects zero. The receipt cannot choose it.",
+          "format": "int32",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "fixture_digest": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "check",
+        "expected_exit_code",
+        "fixture_digest"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "protected_oracle_digest": {
+      "type": "string"
+    },
+    "required_negative_checks": {
+      "items": {
+        "$ref": "#/$defs/RequiredNegativeCheck"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "type": "array"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "verifier": {
+      "$ref": "#/$defs/PrincipalId",
+      "description": "Expected identity remains an unauthenticated claim until the caller\nverifies custody and actor identity outside this pure component."
+    }
+  },
+  "required": [
+    "schema_version",
+    "verifier",
+    "protected_oracle_digest",
+    "required_negative_checks"
+  ],
+  "title": "VerificationPolicy",
+  "type": "object"
+}

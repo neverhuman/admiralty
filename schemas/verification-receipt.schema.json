@@ -1,0 +1,192 @@
+{
+  "$defs": {
+    "AttemptId": {
+      "type": "string"
+    },
+    "CheckResult": {
+      "additionalProperties": false,
+      "properties": {
+        "check": {
+          "$ref": "#/$defs/CheckSpec"
+        },
+        "exit_code": {
+          "format": "int32",
+          "maximum": 255,
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "stderr_digest": {
+          "type": "string"
+        },
+        "stdout_digest": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "check",
+        "stdout_digest",
+        "stderr_digest"
+      ],
+      "type": "object"
+    },
+    "CheckSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "program": {
+          "type": "string"
+        },
+        "timeout_secs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "program",
+        "args",
+        "cwd",
+        "timeout_secs"
+      ],
+      "type": "object"
+    },
+    "PrincipalId": {
+      "type": "string"
+    },
+    "ProjectId": {
+      "type": "string"
+    },
+    "ReceiptProducer": {
+      "enum": [
+        "independent_verifier",
+        "provider_claim"
+      ],
+      "type": "string"
+    },
+    "RootId": {
+      "type": "string"
+    },
+    "TaskId": {
+      "type": "string"
+    },
+    "VerificationInputs": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt_id": {
+          "$ref": "#/$defs/AttemptId"
+        },
+        "candidate_ref": {
+          "type": "string"
+        },
+        "contract_digest": {
+          "type": "string"
+        },
+        "contract_revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "project_id": {
+          "$ref": "#/$defs/ProjectId"
+        },
+        "protected_oracle_digest": {
+          "type": "string"
+        },
+        "root_id": {
+          "$ref": "#/$defs/RootId"
+        },
+        "source_artifact_digest": {
+          "type": "string"
+        },
+        "source_commit_sha": {
+          "type": "string"
+        },
+        "source_tree_sha": {
+          "type": "string"
+        },
+        "task_id": {
+          "$ref": "#/$defs/TaskId"
+        },
+        "verification_policy_digest": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "root_id",
+        "task_id",
+        "attempt_id",
+        "candidate_ref",
+        "contract_revision",
+        "contract_digest",
+        "verification_policy_digest",
+        "source_commit_sha",
+        "source_tree_sha",
+        "source_artifact_digest",
+        "protected_oracle_digest"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/CheckResult"
+      },
+      "maxItems": 256,
+      "type": "array"
+    },
+    "inputs": {
+      "$ref": "#/$defs/VerificationInputs"
+    },
+    "negative_checks": {
+      "items": {
+        "$ref": "#/$defs/CheckResult"
+      },
+      "maxItems": 64,
+      "type": "array"
+    },
+    "producer": {
+      "$ref": "#/$defs/ReceiptProducer"
+    },
+    "receipt_id": {
+      "type": "string"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "verifier": {
+      "$ref": "#/$defs/PrincipalId"
+    }
+  },
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "producer",
+    "verifier",
+    "inputs",
+    "checks",
+    "negative_checks"
+  ],
+  "title": "VerificationReceipt",
+  "type": "object"
+}

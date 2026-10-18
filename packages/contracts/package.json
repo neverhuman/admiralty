@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "types": "./index.ts",
-  "scripts": {"test": "node --test runtime.test.mjs"},
+  "scripts": {
+    "test": "node --test runtime.test.mjs"
+  },
   "exports": {
     ".": {
       "types": "./index.ts",
@@ -22,6 +24,30 @@
     },
     "./domain-event-v2": {
       "types": "./generated/domain-event-v2.ts"
+    },
+    "./workplan": {
+      "types": "./generated/workplan.ts"
+    },
+    "./verification-receipt": {
+      "types": "./generated/verification-receipt.ts"
+    },
+    "./verification-policy": {
+      "types": "./generated/verification-policy.ts"
+    },
+    "./interface-contract": {
+      "types": "./generated/interface-contract.ts"
+    },
+    "./config-layer": {
+      "types": "./generated/config-layer.ts"
+    },
+    "./config-patch": {
+      "types": "./generated/config-patch.ts"
+    },
+    "./config-layer-receipt": {
+      "types": "./generated/config-layer-receipt.ts"
+    },
+    "./provenance-contribution": {
+      "types": "./generated/provenance-contribution.ts"
     },
     "./validators": {
       "types": "./generated/validators.d.mts",

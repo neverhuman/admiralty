@@ -1,5 +1,6 @@
 //! Bounded, preview-only import of JSON workplans.
 use crate::{ProjectId, TaskContract, TaskId, content_digest};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
@@ -8,13 +9,15 @@ pub const WORKPLAN_SCHEMA_VERSION: u32 = 1;
 pub const MAX_WORKPLAN_BYTES: usize = 1024 * 1024;
 pub const MAX_WORKPLAN_TASKS: usize = 1000;
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Workplan {
     pub schema_version: u32,
     pub plan_id: String,
+    #[schemars(range(min = 1))]
     pub revision: u32,
     pub project_id: ProjectId,
+    #[schemars(length(max = MAX_WORKPLAN_TASKS))]
     pub tasks: Vec<TaskContract>,
 }
 
