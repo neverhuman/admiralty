@@ -7,3 +7,4 @@ mod codex_round15_p06_p13_p14;
 mod codex_round15_p19;
 mod codex_round15_p20;
 pub mod codex_round15_p23;
+mod codex_round15_p24_p29;
