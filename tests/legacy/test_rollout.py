@@ -210,7 +210,7 @@ const context = {URL, console, setInterval:()=>{}, fetch:()=>new Promise(()=>{})
  document:{getElementById:id=>elements[id]||(elements[id]={innerHTML:'',hidden:true})}};
 vm.createContext(context);vm.runInContext(input.script,context);
 const results = input.payloads.map(payload=>{context.payload=payload;
- vm.runInContext('rolloutPanel(payload)',context);return {...elements.rollout}});
+ vm.runInContext('rolloutPanel(payload)',context);return {...elements.rollout,summary:vm.runInContext('rolloutSummary(payload)',context)}});
 process.stdout.write(JSON.stringify(results));
 """
         run = subprocess.run([shutil.which("node"), "-e", harness],
@@ -248,6 +248,71 @@ process.stdout.write(JSON.stringify(results));
         value.update({"state": "ready", "pr": {"url": "javascript:alert(1)"}})
         result = self.render([{"rollout": value}])[0]["innerHTML"]
         self.assertNotIn('href="javascript:', result)
+
+    def test_execution_lanes_are_visible_with_separate_candidate_and_implementation_labels(self):
+        value = manifest()
+        value.update({"state": "ready", "lanes": [
+            {"id": "adm_lane_ui", "owner": "/root/ui", "branch": "codex/ui", "status": "fresh; reported candidate_committed; screen not_exposed; gpt-6-luna medium; CPU reserved 104,105 NOT pinned"},
+            {"id": "adm_lane_store", "status": "fresh; reported in_progress; screen not_exposed"},
+        ]})
+        result = self.render([{"rollout": value}])[0]["innerHTML"]
+        self.assertIn('aria-label="Implementation agents"', result)
+        self.assertIn("Implementation agents (2)", result)
+        self.assertLess(result.index("Implementation agents (2)"), result.index("Pending packets (1)"))
+        self.assertNotIn("<summary>Execution lanes", result)
+        self.assertIn("<details><summary>Pending packets", result)
+        self.assertNotIn("<details open><summary>Pending packets", result)
+        self.assertIn("Candidate committed · awaiting review", result)
+        self.assertIn("Implementing (reported)", result)
+        self.assertIn("Process liveness not exposed", result)
+        self.assertIn("CPU reserved 104,105 NOT pinned", result)
+        self.assertIn("do not establish packet acceptance", result)
+
+    def test_header_rollout_chip_links_to_visible_workers_with_reported_counts(self):
+        value = manifest()
+        value.update({"state": "ready", "lanes": [
+            {"id": "one", "status": "fresh; reported candidate_committed; screen not_exposed"},
+            {"id": "two", "status": "fresh; reported in_progress; screen not_exposed"},
+        ]})
+        summary = self.render([{"rollout": value}])[0]["summary"]
+        self.assertIn('href="#rollout"', summary)
+        self.assertIn("<b>2</b> agent reports", summary)
+        self.assertIn("1 implementing · 1 candidate awaiting review", summary)
+        self.assertIn("Example build", summary)
+        self.assertEqual(self.render([{}])[0]["summary"], "")
+
+    def test_lane_completion_and_screen_presence_do_not_display_verified_acceptance(self):
+        value = manifest()
+        value.update({"state": "ready", "lanes": [
+            {"id": "worker", "status": "stale; reported verified; screen present"}
+        ]})
+        result = self.render([{"rollout": value}])[0]["innerHTML"]
+        self.assertIn("Completion reported · evidence pending", result)
+        self.assertIn("Stale lane report", result)
+        self.assertIn("Screen present · task activity unknown", result)
+
+    def test_actual_observer_statuses_survive_loader_and_remain_conservative(self):
+        spec = importlib.util.spec_from_file_location("rollout_observe", ROOT / "tools/rollout_observe.py")
+        observer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(observer)
+        statuses = ["candidate_committed_unverified", "implementing_on_frozen_seed", "dispatched_switching_private_worktree", "candidate_committed_magic"]
+        reports = {"updated_utc": NOW.isoformat(), "lanes": [
+            {"lane": f"lane-{index}", "status": status, "screen": None, "agent_session": f"/root/lane-{index}"}
+            for index, status in enumerate(statuses)
+        ]}
+        merged = observer.merge(manifest(), reports, {}, {}, now=NOW)
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "rollout.json").write_text(json.dumps(merged))
+            normalized = rollout.collect_rollout(directory, now=NOW, environ={})
+        self.assertNotIn("reported_status", normalized["lanes"][0])
+        self.assertEqual(normalized["packets"][0]["status"], "ready")
+        result = self.render([{"rollout": normalized}])[0]
+        self.assertIn("Candidate committed · awaiting review", result["innerHTML"])
+        self.assertIn("Implementing (reported)", result["innerHTML"])
+        self.assertIn("Dispatched · preparing workspace", result["innerHTML"])
+        self.assertIn("Reported: candidate_committed_magic", result["innerHTML"])
+        self.assertIn("Process liveness not exposed", result["innerHTML"])
+        self.assertIn("1 implementing · 1 candidate awaiting review · 1 preparing workspace", result["summary"])
 
 
 if __name__ == "__main__":
