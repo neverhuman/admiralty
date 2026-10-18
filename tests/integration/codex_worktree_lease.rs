@@ -142,11 +142,11 @@ fn p05_p15_round8_p08_worktree_lease_qualification() {
 
 fn question_scope(id: &str) -> JournalScope {
     JournalScope {
-        root_id: RootId::new("root-recovery").unwrap(),
+        root_id: RootId::new("root-recovery").expect("valid deterministic fixture"),
         question: admiralty_core::coordination::questions::QuestionScope {
-            question_id: admiralty_core::MessageId::new(id).unwrap(),
-            project_id: ProjectId::new("project-recovery").unwrap(),
-            task_id: TaskId::new("task-recovery").unwrap(),
+            question_id: admiralty_core::MessageId::new(id).expect("valid deterministic fixture"),
+            project_id: ProjectId::new("project-recovery").expect("valid deterministic fixture"),
+            task_id: TaskId::new("task-recovery").expect("valid deterministic fixture"),
         },
         authority_ref: "grant:task-recovery:r3".into(),
     }
@@ -154,14 +154,14 @@ fn question_scope(id: &str) -> JournalScope {
 
 fn question_open(scope: &JournalScope, event_id: &str, deadline_utc: Option<u64>) -> QuestionEvent {
     QuestionEvent::Open {
-        event_id: admiralty_core::MessageId::new(event_id).unwrap(),
+        event_id: admiralty_core::MessageId::new(event_id).expect("valid deterministic fixture"),
         scope: scope.question.clone(),
         authority_ref: scope.authority_ref.clone(),
-        asker: admiralty_core::PrincipalId::new("asker").unwrap(),
-        recipient: admiralty_core::PrincipalId::new("worker").unwrap(),
+        asker: admiralty_core::PrincipalId::new("asker").expect("valid deterministic fixture"),
+        recipient: admiralty_core::PrincipalId::new("worker").expect("valid deterministic fixture"),
         allowed_recipients: vec![
-            admiralty_core::PrincipalId::new("worker").unwrap(),
-            admiralty_core::PrincipalId::new("reviewer").unwrap(),
+            admiralty_core::PrincipalId::new("worker").expect("valid deterministic fixture"),
+            admiralty_core::PrincipalId::new("reviewer").expect("valid deterministic fixture"),
         ],
         requirement: "Resolve the scoped question with retained evidence".into(),
         question: "Which artifact revision is authoritative?".into(),
@@ -177,12 +177,14 @@ fn p05_p15_round9_item3_question_routing_recovery_qualification() {
     let scope = question_scope("question-route");
     let open = question_open(&scope, "event-open", None);
     let route = QuestionEvent::Route {
-        event_id: admiralty_core::MessageId::new("event-route").unwrap(),
+        event_id: admiralty_core::MessageId::new("event-route")
+            .expect("valid deterministic fixture"),
         scope: scope.question.clone(),
         expected_revision: 1,
         authority_ref: scope.authority_ref.clone(),
-        actor: admiralty_core::PrincipalId::new("worker").unwrap(),
-        recipient: admiralty_core::PrincipalId::new("reviewer").unwrap(),
+        actor: admiralty_core::PrincipalId::new("worker").expect("valid deterministic fixture"),
+        recipient: admiralty_core::PrincipalId::new("reviewer")
+            .expect("valid deterministic fixture"),
     };
 
     let mut connection = Connection::open(&database).expect("open durable question journal");
@@ -190,7 +192,7 @@ fn p05_p15_round9_item3_question_routing_recovery_qualification() {
     let opened = append_question(
         &mut connection,
         &scope,
-        &admiralty_core::MessageId::new("command-open").unwrap(),
+        &admiralty_core::MessageId::new("command-open").expect("valid deterministic fixture"),
         &open,
     )
     .expect("open question in its exact root/project/task/authority scope");
@@ -198,21 +200,24 @@ fn p05_p15_round9_item3_question_routing_recovery_qualification() {
     assert!(!opened.duplicate);
 
     let before_route = reconstruct_question(&connection, &scope)
-        .unwrap()
+        .expect("valid deterministic fixture")
         .expect("opened question reconstructs");
     let unauthorized = QuestionEvent::Route {
-        event_id: admiralty_core::MessageId::new("event-unauthorized").unwrap(),
+        event_id: admiralty_core::MessageId::new("event-unauthorized")
+            .expect("valid deterministic fixture"),
         scope: scope.question.clone(),
         expected_revision: 1,
         authority_ref: scope.authority_ref.clone(),
-        actor: admiralty_core::PrincipalId::new("intruder").unwrap(),
-        recipient: admiralty_core::PrincipalId::new("reviewer").unwrap(),
+        actor: admiralty_core::PrincipalId::new("intruder").expect("valid deterministic fixture"),
+        recipient: admiralty_core::PrincipalId::new("reviewer")
+            .expect("valid deterministic fixture"),
     };
     assert!(
         append_question(
             &mut connection,
             &scope,
-            &admiralty_core::MessageId::new("command-unauthorized").unwrap(),
+            &admiralty_core::MessageId::new("command-unauthorized")
+                .expect("valid deterministic fixture"),
             &unauthorized,
         )
         .is_err()
@@ -221,20 +226,25 @@ fn p05_p15_round9_item3_question_routing_recovery_qualification() {
         append_question(
             &mut connection,
             &scope,
-            &admiralty_core::MessageId::new("command-stale").unwrap(),
+            &admiralty_core::MessageId::new("command-stale").expect("valid deterministic fixture"),
             &QuestionEvent::Route {
-                event_id: admiralty_core::MessageId::new("event-stale").unwrap(),
+                event_id: admiralty_core::MessageId::new("event-stale")
+                    .expect("valid deterministic fixture"),
                 scope: scope.question.clone(),
                 expected_revision: 0,
                 authority_ref: scope.authority_ref.clone(),
-                actor: admiralty_core::PrincipalId::new("worker").unwrap(),
-                recipient: admiralty_core::PrincipalId::new("reviewer").unwrap(),
+                actor: admiralty_core::PrincipalId::new("worker")
+                    .expect("valid deterministic fixture"),
+                recipient: admiralty_core::PrincipalId::new("reviewer")
+                    .expect("valid deterministic fixture"),
             },
         )
         .is_err()
     );
     assert_eq!(
-        reconstruct_question(&connection, &scope).unwrap().unwrap(),
+        reconstruct_question(&connection, &scope)
+            .expect("valid deterministic fixture")
+            .expect("valid deterministic fixture"),
         before_route,
         "rejected routing commands leave journal and projection unchanged"
     );
@@ -242,7 +252,7 @@ fn p05_p15_round9_item3_question_routing_recovery_qualification() {
     let routed = append_question(
         &mut connection,
         &scope,
-        &admiralty_core::MessageId::new("command-route").unwrap(),
+        &admiralty_core::MessageId::new("command-route").expect("valid deterministic fixture"),
         &route,
     )
     .expect("allowlisted current recipient can route to reviewer");
@@ -251,17 +261,18 @@ fn p05_p15_round9_item3_question_routing_recovery_qualification() {
         append_question(
             &mut connection,
             &scope,
-            &admiralty_core::MessageId::new("command-route").unwrap(),
+            &admiralty_core::MessageId::new("command-route").expect("valid deterministic fixture"),
             &route,
         )
-        .unwrap(),
+        .expect("valid deterministic fixture"),
         routed,
         "exact command retry returns the retained receipt"
     );
     let replay = append_question(
         &mut connection,
         &scope,
-        &admiralty_core::MessageId::new("command-route-replay").unwrap(),
+        &admiralty_core::MessageId::new("command-route-replay")
+            .expect("valid deterministic fixture"),
         &route,
     )
     .expect("event replay under a new command is idempotent");
@@ -271,14 +282,17 @@ fn p05_p15_round9_item3_question_routing_recovery_qualification() {
         append_question(
             &mut connection,
             &scope,
-            &admiralty_core::MessageId::new("command-route").unwrap(),
+            &admiralty_core::MessageId::new("command-route").expect("valid deterministic fixture"),
             &QuestionEvent::Route {
-                event_id: admiralty_core::MessageId::new("event-route").unwrap(),
+                event_id: admiralty_core::MessageId::new("event-route")
+                    .expect("valid deterministic fixture"),
                 scope: scope.question.clone(),
                 expected_revision: 1,
                 authority_ref: scope.authority_ref.clone(),
-                actor: admiralty_core::PrincipalId::new("worker").unwrap(),
-                recipient: admiralty_core::PrincipalId::new("worker").unwrap(),
+                actor: admiralty_core::PrincipalId::new("worker")
+                    .expect("valid deterministic fixture"),
+                recipient: admiralty_core::PrincipalId::new("worker")
+                    .expect("valid deterministic fixture"),
             },
         ),
         Err(admiralty_store::questions::QuestionStoreError::IdentityCollision)
@@ -288,7 +302,7 @@ fn p05_p15_round9_item3_question_routing_recovery_qualification() {
     let mut connection =
         Connection::open(&database).expect("reopen question journal after restart");
     let restored = reconstruct_question(&connection, &scope)
-        .unwrap()
+        .expect("valid deterministic fixture")
         .expect("routed state rebuilds from durable event history");
     assert_eq!(restored.state.revision, 2);
     assert_eq!(restored.state.status, QuestionStatus::Routed);
@@ -297,14 +311,18 @@ fn p05_p15_round9_item3_question_routing_recovery_qualification() {
         append_question(
             &mut connection,
             &scope,
-            &admiralty_core::MessageId::new("command-route-cycle").unwrap(),
+            &admiralty_core::MessageId::new("command-route-cycle")
+                .expect("valid deterministic fixture"),
             &QuestionEvent::Route {
-                event_id: admiralty_core::MessageId::new("event-route-cycle").unwrap(),
+                event_id: admiralty_core::MessageId::new("event-route-cycle")
+                    .expect("valid deterministic fixture"),
                 scope: scope.question.clone(),
                 expected_revision: 2,
                 authority_ref: scope.authority_ref.clone(),
-                actor: admiralty_core::PrincipalId::new("reviewer").unwrap(),
-                recipient: admiralty_core::PrincipalId::new("worker").unwrap(),
+                actor: admiralty_core::PrincipalId::new("reviewer")
+                    .expect("valid deterministic fixture"),
+                recipient: admiralty_core::PrincipalId::new("worker")
+                    .expect("valid deterministic fixture"),
             },
         )
         .is_err(),
@@ -316,22 +334,25 @@ fn p05_p15_round9_item3_question_routing_recovery_qualification() {
     append_question(
         &mut connection,
         &expiry_scope,
-        &admiralty_core::MessageId::new("command-expiry-open").unwrap(),
+        &admiralty_core::MessageId::new("command-expiry-open")
+            .expect("valid deterministic fixture"),
         &expiring,
     )
     .expect("open second scoped question with deterministic deadline");
     let deadline = QuestionEvent::EvaluateDeadline {
-        event_id: admiralty_core::MessageId::new("event-expiry-eval").unwrap(),
+        event_id: admiralty_core::MessageId::new("event-expiry-eval")
+            .expect("valid deterministic fixture"),
         scope: expiry_scope.question.clone(),
         expected_revision: 1,
         authority_ref: expiry_scope.authority_ref.clone(),
-        actor: admiralty_core::PrincipalId::new("asker").unwrap(),
+        actor: admiralty_core::PrincipalId::new("asker").expect("valid deterministic fixture"),
         observed_utc: Some(101),
     };
     let escalation = append_question(
         &mut connection,
         &expiry_scope,
-        &admiralty_core::MessageId::new("command-expiry-eval").unwrap(),
+        &admiralty_core::MessageId::new("command-expiry-eval")
+            .expect("valid deterministic fixture"),
         &deadline,
     )
     .expect("strictly expired deadline creates a durable escalation proposal");
@@ -341,7 +362,8 @@ fn p05_p15_round9_item3_question_routing_recovery_qualification() {
     let expiry_replay = append_question(
         &mut connection,
         &expiry_scope,
-        &admiralty_core::MessageId::new("command-expiry-replay").unwrap(),
+        &admiralty_core::MessageId::new("command-expiry-replay")
+            .expect("valid deterministic fixture"),
         &deadline,
     )
     .expect("deadline event replay is idempotent");
@@ -354,13 +376,16 @@ fn p05_p15_round9_item3_question_routing_recovery_qualification() {
         append_question(
             &mut connection,
             &expiry_scope,
-            &admiralty_core::MessageId::new("command-answer-expired").unwrap(),
+            &admiralty_core::MessageId::new("command-answer-expired")
+                .expect("valid deterministic fixture"),
             &QuestionEvent::Answer {
-                event_id: admiralty_core::MessageId::new("event-answer-expired").unwrap(),
+                event_id: admiralty_core::MessageId::new("event-answer-expired")
+                    .expect("valid deterministic fixture"),
                 scope: expiry_scope.question.clone(),
                 expected_revision: 2,
                 authority_ref: expiry_scope.authority_ref.clone(),
-                actor: admiralty_core::PrincipalId::new("worker").unwrap(),
+                actor: admiralty_core::PrincipalId::new("worker")
+                    .expect("valid deterministic fixture"),
                 answer: "r2".into(),
             },
         ),
@@ -368,8 +393,8 @@ fn p05_p15_round9_item3_question_routing_recovery_qualification() {
     ));
     assert_eq!(
         reconstruct_question(&connection, &expiry_scope)
-            .unwrap()
-            .unwrap()
+            .expect("valid deterministic fixture")
+            .expect("valid deterministic fixture")
             .escalation_ref,
         Some(escalation_ref),
         "recovery retains the one recorded escalation reference"

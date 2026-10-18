@@ -11,8 +11,8 @@ use admiralty_core::placement::{
 };
 use admiralty_core::{PrincipalId, ProjectId, RootId, TaskId};
 use admiralty_runtime::{
-    providers::{claude, codex, process},
     providers::codex::{CodexEffort, CodexError, CodexNdjsonStream},
+    providers::{claude, codex, process},
     recovery::{Blocker, plan_recovery},
     session::{LaunchSpec, OutputChunk, OutputStream, validate_launch_envelope},
     workspace::registry::{Custody, NodeRef, WorkspaceSpec},
@@ -53,7 +53,6 @@ fn issued_token(id: &str, expires: u64, now: u64) -> NodeRegistry {
     .expect("issue scoped fixture token")
 }
 
-
 fn scope() -> NodeScope {
     NodeScope {
         project_id: ProjectId::new("p12-p23-project").expect("project fixture"),
@@ -62,7 +61,6 @@ fn scope() -> NodeScope {
         authority: PrincipalId::new("p12-p23-captain").expect("authority fixture"),
     }
 }
-
 
 fn placement_fixture() -> (PlacementRequest, NodeOffer, PlacementPolicy) {
     let tick = |value| PlacementTick::new(value);
