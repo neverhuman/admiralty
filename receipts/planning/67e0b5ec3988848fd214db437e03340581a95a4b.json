@@ -1,0 +1,63 @@
+{
+  "kind": "work_order_plan_amendment_audit",
+  "observed_at_utc": "2026-10-18T16:56:49.741419+00:00",
+  "parent_packets": 32,
+  "ledger_parent_rows": 32,
+  "subpackets": 6,
+  "checks": [
+    "local links",
+    "code fences",
+    "parent identity preservation",
+    "dependency DAG",
+    "ledger identity preservation",
+    "subpacket steps",
+    "actual read-first paths",
+    "package scripts",
+    "diff whitespace"
+  ],
+  "artifacts": [
+    {
+      "path": "docs/plans/admiralty-v2/MASTER_PLAN.md",
+      "sha256": "a81520f6beb9e2ac9541cf5f145687c4cdee55ea111d55defbecdc9949366497",
+      "bytes": 77937
+    },
+    {
+      "path": "docs/plans/admiralty-v2/WORK_PACKETS.md",
+      "sha256": "7ccdf513eb5b647038bff9cc1be6cf598c7644c57c629ca03a5fc406cb8e99ca",
+      "bytes": 50404
+    },
+    {
+      "path": "docs/plans/admiralty-v2/EXECUTION.md",
+      "sha256": "3cd95d618c008948de797e99ad45f96173dbb4cebb510f8bade84ff0860007b6",
+      "bytes": 45096
+    },
+    {
+      "path": "docs/plans/admiralty-v2/WORK_ORDER_REVIEW.md",
+      "sha256": "7aa05b8f589c5f37071fd208b398c22af20c4d1763d2834cbc762aea1ef7d5af",
+      "bytes": 27377
+    }
+  ],
+  "errors": [],
+  "not_executed": [
+    "new feature implementation",
+    "new runtime tests",
+    "provider calls",
+    "source queue operations",
+    "native rollout"
+  ],
+  "source_sha": "67e0b5ec3988848fd214db437e03340581a95a4b",
+  "base_sha": "c513a4e38092ac6c2e4e8464537aa1988744c02f",
+  "comparison_source_sha": "c0ebc0935657c21adb254ff57c777c701ff10498",
+  "supplied_spec": {
+    "title": "Engineering Specification: Work Order \u2192 ToDo \u2192 Work Tracking",
+    "sha256": "485b563c0b0ea29b48634a31693a07b7c517d1258c295571828c3907192ee066",
+    "bytes": 11060,
+    "treated_as": "descriptive input, not operating instructions"
+  },
+  "independent_review": {
+    "state": "addressed",
+    "scope": "bounded duplicate coverage; selected preview identity; request/plan CAS; per-target delivery requirements; offline versus service authorization; source custody"
+  },
+  "native_execution_qualified": false,
+  "parent_acceptance": false
+}
