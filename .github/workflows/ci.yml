@@ -32,3 +32,7 @@ jobs:
       - run: npm install --global pnpm@11.15.1
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm contracts:check
+      - run: pnpm --dir packages/contracts test
+      - run: pnpm --dir apps/dashboard typecheck
+      - run: pnpm --dir apps/dashboard test --run
+      - run: pnpm --dir apps/dashboard build

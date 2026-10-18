@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import select
 import stat
 import subprocess
 import sys
@@ -18,6 +19,12 @@ MAX_BYTES = 1024 * 1024
 MAX_LANES = 200
 MAX_PACKETS = 2000
 ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
+HEAD = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})\Z")
+MAX_SCOPE_PATHS = 64
+MAX_SCOPE_ENTRIES = 2000
+MAX_SCOPE_DEPTH = 16
+MAX_WORKTREE_PROBES = 32
+WORKTREE_BUDGET_SECONDS = 5
 
 
 class Invalid(ValueError):
@@ -118,7 +125,199 @@ def lane_rows(value):
     return rows, updated
 
 
-def merge(template, reports, source_meta, lane_meta, *, now, prefix=None, screens=None, stale_after=120):
+def _owned_directory(parent, parts):
+    descriptor = os.dup(parent)
+    try:
+        for part in parts:
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = child
+            require(os.fstat(descriptor).st_uid == os.getuid(), "directory is not owned")
+        return descriptor
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def _bounded_git_head(descriptor, timeout):
+    """Only Git probe: rev-parse HEAD. No status, filters, hooks or file output."""
+    # Linux procfs preserves directory identity across exec. macOS /dev/fd
+    # cannot be chdir'd into, so report HEAD unavailable there rather than use
+    # a pathname race or an unsafe pre-exec callback.
+    target = f"/proc/self/fd/{descriptor}"
+    require(os.path.isdir("/proc/self/fd") and os.path.exists(target), "descriptor-bound Git unavailable on this platform")
+    environment = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    environment.update({"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_SYSTEM": os.devnull,
+                        "GIT_CONFIG_GLOBAL": os.devnull, "GIT_TERMINAL_PROMPT": "0",
+                        "GIT_OPTIONAL_LOCKS": "0", "GIT_WORK_TREE": target, "GIT_PAGER": "cat"})
+    argv = ["git", "--no-optional-locks", "-c", "core.fsmonitor=false", "-C", target, "rev-parse", "--verify", "HEAD"]
+    process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                               stderr=subprocess.DEVNULL, env=environment, pass_fds=(descriptor,))
+    try:
+        deadline, output = time.monotonic() + timeout, bytearray()
+        os.set_blocking(process.stdout.fileno(), False)
+        while True:
+            remaining = deadline - time.monotonic()
+            require(remaining > 0, "Git HEAD probe timed out")
+            if not select.select([process.stdout], [], [], remaining)[0]:
+                raise Invalid("Git HEAD probe timed out")
+            chunk = os.read(process.stdout.fileno(), 257 - len(output))
+            if not chunk:
+                break
+            output.extend(chunk)
+            require(len(output) <= 256, "Git HEAD output exceeds bound")
+        require(process.wait(timeout=max(0.01, deadline - time.monotonic())) == 0, "Git HEAD unavailable")
+        value = bytes(output).decode("ascii").strip()
+        require(HEAD.fullmatch(value), "Git HEAD is not a complete object identity")
+        return value
+    finally:
+        if process.poll() is None:
+            process.kill()
+        process.wait(timeout=1)
+        process.stdout.close()
+
+
+class WorktreeWitness:
+    """Opt-in metadata witness confined to an existing owned private prefix."""
+    def __init__(self, raw):
+        self.configured = Path(raw)
+        require(self.configured.is_absolute(), "worktree root must be absolute")
+        self.root = safe_path(raw)
+        self.descriptor = os.open(self.root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        info = os.fstat(self.descriptor)
+        if info.st_uid != os.getuid() or info.st_mode & 0o077:
+            os.close(self.descriptor)
+            raise Invalid("worktree root must be owned and private (0700)")
+        self.deadline, self.probes = time.monotonic() + WORKTREE_BUDGET_SECONDS, 0
+
+    def close(self):
+        os.close(self.descriptor)
+
+    def observe(self, row, now):
+        result = {"source": "owned_worktree_metadata/v1", "state": "unavailable", "observed_utc": iso(now),
+                  "assurance": "Metadata only; no agent liveness, task progress or acceptance established."}
+        if self.probes >= MAX_WORKTREE_PROBES or time.monotonic() >= self.deadline:
+            result["state"] = "deferred"
+            return result
+        raw = row.get("worktree")
+        if not isinstance(raw, str) or not raw:
+            result["state"] = "not_reported"
+            return result
+        descriptor = None
+        try:
+            candidate = Path(raw)
+            require(len(raw) <= 4096 and candidate.is_absolute() and ".." not in candidate.parts
+                    and not any(ord(c) < 32 for c in raw), "unsafe worktree")
+            relative = None
+            for root in (self.configured, self.root):
+                try:
+                    relative = candidate.relative_to(root)
+                    break
+                except ValueError:
+                    continue
+            require(relative is not None, "worktree outside configured prefix")
+            descriptor = _owned_directory(self.descriptor, relative.parts)
+            self.probes += 1
+            paths = row.get("candidate_paths", [row["candidate_path"]] if "candidate_path" in row else [])
+            require(isinstance(paths, list) and len(paths) <= MAX_SCOPE_PATHS
+                    and all(isinstance(path, str) for path in paths), "bounded explicit candidate paths required")
+            scopes = []
+            for raw_path in paths:
+                recursive = raw_path.endswith("/**")
+                value = raw_path[:-3] if recursive else raw_path
+                require(value and len(value) <= 4096 and not any(c in value for c in "*?[]\\")
+                        and not any(ord(c) < 32 for c in value), "unsafe candidate path")
+                path = Path(value)
+                if path.is_absolute():
+                    path = path.relative_to(candidate)
+                require(path.parts and len(path.parts) <= MAX_SCOPE_DEPTH
+                        and all(part not in (".", "..") for part in path.parts), "candidate path escapes worktree")
+                scopes.append((path.parts, recursive))
+            scopes.sort(key=lambda scope: (not scope[1], len(scope[0]), scope[0]))
+            files, visited, latest, skipped = set(), set(), None, 0
+            bounded = False
+
+            def scan(parent, name, relative_parts, depth, recursive):
+                nonlocal latest, skipped, bounded
+                if relative_parts in visited:
+                    return
+                if len(visited) >= MAX_SCOPE_ENTRIES or time.monotonic() >= self.deadline:
+                    bounded = True
+                    return
+                visited.add(relative_parts)
+                try:
+                    info = os.stat(name, dir_fd=parent, follow_symlinks=False)
+                    if info.st_uid != os.getuid() or stat.S_ISLNK(info.st_mode):
+                        skipped += 1
+                    elif stat.S_ISREG(info.st_mode):
+                        files.add(relative_parts)
+                        latest = info.st_mtime if latest is None else max(latest, info.st_mtime)
+                    elif stat.S_ISDIR(info.st_mode) and recursive:
+                        if depth >= MAX_SCOPE_DEPTH:
+                            bounded = True
+                            return
+                        child = _owned_directory(parent, (name,))
+                        try:
+                            with os.scandir(child) as entries:
+                                for entry in entries:
+                                    if bounded:
+                                        break
+                                    scan(child, entry.name, (*relative_parts, entry.name), depth + 1, True)
+                        finally:
+                            os.close(child)
+                    else:
+                        skipped += 1
+                except (OSError, Invalid):
+                    skipped += 1
+
+            for parts, recursive in scopes:
+                if bounded:
+                    break
+                try:
+                    parent = _owned_directory(descriptor, parts[:-1])
+                    try:
+                        scan(parent, parts[-1], parts, 0, recursive)
+                    finally:
+                        os.close(parent)
+                except (OSError, Invalid):
+                    skipped += 1
+            result.update({"state": "bounded" if bounded else "observed", "owned_scope_files": len(files),
+                           "scanned_entries": len(visited), "scope_paths": len(scopes), "skipped_entries": skipped,
+                           "bounded": bounded, "latest_owned_path_mtime_utc":
+                           iso(dt.datetime.fromtimestamp(latest, dt.timezone.utc)) if latest is not None else None})
+            # Presence of a local .git marker prevents repository discovery from
+            # silently using an unrelated parent checkout. Never follow a link.
+            try:
+                marker = os.stat(".git", dir_fd=descriptor, follow_symlinks=False)
+                require(marker.st_uid == os.getuid() and (stat.S_ISREG(marker.st_mode) or stat.S_ISDIR(marker.st_mode)), "unsafe git marker")
+                remaining = self.deadline - time.monotonic()
+                require(remaining > 0, "worktree observation budget exhausted")
+                head = _bounded_git_head(descriptor, min(1.0, remaining))
+                reported = row.get("head_sha")
+                result.update({"head_sha": head, "reported_head_matches":
+                               head == reported if isinstance(reported, str) and HEAD.fullmatch(reported) else None})
+            except (OSError, Invalid, UnicodeError, subprocess.SubprocessError):
+                result["head_state"] = "unavailable"
+            return result
+        except (OSError, Invalid, ValueError, TypeError):
+            result["state"] = "unsafe"
+            return result
+        finally:
+            if descriptor is not None:
+                os.close(descriptor)
+
+
+def merge(template, reports, source_meta, lane_meta, *, now, prefix=None, screens=None, stale_after=120, worktree_root=None):
+    witness = WorktreeWitness(worktree_root) if worktree_root is not None else None
+    try:
+        return _merge(template, reports, source_meta, lane_meta, now=now, prefix=prefix,
+                      screens=screens, stale_after=stale_after, witness=witness)
+    finally:
+        if witness is not None:
+            witness.close()
+
+
+def _merge(template, reports, source_meta, lane_meta, *, now, prefix=None, screens=None, stale_after=120, witness=None):
     require(isinstance(template, dict) and template.get("schema_version") == 1, "template schema_version 1 required")
     require(isinstance(template.get("project"), dict) and template["project"].get("id"), "template project required")
     require(timestamp(template.get("updated_utc")) is not None, "template updated_utc requires timezone")
@@ -206,6 +405,19 @@ def merge(template, reports, source_meta, lane_meta, *, now, prefix=None, screen
             status += "; source stale"
         if identity in duplicate_ids:
             status += "; conflicting duplicate reports"
+        activity = witness.observe(row, now) if witness is not None and reported else None
+        if activity:
+            suffix = ""
+            if activity.get("scope_paths") and "owned_scope_files" in activity:
+                suffix = f"; owned scope files {activity['owned_scope_files']}"
+                if activity.get("latest_owned_path_mtime_utc"):
+                    suffix += "; latest " + activity["latest_owned_path_mtime_utc"]
+                if activity.get("bounded"):
+                    suffix += " (bounded sample)"
+            elif activity.get("reported_head_matches") is True:
+                suffix = "; candidate HEAD " + activity["head_sha"][:12]
+            if suffix:
+                status = status[:max(0, 200 - len(suffix))] + suffix
         output["lanes"].append({
             "id": identity, "owner": text(row.get("owner", row.get("agent_session"))), "node": text(row.get("node", row.get("host"))),
             "branch": text(row.get("branch")), "status": status[:200], "reported_status": reported_status,
@@ -217,6 +429,8 @@ def merge(template, reports, source_meta, lane_meta, *, now, prefix=None, screen
             "tier": text(row.get("tier")), "head_sha": text(row.get("head_sha")),
             "worktree": text(row.get("worktree"), 500), "reserved_cpus": reserved, "cpus_pinned": pinned if type(pinned) is bool else None,
         })
+        if activity:
+            output["lanes"][-1]["activity"] = activity
     output["observer"] = {
         "producer": "admiralty.legacy_rollout_observer/v1", "observed_utc": iso(now),
         "source_updated_utc": source_time, "lanes_source_updated_utc": report_time,
@@ -258,7 +472,7 @@ def atomic_output(raw, value, inputs):
             os.unlink(name)
 
 
-def observe(source, lanes, output, *, prefix=None, screens=None):
+def observe(source, lanes, output, *, prefix=None, screens=None, worktree_root=None):
     template, source_meta = read_owned(source)
     try:
         reports, lane_meta = read_owned(lanes)
@@ -266,7 +480,8 @@ def observe(source, lanes, output, *, prefix=None, screens=None):
         reports, lane_meta = None, {"filename": Path(lanes).name, "state": "missing"}
     if prefix and screens is None:
         screens = screen_snapshot(prefix)
-    result = merge(template, reports, source_meta, lane_meta, now=dt.datetime.now(dt.timezone.utc), prefix=prefix, screens=screens)
+    result = merge(template, reports, source_meta, lane_meta, now=dt.datetime.now(dt.timezone.utc), prefix=prefix, screens=screens,
+                   worktree_root=worktree_root)
     atomic_output(output, result, {safe_path(source), safe_path(lanes)})
     return result
 
@@ -279,12 +494,13 @@ def main(argv=None):
     parser.add_argument("--interval", type=int, default=15)
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--session-prefix")
+    parser.add_argument("--worktree-root", type=Path, help="Opt-in existing owned 0700 prefix for reported worktree HEAD and explicit candidate-path metadata only")
     args = parser.parse_args(argv)
     if not 1 <= args.interval <= 3600 or (args.session_prefix is not None and not ID.fullmatch(args.session_prefix)):
         parser.error("interval must be 1..3600 seconds and session prefix must be a safe identifier")
     while True:
         try:
-            result = observe(args.source, args.lanes, args.output, prefix=args.session_prefix)
+            result = observe(args.source, args.lanes, args.output, prefix=args.session_prefix, worktree_root=args.worktree_root)
             if args.once:
                 print(json.dumps({"lanes": len(result["lanes"]), "observed_utc": result["observer"]["observed_utc"], "source_updated_utc": result["updated_utc"]}))
                 return 0

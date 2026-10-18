@@ -30,6 +30,8 @@ fn config(simulated: bool, assets: Option<PathBuf>) -> ServerConfig {
         simulated,
         token: Some(TOKEN.into()),
         assets,
+        legacy: None,
+        models_file: None,
     }
 }
 
@@ -628,4 +630,151 @@ fn app_rejects_remote_binding_and_missing_private_authentication() {
         private.token = token;
         assert!(app(fixture.store.clone(), private).is_err());
     }
+}
+
+#[tokio::test]
+async fn legacy_bridge_keeps_real_facts_out_of_demo_and_preserves_native_auth() {
+    let directory = tempfile::tempdir().expect("legacy fixture");
+    let status = directory.path().join("status.json");
+    let index = directory.path().join("index.html");
+    std::fs::write(&status, br#"{"generated_utc":"2026-10-18T12:00:00Z","order":["example"],"projects":{"example":{"name":"Example","done":3}},"rollout":{"project":{"id":"build"}}}"#).expect("legacy facts");
+    std::fs::write(
+        &index,
+        b"<!doctype html><title>Original detailed view</title>",
+    )
+    .expect("legacy page");
+    let store = Store::open(directory.path().join("native.sqlite")).expect("store");
+    let mut configured = config(false, None);
+    configured.legacy = Some(admiralty_server::legacy::LegacyConfig {
+        status_file: status.clone(),
+        index_file: index,
+        public_read: true,
+    });
+    let router = app(store.clone(), configured.clone()).expect("explicit public legacy scope");
+    let response = request(&router, "GET", "/v1/legacy", None).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(json(response).await["projects"]["example"]["done"], 3);
+    assert_eq!(
+        request(&router, "GET", "/v1/fleet", None).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        request(&router, "GET", "/legacy/", None).await.status(),
+        StatusCode::OK
+    );
+    assert_eq!(
+        request(&router, "GET", "/legacy/status.json", None)
+            .await
+            .status(),
+        StatusCode::OK
+    );
+    assert_eq!(
+        request(&router, "GET", "/legacy/secrets", None)
+            .await
+            .status(),
+        StatusCode::NOT_FOUND
+    );
+    configured.simulated = true;
+    assert!(app(store.clone(), configured.clone()).is_err());
+    configured.simulated = false;
+    configured
+        .legacy
+        .as_mut()
+        .expect("legacy configured")
+        .public_read = false;
+    let private = app(store, configured).expect("private legacy scope");
+    assert_eq!(
+        request(&private, "GET", "/v1/legacy", None).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        request(&private, "GET", "/v1/legacy", Some(TOKEN))
+            .await
+            .status(),
+        StatusCode::OK
+    );
+    std::fs::write(&status, b"broken JSON").expect("inject malformed source");
+    assert_eq!(
+        request(&private, "GET", "/v1/legacy", Some(TOKEN))
+            .await
+            .status(),
+        StatusCode::BAD_GATEWAY
+    );
+}
+
+#[tokio::test]
+async fn model_configuration_requires_auth_and_exact_revision_and_never_exposes_connection_refs() {
+    let directory = tempfile::tempdir().expect("models API fixture");
+    let private = directory.path().join("private-models");
+    std::fs::create_dir(&private).expect("private model root");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&private, std::fs::Permissions::from_mode(0o700))
+            .expect("private mode");
+    }
+    let registry_path = private.join("models.json");
+    let registry =
+        admiralty_runtime::models::RegistryFile::new(&registry_path).expect("private registry");
+    let desired: admiralty_runtime::models::ModelRegistry =
+        serde_json::from_str(include_str!("../../configs/examples/models.json"))
+            .expect("model example");
+    registry
+        .replace("0", desired.models)
+        .expect("seed model registry");
+    let store = Store::open(directory.path().join("native.sqlite")).expect("native store");
+    let mut configured = config(false, None);
+    configured.models_file = Some(registry_path);
+    let router = app(store, configured).expect("model API app");
+    assert_eq!(
+        request(&router, "GET", "/v1/models", None).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    let public = json(request(&router, "GET", "/v1/models", Some(TOKEN)).await).await;
+    assert_eq!(public["revision"], "1");
+    let rows = public["models"].as_array().expect("public models");
+    assert!(
+        rows.iter()
+            .all(|row| row.get("endpoint").is_none() && row.get("credential_file_ref").is_none())
+    );
+    let before = registry.read().expect("before update");
+    let mut models = public["models"].clone();
+    for row in models.as_array_mut().expect("rows") {
+        row.as_object_mut().expect("model").remove("usage_cost");
+    }
+    let payload = serde_json::json!({"expected_revision":"1","models":models});
+    let update = |token: Option<&str>, body: Value| {
+        let mut builder = Request::builder()
+            .method("PUT")
+            .uri("/v1/models")
+            .header(header::CONTENT_TYPE, "application/json");
+        if let Some(token) = token {
+            builder = builder.header(header::AUTHORIZATION, format!("Bearer {token}"));
+        }
+        builder
+            .body(Body::from(body.to_string()))
+            .expect("model update")
+    };
+    let denied = router
+        .clone()
+        .oneshot(update(None, payload.clone()))
+        .await
+        .expect("unauthenticated update");
+    assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
+    let saved = router
+        .clone()
+        .oneshot(update(Some(TOKEN), payload.clone()))
+        .await
+        .expect("save public rows");
+    assert_eq!(saved.status(), StatusCode::OK);
+    assert_eq!(
+        registry.read().expect("preserved connection config").models,
+        before.models
+    );
+    let stale = router
+        .clone()
+        .oneshot(update(Some(TOKEN), payload))
+        .await
+        .expect("stale update");
+    assert_eq!(stale.status(), StatusCode::CONFLICT);
 }

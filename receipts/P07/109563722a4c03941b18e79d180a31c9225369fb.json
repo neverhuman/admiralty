@@ -1,0 +1,85 @@
+{
+  "packet": "P07",
+  "state": "in_progress",
+  "owner": "local integration reviewer",
+  "base_sha": "cb7526c7745b7d6ae6b1446be64072f32b4f663c",
+  "head_sha": "109563722a4c03941b18e79d180a31c9225369fb",
+  "observed_utc": "2026-10-18T10:25:15+00:00",
+  "contract_version": "foundation/v1",
+  "changed_paths": [
+    "crates/admiralty-runtime/Cargo.toml",
+    "crates/admiralty-runtime/src/lib.rs",
+    "crates/admiralty-runtime/src/session/mod.rs"
+  ],
+  "sha256": {
+    "crates/admiralty-runtime/Cargo.toml": "88215d42c2f98c7a3fd7407781c3a210f495a24308d4dbc47ed20195a438162d",
+    "crates/admiralty-runtime/src/lib.rs": "deebd7711c5133840ea604c0064a8f0d1ef7c76c5ae8e0f3432f98f76a4a63fb",
+    "crates/admiralty-runtime/src/session/mod.rs": "798d3f4ac7d2ef3d7fe24ae97ce3a8798840d1c2cf491c4d71c53f1c3b3476b2"
+  },
+  "criteria": [
+    {
+      "name": "Implemented prototype compiles and passes offline invariants",
+      "result": "pass",
+      "evidence": [
+        "95 Rust tests pass across workspace; packet remains partial"
+      ]
+    },
+    {
+      "name": "Complete parent packet acceptance",
+      "result": "not_run",
+      "evidence": [
+        "Pipe prototype only; no independent daemon continuity, restart adoption, qualified cross-platform identity or escaped-process recovery. Native execution flag remains false."
+      ]
+    }
+  ],
+  "validation": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "-q"
+      ],
+      "cwd": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+      "env": {
+        "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target"
+      },
+      "exit_code": 0,
+      "artifact": null,
+      "observation": "Full output retained in implementation chat tool transcript; no standalone raw log saved."
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+      "env": {
+        "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target"
+      },
+      "exit_code": 0,
+      "artifact": null
+    }
+  ],
+  "environment": {
+    "platform": "macOS-15.7.5-arm64-arm-64bit-Mach-O",
+    "rust": "1.95.0",
+    "calls": "offline; no paid provider qualification"
+  },
+  "decisions": [
+    "Candidate import does not establish full packet acceptance.",
+    "No production scheduling or publication authority transferred."
+  ],
+  "limitations": [
+    "Pipe prototype only; no independent daemon continuity, restart adoption, qualified cross-platform identity or escaped-process recovery. Native execution flag remains false."
+  ],
+  "blockers": [],
+  "next_action": "Implement remaining packet steps and exact qualification before marking verified."
+}

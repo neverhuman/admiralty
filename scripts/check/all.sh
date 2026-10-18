@@ -14,6 +14,7 @@ run python3 -m unittest discover -s tests/legacy -v
 run python3 tests/fixtures/legacy/verify.py
 run cargo run -p admiralty-cli --locked -- contracts check
 run pnpm contracts:check
+run pnpm --dir packages/contracts test
 if [[ -f apps/dashboard/package.json ]]; then
   run pnpm --dir apps/dashboard typecheck
   run pnpm --dir apps/dashboard test --run

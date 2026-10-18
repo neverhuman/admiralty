@@ -196,6 +196,37 @@ class RolloutLoaderTests(unittest.TestCase):
             self.assertEqual(state["pr"]["url"], "")
             self.assertEqual(state["project"]["repository_url"], "")
 
+    def test_bounded_worktree_activity_survives_without_changing_packet_acceptance(self):
+        value = manifest()
+        value["lanes"] = [{"id": "worker", "status": "stale; reported integrated; owned scope files 2", "activity": {
+            "source": "owned_worktree_metadata/v1", "state": "observed", "observed_utc": NOW.isoformat(),
+            "head_sha": "a" * 40, "reported_head_matches": True, "owned_scope_files": 2,
+            "scanned_entries": 3, "scope_paths": 1, "skipped_entries": 0, "bounded": False,
+            "latest_owned_path_mtime_utc": NOW.isoformat(), "accepted": True, "command": "never execute",
+            "filenames": ["private.rs"], "assurance": "forged acceptance"}}]
+        state = self.load(value)
+        activity = state["lanes"][0]["activity"]
+        self.assertEqual(activity["owned_scope_files"], 2)
+        self.assertEqual(activity["head_sha"], "a" * 40)
+        self.assertNotIn("command", activity)
+        self.assertNotIn("accepted", activity)
+        self.assertNotIn("filenames", activity)
+        self.assertIn("no agent liveness", activity["assurance"])
+        self.assertEqual(state["packets"][0]["status"], "ready")
+        self.assertIn("stale", state["lanes"][0]["status"])
+
+    def test_malformed_worktree_activity_is_dropped_or_narrowed(self):
+        value = manifest()
+        base = {"source": "owned_worktree_metadata/v1", "state": "bounded", "observed_utc": NOW.isoformat(),
+                "owned_scope_files": 2001, "scanned_entries": True, "scope_paths": -1,
+                "head_sha": "not-a-head", "reported_head_matches": True, "bounded": "false"}
+        value["lanes"] = [{"id": "worker", "activity": base}]
+        activity = self.load(value)["lanes"][0]["activity"]
+        self.assertEqual(set(activity), {"source", "state", "observed_utc", "assurance"})
+        for key, bad in (("source", "unknown"), ("state", "accepted"), ("observed_utc", "bad")):
+            value["lanes"][0]["activity"] = {**base, key: bad}
+            self.assertNotIn("activity", self.load(value)["lanes"][0])
+
 
 @unittest.skipUnless(shutil.which("node"), "Node required for actual dashboard JavaScript checks")
 class RolloutUITests(unittest.TestCase):

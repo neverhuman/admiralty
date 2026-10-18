@@ -144,7 +144,10 @@ impl fmt::Display for UsageError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidCapacity(name) => write!(formatter, "{name} capacity must be positive"),
-            Self::EmptyIdentity(name) => write!(formatter, "{name} must not be empty"),
+            Self::EmptyIdentity(name) => write!(
+                formatter,
+                "{name} must be nonblank, control-free and at most 256 bytes"
+            ),
             Self::CapacityExceeded(kind) => write!(formatter, "{kind:?} capacity exceeded"),
             Self::EventIdCollision => {
                 formatter.write_str("source event ID was reused with changed payload")
@@ -244,12 +247,12 @@ impl UsageAccumulator {
         }
 
         let existing_segment = self.segment_state(&usage.session_id, &usage.segment_id);
-        if let Some(segment) = existing_segment {
-            if segment.model != usage.model {
-                return Err(UsageError::ModelChanged {
-                    segment_id: usage.segment_id,
-                });
-            }
+        if let Some(segment) = existing_segment
+            && segment.model != usage.model
+        {
+            return Err(UsageError::ModelChanged {
+                segment_id: usage.segment_id,
+            });
         }
 
         let prior_counter = existing_segment
@@ -321,7 +324,7 @@ impl UsageAccumulator {
 }
 
 fn validate_identity(name: &'static str, value: &str) -> Result<(), UsageError> {
-    if value.is_empty() {
+    if value.trim().is_empty() || value.len() > 256 || value.chars().any(char::is_control) {
         return Err(UsageError::EmptyIdentity(name));
     }
     Ok(())
@@ -381,7 +384,7 @@ mod tests {
     };
 
     fn accumulator() -> UsageAccumulator {
-        UsageAccumulator::new(UsageLimits::new(4, 8, 32)).unwrap()
+        UsageAccumulator::new(UsageLimits::new(4, 8, 32)).expect("usage fixture operation succeeds")
     }
 
     fn usage(
@@ -414,8 +417,16 @@ mod tests {
             Some(12),
             Some(10),
         );
-        assert_eq!(accumulator.observe(first.clone()).unwrap().delta, Some(2));
-        let replay = accumulator.observe(first).unwrap();
+        assert_eq!(
+            accumulator
+                .observe(first.clone())
+                .expect("usage fixture operation succeeds")
+                .delta,
+            Some(2)
+        );
+        let replay = accumulator
+            .observe(first)
+            .expect("usage fixture operation succeeds");
         assert!(replay.duplicate);
         assert_eq!(replay.delta, None);
         let changed = usage(
@@ -444,7 +455,7 @@ mod tests {
                 Some(50),
                 Some(40),
             ))
-            .unwrap();
+            .expect("usage fixture operation succeeds");
         assert_eq!(first.delta, Some(10));
         assert_eq!(first.segment_total, Some(10));
         assert!(matches!(
@@ -460,7 +471,7 @@ mod tests {
                 Some(1),
                 Some(0),
             ))
-            .unwrap();
+            .expect("usage fixture operation succeeds");
         assert_eq!(next.delta, Some(1));
     }
 
@@ -476,7 +487,7 @@ mod tests {
                 Some(1),
                 Some(0),
             ))
-            .unwrap();
+            .expect("usage fixture operation succeeds");
         assert!(matches!(
             accumulator.observe(usage(
                 "e2",
@@ -495,15 +506,15 @@ mod tests {
         let mut accumulator = accumulator();
         let unknown = accumulator
             .observe(usage("e1", "s1", "m1", CounterKind::Input, None, None))
-            .unwrap();
+            .expect("usage fixture operation succeeds");
         assert_eq!(unknown.delta, None);
         let opening = accumulator
             .observe(usage("e2", "s1", "m1", CounterKind::Input, Some(10), None))
-            .unwrap();
+            .expect("usage fixture operation succeeds");
         assert_eq!(opening.delta, None);
         let increment = accumulator
             .observe(usage("e3", "s1", "m1", CounterKind::Input, Some(13), None))
-            .unwrap();
+            .expect("usage fixture operation succeeds");
         assert_eq!(increment.delta, Some(3));
         assert_eq!(increment.segment_total, None);
     }
@@ -529,10 +540,11 @@ mod tests {
             UsageAccumulator::new(UsageLimits::new(0, 1, 1)).err(),
             Some(UsageError::InvalidCapacity("sessions"))
         );
-        let mut accumulator = UsageAccumulator::new(UsageLimits::new(1, 1, 1)).unwrap();
+        let mut accumulator = UsageAccumulator::new(UsageLimits::new(1, 1, 1))
+            .expect("usage fixture operation succeeds");
         accumulator
             .observe(usage("e1", "s1", "m1", CounterKind::Input, None, None))
-            .unwrap();
+            .expect("usage fixture operation succeeds");
         assert_eq!(
             accumulator.observe(usage("e2", "s1", "m1", CounterKind::Input, None, None)),
             Err(UsageError::CapacityExceeded(CapacityKind::SourceEvents))
@@ -562,7 +574,7 @@ mod tests {
                 Some(u64::MAX),
                 Some(0),
             ))
-            .unwrap();
+            .expect("usage fixture operation succeeds");
         accumulator
             .observe(usage(
                 "e2",
@@ -572,8 +584,10 @@ mod tests {
                 Some(7),
                 Some(0),
             ))
-            .unwrap();
-        let segment = accumulator.segment("session-1", "s1").unwrap();
+            .expect("usage fixture operation succeeds");
+        let segment = accumulator
+            .segment("session-1", "s1")
+            .expect("usage fixture operation succeeds");
         assert_eq!(
             segment.counter_kinds().collect::<Vec<_>>(),
             vec![CounterKind::CacheRead, CounterKind::CacheWrite]
@@ -581,13 +595,16 @@ mod tests {
         assert_eq!(
             segment
                 .counter(CounterKind::CacheRead)
-                .unwrap()
+                .expect("usage fixture operation succeeds")
                 .total_decimal()
                 .as_deref(),
             Some("18446744073709551615")
         );
         assert_eq!(
-            segment.counter(CounterKind::CacheWrite).unwrap().total,
+            segment
+                .counter(CounterKind::CacheWrite)
+                .expect("usage fixture operation succeeds")
+                .total,
             Some(7)
         );
     }

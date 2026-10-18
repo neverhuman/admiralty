@@ -4,9 +4,12 @@
   "private": true,
   "type": "module",
   "types": "./index.ts",
+  "scripts": {"test": "node --test runtime.test.mjs"},
   "exports": {
     ".": {
-      "types": "./index.ts"
+      "types": "./index.ts",
+      "import": "./generated/validators.mjs",
+      "default": "./generated/validators.mjs"
     },
     "./task-contract": {
       "types": "./generated/task-contract.ts"
@@ -16,6 +19,11 @@
     },
     "./domain-event": {
       "types": "./generated/domain-event.ts"
+    },
+    "./validators": {
+      "types": "./generated/validators.d.mts",
+      "import": "./generated/validators.mjs",
+      "default": "./generated/validators.mjs"
     }
   }
 }

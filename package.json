@@ -5,9 +5,11 @@
   "packageManager": "pnpm@11.15.1",
   "scripts": {
     "contracts:generate": "node scripts/contracts/generate.mjs",
-    "contracts:check": "node scripts/contracts/generate.mjs --check"
+    "contracts:check": "node scripts/contracts/generate.mjs --check",
+    "demo": "bash scripts/dev/demo.sh"
   },
   "devDependencies": {
-    "json-schema-to-typescript": "16.0.0"
+    "json-schema-to-typescript": "16.0.0",
+    "ajv": "8.20.0"
   }
 }

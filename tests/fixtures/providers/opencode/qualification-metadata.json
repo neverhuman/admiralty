@@ -1,0 +1,27 @@
+{
+  "evidence_kind": "observed_real_task_metadata",
+  "qualification_id": "admiralty-qualification-45ec335abb1f457a",
+  "opencode_version": "1.19.3",
+  "provider": "ornith",
+  "model": "Ornith-1.5-35B-A3B",
+  "helper_exit": 0,
+  "elapsed_seconds": 97.565,
+  "independent_verifier_exit": 1,
+  "oracle_methods": 8,
+  "oracle_subcase_errors": 15,
+  "oracle_unchanged": true,
+  "candidate_scope_valid": true,
+  "candidate_changed": false,
+  "tool_events": 5,
+  "malformed_json_events": 0,
+  "classification": "blocked_checkout_permission_workflow",
+  "native_execution_qualified": false,
+  "task_accepted": false,
+  "limitations": [
+    "Unborn HEAD Git lookup failed",
+    "External-directory read requested permission and was rejected",
+    "Original implementation stub remained unchanged",
+    "Usage aggregation and billing semantics remain unqualified",
+    "No throughput, restart, fleet or isolation qualification"
+  ]
+}
