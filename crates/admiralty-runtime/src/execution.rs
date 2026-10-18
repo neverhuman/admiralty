@@ -8,7 +8,7 @@ use crate::{
     session::{CaptureState, LaunchSpec, SessionError, SessionHost, SessionStatus},
     workspace::registry::{ValidatedWorkspace, WorkspaceSpec},
 };
-use std::{io, path::PathBuf};
+use std::{collections::BTreeMap, io, path::PathBuf, sync::Mutex};
 use thiserror::Error;
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
@@ -19,6 +19,9 @@ pub struct ExecutionIdentity {
     pub attempt_id: String,
     pub contract_digest: String,
     pub context_digest: String,
+    pub candidate_digest: String,
+    pub policy_digest: String,
+    pub evidence_source: String,
     pub workspace: PathBuf,
     pub provider: String,
     pub model: String,
@@ -46,6 +49,9 @@ impl PreparedCommand {
                 &identity.attempt_id,
                 &identity.contract_digest,
                 &identity.context_digest,
+                &identity.candidate_digest,
+                &identity.policy_digest,
+                &identity.evidence_source,
             ]
             .iter()
             .any(|s| s.trim().is_empty())
@@ -54,6 +60,14 @@ impl PreparedCommand {
         }
         crate::session::validate_launch_envelope(&spec)?;
         Ok(Self { identity, spec })
+    }
+
+    pub fn identity(&self) -> &ExecutionIdentity {
+        &self.identity
+    }
+
+    pub fn run_id(&self) -> &str {
+        &self.spec.run_id
     }
 }
 
@@ -87,6 +101,10 @@ pub struct AdmissionProof {
 pub enum ExecutionError {
     #[error("execution identity does not match the prepared command")]
     InvalidBinding,
+    #[error("no in-process launch identity exists; prior runs cannot be adopted")]
+    UnknownIdentity,
+    #[error("execution adapter state is poisoned")]
+    Internal,
     #[error("workspace validation failed: {0}")]
     Workspace(String),
     #[error("current execution admission denied: {0}")]
@@ -112,10 +130,19 @@ pub enum ExecutionOutcome {
     },
 }
 
+/// Runtime evidence is bound to the candidate, policy, source, and task identity.
+/// It never represents trusted-check success or lifecycle acceptance.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RuntimeEvidence {
+    pub identity: ExecutionIdentity,
+    pub outcome: ExecutionOutcome,
+}
+
 pub struct ExecutionAdapter<V> {
     host: SessionHost,
     validator: V,
     max_output_bytes: usize,
+    launched: Mutex<BTreeMap<String, ExecutionIdentity>>,
 }
 impl<V: ExecutionAdmissionValidator> ExecutionAdapter<V> {
     pub fn new(validator: V, max_output_bytes: usize) -> Self {
@@ -123,6 +150,7 @@ impl<V: ExecutionAdmissionValidator> ExecutionAdapter<V> {
             host: SessionHost::new(),
             validator,
             max_output_bytes,
+            launched: Mutex::new(BTreeMap::new()),
         }
     }
 
@@ -166,7 +194,9 @@ impl<V: ExecutionAdmissionValidator> ExecutionAdapter<V> {
         {
             return Err(ExecutionError::InvalidBinding);
         }
+        let mut launched = self.launched.lock().map_err(|_| ExecutionError::Internal)?;
         self.host.launch(command.spec.clone())?;
+        launched.insert(command.identity.run_id.clone(), command.identity.clone());
         Ok(())
     }
 
@@ -188,14 +218,24 @@ impl<V: ExecutionAdmissionValidator> ExecutionAdapter<V> {
 
     /// Closes prepared stdin, reaps the child, and returns an execution candidate;
     /// task acceptance remains a separate trusted-check decision.
-    pub fn finish(&self, run_id: &str) -> Result<ExecutionOutcome, ExecutionError> {
+    pub fn finish(&self, run_id: &str) -> Result<RuntimeEvidence, ExecutionError> {
+        let identity = self
+            .launched
+            .lock()
+            .map_err(|_| ExecutionError::Internal)?
+            .get(run_id)
+            .cloned()
+            .ok_or(ExecutionError::UnknownIdentity)?;
         self.host.close_input(run_id)?;
         let exit = self.host.wait(run_id)?;
         let mut status = self.host.status(run_id)?;
         if status.capture_state == CaptureState::Capturing {
             status = self.host.status(run_id)?;
         }
-        self.outcome(run_id, &status, exit.code(), exit.success())
+        Ok(RuntimeEvidence {
+            identity,
+            outcome: self.outcome(run_id, &status, exit.code(), exit.success())?,
+        })
     }
 
     fn outcome(
@@ -377,6 +417,9 @@ mod tests {
             attempt_id: "a".into(),
             contract_digest: "contract".into(),
             context_digest: "context".into(),
+            candidate_digest: "candidate".into(),
+            policy_digest: "policy".into(),
+            evidence_source: "authority".into(),
             workspace: PathBuf::from("/workspace"),
             provider: "codex".into(),
             model: "m".into(),
