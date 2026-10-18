@@ -21,6 +21,9 @@ class Watch(unittest.TestCase):
         sc.idle_watch({'jopedime_agy': 'x'}, {'jopedime_agy': 'jopedime'}, {}, {}, NOW, hc=lambda n, p: AGY_BUSY)
         sc.idle_watch({'jopedime_flywheel': 'x'}, {'jopedime_flywheel': 'jopedime'}, {}, {}, NOW, hc=lambda n, p: CLAUDE_IDLE)
         self.assertEqual(codes(), [])
+    def test_claude_background_monitor_counts_as_busy(self):
+        txt = " The five runs are in progress.\n Brewed for 39s · done 3:46 PM · 1 monitor still running\n >\n  auto mode on · 1 monitor · ↓ to manage\n"
+        self.assertTrue(sc.tail_busy(txt)); self.assertFalse(sc.tail_busy(CLAUDE_IDLE))
     def test_parked_and_positional_lane_lines_are_managed(self):
         scs = {'captains': {'jopedime': {'state': 'jopedime_flywheel working on spec', 'pr': '1061448.jopedime_flywheel ETA 15:05Z'}}}
         m = sc.managed_screens(scs, {'jopedime': {'jopedime_agy': 'LANE | 2830191.jopedime_agy | X | active'}})
