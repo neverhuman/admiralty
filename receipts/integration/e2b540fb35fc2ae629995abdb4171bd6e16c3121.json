@@ -1,0 +1,186 @@
+{
+  "head_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121",
+  "observed_utc": "2026-10-18T12:42:43.589864+00:00",
+  "state": "partial_review",
+  "rust_checks_passed": 441,
+  "rust_compile_fail_doctests_included": 2,
+  "strict_workspace_clippy": "pass",
+  "formatting": "pass",
+  "rust_validation": {
+    "source_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121",
+    "argv": [
+      "cargo",
+      "test",
+      "--workspace",
+      "--locked",
+      "-q"
+    ],
+    "started_utc": "2026-10-18T12:40:06.197185+00:00",
+    "duration_s": 20.323,
+    "exit_code": 0,
+    "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/e2b540fb35fc2ae629995abdb4171bd6e16c3121/rust.log",
+    "log_sha256": "91e7f2964760c4766f5a2e3c29141dd6725243df4db5b64669a8dbd264c1f294",
+    "checks_passed": 441
+  },
+  "clippy_validation": {
+    "source_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121",
+    "argv": [
+      "cargo",
+      "clippy",
+      "--workspace",
+      "--all-targets",
+      "--locked",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "started_utc": "2026-10-18T12:40:06.197208+00:00",
+    "duration_s": 3.356,
+    "exit_code": 0,
+    "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/e2b540fb35fc2ae629995abdb4171bd6e16c3121/clippy.log",
+    "log_sha256": "9de1ebd6a6ab9b18087a75fef353987762bcc3d8a5919821803c755fa5d75607"
+  },
+  "react_tests_passed": 75,
+  "react_typecheck": "pass",
+  "react_build": "pass",
+  "react_source_revision": "0b8b8cb2c0a5d62b49a3af995280cbb3128fae9f",
+  "react_source_note": "No dashboard source changes between deployed/tested UI revision and this source commit. Live browser confirms observed Gemini 4 Argon manager selection.",
+  "legacy_python_tests_passed": 73,
+  "legacy_python_tests_skipped_platform": 1,
+  "contract_runtime_tests_passed": 5,
+  "contract_drift": "pass",
+  "rust_schema_drift": "pass",
+  "source_fixture_verification": {
+    "source_files": 37,
+    "synthetic_cases": 11,
+    "result": "pass"
+  },
+  "package_self_tests_passed": 10,
+  "smoke_harness_self_tests_passed": 18,
+  "actual_binary_smoke_checks_passed": 15,
+  "binary_smoke": {
+    "acceptance": false,
+    "binaries": {
+      "admiralty_sha256": "sha256:bfa23ac7c778f568e1d2ce2b49d976ab8cd1e992f57ffb79bae3b72f392fa397",
+      "admiraltyd_sha256": "sha256:830e87aef21146f613f1ca8825afbc7ff88e7d3231e85ced1ebc67b80ad5f847"
+    },
+    "checks": [
+      {
+        "duration_ms": 240,
+        "name": "real_server_startup",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 3,
+        "name": "real_health_native_unqualified",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 0,
+        "name": "unauthorized_real_fleet_rejected",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 0,
+        "name": "unauthorized_real_models_rejected",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 0,
+        "name": "model_auth_precedes_body_validation",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "authorized_real_fleet",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "authorized_models_policy",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "model_selection_proposal_only",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 249,
+        "name": "demo_startup",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "demo_fleet_simulated",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 1,
+        "name": "demo_no_models",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 0,
+        "name": "demo_no_model_policy_write",
+        "state": "pass"
+      },
+      {
+        "duration_ms": 0,
+        "name": "demo_no_legacy_policy",
+        "state": "pass"
+      },
+      {
+        "name": "doctor_read_only_capability",
+        "state": "pass"
+      },
+      {
+        "name": "demo_cli_has_no_real_policy_flags",
+        "state": "pass"
+      }
+    ],
+    "cleanup": {
+      "admiraltyd": "terminated",
+      "demo": "terminated"
+    },
+    "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+    "duration_ms": 526,
+    "fleet_rollout_closure": false,
+    "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+    "started_at_utc": "2026-10-18T12:40:44.854678+00:00",
+    "status": "pass",
+    "synthetic": false,
+    "source_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121",
+    "log_sha256": "6d5028eb908d9602e8241701c7aaaff2cf7829d871f93ff3942f75d8549ad017",
+    "build_receipt": "target/quality/e2b540fb35fc2ae629995abdb4171bd6e16c3121/build.json"
+  },
+  "linux_store_and_smoke": {
+    "source_sha": "5e1bc679b911dedda8c61a956be6a43d468f8be2",
+    "store_checks_passed": 62,
+    "smoke_harness_checks_passed": 18,
+    "receipt_sha256": "6b5c506ba176ff774f3b761d75fb51650fee6b861a4aa79c9f1ad2f064082a30"
+  },
+  "linux_runtime": {
+    "source_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121",
+    "checks_passed": 125,
+    "failed": 0,
+    "receipt_sha256": "f56d3fd19707e6d965a3813bd5a058953b6750a3e9d0e171ae1fab0db2a59ceb",
+    "raw_log_sha256": "7fd6099349126d21b977b291fb44376c4e00ce6d88d4cd0be90358551b40ad9e"
+  },
+  "retained_linux_failure": {
+    "source_sha": "997513f6a0ad832b810864807fdc961070dc0974",
+    "passed_library_checks": 117,
+    "failed_library_checks": 4,
+    "later_targets": "not reached",
+    "receipt_sha256": "2b06fedffe45c846475dcbe54fcb5208d7e8ca4d735ff882a280edad52706beb",
+    "resolution": "Native process-group signal fix; all former failures pass at the current source."
+  },
+  "github_ci": "configured; last observed queued, no hosted success claimed",
+  "live_canary": {
+    "binary_revision": "17c7a76d626f4870710bf61c2fe30aeed4a6b9e4",
+    "react_revision": "0b8b8cb2c0a5d62b49a3af995280cbb3128fae9f",
+    "native_execution_qualified": false
+  },
+  "native_execution_qualified": false,
+  "all_packets_accepted": false
+}

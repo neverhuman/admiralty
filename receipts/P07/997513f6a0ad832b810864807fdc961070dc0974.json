@@ -1,0 +1,93 @@
+{
+  "packet": "P07",
+  "state": "in_progress",
+  "owner": "local integration reviewer",
+  "base_sha": "5e1bc679b911dedda8c61a956be6a43d468f8be2",
+  "head_sha": "997513f6a0ad832b810864807fdc961070dc0974",
+  "observed_utc": "2026-10-18T12:36:41.463594+00:00",
+  "contract_version": "integration-follow-up/v1",
+  "changed_paths": [
+    "crates/admiralty-runtime/src/session/mod.rs",
+    "crates/admiralty-runtime/src/session/daemon.rs",
+    "crates/admiralty-runtime/src/bin/admiralty-session.rs",
+    "docs/architecture/session-daemon.md"
+  ],
+  "sha256": {
+    "crates/admiralty-runtime/src/session/mod.rs": "dc3dcee4cbe2c0974fad1a50c07b39764e13904f9224c8973470ab59f9686b22",
+    "crates/admiralty-runtime/src/session/daemon.rs": "8158764aeffa09dd618c280ab84eccfaede5a661645b3bff22ed0785022f4597",
+    "crates/admiralty-runtime/src/bin/admiralty-session.rs": "a7d631eed4069eff73d2a1a0817b4fee2607832c244568772c5409923ddb94b4",
+    "docs/architecture/session-daemon.md": "05300981805a18fa5b4175cb66ae5f23dae5487b38274d73c653a74a10bb73e7"
+  },
+  "criteria": [
+    {
+      "name": "Private opt-in Unix-socket host retains owned child/journals across viewer disconnect",
+      "result": "pass"
+    },
+    {
+      "name": "Shared escaped launch envelope rejects overflow before reservation",
+      "result": "pass"
+    },
+    {
+      "name": "Explicit EOF fencing, nonblocking capture state and fixed final byte watermark",
+      "result": "pass"
+    },
+    {
+      "name": "Complete parent packet acceptance",
+      "result": "not_run",
+      "evidence": [
+        "No daemon restart adoption, escaped-descendant containment, domain-authenticated activation or native execution qualification"
+      ]
+    }
+  ],
+  "validation": [
+    {
+      "source_sha": "997513f6a0ad832b810864807fdc961070dc0974",
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "-q"
+      ],
+      "started_utc": "2026-10-18T12:35:07.973749+00:00",
+      "duration_s": 19.554,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/997513f6a0ad832b810864807fdc961070dc0974/rust.log",
+      "log_sha256": "041ae5ac3dc1ab6a3bad9689a4ae0f70786b7d09aabeb0404121552c979f65b7",
+      "checks_passed": 439
+    },
+    {
+      "source_sha": "997513f6a0ad832b810864807fdc961070dc0974",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started_utc": "2026-10-18T12:35:07.973779+00:00",
+      "duration_s": 3.896,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/997513f6a0ad832b810864807fdc961070dc0974/clippy.log",
+      "log_sha256": "7dc5739fbcb2baf3a09734318a4d59f3f6337ebdb45ff174be70550f5e8292ca"
+    }
+  ],
+  "environment": {
+    "platform": "macOS-15.7.5-arm64-arm-64bit-Mach-O",
+    "rust": "1.95.0",
+    "calls": "offline/fake-process except read-only live UI observation; no paid inference"
+  },
+  "limitations": [
+    "No daemon restart adoption, escaped-descendant containment, domain-authenticated activation or native execution qualification"
+  ],
+  "accepted": false,
+  "native_execution_qualified": false,
+  "next_action": "Complete explicit admission/authority and real-path qualification gates before activation or acceptance.",
+  "blockers": [
+    "Exact Linux runtime gate at this source: 117 library tests passed and four cleanup EOF tests failed; later targets not reached. Native group-signal correction pending."
+  ],
+  "linux_failure_receipt_sha256": "2b06fedffe45c846475dcbe54fcb5208d7e8ca4d735ff882a280edad52706beb"
+}

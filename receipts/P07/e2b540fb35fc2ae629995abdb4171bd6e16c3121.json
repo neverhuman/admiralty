@@ -1,0 +1,105 @@
+{
+  "packet": "P07",
+  "state": "in_progress",
+  "owner": "local integration reviewer",
+  "base_sha": "997513f6a0ad832b810864807fdc961070dc0974",
+  "head_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121",
+  "observed_utc": "2026-10-18T12:41:26.128552+00:00",
+  "contract_version": "integration-follow-up/v1",
+  "changed_paths": [
+    "crates/admiralty-runtime/src/session/mod.rs",
+    "crates/admiralty-runtime/src/session/daemon.rs",
+    "crates/admiralty-runtime/src/bin/admiralty-session.rs",
+    "docs/architecture/session-daemon.md"
+  ],
+  "sha256": {
+    "crates/admiralty-runtime/src/session/mod.rs": "57f88bd1409af5be6a1c4e18d852493042459aa36553f8b16f09c0d8f234f21e",
+    "crates/admiralty-runtime/src/session/daemon.rs": "8158764aeffa09dd618c280ab84eccfaede5a661645b3bff22ed0785022f4597",
+    "crates/admiralty-runtime/src/bin/admiralty-session.rs": "a7d631eed4069eff73d2a1a0817b4fee2607832c244568772c5409923ddb94b4",
+    "docs/architecture/session-daemon.md": "902864753782c0914ce69ee23f7500e8b8e719d257bd74bcaa53eec48c78182d"
+  },
+  "criteria": [
+    {
+      "name": "Private opt-in Unix-socket host retains owned child/journals across viewer disconnect",
+      "result": "pass"
+    },
+    {
+      "name": "Shared escaped launch envelope rejects overflow before reservation",
+      "result": "pass"
+    },
+    {
+      "name": "Explicit EOF fencing, nonblocking capture state and fixed final byte watermark",
+      "result": "pass"
+    },
+    {
+      "name": "Native guarded Unix process-group cleanup closes TERM-ignoring descendant pipes within unchanged deadlines",
+      "result": "pass",
+      "evidence": [
+        "Root Mac combined441 checks; exact-source Linux runtime125 checks all pass"
+      ]
+    },
+    {
+      "name": "Complete parent packet acceptance",
+      "result": "not_run",
+      "evidence": [
+        "No daemon restart adoption, escaped-descendant containment, domain-authenticated activation or native execution qualification"
+      ]
+    }
+  ],
+  "validation": [
+    {
+      "source_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121",
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "-q"
+      ],
+      "started_utc": "2026-10-18T12:40:06.197185+00:00",
+      "duration_s": 20.323,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/e2b540fb35fc2ae629995abdb4171bd6e16c3121/rust.log",
+      "log_sha256": "91e7f2964760c4766f5a2e3c29141dd6725243df4db5b64669a8dbd264c1f294",
+      "checks_passed": 441
+    },
+    {
+      "source_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started_utc": "2026-10-18T12:40:06.197208+00:00",
+      "duration_s": 3.356,
+      "exit_code": 0,
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/e2b540fb35fc2ae629995abdb4171bd6e16c3121/clippy.log",
+      "log_sha256": "9de1ebd6a6ab9b18087a75fef353987762bcc3d8a5919821803c755fa5d75607"
+    }
+  ],
+  "environment": {
+    "platform": "macOS-15.7.5-arm64-arm-64bit-Mach-O",
+    "rust": "1.95.0",
+    "calls": "offline/fake-process except read-only live UI observation; no paid inference"
+  },
+  "limitations": [
+    "No daemon restart adoption, escaped-descendant containment, domain-authenticated activation or native execution qualification"
+  ],
+  "accepted": false,
+  "native_execution_qualified": false,
+  "next_action": "Complete explicit admission/authority and real-path qualification gates before activation or acceptance.",
+  "blockers": [],
+  "linux_runtime": {
+    "source_sha": "e2b540fb35fc2ae629995abdb4171bd6e16c3121",
+    "checks_passed": 125,
+    "failed": 0,
+    "receipt_sha256": "f56d3fd19707e6d965a3813bd5a058953b6750a3e9d0e171ae1fab0db2a59ceb",
+    "raw_log_sha256": "7fd6099349126d21b977b291fb44376c4e00ce6d88d4cd0be90358551b40ad9e",
+    "qualification": "offline/fake-process runtime tests only; no native activation"
+  }
+}
