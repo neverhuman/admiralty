@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 //! Round 12 red-team qualification for receipt integrity and fail-closed publication.
 
 use admiralty_core::{
