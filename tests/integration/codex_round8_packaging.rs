@@ -241,3 +241,73 @@ fn p28_round9_item3_golden_webhook_hitl_qualification() {
         Err(admiralty_core::economics::EconomicsError::Invalid(_))
     ));
 }
+
+#[test]
+fn p28_round10_item3_workspace_gate_audit() {
+    // P28: reverse delivery order for the fixed preregistered cohort must not
+    // change its seeded assignment.
+    let control = VariantId::new("control").expect("control variant");
+    let treatment = VariantId::new("treatment").expect("treatment variant");
+    let cluster_a = ClusterId::new("cluster-a").expect("cluster A");
+    let cluster_b = ClusterId::new("cluster-b").expect("cluster B");
+    let cohort = vec![
+        ClusterMember {
+            root_id: RootId::new("root-a").expect("root A"),
+            cluster_id: cluster_a.clone(),
+        },
+        ClusterMember {
+            root_id: RootId::new("root-b").expect("root B"),
+            cluster_id: cluster_b.clone(),
+        },
+    ];
+    let spec = TrialSpec {
+        trial_id: TrialId::new("round10-item2").expect("trial ID"),
+        project_id: ProjectId::new("round10").expect("project ID"),
+        scope_root_id: RootId::new("scope-root").expect("scope root"),
+        scope_task_id: TaskId::new("scope-task").expect("scope task"),
+        contract_revision: 1,
+        contract_digest: digest('a'),
+        fixed_cohort: cohort.clone(),
+        immutable_bundle_digests: vec![digest('b')],
+        protected_oracle_digest: digest('c'),
+        pre_registered_seed: "golden-seed-round10".into(),
+        decision_tick: DecimalU64::new(100),
+        cluster_assignments: vec![
+            ClusterAssignment {
+                cluster_id: cluster_a,
+                variants: vec![control.clone(), treatment.clone()],
+            },
+            ClusterAssignment {
+                cluster_id: cluster_b,
+                variants: vec![control, treatment],
+            },
+        ],
+        required_maturity: DecimalU64::new(2),
+        planned_looks: DecimalU64::new(1),
+    };
+    let expected = assign_trial(&spec, &cohort, 1, 2).expect("seeded cohort assignment");
+    let mut replay_cohort = cohort.clone();
+    replay_cohort.reverse();
+    assert_eq!(
+        expected,
+        assign_trial(&spec, &replay_cohort, 1, 2).expect("replay reordered delivery")
+    );
+
+    // P25: a present but negative fencing observation cannot authorize resume.
+    let (manifest, observation, mut fence) = recovery_fixture::valid_recovery_evidence();
+    fence.old_executor_fenced = Some(false);
+    let proposal =
+        plan_recovery(&manifest, &observation, Some(&fence)).expect("blocked recovery proposal");
+    assert!(!proposal.resume_proposed);
+    assert!(proposal.blockers.contains(&Blocker::OldExecutorNotFenced));
+
+    // P26: omitted costs stay explicitly unknown, and malformed exact counters
+    // cannot be normalized into a plausible economic result.
+    let absent_cost = ObservedAmount::Unknown {
+        reason: "golden webhook omitted cost".into(),
+    };
+    let value = serde_json::to_value(absent_cost).expect("serialize unknown amount");
+    assert_eq!(value["kind"], "unknown");
+    assert_eq!(value["reason"], "golden webhook omitted cost");
+    assert!(DecimalU128::parse("340282366920938463463374607431768211456").is_err());
+}
