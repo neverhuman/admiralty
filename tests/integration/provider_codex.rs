@@ -19,6 +19,7 @@ use admiralty_testkit::{
     faults::{FaultEffect, FaultPlan, FaultRule},
     forge::{Fault, ForgeKey, ForgeOutcome, ForgeReply, ForgeRequest, ForgeSimulator},
 };
+use sha2::{Digest, Sha256};
 use std::{fs, path::PathBuf};
 
 #[path = "support/recovery.rs"]
@@ -540,4 +541,86 @@ fn p24_p29_round11_item4_final_validation_gate() {
     assert!(!rejected.execution_granted);
     assert!(!rejected.publication_granted);
     assert!(!rejected.authority_granted);
+}
+
+#[test]
+fn p24_p29_round12_item5_redteam_audit_gate() {
+    // The receipt is bound to exact log bytes and exact packet scope. Missing,
+    // changed, or promoted fields must fail the audit.
+    let log = b"round12 deterministic P24/P29 qualification log\n";
+    let digest = format!("{:x}", Sha256::digest(log));
+    let receipt = serde_json::json!({
+        "packet_ids": ["P24", "P29"],
+        "status": "passed",
+        "log_sha256": digest,
+        "execution_granted": false,
+        "publication_granted": false,
+        "authority_granted": false
+    });
+    let verify_receipt = |value: &serde_json::Value, bytes: &[u8]| {
+        value["packet_ids"] == serde_json::json!(["P24", "P29"])
+            && value["status"] == "passed"
+            && value["log_sha256"] == format!("{:x}", Sha256::digest(bytes))
+            && value["execution_granted"] == false
+            && value["publication_granted"] == false
+            && value["authority_granted"] == false
+    };
+    assert!(verify_receipt(&receipt, log));
+    assert!(!verify_receipt(&receipt, b"tampered log bytes\n"));
+
+    let mut forged_packet_scope = receipt.clone();
+    forged_packet_scope["packet_ids"] = serde_json::json!(["P24", "P30"]);
+    assert!(!verify_receipt(&forged_packet_scope, log));
+    let mut forged_authority = receipt.clone();
+    forged_authority["authority_granted"] = serde_json::Value::Bool(true);
+    assert!(!verify_receipt(&forged_authority, log));
+    let mut missing_digest = receipt;
+    missing_digest
+        .as_object_mut()
+        .expect("receipt object")
+        .remove("log_sha256");
+    assert!(!verify_receipt(&missing_digest, log));
+
+    // P29 rejects ownership outside its declared workspace scope.
+    let temp = tempfile::tempdir().expect("workspace audit fixture");
+    let workspace = temp.path().join("workspace");
+    fs::create_dir_all(workspace.join("src")).expect("source fixture");
+    fs::create_dir_all(workspace.join(".git")).expect("Git metadata fixture");
+    let registered = WorkspaceSpec {
+        node_id: NodeRef::new("round12-node").expect("node fixture"),
+        root_id: RootId::new("round12-root").expect("root fixture"),
+        project_id: ProjectId::new("round12-project").expect("project fixture"),
+        workspace: fs::canonicalize(&workspace).expect("canonical workspace"),
+        owned_paths: vec![PathBuf::from("src")],
+        forbidden_paths: vec![PathBuf::from(".git")],
+    }
+    .validate()
+    .expect("registered workspace validates");
+    assert_eq!(registered.custody, Custody::RegisteredOnly);
+    assert!(registered.owns(std::path::Path::new("src/lib.rs")));
+    assert!(!registered.owns(std::path::Path::new(".git/config")));
+    assert!(!registered.owns(std::path::Path::new("../outside")));
+
+    // P24 unknown capacity remains a safe rejection with no grants.
+    let mut unknown_capacity = round9_placement_offer();
+    unknown_capacity.capacity.value = Known::Unknown {
+        reason: "red-team unknown capacity".into(),
+    };
+    let proposal = propose_placement(
+        &round9_placement_request(),
+        &[unknown_capacity],
+        &PlacementPolicy {
+            max_observation_age: d(10),
+            maximum_pressure: d(5),
+            minimum_spool_reserve: d(2),
+            disconnected_continuation_only: true,
+            ownership_revision: Some(d(1)),
+        },
+        10,
+    )
+    .expect("unknown capacity is safely rejected");
+    assert!(proposal.candidates.is_empty());
+    assert!(!proposal.execution_granted);
+    assert!(!proposal.publication_granted);
+    assert!(!proposal.authority_granted);
 }
