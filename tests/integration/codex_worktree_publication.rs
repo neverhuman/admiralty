@@ -15,9 +15,9 @@ use admiralty_core::{
         PlacementRequest, propose_placement,
     },
     publication::{
-        ApprovalEvidence, CheckEvidence, CheckState, DecimalU64, IntentStage, PublicationBlock,
-        PublicationIntent, PublicationScope, PublicationSnapshot, ReconciliationReceipt,
-        propose_publication, publication_request_digest, reduce_publication_intent,
+        ApprovalEvidence, CheckEvidence, CheckState, DecimalU64, PublicationBlock,
+        PublicationIntent, PublicationScope, PublicationSnapshot,
+        propose_publication, publication_request_digest,
     },
 };
 use admiralty_runtime::{
