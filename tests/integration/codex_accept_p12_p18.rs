@@ -10,10 +10,13 @@ use axum::{
     body::{Body, to_bytes},
     http::{Request, StatusCode},
 };
+use futures_util::StreamExt;
 use serde_json::Value;
 use std::net::SocketAddr;
 use tempfile::TempDir;
 use tower::ServiceExt;
+
+const ROUND11_TOKEN: &str = "round-eleven-private-read-token-at-least-32-chars";
 
 fn private_directory() -> TempDir {
     let mut builder = tempfile::Builder::new();
@@ -321,4 +324,123 @@ fn p12_p18_round9_item3_doctor_repair_idempotence_qualification() {
         admiralty_core::placement::decode_input(br#"{"unexpected":"field"}"#).is_err(),
         "corrupted placement input with an unknown field must not be repaired into a proposal"
     );
+}
+
+#[tokio::test]
+async fn p11_p12_p18_round11_item4_final_validation_gate() {
+    let directory = private_directory();
+    let store = Store::open(directory.path().join("round11.sqlite")).expect("fixture store");
+    let mut contract = task_fixture("round11-private-task");
+    contract.simulated = false;
+    store
+        .append(
+            SourceIdentity {
+                producer_id: "round11-validation".into(),
+                incarnation: "boot-1".into(),
+                sequence: "1".into(),
+            },
+            DomainEvent::TaskSubmitted { contract },
+            "2026-10-18T00:00:00Z".into(),
+        )
+        .expect("record one private task event");
+    let router = app(
+        store,
+        ServerConfig {
+            listen: "127.0.0.1:0"
+                .parse::<SocketAddr>()
+                .expect("loopback address"),
+            simulated: false,
+            token: Some(ROUND11_TOKEN.into()),
+            assets: None,
+            legacy: None,
+            models_file: None,
+        },
+    )
+    .expect("authenticated private API");
+
+    let unauthenticated = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/v1/fleet")
+                .body(Body::empty())
+                .expect("unauthenticated request"),
+        )
+        .await
+        .expect("auth denial response");
+    assert_eq!(unauthenticated.status(), StatusCode::UNAUTHORIZED);
+
+    let fleet_response = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/v1/fleet")
+                .header("authorization", format!("Bearer {ROUND11_TOKEN}"))
+                .body(Body::empty())
+                .expect("authenticated fleet request"),
+        )
+        .await
+        .expect("fleet response");
+    assert_eq!(fleet_response.status(), StatusCode::OK);
+    let fleet_bytes = to_bytes(fleet_response.into_body(), 1024 * 1024)
+        .await
+        .expect("bounded fleet snapshot");
+    let fleet: Value = serde_json::from_slice(&fleet_bytes).expect("fleet snapshot JSON");
+    assert_eq!(fleet["schema_version"], 1);
+    assert_eq!(fleet["simulated"], false);
+    assert_eq!(fleet["native_execution_qualified"], false);
+    assert_eq!(fleet["cursor"]["event_seq"], "1");
+    assert_eq!(fleet["tasks"][0]["contract"]["simulated"], false);
+    assert_eq!(fleet["projects"][0]["accepted"], 0);
+
+    let events_response = router
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/v1/events?after=0")
+                .header("authorization", format!("Bearer {ROUND11_TOKEN}"))
+                .body(Body::empty())
+                .expect("authenticated event replay request"),
+        )
+        .await
+        .expect("event stream response");
+    assert_eq!(events_response.status(), StatusCode::OK);
+    assert_eq!(
+        events_response.headers()["content-type"],
+        "text/event-stream"
+    );
+    let frame = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        events_response.into_body().into_data_stream().next(),
+    )
+    .await
+    .expect("first durable event arrives within the bounded fixture timeout")
+    .expect("stream emits the recorded event")
+    .expect("event stream chunk is valid");
+    let frame = String::from_utf8(frame.to_vec()).expect("event frame is UTF-8");
+    assert!(frame.contains("event: domain"));
+    assert!(frame.contains("round11-private-task"));
+    assert!(frame.contains("\"seq\":\"1\""));
+
+    let candidates = [candidate("round11-a"), candidate("round11-b")];
+    let graph = analyze_conflicts(&candidates, "round11-policy").expect("P18 frozen generation");
+    assert_eq!(graph.generation.candidate_ids, ["round11-a", "round11-b"]);
+    assert!(graph.generation.combined_verification_required);
+    assert!(
+        graph.edges[0]
+            .risks
+            .contains(&ConflictRisk::UnknownWriteScope)
+    );
+    assert_eq!(
+        graph,
+        analyze_conflicts(&candidates, "round11-policy").expect("deterministic replay")
+    );
+    let mut foreign = candidate("round11-foreign");
+    foreign.project_id = ProjectId::new("foreign-project").expect("valid foreign project");
+    assert!(matches!(
+        analyze_conflicts(&[candidates[0].clone(), foreign], "round11-policy"),
+        Err(admiralty_core::conflicts::ConflictError::ScopeMismatch { .. })
+    ));
 }
