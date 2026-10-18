@@ -9,9 +9,6 @@ use admiralty_core::{PrincipalId, ProjectId, RootId, TaskId, content_digest};
 use admiralty_runtime::recovery::{Blocker, plan_recovery};
 use serde::Serialize;
 
-#[path = "../../../../tests/integration/support/recovery.rs"]
-mod recovery_fixture;
-
 fn digest(value: char) -> String {
     format!("sha256:{}", value.to_string().repeat(64))
 }
@@ -216,7 +213,8 @@ fn p23_round19_heartbeat_fencing_recovery_release_audit() {
         "deterministic event replay preserves the release audit identity"
     );
 
-    let (manifest, observation, external_fence) = recovery_fixture::valid_recovery_evidence();
+    let (manifest, observation, external_fence) =
+        super::recovery_fixture::valid_recovery_evidence();
     let held = plan_recovery(&manifest, &observation, None).expect("recovery audit without fence");
     assert!(held.blockers.contains(&Blocker::MissingExternalFence));
     assert!(!held.resume_proposed);
