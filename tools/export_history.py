@@ -86,6 +86,7 @@ def write_csv(p, rows, fields):
     return len(rows)
 
 # ---------------- datasets ----------------
+STAGES = ['done', 'on_main', 'in_pr', 'implemented', 'in_progress', 'blocked', 'not_started']
 def ex_timeseries(dash, out):
     d = os.path.join(out, 'timeseries')
     have = {r['ts_utc']: r for r in read_jsonl_dir(d, 'history')}
@@ -101,7 +102,7 @@ def ex_timeseries(dash, out):
     write_jsonl_by_day(d, 'history', rows, 'ts_utc')
     # flat CSV
     fields = ['ts_utc', 'ts', 'cost_index', 'cost_basis', 'quota_pct', 'credits_h', 'luna_fail_total', 'luna_fp_rate'] + ['tier_' + t for t in TIERS]
-    for p in PROJECTS: fields += [p + '_done', p + '_total', p + '_in_progress', p + '_ci', p + '_pr', p + '_hygiene']
+    for p in PROJECTS: fields += [p + '_done', p + '_total', p + '_in_progress', p + '_ci', p + '_pr', p + '_hygiene'] + [p + '_stage_' + s for s in STAGES]
     for h in HOSTS: fields += [h + '_load_pct', h + '_disk_root_pct']
     fields += ['ty_tokens', 'ty_output', 'ty_credits', 'ty_integration_tokens', 'ty_main_tokens', 'ty_yield_integration_pct', 'ty_yield_main_pct', 'ty_coverage_pct']
     for p in PROJECTS + ['other']: fields += ['ty_%s_tokens' % p, 'ty_%s_integration_tokens' % p, 'ty_%s_main_tokens' % p, 'ty_%s_credits_per_done_todo' % p]
@@ -113,6 +114,8 @@ def ex_timeseries(dash, out):
             pp = (r.get('proj') or {}).get(p) or {}
             f.update({p + '_done': pp.get('done'), p + '_total': pp.get('total'), p + '_in_progress': pp.get('ip'), p + '_ci': pp.get('ci'), p + '_pr': pp.get('pr'),
                       p + '_hygiene': (r.get('hyg') or {}).get(p)})
+            st = pp.get('st') or {}
+            for s in STAGES: f[p + '_stage_' + s] = st.get(s)
         for h in HOSTS:
             hh = (r.get('hosts') or {}).get(h) or {}; f[h + '_load_pct'] = hh.get('load'); f[h + '_disk_root_pct'] = hh.get('disk')
         ty = r.get('ty') or {}
@@ -249,7 +252,8 @@ def ex_snapshots(dash, capd, out):
             p = (st.get('projects') or {}).get(k) or {}
             pr = p.get('pr') or {}; ci = pr.get('ci') or {}
             h = ((sc.get('captains') or {}).get(k) or {}).get('hygiene') or {}
-            snap['projects'][k] = {'done': p.get('done'), 'total': p.get('total'), 'counts': p.get('counts'), 'packets_accepted': p.get('packets_accepted'),
+            snap['projects'][k] = {'done': p.get('done'), 'total': p.get('total'), 'counts': p.get('counts'), 'stages': p.get('stages'),
+                                   'stage_meta': {x: (p.get('stage_meta') or {}).get(x) for x in ('pr_number', 'pr_open', 'main_sha', 'main_ci_green', 'accepted_in_pr', 'blocked_code_stage')} if p.get('stage_meta') else None, 'packets_accepted': p.get('packets_accepted'),
                                    'packets_total': p.get('packets_total'), 'blocked': len(p.get('blocked_ids') or []), 'workers': len(p.get('workers') or []),
                                    'pr_number': pr.get('number'), 'pr_head': (pr.get('head') or pr.get('head_sha') or '')[:12] or None, 'ci_state': ci.get('state'),
                                    'needs_jepson': len(p.get('needs_jepson') or []) if isinstance(p.get('needs_jepson'), list) else None,
