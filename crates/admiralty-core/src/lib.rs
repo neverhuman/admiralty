@@ -29,15 +29,18 @@ pub fn content_digest<T: serde::Serialize>(value: &T) -> Result<String, serde_js
     serde_json::to_writer(&mut writer, value)?;
     Ok(format!("sha256:{:x}", writer.0.finalize()))
 }
+pub mod attempt_outcome;
 pub mod config;
 pub mod conflicts;
 pub mod coordination;
 pub mod delivery;
 pub mod economics;
 pub mod excursions;
+pub mod execution_requirements;
 pub mod governor;
 pub mod import;
 pub mod intake;
+pub mod interface_compatibility;
 pub mod interfaces;
 pub mod limits;
 pub mod nodes;

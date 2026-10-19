@@ -3,6 +3,7 @@ pub mod admission_fence;
 pub mod admission_reservations;
 pub mod artifacts;
 pub mod attention;
+pub mod backup;
 pub mod context_renders;
 pub mod custody;
 pub mod inbox;
@@ -10,9 +11,11 @@ pub mod inference_slots;
 pub mod intake;
 pub mod intake_capture;
 pub mod outbox;
+pub mod projections;
 pub mod questions;
 pub mod usage_observations;
 pub mod workplans;
+pub mod writer;
 use admiralty_core::{
     DomainEvent, LifecycleAction, LifecycleCommand, MessageId, ProjectId, Projection,
     SourceIdentity, TaskId, TaskView, TransitionError, content_digest, reduce,
