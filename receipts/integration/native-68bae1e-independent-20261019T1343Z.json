@@ -1,0 +1,361 @@
+{
+  "schema": "admiralty.independent_primary_verification/v1",
+  "verdict": "PASS_SCOPED_READ_ONLY",
+  "created_utc": "2026-10-19T13:43:52.439Z",
+  "source_revision": "68bae1e28cc19c0b799a9d5f3e7705ba77918d6c",
+  "independently_observed_utc": "2026-10-19T13:42:48.155Z",
+  "owner_deployment_verified_utc": "2026-10-19T13:23:38.653270+00:00",
+  "native_execution_qualified": false,
+  "parent_acceptance": "2/32; P00/P01 only; no promotion by this verification",
+  "observations": {
+    "schema_version": 1,
+    "observed_utc": "2026-10-19T13:42:48.155Z",
+    "source_revision": "68bae1e28cc19c0b799a9d5f3e7705ba77918d6c",
+    "verification": "independent read-only deployment inspection under fleetcap; manifest plus14 streamed file hashes and process executable hashes; bounded public endpoints",
+    "gate": {
+      "observed_utc": "2026-10-19T13:42:44.569Z",
+      "cpu_percent": 34.16154030518494,
+      "mem_available_bytes": 68311035904,
+      "controller_active": true,
+      "freeze": "0"
+    },
+    "post_gate": {
+      "observed_utc": "2026-10-19T13:42:48.140Z",
+      "cpu_percent": 35.64648640025524,
+      "mem_available_bytes": 68095963136,
+      "controller_active": true,
+      "freeze": "0"
+    },
+    "cgroup": "0::/jarambit.slice/jarambit-evo.slice/jr-adm-verify-68bae-3038212-1792417363.scope",
+    "owner_state": {
+      "observed_utc": "2026-10-19T13:42:47.134Z",
+      "screen": [
+        "885617.adm_p18a_conflicts\t(10/18/2026 11:17:00 AM)\t(Detached)"
+      ],
+      "process_metadata": "885617       1 Ss    1-02:25:45 screen\n 885619  885617 SNsl+ 1-02:25:45 node-MainThread",
+      "current_model_not_inferred": true,
+      "build_receipt_observed_utc": "2026-10-19T13:25:56.562636+00:00"
+    },
+    "build_only": {
+      "source_revision": "68bae1e28cc19c0b799a9d5f3e7705ba77918d6c",
+      "owner_reported_not_executed": true,
+      "compiler_exit_code": 0,
+      "original_verified_utc": "2026-10-19T13:25:56.562636+00:00",
+      "binary_path": "/home/ubuntu/admiralty-v2-build/diagnostics-builds/68bae1e28cc19c0b799a9d5f3e7705ba77918d6c/sc156-native-task-loop-probe-pr126/bin/native_task_loop_probe",
+      "binary": {
+        "sha256": "f588627c51892c151ef65902fdb68785fd5857ab3a683e5b6f03e04ec57a4668",
+        "bytes": 10672824
+      },
+      "build_receipt_sha256": "b9334e39ef28f23580c4a0f008504613b26833981d5ca6c82b56cbe95991af37",
+      "source_stamp_receipt_sha256": "0ed1a5f8b6f446365aee137d8048d3cad1bda4c24f83a5e58eabdb6a40c84685",
+      "source_stamp_receipt": {
+        "status": "verified_without_executing_example",
+        "expected_source_sha": "68bae1e28cc19c0b799a9d5f3e7705ba77918d6c",
+        "compiler_depinfo": [
+          {
+            "path": "/home/ubuntu/lanes/admiralty/accept-p12-p18/target/release/examples/native_task_loop_probe-bddd0e017b67e92d.d",
+            "sha256": "c6f87bc4ecf9394c9c40edaad9515a9eae1e687df68d804d6b3cd45431bf7bf6",
+            "env_pin": "# env-dep:ADMIRALTY_PROBE_SOURCE_SHA=68bae1e28cc19c0b799a9d5f3e7705ba77918d6c"
+          }
+        ],
+        "static_reader": "readelf --string-dump=.rodata",
+        "reader_exit_code": 0,
+        "rodata_contains_exact_source": true,
+        "rodata_dump_sha256": "c022b7437f8a49dd7e521ac35a252c5479b7cf41971da18d3dbb5ebb35d96d24",
+        "source_files": [
+          {
+            "path": "Cargo.toml",
+            "sha256": "7781cd4e8db579cf51871d4b6f1cb27e903cae6fde7fa8912552ecf822f260df",
+            "bytes": 2908,
+            "matches_commit": true
+          },
+          {
+            "path": "Cargo.lock",
+            "sha256": "228046d4779c487d4dc33df93412ae6ed8f7bd6ae834c75cda351a3f3686704c",
+            "bytes": 39400,
+            "matches_commit": true
+          },
+          {
+            "path": "crates/admiralty-server/Cargo.toml",
+            "sha256": "0f908caff768995fc48801a9e3841dabe03e24a46700d588c0925ab36c58e33d",
+            "bytes": 641,
+            "matches_commit": true
+          },
+          {
+            "path": "crates/admiralty-runtime/Cargo.toml",
+            "sha256": "edf708a7cac3493b10c3fc252478b867662699ba08e057f2602c365fb2c2314b",
+            "bytes": 463,
+            "matches_commit": true
+          },
+          {
+            "path": "crates/admiralty-server/examples/native_task_loop_probe.rs",
+            "sha256": "d983705e4926aa5f2fe151af1871081df6ebd5c1514a4a010165599225b3a7c2",
+            "bytes": 140621,
+            "matches_commit": true
+          },
+          {
+            "path": "crates/admiralty-server/src/services/native_executor.rs",
+            "sha256": "737385b6892670d1ccce05745fad23880e7b9d4fd115d0a424c4c669e62c64fc",
+            "bytes": 112240,
+            "matches_commit": true
+          },
+          {
+            "path": "crates/admiralty-runtime/src/resource_gate.rs",
+            "sha256": "41c17e6be7c1ce2ba13872d7d15b063ed2ba8244156d6c22a1a8b64ff256af5c",
+            "bytes": 100108,
+            "matches_commit": true
+          },
+          {
+            "path": "crates/admiralty-runtime/src/resource_gate_diagnostics_tests.rs",
+            "sha256": "fb26c9448b2f95559688682fe8164ea5a17171597dad4c120be4333f1af552c2",
+            "bytes": 24265,
+            "matches_commit": true
+          }
+        ]
+      },
+      "build_log": {
+        "sha256": "91257cfcea0fa2f668674ebfe61f89869642886c261a1dcfc7dc562292c6f171",
+        "bytes": 901
+      },
+      "no_binary_execution_by_this_verifier": true,
+      "no_new_provider_authorization": true,
+      "actual_timeout_or_stop_grace_qualified": false
+    },
+    "manifest_sha256": "77a779dba0d0415690413c6c9d1eb1737f97ecfaabe080655799114f4942daf6",
+    "manifest_entries": 14,
+    "files": [
+      {
+        "path": "bin/admiralty",
+        "sha256": "1746b063386a30ddfa9e16c2841ba44462650c4449d9c8475ec612d1d792789b",
+        "bytes": 15103640
+      },
+      {
+        "path": "bin/admiralty-node",
+        "sha256": "26d1bb54b0425f42c096f2645be924ffb37af9294e2744852bb72f086cb53162",
+        "bytes": 340592
+      },
+      {
+        "path": "bin/admiralty-observe",
+        "sha256": "5c2c902a1e23a4171e00da85a02131f1490e6a5db9fc371821449714f72ae1c7",
+        "bytes": 3215056
+      },
+      {
+        "path": "bin/admiraltyd",
+        "sha256": "e7e5b949ecd56604bcf66a63db8fc9c3ef1a043c059a58fb1cad834f6aa52419",
+        "bytes": 11912600
+      },
+      {
+        "path": "dashboard/index.html",
+        "sha256": "28d8a78eb67f744ae849ade1f4a94948a1ae816891e3397241e6381e186075ed",
+        "bytes": 57357
+      },
+      {
+        "path": "react/assets/CommandJourneys-CGGOz82n.js",
+        "sha256": "b49ce599a92827b1c30bfc298475cf299dca95fed58f27cc228f1673dd601fdd",
+        "bytes": 84506
+      },
+      {
+        "path": "react/assets/Intake-BHiLGBpG.js",
+        "sha256": "6727013abbfa1e937b0ca8e30c8291d562c2f559c4d1020fc126a0bd02d0807a",
+        "bytes": 135664
+      },
+      {
+        "path": "react/assets/LiveViews-D8Wu6YA5.js",
+        "sha256": "7b7cb97b6f79817f9c4736ae740ea3d3b5a062a829026b0f7b10a4152607e67c",
+        "bytes": 80713
+      },
+      {
+        "path": "react/assets/LiveViews-DgA8tN2b.css",
+        "sha256": "5687219571507edddc4698a65e3fab13cb49a760173b37d84b5bf97e90f47580",
+        "bytes": 24328
+      },
+      {
+        "path": "react/assets/index-7VG4lrrK.js",
+        "sha256": "e8b335126d8a166421bbd02deda5c583e972302354c7336dfc98aa913adc23c5",
+        "bytes": 498640
+      },
+      {
+        "path": "react/assets/index-C0ohzedu.css",
+        "sha256": "00a0e0f6944bb2515c32e5df7130ad6ec37a25f278047e995ae8c273f0197a42",
+        "bytes": 60691
+      },
+      {
+        "path": "react/brand/admiralty-source.png",
+        "sha256": "86f3f016a3d2562cc82da3191ce472e77e81726a65f69ccb4a840145e89aaef9",
+        "bytes": 909933
+      },
+      {
+        "path": "react/brand/grokbot.png",
+        "sha256": "d0c1fb552fa44d28af99e4a8918ad43960e4b5c15db05d1ef4331dad66d206e2",
+        "bytes": 960632
+      },
+      {
+        "path": "react/index.html",
+        "sha256": "a38ba8424e6a30c95083692246377fb5546874ea95ca3e114f8b2c63fc9d4433",
+        "bytes": 539
+      }
+    ],
+    "processes": [
+      {
+        "name": "admiraltyd",
+        "pid": 1288213,
+        "exe": "/home/ubuntu/admiralty-v2-build/deployments/68bae1e28cc19c0b799a9d5f3e7705ba77918d6c/bin/admiraltyd",
+        "start_ticks": "60165402",
+        "sha256": "e7e5b949ecd56604bcf66a63db8fc9c3ef1a043c059a58fb1cad834f6aa52419"
+      },
+      {
+        "name": "admiralty-observe",
+        "pid": 1287827,
+        "exe": "/home/ubuntu/admiralty-v2-build/deployments/68bae1e28cc19c0b799a9d5f3e7705ba77918d6c/bin/admiralty-observe",
+        "start_ticks": "60165369",
+        "sha256": "5c2c902a1e23a4171e00da85a02131f1490e6a5db9fc371821449714f72ae1c7"
+      }
+    ],
+    "health": {
+      "native_execution_qualified": false,
+      "status": "ok",
+      "version": "0.1.0"
+    },
+    "http": {
+      "ui": 200,
+      "legacy": 200,
+      "redirect_18891": 307
+    },
+    "legacy": {
+      "bytes": 1512135,
+      "collector": {
+        "acceptance_authority": false,
+        "duration_ms": 18593,
+        "implementation": "rust",
+        "model_turns": 0,
+        "observed_utc": "2026-10-19T13:42:35Z",
+        "read_only_sources": true,
+        "version": "0.1.0"
+      },
+      "generated_utc": "2026-10-19T13:42:32Z",
+      "history_displayed_rows": 256,
+      "history_retained_rows": 650,
+      "first_displayed_history_timestamp": 1792386678,
+      "last_displayed_history_timestamp": 1792417271,
+      "original_first_history_timestamp": null,
+      "history_note": "Displayed suffix timestamps observed directly; original first stored timestamp was not read or inferred.",
+      "projects": [
+        "dope",
+        "jarambit",
+        "joil",
+        "jopedime"
+      ]
+    },
+    "ui_static": {
+      "index_bundle": "react/assets/index-7VG4lrrK.js",
+      "index_bundle_sha256": "e8b335126d8a166421bbd02deda5c583e972302354c7336dfc98aa913adc23c5",
+      "intake_bundle": "react/assets/Intake-BHiLGBpG.js",
+      "intake_bundle_sha256": "6727013abbfa1e937b0ca8e30c8291d562c2f559c4d1020fc126a0bd02d0807a",
+      "controls_not_recounted": true,
+      "browser_qualification": false
+    },
+    "old_deployment_pids": [
+      {
+        "pid": 3981288,
+        "present": false
+      },
+      {
+        "pid": 3981048,
+        "present": false
+      }
+    ],
+    "retired_owned_python_pids": [],
+    "native_execution_qualified": false,
+    "no_service_control": true,
+    "no_database_config_source_mutations": true
+  },
+  "actual_invocation": {
+    "started_utc": "2026-10-19T13:42:41.192Z",
+    "ended_utc": "2026-10-19T13:42:48.164Z",
+    "exit_code": 0,
+    "signal": null,
+    "error": null,
+    "one_invocation": true,
+    "remote_scratch": "/home/ubuntu/admiralty-v2-build/receipts/independent-68bae-20261019T1349Z",
+    "stdout_bytes": 9494,
+    "stdout_sha256": "699eae261a0986d8c2d8593643fd75100d4e6c17ae5c785c9ca7693f9bd01457",
+    "stderr_sha256": "f67fb41d2f917ac77fab37221a16141384ece8d968faa81badbe37e81a163d39"
+  },
+  "evidence": {
+    "raw": {
+      "path": "/private/tmp/adm-68bae-independent-Db6tuZ/verification.raw.json",
+      "bytes": 9494,
+      "sha256": "699eae261a0986d8c2d8593643fd75100d4e6c17ae5c785c9ca7693f9bd01457"
+    },
+    "stderr": {
+      "path": "/private/tmp/adm-68bae-independent-Db6tuZ/verification.stderr",
+      "bytes": 406,
+      "sha256": "f67fb41d2f917ac77fab37221a16141384ece8d968faa81badbe37e81a163d39"
+    },
+    "exit": {
+      "path": "/private/tmp/adm-68bae-independent-Db6tuZ/verification-exit.json",
+      "bytes": 465,
+      "sha256": "cbdef17f3682771a95d8458bafb2976a40b5a627296188bce997435f425f9453"
+    },
+    "verifier": {
+      "path": "/private/tmp/adm-68bae-independent-Db6tuZ/verify-68bae.cjs",
+      "bytes": 11075,
+      "sha256": "569014923f0469217f597b90f24ed36ee91b3bbd1b158fd4d3272491faafa7c5"
+    },
+    "wrapper": {
+      "path": "/private/tmp/adm-68bae-independent-Db6tuZ/wrapper.cjs",
+      "bytes": 602,
+      "sha256": "77cd635bf7262809f604b4f30b1c478e45f39e524f544e6cb8d9d2c36fdb5ca2"
+    },
+    "owner_receipt": {
+      "path": "/private/tmp/adm-68bae-independent-Db6tuZ/owner-deployment-receipt.json",
+      "bytes": 9508,
+      "sha256": "0d3fe1232bfacbb609918e36c7e1767ece4100948358e99695fa7692bf830897"
+    },
+    "manifest": {
+      "path": "/private/tmp/adm-68bae-independent-Db6tuZ/deployment-manifest.json",
+      "bytes": 2316,
+      "sha256": "77a779dba0d0415690413c6c9d1eb1737f97ecfaabe080655799114f4942daf6"
+    },
+    "owner_sc167_ack": {
+      "path": "/private/tmp/adm-68bae-independent-Db6tuZ/owner-sc167-ack.md",
+      "bytes": 1923,
+      "sha256": "a8988020c4b8f0947932f121cc8682bb47340a9a6425340ac7739836ed6d6b57"
+    },
+    "owner_sc167_readback": {
+      "path": "/private/tmp/adm-68bae-independent-Db6tuZ/sc167-readback.json",
+      "bytes": 2575,
+      "sha256": "cc1ad7cfdcf95ebe8cf13781266f7ef076414dfc79184a040bb1129bdd1508b8"
+    },
+    "build_only_receipt": {
+      "path": "/private/tmp/adm-68bae-independent-Db6tuZ/build-receipt.json",
+      "bytes": 5988,
+      "sha256": "b9334e39ef28f23580c4a0f008504613b26833981d5ca6c82b56cbe95991af37"
+    },
+    "build_log": {
+      "path": "/private/tmp/adm-68bae-independent-Db6tuZ/build.log",
+      "bytes": 901,
+      "sha256": "91257cfcea0fa2f668674ebfe61f89869642886c261a1dcfc7dc562292c6f171"
+    },
+    "source_stamp_receipt": {
+      "path": "/private/tmp/adm-68bae-independent-Db6tuZ/source-stamp-verification.json",
+      "bytes": 2340,
+      "sha256": "0ed1a5f8b6f446365aee137d8048d3cad1bda4c24f83a5e58eabdb6a40c84685"
+    },
+    "combined_completion": {
+      "path": "/private/tmp/adm-68bae-independent-Db6tuZ/completion.json",
+      "bytes": 1897,
+      "sha256": "d66603477338d2bc94e210cfea595ca0a6a1dd0d028f2045def44e3e82893c6c"
+    }
+  },
+  "limits": [
+    "One read-only capped verification; no build, test, binary/probe execution, provider, credential/HOME reads, service control, deployment/rollout/source/database mutations. New owned receipt scratch contains verifier scripts only.",
+    "Live file/process/hash/HTTP observations are bound to the stated time; source attribution follows exact owner manifest and embedded stamp evidence, not an independent reproducible build or publisher authentication.",
+    "18891 HTTP307 independently observed; Location header was not independently re-read in this verifier. Owner receipt separately records http://127.0.0.1:18890/.",
+    "No browser journey, accessibility check, 13-control recount, model-label validation, original first history timestamp, or full P00-P31 acceptance. Displayed history suffix and retained count only.",
+    "Build-only compiler exit and never-executed claim are historical owner records; current archived binary/log/stamp hashes match independently. This verifier did not execute it and issues no new diagnostic/provider authorization.",
+    "Owner Screen885617 and Node child presence observed; no active completion state or actual model identity inferred from process name/Screen label.",
+    "Root model-footer/public LiveViews fixes remain separate unmerged source and were not inferred live.",
+    "Remote scratch suffix1349 is a nominal label; actual invocation was13:42:41.192Z–13:42:48.164Z and observed timestamps are authoritative."
+  ]
+}

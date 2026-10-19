@@ -2837,3 +2837,39 @@ qualification and remaining production/product criteria are not accepted.
 Independent final evidence review62235e1710d8880c61352f0a8b74a4219dc51e338c27aea2db18f6c08f8b5fa2
 CLEAR:13direct+56nestedworker hashes,26namedcases,4source hashes and cb2d archive.
 Source review remains9a23; docs/license review1816. No bot test-execution claim.
+
+### 13:48Z — Observed model and visual access regressions repaired
+
+Source19baae219c1780c43c22c3ceb13a813adb89fcae integrates observerd5834d8,
+visualad4f9c7/cb6072e and Root browser/provenance repairs on main68bae1e.
+Actual uppercase Codex/replacement-separator footer reproduction failed before
+the parser fix;15observer cases (4newsubset) and strict all-target Clippy pass.
+Actual process family/PID/start/TTL remain binding; requested models and Screen
+names never establish model identity. Claude short labels and Grok retain bright
+badges; genuinely unavailable identity remains unknown.
+
+Private native view endpoints remain authenticated. On401/403, the client may
+project only an explicitly public legacy producer endpoint, with original source
+times, exact configured roles and explicit unavailable private assignments.
+Access epochs discard old private/paused cuts and late replies. Actual combined
+31dashboard cases, typechecks/build and2real isolated-native browser cases pass;
+the latter use synthetic producer observations with a hash-pinned Rust binary.
+One new public-to-owner-access journey and the existing9surface dark/light/mobile
+axe case pass. These are2cases, not11tests or an additive platform/worker total.
+Earlier accessible-name, fake-owner overlap, decorative paint and light contrast
+failures are preserved; no axe assertions or authorization guards were weakened.
+See `receipts/integration/native-model-public-views-20261019T1348Z.json`.
+
+The Admiral actually acknowledged the owner's requests in SC-DEC-167, retaining
+disjoint source scopes, Root sole rollout CAS and885617 sole deployment ownership.
+Read-only audit maps15Screens/60worktrees/148branch refs;14older lanes require
+owner release/recoverability/equivalence proof. Two dirty worktrees and shared
+general runners remain protected. No retirement was performed.
+
+Primary68bae1e was independently verified at13:42:48.155Z:14manifest/file hashes,
+both PID/start/executable hashes, health/UI/feed and18891redirect, Rust0modelturns,
+prior e6PIDs absent/no retired ownedPython. The repaired probe is BUILD-ONLY,
+not a new authorization. These new model/UI fixes are separately packaged source,
+not yet a live deployment in this receipt. MIT is merged; P00/P01 alone accepted.
+Current68bae browser CI failed19pass1Atlasname mismatch; Rust hit its explicit
+15minute limit with missing job logs. No full-green/resource-cause claim.

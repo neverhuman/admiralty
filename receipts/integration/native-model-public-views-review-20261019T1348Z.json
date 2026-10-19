@@ -1,0 +1,37 @@
+{
+  "review": "independent final source and evidence consistency review; no new tests/build/deployment",
+  "source_head": "19baae219c1780c43c22c3ceb13a813adb89fcae",
+  "source_snapshot": "/private/tmp/adm-model-visual-final/source.tar",
+  "source_snapshot_sha256": "d5b19f0c3a28bca13b1f5dc85ec0952a001280e84745393387221bb734c6127e",
+  "receipt": {
+    "path": "/private/tmp/adm-model-visual-final/receipt.json",
+    "sha256": "3d83d034a7254f5e9e8ffaaf6394ed196bcb66e5622485242afd701719c2f349"
+  },
+  "payload_manifest": {
+    "path": "/private/tmp/adm-model-visual-final/payloads.json",
+    "sha256": "51755365233e451919d72b7b737f6831e1ee3aac956669d1bfb0f37b69fdfd92",
+    "payloads": 271,
+    "source_commit_matches": true,
+    "local_path_integrity": "271/271 files match declared byte counts and SHA-256"
+  },
+  "source_hash_verification": "All 14 frozen source/test/doc hashes in receipt match the current working-tree HEAD and their entries in source.tar.",
+  "evidence_crosschecks": {
+    "observer": "Raw `fleet-tests.log`: 15 passed, 0 failed, 44 filtered; JSON records cargo test --lib fleet::tests, exit 0. Raw strict-clippy log says Finished successfully. No Linux qualification claimed.",
+    "dashboard": "Raw final unit log: 31 passed (23 live-views + 8 hierarchy), 0 failures. Receipt records dashboard typecheck/build and E2E typecheck; exit files are 0 and logs are present.",
+    "native_browser": "Raw final browser suite log: 2 passed, 5 skipped/filtered, 4.03 seconds. The final public proof records isolated Rust + production React, synthetic producer fixture, unauthenticated private 401, explicit public legacy 200, preserved Git timestamp, authenticated-native mode, and zero provider turns.",
+    "axe": "Final 9-surface JSON has nine surfaces, each with zero violations and zero incomplete. Final public proof has git-public and atlas-public, both zero violations/incomplete, matching production bundle source SHA-256 20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878.",
+    "failed_drafts": "Receipt records earlier negative runs and fixes. Failed/filtered attempts are preserved and are not counted as passing qualification."
+  },
+  "review_findings": [
+    "Receipt/source/payload identities are internally consistent and current; no hash drift or changed payload paths found.",
+    "Counts are correctly separated: four observer new subset cases among 15 total; 31 dashboard unit tests; browser suite 2 passed and 5 filtered; nine prior axe surfaces plus two public-flow axe audits. Worker/root duplicate runs are explicitly nonadditive."
+  ],
+  "known_limitations": [
+    "No live fleet, provider/model identity, or new-source deployment qualification; E2E producer data is synthetic even though Rust service and production bundle are real.",
+    "Hosted/Linux source tests are not claimed; CI evidence explicitly says new-source hosted success is false and an earlier Rust job was cancelled/incomplete with unknown cause.",
+    "Safe-tail behavior is not qualified as general secret redaction.",
+    "No issuer, capacity activation, settlement, recovery, or full parent acceptance; remote verification remains pending and only P00/P01 accepted.",
+    "No independent process PID census is claimed; cleanup evidence is helper close plus health request failure."
+  ],
+  "verdict": "CLEAR for final source/evidence consistency review with limitations preserved."
+}
