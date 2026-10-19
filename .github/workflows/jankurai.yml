@@ -61,11 +61,14 @@ jobs:
             --mode standard \
             --json "${RUNNER_TEMP}/jankurai/repo-score.json" \
             --md "${RUNNER_TEMP}/jankurai/repo-score.md" \
-            --github-step-summary "${GITHUB_STEP_SUMMARY}" \
+            --github-step-summary "${RUNNER_TEMP}/jankurai/step-summary.md" \
             --repair-queue-jsonl "${RUNNER_TEMP}/jankurai/repair-queue.jsonl"
           test -s "${RUNNER_TEMP}/jankurai/repo-score.json"
           test -s "${RUNNER_TEMP}/jankurai/repo-score.md"
           test -f "${RUNNER_TEMP}/jankurai/repair-queue.jsonl"
+          # Actions pre-creates its summary file; keep the auditor's fresh-output
+          # guard intact, then append the independently generated summary.
+          cat "${RUNNER_TEMP}/jankurai/step-summary.md" >> "${GITHUB_STEP_SUMMARY}"
       - name: Upload Jankurai audit artifacts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -75,4 +78,5 @@ jobs:
             ${{ runner.temp }}/jankurai/repo-score.json
             ${{ runner.temp }}/jankurai/repo-score.md
             ${{ runner.temp }}/jankurai/repair-queue.jsonl
+            ${{ runner.temp }}/jankurai/step-summary.md
           if-no-files-found: warn

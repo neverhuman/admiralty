@@ -40,10 +40,31 @@
     "runtime_test_inputs_equal_to_local20_stage_pass_at": "d714426590f38b61992267897878d30ae826691d"
   },
   "source_sha256": {
-    ".github/workflows/jankurai.yml": "ce0e15602896411e8ba0bc90021157bfa79dec44cae1a8a9f12af22df3c19244",
+    ".github/workflows/jankurai.yml": "751f3d961143bd7ae791b2aa50d2db494ad8cb2a53bd047485d0963e8ce851ad",
     "PYTHON_EXCEPTIONS.md": "4b4be4ee763350690a2a8e4371bd60c7112c1ded0eae00cca8742f1b0cd9dfbd",
     "PY_TO_RUST_PLAN.md": "5f40d4c031a05ce8c4668c3dce5f77b16f33fffb3fca330d2bd060a983c79278"
   },
   "native_execution_qualified": false,
-  "full_release_qualified": false
+  "full_release_qualified": false,
+  "followup": {
+    "recorded_at_utc": "2026-10-19T19:59:49.946988+00:00",
+    "head": "81e86e99d1ad4eb5ccadefad3f20365c911ce748",
+    "job_id": 118275226751,
+    "run_id": 39315338352,
+    "verified_installer_and_binary_passed": true,
+    "actual_binary_sha256": "d2414884a3dbe1cc2d02b4240588869f6afac26ff0f167829e907b1617501121",
+    "audit_failure": "Actions pre-creates GITHUB_STEP_SUMMARY; the read-only fresh-output guard correctly rejects it.",
+    "repair": "Generate step-summary.md as a fresh report outside the checkout, then append it to the Actions-owned summary. Preserve all audit guards and strict exit.",
+    "failure_log": "receipts/integration/logs/pr158-jankurai-summary-precreated-20261019.log.gz",
+    "compressed_sha256": "60c4c2fc04b113e5a11a8642c33d242165d276c2e659d55e504ffc36d3e2d7c6",
+    "local_linux_audit_preflight": {
+      "allowed_cpu_count": 102,
+      "load_1min": 100.365234375,
+      "MemAvailable_bytes": 70124912640,
+      "max_load_fraction": 0.85,
+      "audit_launched": false,
+      "reason": "Existing resource guard denies new placement; no bypass or service/CI-runner control."
+    },
+    "actual_audit_result_after_repair": "Pending; installer success and a source repair do not imply an audit pass."
+  }
 }
