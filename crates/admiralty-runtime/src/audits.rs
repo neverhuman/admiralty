@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub const MAX_AUDIT_JSON_BYTES: usize = 1_048_576;
 pub const MAX_AUDIT_ITEMS: usize = 1_024;
 pub const MAX_AUDIT_STRING_BYTES: usize = 4_096;
-pub const AUDIT_POLICY_VERSION: u32 = 2;
+pub const AUDIT_POLICY_VERSION: u32 = 3;
 
 /// Precision-safe canonical decimal encoding for score counters.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -101,7 +101,7 @@ pub enum CheckOutcome {
 pub struct CheckResult {
     pub check_id: String,
     pub outcome: CheckOutcome,
-    /// `None` means no exit was observed; it is never treated as zero.
+    /// Nonnegative observed exit code. Signals or unknown exits use `None`, never a sentinel.
     pub exit_code: Option<i32>,
     pub evidence_ref: Option<String>,
     pub executed_check: CheckSpec,
@@ -157,7 +157,7 @@ pub struct AuditPolicy {
 #[serde(deny_unknown_fields)]
 pub struct NegativeAuditCheck {
     pub check: CheckSpec,
-    /// The protected negative-control policy defines success, never a zero heuristic.
+    /// Nonnegative expected exit. The protected policy defines success, never a zero heuristic.
     pub expected_exit_code: i32,
 }
 
@@ -646,6 +646,11 @@ fn validate(
     }
     for negative in &policy.negative_checks {
         validate_check(&negative.check)?;
+        if negative.expected_exit_code < 0 {
+            return Err(AuditError(
+                "negative control requires a nonnegative exit code",
+            ));
+        }
     }
     for finding in &evidence.findings {
         if !valid_id(&finding.id)
@@ -668,6 +673,7 @@ fn validate(
             CheckOutcome::Unknown => result.exit_code.is_none(),
         };
         if !valid_id(&result.check_id)
+            || result.exit_code.is_some_and(|code| code < 0)
             || &result.executed_check != *expected_check
             || result.scope != evidence.scope
             || result.identity != evidence.identity
