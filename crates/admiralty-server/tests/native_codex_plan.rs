@@ -21,11 +21,11 @@ mod tests {
         },
         reservations::{
             AccountId, CurrencyUnit, MinorUnits, Reservation, ReservationEvent, ReservationLedger,
-            ReservationScope,
+            ReservationScope, ScopeLimits,
         },
         resource_gate::{
-            AdmissionIdentity, QualifiedEnvironment, ResourcePermitAuthority, ResourcePermitClaims,
-            SystemdBackendConfig,
+            AdmissionIdentity, QualifiedEnvironment, ResourceGate, ResourcePermitAuthority,
+            ResourcePermitClaims, SystemdBackendConfig,
         },
         session::{CaptureState, LaunchSpec, OutputStream, SessionError, SessionHost},
         workspace::{
@@ -33,11 +33,25 @@ mod tests {
             registry::NodeRef,
         },
     };
-    use admiralty_server::model_selection::{InferenceSlotClaim, model_config_digest};
+    use admiralty_server::{
+        model_selection::{InferenceSlotClaim, model_config_digest},
+        services::{
+            native_loop::StartedScope,
+            native_task_loop::{
+                AdmissionStatus, NativeTaskLoop, NativeTaskLoopConfig, NativeTaskRuntimeConfig,
+                TaskDispatchStatus,
+            },
+        },
+    };
     use admiralty_store::{
-        BudgetAndSlotAdmission,
-        admission_reservations::{self, ReservationCommand},
-        inference_slots::{self, SlotClaim, SlotCommand, SlotEvent, SlotLedger},
+        BudgetAndSlotAdmission, Store, StoreAuthorities,
+        admission_reservations::{
+            self, ReservationAuthority, ReservationBinding, ReservationCommand, ReservationProof,
+        },
+        inference_slots::{
+            self, InferenceSlotAuthority, SlotBinding, SlotClaim, SlotCommand, SlotEvent,
+            SlotLedger, SlotProof,
+        },
         outbox,
     };
     use native_codex_plan::{
@@ -45,6 +59,8 @@ mod tests {
         PreparedNativeCodexPlan, prepare_codex_plan,
     };
     use std::{
+        any::Any,
+        cell::Cell,
         collections::{BTreeMap, BTreeSet},
         fs,
         io::Write,
@@ -997,6 +1013,637 @@ mod tests {
         }
         plan.prepared_workspace.validate_current_custody().unwrap();
         assert!(!fixture.root.0.join("forbidden").exists());
+    }
+
+    // Explicit private test policies validate this fixture's complete scoped
+    // declarations. They do not attest a physical pool or install a real issuer.
+    struct LoopPolicy {
+        claim: SlotClaim,
+        slot_live: AtomicBool,
+    }
+    fn fixture_proof(proof: &(dyn Any + Send + Sync), expected: &str) -> bool {
+        proof
+            .downcast_ref::<String>()
+            .is_some_and(|s| s == expected)
+    }
+    impl ReservationAuthority for LoopPolicy {
+        fn authorize_write(&self, b: &ReservationBinding<'_>, p: &(dyn Any + Send + Sync)) -> bool {
+            if !fixture_proof(p, "fixture-private-budget-proof") {
+                return false;
+            }
+            match &b.command.event {
+                ReservationEvent::SetLimits {
+                    account_id, limits, ..
+                } => {
+                    account_id == &self.claim.scope.account_id
+                        && limits.unit == self.claim.scope.unit
+                        && [&limits.account, &limits.project, &limits.root]
+                            .into_iter()
+                            .all(|limit| limit.as_ref().is_some_and(|n| n.get() == 100))
+                }
+                ReservationEvent::Reserve {
+                    scope,
+                    reservation_id,
+                    amount,
+                    ..
+                } => {
+                    scope == &self.claim.scope
+                        && reservation_id == &self.claim.budget_reservation_id
+                        && amount.get() == 1
+                }
+                _ => false,
+            }
+        }
+        fn authorize_read(&self, _: &ReservationLedger, p: &(dyn Any + Send + Sync)) -> bool {
+            fixture_proof(p, "fixture-private-budget-proof")
+        }
+    }
+    impl InferenceSlotAuthority for LoopPolicy {
+        fn authorize_write(&self, b: &SlotBinding<'_>, p: &(dyn Any + Send + Sync)) -> bool {
+            if !self.slot_live.load(Ordering::SeqCst)
+                || !fixture_proof(p, "fixture-private-slot-proof")
+            {
+                return false;
+            }
+            match &b.command.event {
+                SlotEvent::SetPool {
+                    pool_id,
+                    capacity_key,
+                    managed_capacity,
+                    generation,
+                } => {
+                    let key = content_digest(&format!("fixture-pool:{pool_id}")).unwrap();
+                    ["fixture-managed-pool", "fixture-unrelated-pool"].contains(&pool_id.as_str())
+                        && capacity_key == &key
+                        && (1..=3).contains(managed_capacity)
+                        && ["fixture-generation", "fixture-next-generation"]
+                            .contains(&generation.as_str())
+                }
+                SlotEvent::Hold { claim, .. } => {
+                    claim.scope == self.claim.scope
+                        && claim.pool_id == self.claim.pool_id
+                        && claim.generation == self.claim.generation
+                        && claim.model_id == self.claim.model_id
+                        && claim.model_config_digest == self.claim.model_config_digest
+                        && claim.inference_claims_digest == self.claim.inference_claims_digest
+                        && claim.kernel_claims_digest == self.claim.kernel_claims_digest
+                        && claim.budget_reservation_id == self.claim.budget_reservation_id
+                        && claim.launch_intent_digest == self.claim.launch_intent_digest
+                        && claim.slots == 1
+                }
+            }
+        }
+        fn authorize_read(&self, _: &SlotLedger, p: &(dyn Any + Send + Sync)) -> bool {
+            self.slot_live.load(Ordering::SeqCst) && fixture_proof(p, "fixture-private-slot-proof")
+        }
+    }
+    struct LoopAdmission {
+        contract: TaskContract,
+        request: controller::LaunchRequest,
+    }
+    impl controller::CurrentAdmission for LoopAdmission {
+        fn authorize_current(
+            &self,
+            t: &TaskView,
+            r: &controller::LaunchRequest,
+        ) -> Result<(), String> {
+            if t.contract == self.contract
+                && r == &self.request
+                && (t.state == SchedulingState::Ready
+                    || (t.state == SchedulingState::Claimed
+                        && t.attempt_id.as_ref() == Some(&r.attempt_id)
+                        && t.owner.as_ref() == Some(&r.owner)))
+            {
+                Ok(())
+            } else {
+                Err("scoped fixture admission denied".into())
+            }
+        }
+    }
+    impl controller::DispatchAdmission for LoopAdmission {
+        fn authorize_dispatch(
+            &self,
+            t: &TaskView,
+            i: &controller::DispatchIntent,
+        ) -> Result<(), String> {
+            controller::CurrentAdmission::authorize_current(self, t, &self.request)?;
+            let planned = controller::planned_launch_intent(t, &self.request).unwrap();
+            let expected: controller::DispatchIntent =
+                serde_json::from_value(planned.payload).unwrap();
+            if i == &expected {
+                Ok(())
+            } else {
+                Err("scoped fixture dispatch denied".into())
+            }
+        }
+    }
+    struct FixedClock;
+    impl controller::DispatchClock for FixedClock {
+        fn now_unix_seconds(&self) -> Option<u64> {
+            Some(100)
+        }
+    }
+    struct SlotLoopFixture {
+        task_loop: NativeTaskLoop,
+        store: Store,
+        policy: Arc<LoopPolicy>,
+        admission: LoopAdmission,
+        plan: Option<native_executor::NativeExecutionPlan>,
+        slot: Option<native_codex_plan::NativeCodexSlotAdmission>,
+        request: controller::LaunchRequest,
+        budget_proof: ReservationProof,
+        slot_proof: SlotProof,
+        original_inputs: BudgetAndSlotAdmission,
+        // Last: private paths outlive both Store and retained actual preparation.
+        fixture: Fixture,
+    }
+    fn configure_loop_budget(
+        store: &Store,
+        proof: ReservationProof,
+        scope: &ReservationScope,
+        seq: u64,
+    ) {
+        let ledger = store.reservation_ledger(Arc::clone(&proof)).unwrap();
+        let id = format!("loop-budget-limits-{seq}");
+        store
+            .record_reservation(
+                ReservationCommand {
+                    schema_version: 1,
+                    command_id: id.clone(),
+                    source: SourceIdentity {
+                        producer_id: "loop-budget".into(),
+                        incarnation: scope.incarnation.clone(),
+                        sequence: seq.to_string(),
+                    },
+                    expected_ledger_revision: ledger.revision,
+                    expected_ledger_digest: admission_reservations::ledger_digest(&ledger).unwrap(),
+                    launch_intent_digest: None,
+                    event: ReservationEvent::SetLimits {
+                        event_id: id,
+                        account_id: scope.account_id.clone(),
+                        limits: ScopeLimits {
+                            unit: scope.unit.clone(),
+                            account: Some(MinorUnits::new(100)),
+                            project: Some(MinorUnits::new(100)),
+                            root: Some(MinorUnits::new(100)),
+                        },
+                    },
+                },
+                proof,
+            )
+            .unwrap();
+    }
+    fn configure_loop_pool(
+        store: &Store,
+        proof: SlotProof,
+        pool: &str,
+        generation: &str,
+        seq: u64,
+    ) {
+        let ledger = store.inference_slot_ledger(Arc::clone(&proof)).unwrap();
+        store
+            .record_inference_slot(
+                SlotCommand {
+                    schema_version: 1,
+                    command_id: format!("loop-pool-{seq}"),
+                    source: SourceIdentity {
+                        producer_id: "loop-pool".into(),
+                        incarnation: "fixture-host-boot".into(),
+                        sequence: seq.to_string(),
+                    },
+                    expected_ledger_revision: ledger.revision,
+                    expected_ledger_digest: inference_slots::ledger_digest(&ledger).unwrap(),
+                    event: SlotEvent::SetPool {
+                        pool_id: pool.into(),
+                        capacity_key: content_digest(&format!("fixture-pool:{pool}")).unwrap(),
+                        generation: generation.into(),
+                        managed_capacity: 2,
+                    },
+                },
+                proof,
+            )
+            .unwrap();
+    }
+    fn loop_fixture() -> SlotLoopFixture {
+        let mut fixture = slot_fixture();
+        let (bound, mut inputs, inference, expected) = slot_inputs(&mut fixture);
+        let policy = Arc::new(LoopPolicy {
+            claim: slot_claim_mut(&mut inputs).clone(),
+            slot_live: AtomicBool::new(true),
+        });
+        let store = Store::open_with_startup_authorities(
+            fixture.root.0.join("loop.sqlite"),
+            StoreAuthorities {
+                reservations: Some(policy.clone()),
+                inference_slots: Some(policy.clone()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let budget_proof = Arc::clone(&inputs.budget_proof);
+        let slot_proof = Arc::clone(&inputs.slot_proof);
+        configure_loop_budget(
+            &store,
+            Arc::clone(&budget_proof),
+            &expected.reservation.scope,
+            1,
+        );
+        configure_loop_pool(
+            &store,
+            Arc::clone(&slot_proof),
+            "fixture-managed-pool",
+            "fixture-generation",
+            1,
+        );
+        store
+            .append(
+                SourceIdentity {
+                    producer_id: "loop-setup".into(),
+                    incarnation: "fixture-host-boot".into(),
+                    sequence: "1".into(),
+                },
+                admiralty_core::DomainEvent::TaskSubmitted {
+                    contract: fixture.task.contract.clone(),
+                },
+                "fixture-setup".into(),
+            )
+            .unwrap();
+        let budget = store.reservation_ledger(Arc::clone(&budget_proof)).unwrap();
+        inputs.budget_command.expected_ledger_revision = budget.revision;
+        inputs.budget_command.expected_ledger_digest =
+            admission_reservations::ledger_digest(&budget).unwrap();
+        sync_budget_digest(&mut inputs);
+        let slots = store
+            .inference_slot_ledger(Arc::clone(&slot_proof))
+            .unwrap();
+        inputs.slot_command.expected_ledger_revision = slots.revision;
+        inputs.slot_command.expected_ledger_digest =
+            inference_slots::ledger_digest(&slots).unwrap();
+        let original_inputs = clone_slot_inputs(&inputs);
+        let (plan, request, _, _, _, slot) = bound
+            .bind_inference_slot(inputs, inference)
+            .unwrap()
+            .into_parts();
+        let admission = LoopAdmission {
+            contract: fixture.task.contract.clone(),
+            request: request.clone(),
+        };
+        let journal = fixture.root.0.join("native-recovery");
+        mkdir(&journal);
+        let task_loop = NativeTaskLoop::new(
+            store.clone(),
+            ResourceGate::new(NodeId::new("fixture-node").unwrap()),
+            NativeTaskLoopConfig {
+                scope: StartedScope {
+                    project_id: fixture.task.contract.project_id.clone(),
+                    root_id: fixture.task.contract.root_id.clone(),
+                    node_id: NodeId::new("fixture-node").unwrap(),
+                    source_producer: "loop-started".into(),
+                    source_incarnation: "fixture-host-boot".into(),
+                },
+                task_owner: request.owner.clone(),
+                dispatch_owner: "fixture-dispatcher".into(),
+                dispatch_lease_secs: 5,
+                max_retained_runs: 4,
+                max_buffered_completions: 2,
+            },
+            NativeTaskRuntimeConfig {
+                journal_root: journal,
+                deadline: Duration::from_secs(1),
+                capture_limit: 4096,
+            },
+        )
+        .unwrap();
+        SlotLoopFixture {
+            task_loop,
+            store,
+            policy,
+            admission,
+            plan: Some(plan),
+            slot: Some(slot),
+            request,
+            budget_proof,
+            slot_proof,
+            original_inputs,
+            fixture,
+        }
+    }
+    impl SlotLoopFixture {
+        fn admit(&mut self) -> AdmissionStatus {
+            self.task_loop
+                .admit_slotted(
+                    self.request.clone(),
+                    self.plan.take().unwrap(),
+                    &self.admission,
+                    self.slot.take().unwrap(),
+                )
+                .unwrap()
+        }
+        fn counts(&self) -> (usize, u64, usize, u64, usize) {
+            let budget = self
+                .store
+                .reservation_ledger(Arc::clone(&self.budget_proof))
+                .unwrap();
+            let slots = self
+                .store
+                .inference_slot_ledger(Arc::clone(&self.slot_proof))
+                .unwrap();
+            (
+                self.store.events_after(0, 128).unwrap().len(),
+                budget.revision,
+                budget.reservations.len(),
+                slots.revision,
+                slots.holds.len(),
+            )
+        }
+        fn receipts(
+            &self,
+        ) -> (
+            admission_reservations::ReservationReceipt,
+            inference_slots::SlotReceipt,
+        ) {
+            let replay = controller::admit_one_slotted(
+                &self.store,
+                &self.admission,
+                &self.request,
+                clone_slot_inputs(&self.original_inputs),
+            )
+            .unwrap();
+            assert!(replay.intent.duplicate && replay.reservation.replayed && replay.slot.replayed);
+            (replay.reservation.receipt, replay.slot.receipt)
+        }
+        fn assert_held(&self) {
+            assert_eq!(self.counts().2, 1);
+            assert_eq!(self.counts().4, 1);
+            assert!(
+                self.store
+                    .reservation_ledger(Arc::clone(&self.budget_proof))
+                    .unwrap()
+                    .reservations["fixture-kernel-reservation"]
+                    .outstanding
+            );
+            assert!(
+                self.store
+                    .claim_outbox_key(
+                        Some(100),
+                        "fixture-inspector".into(),
+                        5,
+                        format!(
+                            "launch/{}/{}",
+                            self.request.task_id, self.request.attempt_id
+                        )
+                    )
+                    .unwrap()
+                    .is_none(),
+                "unknown dispatch cannot become claimable again"
+            );
+            assert!(!self.fixture.root.0.join("forbidden").exists());
+        }
+    }
+    struct RotatePoolClock {
+        store: Store,
+        proof: SlotProof,
+        calls: Cell<u32>,
+    }
+    impl controller::DispatchClock for RotatePoolClock {
+        fn now_unix_seconds(&self) -> Option<u64> {
+            let n = self.calls.get() + 1;
+            self.calls.set(n);
+            if n == 2 {
+                configure_loop_pool(
+                    &self.store,
+                    Arc::clone(&self.proof),
+                    "fixture-managed-pool",
+                    "fixture-next-generation",
+                    2,
+                );
+            }
+            Some(100)
+        }
+    }
+
+    #[test]
+    fn slotted_loop_preserves_receipts_across_unrelated_updates_and_current_revocation() {
+        let mut f = loop_fixture();
+        assert!(matches!(f.admit(), AdmissionStatus::Queued(_)));
+        assert_eq!(f.counts(), (2, 2, 1, 2, 1));
+        let original = f.receipts();
+        let scope = f.policy.claim.scope.clone();
+        configure_loop_budget(&f.store, Arc::clone(&f.budget_proof), &scope, 2);
+        configure_loop_pool(
+            &f.store,
+            Arc::clone(&f.slot_proof),
+            "fixture-unrelated-pool",
+            "fixture-generation",
+            2,
+        );
+        let before = f.counts();
+        let retry = f
+            .task_loop
+            .retry_admission(&f.request.run_id, &f.admission)
+            .unwrap();
+        assert!(matches!(retry, AdmissionStatus::Queued(ref d) if d.duplicate));
+        assert_eq!(f.receipts(), original);
+        assert_eq!(f.counts(), before);
+        f.policy.slot_live.store(false, Ordering::SeqCst);
+        assert!(matches!(
+            f.task_loop
+                .retry_admission(&f.request.run_id, &f.admission)
+                .unwrap(),
+            AdmissionStatus::Held(_)
+        ));
+        let status = f
+            .task_loop
+            .dispatch(&f.request.run_id, &FixedClock, &f.admission)
+            .unwrap();
+        assert!(matches!(
+            status,
+            TaskDispatchStatus::Held {
+                runtime_attempted: false,
+                ..
+            }
+        ));
+        f.policy.slot_live.store(true, Ordering::SeqCst);
+        assert_eq!(f.counts(), before);
+        assert_eq!(f.receipts(), original);
+        f.assert_held();
+        assert_eq!(
+            f.store
+                .inference_slot_ledger(Arc::clone(&f.slot_proof))
+                .unwrap()
+                .holds
+                .len(),
+            1
+        );
+        assert!(matches!(
+            f.task_loop
+                .retry_admission(&f.request.run_id, &f.admission)
+                .unwrap(),
+            AdmissionStatus::Held(_)
+        ));
+    }
+
+    #[test]
+    fn slotted_loop_pool_rotation_before_or_at_second_clock_fences_runtime() {
+        for at_second_clock in [false, true] {
+            let mut f = loop_fixture();
+            assert!(matches!(f.admit(), AdmissionStatus::Queued(_)));
+            let before = f.receipts();
+            let status = if at_second_clock {
+                let clock = RotatePoolClock {
+                    store: f.store.clone(),
+                    proof: Arc::clone(&f.slot_proof),
+                    calls: Cell::new(0),
+                };
+                let status = f
+                    .task_loop
+                    .dispatch(&f.request.run_id, &clock, &f.admission)
+                    .unwrap();
+                assert!(clock.calls.get() >= 2);
+                status
+            } else {
+                configure_loop_pool(
+                    &f.store,
+                    Arc::clone(&f.slot_proof),
+                    "fixture-managed-pool",
+                    "fixture-next-generation",
+                    2,
+                );
+                f.task_loop
+                    .dispatch(&f.request.run_id, &FixedClock, &f.admission)
+                    .unwrap()
+            };
+            assert!(matches!(
+                status,
+                TaskDispatchStatus::Held {
+                    runtime_attempted: false,
+                    ..
+                }
+            ));
+            assert!(f.task_loop.pending_diagnostics(&f.request.run_id).is_none());
+            assert_eq!(f.receipts(), before);
+            f.assert_held();
+            let slots = f
+                .store
+                .inference_slot_ledger(Arc::clone(&f.slot_proof))
+                .unwrap();
+            assert_eq!(slots.holds.len(), 1);
+            assert_eq!(
+                slots.pools["fixture-managed-pool"].generation,
+                "fixture-next-generation"
+            );
+            assert!(matches!(
+                f.task_loop
+                    .retry_admission(&f.request.run_id, &f.admission)
+                    .unwrap(),
+                AdmissionStatus::Held(_)
+            ));
+        }
+    }
+
+    #[test]
+    fn slotted_loop_current_dispatch_reaches_only_unconfigured_executor_and_stays_held() {
+        let mut f = loop_fixture();
+        assert!(matches!(f.admit(), AdmissionStatus::Queued(_)));
+        let counts = f.counts();
+        let receipts = f.receipts();
+        let status = f
+            .task_loop
+            .dispatch(&f.request.run_id, &FixedClock, &f.admission)
+            .unwrap();
+        assert!(matches!(
+            status,
+            TaskDispatchStatus::Held {
+                runtime_attempted: true,
+                ..
+            }
+        ));
+        // The actual gate is unconfigured: calling the executor is not child or
+        // provider execution, a Started transition, closure or qualification.
+        assert!(f.task_loop.pending_diagnostics(&f.request.run_id).is_none());
+        let snapshot = f.store.snapshot().unwrap();
+        assert_eq!(
+            snapshot.projection.tasks[&f.request.task_id].state,
+            SchedulingState::Claimed
+        );
+        assert!(f.task_loop.completion(&f.request.run_id).is_none());
+        assert!(matches!(
+            f.task_loop
+                .retry_admission(&f.request.run_id, &f.admission)
+                .unwrap(),
+            AdmissionStatus::Held(_)
+        ));
+        assert!(matches!(
+            f.task_loop
+                .dispatch(&f.request.run_id, &FixedClock, &f.admission)
+                .unwrap(),
+            TaskDispatchStatus::Held {
+                runtime_attempted: false,
+                ..
+            }
+        ));
+        assert_eq!(f.counts(), counts);
+        assert_eq!(f.receipts(), receipts);
+        f.assert_held();
+        assert_eq!(
+            f.store
+                .inference_slot_ledger(Arc::clone(&f.slot_proof))
+                .unwrap()
+                .holds
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn slotted_loop_rejections_return_original_private_binding_for_explicit_correction() {
+        let mut f = loop_fixture();
+        let before = f.counts();
+        let plan = f.plan.take().unwrap();
+        let slot = f.slot.take().unwrap();
+        let original_head = plan.prepared_workspace.head_oid().to_owned();
+        let budget_proof = Arc::clone(&slot.inputs().budget_proof);
+        let slot_proof = Arc::clone(&slot.inputs().slot_proof);
+        let mut bad_request = f.request.clone();
+        bad_request.model = f.fixture.model.provider_model.clone();
+        let failure = f
+            .task_loop
+            .admit_slotted(bad_request, plan, &f.admission, slot)
+            .err()
+            .unwrap();
+        assert!(Arc::ptr_eq(
+            &failure.slot.inputs().budget_proof,
+            &budget_proof
+        ));
+        assert!(Arc::ptr_eq(&failure.slot.inputs().slot_proof, &slot_proof));
+        assert_eq!(failure.plan.prepared_workspace.head_oid(), original_head);
+        assert!(failure.slot.matches_plan(&f.request, &failure.plan));
+        assert_eq!(f.counts(), before);
+        let mut plan = *failure.plan;
+        let slot = *failure.slot;
+        plan.model_declared = f.fixture.model.provider_model.clone();
+        let failure = f
+            .task_loop
+            .admit_slotted(f.request.clone(), plan, &f.admission, slot)
+            .err()
+            .unwrap();
+        assert_eq!(failure.plan.model_declared, f.fixture.model.provider_model);
+        assert_eq!(failure.plan.prepared_workspace.head_oid(), original_head);
+        failure
+            .plan
+            .prepared_workspace
+            .validate_current_custody()
+            .unwrap();
+        assert_eq!(f.counts(), before);
+        let mut plan = *failure.plan;
+        plan.model_declared = f.request.model.clone();
+        assert!(failure.slot.matches_plan(&f.request, &plan));
+        let admitted = f
+            .task_loop
+            .admit_slotted(f.request.clone(), plan, &f.admission, *failure.slot)
+            .unwrap();
+        assert!(matches!(admitted, AdmissionStatus::Queued(_)));
+        assert_eq!(f.counts(), (2, 2, 1, 2, 1));
     }
 
     #[test]
