@@ -448,3 +448,36 @@ fn actual_installer_correct_integrity_pin_does_not_accept_concatenated_archive()
     assert!(!f.destination.exists());
     no_temporary(&f);
 }
+
+#[test]
+fn actual_installer_rejects_unprotected_source_and_destination_ancestors_before_stage() {
+    for source in [true, false] {
+        let mut f = fixture();
+        let unsafe_parent = f.root.path().join("unsafe-ancestor");
+        fs::create_dir(&unsafe_parent).expect("owned ancestor");
+        fs::set_permissions(&unsafe_parent, fs::Permissions::from_mode(0o777))
+            .expect("nonsticky writable ancestor");
+        let leaf = unsafe_parent.join("private0700");
+        fs::create_dir(&leaf).expect("owned leaf");
+        fs::set_permissions(&leaf, fs::Permissions::from_mode(0o700)).expect("private leaf");
+        if source {
+            let archive = leaf.join("bundle.gz");
+            fs::rename(&f.archive, &archive).expect("relocate source");
+            f.archive = archive;
+        } else {
+            f.destination = leaf.join("new-private-version");
+        }
+        let result = invoke(f.root.path(), &args(&f));
+        assert!(
+            !result.status.success(),
+            "unprotected {} ancestor was accepted",
+            if source { "source" } else { "destination" }
+        );
+        assert!(result.stdout.is_empty());
+        assert!(!f.destination.exists());
+        no_temporary(&f);
+        if !source {
+            assert_eq!(fs::read_dir(leaf).expect("private leaf").count(), 0);
+        }
+    }
+}

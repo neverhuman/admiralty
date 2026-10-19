@@ -158,6 +158,22 @@ fn directory_at(parent: &File, name: &str) -> Result<File> {
         Mode::empty(),
     )?))
 }
+// Match the protected-reader boundary used by native startup: ancestors must
+// be controlled by root/this UID and either not writable by other users or
+// sticky. Sticky trusted temporary directories preserve ordinary /tmp support.
+// This cannot isolate against root or another process with the owning UID.
+fn protected_ancestor(file: &File) -> Result<()> {
+    let metadata = file.metadata()?;
+    let trusted_owner =
+        metadata.uid() == 0 || metadata.uid() == rustix::process::geteuid().as_raw();
+    if !metadata.is_dir()
+        || !trusted_owner
+        || (metadata.mode() & 0o022 != 0 && metadata.mode() & 0o1000 == 0)
+    {
+        return Err(InstallError::Invalid("directory ancestor is not protected"));
+    }
+    Ok(())
+}
 fn absolute_directory(path: &Path) -> Result<File> {
     if !path.is_absolute() || path.as_os_str().len() > 4096 {
         return Err(InstallError::Invalid("absolute directory bound"));
@@ -168,6 +184,7 @@ fn absolute_directory(path: &Path) -> Result<File> {
         OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
         Mode::empty(),
     )?);
+    protected_ancestor(&fd)?;
     for part in path.components() {
         match part {
             Component::RootDir => {}
@@ -176,6 +193,7 @@ fn absolute_directory(path: &Path) -> Result<File> {
                     .to_str()
                     .ok_or(InstallError::Invalid("directory encoding"))?;
                 fd = directory_at(&fd, name)?;
+                protected_ancestor(&fd)?;
             }
             _ => return Err(InstallError::Invalid("directory traversal")),
         }
@@ -403,6 +421,9 @@ struct Stage {
     destination: PathBuf,
     pins: (String, String),
     published: bool,
+    // Fence before the rename syscall: only an exact EEXIST refusal proves
+    // this attempt did not publish. Other errors require manual reconciliation.
+    rename_attempted: bool,
 }
 impl Stage {
     fn create(
@@ -445,6 +466,7 @@ impl Stage {
             destination: destination.to_owned(),
             pins: (pins.0.into(), pins.1.into()),
             published: false,
+            rename_attempted: false,
         })
     }
     fn info(&self) -> InstallReconciliation {
@@ -455,7 +477,7 @@ impl Stage {
             staged_inode: Some(self.root_id.ino.to_string()),
             archive_sha256: self.pins.0.clone(),
             manifest_raw_sha256: self.pins.1.clone(),
-            publication_may_have_occurred: self.published,
+            publication_may_have_occurred: self.published || self.rename_attempted,
         }
     }
     fn parent_for(&mut self, path: &str) -> Result<(File, String)> {
@@ -721,7 +743,29 @@ fn install_with_hook(
     archive_pin: &str,
     manifest_pin: &str,
     destination: &Path,
+    hook: impl FnMut(Point) -> io::Result<()>,
+) -> Result<InstallReceipt> {
+    install_with_operations(
+        archive,
+        archive_pin,
+        manifest_pin,
+        destination,
+        hook,
+        |parent, temporary, name| {
+            rustix::fs::renameat_with(parent, temporary, parent, name, RenameFlags::NOREPLACE)
+        },
+    )
+}
+// The private one-shot seam exercises ambiguous returned errors in tests. The
+// public installer always uses the exact no-replace syscall above; no caller
+// or archive may provide an operation or authorize a retry.
+fn install_with_operations(
+    archive: &Path,
+    archive_pin: &str,
+    manifest_pin: &str,
+    destination: &Path,
     mut hook: impl FnMut(Point) -> io::Result<()>,
+    rename: impl FnOnce(&File, &str, &str) -> rustix::io::Result<()>,
 ) -> Result<InstallReceipt> {
     if !valid_hash(archive_pin) || !valid_hash(manifest_pin) {
         return Err(InstallError::Invalid("SHA256 pins must be64lowercasehex"));
@@ -860,13 +904,15 @@ fn install_with_hook(
         ) {
             return Err(InstallError::Invalid("install parent or stage replaced"));
         }
-        rustix::fs::renameat_with(
-            &parent,
-            stage.name.as_str(),
-            &parent,
-            name,
-            RenameFlags::NOREPLACE,
-        )?;
+        stage.rename_attempted = true;
+        if let Err(error) = rename(&parent, stage.name.as_str(), name) {
+            if error == rustix::io::Errno::EXIST {
+                // NOREPLACE refused the existing name: this attempt is known
+                // not to have published, so identity-bound cleanup is allowed.
+                stage.rename_attempted = false;
+            }
+            return Err(error.into());
+        }
         stage.published = true;
         hook(Point::AfterCommit)?;
         hook(Point::BeforeParentSync)?;
@@ -929,7 +975,7 @@ fn install_with_hook(
     match work {
         Ok(receipt) => Ok(receipt),
         Err(error) => {
-            if stage.published {
+            if stage.published || stage.rename_attempted {
                 Err(InstallError::CommitUncertain(Box::new(stage.info())))
             } else if stage.cleanup().is_err() {
                 Err(InstallError::CleanupUncertain(Box::new(stage.info())))
@@ -1849,6 +1895,170 @@ mod tests {
         );
         assert_eq!(
             hash(&fs::read(&f.archive).expect("original archive")),
+            f.archive_hash
+        );
+        assert!(install(&f).is_err());
+    }
+    fn unsafe_ancestor_fixture(source: bool) -> Fixture {
+        let mut f = fixture(false);
+        let ancestor = f.root.path().join("unprotected-intermediate");
+        let leaf = ancestor.join("private-leaf");
+        fs::create_dir(&ancestor).expect("owned ancestor");
+        fs::set_permissions(&ancestor, fs::Permissions::from_mode(0o777))
+            .expect("explicit nonsticky writable ancestor");
+        fs::create_dir(&leaf).expect("owned private leaf");
+        fs::set_permissions(&leaf, fs::Permissions::from_mode(0o700)).expect("private leaf mode");
+        if source {
+            let archive = leaf.join("native.gz");
+            fs::rename(&f.archive, &archive).expect("move source under unsafe namespace");
+            f.archive = archive;
+        } else {
+            f.destination = leaf.join("admiralty-version");
+        }
+        f
+    }
+    #[test]
+    fn unprotected_source_ancestor_is_rejected_before_stage_creation() {
+        let f = unsafe_ancestor_fixture(true);
+        let mut staged = false;
+        let outcome = install_with_hook(
+            &f.archive,
+            &f.archive_hash,
+            &f.manifest_hash,
+            &f.destination,
+            |p| {
+                if matches!(p, Point::StageCreated(_)) {
+                    staged = true;
+                }
+                Ok(())
+            },
+        );
+        assert!(
+            outcome.is_err(),
+            "unprotected source ancestor must be refused"
+        );
+        assert!(!staged);
+        assert!(!f.destination.exists());
+        no_temporary(&f);
+    }
+    #[test]
+    fn unprotected_destination_ancestor_is_rejected_before_stage_creation() {
+        let f = unsafe_ancestor_fixture(false);
+        let mut staged = false;
+        let outcome = install_with_hook(
+            &f.archive,
+            &f.archive_hash,
+            &f.manifest_hash,
+            &f.destination,
+            |p| {
+                if matches!(p, Point::StageCreated(_)) {
+                    staged = true;
+                }
+                Ok(())
+            },
+        );
+        assert!(
+            outcome.is_err(),
+            "unprotected destination ancestor must be refused"
+        );
+        assert!(!staged);
+        assert!(!f.destination.exists());
+        assert_eq!(
+            fs::read_dir(f.destination.parent().expect("private leaf"))
+                .expect("empty private leaf")
+                .count(),
+            0
+        );
+        no_temporary(&f);
+    }
+    #[test]
+    fn trusted_owner_sticky_ancestor_still_supports_a_private_version_leaf() {
+        let f = unsafe_ancestor_fixture(false);
+        let ancestor = f.root.path().join("unprotected-intermediate");
+        fs::set_permissions(&ancestor, fs::Permissions::from_mode(0o1777))
+            .expect("owned sticky temporary ancestor");
+        install(&f).expect("trusted sticky ancestor with private leaf");
+        assert_eq!(
+            fs::metadata(f.destination).expect("private version").mode() & 0o7777,
+            0o700
+        );
+        absolute_directory(Path::new("/")).expect("root protected ancestor");
+    }
+    #[test]
+    fn unexpected_rename_error_preserves_stage_and_reports_unknown_publication() {
+        let f = fixture(false);
+        let mut temporary = None;
+        let outcome = install_with_operations(
+            &f.archive,
+            &f.archive_hash,
+            &f.manifest_hash,
+            &f.destination,
+            |p| {
+                if let Point::StageCreated(path) = p {
+                    temporary = Some(path);
+                }
+                Ok(())
+            },
+            |_, _, _| Err(rustix::io::Errno::IO),
+        );
+        let err = outcome.expect_err("simulated returned I/O uncertainty");
+        assert!(matches!(err, InstallError::CommitUncertain(_)));
+        let info = err.reconciliation().expect("unknown receipt");
+        assert!(info.publication_may_have_occurred);
+        assert!(!f.destination.exists());
+        let temporary = temporary.expect("preserved stage");
+        let raw =
+            fs::read(temporary.join(MANIFEST)).expect("no blind cleanup after attempted rename");
+        assert_eq!(hash(&raw), f.manifest_hash);
+        assert_eq!(
+            info.staged_inode,
+            Some(
+                fs::metadata(temporary)
+                    .expect("original stage")
+                    .ino()
+                    .to_string()
+            )
+        );
+        assert_eq!(
+            hash(&fs::read(&f.archive).expect("source preserved")),
+            f.archive_hash
+        );
+    }
+    #[test]
+    fn actual_rename_with_lost_return_keeps_destination_and_original_identity() {
+        let f = fixture(false);
+        let outcome = install_with_operations(
+            &f.archive,
+            &f.archive_hash,
+            &f.manifest_hash,
+            &f.destination,
+            |_| Ok(()),
+            |parent, temporary, name| {
+                rustix::fs::renameat_with(parent, temporary, parent, name, RenameFlags::NOREPLACE)?;
+                Err(rustix::io::Errno::IO)
+            },
+        );
+        let err = outcome.expect_err("simulated error after actual rename");
+        assert!(matches!(err, InstallError::CommitUncertain(_)));
+        let info = err.reconciliation().expect("unknown receipt");
+        assert!(info.publication_may_have_occurred);
+        assert_eq!(
+            info.staged_inode,
+            Some(
+                fs::metadata(&f.destination)
+                    .expect("actual renamed inode")
+                    .ino()
+                    .to_string()
+            )
+        );
+        assert_eq!(
+            hash(
+                &fs::read(f.destination.join(MANIFEST)).expect("published evidence never removed")
+            ),
+            f.manifest_hash
+        );
+        assert_eq!(
+            hash(&fs::read(&f.archive).expect("source preserved")),
             f.archive_hash
         );
         assert!(install(&f).is_err());
