@@ -5,6 +5,7 @@ export type RouteName =
   | "workplans"
   | "coordination"
   | "commands"
+  | "intake"
   | "models"
   | "git"
   | "atlas";
@@ -14,6 +15,7 @@ const names = new Set<RouteName>([
   "workplans",
   "coordination",
   "commands",
+  "intake",
   "models",
   "git",
   "atlas",
