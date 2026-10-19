@@ -1,7 +1,7 @@
 # Coordination observation component boundaries
 
 These Rust components are tested building blocks for P05. They are not an
-activated broker, authenticated agent API, durable subscription service or
+activated broker, fleet delivery loop or
 application acceptance mechanism. Ordinary production execution remains disabled.
 Existing Store validation and immutable event replay remain authoritative for
 recorded domain events; in-memory observations cannot grant native authority.
@@ -68,6 +68,33 @@ reopen preserves supported replay. Every page rechecks authorization.
 
 This is immutable queue history: an ACKed message can still appear. It is not a
 pending-delivery list, delivery attempt journal, application ACK or authenticated
-HTTP command route. Full P05 still requires durable subscriptions, scoped replay
-and expiry/unknown-delivery state, priority reserves/coalescing, service authority
-and loss/restart qualification before activation.
+HTTP command route. Runtime activation still requires independently installed
+service authority and delivery-loop qualification, including unknown transport
+outcomes. The subscription seam below never infers those from a queue read.
+
+
+## Durable subscription routing
+
+`Store::subscribe` persists an immutable exact task/project/channel/recipient/epoch
+membership through the sole writer. Startup installs `SubscriptionAuthority`;
+default startup denies every operation. The caller supplies an opaque in-process
+proof, never a serialized trust flag. The writer checks the current task contract,
+expiry observation and policy before any subscription read, including retries.
+Policies must authenticate the proof, source, grants, revocation and recorded clock.
+
+`CoordinationService::route_message` checks that exact durable membership and
+current task authority, then enqueues one message in the same serialized writer
+turn. Lost-response retries use the existing complete source identity and payload
+collision checks. Routing does not ACK receipt; pending messages survive restart
+and remain available through the separate scoped application-ACK path. A policy
+revocation or subscription expiry rejects a route visibly and leaves queued
+messages intact. No broadcast or terminal input is performed.
+
+The journal admits at most 4096 subscriptions and 128 per project/task/channel.
+Definitions are at most 4096 encoded bytes, with 256-byte channel/epoch labels.
+Capacity errors preserve membership; exact retries do not consume new capacity.
+Startup, rebuild and backup verify definition digests and indexed scope columns.
+`coordination_delivery` qualifies restart, collision, scope denial, current policy
+on replay, expiry, topic capacity and corruption rejection. Configuring a real
+issuer, transport/provider delivery and its unknown outcomes remains an explicit
+integration responsibility; this local qualification does not deploy them.
