@@ -374,7 +374,8 @@ fn task_matches(task: Option<&TaskView>, scope: &ReservationScope, historical: b
         return false;
     };
     let contract = &task.contract;
-    if contract.project_id != scope.project_id
+    if bounded_json_size(contract, MAX_EVENT_BYTES).is_err()
+        || contract.project_id != scope.project_id
         || contract.root_id != scope.root_id
         || contract.task_id != scope.task_id
         || contract.revision != scope.contract_revision
