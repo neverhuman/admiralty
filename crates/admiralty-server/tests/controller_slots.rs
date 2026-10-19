@@ -344,11 +344,10 @@ fn slotted_controller_commits_claim_debit_hold_and_outbox_once_and_replays_origi
     assert!(!first.intent.duplicate && !first.reservation.replayed && !first.slot.replayed);
     let before = durable_counts(&store);
     assert_eq!(before, (2, 2, 1, 2, 2));
+    assert!(admit_one_slotted(&store, &Deny, &req, clone_admission(&retry_admission)).is_err());
+    assert_eq!(durable_counts(&store), before);
     let budget_ledger = store.reservation_ledger(proof()).unwrap();
-    assert_eq!(
-        budget_ledger.reservations["reservation-task-a"].outstanding,
-        true
-    );
+    assert!(budget_ledger.reservations["reservation-task-a"].outstanding);
     assert_eq!(store.inference_slot_ledger(proof()).unwrap().holds.len(), 1);
     let later = store.reservation_ledger(proof()).unwrap();
     store
@@ -392,6 +391,25 @@ fn slotted_controller_commits_claim_debit_hold_and_outbox_once_and_replays_origi
             .reservations
             .len(),
         1
+    );
+    let task = reopened.snapshot().unwrap().projection.tasks[&req.task_id].clone();
+    let planned = controller::planned_launch_intent(&task, &req).unwrap();
+    let claimed = reopened
+        .claim_outbox_key(
+            Some(10),
+            "test-reader".into(),
+            10,
+            planned.idempotency_key.clone(),
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(claimed.idempotency_key, first.intent.outbox_key);
+    assert_eq!(claimed.payload, planned.payload);
+    assert!(
+        reopened
+            .claim_outbox_due(Some(10), "test-reader".into(), 10)
+            .unwrap()
+            .is_none()
     );
 }
 
@@ -497,13 +515,26 @@ fn last_slot_race_admits_only_one_new_controller_claim() {
     let aa = admission(&store, &a, "pool", 3);
     let bb = admission(&store, &b, "pool", 4);
     let (sa, sb) = (store.clone(), store.clone());
+    let (a_retry, b_retry) = (a.clone(), b.clone());
     let ta = std::thread::spawn(move || admit_one_slotted(&sa, &Permit, &a, aa).is_ok());
     let tb = std::thread::spawn(move || admit_one_slotted(&sb, &Permit, &b, bb).is_ok());
-    let successes = [ta.join().unwrap(), tb.join().unwrap()]
-        .into_iter()
-        .filter(|ok| *ok)
-        .count();
+    let results = [ta.join().unwrap(), tb.join().unwrap()];
+    let successes = results.into_iter().filter(|ok| *ok).count();
     assert_eq!(successes, 1);
+    let loser = if results[0] { b_retry } else { a_retry };
+    let fresh = admission(&store, &loser, "pool", 5);
+    let before = durable_counts(&store);
+    let failure = admit_one_slotted(&store, &Permit, &loser, fresh).unwrap_err();
+    assert!(
+        matches!(
+            &failure,
+            controller::ControllerError::Store(admiralty_store::StoreError::InferenceSlot(
+                inference_slots::SlotStoreError::Capacity
+            ))
+        ),
+        "{failure}"
+    );
+    assert_eq!(durable_counts(&store), before);
     assert_eq!(store.inference_slot_ledger(proof()).unwrap().holds.len(), 1);
     assert_eq!(
         store
