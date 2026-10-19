@@ -82,6 +82,41 @@ pub struct NativeExecutionPlan {
     pub permit_authority: Arc<dyn ResourcePermitAuthority>,
 }
 
+/// Registration rejection retains the original opaque workspace capability.
+/// Callers must keep or explicitly reconcile the returned plan; reconstructing
+/// it from a path or JSON cannot replace the actual preparation ownership.
+#[must_use = "retain or reconcile the original plan returned on registration failure"]
+pub struct PlanRegistrationFailure {
+    error: NativeExecutorError,
+    plan: Box<NativeExecutionPlan>,
+}
+impl PlanRegistrationFailure {
+    pub fn error(&self) -> &NativeExecutorError {
+        &self.error
+    }
+    pub fn into_parts(self) -> (NativeExecutorError, NativeExecutionPlan) {
+        (self.error, *self.plan)
+    }
+}
+impl std::fmt::Debug for PlanRegistrationFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not expose launch arguments, context or policy through an error.
+        f.debug_struct("PlanRegistrationFailure")
+            .field("error", &self.error)
+            .finish_non_exhaustive()
+    }
+}
+impl std::fmt::Display for PlanRegistrationFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.error.fmt(f)
+    }
+}
+impl std::error::Error for PlanRegistrationFailure {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.error)
+    }
+}
+
 pub struct NativeExecutor {
     gate: ResourceGate,
     journal: PrivateJournal,
@@ -91,6 +126,9 @@ pub struct NativeExecutor {
     plans: Mutex<BTreeMap<String, NativeExecutionPlan>>,
     pending: Mutex<BTreeMap<String, PendingRun>>,
     reserved_runs: Mutex<BTreeSet<String>>,
+    // A write attempt is an uncertainty boundary even when no file is visible.
+    // Entries are a subset of reserved_runs and retire only after proven closure.
+    launch_fenced_runs: Mutex<BTreeSet<String>>,
     completed: Mutex<BTreeMap<String, ClosedExecution>>,
     started_sink: Arc<dyn StartedSink>,
 }
@@ -202,6 +240,7 @@ impl NativeExecutor {
             plans: Mutex::new(BTreeMap::new()),
             pending: Mutex::new(BTreeMap::new()),
             reserved_runs: Mutex::new(BTreeSet::new()),
+            launch_fenced_runs: Mutex::new(BTreeSet::new()),
             completed: Mutex::new(BTreeMap::new()),
             started_sink,
         })
@@ -221,6 +260,14 @@ impl NativeExecutor {
             .plans
             .lock()
             .map_err(|_| NativeExecutorError::Poisoned)?;
+        if self
+            .launch_fenced_runs
+            .lock()
+            .map_err(|_| NativeExecutorError::Poisoned)?
+            .contains(run_id)
+        {
+            return Err(NativeExecutorError::LaunchUnknown);
+        }
         if !plans.contains_key(run_id) {
             return Ok(None);
         }
@@ -242,32 +289,66 @@ impl NativeExecutor {
         Ok(result)
     }
 
-    /// Install a plan from trusted server composition. Duplicate run identities
-    /// fail closed, including after a previous plan was consumed.
+    /// Compatibility API: a rejected plan is consumed and its preparation
+    /// capability is dropped. Ownership-aware coordinators must instead use
+    /// `try_register_plan` and retain its returned plan on every error.
     pub fn register_plan(&self, plan: NativeExecutionPlan) -> Result<(), NativeExecutorError> {
-        if !valid_run_id(&plan.run_id) || plan.launch_spec.run_id != plan.run_id {
-            return Err(NativeExecutorError::InvalidBinding);
-        }
-        if self
-            .journal
-            .exists(&journal_name(&plan.run_id, "prepared")?)?
-        {
-            return Err(NativeExecutorError::DuplicateRun);
-        }
-        let mut plans = self
-            .plans
-            .lock()
-            .map_err(|_| NativeExecutorError::Poisoned)?;
-        let mut reserved = self
-            .reserved_runs
-            .lock()
-            .map_err(|_| NativeExecutorError::Poisoned)?;
-        if reserved.contains(&plan.run_id) {
-            return Err(NativeExecutorError::DuplicateRun);
-        }
-        if reserved.len() >= self.max_pending {
-            return Err(NativeExecutorError::Capacity);
-        }
+        self.try_register_plan(plan).map_err(|failure| {
+            let (error, discarded_plan) = failure.into_parts();
+            drop(discarded_plan);
+            error
+        })
+    }
+
+    /// Install a trusted plan without losing it on rejection. All validation,
+    /// journal and registry checks borrow the plan; its original preparation
+    /// moves into the registry only after every fallible operation succeeds.
+    pub fn try_register_plan(
+        &self,
+        plan: NativeExecutionPlan,
+    ) -> Result<(), PlanRegistrationFailure> {
+        let checked = (|| {
+            if !valid_run_id(&plan.run_id) || plan.launch_spec.run_id != plan.run_id {
+                return Err(NativeExecutorError::InvalidBinding);
+            }
+            let plans = self
+                .plans
+                .lock()
+                .map_err(|_| NativeExecutorError::Poisoned)?;
+            let reserved = self
+                .reserved_runs
+                .lock()
+                .map_err(|_| NativeExecutorError::Poisoned)?;
+            if plans.contains_key(&plan.run_id)
+                || reserved.contains(&plan.run_id)
+                || self
+                    .launch_fenced_runs
+                    .lock()
+                    .map_err(|_| NativeExecutorError::Poisoned)?
+                    .contains(&plan.run_id)
+            {
+                return Err(NativeExecutorError::DuplicateRun);
+            }
+            for kind in ["prepared", "observed", "closed"] {
+                if self.journal.exists(&journal_name(&plan.run_id, kind)?)? {
+                    return Err(NativeExecutorError::DuplicateRun);
+                }
+            }
+            if reserved.len() >= self.max_pending {
+                return Err(NativeExecutorError::Capacity);
+            }
+            Ok((plans, reserved))
+        })();
+        let (mut plans, mut reserved) = match checked {
+            Ok(guards) => guards,
+            Err(error) => {
+                return Err(PlanRegistrationFailure {
+                    error,
+                    plan: Box::new(plan),
+                });
+            }
+        };
+        // No fallible operations after consuming the original plan.
         reserved.insert(plan.run_id.clone());
         plans.insert(plan.run_id.clone(), plan);
         Ok(())
@@ -292,6 +373,10 @@ impl NativeExecutor {
         }
         let result = completed.remove(&receipt.run_id);
         self.reserved_runs
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .remove(&receipt.run_id);
+        self.launch_fenced_runs
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove(&receipt.run_id);
@@ -440,30 +525,89 @@ impl NativeExecutor {
         Ok(Some(receipt))
     }
 
+    fn ensure_no_launch_evidence(&self, run_id: &str) -> Result<(), NativeExecutorError> {
+        if !valid_run_id(run_id) {
+            return Err(NativeExecutorError::InvalidBinding);
+        }
+        if self
+            .launch_fenced_runs
+            .lock()
+            .map_err(|_| NativeExecutorError::Poisoned)?
+            .contains(run_id)
+        {
+            return Err(NativeExecutorError::LaunchUnknown);
+        }
+        for kind in ["prepared", "observed", "closed"] {
+            if self.journal.exists(&journal_name(run_id, kind)?)? {
+                return Err(NativeExecutorError::LaunchUnknown);
+            }
+        }
+        Ok(())
+    }
+
+    fn persist_prelaunch(
+        &self,
+        recovery: &RecoveryIdentity,
+        intent: &DispatchIntent,
+        plan: &NativeExecutionPlan,
+    ) -> Result<(), NativeExecutorError> {
+        // Establish a bounded process-local fence before the first journal
+        // write. A failed create/write/sync cannot become an automatic retry
+        // merely because no durable file can currently be observed.
+        let reserved = self
+            .reserved_runs
+            .lock()
+            .map_err(|_| NativeExecutorError::Poisoned)?;
+        if !reserved.contains(&plan.run_id)
+            || recovery.run_id != plan.run_id
+            || intent.run_id != plan.run_id
+        {
+            return Err(NativeExecutorError::LaunchUnknown);
+        }
+        let mut fenced = self
+            .launch_fenced_runs
+            .lock()
+            .map_err(|_| NativeExecutorError::Poisoned)?;
+        if fenced.contains(&plan.run_id) {
+            return Err(NativeExecutorError::LaunchUnknown);
+        }
+        if fenced.len() >= self.max_pending {
+            return Err(NativeExecutorError::Capacity);
+        }
+        fenced.insert(plan.run_id.clone());
+        drop(fenced);
+        drop(reserved);
+        write_prelaunch_recovery(&self.journal, recovery, intent, plan)
+    }
+
     fn launch_plan(
         &self,
         task: &TaskView,
         intent: &DispatchIntent,
     ) -> Result<RuntimeReceipt, NativeExecutorError> {
-        let plan = self
+        let mut plans = self
             .plans
             .lock()
-            .map_err(|_| NativeExecutorError::Poisoned)?
+            .map_err(|_| NativeExecutorError::Poisoned)?;
+        self.ensure_no_launch_evidence(&intent.run_id)?;
+        let original = plans
             .remove(&intent.run_id)
             .ok_or(NativeExecutorError::NoPreparedPlan)?;
-        let result = self.launch_registered_plan(task, intent, plan);
-        if result.is_err()
-            && !self
-                .pending
+        drop(plans);
+        let mut plan = Some(original);
+        let result = self.launch_registered_plan(task, intent, &mut plan);
+        if let Some(plan) = plan {
+            // The run reservation stays held while its plan is in flight, so
+            // registration cannot insert a replacement and withdrawal cannot
+            // remove it. Restore the actual capability on every known
+            // pre-spawn failure, including an uncertain journal write.
+            self.plans
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .contains_key(&intent.run_id)
-        {
-            self.reserved_runs
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .remove(&intent.run_id);
+                .insert(intent.run_id.clone(), plan);
         }
+        // A reservation retires only on safe prelaunch withdrawal or one-shot
+        // proven closure handoff, never merely because launch returned an error.
         result
     }
 
@@ -471,9 +615,12 @@ impl NativeExecutor {
         &self,
         task: &TaskView,
         intent: &DispatchIntent,
-        plan: NativeExecutionPlan,
+        retained: &mut Option<NativeExecutionPlan>,
     ) -> Result<RuntimeReceipt, NativeExecutorError> {
-        validate_bindings(task, intent, &plan)?;
+        let plan = retained
+            .as_ref()
+            .ok_or(NativeExecutorError::NoPreparedPlan)?;
+        validate_bindings(task, intent, plan)?;
         let permit = VerifiedResourcePermit::verify_current(
             plan.permit_claims.clone(),
             plan.permit_authority.clone(),
@@ -488,20 +635,32 @@ impl NativeExecutor {
             )
             .map_err(|_| NativeExecutorError::PermitDenied)?;
         let recovery = admitted.recovery_identity();
-        write_prelaunch_recovery(&self.journal, &recovery, intent, &plan)?;
+        self.persist_prelaunch(&recovery, intent, plan)?;
+        // Move the plan only after all earlier fallible checks. If the gate
+        // positively reports a pre-spawn failure, restore this exact value;
+        // an actual/ambiguous spawn instead transfers its workspace to pending.
+        let original = retained.take().ok_or(NativeExecutorError::NoPreparedPlan)?;
         let host = SessionHost::new();
         let running = match admitted.launch(&host) {
             Ok(running) => running,
             Err(failure) => {
                 if let Some(running) = failure.recovery {
                     let recovery = running.recovery_identity().clone();
-                    self.insert_pending(intent, host, *running, recovery, plan.prepared_workspace)?;
+                    self.insert_pending(
+                        intent,
+                        host,
+                        *running,
+                        recovery,
+                        original.prepared_workspace,
+                    )?;
+                } else {
+                    *retained = Some(original);
                 }
                 return Err(NativeExecutorError::LaunchUnknown);
             }
         };
         let recovery = running.recovery_identity().clone();
-        self.insert_pending(intent, host, running, recovery, plan.prepared_workspace)?;
+        self.insert_pending(intent, host, running, recovery, original.prepared_workspace)?;
         // Noninteractive executor: no hidden open pipe can block provider EOF.
         // Interactive sessions require a separately authorized future interface.
         {
@@ -1289,6 +1448,375 @@ mod tests {
         }
     }
 
+    fn preparation_identity(plan: &NativeExecutionPlan) -> (PathBuf, u64, u64, String, String) {
+        let path = plan.prepared_workspace.workspace().workspace.clone();
+        let metadata = fs::metadata(&path).expect("original workspace inode");
+        (
+            path,
+            metadata.dev(),
+            metadata.ino(),
+            plan.prepared_workspace.head_oid().into(),
+            plan.prepared_workspace.tree_oid().into(),
+        )
+    }
+
+    #[test]
+    fn rejected_registration_returns_original_preparation_for_invalid_and_journal_errors() {
+        for fault in ["invalid", "journal"] {
+            let Fixture {
+                temp,
+                journal,
+                view,
+                intent,
+                mut plan,
+                executor,
+                ..
+            } = fixture();
+            let identity = preparation_identity(&plan);
+            if fault == "invalid" {
+                plan.launch_spec.run_id = "different-run".into();
+            } else {
+                fs::set_permissions(&journal, fs::Permissions::from_mode(0o755))
+                    .expect("revoke private journal");
+            }
+            let rejected = executor
+                .try_register_plan(plan)
+                .expect_err("registration must fail");
+            assert!(matches!(
+                (fault, rejected.error()),
+                ("invalid", NativeExecutorError::InvalidBinding)
+                    | ("journal", NativeExecutorError::Journal)
+            ));
+            let (_, mut returned) = rejected.into_parts();
+            assert_eq!(
+                preparation_identity(&returned),
+                identity,
+                "actual original workspace retained"
+            );
+            assert!(executor.plans.lock().expect("plans").is_empty());
+            assert!(executor.reserved_runs.lock().expect("reserved").is_empty());
+            returned.launch_spec.run_id = intent.run_id.clone();
+            fs::set_permissions(&journal, fs::Permissions::from_mode(0o700))
+                .expect("restore owned protection");
+            assert!(validate_bindings(&view, &intent, &returned).is_ok());
+            executor
+                .try_register_plan(returned)
+                .expect("original capability remains usable");
+            let returned = executor
+                .withdraw_unstarted_plan(&intent.run_id)
+                .expect("withdraw")
+                .expect("actual plan");
+            assert_eq!(preparation_identity(&returned), identity);
+            fs::remove_dir_all(temp).expect("owned fixture cleanup");
+        }
+    }
+
+    #[test]
+    fn duplicate_and_capacity_rejections_preserve_both_original_preparations() {
+        let first = fixture();
+        let first_identity = preparation_identity(&first.plan);
+        first
+            .executor
+            .try_register_plan(first.plan)
+            .expect("first actual plan");
+        let mut second = fixture();
+        let second_identity = preparation_identity(&second.plan);
+        let rejected = first
+            .executor
+            .try_register_plan(second.plan)
+            .expect_err("duplicate run rejected");
+        assert!(matches!(
+            rejected.error(),
+            NativeExecutorError::DuplicateRun
+        ));
+        let (_, mut returned) = rejected.into_parts();
+        assert_eq!(preparation_identity(&returned), second_identity);
+        assert_eq!(
+            preparation_identity(
+                first
+                    .executor
+                    .plans
+                    .lock()
+                    .expect("plans")
+                    .get(&first.intent.run_id)
+                    .expect("first retained")
+            ),
+            first_identity
+        );
+        returned.run_id = "native-run-2".into();
+        returned.launch_spec.run_id = returned.run_id.clone();
+        second.intent.run_id = returned.run_id.clone();
+        let rejected = first
+            .executor
+            .try_register_plan(returned)
+            .expect_err("capacity rejects without consuming");
+        assert!(matches!(rejected.error(), NativeExecutorError::Capacity));
+        let (_, returned) = rejected.into_parts();
+        assert_eq!(preparation_identity(&returned), second_identity);
+        let original = first
+            .executor
+            .withdraw_unstarted_plan(&first.intent.run_id)
+            .expect("safe withdraw")
+            .expect("first plan");
+        assert_eq!(preparation_identity(&original), first_identity);
+        assert!(validate_bindings(&second.view, &second.intent, &returned).is_ok());
+        first
+            .executor
+            .try_register_plan(returned)
+            .expect("returned capability can register after capacity frees");
+        let original_second = first
+            .executor
+            .withdraw_unstarted_plan(&second.intent.run_id)
+            .expect("second withdraw")
+            .expect("second plan");
+        assert_eq!(preparation_identity(&original_second), second_identity);
+        assert!(first.executor.pending_run_ids().is_empty());
+        fs::remove_dir_all(first.temp).expect("first owned cleanup");
+        fs::remove_dir_all(second.temp).expect("second owned cleanup");
+    }
+
+    #[test]
+    fn existing_journal_rejects_registration_without_consuming_preparation() {
+        let Fixture {
+            temp,
+            intent,
+            plan,
+            executor,
+            ..
+        } = fixture();
+        let identity = preparation_identity(&plan);
+        let name = journal_name(&intent.run_id, "prepared").expect("journal name");
+        let evidence = serde_json::json!({"prior":"unknown"});
+        executor
+            .journal
+            .write_new(&name, &evidence)
+            .expect("existing durable barrier");
+        let rejected = executor
+            .try_register_plan(plan)
+            .expect_err("existing identity is not retryable");
+        assert!(matches!(
+            rejected.error(),
+            NativeExecutorError::DuplicateRun
+        ));
+        let (_, returned) = rejected.into_parts();
+        assert_eq!(preparation_identity(&returned), identity);
+        assert!(executor.journal.exists(&name).expect("evidence preserved"));
+        assert!(executor.plans.lock().expect("plans").is_empty());
+        assert!(executor.reserved_runs.lock().expect("reserved").is_empty());
+        fs::remove_dir_all(temp).expect("owned cleanup");
+    }
+
+    #[test]
+    fn known_binding_permit_and_gate_failures_retain_original_unstarted_plan() {
+        struct DenyPermit;
+        impl ResourcePermitAuthority for DenyPermit {
+            fn is_current(&self, _: &ResourcePermitClaims) -> bool {
+                false
+            }
+        }
+        for fault in ["binding", "permit", "gate"] {
+            let Fixture {
+                temp,
+                journal,
+                marker,
+                mut view,
+                intent,
+                mut plan,
+                executor,
+            } = fixture();
+            let identity = preparation_identity(&plan);
+            if fault == "binding" {
+                view.state = SchedulingState::Ready;
+            }
+            if fault == "permit" {
+                plan.permit_authority = Arc::new(DenyPermit);
+            }
+            executor
+                .try_register_plan(plan)
+                .expect("register original plan");
+            let failed = executor
+                .launch_plan(&view, &intent)
+                .expect_err("known pre-spawn denial");
+            assert!(matches!(
+                (fault, failed),
+                ("binding", NativeExecutorError::InvalidBinding)
+                    | ("permit" | "gate", NativeExecutorError::PermitDenied)
+            ));
+            assert_eq!(
+                preparation_identity(
+                    executor
+                        .plans
+                        .lock()
+                        .expect("plans")
+                        .get(&intent.run_id)
+                        .expect("retained original")
+                ),
+                identity
+            );
+            assert!(
+                executor
+                    .reserved_runs
+                    .lock()
+                    .expect("reserved")
+                    .contains(&intent.run_id)
+            );
+            assert!(
+                executor
+                    .launch_fenced_runs
+                    .lock()
+                    .expect("fenced")
+                    .is_empty()
+            );
+            assert!(executor.pending_run_ids().is_empty());
+            assert!(!marker.exists());
+            assert_eq!(fs::read_dir(&journal).expect("journal").count(), 0);
+            let returned = executor
+                .withdraw_unstarted_plan(&intent.run_id)
+                .expect("known unstarted withdrawal")
+                .expect("original plan");
+            assert_eq!(preparation_identity(&returned), identity);
+            fs::remove_dir_all(temp).expect("owned cleanup");
+        }
+    }
+
+    fn prelaunch_fixture_identity(plan: &NativeExecutionPlan) -> RecoveryIdentity {
+        // Persistence-failure fixture only. This creates no gate admission,
+        // RunningAdmission, child, accepted evidence or native qualification.
+        RecoveryIdentity {
+            identity: plan.permit_claims.identity.clone(),
+            launch_spec_digest: plan.permit_claims.launch_spec_digest.clone(),
+            worker_environment_digest: plan.permit_claims.worker_environment_digest.clone(),
+            unit: "fixture-prelaunch.service".into(),
+            run_id: plan.run_id.clone(),
+            permit_id: plan.permit_claims.permit_id.clone(),
+            reservation_ref: plan.reservation.id.clone(),
+            host_incarnation: plan.permit_claims.host_incarnation.clone(),
+            backend_config_digest: plan.permit_claims.backend_config_digest.clone(),
+            invocation_id: None,
+            main_pid: None,
+            process_start: None,
+        }
+    }
+
+    #[test]
+    fn prelaunch_write_failures_keep_plan_and_fence_without_silent_retry_or_withdrawal() {
+        for fault in ["before-create", "create-collision"] {
+            let Fixture {
+                temp,
+                journal,
+                marker,
+                view,
+                intent,
+                plan,
+                executor,
+            } = fixture();
+            let identity = preparation_identity(&plan);
+            let recovery = prelaunch_fixture_identity(&plan);
+            executor
+                .try_register_plan(plan)
+                .expect("register actual preparation");
+            let name = journal_name(&intent.run_id, "prepared").expect("journal name");
+            if fault == "before-create" {
+                fs::set_permissions(&journal, fs::Permissions::from_mode(0o755))
+                    .expect("reject before create");
+            } else {
+                fs::write(journal.join(&name), b"existing-uncertain-write")
+                    .expect("existing write barrier");
+            }
+            {
+                let plans = executor.plans.lock().expect("original retained");
+                assert!(matches!(
+                    executor.persist_prelaunch(
+                        &recovery,
+                        &intent,
+                        plans.get(&intent.run_id).expect("plan")
+                    ),
+                    Err(NativeExecutorError::Journal)
+                ));
+            }
+            fs::set_permissions(&journal, fs::Permissions::from_mode(0o700))
+                .expect("restore owned protection");
+            assert_eq!(
+                executor.journal.exists(&name).expect("query evidence"),
+                fault == "create-collision"
+            );
+            assert_eq!(
+                preparation_identity(
+                    executor
+                        .plans
+                        .lock()
+                        .expect("plans")
+                        .get(&intent.run_id)
+                        .expect("retained plan")
+                ),
+                identity
+            );
+            assert!(
+                executor
+                    .reserved_runs
+                    .lock()
+                    .expect("reserved")
+                    .contains(&intent.run_id)
+            );
+            assert!(
+                executor
+                    .launch_fenced_runs
+                    .lock()
+                    .expect("fenced")
+                    .contains(&intent.run_id)
+            );
+            assert!(matches!(
+                executor.withdraw_unstarted_plan(&intent.run_id),
+                Err(NativeExecutorError::LaunchUnknown)
+            ));
+            assert!(matches!(
+                executor.launch_plan(&view, &intent),
+                Err(NativeExecutorError::LaunchUnknown)
+            ));
+            assert!(executor.pending_run_ids().is_empty());
+            assert!(executor.completed.lock().expect("completed").is_empty());
+            assert!(!marker.exists());
+            if fault == "create-collision" {
+                assert_eq!(
+                    fs::read(journal.join(&name)).expect("preserved collision"),
+                    b"existing-uncertain-write"
+                );
+            } else {
+                assert_eq!(
+                    fs::read_dir(&journal).expect("no automatic retry").count(),
+                    0
+                );
+            }
+            fs::remove_dir_all(temp).expect("owned cleanup");
+        }
+    }
+
+    #[test]
+    fn prelaunch_fence_requires_an_existing_run_reservation() {
+        let Fixture {
+            temp,
+            journal,
+            plan,
+            intent,
+            executor,
+            ..
+        } = fixture();
+        let recovery = prelaunch_fixture_identity(&plan);
+        assert!(matches!(
+            executor.persist_prelaunch(&recovery, &intent, &plan),
+            Err(NativeExecutorError::LaunchUnknown)
+        ));
+        assert!(
+            executor
+                .launch_fenced_runs
+                .lock()
+                .expect("fences")
+                .is_empty()
+        );
+        assert_eq!(fs::read_dir(journal).expect("journal").count(), 0);
+        fs::remove_dir_all(temp).expect("owned cleanup");
+    }
+
     #[test]
     fn unconfigured_resource_gate_denies_before_child_spawn_and_keeps_marker_absent() {
         let Fixture {
@@ -1337,7 +1865,10 @@ mod tests {
             "lease mutation invalidates reservation binding"
         );
         plan.permit_claims.lease_expires_at_unix_ms += 1;
-        executor.register_plan(plan).expect("prepared trusted plan");
+        let original_preparation = preparation_identity(&plan);
+        executor
+            .try_register_plan(plan)
+            .expect("prepared trusted plan");
         let result = executor.execute(&view, &intent);
         assert!(result.is_err(), "the unconfigured backend must deny launch");
         assert!(!marker.exists(), "the child must not have started");
@@ -1348,6 +1879,22 @@ mod tests {
             0,
             "no recovery journal is needed before a gate-admitted launch"
         );
+        assert!(
+            executor
+                .reserved_runs
+                .lock()
+                .expect("reservation retained")
+                .contains(&intent.run_id)
+        );
+        let original = executor
+            .withdraw_unstarted_plan(&intent.run_id)
+            .expect("known pre-spawn failure is withdrawable")
+            .expect("original opaque preparation");
+        assert_eq!(preparation_identity(&original), original_preparation);
+        assert!(validate_bindings(&view, &intent, &original).is_ok());
+        executor
+            .try_register_plan(original)
+            .expect("actual original capability is reusable");
         fs::remove_dir_all(temp).expect("remove private fixture");
     }
 
