@@ -1895,3 +1895,42 @@ or enabled. Enrichment UI, real coding-provider qualification, durable budget/
 model admission, recovery and full parent criteria remain. SC-DEC133 is consumed;
 no new provider fixture/metadata/grant/run follows from the successful6e build.
 All30open parents remain open; accepted2/32, native autonomous coding false.
+
+### Private native installation and stage permissions — 06:08Z
+
+PR110 merged05:55:38Z to b976b4f5e2fa69685d59a7ca4c83da258418f5b3 after
+actual neverhumanbot approval of exact39649ce89439495acf9a7a8f3e598e88dfeeb6fc.
+The optional scoped intake startup/HTTP composition above is now on main;
+no live intake credential or production intake configuration was created.
+
+Root source9d4dbb0c497efe005520cec5b6b95f6bca7b3365 adds the explicit private
+`release install` command and [operator guide](../../operators/native-install.md).
+The [source-bound receipt](../../../receipts/integration/native-private-install-20261019T0608Z.json)
+records68actual Mac checks:26installer,7actual installer CLI,5archive CLI,
+10package and20archive, plus strict CLI all-target Clippy and formatting.
+Independent final-source review is clear. Failed original evidence is retained.
+
+Red-team review reproduced an actual old CLI accepting a nonsticky0777 ancestor
+above a private leaf. The repaired installer checks source and destination
+ancestors through retained identities, refuses untrusted writable ancestors and
+uses no-replace publication. An unexpected rename error preserves uncertain
+destination/staging identities rather than deleting potentially published bytes.
+The CLI emits installed_bytes:null for that unknown outcome. A private operation
+seam tests a lost rename return; no real disk EIO or other-UID attack is claimed.
+Integrity pins authenticate bytes only, not a publisher. Nothing runs package
+payloads, changes services, sets PATH/current links or grants execution/acceptance.
+
+Separately, a real002-umask counterexample reproduced newly staged directories
+being0775 and correctly refused by archive guards. New directory creation now
+requests0755 filtered by the caller mask; existing directories/source permissions
+and all guards remain unchanged. Actual child-process077/002/000 roundtrips pass.
+Root reran the composed68cases under an owned002 shell. The one admitted Linux
+qualification of exact9d began06:09:34Z under run-capped with observed0002 mask;
+it is compiling, not a Linux pass or hosted-CI result at this entry.
+
+A Luna subagent has a separate frozen two-file raw-intake React candidate7a8b716e,
+with8focused tests, typecheck and build passing. Independent review and root-owned
+navigation wiring remain; those component checks do not qualify production intake
+or autonomous coding. The installer likewise leaves full P30 activation, signed
+release publication, clean-machine bootstrap and runtime criteria open. Accepted
+parents remain2/32 and native execution false.

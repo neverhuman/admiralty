@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "kind": "native_private_install_and_stage_directory_composition",
+  "recorded_utc": "2026-10-19T06:08:28.667Z",
+  "source_revision": "9d4dbb0c497efe005520cec5b6b95f6bca7b3365",
+  "base_main": "b976b4f5e2fa69685d59a7ca4c83da258418f5b3",
+  "component_commits": [
+    "b48ce3fb7fb9906d6c387d9e6c6832e73c343dc6",
+    "444b36af8b3613b8c08e35527982e49cadf53289",
+    "f66364b3c4893f1df8c869b8bcd20b5f70b4cb4c"
+  ],
+  "source_manifest": {
+    "crates/admiralty-cli/src/main.rs": {
+      "bytes": 57021,
+      "sha256": "b6ab53a1efaed0a0132fdcad38654bf92c3fa5a8f9da842932bb726de296ac22"
+    },
+    "crates/admiralty-cli/src/native_archive.rs": {
+      "bytes": 61298,
+      "sha256": "656fd8f60f8b155a0f9c90a6fdd4b770732ad9072dc3356c587ac4789c36f823"
+    },
+    "crates/admiralty-cli/src/native_install.rs": {
+      "bytes": 76571,
+      "sha256": "5bc11357dd21ba617447113c1cb2aa40ecc70afc606e79df68ce22ca3e07ff90"
+    },
+    "crates/admiralty-cli/src/native_package.rs": {
+      "bytes": 57273,
+      "sha256": "aae9d942554c0f256e1ef5e4186dabb51c6a3e5dfa9717860421a017a754256e"
+    },
+    "crates/admiralty-cli/tests/native_install_cli.rs": {
+      "bytes": 16574,
+      "sha256": "5c6faa53c6ba81b51dad71696ca6c81b9d06ab89e9bad47a44e695dcbdd0ba72"
+    },
+    "crates/admiralty-cli/tests/native_archive_cli.rs": {
+      "bytes": 17629,
+      "sha256": "4f8fcf4ac8adbde41993111b0009d48b12b5bb8b1b5fa3de192ecca9f24d0b25"
+    },
+    "docs/operators/native-install.md": {
+      "bytes": 3531,
+      "sha256": "93dbe3cd836138c130959288c121bf85f708c876efa6e779f80127494505a35b"
+    },
+    "README.md": {
+      "bytes": 18525,
+      "sha256": "b81b9ae75bceecd1f7cb42b187ed15d96316c4a39d52dd8825f30596e4bcd897"
+    }
+  },
+  "checks": {
+    "passed": 68,
+    "failed": 0,
+    "ignored": 0,
+    "groups": {
+      "installer_module": 26,
+      "installer_actual_cli": 7,
+      "archive_actual_cli": 5,
+      "package": 10,
+      "archive_module": 20
+    },
+    "strict_cli_all_targets_exit": 0,
+    "format_exit": 0,
+    "diffcheck_exit": 0,
+    "environment": {
+      "TMPDIR": "/private/tmp/adm-native-4pbrtc1l",
+      "CARGO_TARGET_DIR": "target/archive-integrated-final",
+      "CARGO_BUILD_JOBS": 1,
+      "RUST_TEST_THREADS": 1,
+      "owned_test_shell_umask": "002"
+    },
+    "commands": [
+      "cargo test -p admiralty-cli --bin admiralty --locked native_install::tests",
+      "cargo test -p admiralty-cli --test native_install_cli --test native_archive_cli --locked",
+      "cargo test -p admiralty-cli --bin admiralty --locked native_package::tests",
+      "cargo test -p admiralty-cli --bin admiralty --locked native_archive::tests",
+      "cargo clippy -p admiralty-cli --all-targets --locked -- -D warnings",
+      "cargo fmt --all -- --check"
+    ]
+  },
+  "artifacts": {
+    "target/quality/native-install-root-final.log": {
+      "bytes": 3094,
+      "sha256": "2befd6e04d41c95084c5f20492b17d06b872044dde32185891e383eaff025b3d"
+    },
+    "target/quality/native-install-cli-root-final.log": {
+      "bytes": 1710,
+      "sha256": "e0f27c5eb2e7dcf335a5cc2b3fe6844a80dbc82adac86c9f9f30d8b302946647"
+    },
+    "target/quality/native-package-002-root-final.log": {
+      "bytes": 3063,
+      "sha256": "3e830b60705d27012b050e0482fdb52653d3832845729f90c7c0f64569bac334"
+    },
+    "target/quality/native-archive-002-composed-root-final.log": {
+      "bytes": 2293,
+      "sha256": "d7ddbf7e3d03717bc05e9291795f0337d4b8758bb98be15af6f8dbd3573e9088"
+    },
+    "target/quality/native-install-root-clippy.log": {
+      "bytes": 337,
+      "sha256": "2c67f53001013fb1f9fa1891e8c569ee521b431a5acdca8ac1a5e629ca0be571"
+    },
+    "target/quality/stage-directory-002-before.log": {
+      "bytes": 1231,
+      "sha256": "29b82a3dc82f689579fe6262aea2fc88c4bb1b8325a36719aefec618d16cef15"
+    }
+  },
+  "independent_review": {
+    "path": "/private/tmp/adm-install-ancestor-review-_qevfgfa/native-install-root-composition-review.json",
+    "sha256": "a62ca6495d88421ac2788a0fd72c39d5023952e307fc66baf9e2301435fa9345",
+    "verdict": "CLEAR",
+    "duplicate_suites": false
+  },
+  "prior_evidence": [
+    {
+      "path": "/private/tmp/adm-native-install-proof-1ihh07wn/receipt.json",
+      "sha256": "e56bcebefcabdb53e38b3274fc133bc5b39b94afe493d76124abd4cace9159e8",
+      "scope": "initial27-case component, held by later actual ancestor finding"
+    },
+    {
+      "path": "/private/tmp/adm-install-ancestor-review-_qevfgfa/counterexample.json",
+      "sha256": "a4e97df0894399206a77f59163d4a7ce0315de01ab20d8d4d15f246995ad8781",
+      "scope": "actual old CLI accepted unsafe0777nonsticky ancestor; no other-UID process used"
+    },
+    {
+      "path": "/private/tmp/adm-install-ancestor-review-_qevfgfa/independent-review-b48-hold.json",
+      "sha256": "5f4f4c9f8197726978d334256396aa11bdd9d7a63b578be0f7adc32af264c8a6",
+      "scope": "original independent HOLD retained"
+    },
+    {
+      "path": "/private/tmp/adm-native-install-proof-1ihh07wn/repair-receipt.json",
+      "sha256": "ba1ea00a28f2fd870e07796a1de5a1959cdc442a683cfd26e0b88cb72a0a3201",
+      "scope": "author33-case repaired installer checks+negative evidence"
+    },
+    {
+      "path": "/private/tmp/adm-stage-directory-mode-proof-30snogqu/receipt.json",
+      "sha256": "f5150e3d2a7d390cc62635000536b3b1dd21c0478dcc87a3873469e66f1abd65",
+      "scope": "separate35-case002stage usability repair; real077/002/000single-child matrix"
+    },
+    {
+      "path": "/private/tmp/adm-install-ancestor-review-_qevfgfa/native-install-final-independent-review.json",
+      "sha256": "6c0e87afe1434f2dc5cfaaecd735c5aed0d33cbc95b4f2a4533b05e8dc5f08af",
+      "scope": "repaired component reviewed independently"
+    }
+  ],
+  "behavior": {
+    "explicit_archive_and_manifest_integrity_pins": true,
+    "canonical_bounded_gzip_tar_only": true,
+    "exact_native_manifest_and_generated_guard_closure": true,
+    "package_bytes_executed": false,
+    "protected_source_destination_ancestors": true,
+    "private_new_version_only": true,
+    "no_replace": true,
+    "retained_fd_identity_checks": true,
+    "unexpected_rename_outcome": "preserve destination and temporary identities; CommitUncertain/publication_may_have_occurred=true",
+    "known_existing_destination": "refuse and identity-check owned scratch cleanup",
+    "unknown_cli_installed_bytes": null,
+    "existing_shared_directory_or_source_permissions_changed": false,
+    "new_stage_directories": "explicit recursive0755 filtered by owned shell mask; no group/other write under002/000",
+    "global_umask_changed": false
+  },
+  "qualification": {
+    "platform": "Mac actual isolated filesystem/CLI fixtures",
+    "linux": "separate exact9d68-case capped qualification assigned; not passed at receipt time",
+    "private_bytes_installed_in_tests": true,
+    "global_install": false,
+    "real_disk_eio_injected": false,
+    "simulated_rename_return_loss": true,
+    "publisher_authenticated": false,
+    "source_build_authenticated": false,
+    "services_activated": false,
+    "provider_execution": false,
+    "full_parent_P30_accepted": false,
+    "native_execution_qualified": false
+  },
+  "next": "Observe source-pinned Linux outcome separately; finish real release assets/clean-machine bootstrap/service activation/signing/publication/runtime criteria. Do not rerun unchanged suites or infer final hosted green."
+}
