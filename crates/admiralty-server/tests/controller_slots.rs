@@ -430,12 +430,11 @@ fn current_admission_and_slot_capacity_denials_have_no_partial_effects() {
     let slots = store.inference_slot_ledger(proof()).unwrap();
     assert!(admit_one_slotted(&store, &Deny, &b, admission(&store, &b, "pool", 4)).is_err());
     assert_eq!(durable_counts(&store), before);
-    assert_eq!(
+    assert!(
         admit_one_slotted(&store, &Permit, &b, admission(&store, &b, "pool", 4))
             .unwrap_err()
             .to_string()
-            .contains("capacity"),
-        true
+            .contains("capacity")
     );
     assert_eq!(durable_counts(&store), before);
     assert_eq!(store.reservation_ledger(proof()).unwrap(), budgets);
