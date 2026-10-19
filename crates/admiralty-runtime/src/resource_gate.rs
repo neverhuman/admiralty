@@ -398,13 +398,18 @@ impl CgroupResourceSnapshot {
     fn has_dynamic_observation(&self) -> bool {
         matches!(&self.pids_current, ResourceReading::Observed { .. })
             || matches!(&self.pids_peak, ResourceReading::Observed { .. })
-            || matches!(&self.pids_events, ResourceReading::Observed { .. })
-            || matches!(&self.pids_events_local, ResourceReading::Observed { .. })
             || matches!(&self.memory_current, ResourceReading::Observed { .. })
             || matches!(&self.memory_peak, ResourceReading::Observed { .. })
-            || matches!(&self.memory_events, ResourceReading::Observed { .. })
-            || matches!(&self.memory_events_local, ResourceReading::Observed { .. })
-            || matches!(&self.cgroup_events, ResourceReading::Observed { .. })
+            || matches!(&self.pids_events, ResourceReading::Observed { value } if value.max.is_some())
+            || matches!(&self.pids_events_local, ResourceReading::Observed { value } if value.max.is_some())
+            || matches!(&self.memory_events, ResourceReading::Observed { value }
+                if value.low.is_some() || value.high.is_some() || value.max.is_some()
+                    || value.oom.is_some() || value.oom_kill.is_some() || value.oom_group_kill.is_some())
+            || matches!(&self.memory_events_local, ResourceReading::Observed { value }
+                if value.low.is_some() || value.high.is_some() || value.max.is_some()
+                    || value.oom.is_some() || value.oom_kill.is_some() || value.oom_group_kill.is_some())
+            || matches!(&self.cgroup_events, ResourceReading::Observed { value }
+                if value.populated.is_some() || value.frozen.is_some())
     }
 }
 
