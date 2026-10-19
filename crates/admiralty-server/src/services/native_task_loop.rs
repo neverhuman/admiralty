@@ -125,7 +125,7 @@ impl std::fmt::Debug for RejectedAdmission {
 pub struct RejectedSlotAdmission {
     pub reason: LoopError,
     pub plan: Box<NativeExecutionPlan>,
-    pub slot: NativeCodexSlotAdmission,
+    pub slot: Box<NativeCodexSlotAdmission>,
 }
 impl std::fmt::Debug for RejectedSlotAdmission {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -328,7 +328,7 @@ impl NativeTaskLoop {
                 return Err(RejectedSlotAdmission {
                     reason,
                     plan: Box::new(plan),
-                    slot,
+                    slot: Box::new(slot),
                 });
             }
         };
@@ -336,7 +336,7 @@ impl NativeTaskLoop {
             return Err(RejectedSlotAdmission {
                 reason: LoopError::InvalidBinding,
                 plan: Box::new(plan),
-                slot,
+                slot: Box::new(slot),
             });
         };
         let mut expected_budget = plan.reservation.clone();
@@ -346,7 +346,7 @@ impl NativeTaskLoop {
             return Err(RejectedSlotAdmission {
                 reason: LoopError::RegistrationRejected,
                 plan: Box::new(plan),
-                slot,
+                slot: Box::new(slot),
             });
         }
         let run_id = request.run_id.clone();
