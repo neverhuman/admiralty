@@ -340,6 +340,10 @@ name = "session_continuity"
 path = "../../tests/integration/session_continuity.rs"
 
 [[test]]
+name = "python_policy"
+path = "../../tests/integration/python_policy.rs"
+
+[[test]]
 name = "store_crash"
 path = "../../tests/integration/store_crash.rs"
 

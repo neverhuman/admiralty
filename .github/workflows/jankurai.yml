@@ -48,7 +48,7 @@ jobs:
             grep -q -- "${flag}" "${tools_dir}/audit-help.txt"
           done
           printf 'JANKURAI_BIN=%s\n' "${audit_binary}" >> "${GITHUB_ENV}"
-      - name: Run Jankurai read-only audit and emit repair queue
+      - name: Report read-only onboarding baseline and emit repair queue
         run: |
           set -euo pipefail
           umask 077
@@ -58,7 +58,7 @@ jobs:
             --read-only \
             --no-badge \
             --no-score-history \
-            --mode standard \
+            --mode advisory \
             --json "${RUNNER_TEMP}/jankurai/repo-score.json" \
             --md "${RUNNER_TEMP}/jankurai/repo-score.md" \
             --github-step-summary "${RUNNER_TEMP}/jankurai/step-summary.md" \
@@ -66,6 +66,13 @@ jobs:
           test -s "${RUNNER_TEMP}/jankurai/repo-score.json"
           test -s "${RUNNER_TEMP}/jankurai/repo-score.md"
           test -f "${RUNNER_TEMP}/jankurai/repair-queue.jsonl"
+          test -s "${RUNNER_TEMP}/jankurai/step-summary.md"
+          # SC-DEC-186J explicitly accepts baseline reporting for onboarding.
+          # This is not strict conformance: the original 85 findings / 56
+          # blockers remain in JANKURAI_CLEANUP_BACKLOG.md. Rust's python_policy
+          # integration target rejects new Python and exception regressions in
+          # both the full local gate and the rust-and-legacy hosted job.
+          printf '%s\n' 'Baseline reporting only; strict audit debt remains open. See JANKURAI_CLEANUP_BACKLOG.md.' >> "${GITHUB_STEP_SUMMARY}"
           # Actions pre-creates its summary file; keep the auditor's fresh-output
           # guard intact, then append the independently generated summary.
           cat "${RUNNER_TEMP}/jankurai/step-summary.md" >> "${GITHUB_STEP_SUMMARY}"

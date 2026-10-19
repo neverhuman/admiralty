@@ -1,0 +1,13 @@
+{
+  "head": "7291122e7c33581fbfbc35468a9c1c7c5594a164",
+  "job": {
+    "id": 118276303191,
+    "head_sha": "7291122e7c33581fbfbc35468a9c1c7c5594a164",
+    "name": "dashboard-e2e",
+    "status": "completed",
+    "conclusion": "failure"
+  },
+  "logTruncated": false,
+  "provider_log_sha256": "e627616388a91b63e643bfa48564189bd96243831bce54e365c70ccc3674a8a8",
+  "retained_gzip_sha256": "ed9369dad96026748c79d47bb99533f6a86fe306109da3ef9e04f74e4be1df9f"
+}

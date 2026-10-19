@@ -2,6 +2,12 @@
 
 Per Jepson's 2026-10-18 stack ruling, Admiralty's allowed language stack is **Rust + Vite/TypeScript/React**. No new Python files are permitted. The existing 40 legacy/smoke/qualification Python files below are temporarily retained solely to keep legacy dashboard tests, isolated binary smoke harnesses, release qualification scripts, and the `sc_audit` watchdog operational as compatibility/parity source after the owned production collector/server/observer already moved to Rust, and are scheduled for Rust replacement and deletion in [`PY_TO_RUST_PLAN.md`](PY_TO_RUST_PLAN.md).
 
+`cargo test -p admiralty-testkit --test python_policy --locked` enforces the
+reviewed ceiling in `tests/fixtures/python-baseline.txt` and exact exception/plan
+coverage. It runs inside `pnpm check` and hosted workspace tests. A new exception
+row cannot approve a new Python file; expanding the ceiling requires the
+maintainer's explicit exception and ordinary exact-head review.
+
 | File | One-Line Justification (Temporary Until Rust Port Completes) |
 | :--- | :--- |
 | `dashboard/collector.py` | Retired owned production collector; source retained for compatibility/parity tests, with no production reactivation (`ADM-PY01`). |

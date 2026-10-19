@@ -1,0 +1,13 @@
+{
+  "head": "d714426590f38b61992267897878d30ae826691d",
+  "job": {
+    "id": 118270857832,
+    "head_sha": "d858a9a292a9e458d5851531e1e548f817908520",
+    "name": "rust-and-legacy",
+    "status": "completed",
+    "conclusion": "failure"
+  },
+  "logTruncated": true,
+  "provider_log_sha256": "aa2bb3012f9acb591498d588cfaa403faea76d0be7061087671d7932fd2651fd",
+  "retained_gzip_sha256": "0f5f71858fe73413b3615e5a5e60ac66b40d48a42602ae341445ea63ace8de02"
+}
