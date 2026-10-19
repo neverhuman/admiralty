@@ -1,0 +1,346 @@
+{
+  "source_head": "6d539218194282c6708cfa58921f4576235568f1",
+  "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty",
+  "platform": "macOS-15.7.5-arm64-arm-64bit-Mach-O",
+  "started_at_utc": "2026-10-19T19:40:13.106414+00:00",
+  "environment": {
+    "CARGO_TARGET_DIR": "/private/tmp/admiralty-native-dogfood-target",
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "RUST_TEST_THREADS": "1",
+    "TMPDIR": "/private/tmp/adm.5hldknoi",
+    "NODE_ENV": "production"
+  },
+  "steps": [
+    {
+      "index": 0,
+      "command": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.188,
+      "log": "receipts/integration/logs/pr157-local-ci-00-20261019.log.gz",
+      "uncompressed_sha256": "8178244f1d61d203346b0f9a72cae771da7769bf8b831e729697907abf61e2a1",
+      "sha256": "9d83933608c0505d453474e26df5269686ff5accc2c8d14ad3561e24b8a40ea1"
+    },
+    {
+      "index": 1,
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.542,
+      "log": "receipts/integration/logs/pr157-local-ci-01-20261019.log.gz",
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    {
+      "index": 2,
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.439,
+      "log": "receipts/integration/logs/pr157-local-ci-02-20261019.log.gz",
+      "uncompressed_sha256": "7bb75aadec33e442883c704ca3bce89073caf9589318380b93392525d8c0d6a1",
+      "sha256": "b8afb9633ae5b9c68eca7c8a84cc73e9e290cd0342225f2225a9bf015d955e53"
+    },
+    {
+      "index": 3,
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 150.015,
+      "log": "receipts/integration/logs/pr157-local-ci-03-20261019.log.gz",
+      "uncompressed_sha256": "6abd98f25357e9d49d865905fc8f181579c52294d36681a699722e8253088575",
+      "sha256": "ad0971fdc00bdc12f95944c66fdb3be454dc5a963822c6330c3d420243354282"
+    },
+    {
+      "index": 4,
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/legacy",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.131,
+      "log": "receipts/integration/logs/pr157-local-ci-04-20261019.log.gz",
+      "uncompressed_sha256": "b17be00ce644c62d3f6faab71c0e2e31c6fb8dcb1dcfbfd7b3041919bf662cc4",
+      "sha256": "88bb94b718956e7495efb3a1588a3bf9e5c1d3c4a9c861709d757e57ea3ac0e4"
+    },
+    {
+      "index": 5,
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_sc_audit*.py",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.015,
+      "log": "receipts/integration/logs/pr157-local-ci-05-20261019.log.gz",
+      "uncompressed_sha256": "a16e65e142ab0a37fb0a30a29522137990acd57e09c72d03b43448563858d568",
+      "sha256": "914e1e03ee8d4ac98b425f113e43eaa7503baef0834069d60f839ddd97a5ffcb"
+    },
+    {
+      "index": 6,
+      "command": [
+        "python3",
+        "tests/fixtures/legacy/verify.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.657,
+      "log": "receipts/integration/logs/pr157-local-ci-06-20261019.log.gz",
+      "uncompressed_sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12",
+      "sha256": "bd6ad92307ecca634344c4c293abe0827bc227b0368e7bdeb47a26e22b18d110"
+    },
+    {
+      "index": 7,
+      "command": [
+        "python3",
+        "scripts/release/package.py",
+        "--self-test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.155,
+      "log": "receipts/integration/logs/pr157-local-ci-07-20261019.log.gz",
+      "uncompressed_sha256": "5566cfc70f1f50d4e74f57a8d27fa25c1cc88208adbc32a29c50a8bc99615eba",
+      "sha256": "5ac8d00785beaad9b1946fe753e3b407cc4873bd2c6caf4d6a93d765ef786696"
+    },
+    {
+      "index": 8,
+      "command": [
+        "python3",
+        "scripts/check/canary-smoke.py",
+        "--self-test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.504,
+      "log": "receipts/integration/logs/pr157-local-ci-08-20261019.log.gz",
+      "uncompressed_sha256": "96cc9043aa179ecb4dcc81f474b719e75bfc005cb1f3fdb5764153cfd935a9a9",
+      "sha256": "bb125479f3eb6e8d7e91ea6e6916e993586811d34de1602c2375c9fb1dc594bf"
+    },
+    {
+      "index": 9,
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "admiralty-server",
+        "-p",
+        "admiralty-cli",
+        "-p",
+        "admiralty-observe",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.258,
+      "log": "receipts/integration/logs/pr157-local-ci-09-20261019.log.gz",
+      "uncompressed_sha256": "8a10254974bbd1a52574924f2ba6e2e78269a27b8d61c996e00c4498f15edb56",
+      "sha256": "382d755d5fb8fd3be4fbbe5335986b1b5131363273eb872627a29be4ec7b1732"
+    },
+    {
+      "index": 10,
+      "command": [
+        "python3",
+        "scripts/check/canary-smoke.py",
+        "--admiraltyd-binary",
+        "/private/tmp/admiralty-native-dogfood-target/debug/admiraltyd",
+        "--admiralty-binary",
+        "/private/tmp/admiralty-native-dogfood-target/debug/admiralty",
+        "--scratch-root",
+        "/private/tmp/adm.5hldknoi/canary"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.002,
+      "log": "receipts/integration/logs/pr157-local-ci-10-20261019.log.gz",
+      "uncompressed_sha256": "90a58aac7da4dc7be52aa729a3230951c7f2585f003938239c920bb84d06d943",
+      "sha256": "e4de0e7052fce317f8ead4e94b95fc5956d742bfa44af5196a1ac830b988dc3d"
+    },
+    {
+      "index": 11,
+      "command": [
+        "cargo",
+        "run",
+        "-p",
+        "admiralty-cli",
+        "--locked",
+        "--",
+        "contracts",
+        "check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.516,
+      "log": "receipts/integration/logs/pr157-local-ci-11-20261019.log.gz",
+      "uncompressed_sha256": "5f407b2e9c3c9696855668876e5ce57ad18f167827550fc32775f76c0274a960",
+      "sha256": "f6d4f6048da8ce91438acba29c50af3dea33a4cc52701a230c13ebe5f022daa2"
+    },
+    {
+      "index": 12,
+      "command": [
+        "pnpm",
+        "contracts:check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.687,
+      "log": "receipts/integration/logs/pr157-local-ci-12-20261019.log.gz",
+      "uncompressed_sha256": "f34e72eecbcf010310ef24b129bc29d7e90b1be1ba2e7d0cc8113ef2261e03aa",
+      "sha256": "8d5dbefb87d8f45c80ff94338193a695008312c60d87aca9ecebc7c67264b5f0"
+    },
+    {
+      "index": 13,
+      "command": [
+        "pnpm",
+        "--dir",
+        "packages/contracts",
+        "test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.377,
+      "log": "receipts/integration/logs/pr157-local-ci-13-20261019.log.gz",
+      "uncompressed_sha256": "a8faf9672a05fc02d18bf9de59f276267c1d274726ea7129d99bc3fa573a7d7b",
+      "sha256": "99be37cee5d96f5318c2c42953fba1ca585ad9474a27f0bbba76cd47949370e4"
+    },
+    {
+      "index": 14,
+      "command": [
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.393,
+      "log": "receipts/integration/logs/pr157-local-ci-14-20261019.log.gz",
+      "uncompressed_sha256": "5cfb036289d819b2a87e947d65f4532031dd37753f3cf2def0f77d398eea1737",
+      "sha256": "decff4e40f51c23a3fb129535a1238d4f5debb9bdcfdfb7174096fbe5d4a48b0"
+    },
+    {
+      "index": 15,
+      "command": [
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "test",
+        "--run"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.05,
+      "log": "receipts/integration/logs/pr157-local-ci-15-20261019.log.gz",
+      "uncompressed_sha256": "2d7c09111043a0f2c328b740d9489442cb0c4ae6db258a2bd492ffcefaf154aa",
+      "sha256": "9b84b08404782155846be5417605921b5a9cbe533e34167fa4efc99ed8c22709"
+    },
+    {
+      "index": 16,
+      "command": [
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "exec",
+        "tsc",
+        "-p",
+        "e2e/tsconfig.json",
+        "--noEmit"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.268,
+      "log": "receipts/integration/logs/pr157-local-ci-16-20261019.log.gz",
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    {
+      "index": 17,
+      "command": [
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "build"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.608,
+      "log": "receipts/integration/logs/pr157-local-ci-17-20261019.log.gz",
+      "uncompressed_sha256": "659640d1e23ac7a501df0a1b64a69cb751429355aa45a91c0e62027313ac7ed5",
+      "sha256": "e48bfa2e54cab1b14a285d44585b903499c8acceaf5b174f622f27ff5a4d4cd7"
+    },
+    {
+      "index": 18,
+      "command": [
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "test",
+        "--run",
+        "--config",
+        "e2e/vitest.config.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 31.276,
+      "log": "receipts/integration/logs/pr157-local-ci-18-20261019.log.gz",
+      "uncompressed_sha256": "1be49695bcdc027152d3c6a76d3890465297d7892d377b5a2b60dd3cc37844ea",
+      "sha256": "40db261f4194d00b3b513ff56fe2f8560d7b369c6890275bc1bec6d1891fd8f6"
+    }
+  ],
+  "status": "passed",
+  "runner_script_sha256": "d90b587dd25f4b358193d59b7ac66979793cee353e825f836e79f75cc5bdbc51",
+  "tool_versions": {
+    "rust": "rustc 1.95.0 (59807616e 2026-04-14) (Homebrew)",
+    "cargo": "cargo 1.95.0 (f2d3ce0bd 2026-03-21) (Homebrew)",
+    "node": "v24.19.0",
+    "pnpm": "11.15.1",
+    "python": "Python 3.14.6"
+  },
+  "browser_native_pins_before": {
+    "admiraltyd": "d935e0166258e43ac3bfcd582106cddc9c1e03d8577986b93206175c9ca90aee",
+    "admiralty-observe": "252ec8fa313a38c83ab90208b6406624b016ca1c820ee649a97b64a6935197fc"
+  },
+  "axe_sha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+  "browser_native_pins_after": {
+    "admiraltyd": "d935e0166258e43ac3bfcd582106cddc9c1e03d8577986b93206175c9ca90aee",
+    "admiralty-observe": "252ec8fa313a38c83ab90208b6406624b016ca1c820ee649a97b64a6935197fc"
+  },
+  "ending_head": "6d539218194282c6708cfa58921f4576235568f1",
+  "git_status_after": "",
+  "finished_at_utc": "2026-10-19T19:43:36.898876+00:00",
+  "scope": "Complete macOS local CI at repaired source; Linux-only tests remain platform-gated, and hosted current-head CI is separate.",
+  "rust_counts": {
+    "passed": 1703,
+    "failed": 0,
+    "ignored": 5,
+    "targets_including_empty_and_doc": 164
+  },
+  "browser_counts": {
+    "passed": 24,
+    "failed": 0,
+    "files": 6
+  },
+  "native_execution_qualified": false,
+  "full_release_qualified": false
+}
