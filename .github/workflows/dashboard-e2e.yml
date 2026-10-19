@@ -52,6 +52,9 @@ jobs:
           test -x "$GITHUB_WORKSPACE/target/debug/admiralty-observe"
           test -x "$GITHUB_WORKSPACE/target/debug/admiraltyd"
           printf 'ADMIRALTY_E2E_ADMIRALTYD_BIN=%s\nADMIRALTYD_BINARY=%s\n' "$GITHUB_WORKSPACE/target/debug/admiraltyd" "$GITHUB_WORKSPACE/target/debug/admiraltyd" >> "$GITHUB_ENV"
+          native_binary_sha256="$(sha256sum "$GITHUB_WORKSPACE/target/debug/admiraltyd")"
+          native_binary_sha256="${native_binary_sha256%% *}"
+          printf 'ADMIRALTY_E2E_ADMIRALTYD_SHA256=%s\n' "$native_binary_sha256" >> "$GITHUB_ENV"
           printf 'ADMIRALTY_E2E_OBSERVER_BIN=%s\n' "$GITHUB_WORKSPACE/target/debug/admiralty-observe" >> "$GITHUB_ENV"
           sha256sum "$GITHUB_WORKSPACE/target/debug/admiraltyd" "$GITHUB_WORKSPACE/target/debug/admiralty-observe"
       - name: Verify or provision qualified Chromium/Chrome binary in job scratch
