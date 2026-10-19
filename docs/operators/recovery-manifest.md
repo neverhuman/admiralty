@@ -52,7 +52,9 @@ Operator workflow:
 5. Submit a consistent proposal to a separately qualified restore executor;
    require its authority and custody checks before any effects or resumption.
 
-Supported backup production, signature/credential custody, authenticated fence
-receipts, actual filesystem/blob verification, snapshot restore, durable replay
-and restart continuity remain pending. Matching hashes or booleans here do not
-qualify them. These offline tests establish bounded consistency only.
+The [offline recovery CLI](recovery.md) produces real online backups, verifies
+explicit artifact bytes and rehearses restore/rebuild in isolated scratch state.
+Its preflight binds this manifest's snapshot and complete enumerated closure to
+those verified bytes. Signature/credential custody, authenticated fence receipts,
+production restore and restart continuity remain pending. Matching hashes or
+booleans here do not qualify them.
