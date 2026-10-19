@@ -51,6 +51,16 @@ fn capture(mut file: File) -> Vec<u8> {
     bytes
 }
 fn invoke(root: &Path, args: &[String]) -> CliOutput {
+    capture_command(
+        root,
+        Command::new(env!("CARGO_BIN_EXE_admiralty"))
+            .args(args)
+            .current_dir(root)
+            .env_clear()
+            .env("TMPDIR", root),
+    )
+}
+fn capture_command(root: &Path, command: &mut Command) -> CliOutput {
     let id = uuid::Uuid::new_v4().to_string();
     let make_capture = |suffix| {
         OpenOptions::new()
@@ -63,11 +73,7 @@ fn invoke(root: &Path, args: &[String]) -> CliOutput {
     };
     let stdout = make_capture("stdout");
     let stderr = make_capture("stderr");
-    let mut child = Command::new(env!("CARGO_BIN_EXE_admiralty"))
-        .args(args)
-        .current_dir(root)
-        .env_clear()
-        .env("TMPDIR", root)
+    let mut child = command
         .stdin(Stdio::null())
         .stdout(Stdio::from(stdout.try_clone().expect("stdout handle")))
         .stderr(Stdio::from(stderr.try_clone().expect("stderr handle")))
@@ -308,6 +314,70 @@ fn actual_archive_cli_creates_truthful_receipt_and_exact_extractable_bytes() {
         "native-archive-cli archive_sha256={} raw_manifest_sha256={}",
         receipt["archive_sha256"], receipt["manifest_raw_sha256"]
     );
+}
+#[test]
+fn actual_stage_and_archive_preserve_declared_modes_in_isolated_private_umask_child() {
+    const CHILD: &str = "ADMIRALTY_ARCHIVE_PRIVATE_UMASK_TEST_CHILD";
+    const TEST: &str =
+        "actual_stage_and_archive_preserve_declared_modes_in_isolated_private_umask_child";
+    if std::env::var_os(CHILD).as_deref() == Some(std::ffi::OsStr::new("1")) {
+        // This branch runs only in a dedicated, single-test child. Never change
+        // the umask of the shared, potentially parallel integration-test parent.
+        rustix::process::umask(rustix::fs::Mode::from_bits_truncate(0o077));
+        let f = fixture();
+        let probe = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o644)
+            .open(f.root.path().join("private-mask-probe"))
+            .expect("new child-only mask probe");
+        assert_eq!(
+            probe.metadata().expect("probe metadata").mode() & 0o777,
+            0o600
+        );
+        assert_eq!(
+            fs::metadata(f.stage.join("MANIFEST.json"))
+                .expect("actual staged manifest")
+                .mode()
+                & 0o7777,
+            0o644,
+            "the production stager must normalize its new manifest FD"
+        );
+        for entry in f.manifest["entries"].as_array().expect("actual manifest") {
+            let path = f
+                .stage
+                .join(entry["archive_path"].as_str().expect("declared path"));
+            assert_eq!(
+                fs::metadata(path).expect("actual staged payload").mode() & 0o7777,
+                entry["mode"].as_u64().expect("declared mode") as u32
+            );
+        }
+        // Exercise actual Rust stage/archive children, archive digests, tar
+        // extraction and the unchanged false authority flags under that mask.
+        actual_archive_cli_creates_truthful_receipt_and_exact_extractable_bytes();
+        return;
+    }
+    let root = tempfile::Builder::new()
+        .prefix("native-archive-private-mask-parent-")
+        .permissions(fs::Permissions::from_mode(0o700))
+        .tempdir_in(std::env::temp_dir().canonicalize().expect("canonical tmp"))
+        .expect("private parent capture");
+    let result = capture_command(
+        root.path(),
+        Command::new(std::env::current_exe().expect("actual test executable"))
+            .args(["--exact", TEST, "--nocapture", "--test-threads=1"])
+            .current_dir(root.path())
+            .env_clear()
+            .env(CHILD, "1")
+            .env("TMPDIR", root.path()),
+    );
+    assert!(
+        result.status.success(),
+        "isolated private-mask stage/archive failed: {}{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert!(String::from_utf8_lossy(&result.stdout).contains("1 passed; 0 failed"));
 }
 #[test]
 fn actual_archive_cli_preserves_existing_destination_and_reports_failure() {
