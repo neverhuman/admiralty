@@ -6,6 +6,16 @@ neverhumanbot approval and matched-head rebase. Red/queued CI is never green.
 One cleanup lane takes this list after remaining cutover implementation lands;
 build failures remain immediate work.
 
+Latest749d9d29 browser workflow39220795727 completed with19passed/1failed:
+`atlas dark` reports actual pinned-axe `label-content-name-mismatch` on hierarchy
+cards, matching item8's rule but separately observed on this source. It is not
+a readiness timeout or proof of resource pressure. Raw failed log
+`/private/tmp/adm-ci-749-browser-39220795727.log` SHA-256
+`5eb101d06eb5e6473c9ad04557e4be696691a7a03931dec1c2833f04177594a2`
+is retained.749 Rust workflow39220795716 was still in progress at08:14Z.
+Preserve actual visible-name/accessible-name semantics and pinned axe assertions;
+no additional cleanup lane, rerun, cancellation or shared-runner control.
+
 Latest observation: mainfcd35569 Rust workflow39216521388 failed the new offline
 intake CLI suite:2passed/3failed with `database parent must not be group/world
 writable`. The preview path used an unrestricted tempfile directory under Linux
