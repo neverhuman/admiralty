@@ -698,6 +698,7 @@ fn archive_with_hook(
         return Err(ArchiveError::Invalid("output parent replaced"));
     }
     hook(Point::BeforeCommit)?;
+    owned(&parent, true)?;
     let temporary_id = identity(&temp.file)?;
     let named_temp = regular_at(&parent, &temp.name)?;
     if identity(&named_temp)? != temporary_id {
@@ -717,6 +718,7 @@ fn archive_with_hook(
     }
     let (published_parent, _) =
         absolute_directory(&parent_path).map_err(|_| ArchiveError::CommitUncertain)?;
+    owned(&published_parent, true).map_err(|_| ArchiveError::CommitUncertain)?;
     if !same_inode(
         &identity(&published_parent).map_err(|_| ArchiveError::CommitUncertain)?,
         &identity(&parent).map_err(|_| ArchiveError::CommitUncertain)?,
@@ -1396,6 +1398,41 @@ mod tests {
         assert!(matches!(result, Err(ArchiveError::CommitUncertain)));
         assert!(!destination.exists());
         assert!(moved.join("bundle.gz").is_file());
+    }
+    #[test]
+    fn output_parent_permission_changes_refuse_or_preserve_uncertain_commit() {
+        for point in [Point::BeforeCommit, Point::AfterCommit] {
+            let (root, inputs) = fixture(false);
+            let staged = stage(root.path(), "stage", &inputs);
+            let parent = root.path().join("output");
+            fs::create_dir(&parent).expect("owned output parent");
+            fs::set_permissions(&parent, fs::Permissions::from_mode(0o700))
+                .expect("private output parent");
+            let output = parent.join("bundle.gz");
+            let result = archive_with_hook(
+                &staged.output_dir,
+                &staged.manifest,
+                &raw_digest(&staged),
+                &output,
+                |observed| {
+                    if observed == point {
+                        fs::set_permissions(&parent, fs::Permissions::from_mode(0o775))?;
+                    }
+                    Ok(())
+                },
+            );
+            if point == Point::BeforeCommit {
+                assert!(matches!(result, Err(ArchiveError::Invalid(_))));
+                assert!(!output.exists());
+                assert_eq!(fs::read_dir(&parent).expect("owned inventory").count(), 0);
+            } else {
+                assert!(matches!(result, Err(ArchiveError::CommitUncertain)));
+                assert!(output.is_file());
+                assert!(fs::metadata(&output).expect("retained archive").len() > 0);
+            }
+            fs::set_permissions(&parent, fs::Permissions::from_mode(0o700))
+                .expect("restore owned fixture privacy");
+        }
     }
     #[test]
     fn replacement_temp_is_rejected_and_foreign_name_is_never_cleaned_up() {
