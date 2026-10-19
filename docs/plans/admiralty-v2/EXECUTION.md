@@ -2431,3 +2431,83 @@ authenticate managed pool allotment and provide a common policy fence before
 production activation. Provider routeSC155 remains consumed/unknown and is
 never retried. Context delivery/closure/settlement/recovery and WO6/release
 criteria remain separate ready implementation, not blocked by an old I1.
+
+### 10:25Z — retained model-slot composition and a9d0 primary proof
+
+PR121 exact `4d1eeef41f9dac47811d94150216ce45105e0069` received actual
+neverhumanbot approval at 09:46:35Z and matched-head rebase merge at 09:46:47Z,
+receiving main `a9d0a002628d1b4d433380aab7a414c328412f96`. Root's strict
+09:49:52Z rollout CAS read back `43aee6ee09eaa43b443dbad68b97d9ff485a6fe9c01adef5b993c62ac5cc120a`;
+all 32 packet objects and original producer source/history remained unchanged.
+These results are recorded with actual source work rather than another
+receipt-only main advance.
+
+SC156's sole backup deployer built a9d0, passed 15 real isolated smoke checks,
+and cut over at 09:57:56.840827Z. Root's read-only independent proof at
+10:00:15.499Z verifies all 14 manifest files and actual daemon 51100/start
+58933080 and observer 50478/start58933052 executable hashes. Health/UI/feed
+return 200 and 18891 redirects 307. The Rust producer reports zero model turns,
+256 displayed/537 retained historical rows, no retired owned Python and no
+prior af6 processes. Original first-history timestamp and browser control count
+were not newly measured. Manifest `f706b877...` and actual process/file hashes
+are pinned in [the primary proof](../../../receipts/integration/native-a9d0a002-independent-20261019T1000Z.json).
+Root performed no service control; health still says execution unqualified.
+
+After reading current coordination, Root claimed controller/factory composition
+in `CODEX_CLAIM_SLOTTED_CONTROLLER_FACTORY_20261019T1002Z.md` and native-loop
+extension in `CODEX_CLAIM_SLOTTED_LOOP_AMENDMENT_20261019T1007Z.md`. Frozen APIs
+gave disjoint factory-source, Luna controller-test and factory/loop-test scopes.
+Root owns shared controller/loop integration, receipts and rollout; all worker
+candidates/worktrees remain preserved. Watcher0348 still reports quota-dead
+Gemini4Argon supervisors, not new active manager progress. No pending supervisor
+input was overwritten and no unrelated project/GPU directive was acted on.
+
+Source `a08d2e8d2bfc55121a0ce96532aa9c8fa822c65b` adds explicit
+`admit_one_slotted`, private binding minted only by the original bound Codex
+preparation, and `NativeTaskLoop::admit_slotted`. The private binding retains
+the actual selected ModelSpec/prepared tuple, full kernel claims/reservation,
+separate inference claim and both commands/proofs. Actual LaunchRequest.model
+and plan.model_declared are registry IDs; provider-requested model is a
+different tuple field. Full ModelSpec and routing-field digest domains are
+computed independently. Neither becomes observed identity. Kernel scope and
+Codex producer incarnation are independently bound rather than conflated.
+
+Rejection returns the original preparation/plan and private slot capability.
+Successful registration retains that custody and original CAS-successor
+receipts across uncertain replies. Retry and dispatch require current writer
+authority, exact unchanged budget/whole hold and current physical key/generation;
+unrelated global-ledger advances do not invalidate original receipts. The final
+RecordingRuntime clock guard repeats the protected check. Unknown/held effects
+cannot downgrade, requeue, refund or release. Policies remain observational and
+sequentially sampled; no common through-COMMIT/physical-start fence is installed.
+Pure private-plan comparison does not attest live filesystem inode custody.
+
+[The component receipt](../../../receipts/integration/native-slotted-loop-20261019T1025Z.json)
+pins final Mac 18 integration + 16 existing loop cases and actual capped Linux
+the same 34 cases, with 13 new cases within 34. Counts across workers, earlier
+revisions and platforms are not additive. Final strict server all-target Clippy
+and formatting pass. Linux rebuilt workspace packages in unique copied targets,
+jobs1/testthreads1/private TMP, with fresh outside/inside/after resource gates,
+archive and post-run source hashes. Two Linux invocations are preserved: c175
+passed all 34, then a same-predicate test assertion spelling repair produced
+a08 and all 34 were rerun on that final source. Both logs and the original
+strict-Clippy bool-assert failure remain retained. No runtime guard was weakened.
+
+Earlier draft compiler failures and the oversized rejection-result Clippy error
+are retained; boxing the same original slot capability repaired the latter.
+An unchanged original factory fixture was actually reproduced under an owned
+shell umask002 (0 pass/1 fail/4 filtered, UnsafeSourceMetadata). Only its owned
+Git child now uses argv-preserving umask077; process-global/shared settings and
+production guards remain unchanged. The separate source review is static and
+does not claim reviewer/bot test execution.
+
+Main a9d0 browser workflow39232621504 passed. Rust workflow39232621495 actually
+failed controlled capture at native_executor.rs2319: 95 server cases passed,
+1 failed, 2 ignored. Raw SHA `c81df12a...` is archived in the single CI backlog.
+No inferred resource cause, CI rerun/cancellation or shared-runner control.
+P00/P01 alone remain accepted; 30 parents remain open. There is no startup
+issuer, independently authenticated live pool/model policy, configured ResourceGate,
+provider completion, new provider grant, settlement/release, restart recovery or
+general execution qualification. SC155 remains consumed/unknown and is never
+retried. Next ready work is those production authority/custody and provider/
+context/closure/recovery gates plus remaining WO6 and release criteria.

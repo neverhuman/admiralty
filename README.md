@@ -146,6 +146,10 @@ capacity, real provider execution and settlement remain separate rollout work.
 The optional [durable inference-slot Store path](docs/architecture/inference-slots.md)
 adds a managed hold to that same claim/budget/intent transaction. Exact retries
 preserve original receipts, and prior-generation holds keep consuming capacity.
+The explicit slotted controller and native-loop path retain an opaque binding
+from the original Codex preparation and recheck its exact hold, current pool
+generation and budget before dispatch. Registry IDs, provider model names and
+observed identities remain separate; this installs no default execution route.
 This requires independently installed observational policy and activates no
 physical pool, provider or scheduler. Shared authorization fencing, production
 issuance, settlement/release and runtime recovery remain separate gates.

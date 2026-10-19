@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T10:00:15.499Z",
+  "source_revision": "a9d0a002628d1b4d433380aab7a414c328412f96",
+  "verification": "independent read-only deployment inspection under fleetcap; manifest plus14 streamed file hashes and process executable hashes; bounded public endpoints",
+  "gate": {
+    "observed_utc": "2026-10-19T10:00:14.972Z",
+    "cpu_percent": 8.980201131363918,
+    "mem_available_bytes": 98514010112,
+    "controller_active": true,
+    "freeze": "0"
+  },
+  "manifest_sha256": "f706b877bdba2e91a440df6fe60885a53dd5af821cb42bd61bfc105e0db60cdb",
+  "manifest_entries": 14,
+  "files": [
+    {
+      "path": "bin/admiralty",
+      "sha256": "3ff5afa74ff084f1615e62713019b2185574e31d782bd2a2fd8559aa03ec6b4e",
+      "bytes": 15098904
+    },
+    {
+      "path": "bin/admiralty-node",
+      "sha256": "26d1bb54b0425f42c096f2645be924ffb37af9294e2744852bb72f086cb53162",
+      "bytes": 340592
+    },
+    {
+      "path": "bin/admiralty-observe",
+      "sha256": "6ee99a240477769e144fdfa62cc1e1983a0bd71fa22282cdbcdb0f01357a2cb7",
+      "bytes": 3215056
+    },
+    {
+      "path": "bin/admiraltyd",
+      "sha256": "7f5502d374835ade7ce5d2da9b4858c7a523de6ebcd840565120005db858e4ed",
+      "bytes": 11908664
+    },
+    {
+      "path": "dashboard/index.html",
+      "sha256": "28d8a78eb67f744ae849ade1f4a94948a1ae816891e3397241e6381e186075ed",
+      "bytes": 57357
+    },
+    {
+      "path": "react/assets/CommandJourneys-DK6T-aIV.js",
+      "sha256": "08ea3358d5778beaf8d0a6e79dd154ceb0da3aa852a4917f59a1aa577d7571aa",
+      "bytes": 84506
+    },
+    {
+      "path": "react/assets/Intake-CUnTgt1t.js",
+      "sha256": "e78093f676a60e522e1aa6400cc1a199a91923f6193e6d4d6937ad17785d3675",
+      "bytes": 100955
+    },
+    {
+      "path": "react/assets/LiveViews-CV9iWv1b.js",
+      "sha256": "a144fe5f81963c482a44329768a825310fef55690bd7d15b2b241c916f89c0cb",
+      "bytes": 80713
+    },
+    {
+      "path": "react/assets/LiveViews-DgA8tN2b.css",
+      "sha256": "5687219571507edddc4698a65e3fab13cb49a760173b37d84b5bf97e90f47580",
+      "bytes": 24328
+    },
+    {
+      "path": "react/assets/index-BV0BmOq_.js",
+      "sha256": "b7de58812426105c013793a6c474949d1e1739e148f61361419f21f690c18463",
+      "bytes": 498640
+    },
+    {
+      "path": "react/assets/index-C0ohzedu.css",
+      "sha256": "00a0e0f6944bb2515c32e5df7130ad6ec37a25f278047e995ae8c273f0197a42",
+      "bytes": 60691
+    },
+    {
+      "path": "react/brand/admiralty-source.png",
+      "sha256": "86f3f016a3d2562cc82da3191ce472e77e81726a65f69ccb4a840145e89aaef9",
+      "bytes": 909933
+    },
+    {
+      "path": "react/brand/grokbot.png",
+      "sha256": "d0c1fb552fa44d28af99e4a8918ad43960e4b5c15db05d1ef4331dad66d206e2",
+      "bytes": 960632
+    },
+    {
+      "path": "react/index.html",
+      "sha256": "5d97b660b056ea9e5b8dfc9d45e8ebf1be371b28bb6b9955d3c23650c2ca7108",
+      "bytes": 539
+    }
+  ],
+  "processes": [
+    {
+      "name": "admiraltyd",
+      "pid": 51100,
+      "exe": "/home/ubuntu/admiralty-v2-build/deployments/a9d0a002628d1b4d433380aab7a414c328412f96/bin/admiraltyd",
+      "start_ticks": "58933080",
+      "sha256": "7f5502d374835ade7ce5d2da9b4858c7a523de6ebcd840565120005db858e4ed"
+    },
+    {
+      "name": "admiralty-observe",
+      "pid": 50478,
+      "exe": "/home/ubuntu/admiralty-v2-build/deployments/a9d0a002628d1b4d433380aab7a414c328412f96/bin/admiralty-observe",
+      "start_ticks": "58933052",
+      "sha256": "6ee99a240477769e144fdfa62cc1e1983a0bd71fa22282cdbcdb0f01357a2cb7"
+    }
+  ],
+  "health": {
+    "native_execution_qualified": false,
+    "status": "ok",
+    "version": "0.1.0"
+  },
+  "http": {
+    "ui": 200,
+    "legacy": 200,
+    "redirect_18891": 307
+  },
+  "legacy": {
+    "bytes": 1522154,
+    "collector": {
+      "acceptance_authority": false,
+      "duration_ms": 14601,
+      "implementation": "rust",
+      "model_turns": 0,
+      "observed_utc": "2026-10-19T10:00:11Z",
+      "read_only_sources": true,
+      "version": "0.1.0"
+    },
+    "generated_utc": "2026-10-19T10:00:09Z",
+    "history_displayed_rows": 256,
+    "history_retained_rows": 537,
+    "first_displayed_history_timestamp": 1792371634,
+    "last_displayed_history_timestamp": 1792403977,
+    "original_first_history_timestamp": null,
+    "history_note": "Displayed suffix timestamps observed directly; original first stored timestamp was not read or inferred.",
+    "projects": [
+      "dope",
+      "jarambit",
+      "joil",
+      "jopedime"
+    ]
+  },
+  "ui_static": {
+    "index_bundle": "react/assets/index-BV0BmOq_.js",
+    "index_bundle_sha256": "b7de58812426105c013793a6c474949d1e1739e148f61361419f21f690c18463",
+    "intake_bundle": "react/assets/Intake-CUnTgt1t.js",
+    "intake_bundle_sha256": "e78093f676a60e522e1aa6400cc1a199a91923f6193e6d4d6937ad17785d3675",
+    "controls_not_recounted": true,
+    "browser_qualification": false
+  },
+  "old_deployment_pids": [
+    {
+      "pid": 2704251,
+      "present": false
+    },
+    {
+      "pid": 2703800,
+      "present": false
+    }
+  ],
+  "retired_owned_python_pids": [],
+  "native_execution_qualified": false,
+  "no_service_control": true,
+  "no_database_config_source_mutations": true
+}

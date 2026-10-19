@@ -1,0 +1,83 @@
+{
+  "kind": "independent-static-native-slot-composition-followup",
+  "observed_utc": "2026-10-19T10:23:08.824Z",
+  "reviewer": "audit_evidence",
+  "verdict": "CLEAR",
+  "source": {
+    "repository": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+    "base_commit": "c175412b532142939bc48de89070d3d74d8a73d7",
+    "commit": "a08d2e8d2bfc55121a0ce96532aa9c8fa822c65b",
+    "working_head_observed": "a08d2e8d2bfc55121a0ce96532aa9c8fa822c65b",
+    "files": [
+      {
+        "path": "crates/admiralty-server/src/services/controller.rs",
+        "sha256": "ac635372ef34a2ee4d254e8a6ce0411003b20ef48f88cff108b8f5ad71e47ed8",
+        "bytes": 55320,
+        "working_matches_commit": true,
+        "unchanged_from_c175": true
+      },
+      {
+        "path": "crates/admiralty-server/src/services/native_codex_plan.rs",
+        "sha256": "81bc6bbca148560db28db9d331aaca9badde190a485d7d4dc8b80ca51fa56b6a",
+        "bytes": 33422,
+        "working_matches_commit": true,
+        "unchanged_from_c175": true
+      },
+      {
+        "path": "crates/admiralty-server/src/services/native_task_loop.rs",
+        "sha256": "1959c0f9df46cc0dc97eae1ce327bd6a134607c55c5fba826c556ed654d72941",
+        "bytes": 79720,
+        "working_matches_commit": true,
+        "unchanged_from_c175": true
+      },
+      {
+        "path": "crates/admiralty-server/tests/controller_slots.rs",
+        "sha256": "375d9c12e28f857b41f8b078152d369fd1ec7be6c5c7fd226f89a0348d9456f0",
+        "bytes": 20236,
+        "working_matches_commit": true,
+        "unchanged_from_c175": false
+      },
+      {
+        "path": "crates/admiralty-server/tests/native_codex_plan.rs",
+        "sha256": "632d9065759cd7cac05ef2167d11ed11ab448e34dfdf1265c796c224a85e84e0",
+        "bytes": 77720,
+        "working_matches_commit": true,
+        "unchanged_from_c175": true
+      }
+    ]
+  },
+  "prior_review": {
+    "path": "/private/tmp/adm-slotted-native-final-review-tgkdN3/review.json",
+    "sha256": "3a968c192ec1fd0c1845bccf7f2f840358cfd586354689498f866d3630932c60",
+    "preserved": true
+  },
+  "change": {
+    "path": "crates/admiralty-server/tests/controller_slots.rs",
+    "line": 433,
+    "description": "Replace assert_eq!(same bool capacity predicate, true) with assert!(same predicate). The admit call, unwrap_err, to_string and contains(capacity) expression are unchanged; no assertion, predicate or production change, and no lint suppression."
+  },
+  "preserved_failure": {
+    "path": "/private/tmp/adm-slotted-native-clippy-bool-failure.log",
+    "sha256": "4ea197f3593402b70312fae7cc12edf556c45bf0cfa0007209c782b8bbe7ce95",
+    "bytes": 1139,
+    "description": "Existing Root strict Clippy failure retained; no reviewer rerun."
+  },
+  "test_scope": {
+    "definitions": {
+      "native_codex_plan": 13,
+      "controller_slots": 5
+    },
+    "combined_integration": 18,
+    "separate_existing_loop_unit_cases_reported_by_parent": 16,
+    "parent_scoped_total": 34,
+    "reviewer_tests_run": 0,
+    "parent_reported_prior_results": "c175 Mac34 and Linux34 passed; not independently reexecuted by this review.",
+    "final_exact_source_results": "Parent owns pending final Mac/Linux/strict evidence; this receipt establishes static equivalence only."
+  },
+  "findings": [],
+  "limits": [
+    "Read-only static follow-up; no source edits, builds, tests, provider, service or remote effects by reviewer",
+    "All three production files and factory/loop integration test file are byte-identical to the preserved c175 review",
+    "No runtime, provider, observed identity, configured ResourceGate, authority issuer, activation, full parent acceptance or CI-green claim"
+  ]
+}

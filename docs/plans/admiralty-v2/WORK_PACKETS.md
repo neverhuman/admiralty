@@ -260,6 +260,20 @@ reported usage is not billing or settlement.
 
 ### P14 — Atomic admission, fairness, cheap-capable routing and recovery
 
+**Slotted composition update 2026-10-19:** explicit `admit_one_slotted`,
+`BoundNativeCodexPlan::bind_inference_slot` and `NativeTaskLoop::admit_slotted`
+now retain the original prepared model mapping, commands/proofs and exact
+budget/slot receipts through retry and dispatch. Current policy and the final
+clock guard fence changes; unknown dispatch retains custody/liability. Actual
+Mac and capped Linux each pass the same 34 scoped cases, including 13 new
+cases, at source `a08d2e8d2bfc55121a0ce96532aa9c8fa822c65b`. Strict all-target
+Clippy and separate source review pass. See
+`receipts/integration/native-slotted-loop-20261019T1025Z.json` and
+`docs/architecture/inference-slots.md`. This supersedes the missing explicit
+composition statement below, while startup issuer, physical pool/model
+authentication, common policy fencing, configured ResourceGate, provider,
+settlement/release, recovery, fairness and full parent acceptance remain open.
+
 **Reserve-only slot component 2026-10-19:** the optional Store path now commits
 claim/budget/hold/outbox together, with current policy sampling and retained
 occupancy across pool generations. Alias keys cannot reset occupancy; capacity
