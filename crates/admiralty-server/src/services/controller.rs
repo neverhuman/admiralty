@@ -54,6 +54,15 @@ pub struct ReservedDurableIntent {
     pub reservation: admiralty_store::admission_reservations::ReservationResult,
 }
 
+/// Atomic declared claim/budget/managed-slot admission. This is not proof of
+/// prepared-provider model mapping, physical capacity or production execution.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SlottedDurableIntent {
+    pub intent: DurableIntent,
+    pub reservation: admiralty_store::admission_reservations::ReservationResult,
+    pub slot: admiralty_store::inference_slots::SlotResult,
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct DispatchIntent {
@@ -548,6 +557,53 @@ pub fn admit_one_reserved(
             duplicate: receipt.claim.duplicate,
         },
         reservation: receipt.reservation,
+    })
+}
+
+/// Explicit managed-slot path; both Store authorities/proofs are independently
+/// installed and current. Exact historical retries are resolved by Store, not
+/// by replacing their claim or falling back to a less protected admission mode.
+/// Public model declarations alone never authenticate a prepared provider tuple.
+pub fn admit_one_slotted(
+    store: &Store,
+    admission: &impl CurrentAdmission,
+    request: &LaunchRequest,
+    inputs: admiralty_store::BudgetAndSlotAdmission,
+) -> Result<SlottedDurableIntent, ControllerError> {
+    validate_request(request)?;
+    let snapshot = store.snapshot()?;
+    let task = snapshot
+        .projection
+        .tasks
+        .get(&request.task_id)
+        .ok_or(ControllerError::UnknownTask)?;
+    let intent = planned_launch_intent(task, request)?;
+    admission
+        .authorize_current(task, request)
+        .map_err(ControllerError::AdmissionDenied)?;
+    let key = intent.idempotency_key.clone();
+    let receipt = store.claim_with_budget_and_slot(
+        request.source.clone(),
+        DomainEvent::TaskClaimed {
+            task_id: request.task_id.clone(),
+            revision: task.contract.revision,
+            attempt_id: request.attempt_id.clone(),
+            owner: request.owner.clone(),
+        },
+        request.observed_utc.clone(),
+        intent,
+        inputs,
+    )?;
+    Ok(SlottedDurableIntent {
+        intent: DurableIntent {
+            event_seq: receipt.claim.event_seq,
+            task_id: request.task_id.clone(),
+            attempt_id: request.attempt_id.clone(),
+            outbox_key: key,
+            duplicate: receipt.claim.duplicate,
+        },
+        reservation: receipt.reservation,
+        slot: receipt.slot,
     })
 }
 
