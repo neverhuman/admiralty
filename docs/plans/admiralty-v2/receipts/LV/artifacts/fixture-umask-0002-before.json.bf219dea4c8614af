@@ -1,0 +1,17 @@
+{
+  "source_head": "795a4b979e2a3f060f7e3c17572d5137cf52387c",
+  "argv": [
+    "rtk",
+    "proxy",
+    "cargo",
+    "test",
+    "--locked",
+    "-p",
+    "admiralty-server",
+    "--lib",
+    "views::tests"
+  ],
+  "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+  "umask": "0002",
+  "exit_code": 101
+}

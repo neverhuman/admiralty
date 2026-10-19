@@ -1,0 +1,9 @@
+{
+  "reviewer": "/root/live_views_review",
+  "authorization": "User: Authorize read-only reviewer",
+  "reviewed_head": "4432c832f82aed7a823699c94e65889d8919e83f",
+  "scope": "Read-only source review; no files edited or tests rerun. Formal neverhumanbot approval is separate.",
+  "result": "No actionable findings. Entire change is #[cfg(test)]. Fixtures request0700 at directory creation and assert it; Store::open and permission checks unchanged. Production prefix byte-identical.",
+  "reviewed_file_equals_current_source": true,
+  "production_views_prefix_sha256": "cdcee772f1997bc44a1fea214462ea059e5fed889af3e41b2cb7ced1d3241e9a"
+}

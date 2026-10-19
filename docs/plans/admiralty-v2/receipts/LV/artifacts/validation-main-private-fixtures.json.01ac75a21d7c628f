@@ -1,0 +1,88 @@
+{
+  "source_head": "f4432a204204d2848052580d6f4f0355a8e9ed7d",
+  "base_head": "f655b15922810c0e8155c5714e8125b11ad0794d",
+  "cherry_pick_of": "4432c832f82aed7a823699c94e65889d8919e83f",
+  "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+  "umask": "0002",
+  "production_views_prefix_sha256": "cdcee772f1997bc44a1fea214462ea059e5fed889af3e41b2cb7ced1d3241e9a",
+  "production_prefix_unchanged": true,
+  "environment": {
+    "TMPDIR": "/private/tmp/admiralty-views-qual-cbapuf30",
+    "CARGO_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+    "CARGO_BUILD_JOBS": "4",
+    "RUST_TEST_THREADS": "1"
+  },
+  "commands": [
+    {
+      "name": "main-fixture-fmt",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "started_utc": "2026-10-19T02:44:50.182777+00:00",
+      "ended_utc": "2026-10-19T02:44:51.418166+00:00",
+      "exit_code": 0,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/main-fixture-fmt.log"
+    },
+    {
+      "name": "main-fixture-clippy",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "clippy",
+        "-p",
+        "admiralty-server",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started_utc": "2026-10-19T02:44:51.418432+00:00",
+      "ended_utc": "2026-10-19T02:44:55.975781+00:00",
+      "exit_code": 0,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/main-fixture-clippy.log"
+    },
+    {
+      "name": "main-fixture-server-tests-umask0002",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-server",
+        "--lib",
+        "--locked"
+      ],
+      "started_utc": "2026-10-19T02:44:55.976149+00:00",
+      "ended_utc": "2026-10-19T02:45:18.604941+00:00",
+      "exit_code": 0,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/main-fixture-server-tests-umask0002.log"
+    },
+    {
+      "name": "main-fixture-native-build",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "build",
+        "--locked",
+        "-p",
+        "admiralty-server",
+        "-p",
+        "admiralty-observe"
+      ],
+      "started_utc": "2026-10-19T02:45:18.605196+00:00",
+      "ended_utc": "2026-10-19T02:45:25.633676+00:00",
+      "exit_code": 0,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/main-fixture-native-build.log"
+    }
+  ]
+}
