@@ -6,6 +6,28 @@ This additive update retains the full audit below at its original source/time.
 Only P00/P01 are fully accepted; all30 other parents remain open. Do not rebuild
 the following later integrated components or infer that they are live:
 
+**12:09Z related-work component and primary correction:** source013cd33 adds
+explicit scoped content lookup to the existing raw-intake UI, with Rust-bound
+query digest vectors, manual bounded pages, current scope/access invalidation
+and honest incomplete coverage. Actual41scoped UI/client/intake cases, Rust1
+golden case, typechecks/scoped strict Clippy/fmt and real native browser1case
+(pinnedaxe0violations/0incomplete) pass; see
+`native-intake-related-work-20261019T1208Z.json`. Browser evidence is an actual
+empty/incomplete result journey, not populated/multi-page/all-state qualification.
+Enriched-record/selection/attention/delivery UI and full WO6 remain open.
+
+PR124 explicit separate read-capability custody composition is already merged
+into65c1, with same32Mac/Linux scoped cases and3newsubset; do not reassign it.
+SC156sole backup deployed65c1 at11:54:03Z; Root independently verifies all14
+manifest/file/executable hashes at11:59:45.876Z, health/UI/feed200,18891redirect,
+Rust0turns/history256displayed598retained and no retiredownedPython/priorbcf5
+PIDs. See `native-65c1bb11-independent-20261019T1202Z.json`. Original first-history
+and browser controls were not remeasured. Lookup source is separately packaged,
+not yet live. No full execution/issuer/pool/start/provider/settlement/recovery or
+parent acceptance follows. Fresh bcf5 diagnostic grant remains pending; no new
+provider preparation/turn. The single CI backlog retains actual PR124 capture
+deadline failure and main65c1 annotated15minute cancellation, never green.
+
 **11:05Z component addendum:** source `feee6086b40f6125b8e76c0e86b01413df0daaab`
 implements an opt-in retained Store admission lease and private paired-cohort
 policy epoch. Both authorities own the same immutable rules/epoch and return

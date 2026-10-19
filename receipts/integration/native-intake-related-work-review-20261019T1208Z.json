@@ -1,0 +1,152 @@
+{
+  "kind": "final-committed-related-work-source-review",
+  "observed_utc": "2026-10-19T12:08:01.715Z",
+  "reviewer": "audit_evidence",
+  "verdict": "CLEAR",
+  "source": {
+    "repository": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+    "commit": "013cd33680ce45c1fcaf6e7a4c80ab7cde0edceb",
+    "files": [
+      {
+        "path": "apps/dashboard/src/intakeDuplicates.ts",
+        "bytes": 9914,
+        "sha256": "f7410e830d41f884f60991dfe5f6bcca067b919cb9b6cf0bbb5128b6c00988f0",
+        "working_matches_commit": true
+      },
+      {
+        "path": "apps/dashboard/src/intakeDuplicates.test.ts",
+        "bytes": 16078,
+        "sha256": "664847a54b61b92cb8913c931cb67f9267d3db408415635f31d3301f04851557",
+        "working_matches_commit": true
+      },
+      {
+        "path": "apps/dashboard/src/ui/IntakeDuplicates.tsx",
+        "bytes": 10731,
+        "sha256": "2dddf66eac3423a47be36492f573fd10dc7ca637275fc058f541bd8bf0282ab8",
+        "working_matches_commit": true
+      },
+      {
+        "path": "apps/dashboard/src/ui/intakeDuplicates.test.tsx",
+        "bytes": 2964,
+        "sha256": "17743104a32f1bfbba48253bd7efe535c1b5b78b470064c89c76c7d70877546c",
+        "working_matches_commit": true
+      },
+      {
+        "path": "apps/dashboard/src/ui/Intake.tsx",
+        "bytes": 32189,
+        "sha256": "20c4f87c0854528056ef280d148f2412d3763cb859299570b11958043d8a65ef",
+        "working_matches_commit": true
+      },
+      {
+        "path": "apps/dashboard/src/ui/intake.test.tsx",
+        "bytes": 11956,
+        "sha256": "d108bfdd02640abb05cb2d5cec5047c1ecb67b4e432fbdbb8751ddec0d0523c7",
+        "working_matches_commit": true
+      },
+      {
+        "path": "apps/dashboard/e2e/intake.e2e.ts",
+        "bytes": 27147,
+        "sha256": "4a81dd3dd8aeac5a7f378344b666305b15ebf043ee4924b063950046c0360ee1",
+        "working_matches_commit": true
+      },
+      {
+        "path": "crates/admiralty-core/tests/duplicate_query_golden.rs",
+        "bytes": 859,
+        "sha256": "38a224442759920493ea6d3f742d4bd20fb20d92a9d140eb85b8c57e62541c55",
+        "working_matches_commit": true
+      },
+      {
+        "path": "packages/contracts/fixtures/intake-duplicate-query-golden.json",
+        "bytes": 1064,
+        "sha256": "753425808498ac379af8bb921aeba905acf4e31b7391d82130801baf609f6818",
+        "working_matches_commit": true
+      }
+    ]
+  },
+  "prior_static_review": {
+    "path": "/private/tmp/adm-related-work-static-review-BvH3lQ/review.json",
+    "sha256": "cf2be96d96cb58908f450eb08f059b2421c0532612bd702534055d6bda6f1e9b",
+    "preserved": true,
+    "note": "All nine prior working-byte hashes equal final commit. Earlier conservative uncommitted classification is superseded by actual Git-object comparison here."
+  },
+  "source_findings": [],
+  "repaired_harness_finding": {
+    "issue": "Replacing fetch after parent captured fetcher could miss held-reply hook",
+    "evidence_type": "Static only; no executed failing counterexample",
+    "resolution": "Original pre-mount fetch wrapper contains one-shot dynamic hold flag. Final source adds actual busy-button assertion and ignoredAbort credential-change check; actual Root browser1pass read below."
+  },
+  "retracted_golden_suspicion": [
+    {
+      "issue": "Golden second revision purportedly contained forbidden literal backslash",
+      "status": "Retracted",
+      "reason": "Reviewer misread nested tool escaping as decoded bytes; actual field is rev-quote-one with codepoints114,101,118,45,34,111,110,101 and no backslash. No executed Rust/client failure or exploit was ever observed.",
+      "fixture_sha256": "753425808498ac379af8bb921aeba905acf4e31b7391d82130801baf609f6818",
+      "actual_decoded_revision": "rev-\"one",
+      "codepoints": [
+        114,
+        101,
+        118,
+        45,
+        34,
+        111,
+        110,
+        101
+      ]
+    }
+  ],
+  "review_scope": "Initial complete static client/UI/API/core/Store review plus final source-byte equivalence and bounded Root browser outcome check; no repeated source audit or test execution.",
+  "browser_evidence": {
+    "root_run": {
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/browser.json",
+      "bytes": 455,
+      "sha256": "bafd646e44f5d14884244689e32c1291a72481c98b6788f9cbca2751aa139a84"
+    },
+    "stdout": {
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/browser.stdout",
+      "bytes": 207,
+      "sha256": "a4507b63507e6f3becaa03c8ce079ebc8b29c99ebbfe6d04e37f07585d5626c0"
+    },
+    "stderr": {
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/browser.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "private_proof": {
+      "path": "/private/tmp/adm-intake-browser-QNydKU/browser-proof.json",
+      "bytes": 13310,
+      "sha256": "42af04cfd39f3ddaca6283240eaa42ebfebbc15555301810dbcf6b874a8a54f4"
+    },
+    "owned_exit": {
+      "path": "/private/tmp/adm-intake-browser-QNydKU/native-exit.json",
+      "bytes": 247,
+      "sha256": "cd1bd93539e9f34451e0172367ea09abc64787ca8ed75884d210b71fe22e37a2"
+    },
+    "root_status": 0,
+    "actual_named_tests": 1,
+    "root_elapsed_ms": 2745,
+    "native_binary_sha256": "3dfcd4fb393b092ea5d47f61385506bfb06692bf4f9b0c05785b3f75d0052a81",
+    "current_production_source_digest": "sha256:3f42f94028716ff4823c37efb30df3aa61952318735528116d8ffaeb982d6510",
+    "current_dist_bundle_digest": "sha256:1fd198d7ee36bd99577b15a54a27b2d62b5209011ebb4cd8eaac30111ec3f089",
+    "axe": {
+      "version": "4.14.0",
+      "violations": 0,
+      "incomplete": 0,
+      "passes": 29
+    },
+    "queries": 2,
+    "post_trace_count": 6,
+    "empty_lineage_coverage": "incomplete",
+    "lost_capture_reply_retried_identically": true,
+    "late_ignored_abort_credential_change_discarded": true,
+    "owned_child_pid": 78800,
+    "owned_child_terminated": true,
+    "token_config_files_read_by_reviewer": false
+  },
+  "limits": [
+    "Native positive-candidate/pagination browser coverage is not claimed; result-view variants and cycle/caps are static/pure-view scope",
+    "Exact Rust query typed-order/null/UTF8/domain hash matches implementation and golden reference; query digest is not authentication or an acceptance grant",
+    "Root binary hash is recorded from actual test proof; independent entire native binary source/toolchain provenance awaits canonical Root evidence packet",
+    "No browser/control/root/network/test/build/forge/provider/source edit actions by reviewer",
+    "No WO6/full parent, provider, issuer, runtime activation or exhaustive-uniqueness acceptance"
+  ]
+}

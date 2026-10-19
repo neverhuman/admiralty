@@ -176,3 +176,22 @@ Confirm package script names against `apps/dashboard/package.json` before execut
 Required scenarios include: multi-paragraph request stays one request; intentional explicit batch yields correct independent tasks; duplicate completed/reopened work remains discoverable; lost record response creates one record; source revision/content collision preserves evidence; missing dependency stays unresolved; fake imported check text never executes; DST/restart selects one intended window; missing PATH/setup failure blocks launch; pressure is not idle or model failure; rebase invalidates affected checks; partial landing remains partial; merged source remains distinct from installed/running/released state; pending drain preserves active child and unique candidate work.
 
 Every lane hands off base/head full OIDs, exact owned paths, frozen interface version, argv/cwd/toolchain/exits, output/artifact digests, negative evidence, limitations and next ready action. Save engineering receipts under `receipts/<parent>/<actual-commit>.json`, with the subpacket ID in scope; raw output stays in private/ignored artifacts. Update the parent's ledger note without declaring full acceptance. Integration independently reviews the combined tree and records the resulting source revision. Only separately authorized, evidenced executor/rollout gates activate native tasks or publication.
+
+
+### WO6 related-work dashboard component — 2026-10-19 12:09Z
+
+Intake now composes explicit content lookup over the actual scoped native
+`/v2/intake/duplicates/query` endpoint. Rust-generated identity vectors bind the
+client's exact typed field order/null/domain hashing; current scope/credentials
+invalidate results and late replies. Bounded manual candidate pages preserve
+complete/partial/incomplete distinctions, escaped evidence, lifecycle and exact
+contract identity. Empty pages do not mean unique/new work.
+
+Source013cd33:41scoped client/UI/intake cases plus actual Rust1golden case,
+typechecks/scoped strict Clippy/fmt and actual native browser1case/pinnedaxe pass.
+The native browser proves two empty/incomplete queries, capture lost-reply replay,
+credential-change stale-reply rejection and0tasks/messages; it does not prove
+populated/multi-page native browsing or full all-state operator journey. See
+`receipts/integration/native-intake-related-work-20261019T1208Z.json`.
+Enriched-record, duplicate decision/selection, attention/delivery views and full
+WO6/parent acceptance remain open. No live intake config/token/grant installed.
