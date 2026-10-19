@@ -403,8 +403,8 @@ mod tests {
     impl NativeAttentionPolicy for ExactPolicy {
         fn authorize_current(&self, b: &NativeAttentionBinding<'_>) -> bool {
             let calls = self.calls.fetch_add(1, Ordering::SeqCst);
-            !self.revoked.load(Ordering::SeqCst)
-                && !(self.deny_after_first.load(Ordering::SeqCst) && calls > 0)
+            !(self.revoked.load(Ordering::SeqCst)
+                || self.deny_after_first.load(Ordering::SeqCst) && calls > 0)
                 && b.scope == &self.scope
                 && b.config_digest == self.config_digest
                 && b.context == &self.context
