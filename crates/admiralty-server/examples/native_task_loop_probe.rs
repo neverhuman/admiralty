@@ -1,11 +1,12 @@
 //! Explicit, one-run Linux proof of NativeTaskLoop -> retained workspace/closure
 //! -> changed source -> independent positive/negative checks -> Store acceptance.
-//! This deterministic helper is not a coding provider, general issuer, startup
-//! activation, production rollout, or full packet acceptance. No network calls.
+//! The fixed helper makes no provider/network calls. The separate `codex` mode
+//! prepares one explicit operator-qualified provider attempt and never grants
+//! general admission, startup activation, production rollout or packet acceptance.
 //! Preparation is create-only; run requires the exact fresh private authorization
 //! outside the fixture. Any failed/unknown run is retained and MUST NOT be retried.
-//! The current consuming source-candidate API can lose in-memory handles on an
-//! error; journals/files remain, but this probe makes no restart recovery claim.
+//! Source-candidate errors retain original handles until process shutdown;
+//! journals/files remain, but this probe makes no restart recovery claim.
 #[cfg(unix)]
 mod probe {
     use admiralty_core::{
@@ -16,25 +17,37 @@ mod probe {
         verification::{RequiredNegativeCheck, VerificationInputs, VerificationPolicy},
     };
     use admiralty_runtime::{
+        models::{ModelSpec, RegistryFile},
+        providers::{
+            codex::{
+                self, CodexAdmission, CodexCliObservation, CodexEffort, CodexExecutionOptions,
+                CodexNdjsonStream, CodexSandbox, CodexTermination, PreparedCodexLaunch,
+            },
+            supervision::SupervisionScope,
+        },
         reservations::{AccountId, CurrencyUnit, MinorUnits, Reservation, ReservationScope},
         resource_gate::{
             AdmissionIdentity, ClosedAdmission, QualifiedEnvironment, ResourceGate,
             ResourcePermitAuthority, ResourcePermitClaims, SystemdBackendConfig,
             VerifiedResourcePermit,
         },
-        session::{CaptureState, LaunchSpec, OutputStream, SessionHost},
+        session::{CaptureState, LaunchSpec, OutputStream, SessionError, SessionHost},
         trusted_checks::{ExecutedChecks, execute_checks},
         workspace::{
             preparation::{WorkspacePreparation, prepare_workspace},
             registry::{NodeRef, WorkspaceSpec},
-            source_candidate::{materialize_source_candidate, prove_closed_workspace},
+            source_candidate::{try_materialize_source_candidate, try_prove_closed_workspace},
         },
     };
     use admiralty_server::services::{
         controller::{
             CurrentAdmission, DispatchAdmission, DispatchIntent, LaunchRequest, WallClock,
         },
-        native_executor::{NativeExecutionPlan, native_resource_claims_digest},
+        native_codex_plan::{
+            CodexBindingFailure, CodexPlanInput, CodexPreparationFailure, CodexResourceBinding,
+            PreparedNativeCodexPlan, prepare_codex_plan,
+        },
+        native_executor::{CompletedCapture, NativeExecutionPlan, native_resource_claims_digest},
         native_lifecycle::{
             NativeDecisionBinding, NativeEvidenceAuthority, NativeLifecycleAuthority,
             NativeLifecyclePolicy,
@@ -107,6 +120,8 @@ mod probe {
     #[derive(Subcommand)]
     enum Mode {
         Run(RunArgs),
+        /// Separate, fresh one-run Codex qualification; never general admission.
+        Codex(Box<CodexArgs>),
         #[command(hide = true)]
         OwnedChild {
             #[arg(long)]
@@ -155,6 +170,64 @@ mod probe {
         #[arg(long, default_value_t = 90)]
         deadline_seconds: u64,
     }
+    #[derive(Args)]
+    struct CodexArgs {
+        #[command(flatten)]
+        common: RunArgs,
+        #[arg(long)]
+        codex_program: PathBuf,
+        #[arg(long)]
+        model_registry: PathBuf,
+        #[arg(long)]
+        model_id: String,
+        #[arg(long, value_parser=["minimal","low","medium","high","xhigh"])]
+        effort: String,
+        /// Existing externally qualified private HOME; no credential files read/copied.
+        #[arg(long)]
+        provider_home: PathBuf,
+        /// Opaque registered auth-context:ID, never a credential value/file.
+        #[arg(long)]
+        auth_context_ref: String,
+    }
+    struct CodexProfile {
+        program: PathBuf,
+        registry: PathBuf,
+        model_id: String,
+        effort: CodexEffort,
+        home: PathBuf,
+        auth_context_ref: String,
+    }
+    // Keep actual opaque custody inside the propagated error until process
+    // shutdown. Errors never reconstruct a workspace/provider from JSON/path.
+    enum RetainedProviderFailure {
+        Preparation(CodexPreparationFailure),
+        Binding(CodexBindingFailure),
+        Tuple(Box<PreparedNativeCodexPlan>),
+    }
+    impl std::fmt::Debug for RetainedProviderFailure {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Preparation(error) => f
+                    .debug_tuple("retained provider preparation")
+                    .field(error)
+                    .finish(),
+                Self::Binding(error) => f
+                    .debug_tuple("retained provider resource binding")
+                    .field(error)
+                    .finish(),
+                Self::Tuple(plan) => {
+                    let _ = plan.prepared_provider().tuple_digest();
+                    f.write_str("retained provider tuple differs from authorized preview")
+                }
+            }
+        }
+    }
+    impl std::fmt::Display for RetainedProviderFailure {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            std::fmt::Debug::fmt(self, f)
+        }
+    }
+    impl Error for RetainedProviderFailure {}
     pub fn main() -> std::process::ExitCode {
         let cli = Cli::parse();
         if !cfg!(target_os = "linux") {
@@ -165,6 +238,27 @@ mod probe {
         }
         let result = match cli.command {
             Mode::Run(args) => run(args),
+            Mode::Codex(args) => {
+                let effort = match args.effort.as_str() {
+                    "minimal" => CodexEffort::Minimal,
+                    "low" => CodexEffort::Low,
+                    "medium" => CodexEffort::Medium,
+                    "high" => CodexEffort::High,
+                    "xhigh" => CodexEffort::Xhigh,
+                    _ => unreachable!("clap bounds effort"),
+                };
+                run_with_provider(
+                    args.common,
+                    Some(CodexProfile {
+                        program: args.codex_program,
+                        registry: args.model_registry,
+                        model_id: args.model_id,
+                        effort,
+                        home: args.provider_home,
+                        auth_context_ref: args.auth_context_ref,
+                    }),
+                )
+            }
             Mode::OwnedChild { nonce } => child(&nonce),
             Mode::CheckSource {
                 rustc,
@@ -384,7 +478,7 @@ mod probe {
         host.close_input(id)?;
         let end = Instant::now() + deadline;
         loop {
-            let status = host.status(id)?;
+            let status = session_observation(|| host.status(id), end)?;
             if status.capture_state == CaptureState::Failed
                 || status.output_offset > MAX_BYTES as u64
                 || Instant::now() >= end
@@ -392,7 +486,7 @@ mod probe {
                 let _ = host.terminate(id);
                 return Err("owned check command exceeded bounds; inspect retained spool".into());
             }
-            if status.exit.is_some() {
+            if status.exit.is_some() && status.capture_state == CaptureState::Complete {
                 break;
             }
             thread::sleep(Duration::from_millis(10));
@@ -400,7 +494,7 @@ mod probe {
         if !host.wait(id)?.success() {
             return Err("owned check command failed".into());
         }
-        let status = host.status(id)?;
+        let status = session_observation(|| host.status(id), end)?;
         let tail = host.tail(id, 0, MAX_BYTES)?;
         if status.capture_state != CaptureState::Complete
             || tail.next_offset != status.output_offset
@@ -413,6 +507,23 @@ mod probe {
             .filter(|c| c.stream == OutputStream::Stdout)
             .flat_map(|c| c.bytes)
             .collect())
+    }
+    // Status is explicitly nonblocking; a reader holding the capture lock may
+    // return Busy. Retry that observation only, under the original aggregate
+    // command deadline. Never relaunch or retry an ambiguous input operation.
+    fn session_observation<T>(
+        mut observe: impl FnMut() -> std::result::Result<T, SessionError>,
+        end: Instant,
+    ) -> Result<T> {
+        loop {
+            match observe() {
+                Ok(value) => return Ok(value),
+                Err(SessionError::Busy) if Instant::now() < end => {
+                    thread::sleep(Duration::from_millis(5));
+                }
+                Err(error) => return Err(error.into()),
+            }
+        }
     }
     fn sha256(s: &str) -> bool {
         s.strip_prefix("sha256:").is_some_and(|h| {
@@ -873,8 +984,244 @@ mod probe {
         }
         Ok(value)
     }
+    fn auth_context_reference(value: &str) -> bool {
+        value.strip_prefix("auth-context:").is_some_and(|id| {
+            !id.is_empty()
+                && id.len() <= 128
+                && id
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b"_.-".contains(&b))
+        })
+    }
+    struct CodexFixture {
+        model: ModelSpec,
+        cli: CodexCliObservation,
+        admission: CodexAdmission,
+        options: CodexExecutionOptions,
+        capsule: String,
+        preview: PreparedCodexLaunch,
+        snapshot: Value,
+    }
+    struct CodexFixtureContext<'a> {
+        args: &'a RunArgs,
+        contract: &'a TaskContract,
+        nonce: &'a str,
+        workspace: &'a Path,
+        expires: u64,
+        objects: &'a ArtifactStore,
+        host: &'a SessionHost,
+    }
+    fn prepare_codex_fixture(
+        profile: &CodexProfile,
+        ctx: CodexFixtureContext<'_>,
+    ) -> Result<CodexFixture> {
+        let root = &ctx.args.root;
+        let directory = root.join("provider-observation");
+        if ctx.args.prepare_only {
+            create_private(&directory)?;
+        } else {
+            private_directory(&directory)?;
+        }
+        let program_bytes = read_file(&profile.program, 128 * 1024 * 1024, false)?;
+        let program = stored(ctx.objects, &program_bytes)?;
+        let registry = RegistryFile::new(profile.registry.clone())?.read()?;
+        let model = registry
+            .models
+            .iter()
+            .find(|model| model.id == profile.model_id)
+            .cloned()
+            .ok_or("explicit Codex model missing from qualified registry")?;
+        let registry_object = stored(ctx.objects, &serde_json::to_vec(&registry)?)?;
+        let observations = [
+            ("version", vec!["--no-daemon".into(), "--version".into()]),
+            (
+                "exec-help",
+                vec!["--no-daemon".into(), "exec".into(), "--help".into()],
+            ),
+            ("root-help", vec!["--no-daemon".into(), "--help".into()]),
+        ];
+        let mut observed = Vec::new();
+        let mut observation_objects = Vec::new();
+        for (id, args) in observations {
+            let path = directory.join(format!("{id}.txt"));
+            let bytes = if ctx.args.prepare_only {
+                let bytes = fixed_command(
+                    ctx.host,
+                    &format!("observe-{id}"),
+                    &profile.program,
+                    &args,
+                    root,
+                    &directory,
+                    Duration::from_secs(5),
+                )?;
+                if bytes.is_empty() || bytes.len() > 64 * 1024 {
+                    return Err("CLI observation exceeds bounds".into());
+                }
+                write_new(&path, &bytes)?;
+                bytes
+            } else {
+                read_owned_file(&path, 64 * 1024)?
+            };
+            observation_objects.push(artifact_value(&stored(ctx.objects, &bytes)?));
+            observed.push(String::from_utf8(bytes)?);
+        }
+        let tick_path = directory.join("observed-tick.json");
+        let observed_tick = if ctx.args.prepare_only {
+            let tick = now()? / 1000;
+            write_new(&tick_path, &serde_json::to_vec(&tick)?)?;
+            tick
+        } else {
+            serde_json::from_slice::<u64>(&read_owned_file(&tick_path, 64)?)?
+        };
+        let current_tick = now()? / 1000;
+        if current_tick < observed_tick || current_tick - observed_tick > 300 {
+            return Err("retained actual CLI observation is stale or clock moved backwards; new fixture required".into());
+        }
+        let cli = CodexCliObservation::from_help(
+            &ctx.args.node,
+            profile.program.clone(),
+            observed[0].trim(),
+            &observed[1],
+            &observed[2],
+            Some(observed_tick),
+        )?;
+        let mut capsule =
+            admiralty_core::context::compile_task_capsule(ctx.contract, ctx.nonce, 4096)
+                .map_err(|_| "essential toy task capsule exceeded bound")?
+                .text;
+        capsule.push_str(&format!("\nONE-RUN TOY TASK: Edit only src/main.rs. Compute the sum of n*n for n=1..10000 in Rust; print exactly {:?} including its trailing newline. Preserve this nonce. Do not edit any other file, Git metadata, verifier, journal, auth context or credentials. Do not publish, launch other agents, change services or contact other hosts. Provider transport is externally authorized; no network/credential isolation is claimed. Leave the edit for independent source verification.\n",String::from_utf8(result_bytes(ctx.nonce))?));
+        if capsule.len() > 16 * 1024 {
+            return Err("toy provider capsule exceeded bound".into());
+        }
+        let admission = CodexAdmission {
+            scope: SupervisionScope {
+                project_id: ctx.contract.project_id.clone(),
+                root_id: ctx.contract.root_id.clone(),
+                task_id: ctx.contract.task_id.clone(),
+                attempt_id: AttemptId::new(format!("attempt-{}", ctx.nonce))?,
+                owner: PrincipalId::new("codex-owned-worker")?,
+                incarnation: ctx.nonce.into(),
+                authority_ref: ctx.contract.authority_ref.clone(),
+                contract_digest: content_digest(ctx.contract)?,
+                revision: ctx.contract.revision,
+            },
+            attempt_ordinal: 1,
+            registry_revision: registry.revision,
+            selected_model_digest: content_digest(&model)?,
+            cli_observation_digest: cli.fingerprint().into(),
+            node_id: ctx.args.node.clone(),
+            working_dir: ctx.workspace.into(),
+            spool_root: root.join("worker-spool"),
+            lease_ref: format!("lease-{}", ctx.nonce),
+            resource_permit_ref: format!("permit-{}", ctx.nonce),
+            custody_ref: format!("one-run-workspace:{}", ctx.nonce),
+            auth_context_ref: profile.auth_context_ref.clone(),
+            admitted_tick: observed_tick,
+            expires_tick: ctx.expires / 1000,
+        };
+        let options = CodexExecutionOptions {
+            effort: profile.effort,
+            sandbox: CodexSandbox::WorkspaceWrite,
+        };
+        // Pure preview for the operator request: no workspace capability or
+        // admission is manufactured during prepare-only. Run creates the actual
+        // preparation and uses prepare_codex_plan before resource binding.
+        let preview = codex::prepare_launch(
+            ctx.contract,
+            admission.clone(),
+            &model,
+            options,
+            &cli,
+            &capsule,
+            Some(current_tick),
+        )?;
+        let snapshot = json!({"kind":"one-run-codex-provider-qualification-v1","program":profile.program,
+            "program_artifact":artifact_value(&program),"cli_observation":cli,"help_objects":observation_objects,
+            "registry_path":profile.registry,"registry_artifact":artifact_value(&registry_object),"model":model,
+            "selected_model_digest":admission.selected_model_digest,"capsule":capsule,"provider_tuple":preview.tuple(),
+            "provider_tuple_digest":preview.tuple_digest(),"provider_home":profile.home,"auth_context_ref":profile.auth_context_ref,
+            "auth_delivery":"existing externally qualified HOME-default .codex context; no CODEX_HOME forwarding, credential read/copy or fallback",
+            "capacity_authority":"fresh external operator one-run authorization only","durable_capacity_qualified":false,
+            "billing_settlement":false,"provider_network_expected":true,"network_or_credential_sandbox_qualified":false,
+            "native_execution_qualified":false,"coding_provider_qualified":false});
+        Ok(CodexFixture {
+            model,
+            cli,
+            admission,
+            options,
+            capsule,
+            preview,
+            snapshot,
+        })
+    }
+    fn codex_capture_summary(
+        provider: &PreparedCodexLaunch,
+        capture: &CompletedCapture,
+        run_id: &str,
+    ) -> Result<Value> {
+        if capture.run_id() != run_id || provider.launch_spec().run_id != run_id {
+            return Err("typed provider capture run differs from actual completion".into());
+        }
+        let mut parser = CodexNdjsonStream::from_prepared(provider)?;
+        for chunk in capture.chunks() {
+            parser.push_chunk(chunk)?;
+        }
+        let usage: Vec<_> = parser
+            .observations()
+            .iter()
+            .filter_map(|observation| observation.usage.clone())
+            .collect();
+        let total = |counter: fn(&codex::CodexTurnUsage) -> Option<&str>| -> Option<String> {
+            if usage.is_empty() {
+                return None;
+            }
+            usage
+                .iter()
+                .try_fold(0_u128, |sum, item| {
+                    sum.checked_add(counter(item)?.parse::<u128>().ok()?)
+                })
+                .map(|n| n.to_string())
+        };
+        let input = total(|item| item.input_tokens.as_deref());
+        let output = total(|item| item.output_tokens.as_deref());
+        let cached = total(|item| item.cached_input_tokens.as_deref());
+        let cache_write = total(|item| item.cache_write_input_tokens.as_deref());
+        let summary = parser.finish_from_status(capture.final_status());
+        let identity_complete = summary.capture_complete && !summary.parser_failed;
+        let sufficient = identity_complete
+            && summary.unknown_events == "0"
+            && summary.termination == CodexTermination::ProviderTurnCompleted
+            && summary.reported_model.as_deref() == Some(provider.tuple().requested_model.as_str())
+            && summary.reported_effort.as_deref()
+                == Some(provider.tuple().requested_effort.as_str())
+            && input.is_some()
+            && output.is_some();
+        Ok(
+            json!({"kind":"actual-owned-codex-capture-v1","summary":summary,
+            "provider_observed":if identity_complete{Some("codex_cli")}else{None},
+            "model_observed":if identity_complete{summary.reported_model.clone()}else{None},
+            "effort_observed":if identity_complete{summary.reported_effort.clone()}else{None},
+            "usage":{"input_tokens":input,"output_tokens":output,"cached_input_tokens":cached,"cache_write_input_tokens":cache_write,
+                "semantics":"sum of actual provider per-turn reports; missing counters remain unknown; not billing settlement"},
+            "provider_evidence_complete":sufficient,"native_execution_qualified":false,"durable_capacity_qualified":false,
+            "billing_settlement":false,"source_or_acceptance_grant":false}),
+        )
+    }
     fn run(args: RunArgs) -> Result<()> {
+        run_with_provider(args, None)
+    }
+    fn run_with_provider(args: RunArgs, provider: Option<CodexProfile>) -> Result<()> {
         validate_args(&args)?;
+        if let Some(profile) = &provider {
+            validate_program(&profile.program)?;
+            private_directory(&profile.home)?;
+            if profile.home.starts_with(&args.root)
+                || args.root.starts_with(&profile.home)
+                || !auth_context_reference(&profile.auth_context_ref)
+            {
+                return Err("separate externally qualified private provider HOME and opaque auth-context:ID required".into());
+            }
+        }
         private_directory(args.root.parent().ok_or("fixture parent missing")?)?;
         let authorization = args
             .operator_authorization_file
@@ -897,7 +1244,7 @@ mod probe {
                 }))?,
             )?;
         }
-        let result = run_owned(&args, authorization);
+        let result = run_owned(&args, authorization, provider.as_ref());
         if result.is_err() {
             let _ = write_new(
                 &args.root.join("failure.json"),
@@ -905,13 +1252,17 @@ mod probe {
                     "status":"failed-or-unknown", "native_execution_qualified":false,
                     "provider_observed":Value::Null,"automatic_retry":false,
                     "next_action":"preserve fixture/journals and reconcile only owned unit; use new fixture and authorization for any new run",
-                    "source_candidate_error_limit":"consuming API can drop process-local handles on source-candidate error; no restart recovery claimed",
+                    "source_candidate_error_limit":"original handles retained inside propagated source-candidate errors until process shutdown; no restart recovery claimed",
                 }))?,
             );
         }
         result
     }
-    fn run_owned(args: &RunArgs, authorization: Option<Value>) -> Result<()> {
+    fn run_owned(
+        args: &RunArgs,
+        authorization: Option<Value>,
+        provider_profile: Option<&CodexProfile>,
+    ) -> Result<()> {
         let root = &args.root;
         let nonce = authorization
             .as_ref()
@@ -1024,7 +1375,11 @@ mod probe {
         let task_id = TaskId::new(format!("task-{nonce}"))?;
         let attempt = AttemptId::new(format!("attempt-{nonce}"))?;
         let node = NodeId::new(&args.node)?;
-        let worker = PrincipalId::new("deterministic-owned-worker")?;
+        let worker = PrincipalId::new(if provider_profile.is_some() {
+            "codex-owned-worker"
+        } else {
+            "deterministic-owned-worker"
+        })?;
         let verifier = PrincipalId::new("independent-compiler-verifier")?;
         let authority_ref = format!("one-run-loop:{nonce}");
         let incarnation = nonce.clone();
@@ -1081,10 +1436,11 @@ mod probe {
             title: "Isolated actual NativeTaskLoop proof".into(),
             objective: "Change toy Rust source; verify compiled source against protected oracle"
                 .into(),
-            non_goals: vec![
-                "No coding provider, network, general issuer, production/fleet qualification"
-                    .into(),
-            ],
+            non_goals: vec![if provider_profile.is_some() {
+                "Only the explicitly authorized provider attempt; no production repositories, other agents/hosts, service changes or general fleet qualification".into()
+            } else {
+                "No coding provider, network, general issuer, production/fleet qualification".into()
+            }],
             owned_paths: vec!["src/main.rs".into()],
             forbidden_paths: vec![],
             read_first: vec![],
@@ -1103,34 +1459,6 @@ mod probe {
         contract.validate()?;
         let contract_digest = content_digest(&contract)?;
         let policy_digest = content_digest(&policy)?;
-        let context_digest =
-            content_digest(&("one-run-toy-context-v1", &nonce, &base_commit, &base_tree))?;
-        let workspace_path = root.join("workspaces/owned-run");
-        let spec = LaunchSpec {
-            run_id: format!("loop-probe-{nonce}"),
-            program: executable.clone(),
-            args: vec!["owned-child".into(), "--nonce".into(), nonce.clone()],
-            cwd: workspace_path.clone(),
-            spool_dir: root.join("worker-spool/owned-child"),
-        };
-        let environment_values = BTreeMap::from([
-            ("PATH".into(), "/usr/bin:/bin".into()),
-            (
-                "HOME".into(),
-                root.join("home").to_string_lossy().into_owned(),
-            ),
-            (
-                "TMPDIR".into(),
-                root.join("tmp").to_string_lossy().into_owned(),
-            ),
-            ("LANG".into(), "C".into()),
-            ("LC_ALL".into(), "C".into()),
-        ]);
-        let environment = QualifiedEnvironment::new(environment_values.clone())?;
-        let backend = SystemdBackendConfig {
-            runtime_directory: args.runtime_directory.clone(),
-            delegated_slice: args.slice.clone(),
-        };
         // Ten-minute approval window, not a worker deadline extension. The real
         // executor/dispatch lease retains the separately bounded runtime deadline.
         let expires = authorization
@@ -1144,6 +1472,61 @@ mod probe {
                 "authorization expiry cannot cover bounded run/checks or is too distant".into(),
             );
         }
+        let workspace_path = root.join("workspaces/owned-run");
+        let codex_fixture = provider_profile
+            .map(|profile| {
+                prepare_codex_fixture(
+                    profile,
+                    CodexFixtureContext {
+                        args,
+                        contract: &contract,
+                        nonce: &nonce,
+                        workspace: &workspace_path,
+                        expires,
+                        objects: &objects,
+                        host: &host,
+                    },
+                )
+            })
+            .transpose()?;
+        let context_digest = if let Some(fixture) = &codex_fixture {
+            content_digest(&fixture.capsule)?
+        } else {
+            content_digest(&("one-run-toy-context-v1", &nonce, &base_commit, &base_tree))?
+        };
+        let spec = if let Some(fixture) = &codex_fixture {
+            fixture.preview.launch_spec().clone()
+        } else {
+            LaunchSpec {
+                run_id: format!("loop-probe-{nonce}"),
+                program: executable.clone(),
+                args: vec!["owned-child".into(), "--nonce".into(), nonce.clone()],
+                cwd: workspace_path.clone(),
+                spool_dir: root.join("worker-spool/owned-child"),
+            }
+        };
+        let environment_values = BTreeMap::from([
+            ("PATH".into(), "/usr/bin:/bin".into()),
+            (
+                "HOME".into(),
+                provider_profile
+                    .map(|profile| profile.home.clone())
+                    .unwrap_or_else(|| root.join("home"))
+                    .to_string_lossy()
+                    .into_owned(),
+            ),
+            (
+                "TMPDIR".into(),
+                root.join("tmp").to_string_lossy().into_owned(),
+            ),
+            ("LANG".into(), "C".into()),
+            ("LC_ALL".into(), "C".into()),
+        ]);
+        let environment = QualifiedEnvironment::new(environment_values.clone())?;
+        let backend = SystemdBackendConfig {
+            runtime_directory: args.runtime_directory.clone(),
+            delegated_slice: args.slice.clone(),
+        };
         let claims = ResourcePermitClaims {
             issuer_ref: format!("one-run-issuer-{nonce}"),
             permit_id: format!("permit-{nonce}"),
@@ -1199,7 +1582,16 @@ mod probe {
             stop_requested: false,
             outstanding: true,
         };
-        let request = json!({"schema_version":1,"scope":"one-actual-native-task-loop-proof",
+        let provider_declared = if codex_fixture.is_some() {
+            "codex_cli"
+        } else {
+            "owned-deterministic-helper"
+        };
+        let model_declared = codex_fixture
+            .as_ref()
+            .map(|fixture| fixture.model.id.as_str())
+            .unwrap_or("no-model");
+        let request = json!({"schema_version":1,"scope":if codex_fixture.is_some(){"one-actual-codex-provider-qualification"}else{"one-actual-native-task-loop-proof"},
             "fixture_root":root,"fixture_nonce":nonce,"uid":rustix::process::geteuid().as_raw(),
             "admiralty_build_source_sha":SOURCE_SHA,"admiralty_executable":artifact_value(&exe_object),
             "toy_base_commit":base_commit,"toy_base_tree":base_tree,"toy_base_source_digest":content_digest(&toy_source(&nonce,false)?)?,
@@ -1207,8 +1599,9 @@ mod probe {
             "compiler_path":args.rustc,"compiler_artifact":artifact_value(&compiler),"contract":contract,"verification_policy":policy,
             "context_digest":context_digest,"launch_spec":spec,"environment":environment_values,
             "claims":claim_value,"reservation":reservation,"executor_deadline_seconds":args.deadline_seconds,
-            "dispatch_lease_seconds":args.deadline_seconds+1,"provider_declared":"owned-deterministic-helper",
-            "model_declared":"no-model","provider_observed":Value::Null,"coding_provider_qualified":false});
+            "dispatch_lease_seconds":args.deadline_seconds+1,"provider_declared":provider_declared,
+            "model_declared":model_declared,"provider_observed":Value::Null,"coding_provider_qualified":false,
+            "provider_qualification":codex_fixture.as_ref().map(|fixture|&fixture.snapshot)});
         let encoded = serde_json::to_vec(&request)?;
         if encoded.len() > AUTH_BYTES {
             return Err("prepared authorization exceeds bound".into());
@@ -1295,8 +1688,8 @@ mod probe {
             run_id: spec.run_id.clone(),
             context_digest: context_digest.clone(),
             policy_digest: policy_digest.clone(),
-            provider: "owned-deterministic-helper".into(),
-            model: "no-model".into(),
+            provider: provider_declared.into(),
+            model: model_declared.into(),
             observed_utc: observed_utc()?,
             not_before: now()? / 1000,
         };
@@ -1306,21 +1699,76 @@ mod probe {
             contract: contract.clone(),
         };
         let run_id = spec.run_id.clone();
-        let plan = NativeExecutionPlan {
-            task_id: task_id.clone(),
-            attempt_id: attempt.clone(),
-            contract_digest: contract_digest.clone(),
-            context_digest,
-            policy_digest: policy_digest.clone(),
-            provider_declared: launch.provider.clone(),
-            model_declared: launch.model.clone(),
-            run_id: run_id.clone(),
-            launch_spec: spec,
-            prepared_workspace: prepared,
-            workspace,
-            reservation,
-            permit_claims: claims,
-            permit_authority: startup.clone(),
+        let mut provider_preparation = None;
+        let plan = if let Some(fixture) = &codex_fixture {
+            let task = store
+                .snapshot()?
+                .projection
+                .tasks
+                .remove(&task_id)
+                .ok_or("toy task missing before provider preparation")?;
+            let provider = prepare_codex_plan(
+                prepared,
+                CodexPlanInput {
+                    task: &task,
+                    admission: &fixture.admission,
+                    model: &fixture.model,
+                    options: fixture.options,
+                    cli: &fixture.cli,
+                    task_capsule: &fixture.capsule,
+                    context_digest: &launch.context_digest,
+                    policy_digest: &launch.policy_digest,
+                    source: &launch.source,
+                    observed_utc: &launch.observed_utc,
+                    not_before: launch.not_before,
+                    now_tick: Some(now()? / 1000),
+                },
+            )
+            .map_err(|error| {
+                Box::new(RetainedProviderFailure::Preparation(error))
+                    as Box<dyn Error + Send + Sync>
+            })?;
+            if provider.prepared_provider().tuple_digest() != fixture.preview.tuple_digest()
+                || provider.launch_request() != &launch
+            {
+                return Err(Box::new(RetainedProviderFailure::Tuple(Box::new(provider))));
+            }
+            let bound = provider
+                .bind_resources(
+                    CodexResourceBinding {
+                        claims,
+                        reservation,
+                        authority: startup.clone(),
+                        environment: environment.clone(),
+                        backend: backend.clone(),
+                        now_tick: Some(now()? / 1000),
+                    },
+                    &admission,
+                )
+                .map_err(|error| {
+                    Box::new(RetainedProviderFailure::Binding(error))
+                        as Box<dyn Error + Send + Sync>
+                })?;
+            let (plan, _request, provider, _environment, _backend) = bound.into_parts();
+            provider_preparation = Some(provider);
+            plan
+        } else {
+            NativeExecutionPlan {
+                task_id: task_id.clone(),
+                attempt_id: attempt.clone(),
+                contract_digest: contract_digest.clone(),
+                context_digest,
+                policy_digest: policy_digest.clone(),
+                provider_declared: launch.provider.clone(),
+                model_declared: launch.model.clone(),
+                run_id: run_id.clone(),
+                launch_spec: spec,
+                prepared_workspace: prepared,
+                workspace,
+                reservation,
+                permit_claims: claims,
+                permit_authority: startup.clone(),
+            }
         };
         let mut task_loop = NativeTaskLoop::new(
             store.clone(),
@@ -1408,18 +1856,46 @@ mod probe {
                 "real loop did not produce exactly one durable claim and observed start".into(),
             );
         }
-        let (runtime_receipt, original_preparation, closed, transcript) =
-            completion.into_completion_parts();
+        let (runtime_receipt, original_preparation, closed, transcript, capture) =
+            completion.into_completion_with_capture();
         if !closed.success() {
             return Err("actual child did not close successfully".into());
         }
         phase.store(2, Ordering::SeqCst);
-        let transcript_object = stored(&objects, &transcript)?;
-        // Consuming source APIs have no error-return ownership envelope yet.
-        // On error this run is failed, never re-created/retried from JSON/path.
-        let execution = prove_closed_workspace(original_preparation, closed)?;
-        let candidate =
-            materialize_source_candidate(execution, &root.join("candidates"), "verified-source")?;
+        let provider_evidence=provider_preparation.as_ref().map(|provider|match capture.as_ref() {
+            Some(capture)=>codex_capture_summary(provider,capture,&runtime_receipt.run_id).unwrap_or_else(|_|json!({
+                "status":"actual-capture-protocol-unqualified","provider_evidence_complete":false,
+                "provider_observed":Value::Null,"model_observed":Value::Null,"usage":Value::Null,
+                "detail":"typed parser rejected actual owned capture; retain private owner journal; no identity/usage substitution"})),
+            None=>json!({"status":"typed-capture-unavailable","provider_evidence_complete":false,
+                "provider_observed":Value::Null,"model_observed":Value::Null,"usage":Value::Null}),
+        });
+        if let Some(evidence) = &provider_evidence {
+            write_new(
+                &root.join("provider-observation.json"),
+                &serde_json::to_vec_pretty(evidence)?,
+            )?;
+        }
+        // Do not duplicate/publish raw provider output into artifact receipts.
+        // Original private session/journal custody remains with the owner.
+        let transcript_object = if provider_evidence.is_some() {
+            stored(
+                &objects,
+                &serde_json::to_vec(&json!({"kind":"private-provider-capture-reference-v1",
+                "output_digest":content_digest(&transcript)?,"output_bytes":transcript.len(),
+                "runtime_receipt_ref":runtime_receipt.receipt_ref,"raw_output_retained_by_session_owner":true,"not_source":true}))?,
+            )?
+        } else {
+            stored(&objects, &transcript)?
+        };
+        // Propagated errors own the actual original workspace/closure and any
+        // partial-destination reconciliation evidence until process shutdown.
+        let execution = try_prove_closed_workspace(original_preparation, closed)?;
+        let candidate = try_materialize_source_candidate(
+            execution,
+            &root.join("candidates"),
+            "verified-source",
+        )?;
         candidate.revalidate_custody()?;
         if candidate.base_commit_sha() != base_commit
             || candidate.source_commit_sha() == base_commit
@@ -1477,7 +1953,9 @@ mod probe {
             "oracle":artifact_value(&oracle),"negative":artifact_value(&negative),"executable":artifact_value(&exe_object),"compiler":artifact_value(&compiler),
             "transcript_not_source":artifact_value(&transcript_object),"effect_ack":"recorded","runtime_receipt":format!("{runtime_receipt:?}"),
             "admiralty_build_source_sha":SOURCE_SHA,"toy_base_commit":base_commit,
-            "no_external_effects":"fixed child changes only owned toy Rust source; fixed local Git/compiler/check argv; no network/provider"}))?,
+            "effect_scope":if codex_fixture.is_some(){"one explicitly authorized Codex attempt; provider network expected; auth context externally qualified; no network/credential isolation claim; budget/capacity settlement remains unqualified"}
+                else{"fixed child changes only owned toy Rust source; fixed local Git/compiler/check argv; no network/provider"},
+            "provider_evidence":provider_evidence,"durable_capacity_qualified":false,"billing_settlement":false}))?,
         )?;
         let evidence = Arc::new(EvidenceAuthority {
             startup,
@@ -1559,8 +2037,15 @@ mod probe {
         if reopened.snapshot()?.projection != projection {
             return Err("Store reopen projection differs".into());
         }
-        let report = json!({"schema_version":1,"status":"passed","scope":"isolated actual NativeTaskLoop deterministic source/check/acceptance proof",
-            "native_execution_qualified":false,"coding_provider_qualified":false,"provider_observed":Value::Null,"model_observed":Value::Null,
+        let scoped_provider_qualified = provider_evidence
+            .as_ref()
+            .is_some_and(|evidence| evidence["provider_evidence_complete"] == true);
+        let report = json!({"schema_version":1,"status":"passed","scope":if codex_fixture.is_some(){"one-run operator-authorized Codex source/check/acceptance proof; provider evidence eligibility reported separately"}else{"isolated actual NativeTaskLoop deterministic source/check/acceptance proof"},
+            "native_execution_qualified":false,"coding_provider_qualified":scoped_provider_qualified,
+            "qualification_scope":"this fresh one-run fixture only; no general provider/fleet/runtime admission",
+            "provider_observed":provider_evidence.as_ref().map(|evidence|&evidence["provider_observed"]),
+            "model_observed":provider_evidence.as_ref().map(|evidence|&evidence["model_observed"]),
+            "provider_evidence":provider_evidence,"durable_capacity_qualified":false,"billing_settlement":false,
             "admiralty_build_source_sha":SOURCE_SHA,"source_sha_attestation":"build-time value must be backed by operator exact-head executable receipt",
             "root":root,"task_id":task_id,"real_claim_events":claimed,"actual_observed_start_events":started,
             "effect_ack":"recorded","accepted_event":accepted.event_seq,"exact_duplicate":duplicate.duplicate,
@@ -1622,6 +2107,43 @@ mod probe {
             assert!(!sha256(&"a".repeat(64)));
         }
         #[test]
+        fn only_busy_observations_retry_inside_the_existing_deadline() {
+            let mut reads = 0;
+            let value = session_observation(
+                || {
+                    reads += 1;
+                    if reads < 3 {
+                        Err(SessionError::Busy)
+                    } else {
+                        Ok(7)
+                    }
+                },
+                Instant::now() + Duration::from_secs(1),
+            )
+            .unwrap();
+            assert_eq!((value, reads), (7, 3));
+            let mut unknown_reads = 0;
+            let unknown: Result<()> = session_observation(
+                || {
+                    unknown_reads += 1;
+                    Err(SessionError::InputOutcomeUnknown)
+                },
+                Instant::now() + Duration::from_secs(1),
+            );
+            assert!(unknown.is_err());
+            assert_eq!(unknown_reads, 1);
+            let mut expired_reads = 0;
+            let expired: Result<()> = session_observation(
+                || {
+                    expired_reads += 1;
+                    Err(SessionError::Busy)
+                },
+                Instant::now(),
+            );
+            assert!(expired.is_err());
+            assert_eq!(expired_reads, 1);
+        }
+        #[test]
         fn command_help_and_required_arguments_are_effect_free() {
             use clap::CommandFactory;
             let mut command = Cli::command();
@@ -1629,6 +2151,282 @@ mod probe {
             command.write_long_help(&mut help).unwrap();
             assert!(String::from_utf8(help).unwrap().contains("NativeTaskLoop"));
             assert!(Cli::try_parse_from(["probe", "run", "--root", "/never-created"]).is_err());
+            assert!(Cli::try_parse_from(["probe", "codex", "--root", "/never-created"]).is_err());
+        }
+        struct ProviderFixture {
+            _custody: PrivateFixture,
+            args: RunArgs,
+            profile: CodexProfile,
+            contract: TaskContract,
+            workspace: PathBuf,
+            expires: u64,
+        }
+        impl ProviderFixture {
+            fn new() -> Self {
+                use admiralty_runtime::models::{ModelRegistry, Provider};
+                let custody = private_fixture();
+                let root = custody.path().join("fixture");
+                create_private(&root).unwrap();
+                for name in ["home", "tmp", "worker-spool", "objects"] {
+                    create_private(&root.join(name)).unwrap();
+                }
+                let home = custody.path().join("external-provider-home");
+                create_private(&home).unwrap();
+                let program = custody.path().join("metadata-only-codex");
+                // This executable accepts metadata queries only. An exec task,
+                // stdin prompt or any unrecognized argv fails before effects.
+                write_new(&program, format!("#!/bin/sh\ntest \"$1\" = '--no-daemon' || exit 77\nshift\ncase \"$1\" in\n--version) test \"$#\" = 1 || exit 77; printf '%s\\n' '{}';;\n--help) test \"$#\" = 1 || exit 77; printf '%s\\n' '--no-daemon --ask-for-approval';;\nexec) test \"$#\" = 2 && test \"$2\" = '--help' || exit 77; printf '%s\\n' '--json --color --ignore-user-config --strict-config --ephemeral --model --sandbox --cd';;\n*) exit 77;;\nesac\n",codex::SUPPORTED_CLI_VERSION).as_bytes()).unwrap();
+                fs::set_permissions(&program, fs::Permissions::from_mode(0o700)).unwrap();
+                let registry = custody.path().join("models.json");
+                write_new(
+                    &registry,
+                    &serde_json::to_vec(&ModelRegistry {
+                        schema_version: 1,
+                        revision: "1".into(),
+                        models: vec![ModelSpec {
+                            id: "explicit-fixture-model".into(),
+                            label: "Metadata fixture".into(),
+                            provider: Provider::CodexCli,
+                            provider_model: "actual-native-fixture-model".into(),
+                            tier: 0,
+                            enabled: true,
+                            node_id: Some("fixture-node".into()),
+                            endpoint: None,
+                            credential_file_ref: None,
+                            max_concurrency: 1,
+                            capabilities: BTreeSet::from(["code".into()]),
+                            task_max_attempts: 1,
+                            escalate_to: None,
+                        }],
+                    })
+                    .unwrap(),
+                )
+                .unwrap();
+                let contract = TaskContract {
+                    schema_version: 1,
+                    project_id: ProjectId::new("fixture-project").unwrap(),
+                    root_id: RootId::new("fixture-root").unwrap(),
+                    task_id: TaskId::new("fixture-task").unwrap(),
+                    revision: 1,
+                    title: "Metadata preparation only".into(),
+                    objective: "Edit the isolated toy source".into(),
+                    non_goals: vec!["No provider turn in this test".into()],
+                    owned_paths: vec!["src/main.rs".into()],
+                    forbidden_paths: vec![],
+                    read_first: vec![],
+                    dependencies: vec![],
+                    criteria: vec![AcceptanceCriterion {
+                        id: "toy".into(),
+                        text: "Independent oracle".into(),
+                        check_ids: vec!["toy".into()],
+                    }],
+                    checks: vec![CheckSpec {
+                        id: "toy".into(),
+                        program: "fixture-check".into(),
+                        args: vec![],
+                        cwd: ".".into(),
+                        timeout_secs: 1,
+                    }],
+                    authority_ref: "fixture-authority".into(),
+                    max_attempts: 1,
+                    simulated: false,
+                };
+                let workspace = root.join("workspaces/owned-run");
+                Self {
+                    _custody: custody,
+                    args: RunArgs {
+                        root,
+                        operator_authorization_file: None,
+                        prepare_only: true,
+                        node: "fixture-node".into(),
+                        cpus: "0".into(),
+                        registered_cpus: "0".into(),
+                        runtime_directory: PathBuf::from("/never-used-runtime"),
+                        slice: "fixture.slice".into(),
+                        rustc: PathBuf::from("/never-used-rustc"),
+                        memory_mib: 256,
+                        max_tasks: 16,
+                        deadline_seconds: 90,
+                    },
+                    profile: CodexProfile {
+                        program,
+                        registry,
+                        model_id: "explicit-fixture-model".into(),
+                        effort: CodexEffort::Medium,
+                        home,
+                        auth_context_ref: "auth-context:fixture".into(),
+                    },
+                    contract,
+                    workspace,
+                    expires: now().unwrap() + 600_000,
+                }
+            }
+            fn prepare(&self) -> Result<CodexFixture> {
+                let objects =
+                    ArtifactStore::open(self.args.root.join("objects"), 128 * 1024 * 1024)?;
+                prepare_codex_fixture(
+                    &self.profile,
+                    CodexFixtureContext {
+                        args: &self.args,
+                        contract: &self.contract,
+                        nonce: "00000000-0000-4000-8000-000000000001",
+                        workspace: &self.workspace,
+                        expires: self.expires,
+                        objects: &objects,
+                        host: &SessionHost::new(),
+                    },
+                )
+            }
+        }
+        #[test]
+        fn codex_preparation_observes_metadata_and_binds_exact_tuple_without_provider_turn() {
+            let mut fixture = ProviderFixture::new();
+            let prepared = fixture.prepare().unwrap();
+            assert_eq!(
+                prepared.preview.tuple().registry_model_id,
+                "explicit-fixture-model"
+            );
+            assert_eq!(
+                prepared.preview.tuple().requested_model,
+                "actual-native-fixture-model"
+            );
+            assert_eq!(
+                prepared.preview.tuple().requested_effort,
+                CodexEffort::Medium
+            );
+            assert_eq!(prepared.preview.launch_spec().cwd, fixture.workspace);
+            assert!(!fixture.workspace.exists());
+            for flag in [
+                "native_execution_qualified",
+                "coding_provider_qualified",
+                "durable_capacity_qualified",
+                "billing_settlement",
+                "network_or_credential_sandbox_qualified",
+            ] {
+                assert_eq!(prepared.snapshot[flag], false, "{flag}");
+            }
+            assert_eq!(
+                prepared.snapshot["provider_home"],
+                fixture.profile.home.to_str().unwrap()
+            );
+            let private_tick: u64 = serde_json::from_slice(
+                &read_owned_file(
+                    &fixture
+                        .args
+                        .root
+                        .join("provider-observation/observed-tick.json"),
+                    64,
+                )
+                .unwrap(),
+            )
+            .unwrap();
+            assert_eq!(prepared.admission.admitted_tick, private_tick);
+            fixture.args.prepare_only = false;
+            let replay = fixture.prepare().unwrap();
+            // Reuse the exact external authorization expiry without relabeling
+            // the observed CLI tick or rerunning any metadata process.
+            assert_eq!(prepared.snapshot, replay.snapshot);
+            assert_eq!(
+                prepared.preview.tuple_digest(),
+                replay.preview.tuple_digest()
+            );
+            assert_eq!(prepared.cli.fingerprint(), replay.cli.fingerprint());
+            assert_eq!(
+                prepared.snapshot["program_artifact"],
+                replay.snapshot["program_artifact"]
+            );
+            assert_eq!(
+                prepared.snapshot["registry_artifact"],
+                replay.snapshot["registry_artifact"]
+            );
+            assert_eq!(prepared.snapshot["capsule"], replay.snapshot["capsule"]);
+            assert_eq!(prepared.admission.auth_context_ref, "auth-context:fixture");
+        }
+        #[test]
+        fn codex_revalidation_detects_binary_registry_and_observation_drift() {
+            let mut fixture = ProviderFixture::new();
+            let original = fixture.prepare().unwrap();
+            fixture.args.prepare_only = false;
+            let mut bytes = read_owned_file(&fixture.profile.program, 4096).unwrap();
+            bytes.extend_from_slice(b"# changed executable bytes\n");
+            fs::write(&fixture.profile.program, bytes).unwrap();
+            let changed = fixture.prepare().unwrap();
+            assert_ne!(
+                original.snapshot["program_artifact"],
+                changed.snapshot["program_artifact"]
+            );
+            let mut registry: Value =
+                serde_json::from_slice(&read_owned_file(&fixture.profile.registry, 4096).unwrap())
+                    .unwrap();
+            registry["models"][0]["provider_model"] = json!("different-native-model");
+            fs::write(
+                &fixture.profile.registry,
+                serde_json::to_vec(&registry).unwrap(),
+            )
+            .unwrap();
+            let changed_model = fixture.prepare().unwrap();
+            assert_ne!(
+                original.snapshot["registry_artifact"],
+                changed_model.snapshot["registry_artifact"]
+            );
+            assert_ne!(
+                original.preview.tuple_digest(),
+                changed_model.preview.tuple_digest()
+            );
+            assert_eq!(
+                changed_model.preview.tuple().requested_model,
+                "different-native-model"
+            );
+            let tick = fixture
+                .args
+                .root
+                .join("provider-observation/observed-tick.json");
+            fs::write(
+                &tick,
+                serde_json::to_vec(&(now().unwrap() / 1000 + 60)).unwrap(),
+            )
+            .unwrap();
+            assert!(fixture.prepare().is_err());
+            fs::write(
+                &tick,
+                serde_json::to_vec(&(now().unwrap() / 1000 - 301)).unwrap(),
+            )
+            .unwrap();
+            assert!(fixture.prepare().is_err());
+        }
+        #[test]
+        fn codex_profile_has_no_implicit_model_or_credential_value_reference() {
+            assert!(auth_context_reference("auth-context:registered-profile_1"));
+            for invalid in [
+                "",
+                "auth-context:",
+                "sk-private-token",
+                "/home/user/.codex/auth.json",
+                "auth-context:../secret",
+                "auth-context:one two",
+            ] {
+                assert!(!auth_context_reference(invalid));
+            }
+            let fixture = ProviderFixture::new();
+            let mut profile = fixture.profile;
+            profile.model_id = "unregistered".into();
+            let objects =
+                ArtifactStore::open(fixture.args.root.join("objects"), 128 * 1024 * 1024).unwrap();
+            assert!(
+                prepare_codex_fixture(
+                    &profile,
+                    CodexFixtureContext {
+                        args: &fixture.args,
+                        contract: &fixture.contract,
+                        nonce: "00000000-0000-4000-8000-000000000001",
+                        workspace: &fixture.workspace,
+                        expires: now().unwrap() + 600_000,
+                        objects: &objects,
+                        host: &SessionHost::new(),
+                    }
+                )
+                .is_err()
+            );
         }
         #[test]
         fn authorization_requires_exact_private_outside_single_link_bytes() {
