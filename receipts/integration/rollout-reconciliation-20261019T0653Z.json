@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T06:52:37.651Z",
+  "receiving_main": "5822aac041f41a559efa5ce3d79ee8447e766f1a",
+  "before_sha256": "4d5357a432cf2ae7d700cde6c7105d719de7b09c24859fb48d5591da1ddada71",
+  "after_sha256": "19d0521cbad3b710fddefd0af1a7d17be2d8f2af96cb1b8ed6d4521d5e5c1121",
+  "archive": "/home/ubuntu/admiralty-v2-build/receipts/rollout-corrections/20261019T065237Z",
+  "receipt_hashes_verified": [
+    {
+      "name": "native-intake-http-20261019T0553Z.json",
+      "sha256": "e7c83763ded9dc4a47c3c26e0783a65949a8a4115f892200029e2db05c83a4c1"
+    },
+    {
+      "name": "native-private-install-20261019T0608Z.json",
+      "sha256": "36494a817c12eb5b3e940f669aa75261ee8cfd49456766ebc3703f11b79cd439"
+    },
+    {
+      "name": "native-install-linux-9d4dbb0-20261019T0617Z.json",
+      "sha256": "9f70ff31c0d671334230a579b3075fd121a095df4245883f7cd13f6a7f68a91a"
+    },
+    {
+      "name": "native-intake-ui-20261019T0628Z.json",
+      "sha256": "193fca980c3a68e9811b64ccfaf5730d0e9646b93ddbbc128e296c775f514184"
+    },
+    {
+      "name": "native-intake-browser-axe-20261019T0648Z.json",
+      "sha256": "9dcfdab86858b8c98e2331164ceff4a57338cc7a2a34e2a186e269963da4ea37"
+    },
+    {
+      "name": "native-b976b4f-independent-20261019T0613Z.json",
+      "sha256": "9e68266b8ff35150d529dd6dec165de4b3c3ac252668247b457f2846e34de39c"
+    }
+  ],
+  "all_parent_statuses_preserved": true,
+  "foundation_packets_byte_identical": true,
+  "unrelated_packets_byte_identical": true,
+  "all_original_evidence_and_source_observations_preserved_in_history": true,
+  "new_observation_basis": "actual PR110-113 source/tests, real Linux private-install qualification, native Rust/browser/axe proof and independently observed b976 primary; no clock-only refresh",
+  "accepted": [
+    "P00",
+    "P01"
+  ],
+  "remaining_parents": 30,
+  "native_execution_qualified": false,
+  "production_issuer_created": false,
+  "provider_grants": 0,
+  "service_control": false
+}

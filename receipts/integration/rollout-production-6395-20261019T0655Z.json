@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T06:53:44.337Z",
+  "receiving_main": "5822aac041f41a559efa5ce3d79ee8447e766f1a",
+  "before_sha256": "19d0521cbad3b710fddefd0af1a7d17be2d8f2af96cb1b8ed6d4521d5e5c1121",
+  "after_sha256": "e919843111da6a654ea11b6c4aebe5f09e9fc504747409a04ab8a9236cf9998d",
+  "archive": "/home/ubuntu/admiralty-v2-build/receipts/rollout-corrections/20261019T065344Z",
+  "receipt": {
+    "path": "/home/ubuntu/admiralty-v2-build/receipts/native-6395f8c-independent-20261019T0655Z.json",
+    "sha256": "095255c67f8cea38e8efc6512f8febf7225a06fc05b3e31258f371c93f6fb8e0"
+  },
+  "production_observed_revision": "6395f8c76146e5b74e2a8ab3c039987ac70aecb8",
+  "production_observed_utc": "2026-10-19T06:53:06.631Z",
+  "all_parent_statuses_preserved": true,
+  "only_P31_evidence_appended": true,
+  "foundation_and_other_packets_byte_identical": true,
+  "original_observations_retained": true,
+  "accepted": [
+    "P00",
+    "P01"
+  ],
+  "remaining_parents": 30,
+  "native_execution_qualified": false,
+  "service_control": false,
+  "provider_grants": 0
+}
