@@ -8,6 +8,7 @@ import {
 } from '../../../../packages/contracts/index';
 import { readBoundedJson } from '../api';
 import { assertBoundedJson } from '../validation';
+import IntakeDuplicates from './IntakeDuplicates';
 
 const MAX_SOURCE_BYTES = 1024 * 1024;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
@@ -357,6 +358,7 @@ export default function Intake({ token = '', onAccess, fetcher = fetch }: Intake
       </div>)}
       <details><summary>Original raw source</summary><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{draft.text}</pre></details>
     </article>}
+    {preview && <IntakeDuplicates preview={preview} token={token} intakeToken={intakeToken} fetcher={fetcher} disabled={busy} />}
     {capture && <article aria-label="Capture receipt" style={{ marginTop: '1rem', borderTop: '1px solid #444', paddingTop: '.7rem' }}>
       <h3>Immutable capture receipt</h3><p>Receipt recorded; execution and acceptance remain false. Replayed: {String(capture.replayed)}.</p>
       <dl><dt>Capture ID / revision</dt><dd>{capture.receipt.capture_id} / {capture.receipt.revision}</dd><dt>Command ID</dt><dd>{capture.receipt.command_id}</dd><dt>Receipt digest</dt><dd><code>{capture.receipt_digest}</code></dd><dt>Request digest</dt><dd><code>{capture.receipt.request_digest}</code></dd></dl>
@@ -369,6 +371,6 @@ export default function Intake({ token = '', onAccess, fetcher = fetch }: Intake
       <ul>{requestHistory.map(item => <li key={item.commandId}>{item.sourceId}@{item.sourceRevision} · capture {item.captureId} · command {item.commandId} · {item.bodyBytes} UTF-8 bytes · {item.outcome} · manifest <code>{item.manifestDigest}</code></li>)}</ul>
     </details>}
     {stored && <article aria-label="Recorded original source"><h3>Original bytes as recorded</h3><p>Capture {stored.request.capture_id}, revision {stored.receipt.revision}, receipt <code>{stored.receipt_digest}</code>.</p><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{stored.request.source_payload.text}</pre></article>}
-    <p>Enriched-record, duplicate-query, and delivery views are not part of this intake panel.</p>
+    <p>Enriched-record and delivery views are not part of this intake panel.</p>
   </section>;
 }

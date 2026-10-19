@@ -171,6 +171,6 @@ describe('raw request intake', () => {
     expect(html).toContain('type="password"');
     expect(html).not.toMatch(/type="password"[^>]*\svalue=/);
     expect(html).toContain('Requester attribution is unknown');
-    expect(html).toContain('Enriched-record, duplicate-query, and delivery views are not part');
+    expect(html).toContain('Enriched-record and delivery views are not part');
   });
 });

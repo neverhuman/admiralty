@@ -230,8 +230,15 @@ async function installOneLostReply(browser: BrowserHarness, secrets: string[]): 
       if (!record) return original(input, init);
       if (proof.requests.length >= 16 || typeof init?.body !== 'string' || new TextEncoder().encode(init.body).byteLength > 16384) throw new Error('Intake request capture bound');
       proof.requests.push({path:url.pathname, body:safe(init.body)});
-      const response = await original(input, {...init,signal:init.signal || AbortSignal.timeout(5000)});
+      const hold = url.pathname === '/v2/intake/duplicates/query' && window.__holdNextDuplicate === true;
+      if (hold) window.__holdNextDuplicate = false;
+      const response = await original(input, {...init,signal:hold ? AbortSignal.timeout(5000) : init.signal || AbortSignal.timeout(5000)});
       proof.responses.push({path:url.pathname,body:await body(response.clone())});
+      if (hold) {
+        window.__duplicateHeld = true;
+        await new Promise(resolve => { window.__releaseDuplicate = resolve; });
+        window.__duplicateReleased = true;
+      }
       if (url.pathname === '/v2/intake/captures' && response.ok && proof.dropped === 0) {
         proof.dropped++;
         throw new TypeError('Controlled browser transport loss AFTER actual native capture response');
@@ -286,6 +293,10 @@ it('captures a real native Unicode source once and replays an identical browser 
     await browser.clickButtonByText('Preview exact source');
     await browser.waitForSelector('article[aria-label="Intake preview"]', 8_000);
     await browser.waitForText('1 request', 5_000);
+    expect(await browser.evaluate<number>(`window.__intakeProof.requests.filter(r => r.path === '/v2/intake/duplicates/query').length`, 2_500)).toBe(0);
+    await browser.clickButtonByText('Find related work');
+    await browser.waitForText('Coverage incomplete:', 8_000);
+    await browser.waitForText('No related work returned on this page.', 5_000);
     await browser.clickButtonByText('Capture unresolved request');
     await browser.waitForText('No receipt is confirmed for this command.', 8_000);
     await waitForConfirmedReplyLoss(browser);
@@ -304,33 +315,63 @@ it('captures a real native Unicode source once and replays an identical browser 
     const proof = await browser.evaluate<TransportProof>('window.__intakeProof', 2_500);
     expect(proof.dropped).toBe(1);
     expect(proof.requests.map(request => request.path)).toEqual([
-      '/v2/intake/preview', '/v2/intake/captures', '/v2/intake/captures', `/v2/intake/captures/${CAPTURE_ID}`,
+      '/v2/intake/preview', '/v2/intake/duplicates/query', '/v2/intake/captures', '/v2/intake/captures', `/v2/intake/captures/${CAPTURE_ID}`,
     ]);
-    expect(proof.requests[1].body).toBe(proof.requests[2].body);
+    expect(proof.requests[2].body).toBe(proof.requests[3].body);
     const previewEnvelope = JSON.parse(proof.responses[0].body) as Json; assertNoGrant(previewEnvelope);
     const preview = previewEnvelope.data as { requests: Array<{ text: string; unresolved: unknown[]; outcomes: unknown[] }>; raw_byte_length: number };
     expect(preview.requests).toHaveLength(1); expect(preview.requests[0].text).toBe(RAW);
     expect(preview.requests[0].unresolved.length).toBeGreaterThan(0); expect(preview.requests[0].outcomes).toEqual([]);
     expect(preview.raw_byte_length).toBe(new TextEncoder().encode(RAW).byteLength);
-    const capture = JSON.parse(proof.requests[1].body) as Json;
+    const duplicateRequest = JSON.parse(proof.requests[1].body) as Json;
+    expect(duplicateRequest).toEqual({ project_id: 'my-project', root_id: 'my-root', query: {
+      schema_version: 1, project_id: 'my-project', raw_digest: (previewEnvelope.data as Json).raw_digest,
+      canonical_digest: (previewEnvelope.data as Json).canonical_digest, origin: null, command_id: null, cursor: null, limit: 20,
+    } });
+    const duplicates = JSON.parse(proof.responses[1].body) as Json; assertNoGrant(duplicates);
+    expect((duplicates.data as Json).candidates).toEqual([]);
+    expect(((duplicates.data as Json).coverage as Json).kind).toBe('incomplete');
+    const capture = JSON.parse(proof.requests[2].body) as Json;
     expect(capture.source_payload).toEqual({ kind: 'inline_utf8', text: RAW });
     expect(capture.format).toBe('plain_text'); expect(capture.revision).toBe(1); expect(capture.expected_revision).toBe(0);
     expect(capture.provenance).toEqual({ schema_version: 1, source_id: SOURCE_ID, revision: SOURCE_REVISION, captured_at: observedUtc, requester: { kind: 'unknown' }, origin: null });
     expect(capture.scope).toMatchObject({ principal: 'operator', project_id: 'my-project', root_id: 'my-root', authority_generation: '1' });
     expect(capture.command_id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-    const first = JSON.parse(proof.responses[1].body) as Json, replay = JSON.parse(proof.responses[2].body) as Json;
+    const first = JSON.parse(proof.responses[2].body) as Json, replay = JSON.parse(proof.responses[3].body) as Json;
     assertNoGrant(first); assertNoGrant(replay);
     expect((first.data as Json).replayed).toBe(false); expect((replay.data as Json).replayed).toBe(true);
     expect((first.data as Json).receipt).toEqual((replay.data as Json).receipt);
     expect((first.data as Json).receipt_digest).toBe((replay.data as Json).receipt_digest);
-    expect(JSON.parse(proof.requests[3].body)).toEqual({ project_id: 'my-project', root_id: 'my-root', revision: 1 });
-    const read = JSON.parse(proof.responses[3].body) as Json; assertNoGrant(read);
+    expect(JSON.parse(proof.requests[4].body)).toEqual({ project_id: 'my-project', root_id: 'my-root', revision: 1 });
+    const read = JSON.parse(proof.responses[4].body) as Json; assertNoGrant(read);
     expect((read.data as Json).request).toEqual(capture);
     expect((read.data as Json).receipt_digest).toBe((first.data as Json).receipt_digest);
+    // Hold an ACTUAL native query reply after transport receipt. Credential change
+    // must invalidate results even when this fetch wrapper ignores AbortSignal.
+    await browser.evaluate(`window.__holdNextDuplicate = true; window.__duplicateHeld = false; window.__duplicateReleased = false`, 2_500);
+    await browser.clickButtonByText('Find related work');
+    const heldDeadline = Date.now() + 5_000;
+    while (!await browser.evaluate<boolean>('window.__duplicateHeld', 500)) {
+      if (Date.now() >= heldDeadline) throw new Error('Actual duplicate reply was not held');
+      await sleep(20);
+    }
+    expect(await browser.evaluate<boolean>(`[...document.querySelectorAll('button')].some(button => button.textContent === 'Searching…' && button.disabled)`, 2_500)).toBe(true);
+    await browser.waitForText('Searching related work…', 2_500);
+    await browser.fillInputByLabel('Separate intake token', 'changed-private-fixture-credential');
+    expect(await browser.evaluate<boolean>(`Boolean(document.querySelector('section[aria-label="Related work results"]'))`, 2_500)).toBe(false);
+    await browser.evaluate(`window.__releaseDuplicate(); new Promise(resolve => setTimeout(resolve, 75))`, 2_500);
+    expect(await browser.evaluate<boolean>('window.__duplicateReleased', 2_500)).toBe(true);
+    expect(await browser.evaluate<boolean>(`Boolean(document.querySelector('section[aria-label="Related work results"]'))`, 2_500)).toBe(false);
+    await browser.fillInputByLabel('Separate intake token', native.intakeToken);
+    const finalProof = await browser.evaluate<TransportProof>('window.__intakeProof', 2_500);
+    expect(finalProof.requests).toHaveLength(6);
+    expect(finalProof.requests[5].path).toBe('/v2/intake/duplicates/query');
+    expect(finalProof.requests[5].body).toBe(proof.requests[1].body);
+    assertNoGrant(JSON.parse(finalProof.responses[5].body) as Json);
     const leak = await browser.evaluate<{ markup: string; storage: string; urls: string }>(`({markup:document.documentElement.outerHTML,storage:JSON.stringify({local:Object.entries(localStorage),session:Object.entries(sessionStorage)}),urls:JSON.stringify([location.href,...[...document.querySelectorAll('[href],[src],[action]')].flatMap(e=>['href','src','action'].map(k=>e.getAttribute(k)||''))])})`, 2_500);
     for (const secret of [native.ownerToken, native.intakeToken]) {
       expect(leak.markup.includes(secret)).toBe(false); expect(leak.storage.includes(secret)).toBe(false); expect(leak.urls.includes(secret)).toBe(false);
-      expect(JSON.stringify(proof).includes(secret)).toBe(false);
+      expect(JSON.stringify(finalProof).includes(secret)).toBe(false);
     }
     const after = await native.fleet(); assertEmptyNativeFleet(after);
     const accessibility = await browser.runAxeAudit();
@@ -339,9 +380,9 @@ it('captures a real native Unicode source once and replays an identical browser 
     writePrivate(join(native.root, 'browser-proof.json'), {
       binary_sha256: native.binarySha256, production_build: native.build,
       accessibility,
-      transport: proof, native_tasks_before: before.tasks, native_tasks_after: after.tasks,
+      transport: finalProof, duplicate_query_scope: {actual_native_queries: 2, empty_page_coverage: 'incomplete', stale_reply_after_credential_change_discarded: true, provider_or_acceptance: false}, native_tasks_before: before.tasks, native_tasks_after: after.tasks,
       native_execution_qualified: false, provider_executed: false, acceptance_granted: false,
-      outbox_scope: 'No public outbox inspection API; assert zero native tasks/messages and only preview/capture/read POSTs, not general delivery qualification',
+      outbox_scope: 'No public outbox inspection API; assert zero native tasks/messages and only preview/duplicate-query/capture/read POSTs, not general delivery qualification',
       abandoned_reload_scope: 'SPA navigation/back retains pending envelope; reload/close discards page memory and is not exercised',
     });
   } catch (error) {

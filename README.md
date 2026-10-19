@@ -120,7 +120,9 @@ Recording a work order does not launch agents or mark tasks accepted.
 The dashboard's **Intake** tab (`#/intake`) previews and captures original plain
 text, then reads its exact recorded revision. Lost-reply retries reuse the same
 command and body; credentials and pending drafts stay in page memory. Enrichment
-and delivery views remain separate work.
+and delivery views remain separate work. **Find related work** searches the
+current preview without creating tasks, shows partial/incomplete coverage and
+bounded candidate pages, and clears results when the draft or access changes.
 
 The native `admiralty intake` CLI provides the same scoped preview, capture,
 explicit enriched recording, exact revision reads and duplicate query operations

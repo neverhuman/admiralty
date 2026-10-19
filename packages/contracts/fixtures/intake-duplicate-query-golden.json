@@ -1,0 +1,32 @@
+[
+  {
+    "query": {
+      "canonical_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "command_id": null,
+      "cursor": null,
+      "limit": 20,
+      "origin": null,
+      "project_id": "my-project",
+      "raw_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "schema_version": 1
+    },
+    "query_digest": "sha256:4fe1efa58b9269ae1e0f58aba8f5f83d539971d218b2b6bb660679a33d8a7c47"
+  },
+  {
+    "query": {
+      "canonical_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "command_id": "command-1",
+      "cursor": "page-雪-2",
+      "limit": 7,
+      "origin": {
+        "record_id": "source-🧭",
+        "revision": "rev-\"one",
+        "system": "tracker-1"
+      },
+      "project_id": "other-project",
+      "raw_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "schema_version": 1
+    },
+    "query_digest": "sha256:2610482353f3094fb3291991d371f1792437d150b4d3f27d7eaf3b803f6cd07c"
+  }
+]
