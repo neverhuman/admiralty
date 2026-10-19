@@ -63,7 +63,21 @@ overhead, with at most128captures and32revisions each. Capacity refuses new writ
 without eviction. Open/rebuild/backup validate complete lineage. Captures create
 no task, work-order, plan or outbox rows. Unverified artifact claims remain denied.
 
-No production issuer, public route/schema export, enrichment UI, dispatch or
-delivery is installed here. Thirty capture/enriched-writer/plan checks and
-nineteen preview checks do not accept a parent packet or qualify autonomous
+The existing contract exporter now includes nine intake roots, bringing the
+public schema/TypeScript/runtime-guard inventory to22. Run `admiralty contracts
+check` and `node scripts/contracts/generate.mjs --check` to detect drift. The
+native packager explicitly includes every generated validator sibling and tests
+the staged entry with actual Node imports. Original public schemas and leaf
+validators retain their bytes. Structural guards do not authenticate scope,
+validate source custody or issue grants; Rust semantic checks remain required.
+
+`StoreAuthorities` composes optional lifecycle, enriched-intake, raw-capture and
+question policies through `open_with_startup_authorities`. Existing constructors
+retain their behavior; omitted policies deny their protected operations. The
+question journal retains original contract/provenance and immutable retries,
+while resolving current authority for every writer turn and read.
+
+No production issuer, public intake/question route, enrichment UI, dispatch or
+delivery is installed here. The focused40 Store checks,10 package checks and13
+contract runtime checks do not accept a parent packet or qualify autonomous
 execution.

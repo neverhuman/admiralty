@@ -1,0 +1,245 @@
+{
+  "packet": "P02 full criterion acceptance audit",
+  "mode": "READ ONLY source audit + owned scratch validation receipts",
+  "candidate_commit": "29fc0841042ef7a24855581d710ad652738587e6",
+  "base_commit": "1d00b08f07b53bf32c6d2e513185b6a741da726f",
+  "owned_worktree": "/private/tmp/admiralty-attention-journal-99f4e26",
+  "owned_branch": "codex/p02-acceptance-audit",
+  "full_packet_acceptance": false,
+  "decision": "Do not mark P02 fully accepted. Positive component/generator tests do not satisfy the remaining whole contracts and amendment criteria.",
+  "paired_package_effect_on_decision": "Unchanged false even after root-owned nine-sibling stage closure passes; that closes actual packaging dependency only.",
+  "source_sha256": {
+    "docs/plans/admiralty-v2/WORK_PACKETS.md": "7ccdf513eb5b647038bff9cc1be6cf598c7644c57c629ca03a5fc406cb8e99ca",
+    "docs/plans/admiralty-v2/MASTER_PLAN.md": "033b2a0a9ac23d1430d84f910a60f51b24e4c5aeceafb5e8e1abe1e69f9c572b",
+    "crates/admiralty-core/src/ids.rs": "77eb4cae835cb07b2c2415e5b5f175ecc17c40ec5097ba682e02e85e1362fa35",
+    "crates/admiralty-core/src/contracts.rs": "f459a35d34bfb555ddfdec210d50c502b403be3fb60d1539a521a346df5d5eb0",
+    "crates/admiralty-core/src/workplans.rs": "366c42a5002907cd4fb5b8955f89335caf1dad306f1b5bb899bf1fb4d5c4057d",
+    "crates/admiralty-core/src/reducer.rs": "bf9c25297904de8e3d339a591731bb0ba17d2996c61085464c725f7c124df1b2",
+    "crates/admiralty-core/src/events.rs": "f307f4f6cbf3390f3cfc532f67c95418f25b3db30b8223e0031d7820c03f8ca6",
+    "crates/admiralty-core/src/config.rs": "bfd28451dac5e34776eaacc78d5c1edd0aaf36d62dab7cf819e8e1df0f120a04",
+    "crates/admiralty-core/src/messages.rs": "f65b24ac2c72f35437d0d8185efdf1f5585f10ad8f8d9fdb628dedd706c9477c",
+    "crates/admiralty-core/src/interfaces.rs": "a846188416022b8dd6a0fe793a1bb8b96fee4f5d6e412c9b0f1d775c669a431b",
+    "crates/admiralty-core/src/economics.rs": "4ce31e60a5f0a68c4d05ff9dd0cc5ca58c06c82686dddf92a47b584f5f5e3d22",
+    "crates/admiralty-core/src/intake.rs": "c87754dabd98cdae68b9299402a7d64cf1ddc23b8a2e67adcb9db012a624b281",
+    "crates/admiralty-core/src/verification.rs": "d68f5c976be40deb43f0e3475d170b69735911d9adb7352553c89e01a605236d",
+    "crates/admiralty-store/src/lib.rs": "433b95c90ffb32ec8583528315a98d5183cd9904957aebcf8c0164dda6a420c2",
+    "crates/admiralty-server/src/lib.rs": "870679e4845e763b3c1fa152bbd7029886f4e0472d03f6fe80da4502d86e7724",
+    "apps/dashboard/src/api.ts": "e03dc8f35add2b38fe5eda67972f38e3eab009947caf2146a0088534b1d6482b",
+    "apps/dashboard/src/validation.ts": "4731e074dc94b3b65c754e3ace74e9ed36c8051ce013da674c08af389997f8b0",
+    "scripts/contracts/generate.mjs": "015f5a8a5fd70f95f04582d2ba420e7dca6056903159ca920cc75c065ec5919d",
+    "crates/admiralty-cli/src/main.rs": "d524824902cd291ba942750f4127b50fbff5d03e5474ea4230f9e2d5e77cf696"
+  },
+  "criteria": [
+    {
+      "id": "P02.1",
+      "status": "not_met",
+      "requirement": "Implement TaskContract, PlanRevision, state dimensions, Cursor, AuthorityRef, CoordinationEnvelope, InterfaceContract, VerificationReceipt, native usage types and typed errors.",
+      "met_parts": [
+        "Validated closed TaskContractv1 (contracts.rs:31/validate), Workplan immutable plan ID/revision/project/tasks (workplans.rs:14/preview_workplan) is the semantic plan-revision equivalent; no exact type-name requirement is invented.",
+        "VerificationReceipt/Policy exact-input/check binding (verification.rs:80/validate_receipt); InterfaceContract scoped revision/artifact/schema/consumer evidence exists (interfaces.rs:119/reduce_interface_for); native decimal-unit accounting and unknown estimates exist (economics.rs:183/208); typed errors and safe string identities exist."
+      ],
+      "remaining": [
+        "TaskView exposes one SchedulingState including Accepted/Failed/Cancelled plus lifecycle metadata; a frozen independent scheduling/attempt-outcome/delivery/freshness domain contract from MASTER6.1 is absent. DeliveryRequirement declares required targets/stages but is not an observed delivery state.",
+        "The only machine CoordinationMessage (messages.rs:39) has five payload variants and lacks the full MASTER5.2 envelope root, task revision binding, correlation, source cursor, scoped authority generation, baseline/protected-fact/payload digests, topic/priority/expiry and the control/interface/decision/budget/snapshot message variants. No versioned full successor envelope is registered.",
+        "Cursor exists in Store (lib.rs:98), only recovery_generation/event_seq, with a handwritten dashboard type (api.ts:4); canonical shared schema/version/scope-bound Cursor and AuthorityRef protocol types are absent. Independent grant checks DO exist; an opaque authority_ref string is not the planned canonical scoped authority wire contract.",
+        "InterfaceContract has producer/consumer principals, scope/revision/digests; the planned exact consumer-task revisions, compatibility policy and acceptance check/status contract are not frozen in its public shape."
+      ],
+      "evidence": [
+        "crates/admiralty-core/src/reducer.rs:8",
+        "crates/admiralty-core/src/messages.rs:39",
+        "crates/admiralty-store/src/lib.rs:98",
+        "apps/dashboard/src/api.ts:4",
+        "crates/admiralty-core/src/interfaces.rs:119",
+        "contract-marker-inventory.json"
+      ]
+    },
+    {
+      "id": "P02.2",
+      "status": "met",
+      "requirement": "Pure deterministic reducer with recorded time/randomness, permitted transitions/immutable revisions, no terminal/provider-output acceptance.",
+      "evidence": [
+        "reducer.rs:49 reduce has no ambient clock/filesystem/network/randomness; ordered projection maps serialize deterministically.",
+        "events.rs LifecycleCommand(protocol2) + apply_lifecycle whole TaskView digest CAS, explicit revision guards and evidence-bound terminal transitions. Clocked question/decision events retain their observation rather than read replay time; no randomness is used by this reducer.",
+        "Exact-source actual config13 + reducer authority2 + core_contracts14 PASS; owned pure actual-core probe128 independent replays of4 transitions yields identical projection hash and remains AwaitingVerification.",
+        "Provider/runtime execution qualification is a different parent criterion and was not required for P02."
+      ],
+      "limits": [
+        "Hash probe covers its declared four-event sequence, not exhaustive state-space proof. Reducer validates trusted domain transitions; the Store configured authority remains the effect/acceptance trust boundary."
+      ]
+    },
+    {
+      "id": "P02.3",
+      "status": "not_met",
+      "requirement": "One public Rust JSONSchema\u2192TS\u2192runtime validation pipeline, precision-safe counters, unknown required semantics rejected.",
+      "met_parts": [
+        "Exact candidate generates22 schemas from Rust and actual package guards/type consumer/drift checks pass. Nine new intake roots are additive, no trusted Scope/Policy exported.",
+        "All36 prior schema/type/individual guard files are byte-identical to1d00b08, including13 prior schemas. All3 original v1 schema bytes also match bootstrap5b64344; v2 lifecycle is a separate root, does not expand v1.",
+        "Structural unknown fields/unsupported schema or protocol versions and canonical positiveu64 generation fixtures reject conservatively; no coercion; large strings retain exact precision. Server v1 fleet/events and SSE explicitly signal upgrade for native v2 rather than reinterpret it."
+      ],
+      "remaining": [
+        "A correct22-root pipeline is not the full P02 contract inventory: missing P02.1/amendment types have no generated shared contract yet, and Cursor/Fleet/NativeTaskView remain manually mirrored and guarded in api.ts/validation.ts rather than generated from canonical Rust public roots."
+      ],
+      "paired_packaging": [
+        "Root-owned native_package exact nine sibling closure must land to stage this candidate; this audit records evidence agent actual negative, and does not assume it passed. Even when that paired closure passes, the missing P02 contract criteria remain."
+      ]
+    },
+    {
+      "id": "P02.4",
+      "status": "met",
+      "requirement": "Config precedence/effective policy/provenance, data identities and private restrictions cannot be weakened by public defaults.",
+      "evidence": [
+        "config.rs resolve_config is the semantic effective_policy implementation (name difference is not a gap). Defaults\u2192User\u2192Project\u2192Runtime rank/order, full layer digests, winning plus historical provenance, independent non-Deserialize PrivatePolicy, monotonic denials and every-layer cap validation are implemented.",
+        "Node/model/provider names and task project/principal identities are data. Built-in semantic role categories are not mistaken for a hardcoded installation identity.",
+        "Exact-source13 config tests PASS, including overwritten layer provenance, duplicate fields, unsafe paths, private-cap violations later erased by public overrides, and unknown node references."
+      ],
+      "limits": [
+        "Pure contract/resolver acceptance only; P02 does not require daemon startup/installer activation. No need to borrow those other parent gates."
+      ]
+    },
+    {
+      "id": "P02.work_order_amendment",
+      "status": "not_met",
+      "requirement": "Freeze versioned request/provenance/task bindings, scheduling profiles and dimensional delivery observations, closedv1 and explicit attribution trust.",
+      "met_parts": [
+        "WO1 Rust request/provenance/task bindings, source format/raw spans, explicit attribution and unknown-vs-required/optional/not-applicable DeliveryRequirement generation are frozen; actual19 core intake tests and generated22-root consumer fixtures cover these.",
+        "TaskContractv1 stays closed and byte-compatible; trusted AuthorizedIntakeScope/IntakePolicy remain unexported external composition inputs."
+      ],
+      "remaining": [
+        "No SchedulingProfile (timezone/window/DST/tzdb/shift/override provenance) contract or semantic equivalent exists. Existing readiness/placement prototypes do not define it.",
+        "No DeliveryObservation/dimensional per-repository/per-target observed merge/build/stage/install/running/release contract or equivalent exists. Requirement is not observed evidence. WO4/WO5 remain future frozen-interface work even though their execution/projector integration belongs to other parents."
+      ]
+    },
+    {
+      "id": "P02.pass.deterministic_reducer_hash",
+      "status": "met",
+      "hash": "sha256:4e57f2e29253331c705ca328ec271183946ec32065714e33ce9fe582d11c4fd6",
+      "evidence": [
+        "reducer-hash.log",
+        "reducer-hash-probe-command.json"
+      ],
+      "limits": [
+        "128 repetitions of declared4recorded transitions using actual compiled core; no source edits, provider or Store effects."
+      ]
+    },
+    {
+      "id": "P02.pass.no_production_host_constants",
+      "status": "not_met_for_whole_repository",
+      "native_status": "met_for_scanned_native_production_sources",
+      "evidence": [
+        "production-host-scan.json:0native hits;28retained legacy hits in7 files. dashboard/globalres.py:11 HOSTS and local-host selection at26; dashboard/collector.py:1160 fixedhost and CAPTAINS table; dashboard/run.sh:3 fixedinstallationpath."
+      ],
+      "limits": [
+        "No process/deployment inspection performed. These are retained runnable legacy source constants, not a claim that old processes remain active. Parent may document them as excluded archival compatibility source or parameterize/archive them; source scan alone cannot certify a whole-repository zero-constant claim. Examples/fixtures/tests/generated outputs excluded."
+      ]
+    },
+    {
+      "id": "P02.pass.consumers_agree_one_versioned_contract",
+      "status": "not_met_for_full_packet",
+      "met_parts": [
+        "Existing22 registered roots agree under actual Rust roundtrip/schema drift, TS standalone guards and real TS consumer; schema1/v2 lifecycle version choice is explicit."
+      ],
+      "remaining": [
+        "Missing full canonical envelope/cursor/state/schedule/delivery contracts and handwritten public Fleet/Cursor mirrors prevent whole-inventory agreement."
+      ],
+      "evidence": [
+        "external_export_receipt",
+        "old-wire-byte-comparison.json",
+        "v1-bootstrap-comparison.json",
+        "apps/dashboard/src/api.ts",
+        "apps/dashboard/src/validation.ts"
+      ]
+    }
+  ],
+  "new_exact_source_checks": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-core",
+        "--lib",
+        "config::tests",
+        "--locked"
+      ],
+      "passed": 13,
+      "failed": 0,
+      "ignored": 0,
+      "log": "config-tests.log"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-core",
+        "--lib",
+        "reducer::",
+        "--locked"
+      ],
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "log": "reducer-tests.log"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-testkit",
+        "--test",
+        "core_contracts",
+        "--locked"
+      ],
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "log": "core-contracts-tests.log"
+    }
+  ],
+  "external_export_receipt": {
+    "path": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/receipt.json",
+    "sha256": "4f42e12a7bbfdecea02321312d3e4b086714f8b9c5b29511664ba8b8df452ce8",
+    "actual_all37source_hashes_verified_against_this_checkout": true,
+    "actual_all_passed_check_log_hashes_verified": true,
+    "scoped_counts": {
+      "core_intake": 19,
+      "cli_shared_fixture": 3,
+      "cli_schema_drift": 1,
+      "cli_decimal": 1,
+      "package_actual_tests_including_real_TS": 13,
+      "schemas": 22
+    }
+  },
+  "artifacts_sha256": {
+    "core-artifact.stderr": "3345c2ebdc090a2e6e7d869d7dde29729f6a1206cb850ed0187c1382d663fe05",
+    "config-tests.log": "f0a2849084f623b9874198632f4762a69133b9d4c65838059e9b52f92e60ac6d",
+    "contract-marker-inventory.json": "94ce1338285644118beee3fba779b665c544d74572af26278c0d2556dedbe0bb",
+    "old-wire-byte-comparison.json": "4cb7678e6828fe8cd75395e3315725b260f19f2f95734888af8f64fc365df767",
+    "reducer-hash-compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reducer-hash-probe": "6b3ccebad1889393093bb47a3748062678c920082995b0eaec717bea485b4e49",
+    "reducer_hash_probe.rs": "3809a50c612b962eabe36333f7148277d8f54c165780b2eccaae0c4db909ff15",
+    "core-artifact.jsonl": "90fa5828c818f20251e19f70ce6d5af58a960acebbccfa7ceee470c955bfae27",
+    "reducer-tests.log": "1a010bd3f4b0c26f119917d28abf6e234afce2d949ea2a4a3b774441a8bb4179",
+    "v1-bootstrap-comparison.json": "8aa124364bf0bec7cdd9f6665e173415e99263ad2ac6baf727109296dbe3c570",
+    "production-host-scan.json": "3ef93a300df26e1393ef3c736fbb6c78413225d2cf1acd7a53386b181dd04140",
+    "core-contracts-tests.log": "7d365578f6d8a666c29ad61b03d727cb549d56418e4b9921bb90851192da22fb",
+    "reducer-hash.log": "12786e00bcbf1eccb5e2b612a3cbea928f4d9f89da164b8ad3f9c81c88c523a2",
+    "reducer-hash-probe-command.json": "e10ffc487219502eef4f4555cf854500baccdba0564d8ad553507a5c7bae943f",
+    "reducer-hash-compile-failed.log": "7496fd844d999c6532680cfa61f063c6dd3ad41466393808553dfffb2a3fbc1f"
+  },
+  "limits": [
+    "P00/P01 dependencies are recorded by packet; their complete acceptance was not independently re-audited here.",
+    "No daemon/provider/fleet/action authority criteria are borrowed from other packets. No paid/provider/network/service/rollout/ledger mutations occurred.",
+    "No repo source/schema/generated/config files changed; owned scratch contains pure reducer hash harness and logs only.",
+    "First direct rustc scratch hash-probe compilation omitted dependency search path, failure log retained; corrected -L to actual debug/deps, no domain source changes.",
+    "P02 has no packet-specific stop clause; applicable global unknown-authority/changed-source/effect safety stops were respected. Missing canonical contracts hold P02 acceptance, not unrelated ready implementation."
+  ],
+  "next_ready_contract_packets": [
+    "Freeze additive full coordination-envelope/scoped-cursor/authority-reference and dimensional task-state public contracts without altering frozenv1, then wire same generator/fixtures/consumer guards.",
+    "Freeze SchedulingProfile and DeliveryObservation interfaces under WO4/WO5 before their dependent execution/projector lanes, preserve unknowns/attribution and exact task/target generation.",
+    "Complete InterfaceContract policy/check/consumer-task revision closure and public transport DTO inventory; keep independent authorization outside wire data.",
+    "Resolve retained legacy source constant release/archive scope explicitly; native new architecture already data-driven."
+  ],
+  "git_worktree_clean": true
+}
