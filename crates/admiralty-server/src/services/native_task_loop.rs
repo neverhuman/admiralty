@@ -782,6 +782,12 @@ impl NativeTaskLoop {
         {
             return Err(LoopError::InvalidBinding);
         }
+        // Check the separate read capability before registering the plan. This
+        // is an observational policy sample, not a lease through admission;
+        // dispatch repeats the read against the retained exact reservation.
+        self.store
+            .reservation_ledger(Arc::clone(&budget.read_proof))
+            .map_err(|_| LoopError::StoreUnavailable)?;
         Ok(())
     }
 }
