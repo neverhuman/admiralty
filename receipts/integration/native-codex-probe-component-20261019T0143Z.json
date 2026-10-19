@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T01:42:01.771Z",
+  "scope": "Explicit one-run Codex mode in existing NativeTaskLoop Linux probe; component tests and metadata preflight only",
+  "source_revision": "7159a0218f1105e125f8ccc310abfa3492982a5e",
+  "base_revision": "779a008f9660e3fa1c8e9f308aae8229a263e547",
+  "workers": [
+    "404ce41ff541fa20e6402cd7691d7ecff98e20e2",
+    "c6d5ff3dfbcbfbc31f5369a63b65a1756a65c13f"
+  ],
+  "source_sha256": {
+    "Cargo.lock": "2bc629e5f18787c03ab8497b4f0255ad531bb0e1fe11647a23cd9c56ab5ea5d5",
+    "crates/admiralty-server/Cargo.toml": "6650fa71720c05a63f6935f458b8fd9b35f443db773020cc6a09b6e271cf06fd",
+    "crates/admiralty-server/examples/native_task_loop_probe.rs": "0c9cb0e3cccd2064406db993e49d8f45a5444495058248ace2a174a607f14689"
+  },
+  "checks": [
+    {
+      "command": "cargo test -p admiralty-server --example native_task_loop_probe --locked",
+      "exit_code": 0,
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "log": "target/quality/codex-probe-stream-integrated-tests.log",
+      "sha256": "2908fe99c0149008adb6610b70433071a622c390db58b7a9d4f999654b45d8f6"
+    },
+    {
+      "command": "cargo clippy -p admiralty-server --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "target/quality/codex-probe-stream-integrated-clippy.log",
+      "sha256": "ff41e2255b767dd5d8832eae6d1cb12eac8171c8efb3ef7ee06ed7abffac94d0"
+    },
+    {
+      "command": "cargo fmt --all --check",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "independent_review": {
+    "reviewer": "audit_evidence",
+    "combined_example_sha256": "0c9cb0e3cccd2064406db993e49d8f45a5444495058248ace2a174a607f14689",
+    "result": "Static clear; actual Linux/provider qualification separately required"
+  },
+  "metadata_preflight": {
+    "installed_cli_version": "codex-cli 0.163.0",
+    "installed_cli_bytes": "296865480",
+    "program_guard": "Canonical owned0755 native executable; writable npm copy refused",
+    "auth_status": "Existing ChatGPT login; isolated owned0700 HOME with explicit existing .codex reference, no root credential-byte read/copy",
+    "model_requested": "Registry gpt-6-luna on configured node; not observed model identity",
+    "provider_turn": false
+  },
+  "binary_fingerprint": {
+    "buffer_bytes": 65536,
+    "max_bytes": 402653184,
+    "max_seconds": 30,
+    "descriptor_and_path_identity_before_after": true,
+    "raw_sha256": true,
+    "artifact_binary_copy": false,
+    "artifact_store_cap_unchanged": true,
+    "generic_read_caps_unchanged": true
+  },
+  "dependency_delta": "One existing sha2 manifest edge and one Cargo.lock server dependency-list edge, no package/version/checksum changes",
+  "worker_receipts": [
+    {
+      "sha256": "9007ce3b324c8f16fa3d8e173527c76b8894633b9109a444b91213796346713c",
+      "scope": "Initial13 tests and safe Unix/Linux CLI guards; original large binary blocker retained"
+    },
+    {
+      "sha256": "a4499b22998346abaefba51517308209d92b2f4c40d8d9eec485fdb629ea44c5",
+      "scope": "15 tests including actual sparse129MiB+17 fingerprint/tamper and negative file metadata"
+    }
+  ],
+  "limitations": [
+    "No actual coding-provider generation in this receipt",
+    "Actual Linux build/run must pin exact source and fresh protected request; never reuse failed grants",
+    "Source/check/Store status and coding-provider protocol qualification are separate outcomes",
+    "Model/effort/usage come only from complete actual tagged capture; unknown stays null",
+    "One-run operator admission is not durable fleet capacity, budget settlement or production startup activation",
+    "No network/credential isolation, restart adoption, cohort economics or parent acceptance"
+  ],
+  "coding_provider_qualified": false,
+  "native_execution_qualified": false,
+  "parent_acceptance": false,
+  "paid_provider_turns": 0
+}
