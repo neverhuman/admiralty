@@ -1,0 +1,295 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T08:41:17.509Z",
+  "source_commit": "84cbf43e9d37c8b2fa4648a04de745fb05113126",
+  "scope": "Explicit durable-budget-backed NativeTaskLoop admission/retry/dispatch component; no production issuer or execution qualification",
+  "base_commit": "0970118ddc2a526538c209d2b2f9557fee162226",
+  "files": [
+    {
+      "repo_path": "crates/admiralty-server/src/services/native_task_loop.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_task_loop.rs",
+      "bytes": 72251,
+      "sha256": "5d4084ba6ddaccd95701b3d90c2e5fa177eeef6de3ec391d9f7701312efdca91"
+    },
+    {
+      "repo_path": "crates/admiralty-server/src/services/native_task_loop_budget_tests.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_task_loop_budget_tests.rs",
+      "bytes": 28792,
+      "sha256": "cfb31bd3762b5fc3cd1ab024bce31a138f308f91585a54d3f91b3be3621efb5e"
+    }
+  ],
+  "implementation": {
+    "api": "NativeBudgetAdmission and NativeTaskLoop::admit_reserved",
+    "ordinary_mode_preserved": true,
+    "opaque_proof_and_exact_command_retained": true,
+    "resource_plan_and_budget_versions_distinct": true,
+    "budget_version": "Frozen global-ledger CAS successor checked against actual writer receipt; stable fields bound to actual prepared plan",
+    "source_incarnation_must_match_real_plan_host": true,
+    "retry": "Exact recorded reserved retry reauthorizes writer plus current read policy, not cached authorization",
+    "dispatch": "Exact already-claimed replay requires duplicate original effect+reservation receipt and current unchanged reservation; repeats at RecordingRuntime after final pre-execution clock read",
+    "unknown_effects": "Never reset DispatchHeld, relaunch, settle or refund outstanding liability",
+    "physical_launch_and_store_revocation_linearizability_claimed": false
+  },
+  "checks": [
+    {
+      "environment": "RootMac",
+      "command": "cargo test -p admiralty-server --locked --lib services::native_task_loop -- --test-threads=1",
+      "exit_code": 0,
+      "passed": 16,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 82,
+      "seconds": 8.7,
+      "new_cases": 8,
+      "new_cases_subset_of_16": true,
+      "raw": {
+        "path": "/private/tmp/adm-budget-loop-root-integrated.log",
+        "bytes": 2393,
+        "sha256": "061445ade7a4e224c474561f1dbfb6c899aa90bcd6df9668a96fbb11574158fd"
+      }
+    },
+    {
+      "environment": "ActualLinuxxbabe2",
+      "command": "cargo test -p admiralty-server --locked --lib services::native_task_loop -- --test-threads=1",
+      "exit_code": 0,
+      "passed": 16,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 82,
+      "seconds": 15.28,
+      "same_cases_as_Mac": true,
+      "one_capped_invocation": true,
+      "jobs": 1,
+      "test_threads": 1,
+      "workspace_packages_rebuilt": true,
+      "assertions_and_overflow_unchanged": true,
+      "invocation": {
+        "schema_version": 1,
+        "source": "84cbf43e9d37c8b2fa4648a04de745fb05113126",
+        "source_archive_sha256": "1ff50f54829d84c227d40e8a91c690514005673b7e4971cdee49b6960c8fd20f",
+        "source_directory": "/home/ubuntu/admiralty-v2-build/native-budget-loop-84cbf43e-20261019T083657Z",
+        "started_utc": "2026-10-19T08:36:57.258Z",
+        "finished_utc": "2026-10-19T08:39:04.287Z",
+        "code": 0,
+        "signal": null,
+        "error": null,
+        "outer": {
+          "observed_utc": "2026-10-19T08:36:57.029Z",
+          "cpu_percent": 80.46427731158342,
+          "mem_available_kib": 47091816,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        },
+        "inside_gates_in_log": true,
+        "log_sha256": "1ff1d8759f53cabccd39704bfd50b7de02e4692487b271d3a9e4a6242e868efa",
+        "log_bytes": 3400,
+        "tail": [
+          "   Compiling admiralty-server v0.1.0 (/home/ubuntu/admiralty-v2-build/native-budget-loop-84cbf43e-20261019T083657Z/crates/admiralty-server)",
+          "    Finished `test` profile [unoptimized] target(s) in 1m 43s",
+          "     Running unittests src/lib.rs (target-linux/debug/deps/admiralty_server-9bd2583ce72fd672)",
+          "",
+          "running 16 tests",
+          "test services::native_task_loop::budget_tests::current_budget_dispatch_reaches_only_the_unconfigured_executor_without_a_child ... ok",
+          "test services::native_task_loop::budget_tests::dispatch_denial_marks_effect_unknown_without_runtime_or_admission_retry ... ok",
+          "test services::native_task_loop::budget_tests::failed_writer_admission_retains_registered_plan_for_authorized_retry ... ok",
+          "test services::native_task_loop::budget_tests::mismatched_reservation_and_command_return_actual_preparation_without_effects ... ok",
+          "test services::native_task_loop::budget_tests::protected_admission_commits_one_debit_claim_and_exact_outbox_effect ... ok",
+          "test services::native_task_loop::budget_tests::request_stop_invalidates_retry_and_dispatch_while_liability_stays_outstanding ... ok",
+          "test services::native_task_loop::budget_tests::revoked_budget_authority_blocks_dispatch_replay_and_cannot_reset_unknown_effect ... ok",
+          "test services::native_task_loop::budget_tests::stop_at_second_dispatch_clock_sample_fences_runtime_and_preserves_liability ... ok",
+          "test services::native_task_loop::tests::actual_durable_claim_with_lost_reply_replays_without_registering_or_spawning_again ... ok",
+          "test services::native_task_loop::tests::clock_unavailable_is_retryable_before_claim_but_expired_lease_never_launches ... ok",
+          "test services::native_task_loop::tests::completion_backpressure_never_calls_one_shot_custody_transfer ... ok",
+          "test services::native_task_loop::tests::denied_admission_keeps_registration_and_exact_retry_claims_once ... ok",
+          "test services::native_task_loop::tests::exact_dispatch_key_leaves_foreign_pending_task_and_effect_untouched ... ok",
+          "test services::native_task_loop::tests::existing_recovery_evidence_rejects_registration_and_returns_actual_preparation ... ok",
+          "test services::native_task_loop::tests::full_preflight_rejects_stale_scope_identity_and_preserves_original_plan ... ok",
+          "test services::native_task_loop::tests::lease_bounds_and_retained_admission_capacity_reject_before_losing_plan ... ok",
+          "",
+          "test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 82 filtered out; finished in 15.28s",
+          "",
+          ""
+        ],
+        "jobs": 1,
+        "test_threads": 1,
+        "unique_target": "/home/ubuntu/admiralty-v2-build/native-budget-loop-84cbf43e-20261019T083657Z/target-linux",
+        "private_tmp": "/home/ubuntu/admiralty-v2-build/native-budget-loop-84cbf43e-20261019T083657Z/private-tmp",
+        "cache_copy_only": "/home/ubuntu/admiralty-v2-build/intake-cli-source-7f20384-20261019T0759Z/target-linux",
+        "workspace_packages_cleaned_in_new_target": true,
+        "original_cache_not_mutated": true,
+        "provider_run": false,
+        "service_control": false,
+        "after": {
+          "observed_utc": "2026-10-19T08:39:05.499Z",
+          "cpu_percent": 59.11658559548094,
+          "mem_available_kib": 52849760,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        }
+      },
+      "raw": {
+        "path": "/private/tmp/adm-budget-loop-linux-test.log",
+        "bytes": 3400,
+        "sha256": "1ff1d8759f53cabccd39704bfd50b7de02e4692487b271d3a9e4a6242e868efa"
+      },
+      "result": {
+        "path": "/private/tmp/adm-budget-loop-linux-result.json",
+        "bytes": 4132,
+        "sha256": "49b4587fdc761211a58a2d4f7651f2be71505bb64b1198d28ce2d6f26952210d"
+      }
+    },
+    {
+      "environment": "RecoveredisolatedMacworker",
+      "actual_cases": 8,
+      "overlap": "Same eight new cases included in Root16, not additive acceptance",
+      "strict_server_all_targets_clippy": "PASS -D warnings on identical code hashes",
+      "fmt": "PASS",
+      "receipt": {
+        "path": "/private/tmp/adm-budget-loop-recovery-LsFEXv/receipt.json",
+        "bytes": 5566,
+        "sha256": "1374f557db1e193213c7f2175d5fed9c5ef61038f832dbb291eeda138913a285"
+      },
+      "raw": [
+        {
+          "path": "/private/tmp/adm-budget-loop-recovery-LsFEXv/initial-compile-failure.log",
+          "bytes": 7625,
+          "sha256": "74f6190d4becb60bfee93bd607c19d35e2ce838f4a441b427ecab3eda1a0a84e"
+        },
+        {
+          "path": "/private/tmp/adm-budget-loop-recovery-LsFEXv/prior-filtered-pass.log",
+          "bytes": 364,
+          "sha256": "0a28801bec1c55aa6e9bdf7c930b76df8f11bfafde801082ec0cddde9f1378bd"
+        },
+        {
+          "path": "/private/tmp/adm-budget-loop-recovery-LsFEXv/recovered-draft.log",
+          "bytes": 1929,
+          "sha256": "8934965420dadf3e9e2ef6490ce29facdb653205cfd2cb899560a7636623b504"
+        },
+        {
+          "path": "/private/tmp/adm-budget-loop-recovery-LsFEXv/tests-expanded.log",
+          "bytes": 1453,
+          "sha256": "11b0489d2dea4de42ebd50477d43ce8a1f457ce946dced866c65c587974ce104"
+        },
+        {
+          "path": "/private/tmp/adm-budget-loop-recovery-LsFEXv/clippy.log",
+          "bytes": 3410,
+          "sha256": "005765590979005fc653799916c50d90c3ad379b47e243ca8bf582771dbe6dda"
+        },
+        {
+          "path": "/private/tmp/adm-budget-loop-recovery-LsFEXv/fmt.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "environment": "Rootworkspace",
+      "command": "cargo fmt --all -- --check and git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "cases": [
+    "one debit/claim/exact effect; queued exact replay reauth/revoke/restore; global ledger revision advancement does not change frozen reservation revision",
+    "writer denial retains actual registered plan until authorized exact retry",
+    "7 mismatch variants return original PreparedWorkspace head with no Store claim or reservation: amount/scope/correlation/source/incarnation/effect/command",
+    "RequestStop invalidates retry and dispatch while liability stays outstanding",
+    "current dispatch policy denial fences effect unknown without runtime call or requeue",
+    "second DispatchClock sample records actual RequestStop before RecordingRuntime final recheck; runtime_attempted false/no child/liability retained",
+    "revoked current Store budget authority denies dispatch replay; restoration cannot reset unknown effect or add debit",
+    "valid current budget passes dispatch and final recheck to unconfigured executor; runtime_attempted true is only executor-call evidence, no RunningAdmission/child/provider"
+  ],
+  "review": {
+    "status": "CLEAR",
+    "independent_source_and_test_review": true,
+    "neverhumanbot_did_not_execute_these_tests": true,
+    "static_findings_repaired": [
+      "Global durable reservation revision is ledger CAS successor, not plan version1",
+      "Source/real-host incarnation mismatch rejected before transferring actual preparation",
+      "Intervening second-clock RequestStop rechecked before executor call"
+    ],
+    "initial_findings_were_static_not_claimed_executed_counterexamples": true
+  },
+  "preserved_failures": [
+    {
+      "path": "/private/tmp/adm-budget-loop-recovery-LsFEXv/initial-compile-failure.log",
+      "stage": "prior Luna draft compilation",
+      "result": "partial-move cleanup and unused imports; no tests ran",
+      "source_scope": "earlier uncommitted draft; not asserted byte-identical to recovered draft"
+    },
+    {
+      "path": "/private/tmp/adm-budget-loop-recovery-LsFEXv/recovered-draft.log",
+      "stage": "actual recovered six-test draft",
+      "passed": 5,
+      "failed": 1,
+      "ignored": 0,
+      "filtered_out": 90,
+      "cause": "test asserted two total DispatchClock samples; actual controller also samples after the refused runtime result (three total). Corrected fixture expectation; no production guard changed."
+    }
+  ],
+  "lane_recovery": {
+    "initial_worker": "Luna",
+    "failure": "selected model at capacity after writing draft",
+    "preserved_same_worktree": true,
+    "takeover": "Separate existing Codex review agent completed the same test-only scope; no runtime/provider fallback"
+  },
+  "live_observations": {
+    "primary_identity_and_health": {
+      "path": "/private/tmp/adm-primary-budget-loop-heartbeat-20261019T0832Z.json",
+      "bytes": 491,
+      "sha256": "0b9105590655ac0f941b35db5fd5f0e62ab7c0ef4cff80c721de8ac00af0e71f"
+    },
+    "retired_owned_python_scan": {
+      "path": "/private/tmp/adm-budget-loop-retired-python-20261019T0840Z.json",
+      "bytes": 101,
+      "sha256": "08d4ef07b71dd750ce7a69840a82b80ce200fa77dc2fd8bdfa08d797df66bc1a"
+    },
+    "full_primary_proof": "native-fcd35569-independent-20261019T0800Z.json retains original07:59 time; no fresh full hash/browser qualification"
+  },
+  "ci": {
+    "source": "749d9d299f23ef806f00c3893be484049616d9f5",
+    "rust": {
+      "run": "39220795716",
+      "passed_CLI_unit_cases": 89,
+      "failed_CLI_unit_cases": 1,
+      "cause": "owned Node guard smoke exceeded deadline",
+      "raw": {
+        "path": "/private/tmp/adm-ci-749-rust-39220795716.log",
+        "bytes": 54543,
+        "sha256": "6c212f5a000076b88e8f077a33a6b618ed1b16c28258302017d6d648274faee9"
+      }
+    },
+    "browser": {
+      "run": "39220795727",
+      "passed": 19,
+      "failed": 1,
+      "cause": "atlas dark pinned-axe label-content-name-mismatch",
+      "raw": {
+        "path": "/private/tmp/adm-ci-749-browser-39220795727.log",
+        "bytes": 53942,
+        "sha256": "5eb101d06eb5e6473c9ad04557e4be696691a7a03931dec1c2833f04177594a2"
+      }
+    },
+    "single_cleanup_backlog": true,
+    "no_cause_or_resource_pressure_inference": true,
+    "no_rerun_or_runner_control": true
+  },
+  "limits": {
+    "linux_component_tests_pass": true,
+    "linux_resource_backend_unconfigured": true,
+    "actual_coding_provider_executed": false,
+    "new_provider_grant": false,
+    "SC155_reused": false,
+    "production_issuer_installed": false,
+    "global_model_capacity_qualified": false,
+    "settlement_or_refund_implemented": false,
+    "restart_recovery_qualified": false,
+    "full_parent_acceptance": false,
+    "general_native_execution_qualified": false,
+    "full_hosted_CI_green": false,
+    "primary_service_control": false
+  }
+}

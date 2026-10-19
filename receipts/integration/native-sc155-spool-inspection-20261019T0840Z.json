@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T08:36:44.104988+00:00",
+  "actual_observation_utc": "2026-10-19T08:35:29.097Z",
+  "probe": {
+    "path": "/private/tmp/admiralty-sc155-spool-inspection-20261019T0835Z.json",
+    "sha256": "782daf55e73495bbcf7b9f44cc94dffc9c4fb6dbfbb0f9d7db9b4ce3fe21aee3"
+  },
+  "metadata": {
+    "path": "/private/tmp/admiralty-sc155-spool-inspection-20261019T0835Z.metadata.json",
+    "sha256": "66e8b8c42642a9802554216816ab2d149ffaa8b602d3daf3ad9cc87f8e79f087"
+  },
+  "reader": {
+    "path": "/private/tmp/admiralty-inspect-sc155-spool.cjs",
+    "sha256": "911a3fdef99a032c47cb2624022eb4afd6b254adbea0d70c986c88a0a0d418be",
+    "self_test": {
+      "tagged_frame_count": 1,
+      "sensitive_text_excluded": true
+    },
+    "fresh_failures": [],
+    "bounds": {
+      "files": 3,
+      "run_manifest_bytes": 262144,
+      "input_journal_bytes": 1048576,
+      "output_journal_bytes": 8388608,
+      "records": 8192,
+      "frame_body_bytes": 65536,
+      "ndjson_line_bytes": 262144
+    },
+    "diagnostic_json_parse_only_not_Codex_protocol_validation": true
+  },
+  "facts": {
+    "valid_binary_frames": 6,
+    "raw_output_offset": "549",
+    "stdout_event_type_counts": {
+      "thread.started": 1,
+      "turn.started": 1,
+      "item.completed": 1
+    },
+    "stdout_item_type_counts": {
+      "agent_message": 1
+    },
+    "manifest_capture_error_category": "capture_eof_unavailable",
+    "literal_error_markers": {
+      "thread_pool_would_block": 0,
+      "panic_marker": 0,
+      "cli_argument_error": 0,
+      "authentication_error": 0,
+      "network_timeout": 0,
+      "permission_error": 0
+    }
+  },
+  "limits": {
+    "no_new_provider_auth_run_retry_or_service_control": true,
+    "provider_invoked_false_in_probe_means_inspection_only": true,
+    "actual_SC155_runtime_was_attempted": true,
+    "actual_completed_provider_turn": "unknown",
+    "provider_or_model_identity": "unknown",
+    "provider_usage_or_billing": "unknown",
+    "final_producer_watermark": "unknown",
+    "source_fault_established": false,
+    "cause_of_waiting_until_deadline": "not established by bounded partial capture",
+    "capture_error_is_retained_session_state_not_an_authenticated_underlying_provider_cause": true,
+    "journal_physical_EOF_is_not_producer_capture_EOF": true,
+    "all_files_preserved": true
+  },
+  "source_contract": {
+    "binary_records": "u64 little-endian raw offset, u8stream(0stdout/1stderr),u32 little-endian body length,body; session/mod.rs Journal::append_records",
+    "final_capture": "Journal::mark_eof and SessionStatus.final_output_offset are process-local; retained journal length cannot reconstruct a complete SessionStatus"
+  }
+}

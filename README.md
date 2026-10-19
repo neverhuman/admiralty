@@ -137,7 +137,10 @@ The registry supports OpenAI-compatible endpoints, configured OpenCode SSH profi
 Native [durable budget admission](docs/architecture/durable-admission.md) can commit
 a task claim, exact launch intent and budget reservation atomically under a
 startup-installed current policy. Retries preserve the original receipt;
-unknown liabilities remain reserved. Production budget issuance, global model
+an explicit budget-backed native loop retains the original command/proof and
+reauthorizes retries and dispatch against the current reservation. Detected
+reservation stops or changes block dispatch; unknown liabilities remain reserved.
+Production budget issuance, global model
 capacity, real provider execution and settlement remain separate rollout work.
 
 Workplans can be previewed and registered as immutable revisions in an exclusively owned offline database:
