@@ -1,0 +1,119 @@
+{
+  "schema": "admiralty.native-task-loop-integration/v1",
+  "observed_utc": "2026-10-19T00:52:56.201Z",
+  "admiralty_source_commit": "661e5c5294fe8fe3fe968ce2070b0d71951be397",
+  "source_archive_sha256": "b7f22e851c547afaceb8938481ea8f039f50ad823d90152ab7d2e079fbcb5af0",
+  "probe_source_sha256": "4d135ad876254d1c614bebb5ecc65729e1117b8f12c2f10237ce0f202c6c6dde",
+  "binary_sha256": "7e3efa7acfa885c4d7c6e54c5e0bbd09500ba36b5514954da7f96762f91946ee",
+  "actual_probe_exit": 0,
+  "scope": "isolated actual NativeTaskLoop deterministic source/check/acceptance proof",
+  "checks": {
+    "real_claim_events": 1,
+    "actual_observed_start_events": 1,
+    "effect_ack": "recorded",
+    "duplicate_dispatch_no_runtime_attempt": true,
+    "retained_admission_reply_matched": true,
+    "modified_resource_claim_denied": true,
+    "positive_exit": 0,
+    "required_wrong_oracle_exit": 23,
+    "wrong_oracle_classification": "Private typed OracleMismatch only after successful compilation, child execution and complete capture; infrastructure failures17 cannot satisfy.",
+    "store_accepted_event": "5",
+    "exact_duplicate": true,
+    "revocation_denied": true,
+    "reopen_projection_matched": true
+  },
+  "source_candidate": {
+    "base": "ff6166473d090d04df55110c0e51575dd50b24b9",
+    "commit": "a4a2462dcf30e39949e68f16240e08aabd941401",
+    "tree": "a1cf5fe1493fb57b62cb14f0a0cbb0316b108b19",
+    "artifact_digest": "sha256:8b0aa149b306d2628b206d3a47e5a013e68fb300f5decf33bd14c565a851af7b"
+  },
+  "verified_evidence": {
+    "checks": {
+      "sha256": "sha256:a7a9b571371dcc114c6b0323cdd8f0fa3b036066b1608f4b7f9a520c584885d7",
+      "size_bytes": 2755
+    },
+    "closure": {
+      "sha256": "sha256:60190fba37603a679daa2f5e5327edace5d02a25d5e3f16ac806f53f2e1af18f",
+      "size_bytes": 2012
+    },
+    "custody": {
+      "sha256": "sha256:4c579cd7b37f4a0468a5b9718824ac6bafd0bbd274ebac425babb07fcf2e9f60",
+      "size_bytes": 2126
+    }
+  },
+  "resource_observation": {
+    "cpus": [
+      0,
+      1
+    ],
+    "memory_max_bytes": 268435456,
+    "tasks_max": 16,
+    "deadline_seconds": 90,
+    "owned_slice_empty_after": true,
+    "enforcement": "Actual fixed0-1 inherited dedicated slice; arbitrary per-service assignments/exclusive reservations unqualified."
+  },
+  "validation": {
+    "linux_example_tests": 9,
+    "failed": 0,
+    "ignored": 0,
+    "filtered": 0,
+    "linux_logs": {
+      "native-task-loop-probe": {
+        "sha256": "7e3efa7acfa885c4d7c6e54c5e0bbd09500ba36b5514954da7f96762f91946ee",
+        "size": 49745048
+      },
+      "actual-run.stdout": {
+        "sha256": "5814ceb3d294a3d17d71d03e6dff05c5f4b3f58be17f97216e33531c839714fe",
+        "size": 2596
+      },
+      "actual-run.stderr": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size": 0
+      },
+      "operator-issuance.json": {
+        "sha256": "d280494c02e9f2c223caaea9f1a66b20ee5a7d5438c11cec898180146732b8c5",
+        "size": 685
+      },
+      "operator-authorization.json": {
+        "sha256": "d2229f53572fe16dd731eac0a240e94af48821f59f3158dad94820abc34b99a7",
+        "size": 6364
+      },
+      "task-loop-probe-661e5c52-build.log": {
+        "sha256": "c0250cd0752b5f259716f385bc664c26550347545308d2b65cc9c0c303191272",
+        "size": 553
+      },
+      "task-loop-probe-661e5c52-tests.log": {
+        "sha256": "6f7d2fc8eeca8b82f6da1b853b70b441b2055eb3567706bed671f25a9ae44735",
+        "size": 1304
+      }
+    },
+    "independent_review": "audit_evidence reviewed exact example and both repairs; root independently verified actual receipts/object bytes/hashes/closure/check exits"
+  },
+  "private_receipt_sha256": "32e97e8b22e77e638cec6c61e1cb7713b5fc24da856467ddff82e7e6b28a2ae7",
+  "retained_failure": {
+    "source": "dbec672d0fa0fd4137200d148d67115f2edb29a3",
+    "probe_exit": 17,
+    "reason": "Actual claim/start/ACK/closure/source candidate passed; positive check correctly refused compiler output0775 under inherited host umask. Original authorization consumed, evidence retained; no retry.",
+    "binary_sha256": "9baf824b10a59679d43944ea850b1297a695ce60cf63ea241ae0ac39d5bf1066",
+    "stderr_sha256": "c41bb6461d568809c89cf73150924e6db0786682828829a3e288e34c92b6013b",
+    "consumed_authorization_sha256": "217394f17bbba9e5172c30c6e8f3cc279018315f4688f66934817daee90d2ee9",
+    "actual_closed_journal_sha256": "b82e81b5ce545772ef3976f4c420ab732cee7deb0c444166f1245b89f1dd3a12"
+  },
+  "superseded_preparation": {
+    "status": "Never authorized or launched",
+    "reason": "A preparation copied prior binary before the new build completed. It was preserved and superseded by an independently verified new binary/fixture."
+  },
+  "native_execution_qualified": false,
+  "coding_provider_qualified": false,
+  "parent_acceptance": false,
+  "provider_observed": null,
+  "model_observed": null,
+  "limits": [
+    "Controlled deterministic child, not a coding-provider turn or autonomous project delivery.",
+    "Build source SHA is operator attestation backed by exact archive/binary hashes, not reproducible-build or cryptographic source proof.",
+    "Compiler binary pinned; qualified toolchain shared libraries/linker remain operator prerequisites.",
+    "No production startup issuer, atomic model/capacity accounting, cross-restart continuity or new parent acceptance installed.",
+    "Uses existing consuming source-candidate success APIs; error custody repairs remain separate PR82."
+  ]
+}
