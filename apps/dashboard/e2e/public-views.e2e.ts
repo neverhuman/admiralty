@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { afterEach, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import * as nodeFs from 'node:fs';
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
@@ -22,6 +22,25 @@ const nativeFdFs = nodeFs as unknown as {
 const nativeProcess = process as typeof process & { getuid(): number };
 const MAX_NATIVE_BINARY_BYTES = 512 * 1024 * 1024;
 const NATIVE_HASH_BUDGET_MS = 15_000;
+let server: IsolatedNativeAdmiraltyServer | undefined, browser: BrowserHarness | undefined;
+let serverStartup: Promise<IsolatedNativeAdmiraltyServer> | undefined;
+let browserStartup: Promise<BrowserHarness> | undefined;
+let closePromise: Promise<void> | undefined;
+
+function closeOwnedFixture(): Promise<void> {
+  return closePromise ??= (async () => {
+    // Include bounded acquisitions already in flight when the deadline fired.
+    const startedBrowser = await browserStartup?.catch(() => undefined);
+    try { await (browser ?? startedBrowser)?.close(); } finally {
+      const startedServer = await serverStartup?.catch(() => undefined);
+      await (server ?? startedServer)?.close();
+    }
+  })();
+}
+
+// Vitest still awaits hooks after a test deadline. Share the same cleanup with
+// finally so a timeout cannot abandon an owned daemon or race two shutdowns.
+afterEach(closeOwnedFixture, 90_000);
 
 function nativeFileIdentity(stat: NativeFileStat): string {
   return [stat.dev, stat.ino, stat.size, stat.uid, stat.mode, stat.nlink, stat.mtimeMs, stat.ctimeMs].join(':');
@@ -80,16 +99,20 @@ it('renders public Git/Atlas observations after private401 and reconnects with o
   };
   mkdirSync(join(REPO_ROOT, 'target'), { recursive: true });
   const evidence = mkdtempSync(join(REPO_ROOT, 'target', 'public-views-evidence-'));
-  let server: IsolatedNativeAdmiraltyServer | undefined, browser: BrowserHarness | undefined;
   const axes: unknown[] = [];
   let baseUrl = '';
   try {
-    server = await startIsolatedNativeAdmiraltyServer({ legacySnapshot: source, legacyPublicRead: true });
+    serverStartup = startIsolatedNativeAdmiraltyServer({ legacySnapshot: source, legacyPublicRead: true });
+    server = await serverStartup;
+    if (closePromise) throw new Error('Public-view fixture closed during native startup');
     baseUrl = server.baseUrl;
     expect(server.binaryPath).toBe(binary);
     expect((await fetch(`${baseUrl}/v2/views`)).status).toBe(401);
     expect((await fetch(`${baseUrl}/v1/legacy`)).status).toBe(200);
-    browser = await launchBrowserHarness();
+    if (closePromise) throw new Error('Public-view fixture closed before browser startup');
+    browserStartup = launchBrowserHarness();
+    browser = await browserStartup;
+    if (closePromise) throw new Error('Public-view fixture closed during browser startup');
     await browser.setViewportSize(1440, 1000);
     await browser.goto(`${baseUrl}/#/git?project=harbor`);
     await browser.waitForText('Showing the explicitly public producer snapshot');
@@ -129,7 +152,9 @@ it('renders public Git/Atlas observations after private401 and reconnects with o
     }, null, 2));
     console.log(`Public visual regression proof: ${evidence}`);
   } finally {
-    await browser?.close(); await server?.close();
+    await closeOwnedFixture();
   }
   await expect(fetch(`${baseUrl}/healthz`)).rejects.toThrow();
-}, 30_000);
+// Includes native startup, sandboxed browser startup, both complete axe audits,
+// screenshots and confirmed child exit; use the suite's 90-second budget.
+}, 90_000);

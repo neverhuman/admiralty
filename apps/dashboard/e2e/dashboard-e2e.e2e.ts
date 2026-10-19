@@ -689,6 +689,18 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
   );
 
   it(
+    'reports an actual browser navigation denial before document readiness polling',
+    async () => {
+      // Chromium refuses this unsafe loopback port before opening a connection.
+      // Its errorText is a successful CDP response, not a protocol rejection.
+      await expect(browser.goto('http://127.0.0.1:1/')).rejects.toThrow(
+        /Navigation to http:\/\/127\.0\.0\.1:1\/ failed after 2 attempts.*Page\.navigate failed: net::ERR_UNSAFE_PORT/,
+      );
+    },
+    90_000,
+  );
+
+  it(
     'renders Legacy detailed view, project tabs, temporal plots, hierarchy, and scales across 4, 20, and 100 projects',
     async () => {
       await browser.goto(server.baseUrl);
