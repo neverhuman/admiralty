@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T05:39:07.034Z",
+  "receiving_main": "066706b1d563d7554e19b9ffb0b2137cf66f14e8",
+  "before_sha256": "2ef431f2de58779ebc02ea9e1dece889d48d97a2cb8fd4832dc0ffb794042f97",
+  "after_sha256": "4d5357a432cf2ae7d700cde6c7105d719de7b09c24859fb48d5591da1ddada71",
+  "archive": "/home/ubuntu/admiralty-v2-build/receipts/rollout-corrections/20261019T053907Z",
+  "receipt_hashes_verified": [
+    {
+      "name": "delivery-projection-20261019T0507Z.json",
+      "sha256": "a674b945a281f7e6cb4410b92923f508e689a532d92c3b0a52917f679f57f6ee"
+    },
+    {
+      "name": "native-intake-usage-package-20261019T0520Z.json",
+      "sha256": "2d67a6660c35f50689133d431085041afb07647cef831962959abce9ded3a360"
+    },
+    {
+      "name": "native-archive-linux-20261019T0530Z.json",
+      "sha256": "2d8f4d4e22172902a3cb4f19f2526ada16d5f444762cf546c5c428d577194cf1"
+    },
+    {
+      "name": "native-066706b1-independent-20261019T0540Z.json",
+      "sha256": "4ed8830094cf81547ededecbe990d51e07140437a0d6c2ad479aa8b38f0d162f"
+    }
+  ],
+  "live_proof": {
+    "source": "066706b1d563d7554e19b9ffb0b2137cf66f14e8",
+    "observed_utc": "2026-10-19T05:36:32.886Z",
+    "sha256": "4ed8830094cf81547ededecbe990d51e07140437a0d6c2ad479aa8b38f0d162f"
+  },
+  "all_parent_statuses_preserved": true,
+  "foundation_packets_byte_identical": true,
+  "unrelated_packets_byte_identical": true,
+  "all_original_history_source_timestamps_preserved": true,
+  "new_observation_basis": "actual PR108/109 source/component proof, real619Linux35testresult and independent066manifest/process/endpoints; not clock-only freshness",
+  "accepted": [
+    "P00",
+    "P01"
+  ],
+  "remaining_parents": 30,
+  "native_execution_qualified": false,
+  "provider_grants_this_reconciliation": 0,
+  "provider_qualified": false,
+  "service_control": false
+}

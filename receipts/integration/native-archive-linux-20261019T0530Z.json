@@ -1,0 +1,296 @@
+{
+  "actual_checks": [
+    {
+      "argv": [
+        "/home/ubuntu/.cargo/bin/cargo",
+        "--version"
+      ],
+      "exit": 0,
+      "finished_utc": "2026-10-19T05:22:14.268072+00:00",
+      "label": "cargo-version",
+      "log": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/cargo-version.log",
+      "log_bytes": 36,
+      "log_sha256": "c10ec31b8c6e6e2693cf65fc1971b41edbc3da1ae7db6f9f3f36c4823f8dcab5",
+      "started_utc": "2026-10-19T05:22:13.849331+00:00"
+    },
+    {
+      "argv": [
+        "/home/ubuntu/.cargo/bin/cargo",
+        "test",
+        "-p",
+        "admiralty-cli",
+        "--bin",
+        "admiralty",
+        "--locked",
+        "--offline",
+        "native_archive::tests",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "finished_utc": "2026-10-19T05:28:18.927004+00:00",
+      "label": "archive-unit",
+      "log": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/archive-unit.log",
+      "log_bytes": 6904,
+      "log_sha256": "eb6e176883531844325ec7b7ab8047f536eddebc05205e3a43c17759c8bc36c4",
+      "started_utc": "2026-10-19T05:22:14.269560+00:00"
+    },
+    {
+      "argv": [
+        "/home/ubuntu/.cargo/bin/cargo",
+        "test",
+        "-p",
+        "admiralty-cli",
+        "--test",
+        "native_archive_cli",
+        "--locked",
+        "--offline",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "finished_utc": "2026-10-19T05:28:33.272071+00:00",
+      "label": "archive-cli",
+      "log": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/archive-cli.log",
+      "log_bytes": 1090,
+      "log_sha256": "9aa5f7c0ea6f84d14e9a208505142401da973d5a032f2d247e8fbf7c9f5ba151",
+      "started_utc": "2026-10-19T05:28:18.928081+00:00"
+    },
+    {
+      "argv": [
+        "/home/ubuntu/.cargo/bin/cargo",
+        "test",
+        "-p",
+        "admiralty-cli",
+        "--bin",
+        "admiralty",
+        "--locked",
+        "--offline",
+        "native_package::tests",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "finished_utc": "2026-10-19T05:28:38.456705+00:00",
+      "label": "native-package",
+      "log": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/native-package.log",
+      "log_bytes": 3090,
+      "log_sha256": "5b4fee699c3402bfbc4d9018a9e135d1d2c908de599374b8acc01a985015bfe3",
+      "started_utc": "2026-10-19T05:28:33.273121+00:00"
+    }
+  ],
+  "actual_synthetic_cli_archive": {
+    "archive_sha256": "335f146f430812879b2e9c6e9d6551ae41eb4ec16992c99c282bd3a26b439c89",
+    "fixture_files_cleaned_by_test_TempDir": true,
+    "raw_manifest_sha256": "1c0a19aef41fc8723f4c9ec86914f2479edf03a4fe8ff51a3e4c9239348223e2",
+    "same_as_prior_Mac_synthetic_fixture": true
+  },
+  "coordination": "Durableclaim exists. Admiral/Commodore both observedGemini4Argon quota errors and pendinginput; nooverwrites/injections/restarts/modelsubstitution. Rootnotifieddirectly.",
+  "created_utc": "2026-10-19T05:30:13.346143+00:00",
+  "deterministic_synthetic_archives": {
+    "after_sha256": "067e3f9daaccea03a36f7dc9942b5d2d538388651862cf68e7e6eb504be20517",
+    "before_sha256": "067e3f9daaccea03a36f7dc9942b5d2d538388651862cf68e7e6eb504be20517",
+    "bytes": 2991,
+    "fixture_files_cleaned_by_test_TempDir": true,
+    "same_as_prior_Mac_synthetic_fixture": true
+  },
+  "elapsed_seconds": 385.6634390420513,
+  "environment": {
+    "CARGO_BUILD_JOBS": "1",
+    "CARGO_TARGET_DIR": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/target-linux",
+    "RUST_TEST_THREADS": "1",
+    "TMPDIR": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/private-tmp"
+  },
+  "finished_utc": "2026-10-19T05:28:38.458400+00:00",
+  "installer_qualified": false,
+  "kind": "admiralty_native_archive_linux_synthetic_qualification",
+  "linux_specific_evidence": "Both actual Linux mkfifoat special-file cases executed in the20-test module with successful positive preflight. Five actual CLI tests include dedicated single-test child umask077 (ordinary0644creation0600, productionStageMANIFEST0644, exactpayloadmodes, actualArchive/hash/extraction/falseauthorityflags). Nativepackage10 includes actuallocalNode23-public-guard import smoke; nonetwork/provider.",
+  "logs": {
+    "archive-cli": {
+      "bytes": 1090,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/archive-cli.log",
+      "sha256": "9aa5f7c0ea6f84d14e9a208505142401da973d5a032f2d247e8fbf7c9f5ba151"
+    },
+    "archive-unit": {
+      "bytes": 6904,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/archive-unit.log",
+      "sha256": "eb6e176883531844325ec7b7ab8047f536eddebc05205e3a43c17759c8bc36c4"
+    },
+    "native-package": {
+      "bytes": 3090,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/native-package.log",
+      "sha256": "5b4fee699c3402bfbc4d9018a9e135d1d2c908de599374b8acc01a985015bfe3"
+    }
+  },
+  "matched_tests": {
+    "archive-cli": {
+      "failed": 0,
+      "filtered": 0,
+      "ignored": 0,
+      "measured": 0,
+      "passed": 5
+    },
+    "archive-unit": {
+      "failed": 0,
+      "filtered": 44,
+      "ignored": 0,
+      "measured": 0,
+      "passed": 20
+    },
+    "native-package": {
+      "failed": 0,
+      "filtered": 54,
+      "ignored": 0,
+      "measured": 0,
+      "passed": 10
+    }
+  },
+  "native_runtime_qualified": false,
+  "not_run": [
+    "fullworkspace",
+    "CIcleanup",
+    "LinuxstrictClippy(no unresolved platform compile concern)"
+  ],
+  "parent_P30_accepted": false,
+  "platform": {
+    "machine": "x86_64",
+    "release": "6.8.0-146-generic",
+    "sysname": "Linux"
+  },
+  "post_run_source": {
+    "archive_sha256": "3278d5b163085cebaf3b9069276e8d1879ab85cca1526e38b28c0fcf83fd8ca4",
+    "meaning": "Read-only post-run match to explicit operator-owned Git archive; not publisher authentication or cryptographic build provenance.",
+    "post_run_entry_names_exact": 1081,
+    "post_run_source_bytes": 17477592,
+    "post_run_source_files_byte_matched": 940,
+    "source_commit": "619a00544475bb064899a296dfc3e5830baf1eec",
+    "utc": "2026-10-19T05:29:07.499421+00:00"
+  },
+  "prelaunch_refusal": "05:19:49Z CPU86.28%, before wrapper/Cargo/test; preserved capacity-refusal-051949.json. Not an unknown run or repeated test job.",
+  "preserved_prior_failure": {
+    "failed": 8,
+    "passed": 12,
+    "receipt": "/home/ubuntu/admiralty-v2-build/archive-qualification-b86439f/receipts/linux-archive-outcome.json",
+    "receipt_sha256": "b9acd05d5a954d05415e29d18a7435c42913cdbeba5aa3de8676581ab750eb8d",
+    "root_cause": "stagedMANIFESTmode0600under077; reviewedFDmode repair now present in619source",
+    "source_commit": "b86439f248c3d70398f1757f3ec07676e1a54df6"
+  },
+  "production_source_edits": false,
+  "provider_execution": false,
+  "public_rights_qualified": false,
+  "publishing_qualified": false,
+  "qualified_build_tool_path": "/home/ubuntu/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+  "schema_version": 1,
+  "services_or_caps_changed": false,
+  "signing_qualified": false,
+  "source_archive_bytes": 18288640,
+  "source_archive_sha256": "3278d5b163085cebaf3b9069276e8d1879ab85cca1526e38b28c0fcf83fd8ca4",
+  "source_artifacts": {
+    "admiral-pre-notify-2.txt": {
+      "bytes": 1040,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/admiral-pre-notify-2.txt",
+      "sha256": "d63d9c0978a8a6780077c9ee25d55ceaf9c0949d85d4de7c5e135b56553bc5a8"
+    },
+    "capacity-refusal-051949.json": {
+      "bytes": 186,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/capacity-refusal-051949.json",
+      "sha256": "b1191b4e796d0bd84d6a683e590ceceece282ae2badc5a5bf222672ef1b532ab"
+    },
+    "owned-run-observation.json": {
+      "bytes": 438,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/owned-run-observation.json",
+      "sha256": "f00f646d886e7f5a38f6a6cf20e2f37139ebd6c3b8ca93c3ebb09e0d0de13b1f"
+    },
+    "post-run-source-check.json": {
+      "bytes": 464,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/post-run-source-check.json",
+      "sha256": "bf08a6cdaa3f41668658ebb2c0891eb5db0d50ab7b5ca09342af2aff4968ab99"
+    },
+    "pre-notify-2062267.agy_captain_admiralty.txt": {
+      "bytes": 1221,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/pre-notify-2062267.agy_captain_admiralty.txt",
+      "sha256": "cbb581dab9277fc0a293c1c41889a9d8f8e1e41876297e53ba7358c3ed9ac0f7"
+    },
+    "pre-notify-4060655.super_captain.txt": {
+      "bytes": 1040,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/pre-notify-4060655.super_captain.txt",
+      "sha256": "d63d9c0978a8a6780077c9ee25d55ceaf9c0949d85d4de7c5e135b56553bc5a8"
+    },
+    "prelaunch-capacity.json": {
+      "bytes": 185,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/prelaunch-capacity.json",
+      "sha256": "2315750408c957e9f137527ca3ac24dc67691b6651f5d6dd6f91c86d4ecad7ec"
+    },
+    "qualification.json": {
+      "bytes": 3858,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/qualification.json",
+      "sha256": "6b87d9f98398b13b360b81635d7f8bafb2c51022c05bef67189fd884104c2748"
+    },
+    "source-inventory.json": {
+      "bytes": 3716,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/source-inventory.json",
+      "sha256": "8d9d5e6dfe0fcde9610e6b9c80c309e61cdb85759e515d02c2ed5f783b519dea"
+    },
+    "source.json": {
+      "bytes": 342,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/source.json",
+      "sha256": "6269342694f112d5945a5c5e03a3b4f3b881882d34ffcdfda6e111f6bf4448b0"
+    },
+    "wrapper-invocation.json": {
+      "bytes": 796,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/wrapper-invocation.json",
+      "sha256": "7e6532f2faabd04a0ae573ae47ad61c447f945837ed0802507c891a676b82e0d"
+    },
+    "wrapper-result.json": {
+      "bytes": 162,
+      "path": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005/receipts/wrapper-result.json",
+      "sha256": "5aedf788e955287d1431dfa073404f48752620fa0e6e65bf93cb074330a7161d"
+    }
+  },
+  "source_commit": "619a00544475bb064899a296dfc3e5830baf1eec",
+  "source_scope": "Exactly pinned619a005 even if root/main later advances. Explicit local Git archive and post-run byte match; not forge/publisher authentication or cryptographic build attestation.",
+  "source_tree": "cf799b7eacfc6768adf57822b9c583df4ffde1fa",
+  "started_utc": "2026-10-19T05:22:12.795016+00:00",
+  "status": "35_scoped_tests_passed",
+  "total_passed": 35,
+  "total_run_budget_seconds": 600,
+  "wrapper": {
+    "actual_cgroup": "0::/jarambit.slice/jarambit-evo.slice/jr-adm-archive-qual-619-2464081-1792387332.scope",
+    "automatic_relaunches": 0,
+    "exit": 0,
+    "final_scope_observation": "ControlGroup=\nTasksCurrent=[not set]\nId=jr-adm-archive-qual-619-2464081-1792387332.scope\nActiveState=inactive\n",
+    "inside_wrapper_gate": {
+      "MemAvailable_KiB": 31579980,
+      "admitted": true,
+      "cgroup_freeze": "0",
+      "cpu_percent": 77.29161765859014,
+      "fleetcapd": "active",
+      "fleetcapd_exit": 0,
+      "utc": "2026-10-19T05:22:13.848554+00:00"
+    },
+    "invocation_count": 1,
+    "name": "adm-archive-qual-619",
+    "owned_process_metadata": {
+      "actual_cgroup": "0::/jarambit.slice/jarambit-evo.slice/jr-adm-archive-qual-619-2464081-1792387332.scope",
+      "pid": 2464163,
+      "selected_process_metadata": {
+        "Gid": "1000\t1000\t1000\t1000",
+        "Name": "python3",
+        "PPid": "2464081",
+        "Pid": "2464163",
+        "Uid": "1000\t1000\t1000\t1000",
+        "Umask": "0077"
+      },
+      "source_commit": "619a00544475bb064899a296dfc3e5830baf1eec",
+      "utc": "2026-10-19T05:22:51.509052+00:00"
+    },
+    "prelaunch_gate": {
+      "MemAvailable_KiB": 32327252,
+      "admitted": true,
+      "cgroup_freeze": "0",
+      "cpu_percent": 78.01886792452831,
+      "fleetcapd": "active",
+      "utc": "2026-10-19T05:22:12.543593+00:00"
+    }
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "kind": "native_intake_private_startup_http_composition",
+  "recorded_utc": "2026-10-19T05:54:39.656Z",
+  "source_revision": "ad5ea2ed59b5ba3f02dee99451f5499b46b3f511",
+  "base_main": "066706b1d563d7554e19b9ffb0b2137cf66f14e8",
+  "components": [
+    {
+      "commit": "15423e3333d85ad1b3f608e351dc9d5c03159ef8",
+      "receipt": "/private/tmp/adm-work-order-http-proof/receipt.json",
+      "receipt_sha256": "6d29f546a01ddb3c38dd71a640be94e64df489bcb6e8b89ed15620696f2ee4e4"
+    },
+    {
+      "commit": "19d2bb448a250a2c69fea97c06758b5078b56ee7",
+      "receipt": "/private/tmp/adm-intake-configuration-proof-w6fooizv/receipt.json",
+      "receipt_sha256": "d2b0a1b0ccaa85c3f4fc6056d14ccc5565d0b63b2eb0a61c98dcef3d6edc2ee4"
+    }
+  ],
+  "source_manifest": {
+    "configs/examples/intake.json": {
+      "bytes": 1154,
+      "sha256": "d33d529432c9c5278af8faefc5b5868e3862004eb65ef05a460d820d641d6398"
+    },
+    "crates/admiralty-server/src/intake_configuration.rs": {
+      "bytes": 13928,
+      "sha256": "e2e6e31ad385b199cb0f43b53b2120e7a2116fffa35414329481651403666d5a"
+    },
+    "crates/admiralty-server/src/lib.rs": {
+      "bytes": 27323,
+      "sha256": "49bfdf38c5f1e853c9ea6f8217c7e98f53990a03add0f2edd91e59463e07005c"
+    },
+    "crates/admiralty-server/src/main.rs": {
+      "bytes": 3306,
+      "sha256": "693a0c25cd8f7af907a749c1991973ffc1b5eaeff733a8b2cd180f1833b43e10"
+    },
+    "crates/admiralty-server/src/services/mod.rs": {
+      "bytes": 349,
+      "sha256": "d17a23878a5a688088078f40587a58bd74a43a22a39534bd67effb63781d1fd7"
+    },
+    "crates/admiralty-server/src/services/work_order_routes.rs": {
+      "bytes": 20951,
+      "sha256": "ad61eddf5bc01e6d67d50a534af091a7b478219777b57b454fc437e8056cb019"
+    },
+    "crates/admiralty-server/src/startup.rs": {
+      "bytes": 15667,
+      "sha256": "d35c9e255eb3bbf82676217362eba61d46923e6d13734591757eebd17a29ae08"
+    },
+    "crates/admiralty-server/tests/intake_configuration.rs": {
+      "bytes": 25663,
+      "sha256": "d5be8dfd470c0600df046e8f73fc3474c20b87a0e18c861b2c3a3cc074525b44"
+    },
+    "crates/admiralty-server/tests/intake_startup.rs": {
+      "bytes": 19523,
+      "sha256": "c9d38a80f06ea224d8e24e84d86335df4dff52d638dac7c2bf37a462594e12c7"
+    },
+    "crates/admiralty-server/tests/work_order_routes.rs": {
+      "bytes": 39245,
+      "sha256": "5ba52dd1e9d810a2bf5caa24defddffc68771b18f93be7b8578d825bcc5a417a"
+    },
+    "docs/operators/work-order-intake.md": {
+      "bytes": 9989,
+      "sha256": "e14f8cedab879d9d2c58007c0cc84acaf150c1dbffa3a5083ba429813037cd29"
+    }
+  },
+  "checks": {
+    "command": "cargo test -p admiralty-server --test intake_configuration --test intake_startup --test native_startup --test work_order_routes --locked",
+    "passed": 26,
+    "failed": 0,
+    "ignored": 0,
+    "filtered": 0,
+    "groups": {
+      "configuration": 9,
+      "startup": 5,
+      "previous_native_startup": 3,
+      "http": 9
+    },
+    "strict": "cargo clippy -p admiralty-server --all-targets --locked -- -D warnings",
+    "strict_exit": 0,
+    "format": "cargo fmt --all -- --check",
+    "format_exit": 0,
+    "diffcheck_exit": 0,
+    "environment": {
+      "TMPDIR": "/private/tmp/adm-native-4pbrtc1l",
+      "CARGO_TARGET_DIR": "target/context-integrated-final",
+      "CARGO_BUILD_JOBS": 1,
+      "RUST_TEST_THREADS": 1
+    }
+  },
+  "artifacts": {
+    "target/quality/intake-composed-root-final.log": {
+      "bytes": 3187,
+      "sha256": "b0465cdfa0842db5e2664b1fe59a4b999faa5e76bcf7424a8dbd42fa4c838f86"
+    },
+    "target/quality/intake-composed-root-clippy.log": {
+      "bytes": 235,
+      "sha256": "22b009c427078b02d353ec4d45d64a35f3fa1aa0296ac691c67ca2b59098fddd"
+    },
+    "target/quality/intake-startup-root-first.log": {
+      "bytes": 1788,
+      "sha256": "6db097a2431e3669eb96ede7f759739b25692f96ee002c2bdcf447469f7da42f"
+    }
+  },
+  "independent_review": {
+    "path": "/private/tmp/adm-intake-combined-review-w964yz34/receipt.json",
+    "sha256": "b43bca33c697f3d1138f454bd67ed0a1ce4ef379d51035e016f5da42b6f7ae49",
+    "verdict": "CLEAR",
+    "additional_suites_run": false,
+    "exact_commit_receipt": {
+      "path": "/private/tmp/adm-intake-combined-review-w964yz34/receipt-ad5ea2e.json",
+      "sha256": "a9e670af7299933e5f8542da8864db71e9a24a97013f0c821b64b41aa3d189cf",
+      "source_revision": "ad5ea2ed59b5ba3f02dee99451f5499b46b3f511"
+    }
+  },
+  "actual_binary_smoke": {
+    "test": "actual_native_binary_loads_private_example_and_serves_scoped_capture",
+    "binary": "CARGO_BIN_EXE_admiraltyd",
+    "private_example": "configs/examples/intake.json",
+    "environment_cleared": true,
+    "transport": "real isolated TCP",
+    "preview_capture_post_read": true,
+    "original_multiline_bytes_preserved": true,
+    "execution_granted": false,
+    "acceptance_granted": false,
+    "child_cleanup": "only direct child PID created by test, kill/wait, no process group/service control",
+    "store_reopened_zero_domain_tasks": true
+  },
+  "authority": {
+    "default_intake": "None/unavailable",
+    "optional_cli": "--intake-config requires --native-config; validate before Store open",
+    "owner_inbox_intake_credentials": "distinct checked before DB open",
+    "writer": "same current policy bridge installed in both capture and enriched record slots",
+    "independent_policy": "explicit static protected-file rules intersect exact credential scope/actions/policy caps/digest/ref/generation",
+    "request_claims_issue_grants": false,
+    "network": "loopback only; main bearer plus independent intake token; exact Origin/Host/non-simple marker; no CORS; bounded POST browser reads retain all guards"
+  },
+  "bounds": {
+    "http_request_bytes": 1048576,
+    "query_bytes": 8192,
+    "http_response_bytes": 16777216,
+    "slots": 8,
+    "body_deadline_seconds": 5,
+    "private_config_bytes": 262144
+  },
+  "preserved_failures": [
+    "Root initial Router state mismatch in worker raw logs ran zero tests before corrected nesting.",
+    "Root initial startup test ID From conversion failed to compile; intake-startup-root-first.log retained, changed to existing checked ID constructors.",
+    "Worker initial fixture assumptions, Mac post-rejection TCP reset, result_large_err strict failure and actual framed-GET 200 negative are retained in component receipt.",
+    "Browser GET Origin issue repaired with bounded POST read methods; no Origin fallback or guard relaxation."
+  ],
+  "limits": [
+    "Private owner-file issuer is explicit optional static configuration; no production credential/config was created or enabled in this work.",
+    "No enrichment GUI, public schema/client extension, provider/model/tool/check/publication/dispatch/acceptance authority or task execution installed.",
+    "Real HTTP/actual binary fixture is not a browser E2E, deployed optional intake configuration or general native coding qualification.",
+    "Slots cover body/Store turn/response materialization, not completed network transmission; exceptionally large offline reads fail closed at response bound.",
+    "External issuer changes after the bridge final check retain the existing synchronization limit; private FD checks do not isolate root/sameUID.",
+    "No fleet/service/runner/GPU control, provider fixture/grant/run or CI cleanup/rerun performed."
+  ],
+  "full_parent_acceptance": false,
+  "native_execution_qualified": false
+}
