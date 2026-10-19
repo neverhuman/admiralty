@@ -245,6 +245,16 @@ reported usage is not billing or settlement.
 
 ### P14 — Atomic admission, fairness, cheap-capable routing and recovery
 
+**Component update 2026-10-19:** explicit `NativeTaskLoop::admit_reserved`
+retains the original command/proof and joins the merged Store/controller budget
+path with actual prepared-plan custody. Retry and dispatch check current writer
+and read authority, the exact effect receipt and unchanged reservation; a final
+check closes the intervening-clock stop seam. Actual Mac16 and Linux16 checks
+exercise the same16cases, including8new budget cases, at source84cbf43e.
+See `receipts/integration/native-budget-task-loop-20261019T0841Z.json`.
+No production issuer/global slots, physical-start linearization, provider,
+settlement/recovery or full parent acceptance follows from this component.
+
 **Component update 2026-10-19:** the explicit controller `admit_one_reserved`
 composes Store claim/budget/outbox admission and canonical planned effect
 identity. Current opaque authority is rechecked inside the writer and before

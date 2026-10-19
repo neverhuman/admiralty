@@ -2198,3 +2198,59 @@ or extra CI cleanup lane is introduced. Current scoped CLI5/diagnostic21 checks
 remain scoped evidence; neither this failure nor source merge changes parent
 acceptance. Root's existing30-minute automation now contains the actual source,
 deployed proof, SC155 consumed failure, SC156 coverage and next budget-loop task.
+
+### 08:41Z — actual budget-backed loop component and Linux proof
+
+Root claimed only the loop source/shared registration and exact documentation
+at base0970118. The initial Luna test lane hit model capacity after drafting the
+new sibling test module; a separate existing review agent finished that same
+preserved test-only worktree. No extra Screen, runtime/provider fallback or paid
+upgrade was introduced. Root retained ownership of implementation/fixture edits.
+
+Code84cbf43e9d37c8b2fa4648a04de745fb05113126 adds explicit
+`NativeBudgetAdmission` and `admit_reserved`, preserving ordinary compatibility.
+It rejects source/real-host incarnation, actual reservation/scope/amount/
+correlation and exact launch-digest mismatches before custody transfer. Retained
+reserved retries reauthorize the original opaque proof/current writer and read
+policy. Scoped dispatch replays the same already-claimed effect and receipt
+without a second debit, then checks the current reservation again immediately
+before executor invocation. Unknown dispatch never requeues or releases liability.
+
+Independent review found three concrete issues before integration: the durable
+budget version is the global ledger CAS successor rather than the resource
+plan's version; incompatible producer/host incarnation must return preparation
+before registration; and RequestStop can intervene at the second clock sample.
+All three were repaired. The receipt distinguishes static review findings from
+executed tests; no fabricated failing-before run is claimed. The new tests use
+real Store transactions, actual Git/preparation and an unconfigured ResourceGate,
+so an executor call is explicitly distinct from a child/provider launch.
+
+The [component receipt](../../../receipts/integration/native-budget-task-loop-20261019T0841Z.json)
+pins all16targeted cases passing on Root Mac8.70seconds and actual Linux15.28
+seconds;8new cases are a subset, not an additional acceptance count. Linux ran
+once08:36:57–08:39:04 under fleetcap with fresh outside/inside/after gates,
+jobs1/testthreads1/private TMP/unique target and unchanged assertions/overflow.
+Only an old owned build cache was copied; all four workspace packages were
+cleaned in the new target before compilation. Exact archive1ff50f54 and raw
+log1ff1d875 are retained. Helper strict Server all-target Clippy used identical
+code hashes; workspace fmt/diff checks pass. Source/test/qualified-doc review is
+clear. Original compile errors and a recovered test's wrong clock-count assertion
+remain archived; only that expectation changed, with production guards intact.
+
+A separate [read-only SC155 spool inspection](../../../receipts/integration/native-sc155-spool-inspection-20261019T0840Z.json)
+at08:35 finds6contiguous frames and partial thread/turn-start plus one completed
+agent-message item. It finds no completed turn, model/usage or final producer
+watermark. Physical journal EOF cannot reconstruct producer EOF/closure, and
+absence of fixed error markers is no cause/absence proof. No raw prompts, argv,
+credential or provider text is emitted; no new run/grant/retry/service control.
+The reason for the120-second wait remains unestablished.
+
+Root's08:31 read still observes the samefcd primary process/start identities and
+health200/executionfalse;08:39 finds no retired owned Python matches. The full
+15hash proof retains its original07:59 time; no new source deployment/browser
+qualification is inferred. Broader749 Rust CI later fails a different CLI case,
+89pass/1fail: owned Node guard smoke exceeded deadline. Its raw hash and earlier
+browser19pass/1axe failure remain in the single backlog, with no causal resource
+claim, guard relaxation, rerun or new cleanup lane. Source implementation keeps
+moving. No production issuer, global capacity, provider, settlement, recovery,
+physical-start linearization or full P03/P10/P14/WO/release acceptance is claimed.

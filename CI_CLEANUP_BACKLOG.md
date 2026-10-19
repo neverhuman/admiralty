@@ -13,6 +13,13 @@ a readiness timeout or proof of resource pressure. Raw failed log
 `/private/tmp/adm-ci-749-browser-39220795727.log` SHA-256
 `5eb101d06eb5e6473c9ad04557e4be696691a7a03931dec1c2833f04177594a2`
 is retained.749 Rust workflow39220795716 was still in progress at08:14Z.
+It later failed a different concrete case: CLI89pass/1fail,
+`staged_real_generated_closure_imports_and_validates_all_public_roots` reports
+`owned Node guard smoke exceeded deadline`. Raw
+`/private/tmp/adm-ci-749-rust-39220795716.log` SHA-256
+`6c212f5a000076b88e8f077a33a6b618ed1b16c28258302017d6d648274faee9`
+is preserved. This is neither the old capture deadline nor the repaired intake
+directory error; no cause or resource-pressure attribution is established.
 Preserve actual visible-name/accessible-name semantics and pinned axe assertions;
 no additional cleanup lane, rerun, cancellation or shared-runner control.
 

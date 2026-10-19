@@ -6,6 +6,16 @@ This additive update retains the full audit below at its original source/time.
 Only P00/P01 are fully accepted; all30 other parents remain open. Do not rebuild
 the following later integrated components or infer that they are live:
 
+**08:41Z component addendum:** source84cbf43e9d37c8b2fa4648a04de745fb05113126
+composes explicit budget-backed native-loop admission/retry/dispatch with the
+existing atomic Store/controller path. Actual Mac16/16 and Linux16/16 are the
+same scoped cases on two platforms, including8new budget cases; strict Server
+all-target Clippy and independent review pass. The receipt
+`native-budget-task-loop-20261019T0841Z.json` preserves original failures and
+Luna-capacity test-lane recovery. This closes a composition gap, not production
+issuer/global-model-capacity/provider/settlement/recovery or fullP14 acceptance.
+Current source merge/deployment remains recorded separately in EXECUTION.
+
 **07:59Z correction to the older snapshots below:** PR115/116 are merged into
 `fcd35569ccfed7429e1bb4b22dfcb7dc142f9700`; an independent read now verifies
 that exact source running on the primary ports, all15manifest/file/proc hashes,
