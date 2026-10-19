@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T07:59:37.516Z",
+  "source_revision": "fcd35569ccfed7429e1bb4b22dfcb7dc142f9700",
+  "verification": "independent read-only deployment inspection under fleetcap; manifest plus15 streamed file hashes and process executable hashes; bounded public endpoints",
+  "gate": {
+    "observed_utc": "2026-10-19T07:59:36.480Z",
+    "cpu_percent": 77.76821347523281,
+    "mem_available_bytes": 41210982400,
+    "controller_active": true,
+    "freeze": "0"
+  },
+  "manifest_sha256": "9da2a9338fb4be235acc47c67a19ab39dd0e33ad4bb1c1219196b55b15b0c10c",
+  "manifest_entries": 15,
+  "files": [
+    {
+      "path": "react/index.html",
+      "sha256": "5d97b660b056ea9e5b8dfc9d45e8ebf1be371b28bb6b9955d3c23650c2ca7108",
+      "bytes": 539
+    },
+    {
+      "path": "react/status.json",
+      "sha256": "ccb1d8c8a8e9eb66977141ff24868f60414d6b8904d0894f25bf750f42cb2f42",
+      "bytes": 711103
+    },
+    {
+      "path": "react/brand/admiralty-source.png",
+      "sha256": "86f3f016a3d2562cc82da3191ce472e77e81726a65f69ccb4a840145e89aaef9",
+      "bytes": 909933
+    },
+    {
+      "path": "react/brand/grokbot.png",
+      "sha256": "d0c1fb552fa44d28af99e4a8918ad43960e4b5c15db05d1ef4331dad66d206e2",
+      "bytes": 960632
+    },
+    {
+      "path": "react/assets/CommandJourneys-DK6T-aIV.js",
+      "sha256": "08ea3358d5778beaf8d0a6e79dd154ceb0da3aa852a4917f59a1aa577d7571aa",
+      "bytes": 84506
+    },
+    {
+      "path": "react/assets/Intake-CUnTgt1t.js",
+      "sha256": "e78093f676a60e522e1aa6400cc1a199a91923f6193e6d4d6937ad17785d3675",
+      "bytes": 100955
+    },
+    {
+      "path": "react/assets/LiveViews-CV9iWv1b.js",
+      "sha256": "a144fe5f81963c482a44329768a825310fef55690bd7d15b2b241c916f89c0cb",
+      "bytes": 80713
+    },
+    {
+      "path": "react/assets/LiveViews-DgA8tN2b.css",
+      "sha256": "5687219571507edddc4698a65e3fab13cb49a760173b37d84b5bf97e90f47580",
+      "bytes": 24328
+    },
+    {
+      "path": "react/assets/index-BV0BmOq_.js",
+      "sha256": "b7de58812426105c013793a6c474949d1e1739e148f61361419f21f690c18463",
+      "bytes": 498640
+    },
+    {
+      "path": "react/assets/index-C0ohzedu.css",
+      "sha256": "00a0e0f6944bb2515c32e5df7130ad6ec37a25f278047e995ae8c273f0197a42",
+      "bytes": 60691
+    },
+    {
+      "path": "dashboard/index.html",
+      "sha256": "28d8a78eb67f744ae849ade1f4a94948a1ae816891e3397241e6381e186075ed",
+      "bytes": 57357
+    },
+    {
+      "path": "bin/admiralty",
+      "sha256": "57636b5e074df85ca38dbe0fc52942cf007c141df902cf185b5875cc05302bc7",
+      "bytes": 14826808
+    },
+    {
+      "path": "bin/admiralty-node",
+      "sha256": "26d1bb54b0425f42c096f2645be924ffb37af9294e2744852bb72f086cb53162",
+      "bytes": 340592
+    },
+    {
+      "path": "bin/admiralty-observe",
+      "sha256": "d0b33a9b43043179ea1b4934797eeaacdd1345ce98c5fb4e51e08b1fe3ea6502",
+      "bytes": 3214888
+    },
+    {
+      "path": "bin/admiraltyd",
+      "sha256": "d74fb86508114eb3a5df857fa45f4ec1e99fe18001ff039607e43112c4ef1292",
+      "bytes": 11635032
+    }
+  ],
+  "processes": [
+    {
+      "name": "admiraltyd",
+      "pid": 3419362,
+      "exe": "/home/ubuntu/admiralty-v2-build/deployments/fcd35569ccfed7429e1bb4b22dfcb7dc142f9700/bin/admiraltyd",
+      "start_ticks": "58119247",
+      "sha256": "d74fb86508114eb3a5df857fa45f4ec1e99fe18001ff039607e43112c4ef1292"
+    },
+    {
+      "name": "admiralty-observe",
+      "pid": 3417759,
+      "exe": "/home/ubuntu/admiralty-v2-build/deployments/fcd35569ccfed7429e1bb4b22dfcb7dc142f9700/bin/admiralty-observe",
+      "start_ticks": "58119075",
+      "sha256": "d0b33a9b43043179ea1b4934797eeaacdd1345ce98c5fb4e51e08b1fe3ea6502"
+    }
+  ],
+  "health": {
+    "native_execution_qualified": false,
+    "status": "ok",
+    "version": "0.1.0"
+  },
+  "http": {
+    "ui": 200,
+    "legacy": 200,
+    "redirect_18891": 307
+  },
+  "legacy": {
+    "bytes": 1501898,
+    "collector": {
+      "acceptance_authority": false,
+      "duration_ms": 15143,
+      "implementation": "rust",
+      "model_turns": 0,
+      "observed_utc": "2026-10-19T07:59:23Z",
+      "read_only_sources": true,
+      "version": "0.1.0"
+    },
+    "generated_utc": "2026-10-19T07:59:19Z",
+    "history_displayed_rows": 256,
+    "history_retained_rows": 480,
+    "first_displayed_history_timestamp": 1792364791,
+    "last_displayed_history_timestamp": 1792396679,
+    "original_first_history_timestamp": null,
+    "history_note": "Displayed suffix timestamps observed directly; original first stored timestamp was not read or inferred.",
+    "projects": [
+      "dope",
+      "jarambit",
+      "joil",
+      "jopedime"
+    ]
+  },
+  "ui_static": {
+    "index_bundle": "react/assets/index-BV0BmOq_.js",
+    "index_bundle_sha256": "b7de58812426105c013793a6c474949d1e1739e148f61361419f21f690c18463",
+    "intake_bundle": "react/assets/Intake-CUnTgt1t.js",
+    "intake_bundle_sha256": "e78093f676a60e522e1aa6400cc1a199a91923f6193e6d4d6937ad17785d3675",
+    "controls_not_recounted": true,
+    "browser_qualification": false
+  },
+  "old_deployment_pids": [
+    {
+      "pid": 3152134,
+      "present": false
+    },
+    {
+      "pid": 3151000,
+      "present": false
+    },
+    {
+      "pid": 1485387,
+      "present": false
+    },
+    {
+      "pid": 1483709,
+      "present": false
+    }
+  ],
+  "retired_owned_python_pids": [],
+  "native_execution_qualified": false,
+  "no_service_control": true,
+  "no_database_config_source_mutations": true,
+  "outside_gate": {
+    "cpu_percent": 77.1757,
+    "mem_available_bytes": 42369613824,
+    "controller_active": true,
+    "freeze": "0"
+  },
+  "invocation": {
+    "started_utc": "2026-10-19T07:59:33.609Z",
+    "ended_utc": "2026-10-19T07:59:37.531Z",
+    "status": 0,
+    "signal": null,
+    "error_code": null,
+    "one_invocation": true,
+    "no_retry": true,
+    "unit_name_prefix": "jr-adm-fcd-proof-tL9yFH",
+    "script": "verify-fcd.cjs",
+    "scope": "read-only deployed artifacts/processes/public endpoints; no build/provider/service control"
+  },
+  "verifier": {
+    "base": "/private/tmp/admiralty-verify-a9e.cjs",
+    "base_sha256": "087a5ef03c5a1f15c188da3036d4124de6752b37f9ba873e4804c5ca72169e5e",
+    "script_sha256": "257853cc889bcad6929e07a77d64d9124635561c1b11600ebe7d4af135d9a0d2",
+    "revision": "fcd35569ccfed7429e1bb4b22dfcb7dc142f9700",
+    "adaptation": "Only revision/manifest pin/current PIDs and prior-PID absence list changed",
+    "no_service_control": true
+  },
+  "deployer_handoff_reference": {
+    "receipt": "/home/ubuntu/xbabe2_kicker/captains-20261017/ADMIRALTY_NATIVE_FCD35562_DEPLOY_RECEIPT_20261019T0736Z.json",
+    "handoff": "/home/ubuntu/xbabe2_kicker/captains-20261017/COMMODORE_DEPLOY_FCD35562_AND_SC155_SC156_ACK_20261019T0748Z.md",
+    "claimed_cutover_utc": "2026-10-19T07:42:20Z",
+    "role": "read-only reference for exact manifest/revision/PID pins; actual bytes/processes/endpoints independently checked"
+  },
+  "raw_artifacts": [
+    {
+      "path": "/private/tmp/adm-fcd-independent-tL9yFH/stdout.json",
+      "bytes": 5447,
+      "sha256": "a749da2277961d49e1c680e1f5aa5ffb25e487d70580df6d586c8c48e78e5cfc"
+    },
+    {
+      "path": "/private/tmp/adm-fcd-independent-tL9yFH/stderr.log",
+      "bytes": 307,
+      "sha256": "99e7d667332428af0429c29b41bd3e5ab607aba23af2468453e43315890702e7"
+    },
+    {
+      "path": "/private/tmp/adm-fcd-independent-tL9yFH/invocation.json",
+      "bytes": 376,
+      "sha256": "26f07d3ac82e19bfca5f9662dd30f0411e03f413ead51cf2b4acd451eb18a618"
+    },
+    {
+      "path": "/private/tmp/adm-fcd-independent-tL9yFH/script-source.json",
+      "bytes": 408,
+      "sha256": "8a3197200d0597d6eb85c545f9e4f55f4e81de617888c0534a9eb976f8e92eb0"
+    },
+    {
+      "path": "/private/tmp/adm-fcd-independent-tL9yFH/verify-fcd.cjs",
+      "bytes": 7487,
+      "sha256": "257853cc889bcad6929e07a77d64d9124635561c1b11600ebe7d4af135d9a0d2"
+    }
+  ],
+  "limits": {
+    "browser_qualification": false,
+    "controls_recounted": false,
+    "source_or_publisher_authentication": false,
+    "general_coding_execution_qualified": false,
+    "production_admission_or_intake_grant_qualified": false,
+    "full_parent_acceptance": false,
+    "provider_turns_started": 0,
+    "service_control": false,
+    "repository_source_edits": false,
+    "no_CLI_qualification_area_access": true
+  }
+}

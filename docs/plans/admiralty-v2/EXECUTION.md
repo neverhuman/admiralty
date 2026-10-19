@@ -2079,3 +2079,100 @@ Root integrated Luna candidate6727ac2 and registered the actual CLI on code9da94
 PR115 exact d225c8c was approved by neverhumanbot07:26:36Z and merged07:26:56Z to main03989ae76f93f38f6e3d2a63619c39b8fde74989. Root rebased the budget component to codee766ce6af29beb141568a7f07b86ad3b0e86153d. Actual reservation journal/atomic claim15 cases, lineage helper1, controller9 and composed CLI5 pass; Store/Server all-target strict Clippy and fmt pass. Separate source review cleared repaired bounds, immutable/reverse bindings, historical retry and final incident authorization. Original controller UnknownExposure fixture failure remains archived; known fixture budgets repaired it without relaxing the reducer. Evidence: [native-durable-admission-20261019T0730Z.json](../../../receipts/integration/native-durable-admission-20261019T0730Z.json). No production issuer/global slots/provider/settlement/recovery/general execution or full P03/P10/P14 acceptance.
 
 Fresh actuala9e CI browser passed, contracts/fmt/strict Clippy passed; Rust unit run86pass/1controlled-capture-deadline failure/2ignored is retained in the single CI backlog. No additional cleanup lane/rerun. Read-only07:09Z primary observation remains6395 native binaries, healthok/executionfalse and no retired owned Python; both actual Gemini4Argon supervisor Screens show quota errors. No deploy handoff, service control, provider grant or new provider turn. Root source continues independently; soleCommodore owns latest-source deployment.
+
+### 07:59Z — merged admission deployed, authority correction and failed diagnostic
+
+PR116 exactd38187af was approved by actual neverhumanbot07:30:58Z and merged
+07:31:17Z to `fcd35569ccfed7429e1bb4b22dfcb7dc142f9700`. Both115/116 are
+merged with their component scopes intact. Root's07:33/07:36 rollout CAS receipts
+archive prior bytes, verify12artifact hashes and preserve all32parent statuses,
+criteria, existing evidence and producer/source/history clocks. The second CAS
+corrects unsupported deployment wording only; it grants no authority.
+
+The newer written06:47Z SC-DEC-155/156 order was discovered after the previous
+snapshot. It permits one exact fresh diagnostic and delegates serialized backup
+deployment to885617.adm_p18a_conflicts while2062267Commodore is quota blocked.
+It supersedes the earlier no-handoff/no-new-route statements. Root does not
+control primary services. The backup Screen actually shows Luna medium with
+pending input/menu; root leaves written files without overwriting that input or
+spamming quota-dead supervisors. No requested model is relabelled as observed.
+
+Commodore deployedfcd at07:42:20Z. The [independent primary proof](../../../receipts/integration/native-fcd35569-independent-20261019T0800Z.json)
+at07:59:37Z verifies all15manifest/file hashes, actual daemon3419362/start58119247
+and observer3417759/start58119075 executable hashes, UI/feed/health200 and18891
+redirect307. Rust producer reports0model turns;256history rows displayed/480
+retained. Original first history time and new browser/control counts were not
+measured. Same contrast-repaired intake/index bundle hashes are preserved.
+Prior deployment PIDs and retired owned Python matches are absent. Native
+execution remains false; root performed no service control.
+
+SC155 was consumed exactly once on a fresh private fixture/request, unchanged
+CPU0,1/512MiB/Tasks32/120s/concurrency1, actual CLI/auth metadata and fleetcap
+gates. The [failure receipt](../../../receipts/integration/native-sc155-diagnostic-failure-20261019T0759Z.json)
+pins6e binary63ff88d6 and request98dd59dc. Run exited17 at07:48:39Z: dispatch
+not durably acknowledged; source unchanged. Read-only07:56 inspection finds
+durable outbox unknown, execution deadline elapsed and recovery retained, no
+receipt. Same systemd invocation timed out, MainPID0/recordedPID absent, no
+current cgroup identity. Retained CPU/memory counters are advisory; provider
+turn/model/usage/billing and resource closure remain unknown. No completion
+observations were reached. A scratch reader's sysfs-size mistake is preserved
+separately and repaired; it was not an actual fleet-gate breach. This consumed
+grant/fixture is never retried. An isolated source lane adds diagnostics before
+Held exits; it has no new provider authority.
+
+Exactfcd browser39216521433 passes; Rust39216521388 instead exposes a real new
+CLI preview directory-permission defect,2cases pass/3fail. Original raw failure
+hash is retained on the single backlog. A disjoint Luna repair uses atomic0700
+creation and child-umask002 cases; independent source review is clear, Mac5/5
+and strict checks pass. Exact Linux qualification then passed all5actual binary
+cases at08:02:45Z in one fresh owned fleetcap target with jobs1/private TMP,
+unchanged assertions/overflow and child umask002. The [repair receipt](../../../receipts/integration/native-intake-cli-linux-repair-20261019T0804Z.json)
+pins source7f203848/archive404b2a05 and complete logbeffc690; outside/inside/after
+gates are retained. Mac checks are worker-captured output, not fabricated raw
+log hashes or bot-executed checks. The older failed hosted run stays failed.
+No Store guard, shared umask, deadline or runner setting is changed. OnlyP00/P01
+are accepted; production issuers, global slots, provider/context/closure,
+settlement/recovery and remaining work-order/release journeys remain open.
+
+### 08:08Z — composed Held diagnostics and reviewed rollout correction
+
+Root integrated the example candidate7cadfd49 and a narrow read-only
+`NativeTaskLoop::pending_diagnostics` accessor on code22153c4b. The
+[composition receipt](../../../receipts/integration/native-held-dispatch-diagnostics-20261019T0810Z.json)
+records all21actual example cases passing11.21seconds, including6new cases;
+strict Server all-target Clippy and workspace fmt pass. Worker full21 is a
+separate overlapping check, not21additional independent cases. Source/artifact
+red-team review is clear. Original compilation failures remain pinned.
+
+Held/Idle/typed-error paths retain a bounded32KiB create-only0600 diagnostic
+before exit: actual retained advisory samples, explicit missing reasons and
+hashes of at most3exact protected journal files. Raw prompts/argv/tokens/output
+are never copied; no new resource poll, process signal, reconciliation, model
+identity, billing, receipt, closure or retry authority is manufactured. Tests
+cover absent completion, numeric/missing resources, private canaries, symlinks,
+oversize input, create-only collision and malformed digest denial. No new Linux
+probe binary, provider turn or reused SC155 grant follows from these checks.
+
+The [08:05 rollout correction](../../../receipts/integration/rollout-provider-fcd-20261019T0806Z.json)
+pins exact6artifact names/digests/sizes and syncs archived prior bytes/directories
+before sole-writer compare/rename. It appends onlyP08/P09/P31 evidence, preserving
+every parent status/criterion, all original evidence and producer/source/history
+objects. Current rollout SHA is
+`7a40edc0858d544a90c4c692a9499ea33de70e5ba45ccc246ee651b84d0fc0b3`.
+The current reference now distinguishes actual primaryfcd, SC155's failed
+consumed diagnostic, explicitSC156 coverage and actual Linux5-case CLI repair.
+Two pre-execution review findings (exact manifest inclusion and preimage sync)
+were repaired and independently cleared before the mutation. No parent promoted.
+
+Next ready source packet: compose the existing atomic budget/controller path
+with explicit optional NativeTaskLoop admission and frozen retry state. Read
+`controller::{planned_launch_intent,admit_one_reserved}`, Store
+`admission_reservations` and current loop phase/custody tests first. Root owns
+the loop file/exports; a separate lane may own new focused tests only after its
+interface is frozen. Preserve ordinary compatibility mode, current writer
+authority, command/source/CAS/effect bindings and unknown liabilities. Exact
+recorded retries must reauthorize current budget authority; DispatchHeld must
+never be reset to queued. Keep resource permit/plan reservation separate from
+budget proof, and do not install production issuers/global capacity by adding
+this composition seam. Validate actual nonzero atomic retry/revoke/collision,
+rollback/registration custody and unknown-dispatch cases before any activation.

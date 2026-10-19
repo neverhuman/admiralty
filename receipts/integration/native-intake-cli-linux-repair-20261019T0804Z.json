@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T08:04:06.120Z",
+  "scope": "Actual offline intake preview private directory creation under umask002; scoped feature repair, not full CI/parent acceptance",
+  "source_commit": "7f203848ebc69c0bfb4d0a5594ff10cd956e2be0",
+  "worker_candidate": "87f685220a9bc3652d995ca0cdb9ff2f7a726f6e",
+  "base": "fcd35569ccfed7429e1bb4b22dfcb7dc142f9700",
+  "files": [
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-cli/src/work_order_intake.rs",
+      "bytes": 12305,
+      "sha256": "3ef74b2d29c115c3af2d454bd9d1c31e5ceec346078bf2bfff6f6b6930798e1b",
+      "repo_path": "crates/admiralty-cli/src/work_order_intake.rs"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-cli/tests/work_order_intake_cli.rs",
+      "bytes": 20423,
+      "sha256": "60779f1f635e99fd46166eef5f46c4f03444808e296f8f0d1bf209a579088eb2",
+      "repo_path": "crates/admiralty-cli/tests/work_order_intake_cli.rs"
+    }
+  ],
+  "original_failure": {
+    "workflow": "39216521388",
+    "actual_passed": 2,
+    "actual_failed": 3,
+    "error": "database parent must not be group/world writable",
+    "artifact": {
+      "path": "/private/tmp/adm-ci-fcd-rust-39216521388.log",
+      "bytes": 63474,
+      "sha256": "4dc84f161beadee0617c127b4f06d03990891299f3052f870ce207cfdf391993"
+    }
+  },
+  "change": "Pinned tempfile Builder.permissions0700 creates newly owned scratch atomically; child shell builtin umask002 preserves argv and tests production binary, no shared/global umask or Store guard relaxation",
+  "checks": [
+    {
+      "environment": "ActualLinuxxbabe2",
+      "command": "cargo test -p admiralty-cli --locked --test work_order_intake_cli -- --test-threads=1",
+      "passed": 5,
+      "failed": 0,
+      "filtered_out": 0,
+      "raw": {
+        "path": "/private/tmp/adm-cli-linux-7f20384.log",
+        "bytes": 5259,
+        "sha256": "beffc690244c001a5d85048d13e296ebe1cda6898db15df64dce9d7d9cfdf7b1"
+      },
+      "result": {
+        "path": "/private/tmp/adm-cli-linux-7f20384.json",
+        "bytes": 2644,
+        "sha256": "eb3538194bd1c232a0447a42746990e56d4964c427147c0ac3e42d6fbb5823e5"
+      },
+      "invocation": {
+        "source": "7f203848ebc69c0bfb4d0a5594ff10cd956e2be0",
+        "started_utc": "2026-10-19T07:57:33.017Z",
+        "finished_utc": "2026-10-19T08:02:45.130Z",
+        "outer": {
+          "observed_utc": "2026-10-19T07:57:32.731Z",
+          "cpu_percent": 69.0786375765186,
+          "mem_available_kib": 41438648,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        },
+        "inside_in_log": true,
+        "archive_sha256": "404b2a0583957e1d2ab18c1ccc73c5c93337e6ef5cd26548fa5e5a050689f803",
+        "code": 0,
+        "signal": null,
+        "error": null,
+        "log_sha256": "beffc690244c001a5d85048d13e296ebe1cda6898db15df64dce9d7d9cfdf7b1",
+        "log_bytes": 5259,
+        "tail": [
+          "   Compiling matchit v0.8.4",
+          "   Compiling axum v0.8.9",
+          "   Compiling miniz_oxide v0.9.1",
+          "   Compiling chrono v0.4.45",
+          "   Compiling admiralty-store v0.1.0 (/home/ubuntu/admiralty-v2-build/intake-cli-source-7f20384-20261019T0759Z/crates/admiralty-store)",
+          "   Compiling clap v4.6.7",
+          "   Compiling filetime v0.2.29",
+          "   Compiling tar v0.4.46",
+          "   Compiling flate2 v1.1.10",
+          "   Compiling admiralty-server v0.1.0 (/home/ubuntu/admiralty-v2-build/intake-cli-source-7f20384-20261019T0759Z/crates/admiralty-server)",
+          "   Compiling admiralty-cli v0.1.0 (/home/ubuntu/admiralty-v2-build/intake-cli-source-7f20384-20261019T0759Z/crates/admiralty-cli)",
+          "    Finished `test` profile [unoptimized] target(s) in 5m 06s",
+          "     Running tests/work_order_intake_cli.rs (target-linux/debug/deps/work_order_intake_cli-dfbf3e6ba7f0ac28)",
+          "",
+          "running 5 tests",
+          "test configured_wrong_scope_revoked_token_and_oversize_input_fail_closed ... ok",
+          "test duplicate_command_uses_service_query_and_returns_bounded_coverage ... ok",
+          "test malformed_private_json_never_echoes_source_or_credentials ... ok",
+          "test preview_capture_replay_and_scoped_show_preserve_unicode_without_dispatch ... ok",
+          "test record_replay_exact_revision_and_duplicate_index_are_scoped ... ok",
+          "",
+          "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.00s",
+          "",
+          ""
+        ],
+        "unique_target": "/home/ubuntu/admiralty-v2-build/intake-cli-source-7f20384-20261019T0759Z/target-linux",
+        "private_tmp": "/home/ubuntu/admiralty-v2-build/intake-cli-source-7f20384-20261019T0759Z/private-tmp",
+        "jobs": 1,
+        "test_threads": 1,
+        "provider_run": false,
+        "after": {
+          "observed_utc": "2026-10-19T08:02:46.388Z",
+          "cpu_percent": 65.23682559598494,
+          "mem_available_kib": 35454832,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        }
+      }
+    },
+    {
+      "environment": "Macworker",
+      "passed": 5,
+      "failed": 0,
+      "clippy": "all-targets -D warnings passes",
+      "fmt": "passes",
+      "raw_output": "Captured tool output only, no saved raw logs or fabricated hashes; no unchanged-suite rerun"
+    }
+  ],
+  "independent_review": {
+    "status": "CLEAR",
+    "reviewer": "Separate Codex source reviewer; not bot test execution",
+    "pinned_tempfile_version": "3.27.0",
+    "findings": "Mode applied during DirBuilder creation; no postcreation exposure, no input/authority guard change; Unix child umask wrapper preserves arguments, nonUnix path unchanged"
+  },
+  "limits": {
+    "full_ci_green": false,
+    "production_installed": false,
+    "production_issuer_activated": false,
+    "provider_execution": false,
+    "full_parent_acceptance": false,
+    "store_guards_unchanged": true,
+    "source_archive_sha256": "404b2a0583957e1d2ab18c1ccc73c5c93337e6ef5cd26548fa5e5a050689f803",
+    "linux_unique_target": "/home/ubuntu/admiralty-v2-build/intake-cli-source-7f20384-20261019T0759Z/target-linux",
+    "one_capped_invocation": true,
+    "jobs": 1,
+    "test_threads": 1,
+    "debug_symbols_only_disabled": true,
+    "assertions_and_overflow_unchanged": true
+  }
+}

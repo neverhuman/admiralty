@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T07:59:15.787Z",
+  "scope": "One SC-DEC-155 authorized Linux coding diagnostic; failed, not qualification",
+  "source_commit": "6e1c8f577bc7a4cf95251941a30f1ac701882423",
+  "binary_sha256": "63ff88d6a32f0546d4aec528e38bd473348e6ebf033da9878082b6173254fe56",
+  "authority": {
+    "decision": "SC-DEC-155",
+    "order": "/home/ubuntu/xbabe2_kicker/captains-20261017/SC_ACK_PROVIDER_ROUTE_PERMIT_AND_COMMODORE_HANDOFF_20261019T0647Z.md",
+    "request_sha256": "98dd59dcd087760bd797eadde890c2e653b75ab212604bf28d22c246d0519c86",
+    "request_bytes": 17855,
+    "grant_consumed": true,
+    "consumption_marker": "/home/ubuntu/xbabe2_kicker/captains-20261017/CODEX_SC155_CONSUMED_ONCE.json",
+    "reusable": false
+  },
+  "fixture": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-sc155-20261019T0745Z/fixture",
+  "limits": {
+    "parent": "fleetcap/run-capped",
+    "cpu_set": [
+      0,
+      1
+    ],
+    "memory_max_bytes": 536870912,
+    "max_tasks": 32,
+    "deadline_seconds": 120,
+    "max_concurrency": 1,
+    "caps_changed": false,
+    "paid_upgrade": false,
+    "existing_subscription_context_only": true,
+    "network_or_credential_isolation_claimed": false
+  },
+  "execution": {
+    "finished_utc": "2026-10-19T07:48:39.826Z",
+    "code": 17,
+    "signal": null,
+    "error": null,
+    "request_sha256": "98dd59dcd087760bd797eadde890c2e653b75ab212604bf28d22c246d0519c86",
+    "grant_consumed": true,
+    "provider_turn_or_acceptance_not_inferred_from_exit": true
+  },
+  "error": "Native task-loop proof did not qualify: dispatch not durably acknowledged; retain owned unit/loop journals, no retry\n",
+  "source_changed": false,
+  "base_sha256": "0c1d2bae173666107d2fc1af6f452202f6ca4aa408fe26340f2b10e6cbf35a1f",
+  "workspace_sha256": "0c1d2bae173666107d2fc1af6f452202f6ca4aa408fe26340f2b10e6cbf35a1f",
+  "actual_read_only_inspection": {
+    "outbox": {
+      "id": 1,
+      "state": "unknown",
+      "fence": 1,
+      "lease_deadline": 1792396119,
+      "unknown_reason": "runtime outcome requires reconciliation: execution deadline elapsed; recovery handle retained",
+      "has_receipt_ref": 0
+    },
+    "unit": {
+      "name": "adm-resource-8ab4585c122f25b8fc9a5f516a5177d2.service",
+      "query_exit_code": 0,
+      "query_signal": null,
+      "query_error": null,
+      "fields": {
+        "MainPID": "0",
+        "Result": "timeout",
+        "ExecMainPID": "3701880",
+        "ExecMainCode": "2",
+        "ExecMainStatus": "15",
+        "Slice": "admiralty-native-probe.slice",
+        "ControlGroup": "",
+        "MemoryCurrent": "[not set]",
+        "MemoryPeak": "9826304",
+        "CPUUsageNSec": "34374752000",
+        "TasksCurrent": "[not set]",
+        "Id": "adm-resource-8ab4585c122f25b8fc9a5f516a5177d2.service",
+        "LoadState": "loaded",
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "InvocationID": "3b74e17811b74da988cdb1a47158cd2a"
+      },
+      "invocation_matches": true
+    },
+    "recorded_process": {
+      "recorded_pid": 3701880,
+      "recorded_start": "58145246",
+      "present": false
+    },
+    "resource_cgroup": {
+      "observational_only": true,
+      "current_control_group": null,
+      "metrics": {},
+      "unavailable_reason": "no_current_identity_matched_cgroup"
+    },
+    "completion_files": [
+      {
+        "name": "resource-observation.json",
+        "present": false
+      },
+      {
+        "name": "provider-observation.json",
+        "present": false
+      }
+    ]
+  },
+  "interpretation": {
+    "runtime_attempted": true,
+    "durable_started_state": "running",
+    "dispatch_acknowledged": false,
+    "completed_provider_turn": "unknown",
+    "observed_provider": "unknown",
+    "observed_model": "unknown",
+    "provider_usage": "unknown",
+    "billing": "unknown",
+    "closure_authority_created": false,
+    "owned_unit_currently_active": false,
+    "recorded_pid_currently_present": false,
+    "all_descendants_or_resource_closure_proved": false,
+    "systemd_counters": "retained invocation-matched service summary only; advisory, not fresh cgroup-FD readings or billing",
+    "failure_cause_supported": "Native runtime execution deadline elapsed; controller durably retained unknown with no receipt. Same systemd invocation reports timeout/signal15. Underlying provider progress or reason for reaching deadline is not established.",
+    "resource_observation_disposition": "completion observation not reached; prepared and observed journals contain no resource advisory samples",
+    "usage_unavailable_reason": "no completed provider observation or authenticated transcript; current ControlGroup empty prevents identity-bound cgroup reads"
+  },
+  "reader_failures": {
+    "attempts": [
+      1,
+      2
+    ],
+    "actual_fleet_gate_failure_established": false,
+    "cause": "Scratch bounded reader allocated stat.size bytes; sysfs cgroup.freeze reports size0 despite content, producing empty string and a false deny. Failed evidence preserved. Repaired reader streams with byte limits; final actual fleet gate admitted.",
+    "unit_prefix_repaired_before_unit_query": true
+  },
+  "identity": {
+    "requested_model": "gpt-6-luna medium",
+    "observed_model": null,
+    "provider_turn_complete": null,
+    "usage": null,
+    "billing": null
+  },
+  "qualification": {
+    "general_native_execution": false,
+    "provider_qualified": false,
+    "store_accepted": false,
+    "full_parent_acceptance": false,
+    "closure_proved": false
+  },
+  "next": "Persist actual bounded pending diagnostics before Held exits; no retry of this fixture/grant. Any later provider attempt needs separate fresh exact authorization, metadata, nonce and registered resources.",
+  "artifacts": [
+    {
+      "path": "/private/tmp/admiralty-sc155-prepare-result.log",
+      "sha256": "0ecf7f21a57b0b2996f3b10ffb0ff9d742539a7411fe96eabc5f49b905ce448a",
+      "bytes": 1643
+    },
+    {
+      "path": "/private/tmp/admiralty-sc155-run-result.log",
+      "sha256": "dedb1a34bc683ddbe6287a061a08bc5a21c9a84685867540b0c1ff061df2ae12",
+      "bytes": 245
+    },
+    {
+      "path": "/private/tmp/admiralty-sc155-diagnostic-summary.json",
+      "sha256": "cb877adeb023b95d0aa14e435a08bcfb3826e80373c44a02ea8754f430ece588",
+      "bytes": 1248
+    },
+    {
+      "path": "/private/tmp/admiralty-sc155-authority-and-decision.log",
+      "sha256": "854f741b6582a79fdb08c18dd97727af2073423e5a612e53d609b2bc182546b0",
+      "bytes": 5645
+    },
+    {
+      "path": "/private/tmp/admiralty-sc155-inspection-summary-20261019T0757Z.json",
+      "sha256": "561ff95a2e6e0a67879a59ec4925bcd0ff959c02169967b14d9f714131c56b07",
+      "bytes": 5167
+    },
+    {
+      "path": "/private/tmp/admiralty-sc155-inspection-20261019T0757Z-final.json",
+      "sha256": "c5602aee0ec5f2759d1d63f83ec8fcaaa57fe72f5e099be5d82c18c556a468ad",
+      "bytes": 6226
+    },
+    {
+      "path": "/private/tmp/admiralty-sc155-inspection-20261019T0755Z.metadata.json",
+      "sha256": "465936792bda1fbca27afe35fb07a0b4a8e4a33959a77f6ffc035510c86c8cc5",
+      "bytes": 1650
+    },
+    {
+      "path": "/private/tmp/admiralty-sc155-inspection-20261019T0755Z-attempt2.metadata.json",
+      "sha256": "ae088edd8a84f84ae37215ebc3afd6986a2199cd90d653d84bd2d7d10beb0ce7",
+      "bytes": 2066
+    },
+    {
+      "path": "/private/tmp/admiralty-sc155-inspection-20261019T0755Z-attempt3.json",
+      "sha256": "da4554b8cdb0f3d976c99280abdad196db6c57315093a1e745843768ad129826",
+      "bytes": 5978
+    },
+    {
+      "path": "/private/tmp/admiralty-sc155-inspection-20261019T0755Z-attempt3.metadata.json",
+      "sha256": "d61c3b4c107aa5968f5d970a0af81fd7ae3ee03ca5f12e36a567eddb9f3e0159",
+      "bytes": 809
+    },
+    {
+      "path": "/private/tmp/admiralty-sc155-inspection-20261019T0757Z-final.metadata.json",
+      "sha256": "3e1c98a657af77bf8db0684b008aed1e2186a270ae16ea57d00b918f33be3d27",
+      "bytes": 801
+    }
+  ]
+}

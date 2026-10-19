@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T08:05:42.680Z",
+  "before_sha256": "0fdefa2d4f844b7c62239c23524d643a1ad3a34aed8378066d68357365ce822d",
+  "after_sha256": "7a40edc0858d544a90c4c692a9499ea33de70e5ba45ccc246ee651b84d0fc0b3",
+  "archive": "/home/ubuntu/admiralty-v2-build/receipts/rollout-corrections/20261019T080542Z",
+  "verified_manifest": [
+    {
+      "name": "native-intake-cli-linux-repair-20261019T0804Z.json",
+      "bytes": 6474,
+      "sha256": "a8d295788a247be828fbfdf5d658e45b191d9c8c5e9e80da572c4a2b4305898a"
+    },
+    {
+      "name": "native-a9e-independent-20261019T0740Z.json",
+      "bytes": 5331,
+      "sha256": "cc0b2a4ef9b067cc1396ec01afbd51a32c3aef66162426dfc5364c33ebc3ef1f"
+    },
+    {
+      "name": "native-fcd35569-independent-20261019T0800Z.json",
+      "bytes": 8304,
+      "sha256": "929dd39ea745e1a4d3bbf6383d6e8571be158e6d47f70430771b3f7eb6f049d2"
+    },
+    {
+      "name": "native-sc155-diagnostic-failure-20261019T0759Z.json",
+      "bytes": 7937,
+      "sha256": "38e892bbed2b604a39215edb50efb7df6c04388eeebf6bf6ace768c02461a021"
+    },
+    {
+      "name": "admiralty-sc155-inspection-20261019T0757Z-final.json",
+      "bytes": 6226,
+      "sha256": "c5602aee0ec5f2759d1d63f83ec8fcaaa57fe72f5e099be5d82c18c556a468ad"
+    },
+    {
+      "name": "admiralty-sc155-inspection-summary-20261019T0757Z.json",
+      "bytes": 5167,
+      "sha256": "561ff95a2e6e0a67879a59ec4925bcd0ff959c02169967b14d9f714131c56b07"
+    }
+  ],
+  "production_observed_revision": "fcd35569ccfed7429e1bb4b22dfcb7dc142f9700",
+  "production_observed_utc": "2026-10-19T07:59:37.516Z",
+  "sc155_consumed_failed_not_retried": true,
+  "sc156_serial_backup_deployment_acknowledged": true,
+  "all32_parent_statuses_and_criteria_preserved": true,
+  "unrelated_packets_byte_identical": true,
+  "old_evidence_preserved": true,
+  "producer_source_and_history_byte_identical": true,
+  "accepted": [
+    "P00",
+    "P01"
+  ],
+  "remaining_parents": 30,
+  "native_execution_qualified": false,
+  "service_control": false,
+  "provider_calls_by_reconciliation": 0
+}

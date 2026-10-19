@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T08:08:06.373Z",
+  "source_commit": "22153c4b32931bc3bfc04d391f4c499a99989d3a",
+  "worker_candidate": "7cadfd49c8ac1058b16e94727b6ace69ff6fdeb7",
+  "scope": "Preserve advisory native dispatch failure diagnostics before Held/error exit; no new qualification or execution authority",
+  "files": [
+    {
+      "repo_path": "crates/admiralty-server/examples/native_task_loop_probe.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/examples/native_task_loop_probe.rs",
+      "bytes": 140621,
+      "sha256": "d983705e4926aa5f2fe151af1871081df6ebd5c1514a4a010165599225b3a7c2"
+    },
+    {
+      "repo_path": "crates/admiralty-server/src/services/native_task_loop.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_task_loop.rs",
+      "bytes": 62417,
+      "sha256": "f8c64c14b034e211032e2bde6020ff017acd12dfd2a65e1cb08dfab072c2de72"
+    }
+  ],
+  "worker_checks": {
+    "initial": {
+      "path": "/private/tmp/adm-native-held-proof/receipt.json",
+      "bytes": 4334,
+      "sha256": "6124faa400988e468daddbaf8a29cf6f8f3963d6800361405ff7352a42508825"
+    },
+    "full21": {
+      "path": "/private/tmp/adm-native-held-proof/full-suite-receipt.json",
+      "bytes": 1119,
+      "sha256": "cee4f06455d45ef85b939daea39de34c4409a8c43b290bfd047cc361fb345783"
+    },
+    "initial_source_tree": "8e5d6c5282837bd9180523aff7cf3061b289828b",
+    "raw": [
+      {
+        "path": "/private/tmp/adm-native-held-proof/tests-initial.log",
+        "sha256": "7b68a9158d5eed25fd168f9c25b4f1815f525a36587a1e5e9d65bc1471b85866",
+        "bytes": 7177
+      },
+      {
+        "path": "/private/tmp/adm-native-held-proof/tests-final.log",
+        "sha256": "e84f9ec3bb44018e400d464323e3e75dab39201a1978b9af0955ced43c8bdf91",
+        "bytes": 1065
+      },
+      {
+        "path": "/private/tmp/adm-native-held-proof/clippy-initial.log",
+        "sha256": "e20a340eb9cf5ea062f6b476bcc52d021ee040270e0958c8fdd0c82c3ebbb737",
+        "bytes": 3390
+      },
+      {
+        "path": "/private/tmp/adm-native-held-proof/tests-final-recording.log",
+        "sha256": "39908c18baf82330712cefcd96a951046dbfd1d38bad2425d6410f0bca7ed7e5",
+        "bytes": 1065
+      },
+      {
+        "path": "/private/tmp/adm-native-held-proof/clippy-final.log",
+        "sha256": "688a2ce3101b702cb569b334102a9a7241c7ed74f4383bc570907ad715219897",
+        "bytes": 178
+      },
+      {
+        "path": "/private/tmp/adm-native-held-proof/fmt-final.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      {
+        "path": "/private/tmp/adm-native-held-proof/diff-final.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      {
+        "path": "/private/tmp/adm-native-held-proof/tests-full21.log",
+        "bytes": 2390,
+        "sha256": "a2c75aec0e3c910abdd39cfcabad697ed9aad038607360b0d4cd524f8f35a8e5"
+      }
+    ]
+  },
+  "root_composed_checks": [
+    {
+      "command": "cargo test -p admiralty-server --locked --example native_task_loop_probe -- --test-threads=1",
+      "passed": 21,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 0,
+      "new_cases": 6,
+      "new_cases_subset_of_21": true,
+      "actual_seconds": 11.21,
+      "raw": {
+        "path": "/private/tmp/adm-native-held-root-composed.log",
+        "bytes": 2348,
+        "sha256": "836deb668506aed7ba2cf591d14682bd4975d98f8f604a3fba45b27a8697e23b"
+      }
+    },
+    {
+      "command": "cargo clippy -p admiralty-server --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "raw": {
+        "path": "/private/tmp/adm-native-held-root-clippy.log",
+        "bytes": 286,
+        "sha256": "3b7c0984a73ebb172fb9e73f7ade99c5a64dd7c2112ba185569816e8ae936547"
+      }
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0
+    }
+  ],
+  "independent_review": {
+    "status": "CLEAR",
+    "kind": "Separate source and artifact review; not bot-executed tests",
+    "no_remaining_P1_P2": true
+  },
+  "behavior": {
+    "artifact": "dispatch-diagnostics.json",
+    "max_bytes": 32768,
+    "max_exact_journal_refs": 3,
+    "max_bytes_per_ref": 65536,
+    "raw_journal_contents_copied": false,
+    "create_only": true,
+    "file_mode": "0600",
+    "file_and_parent_sync": true,
+    "actual_pending_advisory_samples_only": true,
+    "new_poll_or_reconcile": false,
+    "typed_status_not_raw_errors": true,
+    "provider_model_usage_unknown": true,
+    "no_retry": true,
+    "claim_or_acceptance_authority_granted": false
+  },
+  "limits": {
+    "linux_binary_built": false,
+    "new_provider_run": false,
+    "SC155_reused": false,
+    "completion_or_resource_closure_proved": false,
+    "full_parent_acceptance": false,
+    "full_ci_green": false,
+    "production_deployment": false
+  },
+  "next": "Source-bound instrumented Linux build and separately fresh exact provider authorization remain separate; optional durable-budget-backed NativeTaskLoop admission/retry must freeze its command/proof and reauthorize recorded retries without requeueing unknown dispatch."
+}
