@@ -880,6 +880,7 @@ impl CoordinationAuthorizer for PendingPolicy {
         }
         match action {
             CoordinationAction::ReadPending => self.read && message.is_none() && source.is_none(),
+            CoordinationAction::AcknowledgePending => false,
             CoordinationAction::AcknowledgeApplication => {
                 self.acknowledge
                     && message.is_some()

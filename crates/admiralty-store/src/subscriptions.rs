@@ -32,6 +32,11 @@ pub struct Subscription {
 }
 
 impl Subscription {
+    /// Validate the bounded definition without installing membership or authority.
+    pub fn validate(&self) -> Result<()> {
+        validate(self)
+    }
+
     pub fn inbox_scope(&self) -> InboxScope {
         InboxScope {
             project_id: self.project_id.clone(),

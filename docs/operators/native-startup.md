@@ -2,7 +2,7 @@
 
 `admiraltyd` serves the React dashboard, native fleet snapshots, SSE, and the
 configured compatibility collector feed. A private native configuration enables
-operator intake and scoped agent reads. Configuration does not authorize a task
+operator intake and scoped agent communication. Configuration does not authorize a task
 process, candidate acceptance, publication, or a model invocation.
 
 Use absolute paths. Keep the configuration directory mode `0700` and each
@@ -72,6 +72,15 @@ identity and task digest rather than another project's event volume. A cached
 contract digest omits the unchanged capsule; it is not an ACK or an assignment.
 Token estimates are not measured provider token usage. Durable question history
 is explicitly reported as an outstanding requirement by this initial adapter.
+
+For a native captain–admiral exchange, an agent may additionally have explicit
+`routes` and an `acknowledge_pending` grant for its own exact inbox. `POST /send`
+constructs the sender and envelope from authenticated identity and a preinstalled
+task/revision/recipient route; `POST /ack-pending` constructs the receipt's source
+identity from that actor and a canonical request UUID. These are separate grants;
+`read_pending` alone permits neither operation. Both use durable exact retries.
+See [native coordination setup and qualification](native-coordination.md) before
+enabling them. Existing exact-message `application-ack` grants remain supported.
 
 ## Execution and recovery
 

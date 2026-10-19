@@ -31,6 +31,9 @@ pub trait CoordinationReadAuthorizer {
 pub enum CoordinationAction {
     ReadPending,
     AcknowledgeApplication,
+    /// Explicit permission to acknowledge messages in the authenticated actor's
+    /// own exact inbox. Source identity is constructed by the service.
+    AcknowledgePending,
 }
 
 /// Trusted injection boundary, not authentication inferred from request labels.
@@ -204,6 +207,10 @@ impl CoordinationCredentialAuthority {
                 match grant.action {
                     CoordinationAction::ReadPending
                         if grant.message_id.is_none() && grant.source.is_none() => {}
+                    CoordinationAction::AcknowledgePending
+                        if grant.message_id.is_none()
+                            && grant.source.is_none()
+                            && grant.scope.recipient == credential.actor => {}
                     CoordinationAction::AcknowledgeApplication
                         if grant.message_id.is_some()
                             && grant.source.as_ref().is_some_and(valid_source_identity) => {}
@@ -242,6 +249,28 @@ impl CoordinationCredentialAuthority {
                 incarnation: self.incarnation.clone(),
             })
             .ok_or(CoordinationCredentialError::Unauthorized)
+    }
+
+    pub(super) fn has_credential(&self, credential_id: &str) -> bool {
+        self.credentials
+            .iter()
+            .any(|credential| credential.credential_id == credential_id && !credential.revoked)
+    }
+
+    pub(super) fn permits_pending_ack(
+        &self,
+        actor: &AuthenticatedCoordinationActor,
+        scope: &InboxScope,
+    ) -> bool {
+        actor.principal() == &scope.recipient
+            && self.permits(
+                actor,
+                actor.principal(),
+                CoordinationAction::AcknowledgePending,
+                scope,
+                None,
+                None,
+            )
     }
 
     /// Revocation takes effect on the next service authorization check,

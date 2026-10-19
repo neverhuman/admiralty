@@ -2,6 +2,9 @@
 //!
 //! The server composition layer owns credential loading and mounts this router.
 //! This module exposes no raw append/enqueue or event-store operation.
+use super::coordination_routing::{
+    CommunicationReceipt, NativeRoutingAuthority, PendingAckRequest, SendMessageRequest,
+};
 use crate::services::coordination::{
     AuthenticatedCoordinationActor, CoordinationCredentialAuthority, CoordinationService,
 };
@@ -35,6 +38,7 @@ pub struct AgentRouteState {
     store: Store,
     credentials: Arc<RwLock<CoordinationCredentialAuthority>>,
     capacity: Arc<Semaphore>,
+    routing: Option<Arc<NativeRoutingAuthority>>,
 }
 
 impl AgentRouteState {
@@ -43,6 +47,18 @@ impl AgentRouteState {
             store,
             credentials,
             capacity: Arc::new(Semaphore::new(MAX_AGENT_REQUESTS)),
+            routing: None,
+        }
+    }
+
+    pub fn with_routing(
+        store: Store,
+        credentials: Arc<RwLock<CoordinationCredentialAuthority>>,
+        routing: Arc<NativeRoutingAuthority>,
+    ) -> Self {
+        Self {
+            routing: Some(routing),
+            ..Self::new(store, credentials)
         }
     }
 }
@@ -56,12 +72,62 @@ pub fn router(state: AgentRouteState) -> Router {
         .route("/pending", get(pending))
         .route("/context", get(task_context))
         .route("/application-ack", post(application_ack))
+        .route("/send", post(send_message))
+        .route("/ack-pending", post(acknowledge_pending))
         .layer(DefaultBodyLimit::max(MAX_AGENT_REQUEST_BYTES))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
             authenticate_before_extract,
         ))
         .with_state(state)
+}
+
+async fn send_message(
+    State(state): State<AgentRouteState>,
+    headers: HeaderMap,
+    Json(input): Json<SendMessageRequest>,
+) -> Result<Json<CommunicationReceipt>, Response> {
+    let (actor, credentials, permit) = authenticated_state(&state, &headers).await?;
+    let routing = state
+        .routing
+        .ok_or_else(|| api_error(StatusCode::FORBIDDEN, "message routing is not configured"))?;
+    let operation = tokio::task::spawn_blocking(move || {
+        let _credentials = credentials;
+        let _permit = permit;
+        routing.send(&state.store, &actor, input)
+    })
+    .await
+    .map_err(|_| {
+        api_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "message routing task failed",
+        )
+    })?;
+    operation
+        .map(Json)
+        .map_err(|error| store_error(error, "message routing failed"))
+}
+
+async fn acknowledge_pending(
+    State(state): State<AgentRouteState>,
+    headers: HeaderMap,
+    Json(input): Json<PendingAckRequest>,
+) -> Result<Json<CommunicationReceipt>, Response> {
+    let (actor, credentials, permit) = authenticated_state(&state, &headers).await?;
+    let operation = tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        super::coordination_routing::acknowledge_pending(&state.store, &actor, &credentials, input)
+    })
+    .await
+    .map_err(|_| {
+        api_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "application receipt task failed",
+        )
+    })?;
+    operation
+        .map(Json)
+        .map_err(|error| store_error(error, "application receipt failed"))
 }
 
 #[derive(Deserialize)]
@@ -345,6 +411,14 @@ fn parse_pending_cursor(
 
 fn store_error(error: StoreError, fallback: &'static str) -> Response {
     match error {
+        StoreError::SourceCollision { .. } => api_error(
+            StatusCode::CONFLICT,
+            "request identity collision; reconcile the original message",
+        ),
+        StoreError::Transition(_) => api_error(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "message does not match the current task or conversation",
+        ),
         StoreError::Invalid(_) | StoreError::Inbox(_) => api_error(
             StatusCode::BAD_REQUEST,
             "agent request is invalid or unauthorized",

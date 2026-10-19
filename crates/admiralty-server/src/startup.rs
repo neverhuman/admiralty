@@ -7,6 +7,9 @@ use crate::services::{
         CoordinationCredentialGrant, MAX_COORDINATION_CREDENTIALS,
         MAX_COORDINATION_GRANTS_PER_CREDENTIAL,
     },
+    coordination_routing::{
+        AgentMessageRoute, InstalledRoute, MAX_NATIVE_ROUTES, NativeRoutingAuthority,
+    },
     native_commands::{NativeCommands, OperatorLifecycleAuthority},
     work_order_intake::{
         WorkOrderIntakeAdmissionBridge, WorkOrderIntakeAuthRegistry, WorkOrderIntakePolicy,
@@ -55,6 +58,8 @@ struct AgentCredential {
     token_file: PathBuf,
     actor: PrincipalId,
     grants: Vec<AgentGrant>,
+    #[serde(default)]
+    routes: Vec<AgentMessageRoute>,
 }
 
 #[derive(Deserialize)]
@@ -71,6 +76,7 @@ struct AgentGrant {
 enum GrantAction {
     ReadPending,
     AcknowledgeApplication,
+    AcknowledgePending,
 }
 
 pub struct NativeServices {
@@ -135,8 +141,12 @@ pub fn open_native_services_with_intake(
         return Err("intake credentials must be distinct from other native credentials".into());
     }
     let mut credentials = Vec::with_capacity(config.agents.len());
+    let mut message_routes = Vec::new();
     for agent in config.agents {
-        if agent.grants.len() > MAX_COORDINATION_GRANTS_PER_CREDENTIAL {
+        if agent.grants.len() > MAX_COORDINATION_GRANTS_PER_CREDENTIAL
+            || agent.routes.len() > MAX_COORDINATION_GRANTS_PER_CREDENTIAL
+            || message_routes.len() + agent.routes.len() > MAX_NATIVE_ROUTES
+        {
             return Err("native credential grants exceed admission bounds".into());
         }
         let token = read_private_token(&agent.token_file)?;
@@ -158,11 +168,16 @@ pub fn open_native_services_with_intake(
                     GrantAction::AcknowledgeApplication => {
                         CoordinationAction::AcknowledgeApplication
                     }
+                    GrantAction::AcknowledgePending => CoordinationAction::AcknowledgePending,
                 },
                 message_id: grant.message_id,
                 source: grant.source,
             })
             .collect();
+        message_routes.extend(agent.routes.into_iter().map(|route| InstalledRoute {
+            credential_id: agent.credential_id.clone(),
+            route,
+        }));
         credentials.push(CoordinationCredential::configured(
             agent.credential_id,
             token,
@@ -170,8 +185,14 @@ pub fn open_native_services_with_intake(
             grants,
         ));
     }
-    let authority = CoordinationCredentialAuthority::new(credentials)
-        .map_err(|_| "native coordination credential configuration is invalid")?;
+    let authority = Arc::new(RwLock::new(
+        CoordinationCredentialAuthority::new(credentials)
+            .map_err(|_| "native coordination credential configuration is invalid")?,
+    ));
+    let routing = Arc::new(NativeRoutingAuthority::new(
+        authority.clone(),
+        message_routes,
+    )?);
     let lifecycle = config
         .operator
         .as_ref()
@@ -202,6 +223,7 @@ pub fn open_native_services_with_intake(
         database,
         StoreAuthorities {
             lifecycle,
+            subscriptions: Some(routing.clone()),
             excursions: excursions
                 .as_ref()
                 .map(|p| p.clone() as Arc<dyn admiralty_store::excursions::ExcursionAuthority>),
@@ -224,9 +246,10 @@ pub fn open_native_services_with_intake(
     };
     let mut routes = Router::new().nest(
         "/v2/agents/inbox",
-        agent_routes::router(AgentRouteState::new(
+        agent_routes::router(AgentRouteState::with_routing(
             store.clone(),
-            Arc::new(RwLock::new(authority)),
+            authority,
+            routing,
         )),
     );
     if let Some(policy) = excursions {

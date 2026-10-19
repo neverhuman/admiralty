@@ -152,7 +152,7 @@ Configuration directories must be owned and mode `0700`; credentials and private
 
 An optional `--redirect-listen 127.0.0.1:18891` serves an old-port HTTP 307 redirect from the same Rust binary. Set `--legacy-status-file` to the Rust observer's `status.json` and `--legacy-index-file` to the retained detailed HTML page; these names preserve the existing feed contract. Reads are authenticated unless `--legacy-public-read` is explicitly selected. The observer is a separate Rust process with one exclusive output writer.
 
-The private native configuration currently enables scoped operator task intake, pending cancellation and unstarted contract revision, plus scoped agent context/inbox reads and separately granted acknowledgments. It does **not** install a general provider executor or candidate-acceptance authority. Request payloads cannot install grants. See [the lifecycle contract](docs/architecture/native-lifecycle.md) for the exact state and authority boundaries.
+The private native configuration enables scoped operator task intake, pending cancellation and unstarted contract revision, plus scoped agent context/inbox reads and separately granted acknowledgments. Opt-in [native captain–admiral routes](docs/operators/native-coordination.md) deliver typed messages and own-inbox receipts through CLI/MCP with durable exact retries. It does **not** install a general provider executor or candidate-acceptance authority. Request payloads cannot install grants. See [the lifecycle contract](docs/architecture/native-lifecycle.md) for the exact state and authority boundaries.
 
 For request preview, durable raw capture, explicit enriched work orders and
 all-state duplicate queries, add a separate private `--intake-config` using the

@@ -13,6 +13,9 @@ pub struct AgentToolsArgs {
     /// Explicit local authenticated agent API address.
     #[arg(long)]
     server: Option<SocketAddr>,
+    /// Read the agent credential from a protected owner-only file instead of the environment.
+    #[arg(long)]
+    token_file: Option<std::path::PathBuf>,
     #[command(subcommand)]
     command: AgentToolsCommand,
 }
@@ -20,12 +23,12 @@ pub struct AgentToolsArgs {
 enum AgentToolsCommand {
     /// Print the same narrow tool schemas used by MCP without a server connection.
     List,
-    /// Execute one JSON ToolCall from a bounded file; token comes from ADMIRALTY_AGENT_TOKEN.
+    /// Execute one JSON ToolCall from a bounded file.
     Call {
         #[arg(long)]
         file: std::path::PathBuf,
     },
-    /// Serve MCP 2025-06-18 JSON-RPC on stdin/stdout; token comes from ADMIRALTY_AGENT_TOKEN.
+    /// Serve MCP 2025-06-18 JSON-RPC on stdin/stdout.
     Mcp,
 }
 impl AgentToolsArgs {
@@ -36,8 +39,11 @@ impl AgentToolsArgs {
         let server = self
             .server
             .ok_or("--server is required for agent operations")?;
-        let token = std::env::var("ADMIRALTY_AGENT_TOKEN")
-            .map_err(|_| "ADMIRALTY_AGENT_TOKEN is required")?;
+        let token = match self.token_file {
+            Some(path) => admiralty_server::startup::read_private_token(&path)?,
+            None => std::env::var("ADMIRALTY_AGENT_TOKEN")
+                .map_err(|_| "--token-file or ADMIRALTY_AGENT_TOKEN is required")?,
+        };
         let client = AgentClient::new(server, token)?;
         match self.command {
             AgentToolsCommand::List => unreachable!(),
