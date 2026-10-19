@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T01:30:51.952Z",
+  "base_revision": "1ecdd19fb3cda9e9bc5b5be069c356d94831c768",
+  "worker_commit": "452e4188b4b44bbabd28ad18489d0c550efeb3c0",
+  "source": "crates/admiralty-server/src/services/native_executor.rs",
+  "source_sha256": "3dacb9f30f67766dfab8e7becb22155c607d78b477216130d72903a9a7514499",
+  "scope": "Actual opaque tagged output/final SessionHost status retained through the existing closure handoff; no provider invocation",
+  "checks": [
+    {
+      "command": "cargo test -p admiralty-server --lib native_executor --locked",
+      "passed": 16,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 50,
+      "ignored_reason": "Pre-existing controlled child entry helper",
+      "exit_code": 0,
+      "log": "target/quality/native-capture-integrated-tests.log",
+      "sha256": "de69930ec405665af8a95f474bdebe38e3d949dd429594f0ecc226d949f01ab4"
+    },
+    {
+      "command": "cargo clippy -p admiralty-server --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "target/quality/native-capture-integrated-clippy.log",
+      "sha256": "a0702c5997d80b8758476024f90151221fd58bccf82fd1003c01059ca2fb63ff"
+    },
+    {
+      "command": "cargo fmt --all --check",
+      "exit_code": 0
+    }
+  ],
+  "review": {
+    "independent_reviewer": "audit_evidence",
+    "source_sha256": "3dacb9f30f67766dfab8e7becb22155c607d78b477216130d72903a9a7514499",
+    "finding": "Clear; actual complete journal rechecked, original stream tags/offsets retained, exact owned PID/optional start/exit/watermark, uncertainty retains pending custody"
+  },
+  "worker_receipt_sha256": "d88e6fb3c9cfc98ddc749b3554ec61032ac11b90fe926bf10c321973865bec87",
+  "preserved_failed_evidence": {
+    "reason": "Worker initially over-required process start identity on non-Linux hosts; actual SessionHost deliberately has None there. Exact optional identity comparison retained.",
+    "log_sha256": "3740bc8b78c03117d08441f175a37b55575d412416abe4d8908f58de91870a30"
+  },
+  "limitations": [
+    "macOS actual controlled SessionHost children, not a Linux admission closure run",
+    "One bounded extra copy of chunks plus existing flattened compatibility output",
+    "None only describes an actual validated silent journal, not a valid empty provider result",
+    "ClosedExecution remains one-shot and requires independent resource closure; capture alone does not prove source correctness or acceptance",
+    "No coding provider, startup authority, durable admission/capacity settlement, parent acceptance or general qualification"
+  ],
+  "coding_provider_qualified": false,
+  "native_execution_qualified": false,
+  "parent_packet_acceptance": false,
+  "paid_provider_turns": 0
+}
