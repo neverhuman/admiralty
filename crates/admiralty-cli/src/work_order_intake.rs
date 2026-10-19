@@ -15,6 +15,8 @@ use admiralty_server::{
 use admiralty_store::{Store, StoreAuthorities, intake_capture::CaptureIntakeRequest};
 use clap::{Args, Subcommand};
 use serde::Deserialize;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::{path::PathBuf, sync::Arc};
 
 #[derive(Args)]
@@ -177,6 +179,11 @@ fn preview(authority: &AuthorityArgs, path: &std::path::Path) -> CliResult<()> {
         composition.registry.clone(),
         Some(composition.policy.clone()),
     ));
+    #[cfg(unix)]
+    let scratch = tempfile::Builder::new()
+        .permissions(std::fs::Permissions::from_mode(0o700))
+        .tempdir()?;
+    #[cfg(not(unix))]
     let scratch = tempfile::tempdir()?;
     let store = Store::open_with_startup_authorities(
         scratch.path().join("preview.sqlite"),
