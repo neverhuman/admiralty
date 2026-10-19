@@ -64,3 +64,23 @@ The original `/v1/legacy` and `/legacy/status.json` retain every source field fo
 Git Flow and other existing readers. Older/synthetic servers without the new
 routes fall back once to the original endpoint. Both projections use the same
 authentication and bounded source validation; they grant no native authority.
+
+The next production timings disproved a simple old-tunnel diagnosis: a fresh
+independent forward also showed slow page loads, while direct browser requests
+without images returned in80–300ms. The page loaded two1254px source PNGs
+(909,933 and960,632bytes) for29–46px icons. One controlled browser comparison
+returned the initial snapshot in249ms without a logo transfer,1,947ms with that
+transfer, then149ms without it. The large image and JSON channels share the same
+SSH TCP connection; delayed first-byte timing alone did not isolate a bad tunnel.
+The user's interactive SSH process remained untouched.
+
+UI imports now use192px WebP derivatives, encoded losslessly after resizing.
+They total42,502bytes (97.7% less), preserve alpha and match every decoded pixel
+of the resized PNG references. Original1254px assets remain available. Vite emits
+content-hashed image URLs; the server supplies `image/webp` and immutable caching,
+including hashes with internal or trailing hyphens. Unversioned assets remain
+`no-cache`. Brand marks have low fetch priority and asynchronous decoding;
+watcher icons load lazily. The existing browser journey enforces a32KiB per-icon
+budget and rejects source-PNG requests. See the [asset recipe](../../apps/dashboard/src/assets/README.md).
+The [sanitized measurement receipt](../../receipts/integration/dashboard-image-contention-20261019.json) retains the overlap control and pixel checks.
+Production before/after navigation timings remain a separate deployment check.

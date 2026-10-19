@@ -1,3 +1,4 @@
+import grokbotMark from "../../assets/grokbot-mark.webp";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, routeHref } from "../../router";
 import { ModelBadge, modelFamily } from "../../ui/ModelBadge";
@@ -119,7 +120,7 @@ const AgentCard = memo(function AgentCard({
           <ProfileAvatar name={a.name} profile={ownerProfile} />
         </div>
       )}
-      {a.role === "watcher" && <img className="atlas-watcher-icon" src="/brand/grokbot.png" alt="" aria-hidden="true" />}
+      {a.role === "watcher" && <img className="atlas-watcher-icon" src={grokbotMark} loading="lazy" fetchPriority="low" decoding="async" alt="" aria-hidden="true" />}
       <div className="atlas-agent-top">
         <span className="atlas-agent-role">{roleLabel}</span>
         <i

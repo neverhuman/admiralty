@@ -708,6 +708,18 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
       await browser.waitForText('Jepson Taylor');
       await browser.waitForText('Token efficiency');
 
+      // Small icons must never compete with live data as megabyte source PNGs.
+      const brandAssets = await browser.evaluate<Array<{ path: string; bytes: number }>>(`(async () => {
+        const paths = [...new Set([...document.querySelectorAll('img.brand-mark, img.brand-slot-mark, img.legacy-hierarchy-grokbot')].map(image => image.getAttribute('src')))];
+        return await Promise.all(paths.map(async path => ({ path, bytes: (await (await fetch(path)).arrayBuffer()).byteLength })));
+      })()`);
+      expect(brandAssets.length).toBeGreaterThan(0);
+      for (const asset of brandAssets) {
+        expect(asset.path).toMatch(/^\/assets\/.+-[A-Za-z0-9_-]{8}\.webp$/);
+        expect(asset.bytes).toBeLessThan(32 * 1024);
+      }
+      expect(await browser.evaluate<boolean>(`performance.getEntriesByType('resource').some(entry => { const path = new URL(entry.name).pathname; return path.startsWith('/brand/') && path.endsWith('.png'); })`)).toBe(false);
+
       // 4 producer projects + 1 rollout project card
       const initialCardCount = await browser.evaluate<number>(
         `document.querySelectorAll('article[data-project-id]').length`,

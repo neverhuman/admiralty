@@ -1,3 +1,4 @@
+import admiraltyMark from '../assets/admiralty-mark.webp';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { fleetTotals, formatUnknown, type NativeFleet } from '../api';
 import { watchFleet, type ConnectionState } from '../events';
@@ -59,7 +60,7 @@ function App() {
   return <div className={`app theme-${theme} ${legacyView ? 'fleet-console' : ''} ${visualView ? 'visual-console' : ''}`}>
     <aside className="sidebar">
       <a className="brand" href="#/detail">
-        <img className="brand-mark" src="/brand/admiralty-source.png" alt="Admiralty" /><span><strong>ADMIRALTY</strong> <small>FLEET CONTROL</small></span>
+        <img className="brand-mark" src={admiraltyMark} fetchPriority="low" decoding="async" alt="Admiralty" /><span><strong>ADMIRALTY</strong> <small>FLEET CONTROL</small></span>
       </a>
       <div className="workspace-label">WORKSPACE</div>
       <div className="workspace"><span className="workspace-dot" /> Fleet overview <span className="chevron" data-icon="⌄" aria-hidden="true" /></div>
@@ -71,7 +72,7 @@ function App() {
         </button>)}
       </nav>
       <div className="sidebar-spacer" />
-      <div className="brand-slot"><img className="brand-slot-mark" src="/brand/admiralty-source.png" alt="Admiralty mascot" /><span>Admiralty<br /><small>Coordinate. Build. Verify.</small></span></div>
+      <div className="brand-slot"><img className="brand-slot-mark" src={admiraltyMark} fetchPriority="low" decoding="async" alt="Admiralty mascot" /><span>Admiralty<br /><small>Coordinate. Build. Verify.</small></span></div>
       <div className="sidebar-footer"><ProfileAvatar name={profileName} profile={profile} /><span><b>{profileName}</b><small>Local session</small></span><button aria-label="Access settings" onClick={() => setShowAccess(true)}><span data-icon="···" aria-hidden="true" /></button></div>
     </aside>
 

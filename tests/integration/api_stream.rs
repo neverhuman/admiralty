@@ -825,6 +825,10 @@ async fn dashboard_compression_is_negotiated_without_bypassing_auth_or_source_va
     std::fs::write(assets.join("index.js"), &script).expect("asset");
     std::fs::create_dir(assets.join("assets")).expect("hashed assets");
     std::fs::write(assets.join("assets/index-12345678.js"), &script).expect("hashed asset");
+    let image = include_bytes!("../../apps/dashboard/src/assets/admiralty-mark.webp");
+    std::fs::write(assets.join("assets/admiralty-mark-abc_12--.webp"), image)
+        .expect("hashed image");
+    std::fs::write(assets.join("admiralty-mark.webp"), image).expect("unversioned image");
     let store = Store::open(directory.path().join("native.sqlite")).expect("store");
     let mut settings = config(false, Some(assets));
     settings.legacy = Some(admiralty_server::legacy::LegacyConfig {
@@ -849,6 +853,35 @@ async fn dashboard_compression_is_negotiated_without_bypassing_auth_or_source_va
     assert_eq!(
         cached.headers()[header::CACHE_CONTROL],
         "public, max-age=31536000, immutable"
+    );
+    let image_response = encoded(
+        router.clone(),
+        "/assets/admiralty-mark-abc_12--.webp",
+        "gzip",
+    )
+    .await;
+    assert_eq!(image_response.headers()[header::CONTENT_TYPE], "image/webp");
+    assert_eq!(
+        image_response.headers()[header::CACHE_CONTROL],
+        "public, max-age=31536000, immutable"
+    );
+    assert!(
+        !image_response
+            .headers()
+            .contains_key(header::CONTENT_ENCODING)
+    );
+    assert_eq!(
+        to_bytes(image_response.into_body(), image.len())
+            .await
+            .expect("image body")
+            .as_ref(),
+        image
+    );
+    assert_eq!(
+        encoded(router.clone(), "/admiralty-mark.webp", "gzip")
+            .await
+            .headers()[header::CACHE_CONTROL],
+        "no-cache"
     );
     let initial =
         json(encoded(router.clone(), "/v1/legacy/detail/initial", "identity").await).await;

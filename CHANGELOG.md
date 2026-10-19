@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Replace megabyte UI mascot PNG transfers with 192-pixel lossless WebP icons
+  (42.5 KB combined), lazy-load watcher images and cache content-hashed images.
+  Vite hashes containing hyphens retain their immutable cache policy.
+
 - The detail view loads current project facts before history and complete
   records, with explicit enrichment state and the original full Git source
   preserved for Git Flow. Failed enrichment retains the initial facts and age.
