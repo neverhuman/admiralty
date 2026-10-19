@@ -1307,3 +1307,5 @@ parent, qualify arbitrary fleet history replay, enumerate opaque provider
 children, install remote Git transport, certify performance targets or deploy
 production services. Native execution authority and acceptance semantics remain
 outside this change.
+
+Integration update: concurrent main advances required a fresh `codex/live-git-fleet-ready` branch based on `b2b9e7a6c33bd57fd7b56079a846482f7ea25964`; no published history was rewritten. The first rebase actually used `a3b0b661a2071cab1e87e64956b7bd88de6771e8` after the shared remote ref advanced, superseding the initially observed `3fdb101` baseline. Original validation failures are retained: generated guard ordering was repaired, and macOS qualification uses a canonical private TMPDIR to avoid `/var` symlink ancestors.

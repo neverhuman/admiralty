@@ -30,10 +30,6 @@ const GENERATED_GUARD_ENTRY: &[u8] =
 // release never discovers dependencies by traversing a source directory.
 const GENERATED_GUARD_MODULES: [(&str, &[u8]); 10] = [
     (
-        "validators-views-snapshot.mjs",
-        include_bytes!("../../../packages/contracts/generated/validators-views-snapshot.mjs"),
-    ),
-    (
         "validators-base.mjs",
         include_bytes!("../../../packages/contracts/generated/validators-base.mjs"),
     ),
@@ -70,6 +66,10 @@ const GENERATED_GUARD_MODULES: [(&str, &[u8]); 10] = [
         include_bytes!(
             "../../../packages/contracts/generated/validators-provenance-contribution.mjs"
         ),
+    ),
+    (
+        "validators-views-snapshot.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-views-snapshot.mjs"),
     ),
 ];
 type FileIdentity = (u64, u64, u64, i64, i64, i64, i64, u64);
