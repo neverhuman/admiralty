@@ -393,6 +393,9 @@ pub fn stage_native_package(
     serde_json::to_writer(&mut manifest_file, &manifest)?;
     manifest_file.write_all(b"\n")?;
     manifest_file.flush()?;
+    // Creation mode is filtered by umask. Normalize only this newly owned FD
+    // inside the private staging tree before acknowledging durable metadata.
+    manifest_file.set_permissions(fs::Permissions::from_mode(0o644))?;
     manifest_file.sync_all()?;
 
     let staging_name = staging
