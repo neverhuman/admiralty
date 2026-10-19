@@ -43,6 +43,8 @@ mod codex_round20_p26_p31;
 mod codex_round20_p27;
 mod codex_round20_p28_p32;
 mod codex_round21_p06_p13_p14;
+mod codex_round21_p07_p17;
 mod codex_round22_p06_p13_p14;
+mod codex_round22_p07_p17;
 #[path = "../../../../tests/integration/support/recovery.rs"]
 mod recovery_fixture;

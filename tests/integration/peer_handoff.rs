@@ -226,3 +226,149 @@ fn injected_ack_drop_preserves_unacknowledged_state_until_retry() {
     ));
     assert_eq!(faults.hits("peer-ack-delivery"), Ok(2));
 }
+
+#[tokio::test]
+async fn mcp_and_cli_use_authenticated_durable_peer_inbox_without_manager_relay()
+-> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use admiralty_core::{
+        CoordinationMessage, DomainEvent, MessagePayload, SourceIdentity, content_digest,
+    };
+    use admiralty_runtime::agent_tools::{AgentClient, McpSession, ToolCall};
+    use admiralty_server::services::{
+        agent_routes::{self, AgentRouteState},
+        coordination::{
+            CoordinationAction, CoordinationCredential, CoordinationCredentialAuthority,
+            CoordinationCredentialGrant,
+        },
+    };
+    use admiralty_store::{Store, inbox::InboxScope};
+    use serde_json::json;
+    use std::sync::Arc;
+    use tokio::sync::{RwLock, oneshot};
+
+    let temporary = tempfile::tempdir()?;
+    let store = Store::open(temporary.path().join("peers.sqlite"))?;
+    let mut task = admiralty_testkit::task_fixture("producer-task");
+    task.project_id = scope().project_id;
+    task.root_id = scope().root_id;
+    let inbox_scope = InboxScope {
+        project_id: task.project_id.clone(),
+        recipient: principal("consumer"),
+        context_epoch: "epoch-1".into(),
+    };
+    let message_id = MessageId::new("producer-schema-ready")?;
+    for (sequence, event) in [
+        DomainEvent::TaskSubmitted {
+            contract: task.clone(),
+        },
+        DomainEvent::MessageQueued {
+            message: CoordinationMessage {
+                schema_version: 1,
+                message_id: message_id.clone(),
+                project_id: task.project_id.clone(),
+                sender: principal("producer"),
+                recipient: principal("consumer"),
+                causation_id: None,
+                context_epoch: "epoch-1".into(),
+                authority_ref: task.authority_ref.clone(),
+                payload: MessagePayload::ArtifactReady {
+                    task_id: task.task_id.clone(),
+                    artifact_ref: digest('b'),
+                    interface_revision: "1".into(),
+                },
+            },
+        },
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        store.append(
+            SourceIdentity {
+                producer_id: "peer-seed".into(),
+                incarnation: "test".into(),
+                sequence: (sequence + 1).to_string(),
+            },
+            event,
+            "2026-10-19T14:00:00Z".into(),
+        )?;
+    }
+    let ack_source = SourceIdentity {
+        producer_id: "consumer".into(),
+        incarnation: "peer-test".into(),
+        sequence: "1".into(),
+    };
+    let token = "peer-consumer-token-with-sufficient-entropy".to_owned();
+    let authority = CoordinationCredentialAuthority::new(vec![CoordinationCredential::configured(
+        "peer-consumer".into(),
+        token.clone(),
+        principal("consumer"),
+        vec![
+            CoordinationCredentialGrant {
+                scope: inbox_scope.clone(),
+                action: CoordinationAction::ReadPending,
+                message_id: None,
+                source: None,
+            },
+            CoordinationCredentialGrant {
+                scope: inbox_scope,
+                action: CoordinationAction::AcknowledgeApplication,
+                message_id: Some(message_id.clone()),
+                source: Some(ack_source),
+            },
+        ],
+    )])
+    .expect("valid scoped peer credentials");
+    let credentials = Arc::new(RwLock::new(authority));
+    let router = axum::Router::new().nest(
+        "/v2/agents/inbox",
+        agent_routes::router(AgentRouteState::new(store.clone(), credentials.clone())),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let address = listener.local_addr()?;
+    let (stop, stopped) = oneshot::channel::<()>();
+    let server = tokio::spawn(async move {
+        axum::serve(listener, router)
+            .with_graceful_shutdown(async {
+                let _ = stopped.await;
+            })
+            .await
+    });
+    let cursor_before = store.snapshot()?.cursor;
+    let expected_digest = content_digest(&task)?;
+    tokio::task::spawn_blocking(move || -> Result<(),Box<dyn std::error::Error + Send + Sync>> {
+        let client = AgentClient::new(address,token)?;
+        let mut call = ToolCall { name: "task_context_get".into(), arguments: json!({"project_id":"project","task_id":"producer-task","context_epoch":"epoch-1"}) };
+        let context = client.call(&call)?;
+        assert_eq!(context["contract_digest"],expected_digest);
+        assert_eq!(context["artifact_refs"],json!([digest('b')]));
+        assert!(context["capsule"].is_object());
+        call.arguments["known_contract_digest"] = context["contract_digest"].clone();
+        let mut mcp = McpSession::default();
+        mcp.handle(json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"peer-fixture","version":"1"}}}), |_| unreachable!());
+        mcp.handle(json!({"jsonrpc":"2.0","method":"notifications/initialized"}), |_| unreachable!());
+        let compact = mcp.handle(json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":call}), |call| client.call(call)).expect("MCP result");
+        assert_eq!(compact["result"]["isError"],false);
+        assert!(compact["result"]["structuredContent"]["capsule"].is_null());
+        assert_eq!(compact["result"]["structuredContent"]["contract_digest"],expected_digest);
+        assert_eq!(compact["result"]["structuredContent"]["artifact_refs"],json!([digest('b')]));
+        assert_eq!(store.snapshot()?.cursor,cursor_before,"context retrieval is read-only");
+        call.arguments["context_epoch"] = json!("stale-epoch");
+        assert!(client.call(&call).is_err(),"compacted or foreign epochs need fresh grants");
+        let ack = ToolCall { name: "inbox_application_ack".into(), arguments: json!({"project_id":"project","recipient":"consumer","context_epoch":"epoch-1","message_id":"producer-schema-ready","producer_id":"consumer","incarnation":"peer-test","sequence":"1","observed_utc":"2026-10-19T14:00:01Z"}) };
+        client.call(&ack)?;
+        let after_ack = store.snapshot()?.cursor;
+        client.call(&ack)?;
+        assert_eq!(store.snapshot()?.cursor,after_ack,"exact ACK retry cannot duplicate a durable receipt");
+        let pending = client.call(&ToolCall { name: "inbox_pending".into(), arguments: json!({"project_id":"project","recipient":"consumer","context_epoch":"epoch-1"}) })?;
+        assert_eq!(pending["messages"],json!([]));
+        Ok(())
+    }).await??;
+    credentials
+        .write()
+        .await
+        .revoke("peer-consumer")
+        .expect("revoke test-owned credential");
+    let _ = stop.send(());
+    server.await??;
+    Ok(())
+}
