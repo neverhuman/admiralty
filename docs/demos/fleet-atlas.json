@@ -1,0 +1,111 @@
+{
+  "schema": 1,
+  "scene": "fleet-atlas",
+  "captured_utc": "2026-10-19T15:45:44.852Z",
+  "source": {
+    "kind": "live-production",
+    "origin": "http://127.0.0.1:18890",
+    "generated_utc": "2026-10-19T15:45:06Z",
+    "host": "xbabe2",
+    "snapshot_sha256": "122feb8817adfe283faf3e86bc00cceb5ff5874a2b3217a97e1951325ca45942",
+    "projects": [
+      "admiralty",
+      "dope",
+      "jarambit",
+      "joil",
+      "jopedime"
+    ],
+    "observed_agents": 34,
+    "stale_explicitly_allowed": false,
+    "authenticated": false
+  },
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "scale": 2,
+    "pixel_width": 2880,
+    "pixel_height": 1800
+  },
+  "editing": "Original browser PNGs; cursor/click overlay only. Holds and transitions use authored durations; this is an edited walkthrough, not a real-time recording.",
+  "focus_project": "joil",
+  "steps": [
+    {
+      "frame": 0,
+      "label": "Owner, Admiral, Commodores and discovered workers"
+    },
+    {
+      "frame": 7,
+      "label": "Fit the complete observed fleet"
+    },
+    {
+      "frame": 14,
+      "label": "Focus the project command structure"
+    },
+    {
+      "frame": 21,
+      "label": "Inspect an observed worker, reported model and source time"
+    },
+    {
+      "frame": 28,
+      "label": "Return to the fleet map"
+    },
+    {
+      "frame": 35,
+      "label": "Open the searchable real agent roster"
+    },
+    {
+      "frame": 42,
+      "label": "Return to the fleet map"
+    },
+    {
+      "frame": 49,
+      "label": "Return to the complete fleet"
+    }
+  ],
+  "duration_ms": 15520,
+  "source_frames": 50,
+  "gif_frames": 50,
+  "webp_frames": 50,
+  "capture_manifest_sha256": "87567fcbd83b3dfa49012fd781e0258aafae2ac77514f02a8ecbf1a7f34558d6",
+  "allowed_requests": [
+    "GET /",
+    "GET /assets/LiveViews-Oue7npHl.js",
+    "GET /assets/LiveViews-ymKXdixa.css",
+    "GET /assets/index-BZ1KE9jM.css",
+    "GET /assets/index-CL0kehL7.js",
+    "GET /brand/admiralty-source.png",
+    "GET /brand/grokbot.png",
+    "GET /favicon.ico",
+    "GET /v1/legacy",
+    "GET /v2/fleet",
+    "GET /v2/views/events"
+  ],
+  "blocked_requests": [],
+  "encoding": {
+    "webp": "Full-color RGB, lossless from original PNGs; every decoded frame is pixel-identical to its PNG; durations and infinite loop verified",
+    "gif": "Global 256-color palette from all PNGs; quantization is lossy; gifsicle -O3 is pixel-lossless relative to that palette GIF; every decoded optimized frame verified",
+    "resize": false,
+    "color_profile": "Browser forced to sRGB; no YUV or video intermediate",
+    "web_budget_mib_each": 15,
+    "tools": {
+      "ffmpeg": "ffmpeg version 8.1 Copyright (c) 2000-2026 the FFmpeg developers",
+      "gifsicle": "LCDF Gifsicle 1.96",
+      "img2webp": "WebP Encoder version: 1.6.0\nWebP Mux version: 1.6.0\nlibsharpyuv: 0.4.2",
+      "pillow": "12.1.0"
+    }
+  },
+  "artifacts": {
+    "fleet-atlas.gif": {
+      "bytes": 737211,
+      "sha256": "8d103a01d3b5a3f8a2d339ce7b207e86f99a9c2521b64f03d8e0e1e3203a0665"
+    },
+    "fleet-atlas.webp": {
+      "bytes": 617824,
+      "sha256": "f93205d0bea41819c3c6e24e975bf81b218b694c154e72b89dcea35d27817119"
+    },
+    "fleet-atlas.png": {
+      "bytes": 382826,
+      "sha256": "ee14946b86a70219e82d497d81a67cefa3b9f2bebaeeedd058937b42b92b3206"
+    }
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "schema": 1,
+  "scene": "git-flow",
+  "captured_utc": "2026-10-19T15:45:34.974Z",
+  "source": {
+    "kind": "live-production",
+    "origin": "http://127.0.0.1:18890",
+    "generated_utc": "2026-10-19T15:45:06Z",
+    "host": "xbabe2",
+    "snapshot_sha256": "122feb8817adfe283faf3e86bc00cceb5ff5874a2b3217a97e1951325ca45942",
+    "projects": [
+      "admiralty",
+      "dope",
+      "jarambit",
+      "joil",
+      "jopedime"
+    ],
+    "observed_agents": 34,
+    "stale_explicitly_allowed": false,
+    "authenticated": false
+  },
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "scale": 2,
+    "pixel_width": 2880,
+    "pixel_height": 1800
+  },
+  "editing": "Original browser PNGs; cursor/click overlay only. Holds and transitions use authored durations; this is an edited walkthrough, not a real-time recording.",
+  "focus_project": "admiralty",
+  "steps": [
+    {
+      "frame": 0,
+      "label": "Real repository ancestry, refs, checkouts and working changes"
+    },
+    {
+      "frame": 7,
+      "label": "Fit observed ancestry into the viewport"
+    },
+    {
+      "frame": 14,
+      "label": "Follow the actual observed commit frontier"
+    },
+    {
+      "frame": 21,
+      "label": "Open exact commit and checkout inventory"
+    },
+    {
+      "frame": 28,
+      "label": "Inspect an actual checkout and working-state coverage"
+    },
+    {
+      "frame": 35,
+      "label": "Return to repository inventory"
+    },
+    {
+      "frame": 42,
+      "label": "Inspect the exact commit, parent IDs and source time"
+    },
+    {
+      "frame": 49,
+      "label": "Return to commit inventory"
+    },
+    {
+      "frame": 56,
+      "label": "Return to live ancestry"
+    }
+  ],
+  "duration_ms": 17380,
+  "source_frames": 57,
+  "gif_frames": 57,
+  "webp_frames": 57,
+  "capture_manifest_sha256": "98aef6d98d153eb55d1d448a2a2da021a15caa94952868b57edcc6ac8c4ca1e9",
+  "allowed_requests": [
+    "GET /",
+    "GET /assets/LiveViews-Oue7npHl.js",
+    "GET /assets/LiveViews-ymKXdixa.css",
+    "GET /assets/index-BZ1KE9jM.css",
+    "GET /assets/index-CL0kehL7.js",
+    "GET /brand/admiralty-source.png",
+    "GET /brand/grokbot.png",
+    "GET /favicon.ico",
+    "GET /v1/legacy",
+    "GET /v2/fleet",
+    "GET /v2/views/events"
+  ],
+  "blocked_requests": [],
+  "encoding": {
+    "webp": "Full-color RGB, lossless from original PNGs; every decoded frame is pixel-identical to its PNG; durations and infinite loop verified",
+    "gif": "Global 256-color palette from all PNGs; quantization is lossy; gifsicle -O3 is pixel-lossless relative to that palette GIF; every decoded optimized frame verified",
+    "resize": false,
+    "color_profile": "Browser forced to sRGB; no YUV or video intermediate",
+    "web_budget_mib_each": 15,
+    "tools": {
+      "ffmpeg": "ffmpeg version 8.1 Copyright (c) 2000-2026 the FFmpeg developers",
+      "gifsicle": "LCDF Gifsicle 1.96",
+      "img2webp": "WebP Encoder version: 1.6.0\nWebP Mux version: 1.6.0\nlibsharpyuv: 0.4.2",
+      "pillow": "12.1.0"
+    }
+  },
+  "artifacts": {
+    "git-flow.gif": {
+      "bytes": 997066,
+      "sha256": "1c22e147569ef7a2b530257055513f80e5a4a382ad19fed3f425d0076a4f956f"
+    },
+    "git-flow.webp": {
+      "bytes": 752994,
+      "sha256": "b47ff05feca4d01cbff00e25f1c423625cd5112a3321e872bade910eb3a37b9c"
+    },
+    "git-flow.png": {
+      "bytes": 322606,
+      "sha256": "1067e87fd4d4c694d419e43569b6ca3d44a0371393cc8d1beeb55fe118d32df9"
+    }
+  }
+}

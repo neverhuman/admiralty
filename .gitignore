@@ -22,6 +22,7 @@ node_modules/
 apps/dashboard/dist/
 .admiralty-state/
 .rollout/
+.capture/
 *_LOG.md
 *_DECISIONS.md
 *_INBOX.md

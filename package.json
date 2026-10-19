@@ -8,7 +8,10 @@
     "contracts:generate": "node scripts/contracts/generate.mjs",
     "contracts:check": "node scripts/contracts/generate.mjs --check",
     "demo": "bash scripts/dev/demo.sh",
-    "live": "bash scripts/dev/live.sh"
+    "live": "bash scripts/dev/live.sh",
+    "demo:capture": "node scripts/demos/capture.mjs",
+    "demo:encode": "python3 scripts/demos/encode.py",
+    "demo:verify": "python3 scripts/demos/verify.py"
   },
   "devDependencies": {
     "ajv": "8.20.0",

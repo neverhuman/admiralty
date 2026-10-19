@@ -12,6 +12,48 @@ The operating model is **Owner → Admiral → Commodores → task workers**. Th
 
 [Quickstart](#quickstart) · [Live console](docs/operators/live-console.md) · [Native startup](docs/operators/native-startup.md) · [Model policy](docs/operators/models.md) · [Execution ledger](docs/plans/admiralty-v2/EXECUTION.md)
 
+## See the production console
+
+Real production observations, captured on **19 October 2026** at **2880 × 1800**. These short, edited walkthroughs use actual read-only clicks, with visible pointers and click rings. Source timestamps, unknown measurements and access boundaries stay visible. Modern browsers receive full-color lossless WebP; GIF fallbacks use an optimized 256-color palette. Reduced-motion readers receive still images.
+
+### Fleet console — projects, history and evidence
+
+Select Admiralty, expand task burn-up history, then scroll into observed worker models and project evidence. The hierarchy connects the Owner, watcher, Admiral and project Commodores.
+
+<picture>
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/demos/fleet-console.png" />
+  <source type="image/webp" srcset="docs/demos/fleet-console.webp" />
+  <img src="docs/demos/fleet-console.gif" width="1440" height="900" alt="Real production fleet console: selecting Admiralty, expanding task history and inspecting worker models and project evidence" />
+</picture>
+
+[Lossless animation](docs/demos/fleet-console.webp) · [GIF](docs/demos/fleet-console.gif) · [Still image](docs/demos/fleet-console.png) · [Capture receipt](docs/demos/fleet-console.json)
+
+### Git Flow — ancestry, checkouts and commits
+
+Explore Admiralty's observed Git graph, fit ancestry, return to the latest frontier, and inspect an actual checkout and commit. Branch tips, working changes and bounded-history notices retain their source meanings.
+
+<picture>
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/demos/git-flow.png" />
+  <source type="image/webp" srcset="docs/demos/git-flow.webp" />
+  <img src="docs/demos/git-flow.gif" width="1440" height="900" alt="Real production Git Flow: fitting ancestry, following latest commits and opening checkout and commit evidence inspectors" />
+</picture>
+
+[Lossless animation](docs/demos/git-flow.webp) · [GIF](docs/demos/git-flow.gif) · [Still image](docs/demos/git-flow.png) · [Capture receipt](docs/demos/git-flow.json)
+
+### Fleet Atlas — command relationships and agent flow
+
+Move from the full fleet map into Joil's Commodore and worker relationship, inspect a reported worker model and source time, then open the complete agent roster. Configured roles and observed presence remain distinct.
+
+<picture>
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/demos/fleet-atlas.png" />
+  <source type="image/webp" srcset="docs/demos/fleet-atlas.webp" />
+  <img src="docs/demos/fleet-atlas.gif" width="1440" height="900" alt="Real production Fleet Atlas: focusing a project command structure, inspecting an observed worker and opening the agent roster" />
+</picture>
+
+[Lossless animation](docs/demos/fleet-atlas.webp) · [GIF](docs/demos/fleet-atlas.gif) · [Still image](docs/demos/fleet-atlas.png) · [Capture receipt](docs/demos/fleet-atlas.json)
+
+These captures use the deployment's explicitly public producer view. Private native assignments require session access. To refresh the recordings, use the [capture and compression guide](docs/operators/demo-capture.md); scripts preserve original PNGs locally and verify every lossless animation interval against its source pixels.
+
 ## What is here
 
 - **A detailed fleet console.** Black backgrounds, bright model badges, ordinary project tabs, task stages, worker and Commodore observations, PR/CI/review evidence, logs, hierarchy and resource accounting. Admiralty itself is another project tab.
