@@ -37,6 +37,8 @@ struct NativeConfiguration {
     operator: Option<OperatorGrant>,
     #[serde(default)]
     agents: Vec<AgentCredential>,
+    #[serde(default)]
+    excursions: Vec<crate::services::improvement::excursions::ExcursionGrant>,
 }
 
 #[derive(Deserialize)]
@@ -119,7 +121,10 @@ pub fn open_native_services_with_intake(
             .operator
             .as_ref()
             .is_some_and(|grant| grant.projects.is_empty() || grant.projects.len() > 256)
-        || (config.operator.is_none() && config.agents.is_empty() && intake.is_none())
+        || (config.operator.is_none()
+            && config.agents.is_empty()
+            && intake.is_none()
+            && config.excursions.is_empty())
     {
         return Err("native startup configuration exceeds admission bounds".into());
     }
@@ -183,10 +188,23 @@ pub fn open_native_services_with_intake(
             Some(composition.policy.clone()),
         ))
     });
+    let excursions = if config.excursions.is_empty() {
+        None
+    } else {
+        Some(Arc::new(
+            crate::services::improvement::excursions::ExcursionPolicy::new(
+                owner_token,
+                config.excursions,
+            )?,
+        ))
+    };
     let store = Store::open_with_startup_authorities(
         database,
         StoreAuthorities {
             lifecycle,
+            excursions: excursions
+                .as_ref()
+                .map(|p| p.clone() as Arc<dyn admiralty_store::excursions::ExcursionAuthority>),
             intake: bridge
                 .as_ref()
                 .map(|bridge| bridge.clone() as Arc<dyn admiralty_store::intake::IntakeAuthority>),
@@ -211,6 +229,12 @@ pub fn open_native_services_with_intake(
             Arc::new(RwLock::new(authority)),
         )),
     );
+    if let Some(policy) = excursions {
+        routes = routes.merge(crate::services::improvement::proposals::router(
+            store.clone(),
+            policy,
+        ));
+    }
     if let Some(operator) = config.operator {
         routes = routes.merge(
             NativeCommands::new(

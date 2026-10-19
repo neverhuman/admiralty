@@ -437,6 +437,7 @@ fn permitted_field(key: &str) -> bool {
             | "failed_criteria"
             | "units"
             | "uncertainty"
+            | "tried_approaches"
             | "candidate_fix"
             | "measurable_outcome"
     )

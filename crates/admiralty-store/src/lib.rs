@@ -5,6 +5,7 @@ pub mod artifacts;
 pub mod attention;
 pub mod context_renders;
 pub mod custody;
+pub mod excursions;
 pub mod inbox;
 pub mod inference_slots;
 pub mod intake;
@@ -176,6 +177,8 @@ pub enum StoreError {
     #[error(transparent)]
     Attention(#[from] attention::AttentionError),
     #[error(transparent)]
+    Excursion(#[from] excursions::ExcursionStoreError),
+    #[error(transparent)]
     Intake(#[from] intake::IntakeStoreError),
     #[error(transparent)]
     IntakeCapture(#[from] intake_capture::CaptureError),
@@ -308,6 +311,7 @@ pub struct StoreAuthorities {
     pub questions: Option<Arc<dyn questions::QuestionAuthority>>,
     pub usage: Option<Arc<dyn usage_observations::UsageAuthority>>,
     pub attention: Option<Arc<dyn attention::AttentionAuthority>>,
+    pub excursions: Option<Arc<dyn excursions::ExcursionAuthority>>,
     pub reservations: Option<Arc<dyn admission_reservations::ReservationAuthority>>,
     pub inference_slots: Option<Arc<dyn inference_slots::InferenceSlotAuthority>>,
     /// Optional retained policy lease for an explicit admission-only profile.
@@ -329,6 +333,16 @@ enum Request {
         proof: subscriptions::SubscriptionProof,
         input: Box<AppendInput>,
         reply: Reply<AppendReceipt>,
+    },
+    RecordExcursion {
+        command: Box<excursions::ExcursionCommand>,
+        proof: excursions::ExcursionProof,
+        reply: Reply<excursions::ExcursionResult>,
+    },
+    ReadExcursions {
+        scope: Box<admiralty_core::excursions::ExcursionScope>,
+        proof: excursions::ExcursionProof,
+        reply: Reply<excursions::ExcursionSnapshot>,
     },
     RecordInferenceSlot {
         command: Box<inference_slots::SlotCommand>,
@@ -719,6 +733,30 @@ impl Store {
         })
     }
 
+    pub fn record_excursion(
+        &self,
+        command: excursions::ExcursionCommand,
+        proof: excursions::ExcursionProof,
+    ) -> Result<excursions::ExcursionResult> {
+        excursions::validate_command(&command)?;
+        self.ask(|reply| Request::RecordExcursion {
+            command: Box::new(command),
+            proof,
+            reply,
+        })
+    }
+    pub fn read_excursions(
+        &self,
+        scope: admiralty_core::excursions::ExcursionScope,
+        proof: excursions::ExcursionProof,
+    ) -> Result<excursions::ExcursionSnapshot> {
+        excursions::validate_scope(&scope)?;
+        self.ask(|reply| Request::ReadExcursions {
+            scope: Box::new(scope),
+            proof,
+            reply,
+        })
+    }
     pub fn record_usage_observation(
         &self,
         request: usage_observations::UsageCommand,
@@ -770,6 +808,7 @@ impl Store {
                     writer.subscription_authority = authorities.subscriptions;
                     writer.usage_authority = authorities.usage;
                     writer.attention_authority = authorities.attention;
+                    writer.excursion_authority = authorities.excursions;
                     writer.reservation_authority = authorities.reservations;
                     writer.inference_slot_authority = authorities.inference_slots;
                     writer.admission_fence = authorities.admission_fence;
@@ -1769,6 +1808,7 @@ struct Writer {
     subscription_authority: Option<Arc<dyn subscriptions::SubscriptionAuthority>>,
     usage_authority: Option<Arc<dyn usage_observations::UsageAuthority>>,
     attention_authority: Option<Arc<dyn attention::AttentionAuthority>>,
+    excursion_authority: Option<Arc<dyn excursions::ExcursionAuthority>>,
     reservation_authority: Option<Arc<dyn admission_reservations::ReservationAuthority>>,
     inference_slot_authority: Option<Arc<dyn inference_slots::InferenceSlotAuthority>>,
     admission_fence: Option<Arc<dyn admission_fence::AdmissionCommitFence>>,
@@ -1819,6 +1859,7 @@ impl Writer {
         workplans::initialize(&connection)?;
         context_renders::initialize(&connection)?;
         attention::initialize(&connection)?;
+        excursions::initialize(&connection)?;
         intake::initialize(&connection)?;
         intake_capture::initialize(&connection)?;
         questions::initialize(&connection)?;
@@ -1864,6 +1905,7 @@ impl Writer {
             subscription_authority: None,
             usage_authority: None,
             attention_authority: None,
+            excursion_authority: None,
             reservation_authority: None,
             inference_slot_authority: None,
             admission_fence: None,
@@ -1874,6 +1916,36 @@ impl Writer {
     fn run(&mut self, receiver: mpsc::Receiver<Request>, changes: tokio::sync::watch::Sender<()>) {
         while let Ok(request) = receiver.recv() {
             match request {
+                Request::RecordExcursion {
+                    command,
+                    proof,
+                    reply,
+                } => {
+                    let _ = reply.send(
+                        excursions::record(
+                            &mut self.connection,
+                            &command,
+                            self.excursion_authority.as_deref(),
+                            proof.as_ref(),
+                        )
+                        .map_err(StoreError::from),
+                    );
+                }
+                Request::ReadExcursions {
+                    scope,
+                    proof,
+                    reply,
+                } => {
+                    let _ = reply.send(
+                        excursions::read(
+                            &mut self.connection,
+                            &scope,
+                            self.excursion_authority.as_deref(),
+                            proof.as_ref(),
+                        )
+                        .map_err(StoreError::from),
+                    );
+                }
                 Request::ReadInferenceSlotLedger { proof, reply } => {
                     let result = (|| {
                         validate_slot_associations(&self.connection)?;
