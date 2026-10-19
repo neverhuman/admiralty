@@ -53,6 +53,16 @@ added through `GITHUB_PATH`; the workflow does not modify a shared global npm
 prefix. Each job prints the selected runner name, OS and architecture so a run
 records actual placement rather than assuming a physical host.
 
+The Rust job sets `CARGO_BUILD_JOBS=2` for compilation and linking.
+`RUST_TEST_THREADS=1` separately controls test execution. The receiving-main
+`3fdb101` job on `xbabe3-lan-1-20261019003841-10799` exceeded its existing
+fifteen-minute deadline while Cargo was still compiling test binaries; no test
+assertion had run. Its native annotation confirms the timeout, and cleanup
+recorded multiple active compiler/linker children. The explicit build bound
+limits concurrent compiler memory and I/O without changing runner limits,
+test coverage or deadlines. A successful later run must establish whether it
+resolves that runner's delay; the configuration alone is not a passing result.
+
 Validate the workflow locally with:
 
 ```sh
