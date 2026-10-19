@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-10-19T19:57:52.210733+00:00",
+  "base_head": "425d0f8cb8be878bed1157c5c5f99c58d658038a",
+  "change": "Provision pinned official verified Jankurai v1.7.5 in private job scratch; retain strict audit exit and require all fresh report files. Correct retired-production/real-capture inventory wording.",
+  "failure": {
+    "run_id": 39314358528,
+    "job_id": 118271847319,
+    "runner": "xbabe3-lan-1-20261019194738-19785",
+    "observed": "No executable HOME/.jeryu/bin/jankurai and command -v exits1 under bash-e; no audit/reports started.",
+    "log": "receipts/integration/logs/pr158-jankurai-missing-tool-20261019.log.gz",
+    "compressed_sha256": "f74349c5ca844f6ac10861f54dc4f19a451dff61ba0ec1600ece46a4bf371aca",
+    "uncompressed_sha256": "69fc48f40c3e67fba20374011352f09837c893509aa88a816683a74d702abf9f"
+  },
+  "local_validation": {
+    "actionlint": {
+      "command": [
+        "rtk",
+        "proxy",
+        "actionlint",
+        "-config-file",
+        "/private/tmp/admiralty-actionlint.yaml",
+        ".github/workflows/jankurai.yml"
+      ],
+      "exit_code": 0,
+      "custom_runner_label_config": "self-hosted-runner.labels=[lan-ci,browser158]; no other diagnostics suppressed"
+    },
+    "python_inventory": {
+      "files": 40,
+      "loc": 11351,
+      "plan_count_and_line_counts_match": true,
+      "exception_coverage_exact": true
+    },
+    "downloaded_official_installer_sha256": "828e513628080823a9afaa19eeaeee4ce2e54174483a11cdde00073dbafb895f",
+    "downloaded_official_linux_archive_sha256": "792c16465c274a266f64541152eb5c796fdf22113120133789d28bf99bcf915c",
+    "official_linux_binary_sha256": "d2414884a3dbe1cc2d02b4240588869f6afac26ff0f167829e907b1617501121",
+    "installer_help_exit_code": 0,
+    "old_mac_tool": "Installed1.5.1 rejects --read-only; preserved original invocation, not accepted as qualification.",
+    "linux_installer_and_audit_execution": "Still required; Linux-only v1.7.5 release is not executable on this Mac.",
+    "runtime_test_inputs_equal_to_local20_stage_pass_at": "d714426590f38b61992267897878d30ae826691d"
+  },
+  "source_sha256": {
+    ".github/workflows/jankurai.yml": "ce0e15602896411e8ba0bc90021157bfa79dec44cae1a8a9f12af22df3c19244",
+    "PYTHON_EXCEPTIONS.md": "4b4be4ee763350690a2a8e4371bd60c7112c1ded0eae00cca8742f1b0cd9dfbd",
+    "PY_TO_RUST_PLAN.md": "5f40d4c031a05ce8c4668c3dce5f77b16f33fffb3fca330d2bd060a983c79278"
+  },
+  "native_execution_qualified": false,
+  "full_release_qualified": false
+}
