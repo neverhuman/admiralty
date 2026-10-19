@@ -20,6 +20,7 @@ use std::{
 use tempfile::TempDir;
 
 const WORKER_ROOT: &str = "ADMIRALTY_TEST_SESSION_WORKER_ROOT";
+#[cfg(target_os = "linux")]
 const COORDINATOR_ROOT: &str = "ADMIRALTY_TEST_COORDINATOR_ROOT";
 const WAIT: Duration = Duration::from_secs(3);
 

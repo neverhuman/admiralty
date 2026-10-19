@@ -1457,6 +1457,17 @@ function getChildPid(child: ChildProcess): number | undefined {
   return (child as unknown as { pid?: number }).pid;
 }
 
+async function waitForOwnedProcessExit(child: ChildProcess, timeoutMs: number): Promise<void> {
+  const pid = getChildPid(child);
+  const deadline = Date.now() + timeoutMs;
+  while (typeof pid === 'number' && isProcessAlive(pid)) {
+    if (Date.now() >= deadline) {
+      throw new Error(`Owned process ${pid} is still alive after ${timeoutMs}ms; retain its private files and do not retry startup`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, Math.min(20, Math.max(1, deadline - Date.now()))));
+  }
+}
+
 function signalBrowserProcessGroup(child: ChildProcess, signal: 'SIGTERM' | 'SIGKILL'): void {
   const pid = getChildPid(child);
   const proc = process as unknown as { kill?: (targetPid: number, sig?: string | number) => boolean };
@@ -1738,6 +1749,9 @@ async function launchBrowserHarnessAttempt(
         exitDrainPromise,
         new Promise<void>((resolve) => setTimeout(resolve, 5_000)),
       ]);
+      // An error/pipe event or a timeout is not proof that the PID was reaped.
+      // Never remove custody files or spawn a retry while the owned child lives.
+      await waitForOwnedProcessExit(child, 5_000);
       try {
         (child as unknown as { stdout?: { destroy?: () => void } }).stdout?.destroy?.();
         (child.stderr as unknown as { destroy?: () => void } | null)?.destroy?.();
@@ -2281,6 +2295,7 @@ export async function startIsolatedNativeAdmiraltyServer(options?: {
     try {
       const res = await fetch(`${baseUrl}/v2/fleet`, {
         headers: { Authorization: `Bearer ${ownerToken}` },
+        signal: AbortSignal.timeout(Math.min(1_000, Math.max(1, deadline - Date.now()))),
       });
       if (res.status === 200) {
         ready = true;
@@ -2294,6 +2309,7 @@ export async function startIsolatedNativeAdmiraltyServer(options?: {
 
   if (!ready) {
     child.kill('SIGKILL');
+    await waitForOwnedProcessExit(child, 5_000);
     rmSync(privateDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     throw new Error(`Timed out waiting for isolated admiraltyd at ${baseUrl} (stderr=${stderrLog.trim()})`);
   }
@@ -2305,17 +2321,20 @@ export async function startIsolatedNativeAdmiraltyServer(options?: {
     binaryPath,
     writeLegacySnapshot(value: unknown) { writeFileSync(legacyStatus, JSON.stringify(value), { mode: 0o600 }); },
     async close() {
-      child.kill('SIGTERM');
-      await new Promise<void>((resolveExit) => {
-        const timer = setTimeout(() => {
-          child.kill('SIGKILL');
-          resolveExit();
-        }, 2_000);
-        child.once('exit', () => {
-          clearTimeout(timer);
-          resolveExit();
+      if (!exitState.exited) {
+        child.kill('SIGTERM');
+        await new Promise<void>((resolveExit) => {
+          const timer = setTimeout(() => {
+            child.kill('SIGKILL');
+            resolveExit();
+          }, 2_000);
+          child.once('exit', () => {
+            clearTimeout(timer);
+            resolveExit();
+          });
         });
-      });
+      }
+      await waitForOwnedProcessExit(child, 5_000);
       rmSync(privateDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     },
   };

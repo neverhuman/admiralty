@@ -30,7 +30,8 @@ struct Args {
     #[arg(long)]
     redirect_listen: Option<SocketAddr>,
 }
-#[tokio::main]
+// Control-plane concurrency is bounded independently of host CPU count.
+#[tokio::main(worker_threads = 2)]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let args = Args::parse();
     let token = admiralty_server::startup::read_private_token(&args.token_file)?;

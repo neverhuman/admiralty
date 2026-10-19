@@ -1100,7 +1100,8 @@ async fn run(cli: Cli) -> CliResult<()> {
     Ok(())
 }
 
-#[tokio::main]
+// Keep even short CLI operations independent of the fleet host's CPU count.
+#[tokio::main(worker_threads = 2)]
 async fn main() -> ExitCode {
     match run(Cli::parse()).await {
         Ok(()) => ExitCode::SUCCESS,

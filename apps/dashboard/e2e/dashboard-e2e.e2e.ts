@@ -420,7 +420,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
   afterAll(async () => {
     await browser?.close();
     await server?.close();
-  }, 30_000);
+  }, 90_000);
 
   beforeEach(async () => {
     server.closeActiveSseStreams();
@@ -435,7 +435,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
     server.clearRequests();
     await browser.setViewportSize(1440, 900);
     await browser.emulateReducedMotion(false);
-  }, 30_000);
+  }, 90_000);
 
   afterEach(() => {
     server.assertNoOverflow();
@@ -685,7 +685,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
       );
       expect(Date.now() - liveSelectStartMs).toBeLessThan(1_500);
     },
-    30_000,
+    90_000,
   );
 
   it(
@@ -752,7 +752,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
       );
       expect(nativeProjectCards).toBe(100);
     },
-    30_000,
+    90_000,
   );
 
   it(
@@ -809,7 +809,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
       expect(latestEventsReq?.search).toContain('generation=gen-qual-2');
       expect(latestEventsReq?.search).toContain('after=42');
     },
-    30_000,
+    90_000,
   );
 
   it(
@@ -853,7 +853,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
       expect(accountingText).toContain('Unknown');
       expect(accountingText).not.toBe('0 tokens');
     },
-    30_000,
+    90_000,
   );
 
   it(
@@ -983,7 +983,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
       expect(latestV2EventsReq?.search).toContain('generation=gen-v2-recovered');
       expect(latestV2EventsReq?.search).toContain('after=77');
     },
-    30_000,
+    90_000,
   );
 
   it(
@@ -1431,7 +1431,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
         await realServer.close();
       }
     },
-    30_000,
+    90_000,
   );
 
 
@@ -1483,7 +1483,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
       const pageUrl = await browser.evaluate<string>(`window.location.href`);
       expect(pageUrl).not.toContain('adm-secret-session-token');
     },
-    30_000,
+    90_000,
   );
 
   it(
@@ -1549,7 +1549,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
         document.getElementById('injected-low-contrast-h2')?.remove();
       })()`);
     },
-    30_000,
+    90_000,
   );
 
   it(
@@ -1659,6 +1659,6 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
         'Pinned axe-core 4.14.0 reported WCAG 2.1 AA violations or incomplete items on built dashboard surfaces',
       ).toEqual([]);
     },
-    30_000,
+    90_000,
   );
 });
