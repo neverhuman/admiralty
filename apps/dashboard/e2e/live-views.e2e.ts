@@ -158,8 +158,8 @@ describe("built live views against the real Rust server", () => {
   });
   async function connect(route: string) {
     await browser.goto(`${server.baseUrl}/#/${route}`);
-    await browser.waitForText("Session access");
-    await browser.clickButtonByText("Session access");
+    await browser.waitForText("Connect session access");
+    await browser.clickButtonByText("Connect session access");
     await browser.fillInputByLabel("Bearer token", server.ownerToken);
     await browser.clickButtonByText("Apply token");
     await browser.waitForText("Connected");

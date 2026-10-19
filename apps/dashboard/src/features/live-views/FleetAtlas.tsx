@@ -112,6 +112,7 @@ const AgentCard = memo(function AgentCard({
       aria-description={`${a.node ?? "Node unknown"} · ${a.presence} · ${a.state}`}
       title={`${a.name} · ${a.role} · ${a.state} · ${age(a.observed_utc, now)}`}
     >
+      {a.role === "watcher" && <img className="atlas-watcher-icon" src="/brand/grokbot.png" alt="" aria-hidden="true" />}
       <div className="atlas-agent-top">
         <span className="atlas-agent-role">{roleLabel}</span>
         <i
