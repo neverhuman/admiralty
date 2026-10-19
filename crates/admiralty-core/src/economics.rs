@@ -620,11 +620,15 @@ pub fn cohort_compare(
             || summary
                 .accepted_roots
                 .as_ref()
-                .is_some_and(|n| n.0 > summary.assigned_roots.0)
+                .is_none_or(|n| n.0 > summary.assigned_roots.0)
             || summary.immature_roots.0 != 0
             || summary.accepted_yield.as_ref().is_none_or(|ratio| {
                 ratio.denominator.0 != u128::from(summary.assigned_roots.0)
                     || ratio.numerator.0 > ratio.denominator.0
+                    || summary
+                        .accepted_roots
+                        .as_ref()
+                        .is_none_or(|accepted| ratio.numerator.0 != u128::from(accepted.0))
             })
         {
             reasons.push("summary does not bind a complete consistent original cohort".into());

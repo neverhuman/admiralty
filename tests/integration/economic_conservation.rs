@@ -401,3 +401,61 @@ fn one_shot_pre_settlement_crash_keeps_exposure_until_retry() {
     assert_eq!(settled.unresolved_liabilities[&scope].get(), 0);
     assert_eq!(settled.settled[&scope].get(), 7);
 }
+
+#[test]
+fn comparison_rejects_unknown_or_inconsistent_accepted_root_counts() {
+    let root = RootId::new("root-comparison").expect("valid root fixture");
+    let cohort = cohort(std::slice::from_ref(&root));
+    for succeeded in [false, true] {
+        let status = if succeeded {
+            RootStatus::Succeeded
+        } else {
+            RootStatus::Failed
+        };
+        let stage = succeeded.then_some("accepted");
+        let summary = economics::summarize_cohort(
+            &cohort,
+            &[usage(
+                &root,
+                "comparison-usage",
+                1,
+                "tokens",
+                ObservedAmount::Known {
+                    amount: DecimalU128(1),
+                },
+            )],
+            &[outcome(&root, status, stage)],
+            10,
+        )
+        .expect("summarize complete cohort");
+        let baseline = economics::cohort_compare(&cohort, &summary, &cohort, &summary, "tokens");
+        assert_eq!(baseline.status, economics::ComparisonStatus::Comparable);
+        assert!(!baseline.savings_claim);
+        for count in [
+            None,
+            Some(DecimalU64(u64::from(!succeeded))),
+            Some(DecimalU64(2)),
+        ] {
+            let mut inconsistent = summary.clone();
+            inconsistent.accepted_roots = count;
+            for (left, right) in [(&inconsistent, &summary), (&summary, &inconsistent)] {
+                let comparison = economics::cohort_compare(&cohort, left, &cohort, right, "tokens");
+                assert_eq!(
+                    comparison.status,
+                    economics::ComparisonStatus::InsufficientEvidence
+                );
+                assert!(!comparison.savings_claim);
+            }
+        }
+        let mut inconsistent = summary.clone();
+        inconsistent
+            .accepted_yield
+            .as_mut()
+            .expect("known yield")
+            .numerator = DecimalU128(u128::from(!succeeded));
+        assert_eq!(
+            economics::cohort_compare(&cohort, &inconsistent, &cohort, &summary, "tokens").status,
+            economics::ComparisonStatus::InsufficientEvidence,
+        );
+    }
+}
