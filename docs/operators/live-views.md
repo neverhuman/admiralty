@@ -1,6 +1,6 @@
 # Git Flow and Fleet Atlas
 
-Open **Git Flow** or **Fleet Atlas** in the dashboard navigation. Direct routes are `#/git` and `#/atlas`. Existing detail, workplans, commands and models remain available. Both views are read-only and use the same in-memory session token as native API reads.
+Open **Git Flow** or **Fleet Atlas** in the dashboard navigation. Direct routes are `#/git` and `#/atlas`. Existing detail, workplans, commands and models remain available. Both views are read-only. Private native reads use the same in-memory session token as other native API reads.
 
 ## Connect real sources
 
@@ -12,7 +12,7 @@ admiralty-observe --config /absolute/private/observe.json
 
 Every configured `projects[].repository` contributes a bounded Git observation to `status.json`. The observer publishes a project catalog even if a tracker has no tasks. Point `admiraltyd --legacy-status-file` and `--legacy-index-file` at the existing observer output and retained detailed HTML as described in [native startup](native-startup.md). The `pnpm live` launcher already supplies these source arguments. Rebuild/restart the observer and server to load this implementation; opening the browser alone cannot add Git data to an older observer.
 
-New view reads always require the owner session token on a private server. `--legacy-public-read` does not grant access to `/v2/views` or `/v2/views/events`. Tokens travel in authorization headers, never URLs or persistent browser storage. `pnpm demo` displays an isolated, labeled synthetic topology and graph; it does not scan real repositories.
+Native view reads require the owner session token on a private server. `--legacy-public-read` does not grant access to `/v2/views` or `/v2/views/events`. If native reads return401/403 and `/v1/legacy` is explicitly public, the dashboard displays a bounded public producer view instead. It preserves source timestamps and reported roles/models; private native assignments remain unavailable. The banner provides **Connect session access** and **Retry private feed**. Changing access discards prior private and paused snapshots, including late replies. A private legacy route also requires access; the dashboard never bypasses that boundary. Tokens travel in authorization headers, never URLs or persistent browser storage. `pnpm demo` displays an isolated, labeled synthetic topology and graph; it does not scan real repositories.
 
 The server shares one source reader across viewers. It checks published producer state and native task state every two seconds and publishes a complete new cut only when source content/cursor changes. The browser receives authenticated SSE, with 15-second keepalives and bounded reconnect backoff. Reconnecting atomically replaces the current projection. This is current-state resynchronization, not a retained event journal or arbitrary history replay. Observation latency includes the configured observer cycle (default 15 seconds), collection time, and up to two seconds of server ingestion.
 

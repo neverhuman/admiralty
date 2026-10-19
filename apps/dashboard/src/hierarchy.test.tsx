@@ -89,6 +89,14 @@ describe('source-faithful fleet hierarchy', () => {
 });
 
 describe('model family badges', () => {
+  it('colors observed Claude short labels while keeping unavailable identities unknown', () => {
+    for (const model of ['Haiku 4.5', 'Sonnet 4.5', 'Opus 4']) {
+      expect(renderToStaticMarkup(<ModelBadge model={model} />)).toContain('model-badge--claude');
+    }
+    for (const model of ['unknown', 'Gemini (model unknown)', 'claude model unknown']) {
+      expect(modelFamily(model)).toBe('unknown');
+    }
+  });
   it('colors configurable family names and preserves reported model/effort/tier labels', () => {
     for (const [model, family] of [['gpt-6-luna', 'luna'], ['gpt-6.1-sol', 'sol'], ['gpt-6-astra', 'astra'], ['agy Gemini 4 Argon', 'gemini'],
       ['google/gemini-custom', 'gemini'], ['anthropic/claude-haiku', 'claude'], ['ornith/Ornith-1.5-35B-A3B', 'local'],
