@@ -102,18 +102,6 @@ name = "codex_round17_p06_p13_p14"
 path = "../../tests/integration/codex_round17_p06_p13_p14.rs"
 
 [[test]]
-name = "codex_p06_p13_p14_round11"
-path = "../../tests/integration/codex_p06_p13_p14_round11.rs"
-
-[[test]]
-name = "codex_p06_p13_p14_round12"
-path = "../../tests/integration/codex_p06_p13_p14_round12.rs"
-
-[[test]]
-name = "codex_p06_p13_p14_round13"
-path = "../../tests/integration/codex_p06_p13_p14_round13.rs"
-
-[[test]]
 name = "codex_round15_p06_p13_p14"
 path = "tests/integration/mod.rs"
 

@@ -2,10 +2,13 @@
 use crate::{CliResult, invalid, open_existing, print_json, read_bounded};
 use admiralty_core::{
     ProjectId, TaskId, content_digest,
-    workplans::{Workplan, preview_workplan},
+    workplans::{
+        Workplan, preview_workplan,
+        source::{PlanSource, preview_source},
+    },
 };
 use admiralty_store::{Store, workplans::RegisterWorkplanRequest};
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, ValueEnum};
 use serde_json::json;
 use std::path::{Path, PathBuf};
 
@@ -21,10 +24,12 @@ pub struct WorkplanArgs {
 
 #[derive(Subcommand)]
 enum WorkplanCommand {
-    /// Validate a JSON workplan and show stable dependency order without recording it.
+    /// Preview typed JSON/TOML or a guided Markdown task table without recording it.
     Preview {
         #[arg(long)]
         file: PathBuf,
+        #[arg(long, value_enum, default_value_t = SourceFormat::Json)]
+        format: SourceFormat,
     },
     /// Record one immutable revision. Creates an exclusively owned offline database if absent.
     Register {
@@ -63,6 +68,23 @@ enum WorkplanCommand {
     },
 }
 
+#[derive(Clone, Copy, ValueEnum)]
+enum SourceFormat {
+    Json,
+    Toml,
+    Markdown,
+}
+
+impl From<SourceFormat> for PlanSource {
+    fn from(value: SourceFormat) -> Self {
+        match value {
+            SourceFormat::Json => Self::Json,
+            SourceFormat::Toml => Self::Toml,
+            SourceFormat::Markdown => Self::Markdown,
+        }
+    }
+}
+
 fn preview(file: &Path) -> CliResult<()> {
     let preview = preview_workplan(&read_bounded(file)?)?;
     print_json(json!({
@@ -80,7 +102,14 @@ pub fn run(args: WorkplanArgs) -> CliResult<()> {
                 .as_deref()
                 .ok_or_else(|| invalid("--file is required"))?,
         ),
-        Some(WorkplanCommand::Preview { file }) => preview(&file),
+        Some(WorkplanCommand::Preview {
+            file,
+            format: SourceFormat::Json,
+        }) => preview(&file),
+        Some(WorkplanCommand::Preview { file, format }) => {
+            let result = preview_source(&read_bounded(&file)?, format.into())?;
+            print_json(json!({"preview_only": true, "execution_started": false, "source": result}))
+        }
         Some(WorkplanCommand::Register {
             database,
             file,
