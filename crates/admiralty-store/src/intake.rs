@@ -128,6 +128,24 @@ fn hash<T: Serialize>(value: &T) -> Result<String> {
     Ok(content_digest(value)?)
 }
 fn ids(scope: &AuthorizedIntakeScope) -> Result<(&ProjectId, &RootId)> {
+    // Bound before any clone, allocation or SQLite parameter binding. This is
+    // independently supplied scope, but still must obey the intake reference
+    // contract; a typed context is not permission to consume unbounded work.
+    let reference = &scope.authority_ref;
+    if reference.len() > 1024
+        || reference.trim().is_empty()
+        || reference
+            .bytes()
+            .any(|b| b.is_ascii_control() || b.is_ascii_whitespace())
+        || reference.contains(['/', '\\'])
+        || reference.starts_with('.')
+        || reference.contains("..")
+        || ["javascript:", "data:", "file:", "http:", "https:", "ssh:"]
+            .iter()
+            .any(|prefix| reference.to_ascii_lowercase().starts_with(prefix))
+    {
+        return Err(IntakeStoreError::Denied);
+    }
     match (&scope.project_id, &scope.root_id) {
         (Some(p), Some(r)) if scope.authority_generation > 0 => Ok((p, r)),
         _ => Err(IntakeStoreError::Denied),
@@ -622,6 +640,11 @@ pub(crate) fn get_work_order(
     revision: Option<u32>,
 ) -> Result<Option<RegisteredWorkOrder>> {
     let (project, root) = ids(scope)?;
+    // TaskId::new(&str) owns a copy before checking its own cap. Reject a large
+    // caller-owned identifier here, before that otherwise unnecessary copy.
+    if id.is_empty() || id.len() > 128 {
+        return Err(IntakeStoreError::Selection);
+    }
     TaskId::new(id).map_err(|_| IntakeStoreError::Selection)?;
     if revision == Some(0) {
         return Err(IntakeStoreError::Selection);
@@ -723,7 +746,7 @@ pub(crate) fn find_duplicate_candidates(
     // bounded structured origin from original source below, not hash-prefix guesses.
     let tx = c.transaction_with_behavior(TransactionBehavior::Deferred)?;
     bounds(&tx)?;
-    let mut statement=tx.prepare("SELECT r.work_order_id,r.revision,b.outcome_id,b.task_id,b.contract_digest,b.binding_json,r.command_id,r.raw_digest,r.canonical_digest,r.request_json FROM work_order_intake_revisions r JOIN work_order_intake_bindings b USING(project_id,root_id,work_order_id,revision) WHERE r.project_id=?1 AND r.root_id=?2 AND (r.work_order_id,r.revision,b.outcome_id)>(?3,?4,?5) AND (r.raw_digest=?6 OR r.canonical_digest=?7 OR r.command_id=?8 OR ?9 IS NOT NULL) AND r.principal_id=?10 AND r.authority_ref=?11 AND r.authority_generation=?12 ORDER BY r.work_order_id,r.revision,b.outcome_id LIMIT ?13")?;
+    let mut statement=tx.prepare("SELECT r.work_order_id,r.revision,b.outcome_id FROM work_order_intake_revisions r JOIN work_order_intake_bindings b USING(project_id,root_id,work_order_id,revision) WHERE r.project_id=?1 AND r.root_id=?2 AND (r.work_order_id,r.revision,b.outcome_id)>(?3,?4,?5) AND (r.raw_digest=?6 OR r.canonical_digest=?7 OR r.command_id=?8 OR ?9 IS NOT NULL) AND r.principal_id=?10 AND r.authority_ref=?11 AND r.authority_generation=?12 ORDER BY r.work_order_id,r.revision,b.outcome_id LIMIT ?13")?;
     // A non-null origin enables a bounded scan, never an unbounded all-state pass.
     let mut rows = statement.query(params![
         project.as_str(),
@@ -741,6 +764,11 @@ pub(crate) fn find_duplicate_candidates(
         i64::from(query.limit) + 1
     ])?;
     let mut candidates = Vec::new();
+    // Each page scans at most query.limit records, so this cache has at most
+    // that many entries. A revision shared by several selected outcomes is
+    // validated once, including its original source, policy, receipt, plan and
+    // exact binding rows. Lookup columns are selection hints, never proof.
+    let mut validated = BTreeMap::new();
     let mut last = None;
     let mut scanned = 0;
     let mut more = false;
@@ -753,35 +781,45 @@ pub(crate) fn find_duplicate_candidates(
         let wo = stored_text(row, 0, 128)?;
         let revision: u32 = row.get(1)?;
         let outcome = stored_text(row, 2, 128)?;
-        let id = TaskId::new(stored_text(row, 3, 128)?).map_err(|_| IntakeStoreError::Integrity)?;
-        let contract_digest = stored_text(row, 4, 71)?;
-        let binding: intake::WorkOrderTaskBinding =
-            serde_json::from_str(&stored_text(row, 5, 32768)?)?;
-        binding.validate()?;
-        if binding.task_id != id
-            || binding.contract_digest != contract_digest
-            || binding.work_order_id != wo
-            || binding.work_order_revision != revision
-            || binding.outcome_id != outcome
+        let stored = match validated.entry((wo.clone(), revision)) {
+            std::collections::btree_map::Entry::Vacant(entry) => entry.insert(
+                read_revision(&tx, project, root, &wo, revision)?
+                    .ok_or(IntakeStoreError::Integrity)?,
+            ),
+            std::collections::btree_map::Entry::Occupied(entry) => entry.into_mut(),
+        };
+        let original = &stored.request;
+        let original_scope = &original.work_order.scope;
+        if original_scope.principal != scope.principal
+            || original_scope.project_id.as_ref() != Some(project)
+            || original_scope.root_id.as_ref() != Some(root)
+            || original_scope.authority_ref != scope.authority_ref
+            || original_scope.authority_generation != scope.authority_generation
+            || original.authority_generation != scope.authority_generation
         {
             return Err(IntakeStoreError::Integrity);
         }
+        let binding = &original
+            .selected_tasks
+            .iter()
+            .find(|selected| selected.binding.outcome_id == outcome)
+            .ok_or(IntakeStoreError::Integrity)?
+            .binding;
+        let id = binding.task_id.clone();
+        let contract_digest = binding.contract_digest.clone();
         last = Some(format!("{wo}:{revision}:{outcome}"));
-        let command = stored_text(row, 6, 128)?;
-        let raw = stored_text(row, 7, 71)?;
-        let canonical = stored_text(row, 8, 71)?;
+        let command = original.command_id.as_str();
+        let raw = &original.work_order.raw_digest;
+        let canonical = &original.work_order.canonical_digest;
         let exact_command = query
             .command_id
             .as_ref()
             .is_some_and(|c| c.as_str() == command);
-        let exact_origin = if let Some(origin) = &query.origin {
-            let request =
-                intake::parse_record_request(stored_text(row, 9, MAX_ROW_BYTES)?.as_bytes())?;
-            request.work_order.provenance.origin.as_ref() == Some(origin)
-        } else {
-            false
-        };
-        let equal = raw == query.raw_digest && canonical == query.canonical_digest;
+        let exact_origin = query
+            .origin
+            .as_ref()
+            .is_some_and(|origin| original.work_order.provenance.origin.as_ref() == Some(origin));
+        let equal = raw == &query.raw_digest && canonical == &query.canonical_digest;
         let reason = if exact_command {
             if equal {
                 DuplicateReason::ExactCommandIdentity
@@ -794,9 +832,9 @@ pub(crate) fn find_duplicate_candidates(
             } else {
                 DuplicateReason::ExactSourceCollision
             }
-        } else if raw == query.raw_digest {
+        } else if raw == &query.raw_digest {
             DuplicateReason::AdvisoryRawContent
-        } else if canonical == query.canonical_digest {
+        } else if canonical == &query.canonical_digest {
             DuplicateReason::AdvisoryCanonicalContent
         } else {
             continue;
