@@ -6,7 +6,17 @@ neverhumanbot approval and matched-head rebase. Red/queued CI is never green.
 One cleanup lane takes this list after remaining cutover implementation lands;
 build failures remain immediate work.
 
-Latest source-specific evidence: main36aa0eb workflow39208749813/job117917214621
+Latest later observation: maina9e0f557 workflow39212711288/job117933239732
+passed contracts, formatting and strict workspace Clippy, then failed
+`actual_producer_capture_failure_cannot_yield_typed_transcript` at
+`native_executor.rs:2319` with the controlled child capture deadline:
+86server cases passed,1failed,2ignored. Raw failed-job log
+`/private/tmp/adm-ci-a9e-rust-39212711288.log` SHA-256
+`6f7ff35162a4b735ce97f7b4363c5d10803d7d37912f06435f0facfc1e765118`.
+The exacta9e browser/accessibility workflow39212711302 passed. No cause is
+inferred, no guard/deadline changed and no extra cleanup lane or rerun started.
+
+Historical source-specific evidence: main36aa0eb workflow39208749813/job117917214621
 passed contracts, formatting and strict workspace Clippy. Its CLI90unit cases,
 5archive CLI and7installer CLI cases passed, so item10's archive-directory
 failure is repaired on this source. The workflow still failed the controlled
