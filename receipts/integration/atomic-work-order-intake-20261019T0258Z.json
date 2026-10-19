@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T02:58:42.250Z",
+  "base_revision": "f590837abb85ae428761688218cb9dc940031b42",
+  "qualified_source": "4e43ce2217845ecae8848d102aef0ba5765467a3",
+  "worker_commits": [
+    "f6cc1ae84f59d0f05fb96fbb15d495f645d87ef4",
+    "402f94b1d29ed16dbbf61cf0e242cf15e9e1b67a"
+  ],
+  "source_sha256": {
+    "crates/admiralty-store/src/intake.rs": "87b74cec929c598feea35da249a75e29f4db1ef875e0899d719d56e3701cc6f0",
+    "crates/admiralty-store/src/workplans.rs": "41c4b091c4b4565d48d7fbd9935af6108180338779ced581df630c8928eb6e27",
+    "crates/admiralty-store/src/lib.rs": "433b95c90ffb32ec8583528315a98d5183cd9904957aebcf8c0164dda6a420c2",
+    "crates/admiralty-store/migrations/0006_work_order_intake.sql": "9d8b63c3cbb8c27808300c683b08057c2f0f8ed3f36c8e7c0b1d0e8c9097a988",
+    "crates/admiralty-store/tests/work_order_intake.rs": "0042ab94b8e0e2415eaf9338765ed21f93b65a8d603feface016c0d6932035ad"
+  },
+  "scope": "Registered sole-writer atomic inline enriched-JSON intake/work-order/plan lineage; default-deny startup authorizer, no dispatch",
+  "checks": [
+    {
+      "command": "cargo test -p admiralty-store --test work_order_intake --test workplan_registry --locked",
+      "exit_code": 0,
+      "passed": 18,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "log": "target/quality/work-order-intake-integrated.log",
+      "sha256": "409d071d3db0254e5c23fb2d49073853d1eef455a61f082d5803635607aa3c94"
+    }
+  ],
+  "worker_receipts": [
+    {
+      "path": "/private/tmp/adm-wo2-intake-proof-xuzx9s7t/receipt.json",
+      "sha256": "bc0ebe89ca811d95895dd44c6f90ef30b82b89bed089a9e9866c7da9bf9806c9",
+      "contents": {
+        "packet": "WO2 durable intake storage component",
+        "worktree": "/private/tmp/admiralty-attention-journal-99f4e26",
+        "branch": "codex/wo2-durable-intake",
+        "root_base": "99f4e26cebfab97afa661ed05aea6192bfd5935c",
+        "attention_dependency": "abc34f68c5bdfb7bf107b0f3920a7fb9b1fbc945",
+        "core_dependencies_original": [
+          "f8161bb57d38090db58672eae8177edaabf1acf3",
+          "c02f8264b0d1a38e8944a1e2696e6b15b0246e4d"
+        ],
+        "local_dependency_head": "4aaea1b41253f1e9cec1721e9d68a77dc2e71691",
+        "proof_kind": "actual registered Store/writer integration tests with temporary excluded core/Store module registration",
+        "checks": {
+          "intake_integration": {
+            "passed": 11,
+            "failed": 0,
+            "ignored": 0
+          },
+          "existing_workplan_registry": {
+            "passed": 4,
+            "failed": 0,
+            "ignored": 0
+          },
+          "strict_store_all_targets_clippy": {
+            "exit": 0
+          },
+          "fmt_all_check": {
+            "exit": 0
+          },
+          "diff_check": {
+            "exit": 0
+          }
+        },
+        "environment": {
+          "TMPDIR": "/private/tmp/adm-native-4pbrtc1l",
+          "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/wo2-intake",
+          "CARGO_BUILD_JOBS": "1",
+          "RUST_TEST_THREADS": "1"
+        },
+        "logs_sha256": {
+          "final-clippy.log": "732186322402325172940531d8d6d7cfac85dc902585b2bef6715ad6839dacfd",
+          "final-format.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "final-tests.log": "e1aa982c63769c3e54ff7da584f10a63350d57ef9283ce65c900e6f4d1b9d74e"
+        },
+        "shared_registration_patch": "/private/tmp/adm-wo2-intake-proof-xuzx9s7t/store-registration-final.patch",
+        "shared_registration_patch_sha256": "d964a39620d88753157ded759f7836797a6bf4f8800e4eae47accbf5daebf1cb",
+        "core_required_registration": "pub mod intake; (root owns export, WO1 source must already be integrated)",
+        "runtime_effects": false,
+        "domain_events_or_outbox_effects": false,
+        "authority_issued": false,
+        "limits": [
+          "Inline original UTF-8 source only; ArtifactClaim denied until verified ArtifactStore/interlocked pin composition.",
+          "Recording requires explicit JsonBatch outcomes containing complete task, delivery and raw source spans; PlainText preview has no inferred tasks and is denied by this initial record packet.",
+          "No CLI/server route/UI adapter; startup authority must be independently installed by trusted service composition. Default Store denies intake.",
+          "Trusted scoped read API requires independently supplied non-Deserialize scope; a public ScopeSnapshot grants nothing.",
+          "Duplicate lookup covers bounded immutable intake lineage only; older provenance is explicitly incomplete and matching content is advisory.",
+          "This is a storage/workplan component, not native dispatch/provider qualification, acceptance or parent P02/P06/P13 completion."
+        ],
+        "prior_failures": [
+          "First compile rejected usize SQL limit (ToSql); repaired with bounded i64::from(query.limit)+1.",
+          "Initial test compile used nonexistent get_workplan API; corrected to actual workplan API.",
+          "Strict lint found unused imports, collapsible_if and two type_complexity warnings; fixed without allowances. Original errors remain in tool transcript, not newly fabricated raw logs."
+        ],
+        "candidate_commit": "f6cc1ae84f59d0f05fb96fbb15d495f645d87ef4",
+        "working_tree_clean_after_excluded_registration_restored": true
+      }
+    },
+    {
+      "path": "/private/tmp/adm-wo2-intake-proof-xuzx9s7t/review-repair-receipt.json",
+      "sha256": "16a7d8ccaa4bd8b8d989fa2b19c798dd84ff84a79a527a3d0df314a289d0e6e6",
+      "contents": {
+        "packet": "WO2 independent review repair",
+        "original_candidate": "f6cc1ae84f59d0f05fb96fbb15d495f645d87ef4",
+        "repair_commit": "402f94b1d29ed16dbbf61cf0e242cf15e9e1b67a",
+        "source_sha256": {
+          "crates/admiralty-store/src/intake.rs": "87b74cec929c598feea35da249a75e29f4db1ef875e0899d719d56e3701cc6f0",
+          "crates/admiralty-store/tests/work_order_intake.rs": "0042ab94b8e0e2415eaf9338765ed21f93b65a8d603feface016c0d6932035ad"
+        },
+        "logs_sha256": {
+          "review-gap-before-repair.log": "c285d013d502ef0e5932bc87211f0a2a97f980c5dd211f31acfcbcab3beb8d70",
+          "review-repair-final-tests.log": "787faea75370af2a364acc24b87bd723dbf3de889de600d7b19ec22cda165fe6",
+          "review-repair-clippy.log": "ddade8aaee31f5a01a05b1e9b3f94baeeb1a42042556ac97989fa6b23199dfaa",
+          "review-repair-format.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "regressions": {
+          "before_repair": {
+            "new_direct_corruption_tests_failed": 2,
+            "exit": 101
+          },
+          "after_repair": {
+            "intake_passed": 14,
+            "existing_workplan_passed": 4,
+            "failed": 0,
+            "ignored": 0,
+            "exit": 0
+          }
+        },
+        "strict_store_all_targets_clippy_exit": 0,
+        "fmt_check_exit": 0,
+        "diff_check_exit": 0,
+        "changes": [
+          "Bounded per-page original revision validation/cache before candidate output; validates original source, policy, receipt, plan and all exact binding rows.",
+          "Exact independently trusted project/root/principal/authority_ref/generation check against validated original request before projection lookup/output.",
+          "Candidate task binding/revision/digest derived only from validated original selected task.",
+          "Workorder ID bound before TaskId::new(&str) copying; authority_ref byte/opaque reference checks before SQLite/work."
+        ],
+        "shared_registration_patch_unchanged": true,
+        "shared_registration_patch_sha256": "d964a39620d88753157ded759f7836797a6bf4f8800e4eae47accbf5daebf1cb",
+        "worktree_clean": true,
+        "temporary_shared_registration_excluded": true,
+        "limits": "Previous receipt limits unchanged: explicit enriched inline JSON storage component, no artifact pin/issuer/dispatch/runtime/provider authority. No foreign lineage is omitted as a successful result after detected corruption; query returns error.",
+        "independent_review": "audit_evidence reviewed frozen source delta and preserved pre-fix failure log; exact commit/hash acknowledgement requested separately."
+      }
+    }
+  ],
+  "review": {
+    "independent": "audit_evidence",
+    "result": "clear after duplicate-query integrity and before-clone bounds repair",
+    "source_sha256": "87b74cec929c598feea35da249a75e29f4db1ef875e0899d719d56e3701cc6f0",
+    "shared_registration_patch_sha256": "d964a39620d88753157ded759f7836797a6bf4f8800e4eae47accbf5daebf1cb",
+    "negative_evidence": "Both direct post-open corruption regressions failed frozen original source and pass repaired source; original raw logs retained by worker receipt"
+  },
+  "limitations": [
+    "Explicit inline enriched JSON outcomes/tasks/delivery bindings only; raw unenriched PlainText and unverified ArtifactClaim refuse with no partial records",
+    "IntakeAuthority must be installed by trusted startup and resolve current independent scope/policy in every writer turn, including replay; none installed by default or production startup here",
+    "Trusted read scopes are independently authorized in-process inputs, not network grants",
+    "No public schema/route/enrichment UX/dispatch/outbox/provider/startup issuer or parent acceptance established"
+  ],
+  "native_execution_qualified": false,
+  "parent_packet_acceptance": false,
+  "provider_turns": 0
+}

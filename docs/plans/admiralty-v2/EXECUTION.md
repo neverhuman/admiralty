@@ -1450,3 +1450,46 @@ post-open corruption regressions before integration. Artifact claims and raw
 unenriched prose remain explicit unsupported cases, not inferred tasks. Accepted
 parents remain2/32, general autonomous execution false, and CI cleanup remains
 deferred under the current human ruling.
+
+### Atomic work-order source integration — 2026-10-19T02:59Z
+
+PR99 received2c0c669bd4b98a93162074b2701bf46ef49de6b2 at02:52:39Z; PR98
+receivedf590837abb85ae428761688218cb9dc940031b42 at02:55:21Z. Both exact heads
+were neverhumanbot-approved and matched-head rebased. PR98's test-only owned
+0700 fixture repair preserves production guards; all17artifacts and12qualified
+objects were independently hash-checked, with actual72server tests underumask0002.
+That historical local result is not a current full-source/hosted-green claim.
+
+The WO2 Store writer is now registered through startup-only authority injection.
+It reauthorizes each writer turn/replay, re-previews original inline source with
+explicit format/current policy, verifies exact selected outcomes/contracts/
+delivery/spans and atomically commits original source, work-order lineage,
+selected task bindings, plan revision and immutable receipt. Existing standalone
+workplan transactions preserve their semantics; the narrow shared helper allows
+one caller-owned transaction without nested commit. Historical retries retain
+old receipts; changed command/source identities collide, competing CAS has one
+winner, and late SQL faults leave no partial plan or lineage.
+
+Independent review caught duplicate-query reliance on denormalized scope and
+partial binding data. Both post-open corruption counterexamples failed the
+original source. Final queries validate full original revisions and independent
+scope before returning/paginating candidates; before-clone identifier/reference
+bounds are also repaired. All14actual registered intake tests plus4existing
+plan tests pass after root registration; worker strict StoreClippy/fmt and
+independent repaired-source review are recorded in
+[the source-bound receipt](../../../receipts/integration/atomic-work-order-intake-20261019T0258Z.json).
+Default startup installs no intake issuer. Explicit enriched inline JSON is the
+supported component scope; raw unenriched prose/artifact claims fail without
+partial writes. Public routes, enrichment UX and dispatch are not activated.
+
+Primary CLI source diagnosis found that its own CODEXHOME/.env loader can replace
+initial environment variables before runtime creation; neither root nor reviewer
+read that file or concluded it caused the two startup failures. At02:55:45Z a new
+owned0700 minimalHOME/.codex with only an explicit reference to existing0600
+ChatGPT auth passed actual safeCLI login-status metadata. No credential bytes
+were read/copied by root, no .env/userconfig was inherited, and no provider task
+or authorization was issued. The auth reference remains shared writable: normal
+CLI OAuth refresh can write the external authfile, so credential/network
+isolation is not claimed. Written Fleet Admiral scope ACK is requested before
+any fresh one-run qualification with this profile. Accepted parents2/32 and
+native_execution_qualified=false remain unchanged.
