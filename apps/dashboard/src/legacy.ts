@@ -40,15 +40,19 @@ export function watchLegacy(options: { token?: string; onSnapshot: (value: Legac
   let stopped = false, timer: ReturnType<typeof setTimeout> | undefined;
   let request: AbortController | undefined;
   async function poll() {
-    request = new AbortController();
-    const timeout = setTimeout(() => request?.abort(), 12_000);
+    const controller = new AbortController();
+    request = controller;
+    let timedOut = false;
+    const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 12_000);
     let repeat = true;
     try {
-      const snapshot = await getLegacy(options.token, request.signal, options.fetcher);
+      const snapshot = await getLegacy(options.token, controller.signal, options.fetcher);
       if (!stopped) { options.onSnapshot(snapshot); options.onError(''); }
       if (snapshot === null) repeat = false;
     } catch (error) {
-      if (!stopped) options.onError(error instanceof Error ? error.message : 'Detailed source unavailable');
+      if (!stopped) options.onError(timedOut
+        ? 'The live snapshot did not arrive within 12 seconds. Retrying automatically; check the dashboard connection.'
+        : error instanceof Error ? error.message : 'Detailed source unavailable');
       if (error instanceof ApiError && [401, 403].includes(error.status)) repeat = false;
     } finally {
       clearTimeout(timeout);

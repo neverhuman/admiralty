@@ -1,4 +1,5 @@
 //! Fleet projection, durable replay and explicitly configured native command services.
+mod http_bytes;
 pub mod intake_configuration;
 pub mod legacy;
 pub mod model_selection;
@@ -544,13 +545,15 @@ async fn legacy_snapshot(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, ApiError> {
+    let started = std::time::Instant::now();
     let config = legacy_config(&state, &headers)?;
     let _permit = state
         .reads
         .acquire()
         .await
         .map_err(|_| error(StatusCode::SERVICE_UNAVAILABLE, "read capacity unavailable"))?;
-    legacy::snapshot(config).await
+    let response = legacy::snapshot_encoded(config, http_bytes::accepts_gzip(&headers)).await?;
+    Ok(http_bytes::timed(response, "snapshot", started.elapsed()))
 }
 async fn legacy_index(
     State(state): State<AppState>,
@@ -571,7 +574,16 @@ async fn health() -> Json<serde_json::Value> {
     )
 }
 
-async fn asset(State(state): State<AppState>, path: Option<RoutePath<String>>) -> Response {
+async fn asset(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    path: Option<RoutePath<String>>,
+) -> Response {
+    let started = std::time::Instant::now();
+    let Ok(_permit) = state.reads.acquire().await else {
+        return StatusCode::SERVICE_UNAVAILABLE.into_response();
+    };
+    let gzip = http_bytes::accepts_gzip(&headers);
     let requested = path.map(|p| p.0).unwrap_or_else(|| "index.html".into());
     if !admiralty_core::safe_relative_path(&requested) {
         return StatusCode::NOT_FOUND.into_response();
@@ -602,20 +614,41 @@ async fn asset(State(state): State<AppState>, path: Option<RoutePath<String>>) -
             Some("json") => "application/json",
             _ => "application/octet-stream",
         };
-        Some((mime, std::fs::read(path).ok()?))
+        let bytes = legacy::read_bounded(&path, 16 * 1024 * 1024).ok()?;
+        let mut response = http_bytes::response(mime, bytes, gzip).ok()?;
+        let hashed_asset = requested.starts_with("assets/")
+            && matches!(
+                path.extension().and_then(|v| v.to_str()),
+                Some("js" | "css")
+            )
+            && path
+                .file_stem()
+                .and_then(|v| v.to_str())
+                .and_then(|v| v.rsplit_once('-'))
+                .is_some_and(|(_, hash)| {
+                    hash.len() == 8
+                        && hash
+                            .bytes()
+                            .all(|c| c.is_ascii_alphanumeric() || c == b'_' || c == b'-')
+                });
+        response.headers_mut().insert(
+            header::CACHE_CONTROL,
+            if hashed_asset {
+                "public, max-age=31536000, immutable"
+            } else {
+                "no-cache"
+            }
+            .parse()
+            .expect("static asset cache policy"),
+        );
+        Some(response)
     })
     .await;
-    match data {
-        Ok(Some((mime, bytes))) => (
-            [
-                (header::CONTENT_TYPE, mime),
-                (header::X_CONTENT_TYPE_OPTIONS, "nosniff"),
-            ],
-            bytes,
-        )
-            .into_response(),
+    let response = match data {
+        Ok(Some(response)) => response,
         _ => StatusCode::NOT_FOUND.into_response(),
-    }
+    };
+    http_bytes::timed(response, "asset", started.elapsed())
 }
 
 pub fn app(

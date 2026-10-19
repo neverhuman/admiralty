@@ -813,6 +813,92 @@ async fn legacy_bridge_keeps_real_facts_out_of_demo_and_preserves_native_auth() 
 }
 
 #[tokio::test]
+async fn dashboard_compression_is_negotiated_without_bypassing_auth_or_source_validation() {
+    let directory = store_directory();
+    let status = directory.path().join("status.json");
+    let assets = directory.path().join("assets");
+    std::fs::create_dir(&assets).expect("assets");
+    let source = serde_json::json!({"generated_utc":"2026-10-19T12:00:00Z",
+        "order":["real"],"projects":{"real":{"name":"real source", "log":"Unicode 🧭\n".repeat(10_000)}}}).to_string();
+    std::fs::write(&status, &source).expect("source");
+    let script = "console.log('dashboard asset');\n".repeat(1_000);
+    std::fs::write(assets.join("index.js"), &script).expect("asset");
+    std::fs::create_dir(assets.join("assets")).expect("hashed assets");
+    std::fs::write(assets.join("assets/index-12345678.js"), &script).expect("hashed asset");
+    let store = Store::open(directory.path().join("native.sqlite")).expect("store");
+    let mut settings = config(false, Some(assets));
+    settings.legacy = Some(admiralty_server::legacy::LegacyConfig {
+        status_file: status.clone(),
+        index_file: directory.path().join("original.html"),
+        public_read: true,
+    });
+    let router = app(store.clone(), settings.clone()).expect("router");
+    let encoded = |router: Router, path: &'static str, encoding: &'static str| async move {
+        router
+            .oneshot(
+                Request::builder()
+                    .uri(path)
+                    .header(header::ACCEPT_ENCODING, encoding)
+                    .body(Body::empty())
+                    .expect("request"),
+            )
+            .await
+            .expect("response")
+    };
+    let cached = encoded(router.clone(), "/assets/index-12345678.js", "gzip").await;
+    assert_eq!(
+        cached.headers()[header::CACHE_CONTROL],
+        "public, max-age=31536000, immutable"
+    );
+    for (path, original) in [
+        ("/v1/legacy", source.as_bytes()),
+        ("/legacy/status.json", source.as_bytes()),
+        ("/index.js", script.as_bytes()),
+    ] {
+        let response = encoded(router.clone(), path, "gzip, br").await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[header::CONTENT_ENCODING], "gzip");
+        assert_eq!(response.headers()[header::VARY], "Accept-Encoding");
+        let body = to_bytes(response.into_body(), original.len())
+            .await
+            .expect("compressed body");
+        assert_eq!(&body[..2], &[0x1f, 0x8b]);
+        assert!(
+            body.len() < original.len() / 4,
+            "bounded transfer reduction"
+        );
+        let identity = encoded(router.clone(), path, "gzip;q=0, *;q=1").await;
+        assert!(!identity.headers().contains_key(header::CONTENT_ENCODING));
+        assert_eq!(
+            to_bytes(identity.into_body(), original.len())
+                .await
+                .expect("identity body")
+                .as_ref(),
+            original
+        );
+    }
+    settings.legacy.as_mut().expect("legacy").public_read = false;
+    let private = app(store, settings).expect("private router");
+    let denied = encoded(private.clone(), "/v1/legacy", "gzip").await;
+    assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
+    assert!(!denied.headers().contains_key(header::CONTENT_ENCODING));
+    std::fs::write(&status, "malformed").expect("broken source");
+    let response = private
+        .oneshot(
+            Request::builder()
+                .uri("/v1/legacy")
+                .header(header::ACCEPT_ENCODING, "gzip")
+                .header(header::AUTHORIZATION, format!("Bearer {TOKEN}"))
+                .body(Body::empty())
+                .expect("request"),
+        )
+        .await
+        .expect("response");
+    assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
+    assert!(!response.headers().contains_key(header::CONTENT_ENCODING));
+}
+
+#[tokio::test]
 async fn model_configuration_requires_auth_and_exact_revision_and_never_exposes_connection_refs() {
     let directory = store_directory();
     let private = directory.path().join("private-models");
