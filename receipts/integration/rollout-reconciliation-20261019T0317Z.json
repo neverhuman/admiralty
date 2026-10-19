@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T03:17:04.915Z",
+  "receiving_main": "1d00b08f07b53bf32c6d2e513185b6a741da726f",
+  "before_sha256": "91a647293f72eeb6af54a0c1450b8672ee4edb610077bc620bf6b7405f170307",
+  "after_sha256": "4971756c15a3eb5e9761d995e76ef4acf393967c247265e96f9b8993d944d69a",
+  "archive": "/home/ubuntu/admiralty-v2-build/receipts/rollout-corrections/20261019T031704Z",
+  "receipt_hashes_verified": [
+    [
+      "durable-attention-20261019T0224Z.json",
+      "d84a52ddbd1928e781e77ddd5b1e9e177690fa69694672cf7df0580bf7a6e05d"
+    ],
+    [
+      "intake-attention-thread-budget-20261019T0245Z.json",
+      "9034bcc15ab688bf4bdc8cc6a4ca357853c053fd25778b4940dd1fe691f9c817"
+    ],
+    [
+      "atomic-work-order-intake-20261019T0258Z.json",
+      "302c25a9bee857a682f7005f3351876037007e13b0d9c6f33553731c954dd540"
+    ],
+    [
+      "native-codex-startup-failure-20261019T0225Z.json",
+      "229a07da9090a1d694e4e9f39c10f10e744662d3f02a750716820577f8314ee1"
+    ],
+    [
+      "native-codex-probe-component-20261019T0143Z.json",
+      "c00b9184786d97439a7770be3e6788b7c5c723a5e9e7d0df080f183af8d3cba4"
+    ]
+  ],
+  "live_proof": {
+    "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/CODEX_NATIVE_F590837A_INDEPENDENT_20261019T0314Z.json",
+    "sha256": "8ece9c7f9f1777da5024ccdb1fcad84d9f3fbabee5dbf41d4f5d6eeeceb2133b"
+  },
+  "all_parent_statuses_preserved": true,
+  "foundation_packets_byte_identical": true,
+  "unrelated_packets_byte_identical": true,
+  "all_original_history_source_timestamps_preserved": true,
+  "new_observation_basis": "new mergedsource/componentreceipts and independently observed deployment, not clock-onlyfreshening",
+  "accepted": [
+    "P00",
+    "P01"
+  ],
+  "remaining_parents": 30,
+  "native_execution_qualified": false,
+  "provider_grants_issued": 0,
+  "service_control": false
+}
