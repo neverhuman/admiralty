@@ -201,6 +201,7 @@ export async function queryIntakeDuplicates(
       },
       body,
       cache: 'no-store',
+      redirect: 'error',
       signal,
     });
   } catch {
