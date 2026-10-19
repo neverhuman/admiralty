@@ -27,6 +27,7 @@ const CGROUP_ROOT: &str = "/sys/fs/cgroup";
 const PROBE_TIMEOUT: Duration = Duration::from_secs(2);
 const OUTPUT_LIMIT: usize = 64 * 1024;
 const OBSERVATION_TIMEOUT: Duration = Duration::from_secs(3);
+const RESOURCE_DIAGNOSTIC_FILE_LIMIT: usize = 4096;
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct AdmissionIdentity {
@@ -234,6 +235,310 @@ pub struct ObservationDiagnostics {
     pub first_significant_failure: Option<ObservationFailure>,
     pub last_failure: Option<ObservationFailure>,
     pub first_cgroup_limits: Option<ObservedCgroupLimits>,
+    #[serde(skip_serializing_if = "ResourceUsageDiagnostics::is_empty")]
+    pub resource_usage: ResourceUsageDiagnostics,
+}
+
+/// Advisory counters only. Missing files, failed reads and a collected cgroup
+/// stay unknown; they never become zero usage, a cause, or closure authority.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResourceReadFailure {
+    NoObservedCgroup,
+    Missing,
+    PermissionDenied,
+    NotRegular,
+    TooLarge,
+    Malformed,
+    Unbounded,
+    IdentityChanged,
+    OtherIo,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub enum ResourceReading<T> {
+    Observed { value: T },
+    Unavailable { reason: ResourceReadFailure },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct PidsEventCounters {
+    pub max: Option<u64>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct MemoryEventCounters {
+    pub low: Option<u64>,
+    pub high: Option<u64>,
+    pub max: Option<u64>,
+    pub oom: Option<u64>,
+    pub oom_kill: Option<u64>,
+    pub oom_group_kill: Option<u64>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct CgroupEventCounters {
+    pub populated: Option<bool>,
+    pub frozen: Option<bool>,
+}
+
+/// The digest binds the original host/run/unit/invocation/PID-start observation;
+/// device/inode identify its retained directory FD, never a reopened path.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ResourceCgroupIdentity {
+    pub owner_digest: String,
+    pub device: u64,
+    pub inode: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct CgroupResourceSnapshot {
+    pub identity: ResourceCgroupIdentity,
+    pub pids_current: ResourceReading<u64>,
+    pub pids_max: ResourceReading<u64>,
+    pub pids_peak: ResourceReading<u64>,
+    pub pids_events: ResourceReading<PidsEventCounters>,
+    pub pids_events_local: ResourceReading<PidsEventCounters>,
+    pub memory_current: ResourceReading<u64>,
+    pub memory_max: ResourceReading<u64>,
+    pub memory_peak: ResourceReading<u64>,
+    pub memory_events: ResourceReading<MemoryEventCounters>,
+    pub memory_events_local: ResourceReading<MemoryEventCounters>,
+    pub cgroup_events: ResourceReading<CgroupEventCounters>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub enum ResourceUsageSample {
+    Observed {
+        snapshot: Box<CgroupResourceSnapshot>,
+    },
+    Unavailable {
+        reason: ResourceReadFailure,
+    },
+}
+
+/// Fixed-size history. `latest` retains the last identity-bound snapshot when a
+/// later sampling attempt or final read fails. Individual unavailable metrics
+/// remain explicit inside a snapshot. Legacy absence decodes as empty data.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct ResourceUsageDiagnostics {
+    pub sample_attempts: u32,
+    pub before: Option<ResourceUsageSample>,
+    pub latest: Option<Box<CgroupResourceSnapshot>>,
+    pub final_sample: Option<ResourceUsageSample>,
+    pub last_sample_failure: Option<ResourceReadFailure>,
+    /// Internal post-closure immutability fence, never decoded from JSON.
+    #[serde(skip)]
+    frozen: bool,
+}
+impl ResourceUsageDiagnostics {
+    pub fn is_empty(&self) -> bool {
+        self.sample_attempts == 0
+            && self.before.is_none()
+            && self.latest.is_none()
+            && self.final_sample.is_none()
+            && self.last_sample_failure.is_none()
+    }
+    fn record(&mut self, sample: ResourceUsageSample, before: bool, final_sample: bool) {
+        if self.frozen {
+            return;
+        }
+        self.sample_attempts = self.sample_attempts.saturating_add(1);
+        match &sample {
+            ResourceUsageSample::Observed { snapshot } => self.latest = Some(snapshot.clone()),
+            ResourceUsageSample::Unavailable { reason } => {
+                self.last_sample_failure = Some(reason.clone())
+            }
+        }
+        if before {
+            self.before.get_or_insert_with(|| sample.clone());
+        }
+        if final_sample {
+            self.final_sample = Some(sample);
+        }
+    }
+}
+
+struct ResourceCgroupPin {
+    directory: fs::File,
+    identity: ResourceCgroupIdentity,
+}
+type DiagnosticResult<T> = Result<T, ResourceReadFailure>;
+
+fn diagnostic_io(error: io::Error) -> ResourceReadFailure {
+    match error.kind() {
+        io::ErrorKind::NotFound => ResourceReadFailure::Missing,
+        io::ErrorKind::PermissionDenied => ResourceReadFailure::PermissionDenied,
+        _ => ResourceReadFailure::OtherIo,
+    }
+}
+impl ResourceCgroupPin {
+    fn open(path: &Path, owner_digest: String) -> DiagnosticResult<Self> {
+        use rustix::fs::{Mode, OFlags, open};
+        let fd = open(
+            path,
+            OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+            Mode::empty(),
+        )
+        .map_err(|e| diagnostic_io(e.into()))?;
+        let directory = fs::File::from(fd);
+        let metadata = directory.metadata().map_err(diagnostic_io)?;
+        if !metadata.is_dir() {
+            return Err(ResourceReadFailure::NotRegular);
+        }
+        Ok(Self {
+            directory,
+            identity: ResourceCgroupIdentity {
+                owner_digest,
+                device: metadata.dev(),
+                inode: metadata.ino(),
+            },
+        })
+    }
+    fn identity_current(&self) -> DiagnosticResult<()> {
+        let metadata = self.directory.metadata().map_err(diagnostic_io)?;
+        if metadata.dev() != self.identity.device
+            || metadata.ino() != self.identity.inode
+            || !metadata.is_dir()
+        {
+            return Err(ResourceReadFailure::IdentityChanged);
+        }
+        if metadata.nlink() == 0 {
+            return Err(ResourceReadFailure::Missing);
+        }
+        Ok(())
+    }
+    fn file(&self, name: &'static str) -> DiagnosticResult<String> {
+        use rustix::fs::{Mode, OFlags, openat};
+        // Only the fixed names below reach this private helper; no imported
+        // path, parent traversal or symlink is followed.
+        let fd = openat(
+            &self.directory,
+            name,
+            OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::CLOEXEC | OFlags::NONBLOCK,
+            Mode::empty(),
+        )
+        .map_err(|e| diagnostic_io(e.into()))?;
+        let file = fs::File::from(fd);
+        if !file.metadata().map_err(diagnostic_io)?.is_file() {
+            return Err(ResourceReadFailure::NotRegular);
+        }
+        let mut bytes = Vec::new();
+        file.take((RESOURCE_DIAGNOSTIC_FILE_LIMIT + 1) as u64)
+            .read_to_end(&mut bytes)
+            .map_err(diagnostic_io)?;
+        if bytes.len() > RESOURCE_DIAGNOSTIC_FILE_LIMIT {
+            return Err(ResourceReadFailure::TooLarge);
+        }
+        String::from_utf8(bytes).map_err(|_| ResourceReadFailure::Malformed)
+    }
+    fn reading<T>(
+        &self,
+        name: &'static str,
+        parse: impl FnOnce(&str) -> DiagnosticResult<T>,
+    ) -> ResourceReading<T> {
+        match self.file(name).and_then(|s| parse(&s)) {
+            Ok(value) => ResourceReading::Observed { value },
+            Err(reason) => ResourceReading::Unavailable { reason },
+        }
+    }
+    fn sample(&self) -> ResourceUsageSample {
+        let result = (|| {
+            self.identity_current()?;
+            let snapshot = CgroupResourceSnapshot {
+                identity: self.identity.clone(),
+                pids_current: self.reading("pids.current", diagnostic_number),
+                pids_max: self.reading("pids.max", diagnostic_number),
+                pids_peak: self.reading("pids.peak", diagnostic_number),
+                pids_events: self.reading("pids.events", diagnostic_pids_events),
+                pids_events_local: self.reading("pids.events.local", diagnostic_pids_events),
+                memory_current: self.reading("memory.current", diagnostic_number),
+                memory_max: self.reading("memory.max", diagnostic_number),
+                memory_peak: self.reading("memory.peak", diagnostic_number),
+                memory_events: self.reading("memory.events", diagnostic_memory_events),
+                memory_events_local: self.reading("memory.events.local", diagnostic_memory_events),
+                cgroup_events: self.reading("cgroup.events", diagnostic_cgroup_events),
+            };
+            self.identity_current()?;
+            Ok(snapshot)
+        })();
+        match result {
+            Ok(snapshot) => ResourceUsageSample::Observed {
+                snapshot: Box::new(snapshot),
+            },
+            Err(reason) => ResourceUsageSample::Unavailable { reason },
+        }
+    }
+}
+fn diagnostic_number(text: &str) -> DiagnosticResult<u64> {
+    let value = text.trim();
+    if value == "max" {
+        return Err(ResourceReadFailure::Unbounded);
+    }
+    if value.is_empty()
+        || value.len() > 20
+        || !value.bytes().all(|b| b.is_ascii_digit())
+        || (value.len() > 1 && value.starts_with('0'))
+    {
+        return Err(ResourceReadFailure::Malformed);
+    }
+    value.parse().map_err(|_| ResourceReadFailure::Malformed)
+}
+fn diagnostic_events(text: &str) -> DiagnosticResult<BTreeMap<&str, u64>> {
+    let mut events = BTreeMap::new();
+    for line in text.lines() {
+        if events.len() >= 32 {
+            return Err(ResourceReadFailure::TooLarge);
+        }
+        let mut fields = line.split_ascii_whitespace();
+        let key = fields.next().ok_or(ResourceReadFailure::Malformed)?;
+        let value = fields.next().ok_or(ResourceReadFailure::Malformed)?;
+        if fields.next().is_some()
+            || key.is_empty()
+            || key.len() > 64
+            || !key.bytes().all(|b| b.is_ascii_lowercase() || b == b'_')
+            || events.insert(key, diagnostic_number(value)?).is_some()
+        {
+            return Err(ResourceReadFailure::Malformed);
+        }
+    }
+    if events.is_empty() {
+        return Err(ResourceReadFailure::Malformed);
+    }
+    Ok(events)
+}
+fn diagnostic_pids_events(text: &str) -> DiagnosticResult<PidsEventCounters> {
+    let events = diagnostic_events(text)?;
+    Ok(PidsEventCounters {
+        max: events.get("max").copied(),
+    })
+}
+fn diagnostic_memory_events(text: &str) -> DiagnosticResult<MemoryEventCounters> {
+    let e = diagnostic_events(text)?;
+    Ok(MemoryEventCounters {
+        low: e.get("low").copied(),
+        high: e.get("high").copied(),
+        max: e.get("max").copied(),
+        oom: e.get("oom").copied(),
+        oom_kill: e.get("oom_kill").copied(),
+        oom_group_kill: e.get("oom_group_kill").copied(),
+    })
+}
+fn diagnostic_cgroup_events(text: &str) -> DiagnosticResult<CgroupEventCounters> {
+    let e = diagnostic_events(text)?;
+    let bit = |key| {
+        e.get(key)
+            .map(|n| match n {
+                0 => Ok(false),
+                1 => Ok(true),
+                _ => Err(ResourceReadFailure::Malformed),
+            })
+            .transpose()
+    };
+    Ok(CgroupEventCounters {
+        populated: bit("populated")?,
+        frozen: bit("frozen")?,
+    })
 }
 
 impl ObservationDiagnostics {
@@ -484,6 +789,7 @@ impl AdmittedLaunch {
             environment: self.environment,
             observation: None,
             observation_diagnostics: ObservationDiagnostics::default(),
+            resource_cgroup: None,
             slot: self.slot.take(),
         };
         // Set before calling SessionHost: it can fail after spawning the client.
@@ -505,6 +811,7 @@ impl AdmittedLaunch {
                 &handle.original,
                 &handle.environment,
                 &mut handle.observation_diagnostics,
+                &mut handle.resource_cgroup,
             ) {
                 Ok(observation) => {
                     handle.recovery.invocation_id = Some(observation.invocation_id.clone());
@@ -569,6 +876,18 @@ pub struct ClosedAdmission {
     exit_code: Option<i32>,
     success: bool,
     closure_digest: String,
+    /// Advisory only and deliberately excluded from the established closure
+    /// binding. No Deserialize is added to this opaque authority capability.
+    #[serde(skip_serializing_if = "ResourceUsageDiagnostics::is_empty")]
+    resource_usage: ResourceUsageDiagnostics,
+}
+#[derive(serde::Serialize)]
+struct ClosedAdmissionAuthorityBinding<'a> {
+    identity: &'a RecoveryIdentity,
+    observation: &'a EnforcementObservation,
+    exit_code: Option<i32>,
+    success: bool,
+    closure_digest: &'a str,
 }
 impl ClosedAdmission {
     pub fn identity(&self) -> &RecoveryIdentity {
@@ -586,6 +905,20 @@ impl ClosedAdmission {
     pub fn closure_digest(&self) -> &str {
         &self.closure_digest
     }
+    pub fn resource_usage_diagnostics(&self) -> &ResourceUsageDiagnostics {
+        &self.resource_usage
+    }
+    /// Exact pre-diagnostics serialized shape for callers hashing authority
+    /// material. Full advisory journal bytes may differ independently.
+    pub fn authoritative_binding(&self) -> impl serde::Serialize + '_ {
+        ClosedAdmissionAuthorityBinding {
+            identity: &self.identity,
+            observation: &self.observation,
+            exit_code: self.exit_code,
+            success: self.success,
+            closure_digest: &self.closure_digest,
+        }
+    }
 }
 pub struct RunningAdmission {
     recovery: RecoveryIdentity,
@@ -595,11 +928,31 @@ pub struct RunningAdmission {
     environment: QualifiedEnvironment,
     observation: Option<EnforcementObservation>,
     observation_diagnostics: ObservationDiagnostics,
+    resource_cgroup: Option<ResourceCgroupPin>,
     slot: Option<CapacitySlot>,
 }
 impl RunningAdmission {
     pub fn observation_diagnostics(&self) -> &ObservationDiagnostics {
         &self.observation_diagnostics
+    }
+    /// Sample only this handle's retained original cgroup directory. No path
+    /// reopen, process/service lookup, launch, signal or capacity release occurs.
+    /// Kernel collection may race the read; an unavailable final sample cannot
+    /// recover counters retrospectively and does not erase earlier observations.
+    pub fn refresh_resource_diagnostics(&mut self) -> &ResourceUsageDiagnostics {
+        if self.observation_diagnostics.resource_usage.frozen {
+            return &self.observation_diagnostics.resource_usage;
+        }
+        let sample = match &self.resource_cgroup {
+            Some(pin) => pin.sample(),
+            None => ResourceUsageSample::Unavailable {
+                reason: ResourceReadFailure::NoObservedCgroup,
+            },
+        };
+        self.observation_diagnostics
+            .resource_usage
+            .record(sample, false, false);
+        &self.observation_diagnostics.resource_usage
     }
     /// A proof is produced only from this handle's real, owned Linux service.
     /// Unknown/missing observations and failed probes cannot mint closure.
@@ -613,20 +966,18 @@ impl RunningAdmission {
             .observation
             .clone()
             .ok_or(ResourceGateError::UnknownOutcome)?;
-        let closure_digest = content_digest(&(
-            "closed-admission-v1",
-            &self.recovery,
-            &observation,
-            exit.code(),
-            exit.success(),
-        ))
-        .map_err(|_| ResourceGateError::IdentityMismatch)?;
+        let closure_digest =
+            closed_admission_digest(&self.recovery, &observation, exit.code(), exit.success())?;
+        // Immutable journal retry must not observe a new count or post-GC
+        // rewrite after the first successful closure has been minted.
+        self.observation_diagnostics.resource_usage.frozen = true;
         Ok(ClosedAdmission {
             identity: self.recovery.clone(),
             observation,
             exit_code: exit.code(),
             success: exit.success(),
             closure_digest,
+            resource_usage: self.observation_diagnostics.resource_usage.clone(),
         })
     }
     pub fn observation(&self) -> Option<&EnforcementObservation> {
@@ -647,6 +998,7 @@ impl RunningAdmission {
             &self.original,
             &self.environment,
             &mut self.observation_diagnostics,
+            &mut self.resource_cgroup,
         )?;
         if self
             .recovery
@@ -689,6 +1041,20 @@ impl RunningAdmission {
         {
             return Err(ResourceGateError::UnknownOutcome);
         }
+        // Observe advisory counters before fallible manager reconciliation and
+        // release. The service/cgroup may already have been collected: preserve
+        // that uncertainty without weakening any existing closure check below.
+        if !self.observation_diagnostics.resource_usage.frozen {
+            let sample = match &self.resource_cgroup {
+                Some(pin) => pin.sample(),
+                None => ResourceUsageSample::Unavailable {
+                    reason: ResourceReadFailure::NoObservedCgroup,
+                },
+            };
+            self.observation_diagnostics
+                .resource_usage
+                .record(sample, false, true);
+        }
         // A generic manager/parse failure is uncertainty, never an absence
         // observation. This host reports collected transient units with an
         // explicit, successful not-found property response.
@@ -722,6 +1088,24 @@ impl RunningAdmission {
         self.slot.take();
         Ok(exit)
     }
+}
+/// The exact pre-diagnostics authoritative tuple. Never hash all serialized
+/// ClosedAdmission fields here: advisory journal bytes may change independently.
+#[cfg(any(target_os = "linux", test))]
+fn closed_admission_digest(
+    recovery: &RecoveryIdentity,
+    observation: &EnforcementObservation,
+    exit_code: Option<i32>,
+    success: bool,
+) -> Result<String, ResourceGateError> {
+    content_digest(&(
+        "closed-admission-v1",
+        recovery,
+        observation,
+        exit_code,
+        success,
+    ))
+    .map_err(|_| ResourceGateError::IdentityMismatch)
 }
 struct CapacitySlot {
     state: Arc<Mutex<GateState>>,
@@ -987,6 +1371,7 @@ impl SystemdCgroupBackend {
         spec: &LaunchSpec,
         environment: &QualifiedEnvironment,
         diagnostics: &mut ObservationDiagnostics,
+        resource_cgroup: &mut Option<ResourceCgroupPin>,
     ) -> Result<EnforcementObservation, ResourceGateError> {
         let mut stage = "systemd_initial_show";
         let result = (|| {
@@ -1116,6 +1501,47 @@ impl SystemdCgroupBackend {
                     "effective cgroup task usage exceeds task limit",
                 ));
             }
+            // Capture on the original directory before the existing final
+            // identity rechecks. Commit this pin/sample only after those pass.
+            let owner_digest = if diagnostics.resource_usage.frozen {
+                None
+            } else {
+                content_digest(&(
+                    "admiralty.resource-diagnostics-owner/v1",
+                    &claims.host_incarnation,
+                    &spec.run_id,
+                    unit,
+                    invocation,
+                    pid,
+                    &start,
+                ))
+                .ok()
+            };
+            let mut new_pin = None;
+            let resource_sample = if let Some(owner_digest) = owner_digest {
+                if let Some(pin) = resource_cgroup.as_ref() {
+                    if pin.identity.owner_digest == owner_digest {
+                        pin.sample()
+                    } else {
+                        ResourceUsageSample::Unavailable {
+                            reason: ResourceReadFailure::IdentityChanged,
+                        }
+                    }
+                } else {
+                    match ResourceCgroupPin::open(&group, owner_digest) {
+                        Ok(pin) => {
+                            let sample = pin.sample();
+                            new_pin = Some(pin);
+                            sample
+                        }
+                        Err(reason) => ResourceUsageSample::Unavailable { reason },
+                    }
+                }
+            } else {
+                ResourceUsageSample::Unavailable {
+                    reason: ResourceReadFailure::Malformed,
+                }
+            };
             stage = "process_start_recheck";
             if process_start(&read_text(&proc.join("stat"))?)? != start {
                 return Err(ResourceGateError::UnknownOutcome);
@@ -1124,6 +1550,12 @@ impl SystemdCgroupBackend {
             if self.show(unit)? != first {
                 return Err(ResourceGateError::UnknownOutcome);
             }
+            if resource_cgroup.is_none() {
+                *resource_cgroup = new_pin;
+            }
+            diagnostics
+                .resource_usage
+                .record(resource_sample, true, false);
             Ok(EnforcementObservation {
                 unit: unit.into(),
                 invocation_id: invocation.into(),
@@ -1146,6 +1578,10 @@ impl SystemdCgroupBackend {
         result
     }
 }
+
+#[cfg(test)]
+#[path = "resource_gate_diagnostics_tests.rs"]
+mod diagnostics_tests;
 
 /// Preserve the original enforcement order and exact comparisons while
 /// identifying the particular mismatch; diagnostic labels never grant admission.
