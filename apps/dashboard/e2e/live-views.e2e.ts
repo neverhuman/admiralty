@@ -264,6 +264,87 @@ describe("built live views against the real Rust server", () => {
     ).toBe(true);
     await browser.pressKey("Escape");
   });
+  it("preserves Git offsets and follows new commits after Inventory", async () => {
+    const long = sourceFixture(),
+      oid = (n: number) => n.toString(16).padStart(40, "0"),
+      commit = long.git.harbor.commits[0];
+    long.git.harbor.commits = Array.from({ length: 100 }, (_, i) => ({
+      ...commit,
+      oid: oid(i + 1),
+      parents: i ? [oid(i)] : [],
+      subject: `Long graph commit ${i + 1}`,
+    }));
+    for (let i = 0; i < 5; i++) {
+      const id = `extra-${i}`;
+      Object.assign(long.projects, { [id]: { name: id } });
+      long.order.push(id);
+    }
+    server.writeLegacySnapshot(long);
+    await connect("git");
+    await browser.waitForText("100 commits");
+    if (
+      await browser.evaluate(
+        `Boolean(document.querySelector('.git-inventory'))`,
+      )
+    )
+      await browser.clickButtonByText("Graph");
+    await browser.waitForSelector(".git-scroll");
+    expect(
+      await browser.evaluate<number>(
+        `document.querySelector('.git-scroll').scrollWidth`,
+      ),
+    ).toBeGreaterThan(3000);
+    await browser.evaluate(`(() => {
+      const el = document.querySelector('.git-scroll');
+      el.dispatchEvent(new PointerEvent('pointerdown', {bubbles:true}));
+      el.scrollLeft = 900; el.scrollTop = 300;
+      el.dispatchEvent(new Event('scroll', {bubbles:true}));
+    })()`);
+    await browser.evaluate(
+      "new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))",
+    );
+    const before = await browser.evaluate<{ left: number; top: number }>(
+      `({left:document.querySelector('.git-scroll').scrollLeft,top:document.querySelector('.git-scroll').scrollTop})`,
+    );
+    expect(before.left).toBeGreaterThan(0);
+    expect(before.top).toBeGreaterThan(0);
+    await browser.clickButtonByText("Inventory");
+    await browser.waitForSelector(".git-inventory");
+    await browser.clickButtonByText("Graph");
+    await browser.waitForSelector(".git-scroll");
+    await browser.evaluate(
+      "new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))",
+    );
+    expect(
+      await browser.evaluate(
+        `({left:document.querySelector('.git-scroll').scrollLeft,top:document.querySelector('.git-scroll').scrollTop})`,
+      ),
+    ).toEqual(before);
+    await browser.clickButtonByText("Follow latest");
+    await browser.clickButtonByText("Inventory");
+    long.git.harbor.commits.push(
+      ...Array.from({ length: 50 }, (_, i) => ({
+        ...commit,
+        oid: oid(i + 101),
+        parents: [oid(i + 100)],
+        subject: `New frontier commit ${i + 101}`,
+      })),
+    );
+    server.writeLegacySnapshot(long);
+    await browser.waitForText("150 commits");
+    await browser.clickButtonByText("Graph");
+    await browser.waitForSelector(".git-scroll");
+    await browser.evaluate(
+      "new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))",
+    );
+    expect(
+      await browser.evaluate(
+        `(()=>{const el=document.querySelector('.git-scroll');return el.scrollWidth-el.clientWidth-el.scrollLeft;})()`,
+      ),
+      "Follow latest must reach the new frontier after updates arrive in Inventory",
+    ).toBeLessThanOrEqual(1);
+    server.writeLegacySnapshot(sourceFixture());
+  });
   it("updates an existing map through SSE while preserving coordinates and exposes the full 500-agent census", async () => {
     await connect("atlas");
     await browser.waitForSelector(".atlas-agent");

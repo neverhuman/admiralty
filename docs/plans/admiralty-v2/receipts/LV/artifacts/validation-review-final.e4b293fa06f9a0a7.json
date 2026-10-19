@@ -1,0 +1,87 @@
+{
+  "source_head": "39c3cf22ad16176dd245a69efbb790367da05406",
+  "qualification_commit": "39c3cf22ad16176dd245a69efbb790367da05406",
+  "main_base": "99f4e26cebfab97afa661ed05aea6192bfd5935c",
+  "prospective_tree": "a4536564c368c49bfaa376c7ad47094253a05790",
+  "kind": "direct clean source-head qualification after independent review repairs",
+  "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+  "environment": {
+    "TMPDIR": "/private/tmp/admiralty-views-qual-cbapuf30",
+    "ADMIRALTY_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+    "CARGO_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+    "CARGO_BUILD_JOBS": "4",
+    "RUST_TEST_THREADS": "1",
+    "ADMIRALTY_E2E_ADMIRALTYD_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiraltyd",
+    "ADMIRALTY_E2E_OBSERVER_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiralty-observe"
+  },
+  "commands": [
+    {
+      "name": "contributor-checks-review-final",
+      "argv": [
+        "rtk",
+        "proxy",
+        "bash",
+        "scripts/check/all.sh"
+      ],
+      "started_utc": "2026-10-19T02:09:04.360774+00:00",
+      "ended_utc": "2026-10-19T02:11:50.264244+00:00",
+      "exit_code": 0,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/contributor-checks-review-final.log"
+    },
+    {
+      "name": "native-binaries-review-final",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "build",
+        "--locked",
+        "-p",
+        "admiralty-server",
+        "-p",
+        "admiralty-observe"
+      ],
+      "started_utc": "2026-10-19T02:11:50.265063+00:00",
+      "ended_utc": "2026-10-19T02:11:50.412209+00:00",
+      "exit_code": 0,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/native-binaries-review-final.log"
+    },
+    {
+      "name": "browser-types-review-final",
+      "argv": [
+        "rtk",
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "exec",
+        "tsc",
+        "-p",
+        "e2e/tsconfig.json",
+        "--pretty",
+        "false"
+      ],
+      "started_utc": "2026-10-19T02:11:50.412467+00:00",
+      "ended_utc": "2026-10-19T02:11:50.802450+00:00",
+      "exit_code": 0,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/browser-types-review-final.log"
+    },
+    {
+      "name": "browser-review-final",
+      "argv": [
+        "rtk",
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "e2e/vitest.config.ts"
+      ],
+      "started_utc": "2026-10-19T02:11:50.802705+00:00",
+      "ended_utc": "2026-10-19T02:12:16.182279+00:00",
+      "exit_code": 1,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/browser-review-final.log"
+    }
+  ]
+}

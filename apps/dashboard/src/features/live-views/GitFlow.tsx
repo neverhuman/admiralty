@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRoute } from "../../router";
 import {
   age,
@@ -346,14 +346,19 @@ export default function GitFlow({
       ...bands.map((b) => (b.layout?.width ?? 680) * zoom),
     ),
     height = bands.reduce((n, b) => n + b.height, 0);
-  const restored = useRef(false);
-  useEffect(() => {
-    if (viewport.width > 0 && scrollRef.current && !restored.current) {
-      restored.current = true;
-      scrollRef.current.scrollLeft = scroll.left;
-      scrollRef.current.scrollTop = scroll.top;
+  const restored = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) {
+      restored.current = null;
+    } else if (viewport.width > 0 && restored.current !== el) {
+      restored.current = el;
+      el.scrollLeft = scroll.left;
+      el.scrollTop = scroll.top;
+      // The source or viewport may have shrunk while the graph was hidden.
+      setScroll({ left: el.scrollLeft, top: el.scrollTop });
     }
-  }, [viewport.width]);
+  }, [viewport.element, viewport.width, inventory]);
   useEffect(() => {
     viewMemory = {
       zoom,
@@ -372,8 +377,8 @@ export default function GitFlow({
     setChanges(0);
   };
   useEffect(() => {
-    if (follow && !paused) latest();
-  }, [width, follow, paused]);
+    if (!inventory && follow && !paused) latest();
+  }, [width, follow, paused, inventory]);
   useEffect(() => {
     if (previous.current !== snapshot.revision) {
       if (!follow || paused) setChanges((n) => n + 1);
