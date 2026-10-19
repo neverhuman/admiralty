@@ -1,0 +1,472 @@
+{
+  "schema_version": 1,
+  "kind": "native_delivery_projection_integrated",
+  "recorded_utc": "2026-10-19T05:08:39.751Z",
+  "qualified_code_commit": "39eb43d51f70ca5e84d1a5608ecc24e7e4586d2d",
+  "base": "586f8c91770bcd2f0da0b90e441c2be2ccb28141",
+  "candidate": "4cac3ab9a63ba7f4087c168eeb786238aa01d4b5",
+  "actual_candidate_base": "b86439f248c3d70398f1757f3ec07676e1a54df6",
+  "source_sha256": {
+    "crates/admiralty-core/src/lib.rs": "8d68f221bb4f9eada301e4bb283dcdadf2ba7f505415e9a651843284e33bebfa",
+    "crates/admiralty-core/src/delivery.rs": "753fe71100bfab3d3958e93dca8d7dbc6ec68597f1117ee86cc35d9adb606790",
+    "crates/admiralty-core/src/verification.rs": "87c7a0cd4373d906b37c18865c95f27267d3dc2cc4436a0bc9a529156c084d23",
+    "crates/admiralty-core/tests/delivery_projection.rs": "bca22fe0f9e64c26f7e87ecbf9ad8ed24e6c1f7afce6012c7874eab1eb81e723"
+  },
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "rustc": "1.95.0 (59807616e 2026-04-14) (Homebrew)",
+    "cargo": "1.95.0 (f2d3ce0bd 2026-03-21) (Homebrew)",
+    "cwd": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+    "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/receipt-input-binding-final",
+    "TMPDIR": "/private/tmp/adm-native-4pbrtc1l",
+    "CARGO_BUILD_JOBS": 1,
+    "RUST_TEST_THREADS": 1
+  },
+  "checks": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-core",
+        "--test",
+        "delivery_projection",
+        "--locked"
+      ],
+      "exit": 0,
+      "passed": 22,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/delivery-root-final.log",
+        "sha256": "addcddb258bdc2bc1bbd3679e90fad5d4d341d63bd0843c7962c15a1fc8beb2e"
+      }
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-core",
+        "--lib",
+        "verification::tests",
+        "--locked"
+      ],
+      "exit": 0,
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 163,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/receipt-input-binding-final-tests.log",
+        "sha256": "355650a1cb14c38c9602c8aab1aa85a36bcfa6af46054095b27ddfb64676174c"
+      }
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-core",
+        "--doc",
+        "delivery",
+        "--locked"
+      ],
+      "exit": 0,
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/delivery-root-doc.log",
+        "sha256": "6aa172fe5efd8f816dae83c4eca9ffe5bf018c536bbec76c9d26291c13e7df7e"
+      }
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "-p",
+        "admiralty-core",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/delivery-root-clippy.log",
+        "sha256": "6342ab29b57394f9ac860132ec2a512db923347391ba202c3a160f976cfc2b64"
+      }
+    },
+    {
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit": 0
+    }
+  ],
+  "independent_evidence": [
+    {
+      "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/receipt.json",
+      "sha256": "71ccf2d2e21aa3c9a8439ede713b9651aff576097aefb722a82a9089a1a0c97a",
+      "receipt": {
+        "schema_version": 1,
+        "observed_utc": "2026-10-19T05:00:06.727036+00:00",
+        "reviewed_source": "4cac3ab9a63ba7f4087c168eeb786238aa01d4b5",
+        "actual_base": "b86439f248c3d70398f1757f3ec07676e1a54df6",
+        "production_module": {
+          "path": "/private/tmp/admiralty-delivery-review-4cac3ab/crates/admiralty-core/src/delivery.rs",
+          "bytes": 133179,
+          "sha256": "48e4a12c2f60ffcdf6ff396132b91804a5aafb4870b641551efbaaf83383c931"
+        },
+        "original_candidate_test_sha256": "e9713a4b7fae1225944f9542c268a7a6d337cefa4ddfddcfcb8e4c41dad979cb",
+        "findings": {
+          "path": "/private/tmp/S1_DELIVERY_REPAIR_REVIEW_4cac3ab.md",
+          "bytes": 2727,
+          "sha256": "6438a7b4942778040a83a0481b444bd5702ba9a8d059b2321c33b0f08b1c53e9"
+        },
+        "new_counterexample": {
+          "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/reviewer-receipt-rebinding.rs",
+          "bytes": 2257,
+          "sha256": "6c447b5e2ea938586831cad1615d6177ab4b2d148517fbd6b05aff9631aee777"
+        },
+        "excluded_registration_and_test_patch": {
+          "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/reviewer-receipt-rebinding.patch",
+          "bytes": 3153,
+          "sha256": "69557bac10ba37883eb92df52b9b50d9b595426e04aab8a5f91a340d30ad9f58"
+        },
+        "checks": [
+          {
+            "name": "reviewer-counterexamples",
+            "argv": [
+              "rtk",
+              "proxy",
+              "cargo",
+              "test",
+              "--offline",
+              "-p",
+              "admiralty-core",
+              "--test",
+              "delivery_projection",
+              "reviewer_counterexample_",
+              "--",
+              "--nocapture",
+              "--test-threads=1"
+            ],
+            "exit": 101,
+            "log": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/reviewer-counterexamples.log"
+          },
+          {
+            "name": "content-binding-regression",
+            "argv": [
+              "rtk",
+              "proxy",
+              "cargo",
+              "test",
+              "--offline",
+              "-p",
+              "admiralty-core",
+              "--test",
+              "delivery_projection",
+              "content_bound_attestation_rejects_mutated_detail_producer_and_mismatched_check_inputs",
+              "--",
+              "--nocapture",
+              "--test-threads=1"
+            ],
+            "exit": 0,
+            "log": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/content-binding-regression.log"
+          },
+          {
+            "name": "permutation-regression",
+            "argv": [
+              "rtk",
+              "proxy",
+              "cargo",
+              "test",
+              "--offline",
+              "-p",
+              "admiralty-core",
+              "--test",
+              "delivery_projection",
+              "permutation_invariance_and_full_bundle_identity_comparison_across_stage_orders",
+              "--",
+              "--nocapture",
+              "--test-threads=1"
+            ],
+            "exit": 0,
+            "log": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/permutation-regression.log"
+          },
+          {
+            "name": "compile-fail-docs",
+            "argv": [
+              "rtk",
+              "proxy",
+              "cargo",
+              "test",
+              "--offline",
+              "-p",
+              "admiralty-core",
+              "--doc",
+              "delivery"
+            ],
+            "exit": 0,
+            "log": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/compile-fail-docs.log"
+          }
+        ],
+        "logs": [
+          {
+            "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/reviewer-counterexamples.log",
+            "bytes": 2500,
+            "sha256": "841bac86cb10dec420eb597c59d014724ae86503088b1145ed9a31aae003f48e"
+          },
+          {
+            "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/content-binding-regression.log",
+            "bytes": 398,
+            "sha256": "53928a502d6babf7bed043abea6328d95f62c74460b45bdd3f7921fbfa9981fc"
+          },
+          {
+            "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/permutation-regression.log",
+            "bytes": 391,
+            "sha256": "a0e33e5c9749dd017de60a049bb6ff1472b367fe9c1079040d2378f7e1de21e6"
+          },
+          {
+            "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/compile-fail-docs.log",
+            "bytes": 649,
+            "sha256": "3a742fe06ded89601bbcbd4549bd363e328fda9a763a319102bc930ace1ccd46"
+          }
+        ],
+        "actual_results": [
+          {
+            "name": "original4plusnewreceiptnegative",
+            "passed": 4,
+            "failed": 1,
+            "ignored": 0,
+            "filtered": 14
+          },
+          {
+            "name": "contentbinding",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 18
+          },
+          {
+            "name": "permutation",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 18
+          },
+          {
+            "name": "compilefaildocs",
+            "passed": 4,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 1
+          }
+        ],
+        "review_verdict": "hold until opaque receipt binds actual validated inputs; original four issues repaired",
+        "source_edits": false,
+        "original12_tests_rerun": false,
+        "provider_calls": 0,
+        "linux_compute_jobs": 0,
+        "limits": [
+          "No authority/custody from JSON consistency helpers",
+          "Temporary registration/review regression only, unique local Mac target",
+          "No parent acceptance or production activation"
+        ]
+      }
+    },
+    {
+      "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/optional-review-receipt.json",
+      "sha256": "4a8d3694f43abb6b00b324c1759083e070f1064b04ed6bb3ea0fbd9fafc970a5",
+      "receipt": {
+        "schema_version": 1,
+        "observed_utc": "2026-10-19T05:02:07.174625+00:00",
+        "source": "4cac3ab9a63ba7f4087c168eeb786238aa01d4b5",
+        "production_module": {
+          "path": "/private/tmp/admiralty-delivery-review-4cac3ab/crates/admiralty-core/src/delivery.rs",
+          "bytes": 133179,
+          "sha256": "48e4a12c2f60ffcdf6ff396132b91804a5aafb4870b641551efbaaf83383c931"
+        },
+        "finding": {
+          "path": "/private/tmp/S1_OPTIONAL_DELIVERY_REVIEW_4cac3ab.md",
+          "bytes": 1693,
+          "sha256": "479850b55f59134a01244955ca72ee5da97239a8d4cb7689e89ff8d3ce3d20fa"
+        },
+        "counterexample": {
+          "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/reviewer-optional-repository.rs",
+          "bytes": 1457,
+          "sha256": "6a7fd9f5904f3be4f3044e1cb8fc21431ccff75cc9c13e62053d9771f62176fa"
+        },
+        "raw_log": {
+          "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/optional-repository-counterexample.log",
+          "bytes": 1016,
+          "sha256": "ac792f22b35a35eae708a5aeacd5dacf9d99e5ab098a354600e3724624572f63"
+        },
+        "command": "rtk proxy cargo test --offline -p admiralty-core --test delivery_projection reviewer_counterexample_optional_repository_must_not_block_required_delivery -- --nocapture --test-threads=1",
+        "exit": 101,
+        "actual_results": {
+          "passed": 0,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 19
+        },
+        "unchanged_passing_cases_rerun": 0,
+        "source_edits": false,
+        "provider_calls": 0
+      }
+    },
+    {
+      "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/delivery-root-final-static-review.json",
+      "sha256": "a76eeeeb4a854ce484cade323db796199d25cf7e5dcca5a5fbc87238cdbec9a0",
+      "receipt": {
+        "schema_version": 1,
+        "kind": "independent-static-delivery-integration-review",
+        "observed_utc": "2026-10-19T05:06:28.487636+00:00",
+        "reviewed_commit": "39eb43d51f70ca5e84d1a5608ecc24e7e4586d2d",
+        "files": {
+          "crates/admiralty-core/src/verification.rs": {
+            "working_sha256": "87c7a0cd4373d906b37c18865c95f27267d3dc2cc4436a0bc9a529156c084d23",
+            "commit_sha256": "87c7a0cd4373d906b37c18865c95f27267d3dc2cc4436a0bc9a529156c084d23",
+            "bytes": 48269,
+            "matches_commit": true
+          },
+          "crates/admiralty-core/src/delivery.rs": {
+            "working_sha256": "753fe71100bfab3d3958e93dca8d7dbc6ec68597f1117ee86cc35d9adb606790",
+            "commit_sha256": "753fe71100bfab3d3958e93dca8d7dbc6ec68597f1117ee86cc35d9adb606790",
+            "bytes": 134623,
+            "matches_commit": true
+          },
+          "crates/admiralty-core/tests/delivery_projection.rs": {
+            "working_sha256": "bca22fe0f9e64c26f7e87ecbf9ad8ed24e6c1f7afce6012c7874eab1eb81e723",
+            "commit_sha256": "bca22fe0f9e64c26f7e87ecbf9ad8ed24e6c1f7afce6012c7874eab1eb81e723",
+            "bytes": 87897,
+            "matches_commit": true
+          },
+          "crates/admiralty-core/src/lib.rs": {
+            "working_sha256": "8d68f221bb4f9eada301e4bb283dcdadf2ba7f505415e9a651843284e33bebfa",
+            "commit_sha256": "8d68f221bb4f9eada301e4bb283dcdadf2ba7f505415e9a651843284e33bebfa",
+            "bytes": 1285,
+            "matches_commit": true
+          }
+        },
+        "review_mode": "Read-only source/diff/log inspection; no duplicate test executions or external effects.",
+        "verdict": "CLEAR",
+        "findings": [],
+        "reviewed_invariants": [
+          "ValidatedReceipt retains the canonical digest of the actual validate_receipt inputs in a private serde-skipped non-Deserialize field; delivery compares the full current sidecar digest before accepting the check.",
+          "Repository partial-landing completion veto is restricted to required Merged targets; optional/pre-merge targets remain in complete diagnostic and attention state.",
+          "Unknown external outcomes remain unconditional blockers, including optional targets.",
+          "Public observation helper explicitly computes content consistency only and cannot authenticate custody or grant runtime authority.",
+          "New regressions preserve receipt A/B rejection, selected-stage semantics and optional unknown outcome fences."
+        ],
+        "root_execution_logs_observed_not_rerun": {
+          "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/delivery-root-final.log": {
+            "sha256": "addcddb258bdc2bc1bbd3679e90fad5d4d341d63bd0843c7962c15a1fc8beb2e",
+            "bytes": 2278,
+            "tail": "_delivery_incomplete ... ok\ntest unknown_vs_not_applicable_and_optional_targets_and_stages ... ok\ntest wrong_contract_attempt_candidate_target_and_generation_rejected_while_retaining_old_receipts ... ok\n\ntest result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s\n\n"
+          },
+          "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/delivery-root-doc.log": {
+            "sha256": "6aa172fe5efd8f816dae83c4eca9ffe5bf018c536bbec76c9d26291c13e7df7e",
+            "bytes": 649,
+            "tail": "miralty-core/src/delivery.rs - delivery::DeliveryProjection (line 982) - compile fail ... ok\ntest crates/admiralty-core/src/delivery.rs - delivery::TrustedDeliveryContext (line 248) - compile fail ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.18s\n\n"
+          },
+          "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/delivery-root-clippy.log": {
+            "sha256": "6342ab29b57394f9ac860132ec2a512db923347391ba202c3a160f976cfc2b64",
+            "bytes": 177,
+            "tail": "    Checking admiralty-core v0.1.0 (/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-core)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 12.20s\n"
+          },
+          "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/delivery-new-tests-initial-compile.log": {
+            "sha256": "8c5bfd6a846dcc8816cc28b0e6a010cd2e107bd7ddfbec6edca30721b4456394",
+            "bytes": 4012,
+            "tail": " !actual.release_authorized()\n     |                                                                                                ++\n\nFor more information about this error, try `rustc --explain E0616`.\nerror: could not compile `admiralty-core` (test \"delivery_projection\") due to 6 previous errors\n"
+          }
+        },
+        "practical_limits": [
+          "Pure bounded delivery projection, not producer authentication, evidence custody, Store/provider wiring, runtime execution, delivery activation or parent packet acceptance.",
+          "Caller-supplied trusted context must still be admitted independently; no future HTTP/JSON factory may mint it as authorization.",
+          "Original four reviewer negatives, receipt rebinding and optional-target red evidence remain preserved in separate immutable reviewer receipts."
+        ]
+      }
+    },
+    {
+      "path": "/private/tmp/adm-verification-input-binding-review-gstbeevq/receipt.json",
+      "sha256": "72f6bf56edd2e38af6ab428da969a18e57e06b85b9bec40ccb97a9fea8771f64",
+      "receipt": {
+        "conclusions": [
+          "Private non-Deserialize field is derived only from actual receipt.inputs after full existing receipt validation and exact independently expected input equality",
+          "Read-only accessor exposes consistency digest without constructor or mutation",
+          "serde(skip) preserves existing six-field serialized report and all four authority flags remain false",
+          "Added A/B internally valid receipts differ in attempt/candidate/source commit; computed actual validated digests differ while both results remain internally consistent",
+          "No behavior changes to existing receipt validation/test bodies or authentication/execution/acceptance grants"
+        ],
+        "limits": [
+          "Consumer must compare validated_inputs_digest to independently constructed full sidecar inputs digest; getter alone does not repair AttestedCheckReceipt",
+          "No new authority/custody/execution proof inferred from these digests",
+          "Source-only review; parent owns actual affected tests"
+        ],
+        "mode": "independent_read_only_narrow_diff_review_no_duplicate_tests",
+        "review": "CLEAR: no material blocker in narrowed opaque inputs binding primitive",
+        "source_path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-core/src/verification.rs",
+        "source_sha256": "87c7a0cd4373d906b37c18865c95f27267d3dc2cc4436a0bc9a529156c084d23",
+        "utc": "2026-10-19T04:59:21.152666+00:00"
+      }
+    }
+  ],
+  "preserved_new_counterexamples": [
+    {
+      "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/reviewer-receipt-rebinding.rs",
+      "sha256": "6c447b5e2ea938586831cad1615d6177ab4b2d148517fbd6b05aff9631aee777"
+    },
+    {
+      "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/reviewer-counterexamples.log",
+      "sha256": "841bac86cb10dec420eb597c59d014724ae86503088b1145ed9a31aae003f48e"
+    },
+    {
+      "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/reviewer-optional-repository.rs",
+      "sha256": "6a7fd9f5904f3be4f3044e1cb8fc21431ccff75cc9c13e62053d9771f62176fa"
+    },
+    {
+      "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/optional-repository-counterexample.log",
+      "sha256": "ac792f22b35a35eae708a5aeacd5dacf9d99e5ab098a354600e3724624572f63"
+    }
+  ],
+  "preserved_root_fixture_compile_failure": {
+    "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/delivery-new-tests-initial-compile.log",
+    "sha256": "8c5bfd6a846dcc8816cc28b0e6a010cd2e107bd7ddfbec6edca30721b4456394",
+    "outcome": "E0616 six private-field test accesses; corrected tests to existing getters without changing field visibility or flags"
+  },
+  "repairs": [
+    "Earlier four independent negatives now pass: exact observation content, permutation/full bundle, foreign attempt, fail-closed attention overflow.",
+    "New actual receipt-A/input-B negative now passes: private nonserialized input digest retained only by real validator and compared with complete sidecar. Original six-field wire report and false authority flags are unchanged.",
+    "Required selected target stages control completion; pending optional/pre-merge targets retain global landing diagnostics without adding an unselected merge requirement. Unknown optional external effects still block.",
+    "Content pin constructors and public context fields are consistency inputs only; trusted callers must independently authenticate admission/custody. No JSON helper authenticates a producer."
+  ],
+  "limits": [
+    "Pure bounded library component only. No Store/router/provider/publication executor or dashboard delivery projection is activated.",
+    "ValidatedReceipt proves internal exact-input/check consistency, never authenticated verifier execution or evidence custody. Independent trusted context admission remains required.",
+    "No acceptance, dispatch, release authorization, manager wake, task-level token savings or full WO5/P02/P19/P29 parent qualification is inferred.",
+    "S1 handoff prose base typo and nonexistent stage/bundle fields are corrected by actual Git/source evidence; original handoff is not stronger proof."
+  ],
+  "accepted_parents": 2,
+  "total_parents": 32,
+  "full_packet_acceptance": false,
+  "native_execution_qualified": false
+}
