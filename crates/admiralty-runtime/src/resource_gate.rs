@@ -801,7 +801,13 @@ impl AdmittedLaunch {
     pub fn recovery_identity(&self) -> RecoveryIdentity {
         recovery_identity(&self.unit, &self.spec, &self.permit.claims)
     }
-    pub fn launch(mut self, host: &SessionHost) -> Result<RunningAdmission, LaunchFailure> {
+    /// `execution_limit` comes from trusted executor configuration. The kernel
+    /// runtime bound also respects the original permit and resource lease expiry.
+    pub fn launch(
+        mut self,
+        host: &SessionHost,
+        execution_limit: Duration,
+    ) -> Result<RunningAdmission, LaunchFailure> {
         let preflight = (|| {
             let now = unix_time_ms()?;
             validate_claims(
@@ -829,6 +835,7 @@ impl AdmittedLaunch {
                 &self.permit.claims,
                 &self.unit,
                 unix_time_ms()?,
+                execution_limit,
             )
         })();
         let wrapped = preflight.map_err(|error| LaunchFailure {
@@ -1366,11 +1373,19 @@ impl SystemdCgroupBackend {
         claims: &ResourcePermitClaims,
         unit: &str,
         now: u64,
+        execution_limit: Duration,
     ) -> Result<LaunchSpec, ResourceGateError> {
-        let ms = claims
+        let remaining_ms = claims
             .expires_at_unix_ms
             .min(claims.lease_expires_at_unix_ms)
             .checked_sub(now)
+            .filter(|n| *n > 0)
+            .ok_or(ResourceGateError::Expired)?;
+        // Floor rather than round up: a sub-millisecond limit cannot safely be
+        // represented here, and systemd must never receive a zero runtime bound.
+        // Take the minimum before conversion so even Duration::MAX is bounded.
+        let ms = u64::try_from(execution_limit.as_millis().min(u128::from(remaining_ms)))
+            .ok()
             .filter(|n| *n > 0)
             .ok_or(ResourceGateError::Expired)?;
         let cpus = claims
@@ -2331,15 +2346,18 @@ mod tests {
         changed.backend_config_digest = "other".into();
         assert!(validate(&changed, 1, BTreeSet::from([2])).is_err());
     }
-    #[test]
-    fn wrapper_sets_actual_working_directory_slice_clean_environment_and_remaining_time() {
-        let backend = SystemdCgroupBackend {
+    fn wrapper_backend() -> SystemdCgroupBackend {
+        SystemdCgroupBackend {
             config: config(),
             systemd_run: "/usr/bin/systemd-run".into(),
             systemctl: "/usr/bin/systemctl".into(),
             clean_env: "/usr/bin/env".into(),
             slice_cgroup: "/sys/fs/cgroup/configured".into(),
-        };
+        }
+    }
+    #[test]
+    fn wrapper_sets_actual_working_directory_slice_clean_environment_and_remaining_time() {
+        let backend = wrapper_backend();
         let wrapped = backend
             .wrap(
                 &spec(),
@@ -2347,6 +2365,7 @@ mod tests {
                 &claims(),
                 "adm-resource-fresh.service",
                 500,
+                Duration::from_secs(120),
             )
             .expect("wrapper");
         for arg in [
@@ -2365,9 +2384,134 @@ mod tests {
         assert_eq!(wrapped.args[env + 1], "-i");
         assert_eq!(wrapped.args.last(), spec().args.last());
         assert!(matches!(
-            backend.wrap(&spec(), &environment(), &claims(), "unit", 900),
+            backend.wrap(
+                &spec(),
+                &environment(),
+                &claims(),
+                "unit",
+                900,
+                Duration::from_secs(120),
+            ),
             Err(ResourceGateError::Expired)
         ));
+    }
+    #[test]
+    fn wrapper_bounds_runtime_by_executor_permit_and_resource_lease() {
+        let backend = wrapper_backend();
+        let now = 1_000;
+        for (permit_ms, lease_ms, expected) in [
+            (380_317, 380_317, "120.000s"),
+            (80_123, 380_317, "80.123s"),
+            (380_317, 70_456, "70.456s"),
+            (120_000, 120_000, "120.000s"),
+        ] {
+            let mut original = claims();
+            original.expires_at_unix_ms = now + permit_ms;
+            original.lease_expires_at_unix_ms = now + lease_ms;
+            let before = original.clone();
+            let wrapped = backend
+                .wrap(
+                    &spec(),
+                    &environment(),
+                    &original,
+                    "unit",
+                    now,
+                    Duration::from_secs(120),
+                )
+                .expect("bounded wrapper");
+            assert!(
+                wrapped
+                    .args
+                    .contains(&format!("--property=RuntimeMaxSec={expected}"))
+            );
+            assert_eq!(original, before);
+            let mut expiry_only = backend
+                .wrap(
+                    &spec(),
+                    &environment(),
+                    &original,
+                    "unit",
+                    now,
+                    Duration::MAX,
+                )
+                .expect("expiry-bound wrapper");
+            // The new bound changes only the timer argument, never the resource
+            // controls, original command, environment, or wrapper identity.
+            let timer = expiry_only
+                .args
+                .iter_mut()
+                .find(|arg| arg.starts_with("--property=RuntimeMaxSec="))
+                .expect("runtime bound");
+            *timer = format!("--property=RuntimeMaxSec={expected}");
+            assert_eq!(
+                serde_json::to_value(&wrapped).expect("wrapper JSON"),
+                serde_json::to_value(&expiry_only).expect("wrapper JSON"),
+            );
+        }
+    }
+    #[test]
+    fn wrapper_rejects_zero_submillisecond_and_expired_runtime_bounds() {
+        let backend = wrapper_backend();
+        for limit in [Duration::ZERO, Duration::from_nanos(999_999)] {
+            assert!(matches!(
+                backend.wrap(&spec(), &environment(), &claims(), "unit", 500, limit),
+                Err(ResourceGateError::Expired)
+            ));
+        }
+        for (permit_expiry, lease_expiry) in [(500, 900), (499, 900), (1_000, 500), (1_000, 499)] {
+            let mut expired = claims();
+            expired.expires_at_unix_ms = permit_expiry;
+            expired.lease_expires_at_unix_ms = lease_expiry;
+            assert!(matches!(
+                backend.wrap(
+                    &spec(),
+                    &environment(),
+                    &expired,
+                    "unit",
+                    500,
+                    Duration::from_secs(120),
+                ),
+                Err(ResourceGateError::Expired)
+            ));
+        }
+    }
+    #[test]
+    fn wrapper_floors_positive_milliseconds_and_bounds_duration_overflow() {
+        let backend = wrapper_backend();
+        for limit in [Duration::from_millis(1), Duration::from_nanos(1_999_999)] {
+            let wrapped = backend
+                .wrap(&spec(), &environment(), &claims(), "unit", 500, limit)
+                .expect("positive millisecond bound");
+            assert!(
+                wrapped
+                    .args
+                    .contains(&"--property=RuntimeMaxSec=0.001s".into())
+            );
+        }
+        for (now, expiry, expected) in [
+            (500, 900, "0.400s"),
+            (u64::MAX - 1, u64::MAX, "0.001s"),
+            (0, u64::MAX, "18446744073709551.615s"),
+        ] {
+            let mut original = claims();
+            original.expires_at_unix_ms = expiry;
+            original.lease_expires_at_unix_ms = expiry;
+            let wrapped = backend
+                .wrap(
+                    &spec(),
+                    &environment(),
+                    &original,
+                    "unit",
+                    now,
+                    Duration::MAX,
+                )
+                .expect("minimum is representable without overflow");
+            assert!(
+                wrapped
+                    .args
+                    .contains(&format!("--property=RuntimeMaxSec={expected}"))
+            );
+        }
     }
     #[test]
     fn environment_rejects_secrets_loaders_and_implicit_path_search() {

@@ -827,7 +827,7 @@ mod probe {
             &serde_json::to_vec_pretty(&admitted.recovery_identity())?,
         )?;
         phase.store(1, Ordering::SeqCst);
-        let mut running = match admitted.launch(&host) {
+        let mut running = match admitted.launch(&host, Duration::from_secs(deadline_seconds)) {
             Ok(handle) => handle,
             Err(failure) => {
                 if let Some(handle) = &failure.recovery {

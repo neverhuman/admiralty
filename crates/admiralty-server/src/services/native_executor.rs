@@ -765,7 +765,7 @@ impl NativeExecutor {
         // an actual/ambiguous spawn instead transfers its workspace to pending.
         let original = retained.take().ok_or(NativeExecutorError::NoPreparedPlan)?;
         let host = SessionHost::new();
-        let running = match admitted.launch(&host) {
+        let running = match admitted.launch(&host, self.deadline) {
             Ok(running) => running,
             Err(failure) => {
                 if let Some(running) = failure.recovery {
