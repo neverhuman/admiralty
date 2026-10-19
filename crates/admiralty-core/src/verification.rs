@@ -100,6 +100,11 @@ pub struct VerificationReceipt {
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct ValidatedReceipt {
     receipt_digest: String,
+    /// In-process consistency binding to the exact inputs checked by this
+    /// validator. Preserve the original serialized report; JSON cannot restore
+    /// this non-deserializable result or authenticate its producer.
+    #[serde(skip)]
+    validated_inputs_digest: String,
     /// Whether the claimed exits match policy, not proof of execution.
     all_checks_passed: bool,
     /// Exact-check consistency is not task acceptance or integration approval.
@@ -112,6 +117,12 @@ pub struct ValidatedReceipt {
 impl ValidatedReceipt {
     pub fn receipt_digest(&self) -> &str {
         &self.receipt_digest
+    }
+    /// Canonical identity of the actual validated inputs, for rejecting a
+    /// receipt paired with another caller-supplied input sidecar. This remains
+    /// consistency evidence only, never verifier/custody/execution authority.
+    pub fn validated_inputs_digest(&self) -> &str {
+        &self.validated_inputs_digest
     }
     pub fn all_checks_passed(&self) -> bool {
         self.all_checks_passed
@@ -317,6 +328,8 @@ pub fn validate_receipt(
     Ok(ValidatedReceipt {
         receipt_digest: crate::content_digest(receipt)
             .map_err(|_| VerificationError("cannot digest bounded receipt".into()))?,
+        validated_inputs_digest: crate::content_digest(&receipt.inputs)
+            .map_err(|_| VerificationError("cannot digest validated inputs".into()))?,
         all_checks_passed,
         acceptance_granted: false,
         verifier_authenticated: false,
@@ -703,6 +716,39 @@ mod tests {
         assert!(!first.verifier_authenticated());
         assert!(!first.execution_qualified());
         assert!(!first.evidence_custody_verified());
+    }
+
+    #[test]
+    fn validated_input_binding_rejects_repaired_sidecars_without_changing_v1_report() {
+        let original = receipt();
+        let checked = validate_receipt(&contract(), &inputs(), &policy(), &original)
+            .expect("actual original receipt validates");
+        let original_digest = crate::content_digest(&original.inputs).expect("bounded fixture");
+        assert_eq!(checked.validated_inputs_digest(), original_digest);
+        let mut other = original.clone();
+        other.inputs.attempt_id = AttemptId::new("other-attempt").expect("fixture attempt");
+        other.inputs.candidate_ref = "candidate:other".into();
+        other.inputs.source_commit_sha = "3".repeat(40);
+        let other_checked = validate_receipt(&contract(), &other.inputs, &policy(), &other)
+            .expect("other internally consistent receipt also validates");
+        let other_digest = crate::content_digest(&other.inputs).expect("bounded other fixture");
+        assert_eq!(other_checked.validated_inputs_digest(), other_digest);
+        assert_ne!(checked.validated_inputs_digest(), other_digest);
+        assert_ne!(other_checked.validated_inputs_digest(), original_digest);
+        assert!(checked.all_checks_passed() && other_checked.all_checks_passed());
+        assert_eq!(
+            serde_json::to_value(&checked).expect("original report"),
+            serde_json::json!({
+                "receipt_digest": crate::content_digest(&original).expect("original receipt"),
+                "all_checks_passed": true,
+                "acceptance_granted": false,
+                "verifier_authenticated": false,
+                "execution_qualified": false,
+                "evidence_custody_verified": false
+            })
+        );
+        assert!(!checked.acceptance_granted() && !checked.verifier_authenticated());
+        assert!(!checked.execution_qualified() && !checked.evidence_custody_verified());
     }
 
     #[test]
