@@ -139,6 +139,7 @@ describe('scoped duplicate lookup', () => {
       expect(url).toBe('/v2/intake/duplicates/query');
       expect(init?.method).toBe('POST');
       expect(init?.cache).toBe('no-store');
+      expect(init?.redirect).toBe('error');
       expect(init?.signal).toBe(controller.signal);
       const headers = new Headers(init?.headers);
       expect(Object.fromEntries(headers)).toEqual({
