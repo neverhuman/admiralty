@@ -1,11 +1,11 @@
 //! Offline, synthetic counterexamples plus retained imported fixture vectors.
 use admiralty_runtime::{
     providers::claude::{
-        ClaudeError, ClaudeLaunch, Effort, EventScope, MAX_EVENT_BYTES, MAX_EVENTS,
-        MAX_STREAM_BYTES, OBSERVED_CLI_VERSION, TurnOutcome, Usage, UsageSource, parse_stream,
-        qualification,
+        CURRENT_CLI_VERSION, ClaudeError, ClaudeLaunch, Effort, EventScope, MAX_EVENT_BYTES,
+        MAX_EVENTS, MAX_STREAM_BYTES, OBSERVED_CLI_VERSION, TurnOutcome, Usage, UsageSource,
+        parse_stream, prepare_launch, qualification,
     },
-    session::MAX_INPUT_BYTES,
+    session::{LaunchSpec, MAX_INPUT_BYTES},
 };
 use admiralty_testkit::faults::{FaultEffect, FaultPlan, FaultRule};
 use serde_json::{Value, json};
@@ -14,6 +14,111 @@ use std::path::PathBuf;
 const TURN: &[u8] = include_bytes!("../fixtures/providers/claude/continuity-turn.jsonl");
 const RESUME: &[u8] = include_bytes!("../fixtures/providers/claude/turn-boundary-resume.jsonl");
 const UUID: &str = "aee5e41e-8913-4c03-acef-e4fb73978921";
+
+#[test]
+fn real_303_continuity_preserves_session_model_and_terminal_usage() {
+    let fresh = include_bytes!("../fixtures/providers/claude/2.1.303/fresh.jsonl");
+    let resumed = include_bytes!("../fixtures/providers/claude/2.1.303/resume.jsonl");
+    let first = parse_stream(fresh, None).expect("retained bounded real first turn");
+    let second = parse_stream(resumed, first.session_id.as_deref()).expect("same real session");
+    for out in [&first, &second] {
+        assert_eq!(out.version.as_deref(), Some(CURRENT_CLI_VERSION));
+        assert_eq!(out.model.as_deref(), Some("claude-sonnet-5-5"));
+        assert_eq!(out.outcome, TurnOutcome::Succeeded);
+        assert_eq!(out.usage_source, UsageSource::ParentTerminal);
+        assert!(out.usage.cache_read_input_tokens.is_some());
+        assert!(!out.native_execution_qualified());
+        assert!(!out.trusted_acceptance());
+    }
+    let result: Value = serde_json::from_slice(
+        resumed
+            .split(|b| *b == b'\n')
+            .filter(|l| !l.is_empty())
+            .next_back()
+            .expect("terminal result"),
+    )
+    .expect("JSON result");
+    assert_eq!(result["result"], "ADM-P21-20261019");
+}
+
+#[test]
+fn complete_launch_binding_rejects_capture_and_envelope_drift() {
+    let mut profile = launch();
+    profile.model = "claude-sonnet-5-5".into();
+    let envelope = LaunchSpec {
+        run_id: "bound-claude".into(),
+        program: profile.program.clone(),
+        args: vec![],
+        cwd: profile.cwd.clone(),
+        spool_dir: "/workspace/spool".into(),
+    };
+    let prepared = prepare_launch(
+        profile.clone(),
+        envelope.clone(),
+        "Exact task\ncontext",
+        OBSERVED_CLI_VERSION,
+    )
+    .expect("bound proposal");
+    let mut captured = events();
+    captured[0]["tools"] = json!([]);
+    captured[0]["mcp_servers"] = json!([]);
+    assert!(prepared.parse_capture(&wire(&captured)).is_ok());
+    assert!(
+        prepared.parse_capture(TURN).is_err(),
+        "missing tool configuration is unknown"
+    );
+    for field in ["tools", "mcp_servers"] {
+        let mut changed = captured.clone();
+        changed[0][field] = json!(["unexpected-tool"]);
+        assert!(prepared.parse_capture(&wire(&changed)).is_err());
+    }
+    assert!(prepared.spec().args.contains(&"--verbose".into()));
+    assert!(prepared.spec().args.contains(&"--safe-mode".into()));
+    assert!(
+        prepared
+            .spec()
+            .args
+            .windows(2)
+            .any(|pair| pair == ["--mcp-config", "{\"mcpServers\":{}}"])
+    );
+    assert_eq!(
+        serde_json::from_slice::<Value>(prepared.input()).expect("input")["message"]["content"],
+        "Exact task\ncontext"
+    );
+    let changed = prepare_launch(
+        profile.clone(),
+        envelope.clone(),
+        "Changed task",
+        OBSERVED_CLI_VERSION,
+    )
+    .expect("new binding");
+    assert_ne!(prepared.binding_digest(), changed.binding_digest());
+    for field in [
+        "session_id",
+        "model",
+        "permissionMode",
+        "claude_code_version",
+    ] {
+        let mut source = events();
+        source[0][field] = json!(if field == "claude_code_version" {
+            CURRENT_CLI_VERSION
+        } else {
+            "foreign"
+        });
+        assert!(prepared.parse_capture(&wire(&source)).is_err(), "{field}");
+    }
+    for field in ["program", "cwd", "args"] {
+        let mut bad = envelope.clone();
+        match field {
+            "program" => bad.program = "/other/claude".into(),
+            "cwd" => bad.cwd = "/other/work".into(),
+            _ => bad.args.push("--unbound".into()),
+        }
+        assert!(prepare_launch(profile.clone(), bad, "Task", OBSERVED_CLI_VERSION).is_err());
+    }
+    profile.model = "sonnet".into();
+    assert!(prepare_launch(profile, envelope, "Task", OBSERVED_CLI_VERSION).is_err());
+}
 
 fn events() -> Vec<Value> {
     TURN.split(|byte| *byte == b'\n')

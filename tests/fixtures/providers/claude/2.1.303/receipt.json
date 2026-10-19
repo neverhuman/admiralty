@@ -1,0 +1,27 @@
+{
+  "kind": "bounded_real_cli_continuity",
+  "native_admission_qualified": false,
+  "nested_usage_qualified": false,
+  "account_attribution": "unknown",
+  "captures": {
+    "fresh": {
+      "raw_sha256": "54a30f7014eb7e4f2577b95e7e62a9caf4b323af39efe164d4eb46be4545f974",
+      "retained_sha256": "fffd7d78331e08bce31d3e5ad27321178973de36b1fe600ad5c2efce88193bed",
+      "exit_code": 0,
+      "elapsed_seconds": 3.0233798027038574,
+      "session_id": "bf242d54-1626-4bab-8f95-784ec6419788"
+    },
+    "resume": {
+      "raw_sha256": "afd64b1d9a37865248634cb556f0ccb252c4fbb0a8b9ccd71188295720fb5267",
+      "retained_sha256": "88cc0d0d041432e6879dbb2a8823024f3928fbe6e16d28d56fa37e54c1fffb01",
+      "exit_code": 0,
+      "elapsed_seconds": 2.77305269241333,
+      "session_id": "bf242d54-1626-4bab-8f95-784ec6419788"
+    }
+  },
+  "raw_capture_directory": "/home/ubuntu/admiralty-v2-build/receipts/P21-claude-continuity-20261019T1427Z",
+  "observed_utc": "2026-10-19T14:27:01Z",
+  "scope": "Two tool-free CLI turns outside the native production admission path; retained provider-reported continuity only.",
+  "fresh_prompt": "Remember continuity token ADM-P21-20261019. Reply with exactly READY. Do not use any tools.",
+  "resume_prompt": "What exact continuity token did I ask you to remember? Reply with only that token. Do not use any tools."
+}
