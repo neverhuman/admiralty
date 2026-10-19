@@ -69,7 +69,34 @@ mod probe {
     type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
     const MAX_BYTES: usize = 1024 * 1024;
     const AUTH_BYTES: usize = 64 * 1024;
+    const ORACLE_MISMATCH_EXIT: u8 = 23;
     const SOURCE_SHA: Option<&str> = option_env!("ADMIRALTY_PROBE_SOURCE_SHA");
+
+    // Only a successful command with complete bounded output can construct
+    // this outcome. Compiler/setup/capture failures are infrastructure errors;
+    // they must never satisfy the required wrong-oracle negative check.
+    #[derive(Debug)]
+    struct OracleMismatch;
+    impl std::fmt::Display for OracleMismatch {
+        fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            formatter.write_str("compiled source differs from protected oracle")
+        }
+    }
+    impl Error for OracleMismatch {}
+    fn failure_exit(error: &(dyn Error + Send + Sync + 'static)) -> u8 {
+        if error.is::<OracleMismatch>() {
+            ORACLE_MISMATCH_EXIT
+        } else {
+            17
+        }
+    }
+    fn verify_compiled_output(actual: Result<Vec<u8>>, expected: &str) -> Result<()> {
+        let actual = actual?;
+        if content_digest(&actual)? != expected {
+            return Err(OracleMismatch.into());
+        }
+        Ok(())
+    }
 
     #[derive(Parser)]
     #[command(about = "One-run actual Linux NativeTaskLoop proof; no provider/fleet qualification")]
@@ -150,7 +177,7 @@ mod probe {
             Ok(()) => std::process::ExitCode::SUCCESS,
             Err(error) => {
                 eprintln!("Native task-loop proof did not qualify: {error}");
-                std::process::ExitCode::from(17)
+                std::process::ExitCode::from(failure_exit(error.as_ref()))
             }
         }
     }
@@ -238,18 +265,18 @@ mod probe {
             Duration::from_secs(20),
         )?;
         validate_program(&binary)?;
-        let actual = fixed_command(
-            &host,
-            "execute",
-            &binary,
-            &[],
-            &cwd,
-            output,
-            Duration::from_secs(2),
+        verify_compiled_output(
+            fixed_command(
+                &host,
+                "execute",
+                &binary,
+                &[],
+                &cwd,
+                output,
+                Duration::from_secs(2),
+            ),
+            expected,
         )?;
-        if content_digest(&actual)? != expected {
-            return Err("compiled source differs from protected oracle".into());
-        }
         println!("compiled changed source matches protected oracle");
         Ok(())
     }
@@ -957,7 +984,7 @@ mod probe {
                     ),
                     ..check.clone()
                 },
-                expected_exit_code: 17,
+                expected_exit_code: i32::from(ORACLE_MISMATCH_EXIT),
                 fixture_digest: negative.sha256.clone(),
             }],
         };
@@ -1558,6 +1585,68 @@ mod probe {
             std::os::unix::fs::symlink(&fence, &alias).unwrap();
             assert!(write_new(&alias, b"overwrite").is_err());
             assert_eq!(read_owned_file(&fence, 32).unwrap(), b"first attempt");
+        }
+        #[test]
+        fn setup_failure_is_not_a_completed_oracle_mismatch() {
+            let dir = private_fixture();
+            let digest = content_digest(&b"protected value".to_vec()).unwrap();
+            let output = dir.path().join("not-created");
+            let error = check_source(&dir.path().join("missing-rustc"), &digest, &output, &digest)
+                .unwrap_err();
+            assert_eq!(failure_exit(error.as_ref()), 17);
+            assert!(!error.is::<OracleMismatch>());
+            assert!(!output.exists());
+        }
+        #[test]
+        fn command_and_capture_failures_cannot_satisfy_wrong_oracle_negative() {
+            let dir = private_fixture();
+            let host = SessionHost::new();
+            let wrong = content_digest(&b"wrong oracle".to_vec()).unwrap();
+            // Actual bounded read-only OS children exercise the very same
+            // command/capture path as the compiler, without compiling source,
+            // launching a resource-gated worker, or qualifying a Linux runtime.
+            let compiler_failure = fixed_command(
+                &host,
+                "compiler-failure",
+                Path::new("/usr/bin/false"),
+                &[],
+                dir.path(),
+                dir.path(),
+                Duration::from_secs(2),
+            );
+            assert!(compiler_failure.is_err());
+            let error = verify_compiled_output(compiler_failure, &wrong).unwrap_err();
+            assert_eq!(failure_exit(error.as_ref()), 17);
+            assert!(!error.is::<OracleMismatch>());
+            let capture_failure = fixed_command(
+                &host,
+                "capture-failure",
+                Path::new("/usr/bin/head"),
+                &["-c".into(), (MAX_BYTES + 1).to_string(), "/dev/zero".into()],
+                dir.path(),
+                dir.path(),
+                Duration::from_secs(2),
+            );
+            assert!(capture_failure.is_err());
+            let error = verify_compiled_output(capture_failure, &wrong).unwrap_err();
+            assert_eq!(failure_exit(error.as_ref()), 17);
+            assert!(!error.is::<OracleMismatch>());
+            let actual = fixed_command(
+                &host,
+                "oracle-output",
+                Path::new("/usr/bin/printf"),
+                &["actual value".into()],
+                dir.path(),
+                dir.path(),
+                Duration::from_secs(2),
+            )
+            .unwrap();
+            let expected = content_digest(&actual).unwrap();
+            assert!(verify_compiled_output(Ok(actual.clone()), &expected).is_ok());
+            let mismatch = verify_compiled_output(Ok(actual), &wrong).unwrap_err();
+            assert!(mismatch.is::<OracleMismatch>());
+            assert_eq!(failure_exit(mismatch.as_ref()), ORACLE_MISMATCH_EXIT);
+            assert_ne!(ORACLE_MISMATCH_EXIT, 17);
         }
     }
 }
