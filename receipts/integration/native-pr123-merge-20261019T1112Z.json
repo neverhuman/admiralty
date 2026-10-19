@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T11:12:06.639Z",
+  "pr": 123,
+  "url": "https://github.com/neverhuman/admiralty/pull/123",
+  "reviewed_head": "5e480630050ed58337784a860ffe5d35fa70d12b",
+  "review": {
+    "user": "neverhumanbot",
+    "state": "APPROVED",
+    "head": "5e480630050ed58337784a860ffe5d35fa70d12b",
+    "submitted_at": "2026-10-19T11:10:15Z"
+  },
+  "merged_at": "2026-10-19T11:10:35Z",
+  "receiving_main": "bcf5cce911e538de7c3f6d0b2e8e59f3185ebdd2",
+  "source_payload": "feee6086b40f6125b8e76c0e86b01413df0daaab",
+  "all_three_code_test_hashes_equal": true,
+  "open_prs": [],
+  "local_CI_only": true,
+  "bot_test_execution_claimed": false,
+  "general_native_execution_qualified": false
+}

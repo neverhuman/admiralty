@@ -1,0 +1,122 @@
+{
+  "kind": "independent-final-native-admission-read-proof-source-review",
+  "observed_utc": "2026-10-19T11:29:27.863Z",
+  "reviewer": "audit_evidence",
+  "verdict": "CLEAR",
+  "source": {
+    "repository": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+    "commit": "9405ea948e48de4c01db1dc08b42872a9019a6d0",
+    "base_commit": "bcf5cce911e538de7c3f6d0b2e8e59f3185ebdd2",
+    "files": [
+      {
+        "path": "crates/admiralty-server/src/services/native_codex_plan.rs",
+        "sha256": "4b837497dd7003cd9fe0091373bc2c92778f85fd3ea9f6221208747d318d0643",
+        "bytes": 34602,
+        "working_matches_commit": true
+      },
+      {
+        "path": "crates/admiralty-server/src/services/native_task_loop.rs",
+        "sha256": "54e7bff1b845abf92ff7c176d8ad3039cffa48cc6118189893ea063d31cd30e2",
+        "bytes": 80744,
+        "working_matches_commit": true
+      },
+      {
+        "path": "crates/admiralty-server/src/services/native_task_loop_budget_tests.rs",
+        "sha256": "1869fd425db05d6b5154039a0262b5cd7daf3f259feddeccd8b6fe0abb1c6d3d",
+        "bytes": 30863,
+        "working_matches_commit": true
+      },
+      {
+        "path": "crates/admiralty-server/tests/native_codex_plan.rs",
+        "sha256": "4003a389b076851095ecfcef0805f365a1c87ec758a20e978c65e6b945214d3d",
+        "bytes": 82849,
+        "working_matches_commit": true
+      }
+    ]
+  },
+  "api_freeze": {
+    "path": "/private/tmp/ADMIRALTY_READ_PROOF_API_FREEZE_20261019T1120Z.md",
+    "sha256": "25e7300d29cd713bd73e1481d6c9ef60b0dc5a2024712bd831f1fcc262fcd99e",
+    "bytes": 3545
+  },
+  "findings": [],
+  "repaired_findings": [
+    {
+      "kind": "pre-admission budget capability loss",
+      "before": "3d9260d989eb25ea0ef7b1dd911340f3cab85f19",
+      "repair": "fde1359 adds optional original budget to RejectedAdmission; every preflight/overflow/registration rejection returns complete original command/write/read capability container. Slotted rejection continues returning original slot with reads."
+    },
+    {
+      "kind": "large rejected budget value",
+      "repair": "9b98eb0 boxes optional returned NativeBudgetAdmission without cloning or weakening ownership. Static sizing concern addressed; strict Clippy evidence belongs to parent."
+    }
+  ],
+  "source_review": [
+    {
+      "symbol": "BoundNativeCodexPlan::bind_inference_slot",
+      "conclusion": "Requires explicit custody-only NativeCodexAdmissionReadProofs and moves original read capabilities through both error branches and successful private NativeCodexSlotAdmission. Existing exact provider/model/request/workspace/resource/inference bindings unchanged; no grant or live validation inferred from container."
+    },
+    {
+      "symbol": "NativeTaskLoop::admit_slotted",
+      "conclusion": "Initial budget/slot reads use separate retained read proofs only; budget write proof and slot write proof remain original controller inputs. Wrong/denied read returns original plan+slot before registration. No read-to-write fallback."
+    },
+    {
+      "symbol": "NativeTaskLoop::validate_budget",
+      "conclusion": "Additional read samples current read permission before registration. It does not require global ledger revision equality and is explicitly observational, not retained policy lease."
+    },
+    {
+      "symbol": "budget_current / slot_current",
+      "conclusion": "Current reads use retained separate read roles; exact reservation/hold values and original pool key/generation are still compared, permitting unrelated global ledger advances without false reservation-version substitution."
+    },
+    {
+      "symbol": "admit_retained / ScopedDispatch / RecordingRuntime",
+      "conclusion": "Original write commands/proofs remain unchanged on replay and final dispatch recheck. Read errors hold existing ownership; dispatch unknown stays DispatchHeld without refund, release, weaker admission or automatic requeue. Final check after second controller clock remains."
+    },
+    {
+      "symbol": "RejectedAdmission",
+      "conclusion": "All three rejection construction paths retain original plan and boxed optional budget, ordinary mode None. Debug prints reason only, not tokens/claims/workspace."
+    }
+  ],
+  "static_test_review": {
+    "definition_counts": {
+      "native_codex_plan_file": 15,
+      "native_loop_main_unit_module": 8,
+      "native_loop_budget_unit_module": 9
+    },
+    "planned_affected_total_definitions": 32,
+    "new_subset_definitions": 3,
+    "actual_results": "Pending separate parent source-bound checks; this receipt does not qualify test execution.",
+    "new_cases": [
+      "wrong_budget_read_proof_rejects_preflight_and_returns_original_plan_and_custody",
+      "slotted_loop_read_revocation_holds_without_executor_attempt_and_retains_hold",
+      "wrong_slotted_read_proof_rejects_preflight_without_effects_or_retained_run"
+    ],
+    "reviewed_assertions": [
+      "Distinct budget marker types and distinct slot fixture token values deny write proof on read and read proof on write",
+      "Existing factory38-variant rejection matrix now verifies returned original budget/slot read Arc identity along with prior write inputs/preparation",
+      "Budget wrong-read preflight verifies original returned command and both proof Arcs, unchanged cursor/no reservation/no retained run",
+      "Slot wrong-read preflight verifies original actual prepared workspace head, retained original write proof and supplied bad-read Arc custody until rejection dropped, unchanged durable counts and UnknownRun",
+      "Independent slot-read revocation leaves slot write permission active; retry/dispatch hold with runtime_attemptedfalse and retained hold/unknown outbox after restoration",
+      "Existing write-only revocation tests remain independently exercised; helper setup and second-clock stop/pool mutations use explicit separate read/write roles"
+    ],
+    "not_additive": [
+      "Existing and matrix variants are not extra cases",
+      "Previously passing suites or parent running jobs are not counted as executed by this reviewer"
+    ]
+  },
+  "limits": [
+    "Explicit local test authorities, not an authenticated actual paired-cohort issuer or cross-crate paired-loop positive qualification",
+    "No public catalog loader, production issuer, default scheduler/route/activation, actual provider, physical capacity or start capability introduced",
+    "Read preflight/current checks remain samples and do not establish an atomic policy-at-physical-start fence",
+    "Factory exact bindings remain inert original-input comparisons; actual filesystem custody and current policy still require execution gates",
+    "No parent acceptance, global native qualification or CI-green claim"
+  ],
+  "reviewer_actions": {
+    "builds": 0,
+    "tests": 0,
+    "remote_calls": 0,
+    "forge_calls": 0,
+    "provider_calls": 0,
+    "source_edits": 0
+  }
+}

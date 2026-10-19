@@ -157,6 +157,11 @@ one process-local policy epoch through the Store transaction. Authenticated
 production installation, external credential/pool fencing, physical start,
 settlement/release and runtime recovery remain separate gates.
 
+Native admission retains separate read and write capabilities. Denied reads
+return the original preparation before admission or hold later dispatch without
+discarding the original budget/slot custody. A write token is never substituted
+for a ledger-read grant; see [durable admission](docs/architecture/durable-admission.md).
+
 Workplans can be previewed and registered as immutable revisions in an exclusively owned offline database:
 
 ```sh

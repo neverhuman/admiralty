@@ -6,6 +6,30 @@ neverhumanbot approval and matched-head rebase. Red/queued CI is never green.
 One cleanup lane takes this list after remaining cutover implementation lands;
 build failures remain immediate work.
 
+Receiving mainbcf5 browser39242735139 later completed FAILURE. Its job
+118027201976 reports no failed step in the fetched API snapshot, and failed-log
+retrieval returned `log not found: 118027201976` with no log bytes. Exact cause
+is unestablished; do not copy PR123 axe failures into this different run.
+Record the API snapshot and failed retrieval separately; no rerun/runner control.
+
+Actual PR123 exact5e480630 Rust39242527299 failed the actual controlled-child
+capture deadline at native_executor.rs2319:95serverpassed/1failed/2ignored.
+Exact raw log SHA-256
+`6e688b9b5d7ae4db2b275f9ee7c58989a4155de16044c2e8a654e002feb5d42e`
+is retained/archived; this is not a proven resource cause. No rerun, cancellation,
+runner control or additional cleanup lane.
+
+Actual PR123 exact5e480630 browser39242527317 reports19passed/1failed:
+pinned axe4.14.0 finds `label-content-name-mismatch` on13Atlas dark hierarchy
+cards (owner/watcher/Admiral/Commodores/workers). This is a source-specific
+observation of item8, not an inferred readiness/resource cause. Raw
+`/private/tmp/adm-ci-pr123-browser-39242527317.log` SHA-256
+`20aaf626379c15ede8e29393cd354c3be9ac640dd68a73b44dd45f5cc9c6cdf6`
+is retained and archived. Receiving mainbcf5 browser39242735139 and checks
+39242735024 were still in progress at11:17:07Z; no current-main green claim.
+Root retains the single later cleanup ownership; no rerun, cancellation,
+new cleanup lane, weakened axe assertion or runner control.
+
 Actual main e71e12f workflow39238035073 ended cancelled because check-run
 annotation118011792853 explicitly reports the maximum execution time of 15m0s.
 Contracts/dashboard build/tests passed, fmt and strict workspace all-target

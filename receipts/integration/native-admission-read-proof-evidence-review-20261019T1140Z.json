@@ -1,0 +1,878 @@
+{
+  "kind": "independent-native-read-proof-evidence-review",
+  "observed_utc": "2026-10-19T11:37:19.453Z",
+  "reviewer": "audit_evidence",
+  "verdict": "CLEAR",
+  "canonical_receipt": {
+    "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/receipts/integration/native-admission-read-proofs-20261019T1135Z.json",
+    "bytes": 21418,
+    "sha256": "aded75e0eaa4ed75a675f586ab07e16699e02e458659e77fcae0e47a3080d924",
+    "unchanged_during_review": true
+  },
+  "source_commit": "9405ea948e48de4c01db1dc08b42872a9019a6d0",
+  "source_files": [
+    {
+      "path": "crates/admiralty-server/src/services/native_codex_plan.rs",
+      "bytes": 34602,
+      "sha256": "4b837497dd7003cd9fe0091373bc2c92778f85fd3ea9f6221208747d318d0643",
+      "raw": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_codex_plan.rs",
+        "bytes": 34602,
+        "sha256": "4b837497dd7003cd9fe0091373bc2c92778f85fd3ea9f6221208747d318d0643"
+      }
+    },
+    {
+      "path": "crates/admiralty-server/src/services/native_task_loop.rs",
+      "bytes": 80744,
+      "sha256": "54e7bff1b845abf92ff7c176d8ad3039cffa48cc6118189893ea063d31cd30e2",
+      "raw": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_task_loop.rs",
+        "bytes": 80744,
+        "sha256": "54e7bff1b845abf92ff7c176d8ad3039cffa48cc6118189893ea063d31cd30e2"
+      }
+    },
+    {
+      "path": "crates/admiralty-server/src/services/native_task_loop_budget_tests.rs",
+      "bytes": 30863,
+      "sha256": "1869fd425db05d6b5154039a0262b5cd7daf3f259feddeccd8b6fe0abb1c6d3d",
+      "raw": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_task_loop_budget_tests.rs",
+        "bytes": 30863,
+        "sha256": "1869fd425db05d6b5154039a0262b5cd7daf3f259feddeccd8b6fe0abb1c6d3d"
+      }
+    },
+    {
+      "path": "crates/admiralty-server/tests/native_codex_plan.rs",
+      "bytes": 82849,
+      "sha256": "4003a389b076851095ecfcef0805f365a1c87ec758a20e978c65e6b945214d3d",
+      "raw": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/tests/native_codex_plan.rs",
+        "bytes": 82849,
+        "sha256": "4003a389b076851095ecfcef0805f365a1c87ec758a20e978c65e6b945214d3d"
+      }
+    }
+  ],
+  "verified_references": [
+    {
+      "reference": "canonical.files.0",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_codex_plan.rs",
+      "bytes": 34602,
+      "sha256": "4b837497dd7003cd9fe0091373bc2c92778f85fd3ea9f6221208747d318d0643"
+    },
+    {
+      "reference": "canonical.files.0.raw",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_codex_plan.rs",
+      "bytes": 34602,
+      "sha256": "4b837497dd7003cd9fe0091373bc2c92778f85fd3ea9f6221208747d318d0643"
+    },
+    {
+      "reference": "canonical.files.1",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_task_loop.rs",
+      "bytes": 80744,
+      "sha256": "54e7bff1b845abf92ff7c176d8ad3039cffa48cc6118189893ea063d31cd30e2"
+    },
+    {
+      "reference": "canonical.files.1.raw",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_task_loop.rs",
+      "bytes": 80744,
+      "sha256": "54e7bff1b845abf92ff7c176d8ad3039cffa48cc6118189893ea063d31cd30e2"
+    },
+    {
+      "reference": "canonical.files.2",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_task_loop_budget_tests.rs",
+      "bytes": 30863,
+      "sha256": "1869fd425db05d6b5154039a0262b5cd7daf3f259feddeccd8b6fe0abb1c6d3d"
+    },
+    {
+      "reference": "canonical.files.2.raw",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_task_loop_budget_tests.rs",
+      "bytes": 30863,
+      "sha256": "1869fd425db05d6b5154039a0262b5cd7daf3f259feddeccd8b6fe0abb1c6d3d"
+    },
+    {
+      "reference": "canonical.files.3",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/tests/native_codex_plan.rs",
+      "bytes": 82849,
+      "sha256": "4003a389b076851095ecfcef0805f365a1c87ec758a20e978c65e6b945214d3d"
+    },
+    {
+      "reference": "canonical.files.3.raw",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/tests/native_codex_plan.rs",
+      "bytes": 82849,
+      "sha256": "4003a389b076851095ecfcef0805f365a1c87ec758a20e978c65e6b945214d3d"
+    },
+    {
+      "reference": "canonical.source_archive",
+      "path": "/private/tmp/admiralty-readproof-source-9405ea9.tar",
+      "bytes": 19599360,
+      "sha256": "6bb1d22dd07e9882bc9e05c5edd670991e1a11070f0405af4150b5beda753d9d"
+    },
+    {
+      "reference": "canonical.checks.mac.files.0",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_codex_plan.rs",
+      "bytes": 34602,
+      "sha256": "4b837497dd7003cd9fe0091373bc2c92778f85fd3ea9f6221208747d318d0643"
+    },
+    {
+      "reference": "canonical.checks.mac.files.1",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_task_loop.rs",
+      "bytes": 80744,
+      "sha256": "54e7bff1b845abf92ff7c176d8ad3039cffa48cc6118189893ea063d31cd30e2"
+    },
+    {
+      "reference": "canonical.checks.mac.files.2",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_task_loop_budget_tests.rs",
+      "bytes": 30863,
+      "sha256": "1869fd425db05d6b5154039a0262b5cd7daf3f259feddeccd8b6fe0abb1c6d3d"
+    },
+    {
+      "reference": "canonical.checks.mac.files.3",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/tests/native_codex_plan.rs",
+      "bytes": 82849,
+      "sha256": "4003a389b076851095ecfcef0805f365a1c87ec758a20e978c65e6b945214d3d"
+    },
+    {
+      "reference": "canonical.checks.mac.results.0.log",
+      "path": "/private/tmp/adm-readproof-root-91LCGv/integration.log",
+      "bytes": 2147,
+      "sha256": "d0a1b0af3ab01a75d3d7e9c44dc73a3405f2b00e64ad2d7ec4c966060faa6c5f"
+    },
+    {
+      "reference": "canonical.checks.mac.results.1.log",
+      "path": "/private/tmp/adm-readproof-root-91LCGv/loop.log",
+      "bytes": 2503,
+      "sha256": "6dd80b8b9ea40fd8ec70e7d31bfeab19d3d7f3af8bf4c73caaaf68022d3f00a8"
+    },
+    {
+      "reference": "canonical.checks.mac.results.2.log",
+      "path": "/private/tmp/adm-readproof-root-91LCGv/clippy.log",
+      "bytes": 501,
+      "sha256": "81169a5efa2f9a64e513b4fb552c21d5c7133cd0ee11ced82bd1ed5eb30ada2e"
+    },
+    {
+      "reference": "canonical.checks.mac.results.3.log",
+      "path": "/private/tmp/adm-readproof-root-91LCGv/fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "canonical.checks.linux.raw",
+      "path": "/private/tmp/adm-readproof-linux-test.log",
+      "bytes": 5771,
+      "sha256": "e6c1ccf4965f128690415e20070682571f31e084e08ceda63ec1122c5d461459"
+    },
+    {
+      "reference": "canonical.checks.linux.post_source",
+      "path": "/private/tmp/adm-readproof-linux-posthash.json",
+      "bytes": 898,
+      "sha256": "cb9b43daefb2a6efb1ae9c1738fc351e671717a3e1cc169b2f9d71bffef550d4"
+    },
+    {
+      "reference": "canonical.checks.linux.wrapper",
+      "path": "/private/tmp/adm-readproof-linux-wrapper.log",
+      "bytes": 222,
+      "sha256": "048e2ba89ae430962e02f5341cf60c694fb7e131cb417790075a56b32ca09992"
+    },
+    {
+      "reference": "canonical.checks.linux.orchestration",
+      "path": "/private/tmp/admiralty-linux-readproof.cjs",
+      "bytes": 4121,
+      "sha256": "cc3474690b385419d767e425ccfdb0d35a6fb67f31b59795089a245fdff13197"
+    },
+    {
+      "reference": "canonical.worker_source",
+      "path": "/private/tmp/adm-read-proofs-factory-source-worker-receipt.json",
+      "bytes": 17789,
+      "sha256": "02fc7d12d8bd924276191bc03432fb1f8724d9112751722e2ef1ba1b9337f37a"
+    },
+    {
+      "reference": "canonical.worker_tests",
+      "path": "/private/tmp/adm-readproof-test-worker-receipt.json",
+      "bytes": 21942,
+      "sha256": "c8d009604e8972f94b0f350a2424306fad043fa4ea3a887982435b0ba51d34fd"
+    },
+    {
+      "reference": "canonical.static_review",
+      "path": "/private/tmp/adm-readproof-final-source-review.json",
+      "bytes": 6865,
+      "sha256": "42be0a5f8602ca51fc8e2522978d4b58ed5a1f5bbde3940f814d4995b10a18cf"
+    },
+    {
+      "reference": "canonical.production.independent",
+      "path": "/private/tmp/admiralty-bcf5-independent-20261019T1130Z.json",
+      "bytes": 5178,
+      "sha256": "9604301cb1eebca400732786b4c97566e3331f3f225252af116abeabc507319f"
+    },
+    {
+      "reference": "canonical.operations.pr123_merge",
+      "path": "/private/tmp/native-pr123-merge-20261019T1112Z.json",
+      "bytes": 721,
+      "sha256": "cf41f35af7df3d38a916062048531eaa02333f1edcc22cb80326f8b2ee29f2ee"
+    },
+    {
+      "reference": "canonical.operations.pr123_CAS",
+      "path": "/private/tmp/rollout-fence-pr123-20261019T1120Z.json",
+      "bytes": 2528,
+      "sha256": "65162cec1a1eb3deb4133d82a3923e247b320cb6b61e3cfb9044457adb4ec780"
+    },
+    {
+      "reference": "canonical.operations.CAS_actual_readback",
+      "path": "/private/tmp/rollout-fence-pr123-actual-readback-20261019T1124Z.json",
+      "bytes": 148,
+      "sha256": "54f0fc797b1d0fd4989ea7a3ad3e195c6f9b7edba2649326e9cb0ab754a65eff"
+    },
+    {
+      "reference": "canonical.operations.diagnostic_build_only",
+      "path": "/private/tmp/native-bcf5-diagnostic-build-independent-20261019T1135Z.json",
+      "bytes": 1926,
+      "sha256": "7de1ebae4c69139a55e536b66437991dc280a0c49ada35894ef2038499edef33"
+    },
+    {
+      "reference": "canonical.operations.fresh_route_request",
+      "path": "/private/tmp/CODEX_REQUEST_FRESH_BCF5_DIAGNOSTIC_ROUTE_20261019T1135Z.md",
+      "bytes": 2256,
+      "sha256": "00b1cba587bb3eccc029d27f8b81cd461bc76ce6f992a39d49d753dfdd712bf5"
+    },
+    {
+      "reference": "worker_source.source",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/worktree/crates/admiralty-server/src/services/native_codex_plan.rs",
+      "bytes": 34602,
+      "sha256": "4b837497dd7003cd9fe0091373bc2c92778f85fd3ea9f6221208747d318d0643"
+    },
+    {
+      "reference": "worker_source.root_receiving_source_snapshot",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/receiving-native_codex_plan.rs",
+      "bytes": 34602,
+      "sha256": "4b837497dd7003cd9fe0091373bc2c92778f85fd3ea9f6221208747d318d0643"
+    },
+    {
+      "reference": "worker_source.commands.0.metadata",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/01-mkdir.json",
+      "bytes": 460,
+      "sha256": "e36ac332c5404767be653cbe3ca2c9a7f2e81715f4a7691aacb58a22e6ebbf03"
+    },
+    {
+      "reference": "worker_source.commands.0.stdout_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/01-mkdir.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.0.stderr_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/01-mkdir.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.1.metadata",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/02-worktree.json",
+      "bytes": 520,
+      "sha256": "3f189f6d0561c1e293e99382cc7faac7fffd450dabf39b31b9ac1d0a09ee3964"
+    },
+    {
+      "reference": "worker_source.commands.1.stdout_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/02-worktree.stdout",
+      "bytes": 93,
+      "sha256": "1d5dc79be8cdad1216cfa78128c76459dc17e8e1a6df6493b406359c7fb62d2c"
+    },
+    {
+      "reference": "worker_source.commands.1.stderr_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/02-worktree.stderr",
+      "bytes": 75,
+      "sha256": "b22fd4e387c4c60717437a5f2cae1fa940db891917c60c647b7bfc87ab02643c"
+    },
+    {
+      "reference": "worker_source.commands.2.metadata",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/03-format.json",
+      "bytes": 429,
+      "sha256": "4ea8c39f29d11e05e9f3f6eb84de7316542f3d83285997ba62493bb4b352db8b"
+    },
+    {
+      "reference": "worker_source.commands.2.stdout_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/03-format.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.2.stderr_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/03-format.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.3.metadata",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/04-diff-check.json",
+      "bytes": 364,
+      "sha256": "61f6f2d3a930c5bbedb67a525d55d0dc6000b53231ff272f4051af881f0afc0f"
+    },
+    {
+      "reference": "worker_source.commands.3.stdout_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/04-diff-check.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.3.stderr_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/04-diff-check.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.4.metadata",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/05-diff.json",
+      "bytes": 414,
+      "sha256": "b336eadd224732dcd2ae0df06a185a8301dcc2752ca26d528715b91cf678fe93"
+    },
+    {
+      "reference": "worker_source.commands.4.stdout_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/05-diff.stdout",
+      "bytes": 4458,
+      "sha256": "8388e4dcec7325c57c0cf4046549d2165e7e0960b87f26c1a5c413a1db5eae4e"
+    },
+    {
+      "reference": "worker_source.commands.4.stderr_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/05-diff.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.5.metadata",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/06-add.json",
+      "bytes": 401,
+      "sha256": "08e091e59b27f6e7a8e2567138f9479cec40c4a3bdb6ef750f29e6fab63952c8"
+    },
+    {
+      "reference": "worker_source.commands.5.stdout_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/06-add.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.5.stderr_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/06-add.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.6.metadata",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/07-commit.json",
+      "bytes": 426,
+      "sha256": "8921b4be3974601bb9577799e8b6047ac14001eb83a8edc1df82f70874aaa2c3"
+    },
+    {
+      "reference": "worker_source.commands.6.stdout_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/07-commit.stdout",
+      "bytes": 164,
+      "sha256": "ce95b29d5f3072f967918706c41096a9ceabf2af0102402768e89e9ee1b1314d"
+    },
+    {
+      "reference": "worker_source.commands.6.stderr_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/07-commit.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.7.metadata",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/08-pin.json",
+      "bytes": 355,
+      "sha256": "ba507d802aff814032ec1ec0198e6f0b45f7cc99d667f926783d06af9aa2efbd"
+    },
+    {
+      "reference": "worker_source.commands.7.stdout_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/08-pin.stdout",
+      "bytes": 41,
+      "sha256": "94d5d7449b79edce77e7b50c5996319dc6a398aee35d4532cb9ed2f3e3256c0c"
+    },
+    {
+      "reference": "worker_source.commands.7.stderr_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/08-pin.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.8.metadata",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/09-source-hash.json",
+      "bytes": 430,
+      "sha256": "dcc935982796ef54cd5d8488ded377e3f4231bcb392bfea15be13e187b3c9986"
+    },
+    {
+      "reference": "worker_source.commands.8.stdout_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/09-source-hash.stdout",
+      "bytes": 124,
+      "sha256": "5ce831e6a56d27d5b348f810a70f3cb34dcf0c60b3d6764b7000e0a9d22d2e61"
+    },
+    {
+      "reference": "worker_source.commands.8.stderr_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/09-source-hash.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.9.metadata",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/10-status.json",
+      "bytes": 361,
+      "sha256": "afbccb3694be27aca2fb64e75bc9676f7f1442d82a5bae0945cc1d57df4eec78"
+    },
+    {
+      "reference": "worker_source.commands.9.stdout_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/10-status.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.9.stderr_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/10-status.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.10.metadata",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/11-root-pin.json",
+      "bytes": 367,
+      "sha256": "8b619a5862563c4aa909d2a0d7d43a777a435170dce8334c04184a6d6e1c7bac"
+    },
+    {
+      "reference": "worker_source.commands.10.stdout_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/11-root-pin.stdout",
+      "bytes": 41,
+      "sha256": "21c7661267c3065f3cdbdf400fcfcbd47b663c2863c6b54b04f630e515492d03"
+    },
+    {
+      "reference": "worker_source.commands.10.stderr_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/11-root-pin.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.commands.11.metadata",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/12-root-source.json",
+      "bytes": 702,
+      "sha256": "ac4ccbdf5b0d4e5924c89c82cb22703c27399b58eeb55dae383ac0c6efd15eeb"
+    },
+    {
+      "reference": "worker_source.commands.11.stdout_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/12-root-source.stdout",
+      "bytes": 141,
+      "sha256": "fca149327d54a28514816e7752c12b24761b88083013e77cb6b996e3b36ecf6f"
+    },
+    {
+      "reference": "worker_source.commands.11.stderr_artifact",
+      "path": "/private/tmp/adm-read-proofs-factory.p9fNs3/12-root-source.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_source.design_artifacts.0",
+      "path": "/private/tmp/ADMIRALTY_READ_PROOF_REPAIR_bcf5_20261019.md",
+      "bytes": 7824,
+      "sha256": "92759e09ee97cd2190d09e0d4f8962387db1289bb123d8b42d80cc56030bda9b"
+    },
+    {
+      "reference": "worker_source.design_artifacts.1",
+      "path": "/private/tmp/ADMIRALTY_NEXT_AUTHENTIC_INSTALL_bcf5_20261019.md",
+      "bytes": 3856,
+      "sha256": "282f998056d90ab80f17cd2c2a3d9f944ec8ee3a0d7372eeb96c7990cbf78fa2"
+    },
+    {
+      "reference": "worker_tests.actual_runs.0.logs.0",
+      "path": "/private/tmp/adm-read-proof-logs/slotted_loop_read_revocation.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_tests.actual_runs.0.logs.1",
+      "path": "/private/tmp/adm-read-proof-logs/slotted_loop_read_revocation.stderr",
+      "bytes": 4994,
+      "sha256": "cdbf44a89b7e530b13b161945ad3e76ae67689dee25a56d4cacebc71a15e7dc3"
+    },
+    {
+      "reference": "worker_tests.actual_runs.0.logs.2",
+      "path": "/private/tmp/adm-read-proof-logs/slotted_loop_read_revocation.exit",
+      "bytes": 4,
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c"
+    },
+    {
+      "reference": "worker_tests.actual_runs.1.logs.0",
+      "path": "/private/tmp/adm-read-proof-logs/slotted_loop_read_revocation_retry.stdout",
+      "bytes": 212,
+      "sha256": "4c04aa3a8cc5d4eb0c31ecad8469ee65a92b92da18b9380e7adfa187451bc396"
+    },
+    {
+      "reference": "worker_tests.actual_runs.1.logs.1",
+      "path": "/private/tmp/adm-read-proof-logs/slotted_loop_read_revocation_retry.stderr",
+      "bytes": 299,
+      "sha256": "3da9de500c2696181bc9e17089ff8d8b790a66a39d7c3175ff275bd685f97fe3"
+    },
+    {
+      "reference": "worker_tests.actual_runs.1.logs.2",
+      "path": "/private/tmp/adm-read-proof-logs/slotted_loop_read_revocation_retry.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "reference": "worker_tests.actual_runs.2.logs.0",
+      "path": "/private/tmp/adm-read-proof-logs/wrong_budget_read.stdout",
+      "bytes": 1492,
+      "sha256": "489c0c45282dfba026eba2d5310b2fc53524fd199e40f3935c6388a128481e1c"
+    },
+    {
+      "reference": "worker_tests.actual_runs.2.logs.1",
+      "path": "/private/tmp/adm-read-proof-logs/wrong_budget_read.stderr",
+      "bytes": 1668,
+      "sha256": "2acc76826eac146081502d910531640ff73387aee1112196af2be4b28b1d39d2"
+    },
+    {
+      "reference": "worker_tests.actual_runs.2.logs.2",
+      "path": "/private/tmp/adm-read-proof-logs/wrong_budget_read.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "reference": "worker_tests.actual_runs.3.logs.0",
+      "path": "/private/tmp/adm-read-proof-logs/protected_admission.stdout",
+      "bytes": 1480,
+      "sha256": "1222e98ab80ba8088737f008c270c1cd2dd512e0c544892a97a7d086b3f47256"
+    },
+    {
+      "reference": "worker_tests.actual_runs.3.logs.1",
+      "path": "/private/tmp/adm-read-proof-logs/protected_admission.stderr",
+      "bytes": 1564,
+      "sha256": "a9e4f14256ed10ae13367e94837a5280e72dbde0087a9db204cfcf75e625b5f0"
+    },
+    {
+      "reference": "worker_tests.actual_runs.3.logs.2",
+      "path": "/private/tmp/adm-read-proof-logs/protected_admission.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "reference": "worker_tests.actual_runs.4.logs.0",
+      "path": "/private/tmp/adm-read-proof-logs/rustfmt_check.stdout",
+      "bytes": 10562,
+      "sha256": "4af65c1d11910a78e27e2cd175a1e77f77514ad5469af1d245ffce2439d43647"
+    },
+    {
+      "reference": "worker_tests.actual_runs.4.logs.1",
+      "path": "/private/tmp/adm-read-proof-logs/rustfmt_check.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_tests.actual_runs.4.logs.2",
+      "path": "/private/tmp/adm-read-proof-logs/rustfmt_check.exit",
+      "bytes": 2,
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "reference": "worker_tests.actual_runs.5.logs.0",
+      "path": "/private/tmp/adm-read-proof-logs/rustfmt_apply.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_tests.actual_runs.5.logs.1",
+      "path": "/private/tmp/adm-read-proof-logs/rustfmt_apply.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_tests.actual_runs.5.logs.2",
+      "path": "/private/tmp/adm-read-proof-logs/rustfmt_apply.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "reference": "worker_tests.actual_runs.6.logs.0",
+      "path": "/private/tmp/adm-read-proof-logs/rustfmt_check_retry.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_tests.actual_runs.6.logs.1",
+      "path": "/private/tmp/adm-read-proof-logs/rustfmt_check_retry.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_tests.actual_runs.6.logs.2",
+      "path": "/private/tmp/adm-read-proof-logs/rustfmt_check_retry.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "reference": "worker_tests.actual_runs.7.logs.0",
+      "path": "/private/tmp/adm-read-proof-logs/followup_rustfmt.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_tests.actual_runs.7.logs.1",
+      "path": "/private/tmp/adm-read-proof-logs/followup_rustfmt.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_tests.actual_runs.7.logs.2",
+      "path": "/private/tmp/adm-read-proof-logs/followup_rustfmt.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "reference": "worker_tests.actual_runs.8.logs.0",
+      "path": "/private/tmp/adm-read-proof-logs/wrong_slotted_read.stdout",
+      "bytes": 207,
+      "sha256": "69db6700396af0bfc3c90c804b9b7b1e7f4bbcdf6c7a409bbd98f0d2eb2a3d55"
+    },
+    {
+      "reference": "worker_tests.actual_runs.8.logs.1",
+      "path": "/private/tmp/adm-read-proof-logs/wrong_slotted_read.stderr",
+      "bytes": 299,
+      "sha256": "c352d4d3ac7b12779a370a0a280360e74e9468720afa6bc9d160e8bc2ab2aaa8"
+    },
+    {
+      "reference": "worker_tests.actual_runs.8.logs.2",
+      "path": "/private/tmp/adm-read-proof-logs/wrong_slotted_read.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "reference": "worker_tests.actual_runs.9.logs.0",
+      "path": "/private/tmp/adm-read-proof-logs/read_revocation_hold.stdout",
+      "bytes": 209,
+      "sha256": "31376e1e90504930e45eaccdbbc16532765525e381430ae46c51f050a96b6d02"
+    },
+    {
+      "reference": "worker_tests.actual_runs.9.logs.1",
+      "path": "/private/tmp/adm-read-proof-logs/read_revocation_hold.stderr",
+      "bytes": 196,
+      "sha256": "912eef8683bbab5149c1a01f5257a5dac4d3f52db542b8d41a183fffb6ab4576"
+    },
+    {
+      "reference": "worker_tests.actual_runs.9.logs.2",
+      "path": "/private/tmp/adm-read-proof-logs/read_revocation_hold.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "reference": "worker_tests.actual_runs.10.logs.0",
+      "path": "/private/tmp/adm-read-proof-logs/write_revocation_retry.stdout",
+      "bytes": 212,
+      "sha256": "a0b440b7834c7968ec49286a617762c62e3cf3c73a047e9a1580040fa1c0dbb6"
+    },
+    {
+      "reference": "worker_tests.actual_runs.10.logs.1",
+      "path": "/private/tmp/adm-read-proof-logs/write_revocation_retry.stderr",
+      "bytes": 196,
+      "sha256": "ef71c5ce23dd04cb3e86bbdd67cbe3845e0c47e534b425eb9cb0680c834190ce"
+    },
+    {
+      "reference": "worker_tests.actual_runs.10.logs.2",
+      "path": "/private/tmp/adm-read-proof-logs/write_revocation_retry.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "reference": "worker_tests.actual_runs.11.logs.0",
+      "path": "/private/tmp/adm-read-proof-logs/failed_writer_retry.stdout",
+      "bytes": 1481,
+      "sha256": "26b4167354e4b2fa75e5563bc023e5d567399ce60a54d419318c5e0cababc74c"
+    },
+    {
+      "reference": "worker_tests.actual_runs.11.logs.1",
+      "path": "/private/tmp/adm-read-proof-logs/failed_writer_retry.stderr",
+      "bytes": 1667,
+      "sha256": "1bccbcf33151847bbefabe4d3f21adc857c67a38c1c774cd4c0866e3530f382d"
+    },
+    {
+      "reference": "worker_tests.actual_runs.11.logs.2",
+      "path": "/private/tmp/adm-read-proof-logs/failed_writer_retry.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "reference": "worker_tests.actual_runs.12.logs.0",
+      "path": "/private/tmp/adm-read-proof-logs/followup_rustfmt_check.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_tests.actual_runs.12.logs.1",
+      "path": "/private/tmp/adm-read-proof-logs/followup_rustfmt_check.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "worker_tests.actual_runs.12.logs.2",
+      "path": "/private/tmp/adm-read-proof-logs/followup_rustfmt_check.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  ],
+  "actual_cases": {
+    "mac": {
+      "integration": 15,
+      "loop": 17,
+      "total": 32,
+      "failed": 0,
+      "ignored": 0,
+      "loop_filtered": 82
+    },
+    "linux": {
+      "integration": 15,
+      "loop": 17,
+      "total": 32,
+      "failed": 0,
+      "ignored": 0,
+      "loop_filtered": 82
+    },
+    "same_case_names": true,
+    "case_names_sha256": "ef4bf16e638753fae12e70b1b5d486220df39e7b3c45b06e083de8f6a7572495",
+    "new_subset": 3,
+    "not_whole_server_or_workspace": true,
+    "worker_variants_and_repeats_not_additive": true
+  },
+  "linux_evidence": {
+    "archive_sha256": "6bb1d22dd07e9882bc9e05c5edd670991e1a11070f0405af4150b5beda753d9d",
+    "source_post4matches": true,
+    "one_recorded_invocation": true,
+    "code": 0,
+    "jobs": 1,
+    "test_threads": 1,
+    "started_utc": "2026-10-19T11:31:14.837Z",
+    "finished_utc": "2026-10-19T11:33:07.976Z",
+    "elapsed_ms": 113139,
+    "gates": [
+      {
+        "observed_utc": "2026-10-19T11:31:14.714Z",
+        "cpu_percent": 20.21763128844031,
+        "mem_available_kib": 71337704,
+        "controller_active": true,
+        "freeze": "0",
+        "admitted": true,
+        "provider_started": false
+      },
+      {
+        "observed_utc": "2026-10-19T11:31:16.140Z",
+        "cpu_percent": 19.357632055419984,
+        "mem_available_kib": 71377636,
+        "controller_active": true,
+        "freeze": "0",
+        "admitted": true,
+        "provider_started": false
+      },
+      {
+        "observed_utc": "2026-10-19T11:31:19.063Z",
+        "cpu_percent": 18.950184937436056,
+        "mem_available_kib": 71709672,
+        "controller_active": true,
+        "freeze": "0",
+        "admitted": true,
+        "provider_started": false
+      },
+      {
+        "observed_utc": "2026-10-19T11:31:20.522Z",
+        "cpu_percent": 19.82117423642982,
+        "mem_available_kib": 71446308,
+        "controller_active": true,
+        "freeze": "0",
+        "admitted": true,
+        "provider_started": false
+      },
+      {
+        "observed_utc": "2026-10-19T11:33:09.110Z",
+        "cpu_percent": 19.282723753851016,
+        "mem_available_kib": 78820428,
+        "controller_active": true,
+        "freeze": "0",
+        "admitted": true,
+        "provider_started": false
+      }
+    ],
+    "cache_copy_and_four_package_clean_in_pinned_orchestration": true,
+    "provider_run": false,
+    "service_control": false
+  },
+  "worker_failures": {
+    "status": "Actual saved stdout/stderr/exit artifacts match receipt pins; original failed compile101 and rustfmt1 retained, not reconstructed or counted as passing tests.",
+    "failures": [
+      {
+        "name": "initial slotted-loop read-revocation focused attempt; compile failure preserved",
+        "process_exit": 101,
+        "exit": {
+          "stream": "exit",
+          "path": "/private/tmp/adm-read-proof-logs/slotted_loop_read_revocation.exit",
+          "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+          "bytes": 4,
+          "content": "101\n"
+        },
+        "stdout": {
+          "stream": "stdout",
+          "path": "/private/tmp/adm-read-proof-logs/slotted_loop_read_revocation.stdout",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        "stderr": {
+          "stream": "stderr",
+          "path": "/private/tmp/adm-read-proof-logs/slotted_loop_read_revocation.stderr",
+          "sha256": "cdbf44a89b7e530b13b161945ad3e76ae67689dee25a56d4cacebc71a15e7dc3",
+          "bytes": 4994
+        }
+      },
+      {
+        "name": "initial rustfmt check; formatting failure preserved",
+        "process_exit": 1,
+        "exit": {
+          "stream": "exit",
+          "path": "/private/tmp/adm-read-proof-logs/rustfmt_check.exit",
+          "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+          "bytes": 2,
+          "content": "1\n"
+        },
+        "stdout": {
+          "stream": "stdout",
+          "path": "/private/tmp/adm-read-proof-logs/rustfmt_check.stdout",
+          "sha256": "4af65c1d11910a78e27e2cd175a1e77f77514ad5469af1d245ffce2439d43647",
+          "bytes": 10562
+        },
+        "stderr": {
+          "stream": "stderr",
+          "path": "/private/tmp/adm-read-proof-logs/rustfmt_check.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        }
+      }
+    ]
+  },
+  "claims": {
+    "role_strict_fixture_not_actual_paired_issuer": true,
+    "unconfigured_gate_no_coding_child": true,
+    "no_production_activation": true,
+    "no_general_native_or_parent_acceptance": true,
+    "no_full_CI_green": true,
+    "production_observation_separate_source": {
+      "independent": {
+        "path": "/private/tmp/admiralty-bcf5-independent-20261019T1130Z.json",
+        "bytes": 5178,
+        "sha256": "9604301cb1eebca400732786b4c97566e3331f3f225252af116abeabc507319f"
+      },
+      "source": "bcf5cce911e538de7c3f6d0b2e8e59f3185ebdd2",
+      "observed_utc": "2026-10-19T11:26:51.124Z",
+      "no_root_service_control": true,
+      "read_proof_source_not_yet_merged_or_deployed": true
+    }
+  },
+  "findings": [],
+  "reviewer_actions": {
+    "tests": 0,
+    "builds": 0,
+    "remote_calls": 0,
+    "source_edits": 0,
+    "provider_calls": 0
+  },
+  "limits": [
+    "Bounded local saved-artifact review only; no fresh remote host/process observation",
+    "Recorded source archive and four post-run source hashes bind the component; no independent entire remote tree/binary or cache custody attestation",
+    "Worker source-only formatter/diff checks are not compilation/test qualification; canonical Root/Linux runs carry final execution counts",
+    "Local read/write fixture authority separation is not an authenticated actual paired-cohort server-loop issuer"
+  ]
+}

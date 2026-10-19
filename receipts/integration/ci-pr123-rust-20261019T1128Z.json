@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T11:25:06.690Z",
+  "source": "5e480630050ed58337784a860ffe5d35fa70d12b",
+  "pr": 123,
+  "run": 39242527299,
+  "conclusion": "failure",
+  "server": {
+    "passed": 95,
+    "failed": 1,
+    "ignored": 2,
+    "filtered": 0,
+    "failure": "services::native_executor::tests::actual_producer_capture_failure_cannot_yield_typed_transcript",
+    "location": "native_executor.rs:2319",
+    "reason": "controlled child capture deadline"
+  },
+  "raw": {
+    "path": "/private/tmp/adm-ci-pr123-rust-39242527299.log",
+    "bytes": 192103,
+    "sha256": "6e688b9b5d7ae4db2b275f9ee7c58989a4155de16044c2e8a654e002feb5d42e"
+  },
+  "resource_cause_established": false,
+  "no_rerun_or_runner_control": true
+}

@@ -18,10 +18,11 @@ authority. A public digest is not a permit.
 
 `NativeTaskLoop::admit_reserved` explicitly composes this path with actual
 prepared-plan custody. `NativeBudgetAdmission` supplies the immutable command
-and opaque process-local proof; the ordinary `admit` compatibility path remains
+and separate opaque process-local write and read proofs; the ordinary `admit` compatibility path remains
 separate. Before registration, the loop checks the command's source/host
 incarnation, scope, amount, correlation, reservation identity and exact launch
-digest against the actual prepared plan. A mismatch returns that preparation.
+digest against the actual prepared plan, then samples the separate read capability
+before registration. A mismatch or denied read returns that preparation.
 It never silently rewrites producer identity or substitutes a proof.
 
 The resource plan's reservation version is distinct from the durable budget
@@ -32,7 +33,7 @@ revision. The resulting reservation's stable fields must still match the plan.
 Unrelated ledger updates do not change that reservation; stopping or changing it
 prevents launch. Read and write authority are both required, default absent.
 
-Reserved retries keep the original command, proof and preparation and recheck
+Reserved retries keep the original command, both proof roles and preparation and recheck
 current writer authority rather than reuse cached authorization. Dispatch
 reauthorizes the exact already-claimed replay, requires the original receipt and
 no additional debit, and checks the current reservation. The concrete runtime
@@ -40,6 +41,12 @@ wrapper repeats this check after the controller's final clock read, before
 calling the executor. Unknown/held dispatch is never reset to queued and does
 not refund liability. These checks do not establish atomic physical launch with
 Store revocation: production permit/fencing composition remains required.
+
+Read authority is sampled observationally; it is not a lease through admission
+or physical start. A write proof is never retried as a read proof. Expired or
+revoked read capability after admission holds dispatch while preserving the
+original reservation, intent, preparation and unknown liabilities. This matters
+for the paired cohort, whose private read/write roles intentionally differ.
 
 New commands require the exact ledger revision and digest. Competing commands
 cannot both spend the same snapshot. Limits and exposure must be known in the

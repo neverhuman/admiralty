@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T11:19:00.944Z",
+  "before_sha256": "64b0ceb2bafbe73625b2cde6418683ab624c603ac45d18504b9eb2241f5f54b2",
+  "after_sha256": "18cf12033a2f45462c5b9e6f33fb80ef66d59f4999976eaf09aeab23bdd4f8d1",
+  "archive": "/home/ubuntu/admiralty-v2-build/receipts/rollout-corrections/20261019T111900Z",
+  "verified_artifacts": [
+    {
+      "role": "component",
+      "name": "native-admission-fence-20261019T1105Z.json",
+      "bytes": 53730,
+      "sha256": "8fdf0088da31fe9af307fd0a37c1ee8025c3c6f5c1389ac71d97cd1fd46ccc48"
+    },
+    {
+      "role": "static_review",
+      "name": "native-admission-fence-review-20261019T1105Z.json",
+      "bytes": 9062,
+      "sha256": "a2256778d77e3873a9e02e39644151daf872fde47b1c94103a44ed200f63ea5d"
+    },
+    {
+      "role": "evidence",
+      "name": "native-admission-fence-evidence-review-20261019T1108Z.json",
+      "bytes": 11499,
+      "sha256": "c2e3e0468bd2d96567456c5d91e2d9160a866a3873652b8eb6c9199070a6d242"
+    },
+    {
+      "role": "archive",
+      "name": "native-admission-fence-archive-20261019T1110Z.json",
+      "bytes": 282,
+      "sha256": "d004909aaea5892312d4c7305d00ad6282f9c7b7c00007acd2014f184d13ed59"
+    },
+    {
+      "role": "live",
+      "name": "native-e71e12f7-independent-20261019T1050Z.json",
+      "bytes": 5174,
+      "sha256": "1d973db54ea4d03a6c10c2b21b23261216354d929fbffb0f29148c089cac8726"
+    },
+    {
+      "role": "deploy",
+      "name": "native-e71e-owner-deploy-20261019T1042Z.json",
+      "bytes": 8878,
+      "sha256": "62668fdf340ddb014fb6e362a55d4a3310d2bf0dfcba338cc4211a08ef0f9b35"
+    },
+    {
+      "role": "merge",
+      "name": "native-pr123-merge-20261019T1112Z.json",
+      "bytes": 721,
+      "sha256": "cf41f35af7df3d38a916062048531eaa02333f1edcc22cb80326f8b2ee29f2ee"
+    },
+    {
+      "role": "ci",
+      "name": "ci-pr123-browser-20261019T1118Z.json",
+      "bytes": 1050,
+      "sha256": "9f675dc87cb0481aa8ddf212d0657a4627b46610a25c485eb6511390756eba76"
+    }
+  ],
+  "receiving_main": "bcf5cce911e538de7c3f6d0b2e8e59f3185ebdd2",
+  "reviewed_head": "5e480630050ed58337784a860ffe5d35fa70d12b",
+  "all32_packet_objects_unchanged": true,
+  "producer_source_and_history_unchanged": true,
+  "production_observed_revision": "e71e12f709a13f27ddbb235c30ad0ee29e77d866",
+  "production_observed_utc": "2026-10-19T10:49:10.466Z",
+  "accepted": [
+    "P00",
+    "P01"
+  ],
+  "remaining_parents": 30,
+  "native_execution_qualified": false,
+  "provider_calls": 0,
+  "root_service_control": false
+}
