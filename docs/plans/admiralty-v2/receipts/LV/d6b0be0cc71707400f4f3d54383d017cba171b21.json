@@ -1,0 +1,1818 @@
+{
+  "packet": "LV",
+  "state": "qualified_source_review_pending",
+  "owner": "Codex live views integrator",
+  "agent_session": "01a15190-e9e0-7191-8541-4299dd17a89e",
+  "created_utc": "2026-10-19T01:54:21.274836+00:00",
+  "base_sha": "99f4e26cebfab97afa661ed05aea6192bfd5935c",
+  "inspection_base_sha": "d7ced28bbcb71471a105752f0e035e4f714abc27",
+  "head_sha": "d6b0be0cc71707400f4f3d54383d017cba171b21",
+  "branch": "codex/live-git-fleet-final",
+  "pull_request": null,
+  "integration_candidate": {
+    "head_sha": "d6b0be0cc71707400f4f3d54383d017cba171b21",
+    "base_sha": "99f4e26cebfab97afa661ed05aea6192bfd5935c",
+    "tree_sha": "3dd1d13081ec4d174eeafb6b90226606a6756c82",
+    "branch": "codex/live-git-fleet-final",
+    "predecessor_head": "a212461db05fda5297c66fd282d1eb2467501c5c",
+    "superseded_pull_requests": [
+      86,
+      88,
+      93
+    ],
+    "pull_request": null,
+    "publication_note": "PR will be created after the evidence-only follow-up; branch and source SHA are authoritative."
+  },
+  "superseded_pull_requests": [
+    "https://github.com/neverhuman/admiralty/pull/86",
+    "https://github.com/neverhuman/admiralty/pull/88",
+    "https://github.com/neverhuman/admiralty/pull/93"
+  ],
+  "contract_version": {
+    "visual_schema_version": 1,
+    "rust_schema_roots": 13
+  },
+  "source_documents": [
+    {
+      "name": "ADMIRALTY_GIT_AND_FLEET_VISUALIZATION_SPEC (2).md",
+      "sha256": "edf69e529222a747fd7f1164bc7badfdb6720355d713b9bbd9f2e52ecf42975b"
+    },
+    {
+      "name": "ADMIRALTY_GIT_AND_FLEET_VISUALIZATION_SPEC (1).md",
+      "sha256": "edf69e529222a747fd7f1164bc7badfdb6720355d713b9bbd9f2e52ecf42975b"
+    },
+    {
+      "name": "admiralty_git_and_fleet_views_engineering_spec (1).md",
+      "sha256": "1a2754282b4a1e82727c1562e5b2d463772438dd4c2070d5a8b079d5aabc7337"
+    },
+    {
+      "name": "ADMIRALTY_GIT_AND_FLEET_VISUALIZATION_SPEC.md",
+      "sha256": "edf69e529222a747fd7f1164bc7badfdb6720355d713b9bbd9f2e52ecf42975b"
+    },
+    {
+      "name": "ADMIRALTY_Git_Fleet_Command_Map_Engineering_Spec.md",
+      "sha256": "37113598bbffb1a642d3583b35242dffa37b2d0760e7406b4fe4c13a975c7973"
+    },
+    {
+      "name": "Admiralty_Git_and_Fleet_Views_Engineering_Spec.md",
+      "sha256": "4e8614ea11c008fb0840e89eaa7692a07c5b96a76d28ffdc03cef2cfadd00094"
+    },
+    {
+      "name": "Admiralty Live Views \u2014 Git Flow & Fleet Atlas Engineering Spec.md",
+      "sha256": "c8209f4ea958dc47589d1ae93f7576c97453950f93773f26ea3b0bad4f14d0e9"
+    }
+  ],
+  "changed_paths": [
+    ".github/workflows/dashboard-e2e.yml",
+    "Cargo.lock",
+    "README.md",
+    "apps/dashboard/e2e/browser-harness.ts",
+    "apps/dashboard/e2e/live-views.e2e.ts",
+    "apps/dashboard/e2e/node-ambient.d.ts",
+    "apps/dashboard/e2e/vitest.config.ts",
+    "apps/dashboard/src/events.ts",
+    "apps/dashboard/src/features/live-views/FleetAtlas.tsx",
+    "apps/dashboard/src/features/live-views/GitFlow.tsx",
+    "apps/dashboard/src/features/live-views/LiveViews.tsx",
+    "apps/dashboard/src/features/live-views/feed.ts",
+    "apps/dashboard/src/features/live-views/geometry.ts",
+    "apps/dashboard/src/features/live-views/live-views.css",
+    "apps/dashboard/src/features/live-views/live-views.test.ts",
+    "apps/dashboard/src/router.ts",
+    "apps/dashboard/src/ui/App.tsx",
+    "apps/dashboard/src/ui/LegacyDetailed.tsx",
+    "apps/dashboard/src/ui/ModelBadge.tsx",
+    "apps/dashboard/src/ui/legacy-evidence.css",
+    "apps/dashboard/src/validation.ts",
+    "apps/dashboard/vite.config.ts",
+    "crates/admiralty-cli/src/main.rs",
+    "crates/admiralty-cli/src/native_package.rs",
+    "crates/admiralty-core/src/lib.rs",
+    "crates/admiralty-core/src/views.rs",
+    "crates/admiralty-observe/Cargo.toml",
+    "crates/admiralty-observe/src/git.rs",
+    "crates/admiralty-observe/src/io.rs",
+    "crates/admiralty-observe/src/lib.rs",
+    "crates/admiralty-server/Cargo.toml",
+    "crates/admiralty-server/src/legacy.rs",
+    "crates/admiralty-server/src/lib.rs",
+    "crates/admiralty-server/src/services/native_commands.rs",
+    "crates/admiralty-server/src/views.rs",
+    "docs/operators/live-views.md",
+    "docs/plans/admiralty-v2/EXECUTION.md",
+    "docs/plans/admiralty-v2/LIVE_VIEWS_PLAN.md",
+    "docs/plans/admiralty-v2/receipts/LV/9cde56d59fdd1f74f622db938c230c7eed7b8ece.json",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/axe-results.6dbe467e22dbd332.json",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-isolated.c1fcf93d16fa59b0.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-receiving-final.ea2f6a76df203d62.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-receiving.933d0e9e2bd66244.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-types-isolated.9ceffb7310338057.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-types-receiving-final.9ceffb7310338057.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-types-receiving.9ceffb7310338057.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/canary-self-test.a4af67536b8f0f98.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-final.9131baa2e1290f01.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-isolated.afc1e92732dadca0.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-receiving-final.ed8dc5d7c61b5b49.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-receiving.d15029daf33c0ade.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-repaired.f2429aa92267bfb1.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks.574b33937d289b0c.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/fleet-atlas.4354719f8cf8e27e.png",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/fleet-mobile.c5e13d9c9ee121e1.png",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/git-flow.88fd7e89959e9cd7.png",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/integration-candidate.cef3afe1f25bd5b2.json",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/native-binaries-isolated.72bc8566e5fdc7b8.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/native-binaries-receiving-final.1e02a2a882872352.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/native-binaries-receiving.d0244c1526bbe682.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/native-http-recheck.037bc553bebd0c44.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/native-http-recheck.57bb9e25d2ae84f4.json",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/package-self-test.4c5a82300e15da39.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/rebase-proof.bb7a7e20b8c11eac.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/rebase-proof.ff78587fe64b0263.json",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/review-regressions-repaired.17d7436322675739.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/review-regressions.a8c4e68bbea35f8b.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/semantic-zoom-negative.5eb6fba54c75b240.json",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/semantic-zoom-negative.786c75421e70ec82.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/source-axe-results.c967d11eec0d5d4c.json",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-final.1fb678c30192972d.json",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-isolated.b48fcf5387c90287.json",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-receiving-final.afcc20448d8892f6.json",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-receiving.873287ff92c32b70.json",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-repaired.596a64c3ff0b4805.json",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/validation.470d48addfbbbd82.json",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/visual-api-regressions-repaired.3b750544cf4714b3.log.gz",
+    "docs/plans/admiralty-v2/receipts/LV/artifacts/visual-api-regressions.f0bf6b48111879e0.log.gz",
+    "packages/contracts/generated/validators-views-snapshot.mjs",
+    "packages/contracts/generated/validators.d.mts",
+    "packages/contracts/generated/validators.mjs",
+    "packages/contracts/generated/views-snapshot.ts",
+    "packages/contracts/index.ts",
+    "packages/contracts/runtime.test.mjs",
+    "schemas/views-snapshot.schema.json",
+    "scripts/contracts/generate.mjs",
+    "tests/integration/api_stream.rs"
+  ],
+  "source_and_qualified_file_hashes": [
+    {
+      "path": ".github/workflows/dashboard-e2e.yml",
+      "source_sha256": "2eef845b4e2c0789e58958bfe187b74d5eb25f3d67eca308c225555e79e7323b",
+      "qualified_receiving_sha256": "2eef845b4e2c0789e58958bfe187b74d5eb25f3d67eca308c225555e79e7323b",
+      "same_bytes": true
+    },
+    {
+      "path": "Cargo.lock",
+      "source_sha256": "b6d0a5e257acfcf1c356407ed7c774c01bcbe33421cd42459c6656a1b16b3cca",
+      "qualified_receiving_sha256": "b6d0a5e257acfcf1c356407ed7c774c01bcbe33421cd42459c6656a1b16b3cca",
+      "same_bytes": true
+    },
+    {
+      "path": "README.md",
+      "source_sha256": "21b1c16e592ac22e1cd9bf06b467aacb3141432e1a8ba6e4682a8a42a8c60898",
+      "qualified_receiving_sha256": "21b1c16e592ac22e1cd9bf06b467aacb3141432e1a8ba6e4682a8a42a8c60898",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/e2e/browser-harness.ts",
+      "source_sha256": "eb519c42c0c4738b8e16a90b4993fecbe06754907988bb89a19b43f21cc721e2",
+      "qualified_receiving_sha256": "eb519c42c0c4738b8e16a90b4993fecbe06754907988bb89a19b43f21cc721e2",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/e2e/live-views.e2e.ts",
+      "source_sha256": "9a9582e71a2b9d5f4c914b2f0708089e8872a0a1ee08b86d70cc6fbe5abb1397",
+      "qualified_receiving_sha256": "9a9582e71a2b9d5f4c914b2f0708089e8872a0a1ee08b86d70cc6fbe5abb1397",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/e2e/node-ambient.d.ts",
+      "source_sha256": "f9f68199aabaaf8e3b4e7d593c0f6ec527ba98dd4f4d864b71d12cb256806a92",
+      "qualified_receiving_sha256": "f9f68199aabaaf8e3b4e7d593c0f6ec527ba98dd4f4d864b71d12cb256806a92",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/e2e/vitest.config.ts",
+      "source_sha256": "00b4b6bbf691466a651f6a6c4924d63bb31c370d6e8ca1e41bd43f0fcc554e16",
+      "qualified_receiving_sha256": "00b4b6bbf691466a651f6a6c4924d63bb31c370d6e8ca1e41bd43f0fcc554e16",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/src/events.ts",
+      "source_sha256": "34d8c606967c481983ea13b30589254999c5ccf006d51f009e35e5919a73b1ef",
+      "qualified_receiving_sha256": "34d8c606967c481983ea13b30589254999c5ccf006d51f009e35e5919a73b1ef",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/FleetAtlas.tsx",
+      "source_sha256": "9ecab55536541f850aaaf425ed8b98314ba7fc4a8f3e6c12b3ada6f68d756147",
+      "qualified_receiving_sha256": "9ecab55536541f850aaaf425ed8b98314ba7fc4a8f3e6c12b3ada6f68d756147",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/GitFlow.tsx",
+      "source_sha256": "206761df3d28881317d5b20e735ec7380697408f4afc8baad20ed5fc58d240a7",
+      "qualified_receiving_sha256": "206761df3d28881317d5b20e735ec7380697408f4afc8baad20ed5fc58d240a7",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/LiveViews.tsx",
+      "source_sha256": "f2ffd60f90d5a7f94c5f6086c6936722a6cdea8f95917f01ac4dbb3ab24fd09f",
+      "qualified_receiving_sha256": "f2ffd60f90d5a7f94c5f6086c6936722a6cdea8f95917f01ac4dbb3ab24fd09f",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/feed.ts",
+      "source_sha256": "b6e61158c074d814b4ccbae6ad6a945668cca72260cb0fd555ab011f027f56fc",
+      "qualified_receiving_sha256": "b6e61158c074d814b4ccbae6ad6a945668cca72260cb0fd555ab011f027f56fc",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/geometry.ts",
+      "source_sha256": "33e79230f0e5707580597d76f04b23f5fded7fe508aec4fc5844cc1ddc005578",
+      "qualified_receiving_sha256": "33e79230f0e5707580597d76f04b23f5fded7fe508aec4fc5844cc1ddc005578",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/live-views.css",
+      "source_sha256": "136415af52d1d407a4691883111892d605daf204ce4483b165bdc165319f39b9",
+      "qualified_receiving_sha256": "136415af52d1d407a4691883111892d605daf204ce4483b165bdc165319f39b9",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/live-views.test.ts",
+      "source_sha256": "4ac2362d20617118e2d5185848684583be1fa1dfdf50a9fd9a72dcdf8f70973e",
+      "qualified_receiving_sha256": "4ac2362d20617118e2d5185848684583be1fa1dfdf50a9fd9a72dcdf8f70973e",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/src/router.ts",
+      "source_sha256": "301ae4aee4a14106a74e696a0f39582e7c67138b282b240e574b2ec5f9299058",
+      "qualified_receiving_sha256": "301ae4aee4a14106a74e696a0f39582e7c67138b282b240e574b2ec5f9299058",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/src/ui/App.tsx",
+      "source_sha256": "9f52a60b2e3f528866d6477dec24b873b0086f256f015cd248e30d7681547951",
+      "qualified_receiving_sha256": "9f52a60b2e3f528866d6477dec24b873b0086f256f015cd248e30d7681547951",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/src/ui/LegacyDetailed.tsx",
+      "source_sha256": "56049bf6f339d0a3232618c8af0e2b9c468d7e84ef921a72ed06059e5c8e7a1d",
+      "qualified_receiving_sha256": "56049bf6f339d0a3232618c8af0e2b9c468d7e84ef921a72ed06059e5c8e7a1d",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/src/ui/ModelBadge.tsx",
+      "source_sha256": "51b663df176df73357b17e2527e77f62d14e0de8815a8fdcd9f620fc276801ce",
+      "qualified_receiving_sha256": "51b663df176df73357b17e2527e77f62d14e0de8815a8fdcd9f620fc276801ce",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/src/ui/legacy-evidence.css",
+      "source_sha256": "2f81fc271d4a7f45bcdf17e12aaab72fa036256cd290bda9acc864f4bd3a5509",
+      "qualified_receiving_sha256": "2f81fc271d4a7f45bcdf17e12aaab72fa036256cd290bda9acc864f4bd3a5509",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/src/validation.ts",
+      "source_sha256": "4731e074dc94b3b65c754e3ace74e9ed36c8051ce013da674c08af389997f8b0",
+      "qualified_receiving_sha256": "4731e074dc94b3b65c754e3ace74e9ed36c8051ce013da674c08af389997f8b0",
+      "same_bytes": true
+    },
+    {
+      "path": "apps/dashboard/vite.config.ts",
+      "source_sha256": "3b39382267f13dff83efd6d09ccd107a4538107e23264f0cd402233ec9d500e8",
+      "qualified_receiving_sha256": "3b39382267f13dff83efd6d09ccd107a4538107e23264f0cd402233ec9d500e8",
+      "same_bytes": true
+    },
+    {
+      "path": "crates/admiralty-cli/src/main.rs",
+      "source_sha256": "a498f675068395d67f2a3f49e91ee700ece5d2b152d2418a74bce3f903a24a69",
+      "qualified_receiving_sha256": "a498f675068395d67f2a3f49e91ee700ece5d2b152d2418a74bce3f903a24a69",
+      "same_bytes": true
+    },
+    {
+      "path": "crates/admiralty-cli/src/native_package.rs",
+      "source_sha256": "921d06d3a8f91f72e69547696ed90ec89e562bd44c776ca75647fda5221de481",
+      "qualified_receiving_sha256": "921d06d3a8f91f72e69547696ed90ec89e562bd44c776ca75647fda5221de481",
+      "same_bytes": true
+    },
+    {
+      "path": "crates/admiralty-core/src/lib.rs",
+      "source_sha256": "b4387fc2c842a46fc4d9c828648563b8f30cd6de1bdc41a2bc45bc8b8710c13d",
+      "qualified_receiving_sha256": "b4387fc2c842a46fc4d9c828648563b8f30cd6de1bdc41a2bc45bc8b8710c13d",
+      "same_bytes": true
+    },
+    {
+      "path": "crates/admiralty-core/src/views.rs",
+      "source_sha256": "f084b1bf4d91c95bade29e1568b13bfdfa22489b3cc8c57c6b3508d47a59e62d",
+      "qualified_receiving_sha256": "f084b1bf4d91c95bade29e1568b13bfdfa22489b3cc8c57c6b3508d47a59e62d",
+      "same_bytes": true
+    },
+    {
+      "path": "crates/admiralty-observe/Cargo.toml",
+      "source_sha256": "c270953b46eaee305305038998330ae2c6f12480e43ba5067a5c8a1288137b86",
+      "qualified_receiving_sha256": "c270953b46eaee305305038998330ae2c6f12480e43ba5067a5c8a1288137b86",
+      "same_bytes": true
+    },
+    {
+      "path": "crates/admiralty-observe/src/git.rs",
+      "source_sha256": "6ac612f1a7f87b6e95c5d2ebdff3898d6f2bb3e37faf04274802fcc2e59fec61",
+      "qualified_receiving_sha256": "6ac612f1a7f87b6e95c5d2ebdff3898d6f2bb3e37faf04274802fcc2e59fec61",
+      "same_bytes": true
+    },
+    {
+      "path": "crates/admiralty-observe/src/io.rs",
+      "source_sha256": "e19b704e91c461d44589cbe1d8f2d1a7a7f22d4590e119a7be5cbb0e10b90a9e",
+      "qualified_receiving_sha256": "e19b704e91c461d44589cbe1d8f2d1a7a7f22d4590e119a7be5cbb0e10b90a9e",
+      "same_bytes": true
+    },
+    {
+      "path": "crates/admiralty-observe/src/lib.rs",
+      "source_sha256": "2f14f121275e87be7424c9fa59e4802926d29ca7cda7a78f794f6991ec4bc92f",
+      "qualified_receiving_sha256": "2f14f121275e87be7424c9fa59e4802926d29ca7cda7a78f794f6991ec4bc92f",
+      "same_bytes": true
+    },
+    {
+      "path": "crates/admiralty-server/Cargo.toml",
+      "source_sha256": "f10e1608892d7d7e847d18d6fcaa9eddac3e5c288c226b09b97db70c0b5d63f8",
+      "qualified_receiving_sha256": "f10e1608892d7d7e847d18d6fcaa9eddac3e5c288c226b09b97db70c0b5d63f8",
+      "same_bytes": true
+    },
+    {
+      "path": "crates/admiralty-server/src/legacy.rs",
+      "source_sha256": "07a0a582be7fb0686d6a78b509ea99e0ecd39447c0c59c1d82f7d4a7872cb184",
+      "qualified_receiving_sha256": "07a0a582be7fb0686d6a78b509ea99e0ecd39447c0c59c1d82f7d4a7872cb184",
+      "same_bytes": true
+    },
+    {
+      "path": "crates/admiralty-server/src/lib.rs",
+      "source_sha256": "104061a75394e01b08507a7c01327a30e57def3a9686fb650470fa2d0394a7c5",
+      "qualified_receiving_sha256": "104061a75394e01b08507a7c01327a30e57def3a9686fb650470fa2d0394a7c5",
+      "same_bytes": true
+    },
+    {
+      "path": "crates/admiralty-server/src/services/native_commands.rs",
+      "source_sha256": "9a65e1fd11f05f03d510139d3d9cbacea90dee0356135127f3ab3f6f871b5418",
+      "qualified_receiving_sha256": "9a65e1fd11f05f03d510139d3d9cbacea90dee0356135127f3ab3f6f871b5418",
+      "same_bytes": true
+    },
+    {
+      "path": "crates/admiralty-server/src/views.rs",
+      "source_sha256": "37b26ba96b8461b3ddbc3d61c6238d57fc96576dbd3ca7ba9818b4b5e43f0290",
+      "qualified_receiving_sha256": "37b26ba96b8461b3ddbc3d61c6238d57fc96576dbd3ca7ba9818b4b5e43f0290",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/operators/live-views.md",
+      "source_sha256": "87b284e06d0b55bae143766fded5675fc720558e5bb83f25c2455465b8fc208d",
+      "qualified_receiving_sha256": "87b284e06d0b55bae143766fded5675fc720558e5bb83f25c2455465b8fc208d",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/EXECUTION.md",
+      "source_sha256": "fa0260396d97e659b298fdc60a8619e7dcc25c2e45eaf646772409405072feae",
+      "qualified_receiving_sha256": "fa0260396d97e659b298fdc60a8619e7dcc25c2e45eaf646772409405072feae",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/LIVE_VIEWS_PLAN.md",
+      "source_sha256": "c1bc4dc6dc0570372b02fb35860cf8076a51cb59197f81173601c6c1c7338e4b",
+      "qualified_receiving_sha256": "c1bc4dc6dc0570372b02fb35860cf8076a51cb59197f81173601c6c1c7338e4b",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/9cde56d59fdd1f74f622db938c230c7eed7b8ece.json",
+      "source_sha256": "bb51b393afe87a98d37e293f030cc28e24d7eec7a16106ebad27117de2f25ff2",
+      "qualified_receiving_sha256": "bb51b393afe87a98d37e293f030cc28e24d7eec7a16106ebad27117de2f25ff2",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/axe-results.6dbe467e22dbd332.json",
+      "source_sha256": "6dbe467e22dbd332b66f90829b611dfcf969ba8e97679980f3304060f65e7cac",
+      "qualified_receiving_sha256": "6dbe467e22dbd332b66f90829b611dfcf969ba8e97679980f3304060f65e7cac",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-isolated.c1fcf93d16fa59b0.log.gz",
+      "source_sha256": "c1fcf93d16fa59b08d6402cf5122f8102e0042a19f96b1a675bca6a27b376d57",
+      "qualified_receiving_sha256": "c1fcf93d16fa59b08d6402cf5122f8102e0042a19f96b1a675bca6a27b376d57",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-receiving-final.ea2f6a76df203d62.log.gz",
+      "source_sha256": "ea2f6a76df203d628d3985443545f0e061a48a718b9dc8ca01abf30100c32d14",
+      "qualified_receiving_sha256": "ea2f6a76df203d628d3985443545f0e061a48a718b9dc8ca01abf30100c32d14",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-receiving.933d0e9e2bd66244.log.gz",
+      "source_sha256": "933d0e9e2bd6624427bbeda151904afe2dc4c10758e66ef9ea8dd777d8a9bd4c",
+      "qualified_receiving_sha256": "933d0e9e2bd6624427bbeda151904afe2dc4c10758e66ef9ea8dd777d8a9bd4c",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-types-isolated.9ceffb7310338057.log.gz",
+      "source_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "qualified_receiving_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-types-receiving-final.9ceffb7310338057.log.gz",
+      "source_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "qualified_receiving_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-types-receiving.9ceffb7310338057.log.gz",
+      "source_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "qualified_receiving_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/canary-self-test.a4af67536b8f0f98.log.gz",
+      "source_sha256": "a4af67536b8f0f98a88cb9eab94698a87bfb1a86c86f2eefed3cf2df347b0f1f",
+      "qualified_receiving_sha256": "a4af67536b8f0f98a88cb9eab94698a87bfb1a86c86f2eefed3cf2df347b0f1f",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-final.9131baa2e1290f01.log.gz",
+      "source_sha256": "9131baa2e1290f019b8b71efe4d4c304f166d35c2f0f7e11cc8206424f9cf928",
+      "qualified_receiving_sha256": "9131baa2e1290f019b8b71efe4d4c304f166d35c2f0f7e11cc8206424f9cf928",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-isolated.afc1e92732dadca0.log.gz",
+      "source_sha256": "afc1e92732dadca0525c2caf71b3a04db17f107ea07ab59367d2fb16bf6c59ea",
+      "qualified_receiving_sha256": "afc1e92732dadca0525c2caf71b3a04db17f107ea07ab59367d2fb16bf6c59ea",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-receiving-final.ed8dc5d7c61b5b49.log.gz",
+      "source_sha256": "ed8dc5d7c61b5b4983e97c433be23ef2bce3713ae4b912d5e7a4cd7a4364ad43",
+      "qualified_receiving_sha256": "ed8dc5d7c61b5b4983e97c433be23ef2bce3713ae4b912d5e7a4cd7a4364ad43",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-receiving.d15029daf33c0ade.log.gz",
+      "source_sha256": "d15029daf33c0adea04da178d59d0ed923d980d0d80fbf85c81c19a981d6d182",
+      "qualified_receiving_sha256": "d15029daf33c0adea04da178d59d0ed923d980d0d80fbf85c81c19a981d6d182",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-repaired.f2429aa92267bfb1.log.gz",
+      "source_sha256": "f2429aa92267bfb11078576043efa679bfe10706270968f5ba6ab413a3cc55e2",
+      "qualified_receiving_sha256": "f2429aa92267bfb11078576043efa679bfe10706270968f5ba6ab413a3cc55e2",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks.574b33937d289b0c.log.gz",
+      "source_sha256": "574b33937d289b0c9a63aca0856033cf366599f92f45f26ab375cc333b0e53ac",
+      "qualified_receiving_sha256": "574b33937d289b0c9a63aca0856033cf366599f92f45f26ab375cc333b0e53ac",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/fleet-atlas.4354719f8cf8e27e.png",
+      "source_sha256": "4354719f8cf8e27e56ec7bd434a8f3d456c9c4674ca6ceefb9d034e84f3a7231",
+      "qualified_receiving_sha256": "4354719f8cf8e27e56ec7bd434a8f3d456c9c4674ca6ceefb9d034e84f3a7231",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/fleet-mobile.c5e13d9c9ee121e1.png",
+      "source_sha256": "c5e13d9c9ee121e19bc206dee649accb0ef7e1a0f2e5241884ce95ddf16df4b4",
+      "qualified_receiving_sha256": "c5e13d9c9ee121e19bc206dee649accb0ef7e1a0f2e5241884ce95ddf16df4b4",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/git-flow.88fd7e89959e9cd7.png",
+      "source_sha256": "88fd7e89959e9cd7f5bf81fcb2ac3a1683cd103a03c045dc12a71fa6490d89d6",
+      "qualified_receiving_sha256": "88fd7e89959e9cd7f5bf81fcb2ac3a1683cd103a03c045dc12a71fa6490d89d6",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/integration-candidate.cef3afe1f25bd5b2.json",
+      "source_sha256": "cef3afe1f25bd5b2746dfedc244fdee02e2549f5a574e587ebbce9261780c40b",
+      "qualified_receiving_sha256": "cef3afe1f25bd5b2746dfedc244fdee02e2549f5a574e587ebbce9261780c40b",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/native-binaries-isolated.72bc8566e5fdc7b8.log.gz",
+      "source_sha256": "72bc8566e5fdc7b8318809c9c796151263cb655e1ff7527484b2d47086e0097f",
+      "qualified_receiving_sha256": "72bc8566e5fdc7b8318809c9c796151263cb655e1ff7527484b2d47086e0097f",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/native-binaries-receiving-final.1e02a2a882872352.log.gz",
+      "source_sha256": "1e02a2a882872352eebf6e6a0017f30153117da967d2e0284e85d96c5783bc76",
+      "qualified_receiving_sha256": "1e02a2a882872352eebf6e6a0017f30153117da967d2e0284e85d96c5783bc76",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/native-binaries-receiving.d0244c1526bbe682.log.gz",
+      "source_sha256": "d0244c1526bbe682f2990009f64739be60c77070a84c93564da6e5386d51078b",
+      "qualified_receiving_sha256": "d0244c1526bbe682f2990009f64739be60c77070a84c93564da6e5386d51078b",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/native-http-recheck.037bc553bebd0c44.log.gz",
+      "source_sha256": "037bc553bebd0c44917449be601b1981f4e2df75f6c8d5bf82d2e615bcb94c1e",
+      "qualified_receiving_sha256": "037bc553bebd0c44917449be601b1981f4e2df75f6c8d5bf82d2e615bcb94c1e",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/native-http-recheck.57bb9e25d2ae84f4.json",
+      "source_sha256": "57bb9e25d2ae84f463bc9fe2ea0dfb2047954773b56d5fa3e5d46dcf7ae661be",
+      "qualified_receiving_sha256": "57bb9e25d2ae84f463bc9fe2ea0dfb2047954773b56d5fa3e5d46dcf7ae661be",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/package-self-test.4c5a82300e15da39.log.gz",
+      "source_sha256": "4c5a82300e15da39372f79ea0f1425e43ca0c893593aa962b52df8905c965dc8",
+      "qualified_receiving_sha256": "4c5a82300e15da39372f79ea0f1425e43ca0c893593aa962b52df8905c965dc8",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/rebase-proof.bb7a7e20b8c11eac.log.gz",
+      "source_sha256": "bb7a7e20b8c11eac36ca9d2be4d4d19a3515701266c3a3812e64d0ef4ae4c73a",
+      "qualified_receiving_sha256": "bb7a7e20b8c11eac36ca9d2be4d4d19a3515701266c3a3812e64d0ef4ae4c73a",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/rebase-proof.ff78587fe64b0263.json",
+      "source_sha256": "ff78587fe64b0263b0c602f709e51f86283ed3596926f12a441ca867dc0a1b24",
+      "qualified_receiving_sha256": "ff78587fe64b0263b0c602f709e51f86283ed3596926f12a441ca867dc0a1b24",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/review-regressions-repaired.17d7436322675739.log.gz",
+      "source_sha256": "17d74363226757396000dc7dfc72edf6ee63592d48be0862e66a3fd57cd4be67",
+      "qualified_receiving_sha256": "17d74363226757396000dc7dfc72edf6ee63592d48be0862e66a3fd57cd4be67",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/review-regressions.a8c4e68bbea35f8b.log.gz",
+      "source_sha256": "a8c4e68bbea35f8b3cc1ddf6a811c1a97e57e0b15379a5f44e405e96c429d264",
+      "qualified_receiving_sha256": "a8c4e68bbea35f8b3cc1ddf6a811c1a97e57e0b15379a5f44e405e96c429d264",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/semantic-zoom-negative.5eb6fba54c75b240.json",
+      "source_sha256": "5eb6fba54c75b240238d89303cdb1153e42a00ab40f33d40d57aa40afcca5e38",
+      "qualified_receiving_sha256": "5eb6fba54c75b240238d89303cdb1153e42a00ab40f33d40d57aa40afcca5e38",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/semantic-zoom-negative.786c75421e70ec82.log.gz",
+      "source_sha256": "786c75421e70ec82de2a415fc643a9f79a40fbc1841a9416baee8c5f819b12e2",
+      "qualified_receiving_sha256": "786c75421e70ec82de2a415fc643a9f79a40fbc1841a9416baee8c5f819b12e2",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/source-axe-results.c967d11eec0d5d4c.json",
+      "source_sha256": "c967d11eec0d5d4c637f3db7256d287a4ba02656fdaaf89f4c547a711f3a0d4f",
+      "qualified_receiving_sha256": "c967d11eec0d5d4c637f3db7256d287a4ba02656fdaaf89f4c547a711f3a0d4f",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-final.1fb678c30192972d.json",
+      "source_sha256": "1fb678c30192972d4bec4ca7a705503aaec6e199cf115c8cfaca3264f15c1209",
+      "qualified_receiving_sha256": "1fb678c30192972d4bec4ca7a705503aaec6e199cf115c8cfaca3264f15c1209",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-isolated.b48fcf5387c90287.json",
+      "source_sha256": "b48fcf5387c90287b38fd2542657d6ea7008405da69c032b5bb933ebed0cc3b2",
+      "qualified_receiving_sha256": "b48fcf5387c90287b38fd2542657d6ea7008405da69c032b5bb933ebed0cc3b2",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-receiving-final.afcc20448d8892f6.json",
+      "source_sha256": "afcc20448d8892f669207ff5a3de79ba81c69783a62593fd10a38800d9c48c5b",
+      "qualified_receiving_sha256": "afcc20448d8892f669207ff5a3de79ba81c69783a62593fd10a38800d9c48c5b",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-receiving.873287ff92c32b70.json",
+      "source_sha256": "873287ff92c32b7036bc14025af2ffd1cd8b5c3ffa72aafc51b7b6631610900c",
+      "qualified_receiving_sha256": "873287ff92c32b7036bc14025af2ffd1cd8b5c3ffa72aafc51b7b6631610900c",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-repaired.596a64c3ff0b4805.json",
+      "source_sha256": "596a64c3ff0b48058ea6aea5786e8f3d7081dea08f99810d5178efc26579a04c",
+      "qualified_receiving_sha256": "596a64c3ff0b48058ea6aea5786e8f3d7081dea08f99810d5178efc26579a04c",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation.470d48addfbbbd82.json",
+      "source_sha256": "470d48addfbbbd823adb010f15101cba23295edef8524fc946e36ae67fcae40a",
+      "qualified_receiving_sha256": "470d48addfbbbd823adb010f15101cba23295edef8524fc946e36ae67fcae40a",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/visual-api-regressions-repaired.3b750544cf4714b3.log.gz",
+      "source_sha256": "3b750544cf4714b3eb300021fa2bbbc4b6fa6bdaa27510e32805da79b66024b6",
+      "qualified_receiving_sha256": "3b750544cf4714b3eb300021fa2bbbc4b6fa6bdaa27510e32805da79b66024b6",
+      "same_bytes": true
+    },
+    {
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/visual-api-regressions.f0bf6b48111879e0.log.gz",
+      "source_sha256": "f0bf6b48111879e02bec3fb73389c4c382943afc134b79192c6d3b9ff5c1938f",
+      "qualified_receiving_sha256": "f0bf6b48111879e02bec3fb73389c4c382943afc134b79192c6d3b9ff5c1938f",
+      "same_bytes": true
+    },
+    {
+      "path": "packages/contracts/generated/validators-views-snapshot.mjs",
+      "source_sha256": "aae0262397f2e30678c83ab15ecf0fd9760868d2bf2fe4546d79606ed369a738",
+      "qualified_receiving_sha256": "aae0262397f2e30678c83ab15ecf0fd9760868d2bf2fe4546d79606ed369a738",
+      "same_bytes": true
+    },
+    {
+      "path": "packages/contracts/generated/validators.d.mts",
+      "source_sha256": "ec27b0aaa5bd23b8c7320970e479ded0688dd5ddf751ca238f574a776fc773a4",
+      "qualified_receiving_sha256": "ec27b0aaa5bd23b8c7320970e479ded0688dd5ddf751ca238f574a776fc773a4",
+      "same_bytes": true
+    },
+    {
+      "path": "packages/contracts/generated/validators.mjs",
+      "source_sha256": "002fa035efc1bee6f0999a7bf57bb78bd520839c821dbcf5ea3f3f7583705dc9",
+      "qualified_receiving_sha256": "002fa035efc1bee6f0999a7bf57bb78bd520839c821dbcf5ea3f3f7583705dc9",
+      "same_bytes": true
+    },
+    {
+      "path": "packages/contracts/generated/views-snapshot.ts",
+      "source_sha256": "af8640b8d482d0ee2eabb734fa3e298487717055ffb61a0161ac6c823ccde0cf",
+      "qualified_receiving_sha256": "af8640b8d482d0ee2eabb734fa3e298487717055ffb61a0161ac6c823ccde0cf",
+      "same_bytes": true
+    },
+    {
+      "path": "packages/contracts/index.ts",
+      "source_sha256": "c81cd0350b8c0b2fb1029743850e3498c6cd990313a5668885389345fff2ff68",
+      "qualified_receiving_sha256": "c81cd0350b8c0b2fb1029743850e3498c6cd990313a5668885389345fff2ff68",
+      "same_bytes": true
+    },
+    {
+      "path": "packages/contracts/runtime.test.mjs",
+      "source_sha256": "a8352ec1fbbc35e80723991a595681fb44f405f44f2bffbc0809c6350e68003d",
+      "qualified_receiving_sha256": "a8352ec1fbbc35e80723991a595681fb44f405f44f2bffbc0809c6350e68003d",
+      "same_bytes": true
+    },
+    {
+      "path": "schemas/views-snapshot.schema.json",
+      "source_sha256": "ad1eb2064f042c268fb0c983540730bf8ad5a7df743b5a9278971273dedff270",
+      "qualified_receiving_sha256": "ad1eb2064f042c268fb0c983540730bf8ad5a7df743b5a9278971273dedff270",
+      "same_bytes": true
+    },
+    {
+      "path": "scripts/contracts/generate.mjs",
+      "source_sha256": "8717ffd2528803cf1f2e2ea916269c1fdd9bf6a73251a4eaf21fece55024c12c",
+      "qualified_receiving_sha256": "8717ffd2528803cf1f2e2ea916269c1fdd9bf6a73251a4eaf21fece55024c12c",
+      "same_bytes": true
+    },
+    {
+      "path": "tests/integration/api_stream.rs",
+      "source_sha256": "4e5724f529be31252a7bc5ff76ed3f7e609b5ee5eee50e079437c72d3908064f",
+      "qualified_receiving_sha256": "4e5724f529be31252a7bc5ff76ed3f7e609b5ee5eee50e079437c72d3908064f",
+      "same_bytes": true
+    }
+  ],
+  "qualification": {
+    "source_head": "d6b0be0cc71707400f4f3d54383d017cba171b21",
+    "qualification_commit": "d6b0be0cc71707400f4f3d54383d017cba171b21",
+    "main_base": "99f4e26cebfab97afa661ed05aea6192bfd5935c",
+    "prospective_tree": "3dd1d13081ec4d174eeafb6b90226606a6756c82",
+    "kind": "direct clean source-head qualification",
+    "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+    "environment": {
+      "TMPDIR": "/private/tmp/admiralty-views-qual-cbapuf30",
+      "ADMIRALTY_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+      "CARGO_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+      "CARGO_BUILD_JOBS": "4",
+      "RUST_TEST_THREADS": "1",
+      "ADMIRALTY_E2E_ADMIRALTYD_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiraltyd",
+      "ADMIRALTY_E2E_OBSERVER_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiralty-observe"
+    },
+    "commands": [
+      {
+        "name": "contributor-checks-direct-final",
+        "argv": [
+          "rtk",
+          "proxy",
+          "bash",
+          "scripts/check/all.sh"
+        ],
+        "started_utc": "2026-10-19T01:50:35.955849+00:00",
+        "ended_utc": "2026-10-19T01:53:31.317226+00:00",
+        "exit_code": 0,
+        "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/contributor-checks-direct-final.log"
+      },
+      {
+        "name": "native-binaries-direct-final",
+        "argv": [
+          "rtk",
+          "proxy",
+          "cargo",
+          "build",
+          "--locked",
+          "-p",
+          "admiralty-server",
+          "-p",
+          "admiralty-observe"
+        ],
+        "started_utc": "2026-10-19T01:53:31.318310+00:00",
+        "ended_utc": "2026-10-19T01:53:31.768741+00:00",
+        "exit_code": 0,
+        "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/native-binaries-direct-final.log"
+      },
+      {
+        "name": "browser-types-direct-final",
+        "argv": [
+          "rtk",
+          "pnpm",
+          "--dir",
+          "apps/dashboard",
+          "exec",
+          "tsc",
+          "-p",
+          "e2e/tsconfig.json",
+          "--pretty",
+          "false"
+        ],
+        "started_utc": "2026-10-19T01:53:31.769008+00:00",
+        "ended_utc": "2026-10-19T01:53:32.127929+00:00",
+        "exit_code": 0,
+        "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/browser-types-direct-final.log"
+      },
+      {
+        "name": "browser-direct-final",
+        "argv": [
+          "rtk",
+          "pnpm",
+          "--dir",
+          "apps/dashboard",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "e2e/vitest.config.ts"
+        ],
+        "started_utc": "2026-10-19T01:53:32.128185+00:00",
+        "ended_utc": "2026-10-19T01:53:53.397992+00:00",
+        "exit_code": 0,
+        "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/browser-direct-final.log"
+      },
+      {
+        "name": "package-self-test-direct-final",
+        "argv": [
+          "rtk",
+          "proxy",
+          "python3",
+          "scripts/release/package.py",
+          "--self-test"
+        ],
+        "started_utc": "2026-10-19T01:53:53.398260+00:00",
+        "ended_utc": "2026-10-19T01:53:53.551424+00:00",
+        "exit_code": 0,
+        "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/package-self-test-direct-final.log"
+      },
+      {
+        "name": "canary-self-test-direct-final",
+        "argv": [
+          "rtk",
+          "proxy",
+          "python3",
+          "scripts/check/canary-smoke.py",
+          "--self-test"
+        ],
+        "started_utc": "2026-10-19T01:53:53.551691+00:00",
+        "ended_utc": "2026-10-19T01:53:56.986987+00:00",
+        "exit_code": 0,
+        "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/canary-self-test-direct-final.log"
+      }
+    ]
+  },
+  "candidate_tree_identical_to_qualified_tree": true,
+  "qualified_runtime_objects": {
+    "apps": "537908ea3db0f3d83f3ed845b4ee021ba15224c8",
+    "crates": "fbe960e8b521bf24fbc557d14b6daabaa4175ed8",
+    "packages": "052850771597620fa342478d96aac23728ba7f13",
+    "schemas": "f12eb6a5a96990f34626d34b2a028cfb608db0e4",
+    "scripts": "a1f6aa1bcfc93a2b87b891708e38e16845804532",
+    ".github": "a2a8984a883f0da068dc2571856e6c10836f278c",
+    "Cargo.toml": "ed7245d8a14b4b55fb21a958c346796e65355a04",
+    "Cargo.lock": "1897ce6e83514d36400275eab10b5e949ecba9db",
+    "package.json": "c912fa8998901a6c06da27a0f8e8dd11f78c5fb8",
+    "pnpm-lock.yaml": "1847f8d43b375e51e2ff84e03cad429cbf4be9db",
+    "pnpm-workspace.yaml": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+    "rust-toolchain.toml": "12dd5258cd08aebcc0bf38ac6675cb74cb6ec69a"
+  },
+  "criteria": [
+    {
+      "name": "Left-to-right actual Git ancestry, refs, checkout and working-state attachments with explicit unknown/boundary states",
+      "result": "pass",
+      "evidence": [
+        "observer real temporary Git fixtures",
+        "live-view geometry unit tests",
+        "real repository observer-server-browser journey"
+      ]
+    },
+    {
+      "name": "All configured projects and discoverable identities with exact joins, distinct assignments/presence and model provenance",
+      "result": "pass",
+      "evidence": [
+        "server views projection and source-failure tests",
+        "500-agent complete-census SSE browser journey"
+      ]
+    },
+    {
+      "name": "Bounded authenticated shared live snapshots and coherent replacement on reconnect",
+      "result": "pass",
+      "evidence": [
+        "visual API stream tests",
+        "browser feed framing/schema/retry regressions"
+      ]
+    },
+    {
+      "name": "Read-only Git observation cannot execute linked-worktree clean/process filters",
+      "result": "pass",
+      "evidence": [
+        "real linked worktree effective-filter marker regression and ordinary-status negative control"
+      ]
+    },
+    {
+      "name": "Search, stable slots, pan/zoom, fullscreen, URL history, frozen Git inspection and equivalent roster/inventory",
+      "result": "pass",
+      "evidence": [
+        "live-views.e2e.ts",
+        "rendered-name-height negative control and final browser pass"
+      ]
+    },
+    {
+      "name": "Pinned axe audits in both themes and map/roster/Git/inventory/mobile reduced-motion surfaces",
+      "result": "pass",
+      "evidence": [
+        "axe-results.json: nine surfaces, zero violations and zero incomplete"
+      ]
+    },
+    {
+      "name": "Parent-packet acceptance, production deployment/soak and opaque provider completeness",
+      "result": "not_run",
+      "evidence": [
+        "outside source-integration scope"
+      ]
+    }
+  ],
+  "validation": [
+    {
+      "source_head": "e65e16a097450cc069ee88765cfd2421ee460508",
+      "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+      "environment": {
+        "TMPDIR": "/private/tmp/admiralty-views-qual-cbapuf30",
+        "ADMIRALTY_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+        "CARGO_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+        "CARGO_BUILD_JOBS": "4",
+        "RUST_TEST_THREADS": "1",
+        "ADMIRALTY_E2E_ADMIRALTYD_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiraltyd",
+        "ADMIRALTY_E2E_OBSERVER_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiralty-observe"
+      },
+      "commands": [
+        {
+          "name": "contributor-checks-isolated",
+          "argv": [
+            "rtk",
+            "proxy",
+            "bash",
+            "scripts/check/all.sh"
+          ],
+          "started_utc": "2026-10-19T01:34:57.152225+00:00",
+          "ended_utc": "2026-10-19T01:36:57.619719+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/contributor-checks-isolated.log"
+        },
+        {
+          "name": "native-binaries-isolated",
+          "argv": [
+            "rtk",
+            "proxy",
+            "cargo",
+            "build",
+            "--locked",
+            "-p",
+            "admiralty-server",
+            "-p",
+            "admiralty-observe"
+          ],
+          "started_utc": "2026-10-19T01:36:57.620523+00:00",
+          "ended_utc": "2026-10-19T01:36:57.744148+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/native-binaries-isolated.log"
+        },
+        {
+          "name": "browser-types-isolated",
+          "argv": [
+            "rtk",
+            "pnpm",
+            "--dir",
+            "apps/dashboard",
+            "exec",
+            "tsc",
+            "-p",
+            "e2e/tsconfig.json",
+            "--pretty",
+            "false"
+          ],
+          "started_utc": "2026-10-19T01:36:57.744403+00:00",
+          "ended_utc": "2026-10-19T01:36:58.111164+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/browser-types-isolated.log"
+        },
+        {
+          "name": "browser-isolated",
+          "argv": [
+            "rtk",
+            "pnpm",
+            "--dir",
+            "apps/dashboard",
+            "exec",
+            "vitest",
+            "run",
+            "--config",
+            "e2e/vitest.config.ts"
+          ],
+          "started_utc": "2026-10-19T01:36:58.111459+00:00",
+          "ended_utc": "2026-10-19T01:37:18.773043+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/browser-isolated.log"
+        },
+        {
+          "name": "package-self-test",
+          "argv": [
+            "rtk",
+            "proxy",
+            "python3",
+            "scripts/release/package.py",
+            "--self-test"
+          ],
+          "started_utc": "2026-10-19T01:37:18.773378+00:00",
+          "ended_utc": "2026-10-19T01:37:18.950320+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/package-self-test.log"
+        },
+        {
+          "name": "canary-self-test",
+          "argv": [
+            "rtk",
+            "proxy",
+            "python3",
+            "scripts/check/canary-smoke.py",
+            "--self-test"
+          ],
+          "started_utc": "2026-10-19T01:37:18.950607+00:00",
+          "ended_utc": "2026-10-19T01:37:22.341951+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/canary-self-test.log"
+        }
+      ]
+    },
+    {
+      "source_head": "e65e16a097450cc069ee88765cfd2421ee460508",
+      "main_base": "779a008f9660e3fa1c8e9f308aae8229a263e547",
+      "prospective_tree": "6d09b76c693d002eccdc477b4283cd1733122ade",
+      "qualification_commit": "579d53f8ce078b5b48c29a34b7bda00cd352d5d2",
+      "qualification_branch": "codex/live-views-receiving-proof-e65e16a",
+      "kind": "unpublished single-parent prospective receiving-tree proof",
+      "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+      "commands": [
+        {
+          "name": "contributor-checks-receiving",
+          "argv": [
+            "rtk",
+            "proxy",
+            "bash",
+            "scripts/check/all.sh"
+          ],
+          "started_utc": "2026-10-19T01:37:48.842210+00:00",
+          "ended_utc": "2026-10-19T01:40:17.471380+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/contributor-checks-receiving.log"
+        },
+        {
+          "name": "native-binaries-receiving",
+          "argv": [
+            "rtk",
+            "proxy",
+            "cargo",
+            "build",
+            "--locked",
+            "-p",
+            "admiralty-server",
+            "-p",
+            "admiralty-observe"
+          ],
+          "started_utc": "2026-10-19T01:40:17.471922+00:00",
+          "ended_utc": "2026-10-19T01:40:17.612719+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/native-binaries-receiving.log"
+        },
+        {
+          "name": "browser-types-receiving",
+          "argv": [
+            "rtk",
+            "pnpm",
+            "--dir",
+            "apps/dashboard",
+            "exec",
+            "tsc",
+            "-p",
+            "e2e/tsconfig.json",
+            "--pretty",
+            "false"
+          ],
+          "started_utc": "2026-10-19T01:40:17.612985+00:00",
+          "ended_utc": "2026-10-19T01:40:17.984279+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/browser-types-receiving.log"
+        },
+        {
+          "name": "browser-receiving",
+          "argv": [
+            "rtk",
+            "pnpm",
+            "--dir",
+            "apps/dashboard",
+            "exec",
+            "vitest",
+            "run",
+            "--config",
+            "e2e/vitest.config.ts"
+          ],
+          "started_utc": "2026-10-19T01:40:17.984577+00:00",
+          "ended_utc": "2026-10-19T01:40:39.300031+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/browser-receiving.log"
+        }
+      ],
+      "environment": {
+        "TMPDIR": "/private/tmp/admiralty-views-qual-cbapuf30",
+        "ADMIRALTY_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+        "CARGO_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+        "CARGO_BUILD_JOBS": "4",
+        "RUST_TEST_THREADS": "1",
+        "ADMIRALTY_E2E_ADMIRALTYD_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiraltyd",
+        "ADMIRALTY_E2E_OBSERVER_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiralty-observe"
+      }
+    },
+    {
+      "source_head": "e9b0c1d9991a16d9f6b99306896d315d38f2e098",
+      "main_base": "779a008f9660e3fa1c8e9f308aae8229a263e547",
+      "prospective_tree": "db0ca43058a27876a9da04c71d15e82c6650365e",
+      "qualification_commit": "bc4db8358e0cc1d17abbc8a278cc22e11d5eaabb",
+      "qualification_branch": "codex/live-views-receiving-proof-e9b0c1d",
+      "kind": "unpublished single-parent prospective receiving-tree proof",
+      "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+      "commands": [
+        {
+          "name": "contributor-checks-receiving-final",
+          "argv": [
+            "rtk",
+            "proxy",
+            "bash",
+            "scripts/check/all.sh"
+          ],
+          "started_utc": "2026-10-19T01:42:18.690856+00:00",
+          "ended_utc": "2026-10-19T01:44:45.140074+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/contributor-checks-receiving-final.log"
+        },
+        {
+          "name": "native-binaries-receiving-final",
+          "argv": [
+            "rtk",
+            "proxy",
+            "cargo",
+            "build",
+            "--locked",
+            "-p",
+            "admiralty-server",
+            "-p",
+            "admiralty-observe"
+          ],
+          "started_utc": "2026-10-19T01:44:45.140611+00:00",
+          "ended_utc": "2026-10-19T01:44:45.285322+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/native-binaries-receiving-final.log"
+        },
+        {
+          "name": "browser-types-receiving-final",
+          "argv": [
+            "rtk",
+            "pnpm",
+            "--dir",
+            "apps/dashboard",
+            "exec",
+            "tsc",
+            "-p",
+            "e2e/tsconfig.json",
+            "--pretty",
+            "false"
+          ],
+          "started_utc": "2026-10-19T01:44:45.285895+00:00",
+          "ended_utc": "2026-10-19T01:44:45.645494+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/browser-types-receiving-final.log"
+        },
+        {
+          "name": "browser-receiving-final",
+          "argv": [
+            "rtk",
+            "pnpm",
+            "--dir",
+            "apps/dashboard",
+            "exec",
+            "vitest",
+            "run",
+            "--config",
+            "e2e/vitest.config.ts"
+          ],
+          "started_utc": "2026-10-19T01:44:45.645767+00:00",
+          "ended_utc": "2026-10-19T01:45:06.940821+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/browser-receiving-final.log"
+        }
+      ],
+      "environment": {
+        "TMPDIR": "/private/tmp/admiralty-views-qual-cbapuf30",
+        "ADMIRALTY_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+        "CARGO_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+        "CARGO_BUILD_JOBS": "4",
+        "RUST_TEST_THREADS": "1",
+        "ADMIRALTY_E2E_ADMIRALTYD_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiraltyd",
+        "ADMIRALTY_E2E_OBSERVER_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiralty-observe"
+      }
+    },
+    {
+      "source_head": "d6b0be0cc71707400f4f3d54383d017cba171b21",
+      "qualification_commit": "d6b0be0cc71707400f4f3d54383d017cba171b21",
+      "main_base": "99f4e26cebfab97afa661ed05aea6192bfd5935c",
+      "prospective_tree": "3dd1d13081ec4d174eeafb6b90226606a6756c82",
+      "kind": "direct clean source-head qualification",
+      "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+      "environment": {
+        "TMPDIR": "/private/tmp/admiralty-views-qual-cbapuf30",
+        "ADMIRALTY_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+        "CARGO_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+        "CARGO_BUILD_JOBS": "4",
+        "RUST_TEST_THREADS": "1",
+        "ADMIRALTY_E2E_ADMIRALTYD_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiraltyd",
+        "ADMIRALTY_E2E_OBSERVER_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiralty-observe"
+      },
+      "commands": [
+        {
+          "name": "contributor-checks-direct-final",
+          "argv": [
+            "rtk",
+            "proxy",
+            "bash",
+            "scripts/check/all.sh"
+          ],
+          "started_utc": "2026-10-19T01:50:35.955849+00:00",
+          "ended_utc": "2026-10-19T01:53:31.317226+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/contributor-checks-direct-final.log"
+        },
+        {
+          "name": "native-binaries-direct-final",
+          "argv": [
+            "rtk",
+            "proxy",
+            "cargo",
+            "build",
+            "--locked",
+            "-p",
+            "admiralty-server",
+            "-p",
+            "admiralty-observe"
+          ],
+          "started_utc": "2026-10-19T01:53:31.318310+00:00",
+          "ended_utc": "2026-10-19T01:53:31.768741+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/native-binaries-direct-final.log"
+        },
+        {
+          "name": "browser-types-direct-final",
+          "argv": [
+            "rtk",
+            "pnpm",
+            "--dir",
+            "apps/dashboard",
+            "exec",
+            "tsc",
+            "-p",
+            "e2e/tsconfig.json",
+            "--pretty",
+            "false"
+          ],
+          "started_utc": "2026-10-19T01:53:31.769008+00:00",
+          "ended_utc": "2026-10-19T01:53:32.127929+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/browser-types-direct-final.log"
+        },
+        {
+          "name": "browser-direct-final",
+          "argv": [
+            "rtk",
+            "pnpm",
+            "--dir",
+            "apps/dashboard",
+            "exec",
+            "vitest",
+            "run",
+            "--config",
+            "e2e/vitest.config.ts"
+          ],
+          "started_utc": "2026-10-19T01:53:32.128185+00:00",
+          "ended_utc": "2026-10-19T01:53:53.397992+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/browser-direct-final.log"
+        },
+        {
+          "name": "package-self-test-direct-final",
+          "argv": [
+            "rtk",
+            "proxy",
+            "python3",
+            "scripts/release/package.py",
+            "--self-test"
+          ],
+          "started_utc": "2026-10-19T01:53:53.398260+00:00",
+          "ended_utc": "2026-10-19T01:53:53.551424+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/package-self-test-direct-final.log"
+        },
+        {
+          "name": "canary-self-test-direct-final",
+          "argv": [
+            "rtk",
+            "proxy",
+            "python3",
+            "scripts/check/canary-smoke.py",
+            "--self-test"
+          ],
+          "started_utc": "2026-10-19T01:53:53.551691+00:00",
+          "ended_utc": "2026-10-19T01:53:56.986987+00:00",
+          "exit_code": 0,
+          "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/canary-self-test-direct-final.log"
+        }
+      ]
+    },
+    {
+      "source_head": "e65e16a097450cc069ee88765cfd2421ee460508",
+      "uncommitted_change": "rendered-name-height assertion only; old 0.65 semantic threshold retained",
+      "argv": [
+        "rtk",
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "e2e/vitest.config.ts",
+        "e2e/live-views.e2e.ts",
+        "-t",
+        "joins all roles"
+      ],
+      "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+      "started_utc": "2026-10-19T01:40:51.849453+00:00",
+      "exit_code": 1,
+      "expected_exit": "nonzero: clipped names in unchanged render implementation"
+    }
+  ],
+  "results": {
+    "rust_passed": 1162,
+    "rust_failed": 0,
+    "rust_ignored": 5,
+    "dashboard_unit_passed": 114,
+    "browser_passed": 18,
+    "contract_runtime_passed": 11,
+    "legacy_tests_run": 88,
+    "legacy_skipped": 1,
+    "axe_surfaces": 9,
+    "axe_violations": 0,
+    "axe_incomplete": 0,
+    "package_self_tests": 10,
+    "canary_self_tests": 18
+  },
+  "environment": {
+    "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+    "platform": "Darwin",
+    "architecture": "arm64",
+    "tools": {
+      "rustc": "rustc 1.95.0 (59807616e 2026-04-14) (Homebrew)",
+      "cargo": "cargo 1.95.0 (f2d3ce0bd 2026-03-21) (Homebrew)",
+      "node": "v25.2.1",
+      "pnpm": "11.15.1",
+      "git": "git version 2.39.5 (Apple Git-154)",
+      "python": "Python 3.14.6"
+    },
+    "qualification_environment": {
+      "TMPDIR": "/private/tmp/admiralty-views-qual-cbapuf30",
+      "ADMIRALTY_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+      "CARGO_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+      "CARGO_BUILD_JOBS": "4",
+      "RUST_TEST_THREADS": "1",
+      "ADMIRALTY_E2E_ADMIRALTYD_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiraltyd",
+      "ADMIRALTY_E2E_OBSERVER_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiralty-observe"
+    },
+    "hosted_linux_ci": "not yet published for this candidate; earlier PR jobs queued. Local macOS checks do not establish hosted-CI success"
+  },
+  "repair_history": [
+    {
+      "logs": [
+        "contributor-checks.log",
+        "contributor-checks-repaired.log"
+      ],
+      "finding": "Generated guard-closure order and canonical macOS TMPDIR failures repaired; shared-target success retained as provisional, not final proof."
+    },
+    {
+      "logs": [
+        "review-regressions.log",
+        "review-regressions-repaired.log"
+      ],
+      "finding": "Linked-filter negative control initially vacuous because Git trusted stat metadata; same-size dirty content and old mtime make ordinary status execute marker, while observer never does."
+    },
+    {
+      "logs": [
+        "visual-api-regressions.log",
+        "visual-api-regressions-repaired.log"
+      ],
+      "finding": "Native+Git retention API fixture corrected to actual native project demo-harbor."
+    },
+    {
+      "logs": [
+        "contributor-checks-final.log",
+        "native-http-recheck.log"
+      ],
+      "finding": "Existing macOS TCP fixture reset after complete body; exact unchanged-source recheck passed. Test-only bounded Content-Length decoder and complete-body-before-reset/truncation regressions then repaired the fixture."
+    },
+    {
+      "logs": [
+        "semantic-zoom-negative.log",
+        "browser-receiving-final.log"
+      ],
+      "finding": "New rendered-name-height assertion fails against old semantic zoom. Earlier summary threshold and protected identity line repair clipping; all final browser checks pass."
+    }
+  ],
+  "decisions": [
+    "Seven attachments are source proposals; embedded commands or staffing requests do not grant authority.",
+    "Rust observer plus shared authenticated SSE and atomic current-state replacement; no retained replay claim.",
+    "Canvas Git topology and stable DOM/SVG fleet; no graph runtime dependency.",
+    "Earlier unpublished receiving-tree proof and current direct clean source-head qualification are both preserved. Source was refreshed onto current main after ledger rebase conflict and the upstream sha2 dependency addition; upstream probe/example bytes are preserved. No published history was rewritten.",
+    "Receipt is a documentation follow-up; runtime object identities must match qualification before merge."
+  ],
+  "limitations": [
+    "Configured local repositories and discoverable supplied observations only; unconfigured remote DAGs and opaque provider children remain unknown.",
+    "Bounded current windows, no arbitrary historical replay or separate persistent observation journal.",
+    "No production rollout, provider execution/acceptance authority change, paid-provider or performance/soak qualification.",
+    "Five existing Rust tests ignored and one legacy test skipped by the existing suite; all executed tests passed.",
+    "Exact-head neverhumanbot approval and normal repository merge gates remain required; this receipt does not grant approval."
+  ],
+  "artifacts": [
+    {
+      "original_name": "browser-direct-final.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-direct-final.c6d473ebb00c57d8.log.gz",
+      "bytes": 175,
+      "sha256": "c6d473ebb00c57d8d96ff0dbd02fc68a91e3d95a0470ca0fb8f13c20e2c8868f",
+      "raw_sha256": "48816effa0bb0efef84222001dc797b637d73395d8f301770d5efa5697154d83",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "browser-isolated.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-isolated.c1fcf93d16fa59b0.log.gz",
+      "bytes": 183,
+      "sha256": "c1fcf93d16fa59b08d6402cf5122f8102e0042a19f96b1a675bca6a27b376d57",
+      "raw_sha256": "4a8c429f592ebccb5cffd8dd3cb204dcd2475c46361e8e26374f2a7eb5f895a0",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "browser-receiving-final.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-receiving-final.ea2f6a76df203d62.log.gz",
+      "bytes": 174,
+      "sha256": "ea2f6a76df203d628d3985443545f0e061a48a718b9dc8ca01abf30100c32d14",
+      "raw_sha256": "40dc7c9c7c443df4037c0abe2770f5c7abb0b55b585f48be1229e1cc53aa02ef",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "browser-receiving.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-receiving.933d0e9e2bd66244.log.gz",
+      "bytes": 183,
+      "sha256": "933d0e9e2bd6624427bbeda151904afe2dc4c10758e66ef9ea8dd777d8a9bd4c",
+      "raw_sha256": "3cb2c1f000d921be77181ca087e6306d205b709105ca73da0356a123155b02ae",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "browser-types-direct-final.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-types-direct-final.9ceffb7310338057.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "browser-types-isolated.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-types-isolated.9ceffb7310338057.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "browser-types-receiving-final.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-types-receiving-final.9ceffb7310338057.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "browser-types-receiving.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/browser-types-receiving.9ceffb7310338057.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "canary-self-test-direct-final.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/canary-self-test-direct-final.6219a5ba41eef9cf.log.gz",
+      "bytes": 855,
+      "sha256": "6219a5ba41eef9cf5295d57dc2b1cfc45327b4e3447f3dfd7c35d33d484fbb16",
+      "raw_sha256": "667e641fd0f1ed417aeee03e943ea16d87a41c3b4aa141b57e9c41a9e7a8bafb",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "canary-self-test.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/canary-self-test.a4af67536b8f0f98.log.gz",
+      "bytes": 860,
+      "sha256": "a4af67536b8f0f98a88cb9eab94698a87bfb1a86c86f2eefed3cf2df347b0f1f",
+      "raw_sha256": "2a54198c816e04a4640a6a3496c64fe8e2d0b40ca318d03d29020359a8f54c84",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "contributor-checks-direct-final.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-direct-final.fd0589234ccc8fe3.log.gz",
+      "bytes": 36111,
+      "sha256": "fd0589234ccc8fe3ae4605558f5be778b3df138c501fa4cf0ed432bf0595cac1",
+      "raw_sha256": "71a599b93371717399406db7c34c81903f89791f78be0bbfb5ad689dccdae36f",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "contributor-checks-final.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-final.9131baa2e1290f01.log.gz",
+      "bytes": 17829,
+      "sha256": "9131baa2e1290f019b8b71efe4d4c304f166d35c2f0f7e11cc8206424f9cf928",
+      "raw_sha256": "a5405fe8b78451a2f3653e7907c23ea49e2e4a5c5f50e9cc3b7affd2d1cd856e",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "contributor-checks-isolated.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-isolated.afc1e92732dadca0.log.gz",
+      "bytes": 35424,
+      "sha256": "afc1e92732dadca0525c2caf71b3a04db17f107ea07ab59367d2fb16bf6c59ea",
+      "raw_sha256": "eef7ebbdd161bb3c7c94e1ccbec9e36eb605c59b6defe5203910c9ea49ca0f72",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "contributor-checks-receiving-final.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-receiving-final.ed8dc5d7c61b5b49.log.gz",
+      "bytes": 36013,
+      "sha256": "ed8dc5d7c61b5b4983e97c433be23ef2bce3713ae4b912d5e7a4cd7a4364ad43",
+      "raw_sha256": "879dd6e55844469692fb9702d1a1932def497f2f105b5a993b7a67561911eb8b",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "contributor-checks-receiving.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-receiving.d15029daf33c0ade.log.gz",
+      "bytes": 36039,
+      "sha256": "d15029daf33c0adea04da178d59d0ed923d980d0d80fbf85c81c19a981d6d182",
+      "raw_sha256": "288dfb590e03514e7218c04b76ced74c3701c1b4977481e01d87d7c5514ec519",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "contributor-checks-repaired.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks-repaired.f2429aa92267bfb1.log.gz",
+      "bytes": 35549,
+      "sha256": "f2429aa92267bfb11078576043efa679bfe10706270968f5ba6ab413a3cc55e2",
+      "raw_sha256": "1bb526e7456939192e906e3c3b8ffc69dfc46451487322b1daf3063782f74eaa",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "contributor-checks.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/contributor-checks.574b33937d289b0c.log.gz",
+      "bytes": 3606,
+      "sha256": "574b33937d289b0c9a63aca0856033cf366599f92f45f26ab375cc333b0e53ac",
+      "raw_sha256": "def1bf04cdde58d04e65e1702346a3c9fc84979cb0cd786fd9189e5b188a5c39",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "native-binaries-direct-final.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/native-binaries-direct-final.06c462369fc14abb.log.gz",
+      "bytes": 166,
+      "sha256": "06c462369fc14abb0034602fc29d6e2738ae4eb86cae31b9d6616d0c97d03bcb",
+      "raw_sha256": "3c1c2fe8e617e1f76a81c4f61b5d5512f6cbac1b27f1d9e940cb209537daa4f3",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "native-binaries-isolated.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/native-binaries-isolated.72bc8566e5fdc7b8.log.gz",
+      "bytes": 91,
+      "sha256": "72bc8566e5fdc7b8318809c9c796151263cb655e1ff7527484b2d47086e0097f",
+      "raw_sha256": "c92508a29848820f033cd2ea015c85dde0953c88b07cc967ce34b7c08f610549",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "native-binaries-receiving-final.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/native-binaries-receiving-final.1e02a2a882872352.log.gz",
+      "bytes": 91,
+      "sha256": "1e02a2a882872352eebf6e6a0017f30153117da967d2e0284e85d96c5783bc76",
+      "raw_sha256": "22e0df986057b9ba5be07526ac5fb348862a3dedef42108383cc3e088acbb889",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "native-binaries-receiving.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/native-binaries-receiving.d0244c1526bbe682.log.gz",
+      "bytes": 91,
+      "sha256": "d0244c1526bbe682f2990009f64739be60c77070a84c93564da6e5386d51078b",
+      "raw_sha256": "4cf86278c1e6d659943a46a3d7e3da429ac15be90f0f17742e24ef85228e7d3e",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "native-http-recheck.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/native-http-recheck.037bc553bebd0c44.log.gz",
+      "bytes": 351,
+      "sha256": "037bc553bebd0c44917449be601b1981f4e2df75f6c8d5bf82d2e615bcb94c1e",
+      "raw_sha256": "9d93dfcdfa61c41da45c8096d25ed4db0585ea75dded00c987542244248b41f7",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "package-self-test-direct-final.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/package-self-test-direct-final.d98d5a7f931e55fa.log.gz",
+      "bytes": 398,
+      "sha256": "d98d5a7f931e55fa3174ed23e10dc3fbb97be96f0bc4e71145a23b271585be7a",
+      "raw_sha256": "4eb0959463c5fa497edbe6dea81c3d74db71774495cbbb0678ea31b5089eb66c",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "package-self-test.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/package-self-test.4c5a82300e15da39.log.gz",
+      "bytes": 399,
+      "sha256": "4c5a82300e15da39372f79ea0f1425e43ca0c893593aa962b52df8905c965dc8",
+      "raw_sha256": "f333548c582b1badb6455b42d28a23c348915c436a96c1051359bf49a78474ea",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "rebase-proof.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/rebase-proof.bb7a7e20b8c11eac.log.gz",
+      "bytes": 341,
+      "sha256": "bb7a7e20b8c11eac36ca9d2be4d4d19a3515701266c3a3812e64d0ef4ae4c73a",
+      "raw_sha256": "f12ead6e3a5bfe7405d2a7cf7d9f41298cea5c6f9a0f0e9ea3aab219f78d35b4",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "review-regressions-repaired.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/review-regressions-repaired.17d7436322675739.log.gz",
+      "bytes": 3995,
+      "sha256": "17d74363226757396000dc7dfc72edf6ee63592d48be0862e66a3fd57cd4be67",
+      "raw_sha256": "4157570539232e2d8068f7e0349324b2715debb12ab8e3eb1c4d7af0791e71db",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "review-regressions.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/review-regressions.a8c4e68bbea35f8b.log.gz",
+      "bytes": 2301,
+      "sha256": "a8c4e68bbea35f8b3cc1ddf6a811c1a97e57e0b15379a5f44e405e96c429d264",
+      "raw_sha256": "8f514759526cd6f36605ec0229f0e41277db3a24177615e0f5fedf9eee4c947c",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "semantic-zoom-negative.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/semantic-zoom-negative.786c75421e70ec82.log.gz",
+      "bytes": 683,
+      "sha256": "786c75421e70ec82de2a415fc643a9f79a40fbc1841a9416baee8c5f819b12e2",
+      "raw_sha256": "f29346a74005f9102e7796730c47f771ec97469a3e922fa3d0f2c652328e5570",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "visual-api-regressions-repaired.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/visual-api-regressions-repaired.3b750544cf4714b3.log.gz",
+      "bytes": 393,
+      "sha256": "3b750544cf4714b3eb300021fa2bbbc4b6fa6bdaa27510e32805da79b66024b6",
+      "raw_sha256": "addffd747f75e044dec506f327d118f92a5cd86c30f0fcd25c7c911900011dab",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "visual-api-regressions.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/visual-api-regressions.f0bf6b48111879e0.log.gz",
+      "bytes": 609,
+      "sha256": "f0bf6b48111879e02bec3fb73389c4c382943afc134b79192c6d3b9ff5c1938f",
+      "raw_sha256": "f79e7476c7b1cb8d3381d7d425504a2e8e185bbbfd2314aa135bd7a6609e1eea",
+      "encoding": "gzip"
+    },
+    {
+      "original_name": "axe-results.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/axe-results.5cedf122b254142b.json",
+      "bytes": 3945,
+      "sha256": "5cedf122b254142b04cf0dfaf24c9ac988f0cfffe0e052b5fe8bf238e4d6dddf",
+      "raw_sha256": "5cedf122b254142b04cf0dfaf24c9ac988f0cfffe0e052b5fe8bf238e4d6dddf",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "integration-candidate-final.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/integration-candidate-final.0749fa1519ec5b81.json",
+      "bytes": 489,
+      "sha256": "0749fa1519ec5b8164b3005ef4e7fce5c4bf24def2708d479f312af38c1b6742",
+      "raw_sha256": "0749fa1519ec5b8164b3005ef4e7fce5c4bf24def2708d479f312af38c1b6742",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "integration-candidate.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/integration-candidate.cef3afe1f25bd5b2.json",
+      "bytes": 476,
+      "sha256": "cef3afe1f25bd5b2746dfedc244fdee02e2549f5a574e587ebbce9261780c40b",
+      "raw_sha256": "cef3afe1f25bd5b2746dfedc244fdee02e2549f5a574e587ebbce9261780c40b",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "native-http-recheck.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/native-http-recheck.57bb9e25d2ae84f4.json",
+      "bytes": 521,
+      "sha256": "57bb9e25d2ae84f463bc9fe2ea0dfb2047954773b56d5fa3e5d46dcf7ae661be",
+      "raw_sha256": "57bb9e25d2ae84f463bc9fe2ea0dfb2047954773b56d5fa3e5d46dcf7ae661be",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "rebase-proof.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/rebase-proof.ff78587fe64b0263.json",
+      "bytes": 482,
+      "sha256": "ff78587fe64b0263b0c602f709e51f86283ed3596926f12a441ca867dc0a1b24",
+      "raw_sha256": "ff78587fe64b0263b0c602f709e51f86283ed3596926f12a441ca867dc0a1b24",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "semantic-zoom-negative.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/semantic-zoom-negative.5eb6fba54c75b240.json",
+      "bytes": 604,
+      "sha256": "5eb6fba54c75b240238d89303cdb1153e42a00ab40f33d40d57aa40afcca5e38",
+      "raw_sha256": "5eb6fba54c75b240238d89303cdb1153e42a00ab40f33d40d57aa40afcca5e38",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "source-axe-results.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/source-axe-results.c967d11eec0d5d4c.json",
+      "bytes": 3945,
+      "sha256": "c967d11eec0d5d4c637f3db7256d287a4ba02656fdaaf89f4c547a711f3a0d4f",
+      "raw_sha256": "c967d11eec0d5d4c637f3db7256d287a4ba02656fdaaf89f4c547a711f3a0d4f",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "validation-direct-final.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-direct-final.27bd0dd7735b46fc.json",
+      "bytes": 3919,
+      "sha256": "27bd0dd7735b46fce61f49e5ece4e3199854e358f7b4199c4e1d0ce3a4cba8a6",
+      "raw_sha256": "27bd0dd7735b46fce61f49e5ece4e3199854e358f7b4199c4e1d0ce3a4cba8a6",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "validation-final.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-final.1fb678c30192972d.json",
+      "bytes": 1161,
+      "sha256": "1fb678c30192972d4bec4ca7a705503aaec6e199cf115c8cfaca3264f15c1209",
+      "raw_sha256": "1fb678c30192972d4bec4ca7a705503aaec6e199cf115c8cfaca3264f15c1209",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "validation-isolated.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-isolated.b48fcf5387c90287.json",
+      "bytes": 3588,
+      "sha256": "b48fcf5387c90287b38fd2542657d6ea7008405da69c032b5bb933ebed0cc3b2",
+      "raw_sha256": "b48fcf5387c90287b38fd2542657d6ea7008405da69c032b5bb933ebed0cc3b2",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "validation-receiving-final.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-receiving-final.afcc20448d8892f6.json",
+      "bytes": 3098,
+      "sha256": "afcc20448d8892f669207ff5a3de79ba81c69783a62593fd10a38800d9c48c5b",
+      "raw_sha256": "afcc20448d8892f669207ff5a3de79ba81c69783a62593fd10a38800d9c48c5b",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "validation-receiving.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-receiving.873287ff92c32b70.json",
+      "bytes": 3050,
+      "sha256": "873287ff92c32b7036bc14025af2ffd1cd8b5c3ffa72aafc51b7b6631610900c",
+      "raw_sha256": "873287ff92c32b7036bc14025af2ffd1cd8b5c3ffa72aafc51b7b6631610900c",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "validation-repaired.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-repaired.596a64c3ff0b4805.json",
+      "bytes": 764,
+      "sha256": "596a64c3ff0b48058ea6aea5786e8f3d7081dea08f99810d5178efc26579a04c",
+      "raw_sha256": "596a64c3ff0b48058ea6aea5786e8f3d7081dea08f99810d5178efc26579a04c",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "validation.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation.470d48addfbbbd82.json",
+      "bytes": 692,
+      "sha256": "470d48addfbbbd823adb010f15101cba23295edef8524fc946e36ae67fcae40a",
+      "raw_sha256": "470d48addfbbbd823adb010f15101cba23295edef8524fc946e36ae67fcae40a",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "fleet-atlas.png",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/fleet-atlas.4354719f8cf8e27e.png",
+      "bytes": 157125,
+      "sha256": "4354719f8cf8e27e56ec7bd434a8f3d456c9c4674ca6ceefb9d034e84f3a7231",
+      "raw_sha256": "4354719f8cf8e27e56ec7bd434a8f3d456c9c4674ca6ceefb9d034e84f3a7231",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "git-flow.png",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/git-flow.73cd0b939e6b2741.png",
+      "bytes": 91945,
+      "sha256": "73cd0b939e6b2741de5f10a261bda0e41a9e74bee67e26e6ac8a451869f6887a",
+      "raw_sha256": "73cd0b939e6b2741de5f10a261bda0e41a9e74bee67e26e6ac8a451869f6887a",
+      "encoding": "identity"
+    },
+    {
+      "original_name": "fleet-mobile.png",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/fleet-mobile.c5e13d9c9ee121e1.png",
+      "bytes": 62710,
+      "sha256": "c5e13d9c9ee121e19bc206dee649accb0ef7e1a0f2e5241884ce95ddf16df4b4",
+      "raw_sha256": "c5e13d9c9ee121e19bc206dee649accb0ef7e1a0f2e5241884ce95ddf16df4b4",
+      "encoding": "identity"
+    }
+  ],
+  "untracked_build_artifacts": [
+    {
+      "path": "apps/dashboard/dist/.admiralty-build-identity.json",
+      "bytes": 239,
+      "sha256": "7eb47ae378e28f97e8af15fe6c57f0bd70f163f6fd19c163a5e356cf541ab0ba"
+    },
+    {
+      "path": "apps/dashboard/dist/assets/CommandJourneys-Bjw31kKq.js",
+      "bytes": 84506,
+      "sha256": "f1a8d1f10f1ff8a15acbc49280d16200bcdf4f987364c33ea24380e73355af51"
+    },
+    {
+      "path": "apps/dashboard/dist/assets/LiveViews-BrfQ4Ee1.js",
+      "bytes": 80629,
+      "sha256": "e0cafd94ad76c77e258e10e281a85382b539f0ce621043349b774d4434d136df"
+    },
+    {
+      "path": "apps/dashboard/dist/assets/LiveViews-DgA8tN2b.css",
+      "bytes": 24328,
+      "sha256": "5687219571507edddc4698a65e3fab13cb49a760173b37d84b5bf97e90f47580"
+    },
+    {
+      "path": "apps/dashboard/dist/assets/index-42jufIzx.js",
+      "bytes": 497966,
+      "sha256": "d8506a38ea1e7a2bff61b39a30aae3b1eaa2dc2f446484658a0f30aae3097192"
+    },
+    {
+      "path": "apps/dashboard/dist/assets/index-C0ohzedu.css",
+      "bytes": 60691,
+      "sha256": "00a0e0f6944bb2515c32e5df7130ad6ec37a25f278047e995ae8c273f0197a42"
+    },
+    {
+      "path": "apps/dashboard/dist/brand/admiralty-source.png",
+      "bytes": 909933,
+      "sha256": "86f3f016a3d2562cc82da3191ce472e77e81726a65f69ccb4a840145e89aaef9"
+    },
+    {
+      "path": "apps/dashboard/dist/brand/grokbot.png",
+      "bytes": 960632,
+      "sha256": "d0c1fb552fa44d28af99e4a8918ad43960e4b5c15db05d1ef4331dad66d206e2"
+    },
+    {
+      "path": "apps/dashboard/dist/index.html",
+      "bytes": 539,
+      "sha256": "9780329cd99d438a77d87be7cc45cad915a1ee618327088368940ad4eab2d1b6"
+    },
+    {
+      "path": "target/debug/admiraltyd",
+      "bytes": 25721768,
+      "sha256": "4868d5e19a843b1e2ee01bc84c0e63204b8debdcad99a0afde55721e4b141446"
+    },
+    {
+      "path": "target/debug/admiralty-observe",
+      "bytes": 13012880,
+      "sha256": "84577babe5e138b8bf99ec06d013974b292d5d683ca7c34fe3e501c1e70263e3"
+    }
+  ],
+  "blockers": [
+    "Exact-final-head independent review and hosted CI remain pending at receipt creation."
+  ],
+  "next_action": "Commit evidence-only follow-up, publish the final PR, verify prospective runtime objects unchanged, obtain exact-head neverhumanbot approval and use normal matched-head rebase merge; record actual resulting main SHA and runtime-object comparison."
+}

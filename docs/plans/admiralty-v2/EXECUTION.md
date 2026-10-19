@@ -56,18 +56,18 @@ registered resource limits, unrelated jobs and preserved work remain in force.
 | P30 | in_progress | release + integration review | reviewed `17c7a76d` | Explicit-input archive builder passes 10 checks; clean-install, signed distribution, rights and complete operator paths pending |
 | P31 | in_progress | integration + qualification review | reviewed `455ee5f4` | Isolated binary smoke and offline controlled provider harness are integrated; real provider, soak, savings, restore and fleet cutover gates remain open |
 
-## Git Flow and Fleet Atlas — qualified source candidate, 19 October 2026 UTC
+## Git Flow and Fleet Atlas — qualified source, 19 October 2026 UTC
 
-[PR93](https://github.com/neverhuman/admiralty/pull/93), branch
-`codex/live-git-fleet-integrate`, implements the worker-ready
+Branch `codex/live-git-fleet-final` implements the worker-ready
 [LIVE_VIEWS_PLAN](LIVE_VIEWS_PLAN.md) and [operator contract](../../operators/live-views.md).
-Source `9cde56d59fdd1f74f622db938c230c7eed7b8ece` is based on main
-`779a008f9660e3fa1c8e9f308aae8229a263e547` and has the exact fully qualified tree
-`db0ca43058a27876a9da04c71d15e82c6650365e`. The
-[LV receipt](receipts/LV/9cde56d59fdd1f74f622db938c230c7eed7b8ece.json)
-stores computed hashes, exact commands, failed runs and repairs, screenshots and
-source/receiving provenance. PR93 supersedes PR86/88 after an unpublished rebase
-rehearsal exposed an earlier ledger conflict. Published histories are preserved.
+Source `d6b0be0cc71707400f4f3d54383d017cba171b21`, based on main
+`99f4e26cebfab97afa661ed05aea6192bfd5935c`, was qualified directly from a clean
+checkout. The [final LV receipt](receipts/LV/d6b0be0cc71707400f4f3d54383d017cba171b21.json)
+stores exact commands, computed hashes, failed runs/repairs and screenshots.
+Earlier PR86/88/93 candidates and the `9cde56d` receipt remain historical evidence.
+The final source preserves the upstream native task-loop probe, `sha2`
+dependency, browser form deadlines and CI resource limits. Published histories
+are preserved. Final PR publication follows this evidence-only commit.
 
 Git Flow retains original ordered parents, shallow boundaries, refs and
 main/linked/detached/unborn checkouts with bounded working-state observations.
@@ -76,24 +76,23 @@ native task assignments, unassigned agents, exact model evidence and its
 original timestamps. Both routes share authenticated current-state SSE,
 inspectors, URL navigation, complete loaded inventories and full-window mode.
 
-The final receiving tree passes 1,162 Rust tests (five existing ignored),
-114 dashboard tests, eleven contract runtime tests, legacy qualification and all
-eighteen browser checks. These include real temporary Git → observer → server →
-built UI, a synthetic 500-agent census, and nine pinned axe surfaces with zero
-violations and zero incomplete. Package/canary self-tests pass. Local macOS
-proof does not establish queued hosted Linux CI success. Exact-final-head
-neverhumanbot approval and normal merge gates remain pending at receipt creation.
-The receipt follow-up changes documentation/evidence only; verify runtime object
-identities against the qualified tree before integration.
+Direct checks pass 1,162 Rust tests (five existing ignored), 114 dashboard tests,
+eleven contract runtime tests, legacy qualification and all eighteen browser
+checks. These include real temporary Git → observer → server → built UI,
+a synthetic 500-agent census, and nine pinned axe surfaces with zero violations
+and zero incomplete. Package/canary self-tests pass. Local macOS proof does not
+establish hosted Linux CI success. Exact-final-head neverhumanbot approval and
+normal merge gates remain pending at receipt creation. This follow-up changes
+documentation/evidence only; verify runtime object identities before integration.
 
 Independent review repairs cover each linked worktree's effective filters,
 retained Git on matching native projects, manager deduplication, ambiguous
 identity joins, independent model timestamps and explicit schema rejection.
-Native command production code and upstream browser form-helper budgets remain
-unchanged. Earlier failures and the test-only HTTP fixture repair are retained.
-This change does not close any parent P00–P31 packet or qualify production
-rollout, opaque provider completeness, remote Git transport, arbitrary history
-replay or performance/soak targets.
+Native command production code is unchanged. Earlier failures, Cargo overlap
+resolution and the test-only HTTP fixture repair are retained. This change does
+not close any parent P00–P31 packet or qualify production rollout, opaque
+provider completeness, remote Git transport, arbitrary history replay or
+performance/soak targets.
 
 ## Receipt template
 

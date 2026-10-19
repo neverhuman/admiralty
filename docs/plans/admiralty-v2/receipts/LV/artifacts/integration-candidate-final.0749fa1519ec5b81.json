@@ -1,0 +1,14 @@
+{
+  "head_sha": "d6b0be0cc71707400f4f3d54383d017cba171b21",
+  "base_sha": "99f4e26cebfab97afa661ed05aea6192bfd5935c",
+  "tree_sha": "3dd1d13081ec4d174eeafb6b90226606a6756c82",
+  "branch": "codex/live-git-fleet-final",
+  "predecessor_head": "a212461db05fda5297c66fd282d1eb2467501c5c",
+  "superseded_pull_requests": [
+    86,
+    88,
+    93
+  ],
+  "pull_request": null,
+  "publication_note": "PR will be created after the evidence-only follow-up; branch and source SHA are authoritative."
+}
