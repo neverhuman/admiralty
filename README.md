@@ -151,8 +151,11 @@ from the original Codex preparation and recheck its exact hold, current pool
 generation and budget before dispatch. Registry IDs, provider model names and
 observed identities remain separate; this installs no default execution route.
 This requires independently installed observational policy and activates no
-physical pool, provider or scheduler. Shared authorization fencing, production
-issuance, settlement/release and runtime recovery remain separate gates.
+physical pool, provider or scheduler. An optional
+[paired admission commit fence](docs/architecture/admission-fence.md) now retains
+one process-local policy epoch through the Store transaction. Authenticated
+production installation, external credential/pool fencing, physical start,
+settlement/release and runtime recovery remain separate gates.
 
 Workplans can be previewed and registered as immutable revisions in an exclusively owned offline database:
 

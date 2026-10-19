@@ -1,0 +1,186 @@
+{
+  "kind": "independent-final-static-admission-fence-source-test-doc-review",
+  "observed_utc": "2026-10-19T11:02:36.728Z",
+  "reviewer": "audit_evidence",
+  "verdict": "CLEAR",
+  "source": {
+    "repository": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+    "commit": "feee6086b40f6125b8e76c0e86b01413df0daaab",
+    "files": [
+      {
+        "path": "crates/admiralty-store/src/lib.rs",
+        "sha256": "3e9b4266bdb4a461fbb8836a8a97074d27f9c276650f3188c2ca7bed97079071",
+        "bytes": 161831,
+        "working_matches_commit": true
+      },
+      {
+        "path": "crates/admiralty-store/src/admission_fence.rs",
+        "sha256": "c3dcf4fc110e519ae783e19da61c98b37b1d6d5b5d9f1a87f1442273e6747bd2",
+        "bytes": 24448,
+        "working_matches_commit": true
+      },
+      {
+        "path": "crates/admiralty-store/src/admission_fence_store_tests.rs",
+        "sha256": "affd9f850609d4b6113f4f83e846002a3fcece70483f9200148a4a44f176003a",
+        "bytes": 28860,
+        "working_matches_commit": true
+      }
+    ]
+  },
+  "prior_static_reviews": [
+    {
+      "path": "/private/tmp/adm-admission-fence-static-review-oC11X2/review.json",
+      "sha256": "40c93851dcc7f1fa4ada4e32c8558a5570f5fcca7b85ca5d6fa0f185a31eed1f",
+      "bytes": 6498
+    },
+    {
+      "path": "/private/tmp/adm-admission-fence-bounds-review-jANDno/review.json",
+      "sha256": "e344085f7624706e1c6d1c84904d54e8c50185057be66d2ba92f5750fdc141ad",
+      "bytes": 3476
+    }
+  ],
+  "findings": [],
+  "static_test_review": {
+    "child_test_definitions": 4,
+    "primitive_test_definitions": 4,
+    "new_cases_subset": 8,
+    "scope": "Actual Store writer/component fixtures only; test proof adapters are not production credentials.",
+    "cases": [
+      {
+        "test": "actual_store_holds_paired_cohort_lease_through_commit_and_old_proof_retry_denies",
+        "evidence": "Real writer pauses in disclosed wrapper delegating actual paired budget adapter. Actual cohort revoke returns Busy while lease held; after successful real claim/debit/hold/intent/association commit revoke applies and old-proof replay denies without rows. Fresh same-cohort proofs after rotation replay original event sequence and budget/slot receipts. Mixed foreign slot proof, changed observation time, ordinary and budget-only paths deny without effects."
+      },
+      {
+        "test": "actual_store_denial_after_acquire_releases_cohort_lease_without_writes",
+        "evidence": "Test-only wrapper denies after entering under acquired real cohort guard. Busy observed first, then Reservation error with unchanged seven-table counts; subsequent revoke succeeds."
+      },
+      {
+        "test": "stale_budget_cas_rolls_back_all_admission_records_and_releases_the_lease",
+        "evidence": "Real standalone pre-profile ledger advance leaves original catalog request stale. Protected admission returns reservation error with all event/outbox/journal/association/incident counts unchanged; revoke succeeds afterward."
+      },
+      {
+        "test": "outbox_collision_incident_commit_keeps_admission_effects_absent_and_releases_lease",
+        "evidence": "Real pre-profile append owns same outbox key with different payload. Protected operation commits exactly one integrity incident, no added admission event, intent, debit, hold or association, then releases lease allowing revoke."
+      }
+    ],
+    "coverage_limits": [
+      "Standalone Hold negative exercises public Hold rejection; direct Some-profile SetPool rejection remains established statically rather than by that assertion",
+      "Foreign cohort proof rejection is exercised in writer; distinct read-role and epoch/poison/overflow primitives remain separate four unit definitions",
+      "No SQL-trigger failure or backend/provider/physical process scenario is claimed by these four Store cases",
+      "Bounded test-only barrier wrappers are disclosed; production concrete callbacks remain nonblocking"
+    ]
+  },
+  "docs": {
+    "reviewed_working_bytes": [
+      {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/README.md",
+        "sha256": "69a660e9cc819fde7812aaf25978f1cdda639e5ffebe7ba72a67dcbcc09f2b1e",
+        "bytes": 20792
+      },
+      {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/docs/architecture/admission-fence.md",
+        "sha256": "4c2dcae5b566b4a23df5c340dc166c905b9ddf0a94c1ad3ad8a9c5d8ce246306",
+        "bytes": 4112
+      },
+      {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/docs/architecture/inference-slots.md",
+        "sha256": "229638fc9cfee21399e612d41602f7b5e6a7666d162197fdeeeed356ece22510",
+        "bytes": 6150
+      }
+    ],
+    "tracked_source_commit_does_not_include_uncommitted_docs": true,
+    "conclusion": "Description accurately scopes process-local common cohort through Store commit, denies standalone setup/settlement/stop with protected profile, preserves None compatibility, and explicitly excludes authenticated loader/issuer, physical/credential/dispatch fencing, provider execution/recovery and parent acceptance."
+  },
+  "evidence_review": {
+    "root_full_store": {
+      "path": "/private/tmp/adm-fence-root-full-store.log",
+      "sha256": "d30307d6968f5097455b803f5567077fe5f20f5958d97ada6a2180d492b0b77e",
+      "bytes": 23591,
+      "summaries": 16,
+      "nonempty_targets": 15,
+      "totals": {
+        "passed": 227,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0
+      },
+      "new_fence_case_names_present": 8,
+      "note": "Counts parsed from actual raw Root log. This reviewer did not execute it; exact run provenance is Root canonical receipt responsibility."
+    },
+    "root_strict_logs": [
+      {
+        "path": "/private/tmp/adm-fence-root-store-clippy.log",
+        "sha256": "b4a91ef6f415076d044776ecac50d3a45c666ea82d6dc75277631a1456289b13",
+        "bytes": 805
+      },
+      {
+        "path": "/private/tmp/adm-fence-root-server-clippy.log",
+        "sha256": "24ee5fb62e4e94bf1140dcab975080e607ba3b595c79771637a2f20c502f836a",
+        "bytes": 286
+      },
+      {
+        "path": "/private/tmp/adm-fence-root-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    ],
+    "root_strict_status": "Parent reports exit0; actual Clippy logs contain Finished and no failure. No reviewer rerun.",
+    "source_worker": {
+      "receipt": {
+        "path": "/private/tmp/adm-fence-source-worker-receipt.json",
+        "sha256": "3e0969e3681b3197cda8b8ad4962ea823553b25de50f3849e88c4f9f87a871ac",
+        "bytes": 8306
+      },
+      "checked_raw_logs": [
+        {
+          "check": "initial_registered_source_check",
+          "path": "/private/tmp/admiralty-fence-source-check.P68T4n/check.log",
+          "sha256": "c047d3c834d5ff97aaa4b5f8bcde8ae62760379516150714780cfbe50fbf8c7e",
+          "bytes": 2466
+        },
+        {
+          "check": "initial_registered_source_clippy",
+          "path": "/private/tmp/admiralty-fence-source-check.P68T4n/clippy.log",
+          "sha256": "40914fe77ac2b8389ad61e2c1f8dd566ae94154a6f72860962d7fc185c68a30b",
+          "bytes": 426
+        },
+        {
+          "check": "final_registered_source_clippy",
+          "path": "/private/tmp/admiralty-fence-source-check.P68T4n/clippy-final.log",
+          "sha256": "003c89f067f21c316d41c75e4004ad414e4359993f52262dc3c462c588876da9",
+          "bytes": 189
+        },
+        {
+          "check": "four_primitive_source_unit_cases",
+          "path": "/private/tmp/admiralty-fence-source-check.P68T4n/units.log",
+          "sha256": "7b962b8704dd88ab2e1d37a714f5d46c43b5ce2d54dfdea5fb32806a518ab51e",
+          "bytes": 2549
+        }
+      ],
+      "primitive_cases": 4,
+      "note": "Raw-backed source-worker logs verified; initial-source qualification and final-source runs remain distinguished as worker receipt states. These cases are a subset, not additional to Root227."
+    },
+    "store_test_worker": {
+      "receipt": {
+        "path": "/private/tmp/adm-fence-store-tests-worker-receipt.json",
+        "sha256": "fc3a8e4547ee935e0f791cb99bd84c6030a5d7d4431aae1552671c4ec06c8b23",
+        "bytes": 6425
+      },
+      "status": "Author-reported transcript evidence only; raw log paths/hashes explicitly null. Claimed draft failures are not treated as raw-preserved filesystem evidence."
+    },
+    "linux": "Pending separate Root exact-source gated run; not qualified by this review."
+  },
+  "reviewer_actions": {
+    "tests": 0,
+    "builds": 0,
+    "remote_calls": 0,
+    "provider_calls": 0,
+    "tracked_edits": 0
+  },
+  "limits": [
+    "No production issuer, authenticated catalog loader, default route or startup activation is introduced",
+    "Cohort lease covers only its own process-local immutable rules/current epoch/revocation; external credential expiration, physical allocation, dispatch/start, filesystem custody and restart remain independent",
+    "No general native execution, provider completion, full parent acceptance or hosted CI-green claim"
+  ]
+}

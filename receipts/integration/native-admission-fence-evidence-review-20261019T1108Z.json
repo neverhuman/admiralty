@@ -1,0 +1,298 @@
+{
+  "kind": "independent-native-admission-fence-evidence-review",
+  "observed_utc": "2026-10-19T11:06:48.368Z",
+  "reviewer": "audit_evidence",
+  "verdict": "CLEAR",
+  "canonical_receipt": {
+    "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/receipts/integration/native-admission-fence-20261019T1105Z.json",
+    "sha256": "8fdf0088da31fe9af307fd0a37c1ee8025c3c6f5c1389ac71d97cd1fd46ccc48",
+    "bytes": 53730,
+    "unchanged_during_review": true
+  },
+  "source_commit": "feee6086b40f6125b8e76c0e86b01413df0daaab",
+  "source_files": [
+    {
+      "repo_path": "crates/admiralty-store/src/lib.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-store/src/lib.rs",
+      "bytes": 161831,
+      "sha256": "3e9b4266bdb4a461fbb8836a8a97074d27f9c276650f3188c2ca7bed97079071"
+    },
+    {
+      "repo_path": "crates/admiralty-store/src/admission_fence.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-store/src/admission_fence.rs",
+      "bytes": 24448,
+      "sha256": "c3dcf4fc110e519ae783e19da61c98b37b1d6d5b5d9f1a87f1442273e6747bd2"
+    },
+    {
+      "repo_path": "crates/admiralty-store/src/admission_fence_store_tests.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-store/src/admission_fence_store_tests.rs",
+      "bytes": 28860,
+      "sha256": "affd9f850609d4b6113f4f83e846002a3fcece70483f9200148a4a44f176003a"
+    }
+  ],
+  "verified_references": [
+    {
+      "reference": "canonical.files.0",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-store/src/lib.rs",
+      "sha256": "3e9b4266bdb4a461fbb8836a8a97074d27f9c276650f3188c2ca7bed97079071",
+      "bytes": 161831
+    },
+    {
+      "reference": "canonical.files.1",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-store/src/admission_fence.rs",
+      "sha256": "c3dcf4fc110e519ae783e19da61c98b37b1d6d5b5d9f1a87f1442273e6747bd2",
+      "bytes": 24448
+    },
+    {
+      "reference": "canonical.files.2",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-store/src/admission_fence_store_tests.rs",
+      "sha256": "affd9f850609d4b6113f4f83e846002a3fcece70483f9200148a4a44f176003a",
+      "bytes": 28860
+    },
+    {
+      "reference": "canonical.checks.0.raw",
+      "path": "/private/tmp/adm-fence-root-full-store.log",
+      "sha256": "d30307d6968f5097455b803f5567077fe5f20f5958d97ada6a2180d492b0b77e",
+      "bytes": 23591
+    },
+    {
+      "reference": "canonical.checks.1.raw",
+      "path": "/private/tmp/adm-fence-linux-test.log",
+      "sha256": "ae8f84e5ad99754cab78d57361783007d71943d609914dcf6a5d002d0393fcda",
+      "bytes": 24201
+    },
+    {
+      "reference": "canonical.checks.1.result",
+      "path": "/private/tmp/adm-fence-linux-result.json",
+      "sha256": "a82f901ee08cea2f393ac71743d5429080eaf0bfb18e81f230250fb8ade45378",
+      "bytes": 2954
+    },
+    {
+      "reference": "canonical.checks.1.post_run_source",
+      "path": "/private/tmp/adm-fence-linux-posthash.json",
+      "sha256": "77ac69dd3a1fb85f24342fbd23b5ca0254ac69f8b9da85268e22a228bfea048a",
+      "bytes": 411
+    },
+    {
+      "reference": "canonical.checks.1.archive",
+      "path": "/private/tmp/admiralty-fence-store-final-source.tar",
+      "sha256": "415fb9d5056ffb72505dfa3b01e92e96f5bf5ba51152338f8041104aa82f4524",
+      "bytes": 19486720
+    },
+    {
+      "reference": "canonical.checks.2.raw",
+      "path": "/private/tmp/adm-fence-root-store-clippy.log",
+      "sha256": "b4a91ef6f415076d044776ecac50d3a45c666ea82d6dc75277631a1456289b13",
+      "bytes": 805
+    },
+    {
+      "reference": "canonical.checks.3.raw",
+      "path": "/private/tmp/adm-fence-root-server-clippy.log",
+      "sha256": "24ee5fb62e4e94bf1140dcab975080e607ba3b595c79771637a2f20c502f836a",
+      "bytes": 286
+    },
+    {
+      "reference": "canonical.checks.4.raw",
+      "path": "/private/tmp/adm-fence-root-fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "reference": "canonical.worker_receipts.0",
+      "path": "/private/tmp/adm-fence-source-worker-receipt.json",
+      "sha256": "3e0969e3681b3197cda8b8ad4962ea823553b25de50f3849e88c4f9f87a871ac",
+      "bytes": 8306
+    },
+    {
+      "reference": "canonical.worker_receipts.1",
+      "path": "/private/tmp/adm-fence-store-tests-worker-receipt.json",
+      "sha256": "fc3a8e4547ee935e0f791cb99bd84c6030a5d7d4431aae1552671c4ec06c8b23",
+      "bytes": 6425
+    },
+    {
+      "reference": "canonical.source_worker_raw_logs.0",
+      "path": "/private/tmp/admiralty-fence-source-check.P68T4n/check.log",
+      "sha256": "c047d3c834d5ff97aaa4b5f8bcde8ae62760379516150714780cfbe50fbf8c7e",
+      "bytes": 2466
+    },
+    {
+      "reference": "canonical.source_worker_raw_logs.1",
+      "path": "/private/tmp/admiralty-fence-source-check.P68T4n/clippy.log",
+      "sha256": "40914fe77ac2b8389ad61e2c1f8dd566ae94154a6f72860962d7fc185c68a30b",
+      "bytes": 426
+    },
+    {
+      "reference": "canonical.source_worker_raw_logs.2",
+      "path": "/private/tmp/admiralty-fence-source-check.P68T4n/clippy-final.log",
+      "sha256": "003c89f067f21c316d41c75e4004ad414e4359993f52262dc3c462c588876da9",
+      "bytes": 189
+    },
+    {
+      "reference": "canonical.source_worker_raw_logs.3",
+      "path": "/private/tmp/admiralty-fence-source-check.P68T4n/units.log",
+      "sha256": "7b962b8704dd88ab2e1d37a714f5d46c43b5ce2d54dfdea5fb32806a518ab51e",
+      "bytes": 2549
+    },
+    {
+      "reference": "canonical.static_review",
+      "path": "/private/tmp/adm-admission-fence-final-review-ltlfqP/review.json",
+      "sha256": "a2256778d77e3873a9e02e39644151daf872fde47b1c94103a44ed200f63ea5d",
+      "bytes": 9062
+    },
+    {
+      "reference": "canonical.live.independent",
+      "path": "/private/tmp/admiralty-e71e-independent-20261019T1050Z.json",
+      "sha256": "1d973db54ea4d03a6c10c2b21b23261216354d929fbffb0f29148c089cac8726",
+      "bytes": 5174
+    },
+    {
+      "reference": "canonical.live.owner",
+      "path": "/private/tmp/adm-e71e-owner-deploy.json",
+      "sha256": "62668fdf340ddb014fb6e362a55d4a3310d2bf0dfcba338cc4211a08ef0f9b35",
+      "bytes": 8878
+    },
+    {
+      "reference": "canonical.operations.prior_merge",
+      "path": "/private/tmp/native-pr122-merge-20261019T1032Z.json",
+      "sha256": "51519a23c07ff40d26fcb31fa53a3b5cdcbeae94244e4c83e752595cd4e19e12",
+      "bytes": 720
+    },
+    {
+      "reference": "canonical.operations.rollout_source_reconciliation",
+      "path": "/private/tmp/rollout-slotted-loop-pr122-20261019T1035Z.json",
+      "sha256": "81f5836656d437a82c74238f522721a9e436364971bf1584a31de1306c727b2a",
+      "bytes": 2540
+    },
+    {
+      "reference": "canonical.operations.rollout_production_reconciliation",
+      "path": "/private/tmp/rollout-e71e-production-20261019T1055Z.json",
+      "sha256": "ebbc7042bbcb46eb80f9d3135df3f9d68660bd5faa9be4056c4c813aec0cb2e3",
+      "bytes": 1349
+    },
+    {
+      "reference": "canonical.operations.ci_deadline",
+      "path": "/private/tmp/ci-e71e-timeout-20261019T1055Z.json",
+      "sha256": "0e8b11e1874607975e6a0cfa099eaf2823a95c98e9afaa75111b7edad630fdaf",
+      "bytes": 883
+    },
+    {
+      "reference": "canonical.operations.ci_annotations",
+      "path": "/private/tmp/adm-ci-e71e-annotations.json",
+      "sha256": "19b8b2330f471dd4034ca6a3dce43d78e3e2a3ac2c1b714f1ae8c781bf507143",
+      "bytes": 1222
+    },
+    {
+      "reference": "canonical.operations.ci_raw",
+      "path": "/private/tmp/adm-ci-e71e-rust-39238035073.log",
+      "sha256": "8820a51dc540719438812e31aabcef5b5e2c530566025f2e2b8f2d912ba27384",
+      "bytes": 174192
+    }
+  ],
+  "actual_raw_cases": {
+    "mac": {
+      "passed": 227,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered_out": 0
+    },
+    "linux": {
+      "passed": 227,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered_out": 0
+    },
+    "names_equal": true,
+    "case_names_sha256": "124fd64a4edfe8b9911ab229bb20e49e90f49859e9d614fb8b612b4182a6f0bd",
+    "nonempty_targets": 15,
+    "empty_doctest_targets": 1,
+    "new_subset": 8,
+    "Store_journeys": 4,
+    "primitive_units": 4,
+    "worker_repeats_not_additive": true
+  },
+  "linux": {
+    "source_archive_sha256": "415fb9d5056ffb72505dfa3b01e92e96f5bf5ba51152338f8041104aa82f4524",
+    "invocation_result_exactly_matches_receipt": true,
+    "code": 0,
+    "started_utc": "2026-10-19T10:59:25.093Z",
+    "finished_utc": "2026-10-19T11:03:13.621Z",
+    "elapsed_ms": 228528,
+    "gates": [
+      {
+        "role": "outer",
+        "observed_utc": "2026-10-19T10:59:24.959Z",
+        "cpu_percent": 22.285623712157232,
+        "mem_available_kib": 34922224,
+        "controller_active": true,
+        "freeze": "0",
+        "admitted": true,
+        "provider_started": false
+      },
+      {
+        "role": "inside0",
+        "observed_utc": "2026-10-19T10:59:26.399Z",
+        "cpu_percent": 21.609396079676213,
+        "mem_available_kib": 34971004,
+        "controller_active": true,
+        "freeze": "0",
+        "admitted": true,
+        "provider_started": false
+      },
+      {
+        "role": "inside1",
+        "observed_utc": "2026-10-19T10:59:29.793Z",
+        "cpu_percent": 21.451651036330677,
+        "mem_available_kib": 35460984,
+        "controller_active": true,
+        "freeze": "0",
+        "admitted": true,
+        "provider_started": false
+      },
+      {
+        "role": "inside2",
+        "observed_utc": "2026-10-19T10:59:31.501Z",
+        "cpu_percent": 20.71653543307087,
+        "mem_available_kib": 35406176,
+        "controller_active": true,
+        "freeze": "0",
+        "admitted": true,
+        "provider_started": false
+      },
+      {
+        "role": "after",
+        "observed_utc": "2026-10-19T11:03:14.851Z",
+        "cpu_percent": 15.86489252814739,
+        "mem_available_kib": 28029680,
+        "controller_active": true,
+        "freeze": "0",
+        "admitted": true,
+        "provider_started": false
+      }
+    ],
+    "post_run_three_source_hashes_match_commit": true,
+    "recorded_provider_run": false,
+    "recorded_service_control": false
+  },
+  "caveats_verified": [
+    "Source-worker initial Clippy source timing caveat retained; final-source Clippy/unit evidence separate",
+    "Child Store-test worker success/draft failures author-reported only; raw log fields null, no reconstructed failure files",
+    "Server all-target Clippy launched fc1c3be; its two compiled Store library hashes equal final feee, child Store cfg(test) module not compiled as ordinary dependency",
+    "Existing primary e71 independently observed10:49:10.466Z, new opt-in cohort not activated; accepted P00/P01 only and30 remaining",
+    "Guard covers own process-local cohort through Store commit only; no issuer, physical/credential/start fence, provider completion, settlement, recovery, hosted-CI or parent qualification"
+  ],
+  "findings": [],
+  "reviewer_actions": {
+    "builds": 0,
+    "test_runs": 0,
+    "remote_calls": 0,
+    "provider_calls": 0,
+    "tracked_edits": 0
+  },
+  "limits": [
+    "Bounded local canonical/reference/log checks, not a repeat source audit or test execution",
+    "Remote gates and result are verified as recorded evidence, not freshly observed remotely by reviewer",
+    "Three component post-run source hashes do not independently attest entire remote source tree/binary or original cache immutability"
+  ]
+}
