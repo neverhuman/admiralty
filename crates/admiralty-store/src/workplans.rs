@@ -333,7 +333,39 @@ pub fn register_with_existing(
     }
     connection_assumptions(connection)?;
     let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    verify_schema(&tx)?;
+    let receipt = register_prepared_in_transaction(&tx, request, existing, prepared)?;
+    tx.commit()?;
+    Ok(receipt)
+}
+
+/// Same fenced registry mutation, joining an already-owned sole-writer turn.
+/// Caller owns commit/rollback and must not acknowledge until its whole tx commits.
+pub(crate) fn register_in_transaction(
+    tx: &Transaction<'_>,
+    request: RegisterWorkplanRequest,
+    existing: &BTreeMap<TaskId, String>,
+) -> Result<WorkplanReceipt> {
+    let prepared = prepare(&request)?;
+    if existing.len() > MAX_REGISTERED_TASKS {
+        return Err(WorkplanStoreError::Capacity);
+    }
+    for digest in existing.values() {
+        if !is_digest(digest) {
+            return Err(WorkplanStoreError::Invalid(
+                "invalid authoritative task digest",
+            ));
+        }
+    }
+    register_prepared_in_transaction(tx, request, existing, prepared)
+}
+
+fn register_prepared_in_transaction(
+    tx: &Transaction<'_>,
+    request: RegisterWorkplanRequest,
+    existing: &BTreeMap<TaskId, String>,
+    prepared: Prepared,
+) -> Result<WorkplanReceipt> {
+    verify_schema(tx)?;
     let prior:Option<(String,String,u32,String)>=tx.query_row("SELECT project_id,plan_id,revision,request_digest FROM main.workplan_registry_revisions WHERE command_id=?1",[&request.command_id],|row|Ok((stored_text(row,0,128)?,stored_text(row,1,128)?,row.get(2)?,stored_text(row,3,71)?))).optional()?;
     if let Some((project, plan, number, digest)) = prior {
         if project != request.project_id.as_str()
@@ -342,23 +374,23 @@ pub fn register_with_existing(
         {
             return Err(WorkplanStoreError::IdentityCollision);
         }
-        validate_plan(&tx, &request.project_id, &request.plan_id)?
+        validate_plan(tx, &request.project_id, &request.plan_id)?
             .ok_or(WorkplanStoreError::Integrity("missing current pointer"))?;
-        let stored = read_revision(&tx, &request.project_id, &request.plan_id, number)?
+        let stored = read_revision(tx, &request.project_id, &request.plan_id, number)?
             .ok_or(WorkplanStoreError::Integrity("missing replay revision"))?;
         if stored.receipt != prepared.receipt {
             return Err(WorkplanStoreError::Integrity("replay receipt binding"));
         }
         return Ok(stored.receipt);
     }
-    let actual = validate_plan(&tx, &request.project_id, &request.plan_id)?.unwrap_or(0);
+    let actual = validate_plan(tx, &request.project_id, &request.plan_id)?.unwrap_or(0);
     if actual != revision(&request.expected_current_revision)? {
         return Err(WorkplanStoreError::StaleCurrent);
     }
     if prepared.plan.revision as usize > MAX_REVISIONS_PER_PLAN {
         return Err(WorkplanStoreError::Capacity);
     }
-    let mut known = known_tasks(&tx)?;
+    let mut known = known_tasks(tx)?;
     for (id, digest) in existing {
         if known.get(id).is_some_and(|prior| prior != digest) {
             return Err(WorkplanStoreError::Parser(
@@ -371,7 +403,7 @@ pub fn register_with_existing(
         return Err(WorkplanStoreError::Capacity);
     }
     preview_workplan_with_existing(&request.source, &known)?;
-    admit_capacity(&tx, &prepared, actual == 0)?;
+    admit_capacity(tx, &prepared, actual == 0)?;
     if actual == 0 {
         tx.execute("INSERT INTO main.workplan_registry_plans(project_id,plan_id,current_revision) VALUES(?1,?2,?3)",params![request.project_id.as_str(),request.plan_id,prepared.plan.revision])?;
     }
@@ -389,15 +421,14 @@ pub fn register_with_existing(
             return Err(WorkplanStoreError::StaleCurrent);
         }
     }
-    current(&tx, &request.project_id, &request.plan_id)?;
+    current(tx, &request.project_id, &request.plan_id)?;
     let stored = read_revision(
-        &tx,
+        tx,
         &request.project_id,
         &request.plan_id,
         prepared.plan.revision,
     )?
     .ok_or(WorkplanStoreError::Integrity("new revision missing"))?;
-    tx.commit()?;
     Ok(stored.receipt)
 }
 
@@ -601,13 +632,27 @@ pub fn get(
     }
     connection_assumptions(connection)?;
     let tx = connection.transaction_with_behavior(TransactionBehavior::Deferred)?;
-    verify_schema(&tx)?;
-    let Some(head) = validate_plan(&tx, project, plan_id)? else {
-        return Ok(None);
-    };
-    let result = read_revision(&tx, project, plan_id, requested_revision.unwrap_or(head))?;
+    let result = get_in_transaction(&tx, project, plan_id, requested_revision)?;
     tx.commit()?;
     Ok(result)
+}
+
+/// Read and validate a revision without beginning or committing a nested tx.
+pub(crate) fn get_in_transaction(
+    tx: &Transaction<'_>,
+    project: &ProjectId,
+    plan_id: &str,
+    requested_revision: Option<u32>,
+) -> Result<Option<RegisteredWorkplan>> {
+    safe_id(plan_id)?;
+    if requested_revision == Some(0) {
+        return Err(WorkplanStoreError::Invalid("revision must be positive"));
+    }
+    verify_schema(tx)?;
+    let Some(head) = validate_plan(tx, project, plan_id)? else {
+        return Ok(None);
+    };
+    read_revision(tx, project, plan_id, requested_revision.unwrap_or(head))
 }
 pub fn list(
     connection: &mut Connection,
