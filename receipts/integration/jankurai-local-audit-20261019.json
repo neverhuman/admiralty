@@ -1,0 +1,136 @@
+{
+  "head": "7291122e7c33581fbfbc35468a9c1c7c5594a164",
+  "started_at_utc": "2026-10-19T20:05:51.201938+00:00",
+  "finished_at_utc": "2026-10-19T20:06:51.560743+00:00",
+  "command": [
+    "timeout",
+    "--kill-after=2s",
+    "90s",
+    "taskset",
+    "-c",
+    "102,103",
+    "nice",
+    "-n",
+    "10",
+    "/home/ubuntu/.jeryu/bin/jankurai",
+    "audit",
+    "/tmp/admiralty-pr158-local-qualification-7291122/source",
+    "--read-only",
+    "--no-badge",
+    "--no-score-history",
+    "--mode",
+    "standard",
+    "--json",
+    "/tmp/admiralty-pr158-local-qualification-7291122/reports-90s/repo-score.json",
+    "--md",
+    "/tmp/admiralty-pr158-local-qualification-7291122/reports-90s/repo-score.md",
+    "--github-step-summary",
+    "/tmp/admiralty-pr158-local-qualification-7291122/reports-90s/step-summary.md",
+    "--repair-queue-jsonl",
+    "/tmp/admiralty-pr158-local-qualification-7291122/reports-90s/repair-queue.jsonl"
+  ],
+  "exit_code": 1,
+  "elapsed_seconds": 60.359,
+  "binary_sha256": "d2414884a3dbe1cc2d02b4240588869f6afac26ff0f167829e907b1617501121",
+  "git_status_after": "",
+  "reports": {
+    "repair-queue.jsonl": {
+      "bytes": 21148,
+      "sha256": "8e798e97f2ba09ae9a0b349997845322e0f813c605817456888ee4bde0375d98"
+    },
+    "repo-score.json": {
+      "bytes": 258530,
+      "sha256": "b93b310bb1b19905e020978faec29af4a24a550ec6f8378f7c4174f1cdbe06ec"
+    },
+    "step-summary.md": {
+      "bytes": 9490,
+      "sha256": "38c7e1cd59fb8f7fdad197efaa7e63dc8eb24087a350004bce82c74473deb395"
+    },
+    "repo-score.md": {
+      "bytes": 107975,
+      "sha256": "d1cf411b90ddfad3b62ced00690d97df23e3042676c899ff405fc9c9bc112293"
+    }
+  },
+  "admiralty_cpu_pair": [
+    102,
+    103
+  ],
+  "rayon_threads": 2,
+  "resource_preflight": {
+    "allowed_cpus": 102,
+    "load_1min": 57.802734375,
+    "MemAvailable_bytes": 70606032896
+  },
+  "production_service_or_CI_runner_control": false,
+  "collection_limit_rationale": "First local50s collection timed out; exact hosted audit demonstrated64s runtime.90s is a bounded evidence-collection budget, not a CI/product/test threshold change.",
+  "report_top_level_keys": [
+    "report_fingerprint",
+    "input_fingerprint",
+    "policy_fingerprint",
+    "manifest_fingerprints",
+    "dirty_worktree",
+    "generated_at",
+    "schema_url",
+    "standard",
+    "standard_version",
+    "auditor_version",
+    "schema_version",
+    "paper_edition",
+    "target_stack_id",
+    "target_stack",
+    "claimed_conformance_level",
+    "observed_conformance_level",
+    "conformance_decision",
+    "conformance_blockers",
+    "repo",
+    "run_id",
+    "started_at",
+    "elapsed_ms",
+    "scope",
+    "score",
+    "raw_score",
+    "decision",
+    "git",
+    "policy",
+    "caps_applied",
+    "hard_rules",
+    "dimensions",
+    "ux_qa",
+    "tool_adoption",
+    "security_evidence",
+    "boundaries",
+    "copy_code",
+    "profile_structure",
+    "findings",
+    "agent_fix_queue"
+  ],
+  "score": 39,
+  "archived_reports": [
+    {
+      "path": "receipts/integration/logs/pr158-local-repair-queue.jsonl-20261019.gz",
+      "compressed_sha256": "70b12696f074769a61a76770fe60e0bf877dcf342ad671388c27362892f29e52",
+      "uncompressed_sha256": "8e798e97f2ba09ae9a0b349997845322e0f813c605817456888ee4bde0375d98",
+      "uncompressed_bytes": 21148
+    },
+    {
+      "path": "receipts/integration/logs/pr158-local-repo-score.json-20261019.gz",
+      "compressed_sha256": "965678eda47f2c96244f82647fa1a628ad1ec0b65da07760a9988d6ff8e3d124",
+      "uncompressed_sha256": "b93b310bb1b19905e020978faec29af4a24a550ec6f8378f7c4174f1cdbe06ec",
+      "uncompressed_bytes": 258530
+    },
+    {
+      "path": "receipts/integration/logs/pr158-local-step-summary.md-20261019.gz",
+      "compressed_sha256": "8ae665ebbdf7a2250d9b6e79f498756d5f03d872d41a42174ba46006f828a198",
+      "uncompressed_sha256": "38c7e1cd59fb8f7fdad197efaa7e63dc8eb24087a350004bce82c74473deb395",
+      "uncompressed_bytes": 9490
+    },
+    {
+      "path": "receipts/integration/logs/pr158-local-repo-score.md-20261019.gz",
+      "compressed_sha256": "c28df1ba36da2e009688059aa6e57e74584cf6b8958abe9b72ec2e8707a4cf83",
+      "uncompressed_sha256": "d1cf411b90ddfad3b62ced00690d97df23e3042676c899ff405fc9c9bc112293",
+      "uncompressed_bytes": 107975
+    }
+  ],
+  "interpretation": "The exact-source local audit completed and independently matched score39/85findings/22caps/56standard blockers. Exit1 is a failed conformance gate, not an infrastructure failure or a green workflow.",
+  "local_first_50second_timeout_preserved_at": "/tmp/admiralty-pr158-local-qualification-7291122/receipt.json"
+}
