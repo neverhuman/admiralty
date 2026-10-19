@@ -261,3 +261,110 @@ fn fake_clock_skew_makes_old_ownership_snapshot_ineligible() {
     assert!(!proposal.publication_granted);
     assert!(!proposal.authority_granted);
 }
+
+fn isolated_owner() -> NodeOffer {
+    let request = request();
+    let mut node = offer();
+    node.controller_connected = false;
+    node.existing_active_roots = vec![ActiveRoot {
+        root: request.root.clone(),
+        ordinary: true,
+    }];
+    node.continuation_permit = Some(IsolatedPermit {
+        permit_id: "partition-permit".into(),
+        root: request.root,
+        project: request.project,
+        task: request.task,
+        node_id: node.node_id.clone(),
+        authority_ref: request.authority_ref,
+        expires_at: d(20),
+        immutable_digest: request.contract_digest,
+        authority_generation: d(1),
+        reboot_id: node.boot_id.clone(),
+        remaining_budget: d(5),
+        spool_reserve: d(8),
+        minimum_spool_reserve: d(4),
+    });
+    node
+}
+
+#[test]
+fn continuation_requires_current_free_spool_to_cover_its_permit_reserve() {
+    for free in [2, 4, 7, 8, 9] {
+        let mut node = isolated_owner();
+        node.spool_free.value = Known::Known { value: d(free) };
+        let proposal = propose_placement(&request(), &[node], &policy(), 10).expect("proposal");
+        assert_eq!(proposal.candidates.len(), usize::from(free >= 8));
+        if free < 8 {
+            assert_eq!(
+                proposal.rejected[0].reason,
+                "continuation spool reserve depleted"
+            );
+        }
+        assert!(!proposal.execution_granted);
+        assert!(!proposal.publication_granted);
+        assert!(!proposal.authority_granted);
+    }
+}
+
+#[test]
+fn four_uuid_nodes_preserve_root_ownership_across_partition_reboot_and_reconnect() {
+    let mut owner = isolated_owner();
+    owner.node_id = NodeId::new(uuid::Uuid::new_v4().to_string()).expect("UUID node");
+    owner.continuation_permit.as_mut().expect("permit").node_id = owner.node_id.clone();
+    let mut topology = vec![owner];
+    for _ in 0..3 {
+        let mut node = offer();
+        node.node_id = NodeId::new(uuid::Uuid::new_v4().to_string()).expect("UUID node");
+        topology.push(node);
+    }
+    let partitioned = propose_placement(&request(), &topology, &policy(), 10).expect("partition");
+    assert_eq!(partitioned.candidates.len(), 1);
+    assert_eq!(partitioned.candidates[0].node_id, topology[0].node_id);
+    topology.reverse();
+    assert_eq!(
+        partitioned,
+        propose_placement(&request(), &topology, &policy(), 10).expect("replay")
+    );
+    topology.reverse();
+
+    // A reboot invalidates the old permit without releasing the observed root.
+    topology[0].boot_id = "new-boot".into();
+    let rebooted = propose_placement(&request(), &topology, &policy(), 10).expect("reboot");
+    assert!(rebooted.candidates.is_empty());
+    assert_eq!(rebooted.rejected.len(), 4);
+
+    // Reconnect alone is not termination evidence or permission to move work.
+    topology[0].controller_connected = true;
+    topology[0].reconciliation_required = true;
+    let reconnect = propose_placement(&request(), &topology, &policy(), 10).expect("reconnect");
+    assert!(reconnect.candidates.is_empty());
+    assert!(
+        reconnect
+            .rejected
+            .iter()
+            .all(|r| r.reason.contains("unreconciled"))
+    );
+    topology[0].reconciliation_required = false;
+    let still_owned =
+        propose_placement(&request(), &topology, &policy(), 10).expect("retained root");
+    assert!(still_owned.candidates.is_empty());
+    assert!(
+        still_owned
+            .rejected
+            .iter()
+            .all(|r| r.reason == "root already active in topology")
+    );
+
+    // An observation from a future clock cannot authorize any topology member.
+    topology[0].ownership_observed_at = Some(d(11));
+    assert!(
+        propose_placement(&request(), &topology, &policy(), 10)
+            .expect("clock skew")
+            .candidates
+            .is_empty()
+    );
+    assert!(!reconnect.execution_granted);
+    assert!(!reconnect.publication_granted);
+    assert!(!reconnect.authority_granted);
+}
