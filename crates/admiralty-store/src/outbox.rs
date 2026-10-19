@@ -150,6 +150,12 @@ fn canonical_value(value: &Value, writer: &mut Vec<u8>) -> Result<()> {
     Ok(())
 }
 
+/// Compute the same bounded canonical identity used by the sole writer.
+/// This grants nothing and performs no database or delivery operation.
+pub fn intent_digest(intent: &OutboxIntent) -> Result<String> {
+    Ok(prepare_intent(intent)?.intent_digest)
+}
+
 pub(crate) fn prepare_intent(intent: &OutboxIntent) -> Result<PreparedIntent> {
     if !bounded_text(&intent.idempotency_key, 256) {
         return Err(OutboxError::Invalid(

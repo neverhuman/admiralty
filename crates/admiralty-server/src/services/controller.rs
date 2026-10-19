@@ -46,6 +46,14 @@ pub struct DurableIntent {
     pub duplicate: bool,
 }
 
+/// Atomic budget admission is still distinct from model/resource capacity,
+/// actual provider execution, trusted closure and settled billing.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReservedDurableIntent {
+    pub intent: DurableIntent,
+    pub reservation: admiralty_store::admission_reservations::ReservationResult,
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct DispatchIntent {
@@ -441,7 +449,39 @@ pub fn admit_one(
         .authorize_current(task, request)
         .map_err(ControllerError::AdmissionDenied)?;
 
-    let key = format!("launch/{}/{}", request.task_id, request.attempt_id);
+    let intent = planned_launch_intent(task, request)?;
+    let key = intent.idempotency_key.clone();
+    let receipt = store.append_with_intent(
+        request.source.clone(),
+        DomainEvent::TaskClaimed {
+            task_id: request.task_id.clone(),
+            revision: task.contract.revision,
+            attempt_id: request.attempt_id.clone(),
+            owner: request.owner.clone(),
+        },
+        request.observed_utc.clone(),
+        intent,
+    )?;
+    Ok(DurableIntent {
+        event_seq: receipt.event_seq,
+        task_id: request.task_id.clone(),
+        attempt_id: request.attempt_id.clone(),
+        outbox_key: key,
+        duplicate: receipt.duplicate,
+    })
+}
+
+/// Bounded pure planning identity for a separately issued budget proof. This
+/// does not reserve, authenticate, enqueue, or execute anything.
+pub fn planned_launch_intent(
+    task: &TaskView,
+    request: &LaunchRequest,
+) -> Result<OutboxIntent, ControllerError> {
+    validate_request(request)?;
+    let digest = content_digest(&task.contract).map_err(|_| ControllerError::Digest)?;
+    if task.contract.task_id != request.task_id || digest != request.expected_contract_digest {
+        return Err(ControllerError::StaleContract);
+    }
     let payload = serde_json::to_value(LaunchIntentPayload {
         schema_version: 1,
         task_id: request.task_id.as_str(),
@@ -456,7 +496,37 @@ pub fn admit_one(
         model: &request.model,
     })
     .map_err(|_| ControllerError::InvalidRequest)?;
-    let receipt = store.append_with_intent(
+    Ok(OutboxIntent {
+        idempotency_key: format!("launch/{}/{}", request.task_id, request.attempt_id),
+        payload,
+        not_before: request.not_before,
+    })
+}
+
+/// Explicit protected admission path. Startup must independently install a
+/// current Store reservation authority; the caller's policy/proof remains
+/// process-local and no production issuer is installed by this API. Store
+/// resolves exact historical retries before reducing a new claim.
+pub fn admit_one_reserved(
+    store: &Store,
+    admission: &impl CurrentAdmission,
+    request: &LaunchRequest,
+    reservation: admiralty_store::admission_reservations::ReservationCommand,
+    proof: admiralty_store::admission_reservations::ReservationProof,
+) -> Result<ReservedDurableIntent, ControllerError> {
+    validate_request(request)?;
+    let snapshot = store.snapshot()?;
+    let task = snapshot
+        .projection
+        .tasks
+        .get(&request.task_id)
+        .ok_or(ControllerError::UnknownTask)?;
+    let intent = planned_launch_intent(task, request)?;
+    admission
+        .authorize_current(task, request)
+        .map_err(ControllerError::AdmissionDenied)?;
+    let key = intent.idempotency_key.clone();
+    let receipt = store.claim_with_reservation(
         request.source.clone(),
         DomainEvent::TaskClaimed {
             task_id: request.task_id.clone(),
@@ -465,18 +535,19 @@ pub fn admit_one(
             owner: request.owner.clone(),
         },
         request.observed_utc.clone(),
-        OutboxIntent {
-            idempotency_key: key.clone(),
-            payload,
-            not_before: request.not_before,
-        },
+        intent,
+        reservation,
+        proof,
     )?;
-    Ok(DurableIntent {
-        event_seq: receipt.event_seq,
-        task_id: request.task_id.clone(),
-        attempt_id: request.attempt_id.clone(),
-        outbox_key: key,
-        duplicate: receipt.duplicate,
+    Ok(ReservedDurableIntent {
+        intent: DurableIntent {
+            event_seq: receipt.claim.event_seq,
+            task_id: request.task_id.clone(),
+            attempt_id: request.attempt_id.clone(),
+            outbox_key: key,
+            duplicate: receipt.claim.duplicate,
+        },
+        reservation: receipt.reservation,
     })
 }
 
@@ -808,6 +879,175 @@ mod tests {
             Some(&request.attempt_id)
         );
         drop(reopened);
+        remove_database(&path);
+    }
+
+    #[test]
+    fn protected_controller_commits_one_bound_budget_and_rechecks_retry_authority() {
+        use admiralty_runtime::reservations::{
+            AccountId, CurrencyUnit, MinorUnits, ReservationEvent, ReservationLedger,
+            ReservationScope, ScopeLimits,
+        };
+        use admiralty_store::admission_reservations::{
+            ReservationAuthority, ReservationBinding, ReservationCommand, ledger_digest,
+        };
+        use std::{
+            any::Any,
+            sync::atomic::{AtomicBool, Ordering},
+        };
+        struct Policy(AtomicBool);
+        impl ReservationAuthority for Policy {
+            fn authorize_write(
+                &self,
+                _: &ReservationBinding<'_>,
+                proof: &(dyn Any + Send + Sync),
+            ) -> bool {
+                proof.is::<()>() && !self.0.load(Ordering::SeqCst)
+            }
+            fn authorize_read(
+                &self,
+                _: &ReservationLedger,
+                proof: &(dyn Any + Send + Sync),
+            ) -> bool {
+                proof.is::<()>() && !self.0.load(Ordering::SeqCst)
+            }
+        }
+        let path = database();
+        let policy = Arc::new(Policy(AtomicBool::new(false)));
+        let store = Store::open_with_startup_authorities(
+            &path,
+            admiralty_store::StoreAuthorities {
+                reservations: Some(policy.clone()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        store
+            .append(
+                SourceIdentity {
+                    producer_id: "controller-test".into(),
+                    incarnation: "fixed-incarnation".into(),
+                    sequence: "1".into(),
+                },
+                DomainEvent::TaskSubmitted {
+                    contract: contract(),
+                },
+                "original".into(),
+            )
+            .unwrap();
+        let unit = CurrencyUnit::new("USD", 2).unwrap();
+        let account = AccountId::new("fixture").unwrap();
+        let ledger = store.reservation_ledger(Arc::new(())).unwrap();
+        store
+            .record_reservation(
+                ReservationCommand {
+                    schema_version: 1,
+                    command_id: "limits".into(),
+                    source: SourceIdentity {
+                        producer_id: "budget".into(),
+                        incarnation: "fixed-incarnation".into(),
+                        sequence: "1".into(),
+                    },
+                    expected_ledger_revision: 0,
+                    expected_ledger_digest: ledger_digest(&ledger).unwrap(),
+                    launch_intent_digest: None,
+                    event: ReservationEvent::SetLimits {
+                        event_id: "limits".into(),
+                        account_id: account.clone(),
+                        limits: ScopeLimits {
+                            unit: unit.clone(),
+                            account: Some(MinorUnits::new(100)),
+                            project: Some(MinorUnits::new(100)),
+                            root: Some(MinorUnits::new(100)),
+                        },
+                    },
+                },
+                Arc::new(()),
+            )
+            .unwrap();
+        let request = request();
+        let task = store.snapshot().unwrap().projection.tasks[&request.task_id].clone();
+        let intent = planned_launch_intent(&task, &request).unwrap();
+        let ledger = store.reservation_ledger(Arc::new(())).unwrap();
+        let reservation = ReservationCommand {
+            schema_version: 1,
+            command_id: "reserve-controller".into(),
+            source: request.source.clone(),
+            expected_ledger_revision: ledger.revision,
+            expected_ledger_digest: ledger_digest(&ledger).unwrap(),
+            launch_intent_digest: Some(admiralty_store::outbox::intent_digest(&intent).unwrap()),
+            event: ReservationEvent::Reserve {
+                event_id: "reserve-controller".into(),
+                reservation_id: "reserved-attempt".into(),
+                scope: ReservationScope {
+                    project_id: task.contract.project_id.clone(),
+                    root_id: task.contract.root_id.clone(),
+                    task_id: request.task_id.clone(),
+                    attempt_id: request.attempt_id.clone(),
+                    owner: request.owner.clone(),
+                    incarnation: request.source.incarnation.clone(),
+                    contract_revision: task.contract.revision,
+                    contract_digest: request.expected_contract_digest.clone(),
+                    authority_ref: task.contract.authority_ref.clone(),
+                    resource_claims_digest: request.policy_digest.clone(),
+                    account_id: account,
+                    unit,
+                },
+                correlation_id: request.run_id.clone(),
+                amount: MinorUnits::new(60),
+            },
+        };
+        let first = admit_one_reserved(
+            &store,
+            &PermitAdmission,
+            &request,
+            reservation.clone(),
+            Arc::new(()),
+        )
+        .unwrap();
+        assert!(!first.intent.duplicate);
+        let retry = admit_one_reserved(
+            &store,
+            &PermitAdmission,
+            &request,
+            reservation.clone(),
+            Arc::new(()),
+        )
+        .unwrap();
+        assert!(retry.intent.duplicate);
+        assert_eq!(retry.reservation.receipt, first.reservation.receipt);
+        let mut wrong = request.clone();
+        wrong.model = "different-model".into();
+        assert!(
+            admit_one_reserved(
+                &store,
+                &PermitAdmission,
+                &wrong,
+                reservation.clone(),
+                Arc::new(())
+            )
+            .is_err()
+        );
+        assert_eq!(
+            store
+                .reservation_ledger(Arc::new(()))
+                .unwrap()
+                .reservations
+                .len(),
+            1
+        );
+        policy.0.store(true, Ordering::SeqCst);
+        assert!(
+            admit_one_reserved(
+                &store,
+                &PermitAdmission,
+                &request,
+                reservation,
+                Arc::new(())
+            )
+            .is_err()
+        );
+        drop(store);
         remove_database(&path);
     }
 
