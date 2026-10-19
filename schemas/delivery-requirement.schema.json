@@ -1,0 +1,157 @@
+{
+  "$defs": {
+    "DeliveryStage": {
+      "enum": [
+        "candidate",
+        "verified",
+        "merged",
+        "packaged",
+        "staged",
+        "installed",
+        "running",
+        "released"
+      ],
+      "type": "string"
+    },
+    "DeliveryTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "requirement": {
+          "$ref": "#/$defs/TargetRequirement"
+        },
+        "target_kind": {
+          "$ref": "#/$defs/DeliveryTargetKind"
+        }
+      },
+      "required": [
+        "id",
+        "target_kind",
+        "requirement"
+      ],
+      "type": "object"
+    },
+    "DeliveryTargetKind": {
+      "enum": [
+        "repository",
+        "deployment"
+      ],
+      "type": "string"
+    },
+    "TargetRequirement": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "unknown",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "required",
+              "type": "string"
+            },
+            "stage": {
+              "$ref": "#/$defs/DeliveryStage"
+            }
+          },
+          "required": [
+            "kind",
+            "stage"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "optional",
+              "type": "string"
+            },
+            "stage": {
+              "$ref": "#/$defs/DeliveryStage"
+            }
+          },
+          "required": [
+            "kind",
+            "stage"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "not_applicable",
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "reason"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "TaskId": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Outside TaskContractv1. A generation is a new immutable requirement, never\na rewrite of prior evidence. Unknown is never optional/not-applicable.",
+  "properties": {
+    "contract_digest": {
+      "type": "string"
+    },
+    "contract_revision": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "generation": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "targets": {
+      "items": {
+        "$ref": "#/$defs/DeliveryTarget"
+      },
+      "type": "array"
+    },
+    "task_id": {
+      "$ref": "#/$defs/TaskId"
+    }
+  },
+  "required": [
+    "schema_version",
+    "task_id",
+    "contract_revision",
+    "contract_digest",
+    "generation",
+    "targets"
+  ],
+  "title": "DeliveryRequirement",
+  "type": "object"
+}

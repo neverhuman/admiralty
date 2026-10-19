@@ -53,6 +53,33 @@
       "types": "./generated/validators.d.mts",
       "import": "./generated/validators.mjs",
       "default": "./generated/validators.mjs"
+    },
+    "./intake-batch": {
+      "types": "./generated/intake-batch.ts"
+    },
+    "./source-provenance": {
+      "types": "./generated/source-provenance.ts"
+    },
+    "./intake-preview": {
+      "types": "./generated/intake-preview.ts"
+    },
+    "./work-order-revision": {
+      "types": "./generated/work-order-revision.ts"
+    },
+    "./record-intake-request": {
+      "types": "./generated/record-intake-request.ts"
+    },
+    "./record-intake-receipt": {
+      "types": "./generated/record-intake-receipt.ts"
+    },
+    "./delivery-requirement": {
+      "types": "./generated/delivery-requirement.ts"
+    },
+    "./duplicate-query": {
+      "types": "./generated/duplicate-query.ts"
+    },
+    "./duplicate-page": {
+      "types": "./generated/duplicate-page.ts"
     }
   },
   "sideEffects": false

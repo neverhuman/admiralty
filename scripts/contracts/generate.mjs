@@ -26,6 +26,15 @@ const specifications = [
   ['config-layer-receipt', 'ConfigLayerReceipt'],
   ['provenance-contribution', 'ProvenanceContribution'],
   ['views-snapshot', 'ViewsSnapshot'],
+  ['intake-batch', 'IntakeBatch'],
+  ['source-provenance', 'SourceProvenance'],
+  ['intake-preview', 'IntakePreview'],
+  ['work-order-revision', 'WorkOrderRevision'],
+  ['record-intake-request', 'RecordIntakeRequest'],
+  ['record-intake-receipt', 'RecordIntakeReceipt'],
+  ['delivery-requirement', 'DeliveryRequirement'],
+  ['duplicate-query', 'DuplicateQuery'],
+  ['duplicate-page', 'DuplicatePage'],
 ];
 const check = process.argv.length === 3 && process.argv[2] === '--check';
 if (process.argv.length > 2 && !check) {
@@ -63,7 +72,16 @@ function stable(value) {
 function runtimeSchema(value) {
   if (Array.isArray(value)) return value.map(runtimeSchema);
   if (!value || typeof value !== 'object') return value;
-  const result = Object.fromEntries(Object.entries(value).map(([key, child]) => [key, runtimeSchema(child)]));
+  const schemaMaps = new Set(['properties', 'patternProperties', '$defs', 'definitions', 'dependentSchemas']);
+  const dataKeywords = new Set(['const', 'enum', 'default', 'examples']);
+  const result = Object.fromEntries(Object.entries(value).map(([key, child]) => {
+    // A domain property named `format` is not a schema format annotation on
+    // the surrounding properties map. Likewise literal data is never a schema.
+    if (schemaMaps.has(key) && child && typeof child === 'object' && !Array.isArray(child)) {
+      return [key, Object.fromEntries(Object.entries(child).map(([name, schema]) => [name, runtimeSchema(schema)]))];
+    }
+    return [key, dataKeywords.has(key) ? child : runtimeSchema(child)];
+  }));
   if (result.format !== undefined) {
     const bounds = { uint16: [0, 65535], uint32: [0, 4294967295], int32: [-2147483648, 2147483647] }[result.format];
     const integer = result.type === 'integer' || (Array.isArray(result.type) && result.type.includes('integer') && result.type.every(type => type === 'integer' || type === 'null'));

@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "CommandId": {
+      "type": "string"
+    },
+    "OriginReference": {
+      "additionalProperties": false,
+      "description": "Opaque lookup data only: no fetching, path traversal or authorization.",
+      "properties": {
+        "record_id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "system": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "system",
+        "record_id",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "ProjectId": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "canonical_digest": {
+      "type": "string"
+    },
+    "command_id": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CommandId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "cursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limit": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "origin": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OriginReference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "project_id": {
+      "$ref": "#/$defs/ProjectId"
+    },
+    "raw_digest": {
+      "type": "string"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "project_id",
+    "raw_digest",
+    "canonical_digest",
+    "limit"
+  ],
+  "title": "DuplicateQuery",
+  "type": "object"
+}

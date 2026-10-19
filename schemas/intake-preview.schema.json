@@ -1,0 +1,733 @@
+{
+  "$defs": {
+    "AcceptanceCriterion": {
+      "additionalProperties": false,
+      "properties": {
+        "check_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "check_ids"
+      ],
+      "type": "object"
+    },
+    "CheckSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "program": {
+          "type": "string"
+        },
+        "timeout_secs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "program",
+        "args",
+        "cwd",
+        "timeout_secs"
+      ],
+      "type": "object"
+    },
+    "DeliveryRequirement": {
+      "additionalProperties": false,
+      "description": "Outside TaskContractv1. A generation is a new immutable requirement, never\na rewrite of prior evidence. Unknown is never optional/not-applicable.",
+      "properties": {
+        "contract_digest": {
+          "type": "string"
+        },
+        "contract_revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "generation": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/DeliveryTarget"
+          },
+          "type": "array"
+        },
+        "task_id": {
+          "$ref": "#/$defs/TaskId"
+        }
+      },
+      "required": [
+        "schema_version",
+        "task_id",
+        "contract_revision",
+        "contract_digest",
+        "generation",
+        "targets"
+      ],
+      "type": "object"
+    },
+    "DeliveryStage": {
+      "enum": [
+        "candidate",
+        "verified",
+        "merged",
+        "packaged",
+        "staged",
+        "installed",
+        "running",
+        "released"
+      ],
+      "type": "string"
+    },
+    "DeliveryTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "requirement": {
+          "$ref": "#/$defs/TargetRequirement"
+        },
+        "target_kind": {
+          "$ref": "#/$defs/DeliveryTargetKind"
+        }
+      },
+      "required": [
+        "id",
+        "target_kind",
+        "requirement"
+      ],
+      "type": "object"
+    },
+    "DeliveryTargetKind": {
+      "enum": [
+        "repository",
+        "deployment"
+      ],
+      "type": "string"
+    },
+    "IntakeFormat": {
+      "enum": [
+        "plain_text",
+        "json_batch"
+      ],
+      "type": "string"
+    },
+    "OriginReference": {
+      "additionalProperties": false,
+      "description": "Opaque lookup data only: no fetching, path traversal or authorization.",
+      "properties": {
+        "record_id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "system": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "system",
+        "record_id",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "OutcomeInput": {
+      "additionalProperties": false,
+      "properties": {
+        "constraints": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "delivery": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DeliveryRequirement"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "source_spans": {
+          "default": [],
+          "description": "Raw source byte offsets, NOT decoded `text` offsets. Empty is unresolved.",
+          "items": {
+            "$ref": "#/$defs/SourceSpan"
+          },
+          "type": "array"
+        },
+        "task": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TaskContract"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "description"
+      ],
+      "type": "object"
+    },
+    "OutcomePreview": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outcome": {
+          "$ref": "#/$defs/OutcomeInput"
+        },
+        "outcome_digest": {
+          "description": "Domain-separated exact outcome including its raw provenance spans.",
+          "type": "string"
+        },
+        "unresolved": {
+          "items": {
+            "$ref": "#/$defs/UnresolvedFact"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "outcome",
+        "outcome_digest",
+        "unresolved"
+      ],
+      "type": "object"
+    },
+    "PrincipalId": {
+      "type": "string"
+    },
+    "ProjectId": {
+      "type": "string"
+    },
+    "RequestPreview": {
+      "additionalProperties": false,
+      "properties": {
+        "claimed_project_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "constraints": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "index": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "outcomes": {
+          "items": {
+            "$ref": "#/$defs/OutcomePreview"
+          },
+          "type": "array"
+        },
+        "rationale": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "raw_span": {
+          "$ref": "#/$defs/SourceSpan",
+          "description": "Whole plain-text input or exact raw JSON item object, including syntax."
+        },
+        "requested_timing": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "unresolved": {
+          "items": {
+            "$ref": "#/$defs/UnresolvedFact"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "index",
+        "raw_span",
+        "text",
+        "constraints",
+        "outcomes",
+        "unresolved"
+      ],
+      "type": "object"
+    },
+    "RequesterAttribution": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "unknown",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "claimed",
+              "type": "string"
+            },
+            "requester": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "requester"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RootId": {
+      "type": "string"
+    },
+    "ScopeSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_generation": {
+          "allOf": [
+            {
+              "pattern": "^(?:0|[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|1844674407370955[0-0][0-9]{3}|18446744073709551[0-5][0-9]{2}|184467440737095516[0-0][0-9]{1}|1844674407370955161[0-4]|18446744073709551615)(?![\\s\\S])",
+              "type": "string"
+            },
+            {
+              "not": {
+                "const": "0"
+              }
+            }
+          ],
+          "description": "Canonical positive decimal string on the public wire; never a JS number."
+        },
+        "authority_ref": {
+          "type": "string"
+        },
+        "principal": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "root_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RootId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "principal",
+        "authority_ref",
+        "authority_generation"
+      ],
+      "type": "object"
+    },
+    "SourceProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "captured_at": {
+          "description": "Supplied observation time; no wall-clock lookup or freshness claim.",
+          "type": "string"
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OriginReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requester": {
+          "$ref": "#/$defs/RequesterAttribution"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "source_id",
+        "revision",
+        "captured_at",
+        "requester"
+      ],
+      "type": "object"
+    },
+    "SourceSpan": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "type": "object"
+    },
+    "TargetRequirement": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "unknown",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "required",
+              "type": "string"
+            },
+            "stage": {
+              "$ref": "#/$defs/DeliveryStage"
+            }
+          },
+          "required": [
+            "kind",
+            "stage"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "optional",
+              "type": "string"
+            },
+            "stage": {
+              "$ref": "#/$defs/DeliveryStage"
+            }
+          },
+          "required": [
+            "kind",
+            "stage"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "not_applicable",
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "reason"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "TaskContract": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_ref": {
+          "type": "string"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/CheckSpec"
+          },
+          "type": "array"
+        },
+        "criteria": {
+          "items": {
+            "$ref": "#/$defs/AcceptanceCriterion"
+          },
+          "type": "array"
+        },
+        "dependencies": {
+          "items": {
+            "$ref": "#/$defs/TaskId"
+          },
+          "type": "array"
+        },
+        "forbidden_paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "max_attempts": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "non_goals": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "owned_paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "project_id": {
+          "$ref": "#/$defs/ProjectId"
+        },
+        "read_first": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "root_id": {
+          "$ref": "#/$defs/RootId"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "simulated": {
+          "type": "boolean"
+        },
+        "task_id": {
+          "$ref": "#/$defs/TaskId"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "root_id",
+        "task_id",
+        "revision",
+        "title",
+        "objective",
+        "non_goals",
+        "owned_paths",
+        "forbidden_paths",
+        "read_first",
+        "dependencies",
+        "criteria",
+        "checks",
+        "authority_ref",
+        "max_attempts",
+        "simulated"
+      ],
+      "type": "object"
+    },
+    "TaskId": {
+      "type": "string"
+    },
+    "UnresolvedFact": {
+      "enum": [
+        "scope_unknown",
+        "claimed_scope_mismatch",
+        "attribution_unknown",
+        "outcome_unknown",
+        "task_contract_missing",
+        "criteria_unknown",
+        "source_spans_unknown",
+        "task_scope_mismatch",
+        "delivery_unknown"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "authorized_scope": {
+      "$ref": "#/$defs/ScopeSnapshot"
+    },
+    "canonical_digest": {
+      "type": "string"
+    },
+    "format": {
+      "$ref": "#/$defs/IntakeFormat"
+    },
+    "manifest_digest": {
+      "description": "Binds all source spans, provenance, policy and authorized scope too.",
+      "type": "string"
+    },
+    "parser_revision": {
+      "type": "string"
+    },
+    "policy_digest": {
+      "description": "Domain-separated identity of the exact supplied revision and all caps.",
+      "type": "string"
+    },
+    "policy_revision": {
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/SourceProvenance"
+    },
+    "raw_byte_length": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "raw_digest": {
+      "type": "string"
+    },
+    "requests": {
+      "items": {
+        "$ref": "#/$defs/RequestPreview"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "parser_revision",
+    "policy_revision",
+    "policy_digest",
+    "format",
+    "raw_digest",
+    "canonical_digest",
+    "raw_byte_length",
+    "provenance",
+    "authorized_scope",
+    "requests",
+    "manifest_digest"
+  ],
+  "title": "IntakePreview",
+  "type": "object"
+}

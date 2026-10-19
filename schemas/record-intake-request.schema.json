@@ -1,0 +1,786 @@
+{
+  "$defs": {
+    "AcceptanceCriterion": {
+      "additionalProperties": false,
+      "properties": {
+        "check_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "check_ids"
+      ],
+      "type": "object"
+    },
+    "CheckSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "program": {
+          "type": "string"
+        },
+        "timeout_secs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "program",
+        "args",
+        "cwd",
+        "timeout_secs"
+      ],
+      "type": "object"
+    },
+    "CommandId": {
+      "type": "string"
+    },
+    "DeliveryRequirement": {
+      "additionalProperties": false,
+      "description": "Outside TaskContractv1. A generation is a new immutable requirement, never\na rewrite of prior evidence. Unknown is never optional/not-applicable.",
+      "properties": {
+        "contract_digest": {
+          "type": "string"
+        },
+        "contract_revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "generation": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/DeliveryTarget"
+          },
+          "type": "array"
+        },
+        "task_id": {
+          "$ref": "#/$defs/TaskId"
+        }
+      },
+      "required": [
+        "schema_version",
+        "task_id",
+        "contract_revision",
+        "contract_digest",
+        "generation",
+        "targets"
+      ],
+      "type": "object"
+    },
+    "DeliveryStage": {
+      "enum": [
+        "candidate",
+        "verified",
+        "merged",
+        "packaged",
+        "staged",
+        "installed",
+        "running",
+        "released"
+      ],
+      "type": "string"
+    },
+    "DeliveryTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "requirement": {
+          "$ref": "#/$defs/TargetRequirement"
+        },
+        "target_kind": {
+          "$ref": "#/$defs/DeliveryTargetKind"
+        }
+      },
+      "required": [
+        "id",
+        "target_kind",
+        "requirement"
+      ],
+      "type": "object"
+    },
+    "DeliveryTargetKind": {
+      "enum": [
+        "repository",
+        "deployment"
+      ],
+      "type": "string"
+    },
+    "IntakeFormat": {
+      "enum": [
+        "plain_text",
+        "json_batch"
+      ],
+      "type": "string"
+    },
+    "OriginReference": {
+      "additionalProperties": false,
+      "description": "Opaque lookup data only: no fetching, path traversal or authorization.",
+      "properties": {
+        "record_id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "system": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "system",
+        "record_id",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "PrincipalId": {
+      "type": "string"
+    },
+    "ProjectId": {
+      "type": "string"
+    },
+    "RequesterAttribution": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "unknown",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "claimed",
+              "type": "string"
+            },
+            "requester": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "requester"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RootId": {
+      "type": "string"
+    },
+    "ScopeSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_generation": {
+          "allOf": [
+            {
+              "pattern": "^(?:0|[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|1844674407370955[0-0][0-9]{3}|18446744073709551[0-5][0-9]{2}|184467440737095516[0-0][0-9]{1}|1844674407370955161[0-4]|18446744073709551615)(?![\\s\\S])",
+              "type": "string"
+            },
+            {
+              "not": {
+                "const": "0"
+              }
+            }
+          ],
+          "description": "Canonical positive decimal string on the public wire; never a JS number."
+        },
+        "authority_ref": {
+          "type": "string"
+        },
+        "principal": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "root_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RootId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "principal",
+        "authority_ref",
+        "authority_generation"
+      ],
+      "type": "object"
+    },
+    "SelectedTask": {
+      "additionalProperties": false,
+      "properties": {
+        "binding": {
+          "$ref": "#/$defs/WorkOrderTaskBinding"
+        },
+        "delivery": {
+          "$ref": "#/$defs/DeliveryRequirement"
+        },
+        "task": {
+          "$ref": "#/$defs/TaskContract"
+        }
+      },
+      "required": [
+        "binding",
+        "task",
+        "delivery"
+      ],
+      "type": "object"
+    },
+    "SourcePayload": {
+      "description": "Source references are claims until the Store verifies bytes and an\ninterlocked lifetime pin. Merely decoding an ArtifactClaim grants no custody.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "inline_utf8",
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "text"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "artifact_ref": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "artifact_claim",
+              "type": "string"
+            },
+            "pin_receipt_ref": {
+              "type": "string"
+            },
+            "raw_digest": {
+              "type": "string"
+            },
+            "size_bytes": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "raw_digest",
+            "size_bytes",
+            "artifact_ref",
+            "pin_receipt_ref"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SourceProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "captured_at": {
+          "description": "Supplied observation time; no wall-clock lookup or freshness claim.",
+          "type": "string"
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OriginReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requester": {
+          "$ref": "#/$defs/RequesterAttribution"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "source_id",
+        "revision",
+        "captured_at",
+        "requester"
+      ],
+      "type": "object"
+    },
+    "SourceSpan": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "type": "object"
+    },
+    "TargetRequirement": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "unknown",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "required",
+              "type": "string"
+            },
+            "stage": {
+              "$ref": "#/$defs/DeliveryStage"
+            }
+          },
+          "required": [
+            "kind",
+            "stage"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "optional",
+              "type": "string"
+            },
+            "stage": {
+              "$ref": "#/$defs/DeliveryStage"
+            }
+          },
+          "required": [
+            "kind",
+            "stage"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "not_applicable",
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "reason"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "TaskContract": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_ref": {
+          "type": "string"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/CheckSpec"
+          },
+          "type": "array"
+        },
+        "criteria": {
+          "items": {
+            "$ref": "#/$defs/AcceptanceCriterion"
+          },
+          "type": "array"
+        },
+        "dependencies": {
+          "items": {
+            "$ref": "#/$defs/TaskId"
+          },
+          "type": "array"
+        },
+        "forbidden_paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "max_attempts": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "non_goals": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "owned_paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "project_id": {
+          "$ref": "#/$defs/ProjectId"
+        },
+        "read_first": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "root_id": {
+          "$ref": "#/$defs/RootId"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "simulated": {
+          "type": "boolean"
+        },
+        "task_id": {
+          "$ref": "#/$defs/TaskId"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "root_id",
+        "task_id",
+        "revision",
+        "title",
+        "objective",
+        "non_goals",
+        "owned_paths",
+        "forbidden_paths",
+        "read_first",
+        "dependencies",
+        "criteria",
+        "checks",
+        "authority_ref",
+        "max_attempts",
+        "simulated"
+      ],
+      "type": "object"
+    },
+    "TaskId": {
+      "type": "string"
+    },
+    "WorkOrderRevision": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_digest": {
+          "type": "string"
+        },
+        "constraints": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "format": {
+          "$ref": "#/$defs/IntakeFormat",
+          "description": "Exact chosen parse mode, never inferred from JSON-looking source bytes."
+        },
+        "id": {
+          "type": "string"
+        },
+        "outcome": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parser_revision": {
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/SourceProvenance"
+        },
+        "rationale": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "raw_digest": {
+          "type": "string"
+        },
+        "requested_timing": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "scope": {
+          "$ref": "#/$defs/ScopeSnapshot"
+        },
+        "source_payload": {
+          "$ref": "#/$defs/SourcePayload"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "revision",
+        "scope",
+        "provenance",
+        "constraints",
+        "raw_digest",
+        "canonical_digest",
+        "parser_revision",
+        "format",
+        "source_payload"
+      ],
+      "type": "object"
+    },
+    "WorkOrderTaskBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_digest": {
+          "type": "string"
+        },
+        "contract_revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "outcome_digest": {
+          "type": "string"
+        },
+        "outcome_id": {
+          "type": "string"
+        },
+        "request_index": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source_spans": {
+          "items": {
+            "$ref": "#/$defs/SourceSpan"
+          },
+          "type": "array"
+        },
+        "task_id": {
+          "$ref": "#/$defs/TaskId"
+        },
+        "work_order_id": {
+          "type": "string"
+        },
+        "work_order_revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "work_order_id",
+        "work_order_revision",
+        "request_index",
+        "outcome_id",
+        "outcome_digest",
+        "source_spans",
+        "task_id",
+        "contract_revision",
+        "contract_digest"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "authority_generation": {
+      "allOf": [
+        {
+          "pattern": "^(?:0|[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|1844674407370955[0-0][0-9]{3}|18446744073709551[0-5][0-9]{2}|184467440737095516[0-0][0-9]{1}|1844674407370955161[0-4]|18446744073709551615)(?![\\s\\S])",
+          "type": "string"
+        },
+        {
+          "not": {
+            "const": "0"
+          }
+        }
+      ],
+      "description": "Canonical positive decimal string on the public wire."
+    },
+    "command_id": {
+      "$ref": "#/$defs/CommandId"
+    },
+    "expected_plan_revision": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "expected_work_order_revision": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "plan_id": {
+      "type": "string"
+    },
+    "policy_digest": {
+      "type": "string"
+    },
+    "policy_revision": {
+      "type": "string"
+    },
+    "preview_manifest_digest": {
+      "type": "string"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "selected_tasks": {
+      "items": {
+        "$ref": "#/$defs/SelectedTask"
+      },
+      "type": "array"
+    },
+    "work_order": {
+      "$ref": "#/$defs/WorkOrderRevision"
+    }
+  },
+  "required": [
+    "schema_version",
+    "command_id",
+    "expected_work_order_revision",
+    "plan_id",
+    "expected_plan_revision",
+    "preview_manifest_digest",
+    "policy_revision",
+    "policy_digest",
+    "authority_generation",
+    "work_order",
+    "selected_tasks"
+  ],
+  "title": "RecordIntakeRequest",
+  "type": "object"
+}

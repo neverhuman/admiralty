@@ -10,6 +10,9 @@ import test from 'node:test';
 import { validateTaskContract, validateCoordinationMessage, validateDomainEvent, validateDomainEventV2,
   validateWorkplan, validateVerificationReceipt, validateVerificationPolicy, validateInterfaceContract,
   validateConfigLayer, validateConfigPatch, validateConfigLayerReceipt, validateProvenanceContribution,
+  validateIntakeBatch, validateSourceProvenance, validateIntakePreview, validateWorkOrderRevision,
+  validateRecordIntakeRequest, validateRecordIntakeReceipt, validateDeliveryRequirement,
+  validateDuplicateQuery, validateDuplicatePage,
   SUPPORTED_SCHEMA_VERSION, CONTRACT_SCHEMA_FINGERPRINTS } from './generated/validators.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -110,7 +113,7 @@ test('standalone package entry has no compiler dependency and exports supported 
   assert.equal(SUPPORTED_SCHEMA_VERSION, 1);
   const generated = path.join(root, 'packages/contracts/generated');
   const runtimeModules = (await readdir(generated)).filter(name => /^validators(?:-[a-z-]+)?\.mjs$/.test(name));
-  assert.equal(runtimeModules.length, 11, 'compatibility entry, shared base and nine separate public roots');
+  assert.equal(runtimeModules.length, 20, 'compatibility entry, shared base and eighteen separate public roots');
   for (const name of runtimeModules) {
     const source = await readFile(path.join(generated, name), 'utf8');
     assert.doesNotMatch(source, /\brequire\s*\(|\bimport\s|\beval\s*\(|\bnew Function\s*\(/, name);
@@ -206,6 +209,19 @@ test('generation and drift checks cover standalone code and declarations without
     assert.equal(await readFile(separateGuard, 'utf8'), '// drift\n');
     expectChildExit(invoke([]), 0, 'contracts:regenerate-after-drift');
     expectChildExit(invoke(['--check']), 0, 'contracts:check-after-regeneration');
+    // WorkOrderRevision has a real domain field named format. Schema-map
+    // traversal must preserve it, while unknown schema annotations still deny.
+    const orderSchema = JSON.parse(await readFile(path.join(directory, 'schemas/work-order-revision.schema.json'), 'utf8'));
+    assert.ok(orderSchema.properties.format);
+    const provenancePath = path.join(directory, 'schemas/source-provenance.schema.json');
+    const originalProvenance = await readFile(provenancePath, 'utf8');
+    const unsupported = JSON.parse(originalProvenance);
+    unsupported.properties.captured_at.format = 'unsupported-format';
+    await writeFile(provenancePath, JSON.stringify(unsupported));
+    const formatFailure = invoke([]);
+    expectChildExit(formatFailure, 1, 'contracts:reject-unsupported-format');
+    assert.match(formatFailure.stderr, /unsupported Rust schema format unsupported-format/);
+    await writeFile(provenancePath, originalProvenance);
     const schema = path.join(directory, 'schemas/task-contract.schema.json');
     const value = JSON.parse(await readFile(schema, 'utf8')); value.properties.title = { $ref: 'https://example.com/schema' };
     await writeFile(schema, JSON.stringify(value));
@@ -218,7 +234,11 @@ const publicFixtures = JSON.parse(await readFile(new URL('./fixtures/public-root
 const publicValidators = { Workplan: validateWorkplan, VerificationReceipt: validateVerificationReceipt,
   VerificationPolicy: validateVerificationPolicy, InterfaceContract: validateInterfaceContract,
   ConfigLayer: validateConfigLayer, ConfigPatch: validateConfigPatch,
-  ConfigLayerReceipt: validateConfigLayerReceipt, ProvenanceContribution: validateProvenanceContribution };
+  ConfigLayerReceipt: validateConfigLayerReceipt, ProvenanceContribution: validateProvenanceContribution,
+  IntakeBatch: validateIntakeBatch, SourceProvenance: validateSourceProvenance, IntakePreview: validateIntakePreview,
+  WorkOrderRevision: validateWorkOrderRevision, RecordIntakeRequest: validateRecordIntakeRequest,
+  RecordIntakeReceipt: validateRecordIntakeReceipt, DeliveryRequirement: validateDeliveryRequirement,
+  DuplicateQuery: validateDuplicateQuery, DuplicatePage: validateDuplicatePage };
 
 function rejectUnchanged(validate, value) {
   const before = JSON.stringify(value);
@@ -226,9 +246,9 @@ function rejectUnchanged(validate, value) {
   assert.equal(JSON.stringify(value), before, 'guards must preserve rejected data');
 }
 
-test('all eight public roots share Rust roundtrip fixtures and package guards', async () => {
+test('public roots share Rust roundtrip fixtures and package guards', async () => {
   const publicApi = await import('@admiralty/contracts');
-  assert.equal(Object.keys(CONTRACT_SCHEMA_FINGERPRINTS).length, 13);
+  assert.equal(Object.keys(CONTRACT_SCHEMA_FINGERPRINTS).length, 22);
   assert.deepEqual(Object.keys(publicFixtures).sort(), Object.keys(publicValidators).sort());
   for (const [name, validate] of Object.entries(publicValidators)) {
     const fixture = structuredClone(publicFixtures[name]);
@@ -346,4 +366,72 @@ test('a real TypeScript consumer resolves every public root, subpath and precisi
     env: { ...process.env, GOMAXPROCS: '1' },
   });
   expectChildExit(checked, 0, 'contracts:typescript-consumer');
+});
+
+
+test('public intake generations retain exact positive u64 strings in every nested location', async () => {
+  const cases = JSON.parse(await readFile(new URL('./fixtures/decimal-u64.json', import.meta.url), 'utf8'));
+  for (const item of cases) {
+    const expected = item.accepted && item.value !== '0';
+    for (const [name, locate] of [
+      ['IntakePreview', value => value.authorized_scope],
+      ['WorkOrderRevision', value => value.scope],
+      ['RecordIntakeRequest', value => value],
+      ['RecordIntakeRequest', value => value.work_order.scope],
+    ]) {
+      const value = structuredClone(publicFixtures[name]);
+      locate(value).authority_generation = item.value;
+      const before = JSON.stringify(value);
+      assert.equal(publicValidators[name](value), expected, `${name}: ${JSON.stringify(item.value)}`);
+      assert.equal(JSON.stringify(value), before, 'never coerce or round an authority generation');
+    }
+  }
+  for (const generation of ['9007199254740993', '18446744073709551615']) {
+    const value = structuredClone(publicFixtures.RecordIntakeRequest);
+    value.authority_generation = generation;
+    value.work_order.scope.authority_generation = generation;
+    assert.equal(validateRecordIntakeRequest(value), true);
+    assert.equal(value.authority_generation, generation);
+  }
+});
+
+test('intake schemas reject forged authority fields, malformed boundaries and nested claims', () => {
+  for (const [name, mutate] of [
+    ['IntakeBatch', value => { value.items[0].outcomes[0].task.execution_qualified = true; }],
+    ['IntakeBatch', value => { value.items[0].outcomes[0].source_spans[0].start = 4294967296; }],
+    ['SourceProvenance', value => { value.requester = { kind: 'authenticated', requester: 'owner' }; }],
+    ['SourceProvenance', value => { value.origin.authenticated = true; }],
+    ['IntakePreview', value => { value.authorized_scope.authorized = true; }],
+    ['IntakePreview', value => { value.format = 'infer_from_content'; }],
+    ['IntakePreview', value => { value.requests[0].index = 65536; }],
+    ['WorkOrderRevision', value => { delete value.format; }],
+    ['WorkOrderRevision', value => { value.source_payload.custody_verified = true; }],
+    ['RecordIntakeRequest', value => { value.authenticated = true; }],
+    ['RecordIntakeRequest', value => { delete value.policy_digest; }],
+    ['RecordIntakeRequest', value => { value.selected_tasks[0].binding.request_index = 65536; }],
+    ['RecordIntakeRequest', value => { value.selected_tasks[0].task.acceptance_granted = true; }],
+    ['RecordIntakeReceipt', value => { value.execution_qualified = true; }],
+    ['RecordIntakeReceipt', value => { value.duplicate = 'true'; }],
+    ['DeliveryRequirement', value => { value.targets[0].requirement = { kind: 'unknown', stage: 'released' }; }],
+    ['DeliveryRequirement', value => { value.targets[0].requirement.stage = 'accepted'; }],
+    ['DuplicateQuery', value => { value.limit = 65536; }],
+    ['DuplicatePage', value => { value.coverage = { kind: 'partial' }; }],
+    ['DuplicatePage', value => { value.candidates[0].accepted = true; }],
+  ]) {
+    const value = structuredClone(publicFixtures[name]); mutate(value);
+    rejectUnchanged(publicValidators[name], value);
+  }
+  // Structurally valid data remains a claim. Only current Rust policy/source/
+  // selection/custody checks can reject an invented digest or grant an effect.
+  const shapedClaim = structuredClone(publicFixtures.RecordIntakeRequest);
+  shapedClaim.policy_digest = `sha256:${'b'.repeat(64)}`;
+  assert.equal(validateRecordIntakeRequest(shapedClaim), true);
+  assert.equal(validateSourceProvenance({ ...publicFixtures.SourceProvenance,
+    requester: { kind: 'claimed', requester: 'owner' } }), true);
+  const artifactClaim = structuredClone(publicFixtures.WorkOrderRevision);
+  artifactClaim.source_payload = { kind: 'artifact_claim', raw_digest: artifactClaim.raw_digest,
+    size_bytes: 123, artifact_ref: 'artifact:claim', pin_receipt_ref: 'pin:claim' };
+  assert.equal(validateWorkOrderRevision(artifactClaim), true, 'shape does not establish artifact custody');
+  rejectUnchanged(validateWorkOrderRevision, { ...artifactClaim,
+    source_payload: { ...artifactClaim.source_payload, custody_verified: true } });
 });

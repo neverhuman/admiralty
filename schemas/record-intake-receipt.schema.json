@@ -1,0 +1,142 @@
+{
+  "$defs": {
+    "CommandId": {
+      "type": "string"
+    },
+    "SourceSpan": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "type": "object"
+    },
+    "TaskId": {
+      "type": "string"
+    },
+    "WorkOrderTaskBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_digest": {
+          "type": "string"
+        },
+        "contract_revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "outcome_digest": {
+          "type": "string"
+        },
+        "outcome_id": {
+          "type": "string"
+        },
+        "request_index": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source_spans": {
+          "items": {
+            "$ref": "#/$defs/SourceSpan"
+          },
+          "type": "array"
+        },
+        "task_id": {
+          "$ref": "#/$defs/TaskId"
+        },
+        "work_order_id": {
+          "type": "string"
+        },
+        "work_order_revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "work_order_id",
+        "work_order_revision",
+        "request_index",
+        "outcome_id",
+        "outcome_digest",
+        "source_spans",
+        "task_id",
+        "contract_revision",
+        "contract_digest"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "command_id": {
+      "$ref": "#/$defs/CommandId"
+    },
+    "duplicate": {
+      "description": "True only when the writer returns an earlier identical command receipt.",
+      "type": "boolean"
+    },
+    "plan_id": {
+      "type": "string"
+    },
+    "plan_revision": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "preview_manifest_digest": {
+      "type": "string"
+    },
+    "request_digest": {
+      "type": "string"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "task_bindings": {
+      "items": {
+        "$ref": "#/$defs/WorkOrderTaskBinding"
+      },
+      "type": "array"
+    },
+    "work_order_id": {
+      "type": "string"
+    },
+    "work_order_revision": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "command_id",
+    "request_digest",
+    "work_order_id",
+    "work_order_revision",
+    "plan_id",
+    "plan_revision",
+    "preview_manifest_digest",
+    "task_bindings",
+    "duplicate"
+  ],
+  "title": "RecordIntakeReceipt",
+  "type": "object"
+}

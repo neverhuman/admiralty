@@ -1,0 +1,139 @@
+{
+  "$defs": {
+    "DuplicateCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_digest": {
+          "type": "string"
+        },
+        "contract_revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "freshness": {
+          "type": "string"
+        },
+        "lifecycle": {
+          "type": "string"
+        },
+        "reason": {
+          "$ref": "#/$defs/DuplicateReason"
+        },
+        "task_id": {
+          "$ref": "#/$defs/TaskId"
+        }
+      },
+      "required": [
+        "task_id",
+        "contract_revision",
+        "contract_digest",
+        "reason",
+        "lifecycle",
+        "freshness",
+        "evidence_refs"
+      ],
+      "type": "object"
+    },
+    "DuplicateCoverage": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "complete",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "continuation": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "partial",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "continuation"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "incomplete",
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "reason"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "DuplicateReason": {
+      "enum": [
+        "exact_command_identity",
+        "exact_source_identity",
+        "exact_command_collision",
+        "exact_source_collision",
+        "advisory_raw_content",
+        "advisory_canonical_content"
+      ],
+      "type": "string"
+    },
+    "TaskId": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "candidates": {
+      "items": {
+        "$ref": "#/$defs/DuplicateCandidate"
+      },
+      "type": "array"
+    },
+    "coverage": {
+      "$ref": "#/$defs/DuplicateCoverage"
+    },
+    "query_digest": {
+      "type": "string"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "query_digest",
+    "candidates",
+    "coverage"
+  ],
+  "title": "DuplicatePage",
+  "type": "object"
+}
