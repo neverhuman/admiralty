@@ -24,6 +24,13 @@ rtk proxy env ADMIRALTY_PROBE_SOURCE_SHA=<full-integrated-Admiralty-source-SHA> 
 
 Use a fresh, nonexistent fixture under a canonical owned0700 parent. The provider CLI must be the actual qualified canonical executable (not a shell shim), supported version, owned/root-owned and not group/world writable. The existing model registry must contain the exact enabled Codex CLI model and registered node/capabilities; no fallback selection occurs. Provider HOME must be existing, canonical, same-UID0700 and disjoint from the fixture, already qualified externally for HOME-default .codex authentication. No CODEX_HOME or credential value is accepted, inherited, read or copied. The auth-context reference is an opaque registered `auth-context:ID` only.
 
+Set `umask 077` in the shell that invokes both preparation and the authorized
+run. Git inherits that mask when creating fixture metadata; group-writable
+metadata is correctly refused by workspace preparation. This changes only the
+owned probe shell. It does not change the user manager, shared services or
+runtime permission guards. Preserve an already failed fixture and authorization;
+correcting the shell mask requires a new fixture and fresh authorization.
+
 ```
 rtk proxy <immutable-probe-binary> codex --root <fresh-private-fixture> --prepare-only --node <registered-node> --cpus <one-or-two-registered-cpus-as-comma-list> --registered-cpus <registered-scope-as-comma-list> --runtime-directory <qualified-runtime-directory> --slice <qualified-delegated-slice> --rustc <canonical-actual-rustc> --memory-mib 256 --max-tasks 16 --deadline-seconds 90 --codex-program <canonical-qualified-codex-binary> --model-registry <private-model-registry-json> --model-id <explicit-registry-model-id> --effort medium --provider-home <existing-qualified-private-provider-HOME> --auth-context-ref auth-context:<registered-profile-id>
 ```

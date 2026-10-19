@@ -1,0 +1,291 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T01:55:15.613Z",
+  "scope": "Superseded neverhuman/admiralty merged-PR workflow queue only",
+  "admission": [
+    {
+      "id": 39147672518,
+      "head": "020c751967e6b85d935c65a83fbefcf969604753",
+      "event": "pull_request",
+      "status": "queued",
+      "observed_utc": "2026-10-19T01:54:03.351Z",
+      "jobs": [
+        {
+          "id": 117734717169,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "id": 117734717448,
+          "status": "queued",
+          "conclusion": null
+        }
+      ],
+      "action": "cancel_superseded_merged_PR_queue",
+      "cancel_exit": 0,
+      "cancel_output": "✓ Request to cancel workflow 39147672518 submitted.\n"
+    },
+    {
+      "id": 39147326665,
+      "head": "f0a2463c40f55e29529d17a0ebae2eaa1b964f1c",
+      "event": "pull_request",
+      "status": "queued",
+      "observed_utc": "2026-10-19T01:54:05.287Z",
+      "jobs": [
+        {
+          "id": 117733710503,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "id": 117733710673,
+          "status": "queued",
+          "conclusion": null
+        }
+      ],
+      "action": "cancel_superseded_merged_PR_queue",
+      "cancel_exit": 0,
+      "cancel_output": "✓ Request to cancel workflow 39147326665 submitted.\n"
+    },
+    {
+      "id": 39146837024,
+      "head": "6321c0c65bd424248536615261506a985ae5d499",
+      "event": "pull_request",
+      "status": "queued",
+      "observed_utc": "2026-10-19T01:54:07.051Z",
+      "jobs": [
+        {
+          "id": 117732285390,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "id": 117732285609,
+          "status": "queued",
+          "conclusion": null
+        }
+      ],
+      "action": "cancel_superseded_merged_PR_queue",
+      "cancel_exit": 0,
+      "cancel_output": "✓ Request to cancel workflow 39146837024 submitted.\n"
+    },
+    {
+      "id": 39145214965,
+      "head": "9dea8dcfadef55d1a2f35842dd7babbc132df005",
+      "event": "pull_request",
+      "status": "queued",
+      "observed_utc": "2026-10-19T01:54:08.865Z",
+      "jobs": [
+        {
+          "id": 117727555765,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "id": 117727556000,
+          "status": "queued",
+          "conclusion": null
+        }
+      ],
+      "action": "cancel_superseded_merged_PR_queue",
+      "cancel_exit": 0,
+      "cancel_output": "✓ Request to cancel workflow 39145214965 submitted.\n"
+    },
+    {
+      "id": 39145138387,
+      "head": "34478801589c6b43118f3c4c2e7e775b93419463",
+      "event": "pull_request",
+      "status": "queued",
+      "observed_utc": "2026-10-19T01:54:10.507Z",
+      "jobs": [
+        {
+          "id": 117727338285,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "id": 117727338368,
+          "status": "queued",
+          "conclusion": null
+        }
+      ],
+      "action": "cancel_superseded_merged_PR_queue",
+      "cancel_exit": 0,
+      "cancel_output": "✓ Request to cancel workflow 39145138387 submitted.\n"
+    },
+    {
+      "id": 39128735146,
+      "head": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+      "event": "pull_request",
+      "status": "pending",
+      "observed_utc": "2026-10-19T01:54:12.248Z",
+      "jobs": [
+        {
+          "id": 117679298941,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "id": 117679299208,
+          "status": "queued",
+          "conclusion": null
+        }
+      ],
+      "action": "cancel_superseded_merged_PR_queue",
+      "cancel_exit": 0,
+      "cancel_output": "✓ Request to cancel workflow 39128735146 submitted.\n"
+    }
+  ],
+  "after": [
+    {
+      "id": 39147672518,
+      "result": {
+        "conclusion": "cancelled",
+        "head": "020c751967e6b85d935c65a83fbefcf969604753",
+        "id": 39147672518,
+        "jobs": [
+          {
+            "conclusion": "cancelled",
+            "databaseId": 117734717169,
+            "startedAt": "2026-10-18T17:01:39Z",
+            "status": "completed"
+          },
+          {
+            "conclusion": "cancelled",
+            "databaseId": 117734717448,
+            "startedAt": "2026-10-18T17:01:39Z",
+            "status": "completed"
+          }
+        ],
+        "status": "completed"
+      }
+    },
+    {
+      "id": 39147326665,
+      "result": {
+        "conclusion": "cancelled",
+        "head": "f0a2463c40f55e29529d17a0ebae2eaa1b964f1c",
+        "id": 39147326665,
+        "jobs": [
+          {
+            "conclusion": "cancelled",
+            "databaseId": 117733710503,
+            "startedAt": "2026-10-18T16:57:03Z",
+            "status": "completed"
+          },
+          {
+            "conclusion": "cancelled",
+            "databaseId": 117733710673,
+            "startedAt": "2026-10-18T16:57:03Z",
+            "status": "completed"
+          }
+        ],
+        "status": "completed"
+      }
+    },
+    {
+      "id": 39146837024,
+      "result": {
+        "conclusion": "cancelled",
+        "head": "6321c0c65bd424248536615261506a985ae5d499",
+        "id": 39146837024,
+        "jobs": [
+          {
+            "conclusion": "cancelled",
+            "databaseId": 117732285390,
+            "startedAt": "2026-10-18T16:50:30Z",
+            "status": "completed"
+          },
+          {
+            "conclusion": "cancelled",
+            "databaseId": 117732285609,
+            "startedAt": "2026-10-18T16:50:30Z",
+            "status": "completed"
+          }
+        ],
+        "status": "completed"
+      }
+    },
+    {
+      "id": 39145214965,
+      "result": {
+        "conclusion": "cancelled",
+        "head": "9dea8dcfadef55d1a2f35842dd7babbc132df005",
+        "id": 39145214965,
+        "jobs": [
+          {
+            "conclusion": "cancelled",
+            "databaseId": 117727555765,
+            "startedAt": "2026-10-18T16:29:16Z",
+            "status": "completed"
+          },
+          {
+            "conclusion": "cancelled",
+            "databaseId": 117727556000,
+            "startedAt": "2026-10-18T16:29:16Z",
+            "status": "completed"
+          }
+        ],
+        "status": "completed"
+      }
+    },
+    {
+      "id": 39145138387,
+      "result": {
+        "conclusion": "cancelled",
+        "head": "34478801589c6b43118f3c4c2e7e775b93419463",
+        "id": 39145138387,
+        "jobs": [
+          {
+            "conclusion": "cancelled",
+            "databaseId": 117727338285,
+            "startedAt": "2026-10-18T16:28:17Z",
+            "status": "completed"
+          },
+          {
+            "conclusion": "cancelled",
+            "databaseId": 117727338368,
+            "startedAt": "2026-10-18T16:28:17Z",
+            "status": "completed"
+          }
+        ],
+        "status": "completed"
+      }
+    },
+    {
+      "id": 39128735146,
+      "result": {
+        "conclusion": "cancelled",
+        "head": "9debe5ddde0b0b455dd6d96e37c70a06ec02c09c",
+        "id": 39128735146,
+        "jobs": [
+          {
+            "conclusion": "cancelled",
+            "databaseId": 117679298941,
+            "startedAt": "2026-10-18T12:47:06Z",
+            "status": "completed"
+          },
+          {
+            "conclusion": "cancelled",
+            "databaseId": 117679299208,
+            "startedAt": "2026-10-18T12:47:06Z",
+            "status": "completed"
+          }
+        ],
+        "status": "completed"
+      }
+    }
+  ],
+  "preserved": [
+    "Current main99f4e26 workflows",
+    "Open visualization successor PR93",
+    "Any run with an individually in_progress job, including old PR88 and mergedPR92",
+    "Original cancelled timeout and failed browser evidence"
+  ],
+  "limitations": [
+    "Cancellation admitted only after immediate run plus individual job status check",
+    "GitHub job startedAt is retained as reported and does not override the observed queued status",
+    "No runner, shared service, GPU job or other repository control",
+    "Cancelled workflow results are not successful validation"
+  ]
+}
