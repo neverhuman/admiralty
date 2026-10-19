@@ -484,7 +484,7 @@ fn startup_rejects_cross_actor_pending_ack_grants_and_route_definition_collision
 }
 
 #[test]
-fn routing_rejects_old_registry_handles_and_revoked_exact_replays() {
+fn routing_rejects_old_registry_handles_expiry_and_revoked_exact_replays() {
     use crate::services::coordination::{
         CoordinationAction, CoordinationCredential, CoordinationCredentialGrant,
     };
@@ -570,6 +570,36 @@ fn routing_rejects_old_registry_handles_and_revoked_exact_replays() {
         )
         .expect("authorized send");
     let before = store.snapshot().expect("queued");
+    let task = &before.projection.tasks[&fixture.contract.task_id];
+    let proof = RoutingProof {
+        actor: actor.clone(),
+    };
+    let current_utc = now().expect("fixture clock");
+    assert!(routing.authorize(
+        &routing.routes[0].route.subscription,
+        SubscriptionAction::Subscribe,
+        current_utc,
+        task,
+        &proof
+    ));
+    let mut expired_route = routing.routes[0].route.clone();
+    expired_route.subscription.expires_at_utc = Some(current_utc - 1);
+    let expired = NativeRoutingAuthority::new(
+        credentials.clone(),
+        vec![InstalledRoute {
+            credential_id: "admiral-credential".into(),
+            route: expired_route,
+        }],
+    )
+    .expect("expired policy remains inert");
+    // A recently captured operation time cannot extend an expired route.
+    assert!(!expired.authorize(
+        &expired.routes[0].route.subscription,
+        SubscriptionAction::Subscribe,
+        current_utc - 2,
+        task,
+        &proof
+    ));
     credentials
         .try_write()
         .expect("exclusive revocation")
