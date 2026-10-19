@@ -43,6 +43,13 @@ high score. The controller's trusted profile must choose the complete affected
 and negative check set; this component does not infer coverage or prove that a
 claimed command actually ran.
 
+Observed and expected exit codes must be nonnegative. Signal termination or
+an unknown exit uses `Unknown` with `exit_code: null`; values such as `-1`
+cannot satisfy a negative control or stand in for an observed failure.
+`AUDIT_POLICY_VERSION` is 3 for this stricter interpretation. Protected policies
+and evidence must be regenerated for that version; version 2 policy digests
+cannot authorize replay under the new interpretation.
+
 A caller can supply a persisted prior audit ID and evidence digest, but the
 outcome is always recomputed. A prior `pass_proposal` cannot override failed,
 unknown, changed-scope or invalidated evidence; a mismatching supplied outcome

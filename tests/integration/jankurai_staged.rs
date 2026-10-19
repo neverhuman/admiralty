@@ -279,3 +279,41 @@ fn deterministic_clock_skew_keeps_expired_check_unresolved() {
     assert!(!proposal.execution_granted());
     assert!(!proposal.publication_granted());
 }
+
+#[test]
+fn negative_exit_sentinels_are_not_observed_check_failures() {
+    let policy = policy();
+    for code in [-1, i32::MIN] {
+        let mut staged = evidence(&policy);
+        staged.check_results[0].outcome = CheckOutcome::Failed;
+        staged.check_results[0].exit_code = Some(code);
+        assert!(
+            evaluate_staged_audit(&scope(), &policy, &staged).is_err(),
+            "signal/unknown sentinel {code} must use an unknown result with no exit code"
+        );
+    }
+}
+
+#[test]
+fn negative_control_cannot_pass_on_a_signal_or_unknown_exit_sentinel() {
+    for code in [-1, i32::MIN] {
+        let mut policy = policy();
+        policy.negative_checks[0].expected_exit_code = code;
+        policy.required_identity.policy_digest = content_digest(&(
+            admiralty_runtime::audits::AUDIT_POLICY_VERSION,
+            &policy.required_paths,
+            &policy.hard_findings,
+            &policy.required_checks,
+            &policy.required_affected_checks,
+            &policy.negative_checks,
+            &policy.minimum_score,
+        ))
+        .expect("protected policy digest");
+        let mut staged = evidence(&policy);
+        staged.check_results[1].exit_code = Some(code);
+        assert!(
+            evaluate_staged_audit(&scope(), &policy, &staged).is_err(),
+            "negative control must not turn sentinel {code} into a pass proposal"
+        );
+    }
+}
