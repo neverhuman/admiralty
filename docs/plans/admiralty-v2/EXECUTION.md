@@ -1798,3 +1798,43 @@ underumask077 is0600 while the unchanged archive validator correctly requires064
 The owned fix uses the retained manifest FD before sync and is separately reviewed
 and tested; Linux archive/install qualification remains pending. The preserved
 passing Mac archive receipt remains historical and does not overwrite this result.
+
+### Intake, native usage and manifest-mode integration — 05:21Z
+
+PR108 merged05:09:39Z after exact c270a36 approval at05:09:08Z; receivingmain
+is7e282c3c1df5f7c618a63679441d7054706f9ab5. Root's next code source
+619a00544475bb064899a296dfc3e5830baf1eec composes three cleared candidates:
+S2 scoped intake80f2054e, native usage843c22aa and manifest-mode236e647c.
+The [integrated receipt](../../../receipts/integration/native-intake-usage-package-20261019T0520Z.json)
+records57 actual affected cases:10 usage,11 intake integration,1 intake ticket,
+20 archive,5 actual CLI and10 package. Strict Store/server and CLI all-target
+Clippy, formatting and independent final shared-source review pass. Packaging
+checks run under an owned shell'sumask077; no global user/service setting changes.
+The initial CLI check requested a nonexistent library target and ran zero tests;
+its log remains preserved before the corrected actual binary target passed20.
+
+The GitHub S2 branch still pointed to oldcb496c9 despite the finished local repair.
+Root verified a create-only Git bundle of actual80f2054e, sole parentb86439f2,
+SHA2566a71ed0630b46a538186401ed95d9f2575f6f5ecb92a86a6059785c3730feec6,
+and imported only its two matching files. The original clone, refs and dirty-work
+custody were preserved. No cause for the stale remote is inferred. The repaired
+service checks exact current grants after policy callbacks and binds complete
+preview bytes; the original two failing cases now pass on registered root source.
+
+Migration0008 and sole-writer usage requests retain immutable provider-reported
+counters and amount-only corrections with original contracts, current independent
+opaque read/write policies, exact retries/CAS, scoped snapshots and bounded replay.
+Unknown model/unit/opening values remain unknown. No normalization, billing,
+qualified identity, reservation, settlement or provider ingestion is installed.
+The independent intake/attention policies retain default denial; service module
+registration creates no production issuer, HTTP route, enrichment UI or dispatch.
+
+The manifest fix normalizes only its newly created retained FD to0644 before
+sync in the private stage. Strict archive/source guards remain unchanged. The
+fresh619 Linux retest is prepared; its final05:19:49Z caller refused CPU86.28%
+before run-capped. Zero wrapper/Cargo/test invocation occurred; an earlier agent
+start report was corrected before publication. The unused invocation waits lawful
+admission. No Linux pass, clean install, signing or publication follows from Mac
+tests. Accepted parents remain2/32 and native execution false. Both manager quota
+failures preserve the existing sole-deployer handoff and consumed one-run permit;
+root performs no service control, new provider grant or paid retry.
