@@ -75,6 +75,12 @@ fn array(value: &Value) -> Vec<Value> {
 fn now() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
+type ProjectClaims = BTreeMap<String, BTreeSet<String>>;
+fn claim_project(claims: &mut ProjectClaims, id: &str, project: Option<&str>) {
+    if let Some(project) = project {
+        claims.entry(id.into()).or_default().insert(project.into());
+    }
+}
 
 async fn update(hub: &ViewsHub, store: &Store, config: &ServerConfig) {
     let store = store.clone();
@@ -341,6 +347,7 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
         }
     }
     let mut agents = BTreeMap::new();
+    let mut project_claims = ProjectClaims::new();
     let mut insert =
         |raw: &Value, project_id: Option<String>, role: ViewRole, known_running: bool| {
             let node = field(raw, &["host", "node", "node_id"]).unwrap_or_else(|| host.clone());
@@ -357,6 +364,7 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
                 name.clone()
             };
             let id = format!("screen:{node}:{full}");
+            claim_project(&mut project_claims, &id, project_id.as_deref());
             let state = field(raw, &["state", "status"]).unwrap_or_else(|| {
                 if raw["agent_running"] == true {
                     "active".into()
@@ -442,11 +450,13 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
             && let Some(a) = agents.get_mut(&id)
         {
             a.project_id = s(&rollout["project"]["id"]);
+            claim_project(&mut project_claims, &id, a.project_id.as_deref());
             a.task = field(lane, &["packet_id", "task"]);
             a.branch = s(&lane["branch"]);
         }
     }
     let configure = |agents: &mut BTreeMap<String, ViewAgent>,
+                     project_claims: &mut ProjectClaims,
                      raw: &Value,
                      role: ViewRole,
                      project: Option<String>,
@@ -470,6 +480,7 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
             }
             _ => fallback_id,
         };
+        claim_project(project_claims, &id, project.as_deref());
         if let Some(agent) = agents.get_mut(&id) {
             agent.role = role;
             agent.project_id = project;
@@ -523,6 +534,7 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
         .unwrap_or_else(|| "Owner".into());
     let owner = configure(
         &mut agents,
+        &mut project_claims,
         &json!({"name":owner_name}),
         ViewRole::Owner,
         None,
@@ -540,6 +552,7 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
     }
     let watcher = configure(
         &mut agents,
+        &mut project_claims,
         &watcher_raw,
         ViewRole::Watcher,
         None,
@@ -550,7 +563,14 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
     } else {
         &source["super_captain"]["screen"]
     };
-    let admiral = configure(&mut agents, admiral_raw, ViewRole::Admiral, None, "admiral");
+    let admiral = configure(
+        &mut agents,
+        &mut project_claims,
+        admiral_raw,
+        ViewRole::Admiral,
+        None,
+        "admiral",
+    );
     let mut managers = BTreeMap::new();
     for captain in &captains {
         let Some(project_id) = field(captain, &["key", "project"]) else {
@@ -558,6 +578,7 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
         };
         let id = configure(
             &mut agents,
+            &mut project_claims,
             captain,
             ViewRole::Commodore,
             Some(project_id.clone()),
@@ -573,6 +594,7 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
                 Binding::Ambiguous => continue,
             };
             if let Some(id) = existing {
+                claim_project(&mut project_claims, &id, Some(&project_id));
                 if let Some(a) = agents.get_mut(&id) {
                     a.project_id = Some(project_id.clone());
                     a.branch = a.branch.clone().or_else(|| s(&raw["branch"]));
@@ -585,6 +607,7 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
                 let identity = field(raw, &["id", "screen"]).unwrap_or_else(|| name.clone());
                 let running = raw["agent_running"] == true;
                 let id = format!("screen:{node}:{identity}");
+                claim_project(&mut project_claims, &id, Some(&project_id));
                 agents.insert(
                     id.clone(),
                     ViewAgent {
@@ -655,6 +678,49 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
             );
         }
     }
+    let conflicts = project_claims
+        .iter()
+        .filter(|(_, projects)| projects.len() > 1)
+        .map(|(id, projects)| (id.clone(), projects.iter().cloned().collect::<Vec<_>>()))
+        .collect::<BTreeMap<_, _>>();
+    let mut binding_sources = Vec::new();
+    for (id, claims) in &conflicts {
+        if let Some(agent) = agents.get_mut(id) {
+            agent.project_id = None;
+            agent.task = None;
+            agent.branch = None;
+            if agent.role == ViewRole::Commodore {
+                agent.role = ViewRole::Worker;
+            }
+            agent.source.push_str("; project binding conflict");
+            binding_sources.push(ViewSource {
+                id: format!("binding:{id}"),
+                label: format!("{} project binding", agent.name),
+                observed_utc: agent.observed_utc.clone(),
+                state: "conflict".into(),
+                coverage: format!(
+                    "Conflicting project claims: {}. Identity retained unassigned; task and branch association unknown.",
+                    claims.join(", ")
+                ),
+            });
+        }
+    }
+    // Keep configured project roles without lending them one ambiguously shared process.
+    for (project, manager) in &mut managers {
+        if conflicts.contains_key(manager) {
+            *manager = configure(
+                &mut agents,
+                &mut project_claims,
+                &json!({}),
+                ViewRole::Commodore,
+                Some(project.clone()),
+                "commodore",
+            );
+            if let Some(agent) = agents.get_mut(manager) {
+                agent.source = "Configured project captain; project binding conflict".into();
+            }
+        }
+    }
     for a in agents.values() {
         if let Some(id) = &a.project_id {
             projects.entry(id.clone()).or_insert(ViewProject {
@@ -665,10 +731,19 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
             });
         }
     }
+    for id in project_claims.values().flatten() {
+        projects.entry(id.clone()).or_insert(ViewProject {
+            id: id.clone(),
+            name: id.clone(),
+            git: None,
+            task_count: None,
+        });
+    }
     for p in projects.values() {
         if !managers.contains_key(&p.id) {
             let id = configure(
                 &mut agents,
+                &mut project_claims,
                 &json!({}),
                 ViewRole::Commodore,
                 Some(p.id.clone()),
@@ -721,6 +796,7 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
     } else {
         sources.push(ViewSource{id:"producer".into(),label:"Producer fleet".into(),observed_utc:None,state:"not_configured".into(),coverage:"Configure the Rust observer and --legacy-status-file for real fleet and Git observations.".into()});
     }
+    sources.extend(binding_sources);
     order.extend(
         projects
             .keys()
@@ -944,6 +1020,83 @@ pub(crate) async fn events(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn lane_claims_cannot_overwrite_another_project_or_hide_its_inventory() {
+        let dir = tempfile::tempdir().expect("fixture");
+        let store = Store::open(dir.path().join("db")).expect("store");
+        let source = json!({"generated_utc":"2026-10-18T12:00:00Z","host":"n","projects":{},
+            "agents":[{"id":"100.worker","screen":"worker","host":"n","project":"p","task":"p-task","branch":"p-branch","model":"exact-model"}],
+            "rollout":{"project":{"id":"q"},"lanes":[{"screen":"100.worker","node":"n","packet_id":"q-task","branch":"q-branch"}]}});
+        let cut = project(&store.snapshot().expect("snapshot"), Some(&source), false);
+        let worker = cut
+            .agents
+            .iter()
+            .find(|a| a.id == "screen:n:100.worker")
+            .expect("worker");
+        assert!(worker.project_id.is_none() && worker.task.is_none() && worker.branch.is_none());
+        assert_eq!(worker.model.as_deref(), Some("exact-model"));
+        assert_eq!(worker.presence, ViewPresence::Observed);
+        assert_eq!(
+            cut.projects
+                .iter()
+                .map(|p| p.id.as_str())
+                .collect::<BTreeSet<_>>(),
+            BTreeSet::from(["p", "q"])
+        );
+    }
+    #[test]
+    fn conflicting_project_and_manager_claims_are_unassigned_and_order_independent() {
+        let dir = tempfile::tempdir().expect("fixture");
+        let store = Store::open(dir.path().join("db")).expect("store");
+        let mut source = json!({"generated_utc":"2026-10-18T12:00:00Z","host":"n","projects":{"p":{},"q":{}},
+            "agents":[{"id":"100.worker_x","screen":"worker_x","host":"n","project":"unassigned","model":"exact-model"},{"id":"10.shared","screen":"shared","host":"n","project":"unassigned"}],
+            "hierarchy":{"captains":[
+                {"key":"p","screen":"10.shared","host":"n","agent_running":true,"workers":[{"id":"100.worker_x","screen":"worker_x","host":"n","branch":"p-branch","task":"p-task"}]},
+                {"key":"q","screen":"10.shared","host":"n","agent_running":true,"workers":[{"id":"100.worker_x","screen":"worker_x","host":"n","branch":"q-branch","task":"q-task"}]}]},
+            "rollout":{"project":{"id":"p"},"lanes":[{"screen":"100.worker_x","node":"n","branch":"p-branch","packet_id":"p-task"}]}});
+        let cut = project(&store.snapshot().expect("snapshot"), Some(&source), false);
+        for id in ["screen:n:100.worker_x", "screen:n:10.shared"] {
+            let agent = cut
+                .agents
+                .iter()
+                .find(|a| a.id == id)
+                .expect("identity retained");
+            assert!(
+                agent.project_id.is_none(),
+                "conflicting project claim for {id}"
+            );
+            assert!(agent.task.is_none() && agent.branch.is_none());
+            assert_eq!(agent.role, ViewRole::Worker);
+            assert_eq!(agent.presence, ViewPresence::Observed);
+            assert!(agent.source.contains("binding conflict"));
+        }
+        let managers = cut
+            .agents
+            .iter()
+            .filter(|a| a.role == ViewRole::Commodore)
+            .collect::<Vec<_>>();
+        assert_eq!(managers.len(), 2);
+        assert!(
+            managers
+                .iter()
+                .all(|a| a.presence == ViewPresence::Unobserved)
+        );
+        assert_ne!(managers[0].id, managers[1].id);
+        assert_eq!(
+            cut.sources.iter().filter(|s| s.state == "conflict").count(),
+            2
+        );
+        source["hierarchy"]["captains"]
+            .as_array_mut()
+            .expect("captains")
+            .reverse();
+        source["agents"].as_array_mut().expect("agents").reverse();
+        let reversed = project(&store.snapshot().expect("snapshot"), Some(&source), false);
+        assert_eq!(
+            serde_json::to_value(&cut).expect("json"),
+            serde_json::to_value(&reversed).expect("json")
+        );
+    }
     #[test]
     fn ambiguous_short_screen_names_do_not_bind_lanes_or_managers() {
         let dir = tempfile::tempdir().expect("fixture");
