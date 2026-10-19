@@ -353,6 +353,38 @@ impl<'a> CoordinationService<'a> {
         Self { store }
     }
 
+    /// Register durable membership using independently issued opaque authority.
+    /// Policy and current task are rechecked on the Store writer on every retry.
+    pub fn subscribe(
+        &self,
+        definition: admiralty_store::subscriptions::Subscription,
+        observed_utc: u64,
+        proof: admiralty_store::subscriptions::SubscriptionProof,
+    ) -> Result<bool, StoreError> {
+        self.store.subscribe(definition, observed_utc, proof)
+    }
+
+    /// Route one exact recipient through its durable subscription. Pending reads
+    /// and application ACKs remain separate, so a lost response can be retried.
+    pub fn route_message(
+        &self,
+        definition: admiralty_store::subscriptions::Subscription,
+        observed_utc: u64,
+        proof: admiralty_store::subscriptions::SubscriptionProof,
+        source: SourceIdentity,
+        message: CoordinationMessage,
+        recorded_utc: String,
+    ) -> Result<AppendReceipt, StoreError> {
+        self.store.route_subscribed(
+            definition,
+            observed_utc,
+            proof,
+            source,
+            message,
+            recorded_utc,
+        )
+    }
+
     /// Low-level trusted in-process storage seam; does not authenticate a sender.
     pub fn enqueue_durable(
         &self,

@@ -11,6 +11,7 @@ pub mod intake;
 pub mod intake_capture;
 pub mod outbox;
 pub mod questions;
+pub mod subscriptions;
 pub mod usage_observations;
 pub mod workplans;
 use admiralty_core::{
@@ -300,6 +301,7 @@ pub trait LifecycleAuthority: Send + Sync {
 /// rechecked by the sole writer on every corresponding command/replay.
 #[derive(Default)]
 pub struct StoreAuthorities {
+    pub subscriptions: Option<Arc<dyn subscriptions::SubscriptionAuthority>>,
     pub lifecycle: Option<Arc<dyn LifecycleAuthority>>,
     pub intake: Option<Arc<dyn intake::IntakeAuthority>>,
     pub intake_capture: Option<Arc<dyn intake_capture::IntakeCaptureAuthority>>,
@@ -314,6 +316,20 @@ pub struct StoreAuthorities {
 }
 
 enum Request {
+    Subscription {
+        definition: Box<subscriptions::Subscription>,
+        observed_utc: u64,
+        proof: subscriptions::SubscriptionProof,
+        create: bool,
+        reply: Reply<bool>,
+    },
+    RouteSubscribed {
+        definition: Box<subscriptions::Subscription>,
+        observed_utc: u64,
+        proof: subscriptions::SubscriptionProof,
+        input: Box<AppendInput>,
+        reply: Reply<AppendReceipt>,
+    },
     RecordInferenceSlot {
         command: Box<inference_slots::SlotCommand>,
         proof: inference_slots::SlotProof,
@@ -620,6 +636,67 @@ impl Store {
         Self::open_configured(path.as_ref(), authorities)
     }
 
+    /// Persist immutable membership, or confirm an exact retry. Policy is
+    /// checked on the sole writer before inspecting any subscription records.
+    pub fn subscribe(
+        &self,
+        definition: subscriptions::Subscription,
+        observed_utc: u64,
+        proof: subscriptions::SubscriptionProof,
+    ) -> Result<bool> {
+        subscriptions::validate(&definition)?;
+        self.ask(|reply| Request::Subscription {
+            definition: Box::new(definition),
+            observed_utc,
+            proof,
+            create: true,
+            reply,
+        })
+    }
+
+    pub fn subscription(
+        &self,
+        definition: subscriptions::Subscription,
+        observed_utc: u64,
+        proof: subscriptions::SubscriptionProof,
+    ) -> Result<bool> {
+        subscriptions::validate(&definition)?;
+        self.ask(|reply| Request::Subscription {
+            definition: Box::new(definition),
+            observed_utc,
+            proof,
+            create: false,
+            reply,
+        })
+    }
+
+    /// Membership, current task and policy checks share the serialized writer
+    /// turn with durable enqueue. Reading or routing never acknowledges receipt.
+    pub fn route_subscribed(
+        &self,
+        definition: subscriptions::Subscription,
+        observed_utc: u64,
+        proof: subscriptions::SubscriptionProof,
+        source: SourceIdentity,
+        message: admiralty_core::CoordinationMessage,
+        recorded_utc: String,
+    ) -> Result<AppendReceipt> {
+        subscriptions::validate(&definition)?;
+        let input = Self::prepare_append(
+            source,
+            DomainEvent::MessageQueued { message },
+            recorded_utc,
+            None,
+        )?;
+        self.ask(|reply| Request::RouteSubscribed {
+            definition: Box::new(definition),
+            observed_utc,
+            proof,
+            input: Box::new(input),
+            reply,
+        })
+    }
+
     pub fn question_command(
         &self,
         request: questions::QuestionCommand,
@@ -690,6 +767,7 @@ impl Store {
                     writer.intake_authority = authorities.intake;
                     writer.intake_capture_authority = authorities.intake_capture;
                     writer.question_authority = authorities.questions;
+                    writer.subscription_authority = authorities.subscriptions;
                     writer.usage_authority = authorities.usage;
                     writer.attention_authority = authorities.attention;
                     writer.reservation_authority = authorities.reservations;
@@ -1688,6 +1766,7 @@ struct Writer {
     intake_authority: Option<Arc<dyn intake::IntakeAuthority>>,
     intake_capture_authority: Option<Arc<dyn intake_capture::IntakeCaptureAuthority>>,
     question_authority: Option<Arc<dyn questions::QuestionAuthority>>,
+    subscription_authority: Option<Arc<dyn subscriptions::SubscriptionAuthority>>,
     usage_authority: Option<Arc<dyn usage_observations::UsageAuthority>>,
     attention_authority: Option<Arc<dyn attention::AttentionAuthority>>,
     reservation_authority: Option<Arc<dyn admission_reservations::ReservationAuthority>>,
@@ -1743,6 +1822,7 @@ impl Writer {
         intake::initialize(&connection)?;
         intake_capture::initialize(&connection)?;
         questions::initialize(&connection)?;
+        subscriptions::initialize(&connection)?;
         usage_observations::initialize(&connection)?;
         admission_reservations::initialize(&connection)?;
         inference_slots::initialize(&connection)?;
@@ -1766,6 +1846,7 @@ impl Writer {
         };
         let projection = replay(&connection)?;
         questions::validate_all(&connection)?;
+        subscriptions::validate_all(&connection)?;
         let pending_inbox = inbox::PendingInboxIndex::from_projection(&projection)?;
         workplans::validate_task_contracts(
             &connection,
@@ -1780,6 +1861,7 @@ impl Writer {
             intake_authority: None,
             intake_capture_authority: None,
             question_authority: None,
+            subscription_authority: None,
             usage_authority: None,
             attention_authority: None,
             reservation_authority: None,
@@ -2056,6 +2138,71 @@ impl Writer {
                     );
                 }
 
+                Request::Subscription {
+                    definition,
+                    observed_utc,
+                    proof,
+                    create,
+                    reply,
+                } => {
+                    let result = (|| {
+                        subscriptions::authorize(
+                            &definition,
+                            if create {
+                                subscriptions::SubscriptionAction::Subscribe
+                            } else {
+                                subscriptions::SubscriptionAction::Read
+                            },
+                            observed_utc,
+                            self.projection.tasks.get(&definition.task_id),
+                            self.subscription_authority.as_deref(),
+                            proof.as_ref(),
+                        )?;
+                        if create {
+                            subscriptions::subscribe(&mut self.connection, &definition)
+                        } else {
+                            subscriptions::read(&self.connection, &definition)
+                        }
+                    })();
+                    let _ = reply.send(result);
+                }
+                Request::RouteSubscribed {
+                    definition,
+                    observed_utc,
+                    proof,
+                    input,
+                    reply,
+                } => {
+                    let result = (|| {
+                        let DomainEvent::MessageQueued { message } = &input.event else {
+                            return Err(StoreError::Invalid(
+                                "subscribed route requires a message".into(),
+                            ));
+                        };
+                        subscriptions::authorize(
+                            &definition,
+                            subscriptions::SubscriptionAction::Route {
+                                source: &input.source,
+                                message,
+                            },
+                            observed_utc,
+                            self.projection.tasks.get(&definition.task_id),
+                            self.subscription_authority.as_deref(),
+                            proof.as_ref(),
+                        )?;
+                        subscriptions::validate_route(&definition, message, &self.projection)?;
+                        if !subscriptions::read(&self.connection, &definition)? {
+                            return Err(StoreError::Invalid(
+                                "subscription is not registered".into(),
+                            ));
+                        }
+                        self.append(*input)
+                    })();
+                    if result.is_ok() {
+                        changes.send_replace(());
+                    }
+                    let _ = reply.send(result);
+                }
                 Request::QuestionCommand { request, reply } => {
                     let task = self.projection.tasks.get(&request.scope.question.task_id);
                     let _ = reply.send(
@@ -2929,6 +3076,7 @@ impl Writer {
         intake::validate_all(&self.connection)?;
         intake_capture::validate_all(&self.connection)?;
         questions::validate_all(&self.connection)?;
+        subscriptions::validate_all(&self.connection)?;
         usage_observations::validate_all(&self.connection)?;
         admission_reservations::validate_all(&self.connection)?;
         let projection = replay(&self.connection)?;
@@ -2954,6 +3102,7 @@ impl Writer {
         intake::validate_all(&self.connection)?;
         intake_capture::validate_all(&self.connection)?;
         questions::validate_all(&self.connection)?;
+        subscriptions::validate_all(&self.connection)?;
         usage_observations::validate_all(&self.connection)?;
         admission_reservations::validate_all(&self.connection)?;
         let _ = replay(&self.connection)?;

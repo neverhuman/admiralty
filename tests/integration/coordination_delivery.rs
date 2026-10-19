@@ -1511,3 +1511,244 @@ fn pending_service_admits_bounds_before_policy_and_denies_before_store_generatio
     assert_eq!(after.cursor, before.cursor);
     assert_eq!(after.projection, before.projection);
 }
+
+#[test]
+fn durable_subscriptions_route_exact_retries_and_recheck_policy_after_restart() {
+    use admiralty_store::{StoreAuthorities, subscriptions::*};
+    use std::{
+        any::Any,
+        sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+        },
+    };
+
+    struct Proof;
+    struct Policy(Arc<AtomicBool>);
+    impl SubscriptionAuthority for Policy {
+        fn authorize(
+            &self,
+            subscription: &Subscription,
+            action: SubscriptionAction<'_>,
+            _utc: u64,
+            _task: &admiralty_core::TaskView,
+            proof: &(dyn Any + Send + Sync),
+        ) -> bool {
+            self.0.load(Ordering::SeqCst)
+                && proof.is::<Proof>()
+                && match action {
+                    SubscriptionAction::Route { source, message } => {
+                        source.producer_id == "coordinator"
+                            && message.sender.as_str() == "coordinator"
+                            && message.recipient == subscription.recipient
+                    }
+                    _ => true,
+                }
+        }
+    }
+    let directory = private_fixture_dir();
+    let database = directory.path().join("subscriptions.sqlite");
+    let enabled = Arc::new(AtomicBool::new(true));
+    let open = || {
+        Store::open_with_startup_authorities(
+            &database,
+            StoreAuthorities {
+                subscriptions: Some(Arc::new(Policy(enabled.clone()))),
+                ..Default::default()
+            },
+        )
+        .expect("independently configured writer policy")
+    };
+    let task = contract();
+    let store = open();
+    append(
+        &store,
+        "setup",
+        "inc",
+        1,
+        DomainEvent::TaskSubmitted {
+            contract: task.clone(),
+        },
+    );
+    let definition = Subscription {
+        subscription_id: MessageId::new("assignment-subscription").expect("ID"),
+        project_id: task.project_id.clone(),
+        task_id: task.task_id.clone(),
+        recipient: PrincipalId::new("worker").expect("worker"),
+        context_epoch: "worker-epoch-7".into(),
+        channel: "assignments".into(),
+        contract_revision: task.revision,
+        contract_digest: content_digest(&task).expect("exact contract"),
+        expires_at_utc: Some(100),
+    };
+    let message = assignment(&task, "subscribed-assignment");
+    let service = CoordinationService::new(&store);
+    let before = store.snapshot().expect("snapshot");
+    assert!(
+        service
+            .subscribe(definition.clone(), 1, Arc::new("forged proof"))
+            .is_err()
+    );
+    assert!(
+        service
+            .route_message(
+                definition.clone(),
+                1,
+                Arc::new(Proof),
+                source("coordinator", "sub", 1),
+                message.clone(),
+                OBSERVED.into()
+            )
+            .is_err()
+    );
+    assert_eq!(store.snapshot().expect("unchanged"), before);
+    assert!(
+        service
+            .subscribe(definition.clone(), 1, Arc::new(Proof))
+            .expect("register membership")
+    );
+    assert!(
+        !service
+            .subscribe(definition.clone(), 1, Arc::new(Proof))
+            .expect("idempotent membership")
+    );
+    let routed = service
+        .route_message(
+            definition.clone(),
+            2,
+            Arc::new(Proof),
+            source("coordinator", "sub", 1),
+            message.clone(),
+            OBSERVED.into(),
+        )
+        .expect("durable route");
+    let retry = service
+        .route_message(
+            definition.clone(),
+            2,
+            Arc::new(Proof),
+            source("coordinator", "sub", 1),
+            message.clone(),
+            OBSERVED.into(),
+        )
+        .expect("lost response retry");
+    assert!(retry.duplicate);
+    assert_eq!(retry.event_seq, routed.event_seq);
+    let mut collision = definition.clone();
+    collision.channel = "foreign-channel".into();
+    assert!(service.subscribe(collision, 2, Arc::new(Proof)).is_err());
+    let mut foreign = message.clone();
+    foreign.recipient = PrincipalId::new("other-worker").expect("foreign worker");
+    assert!(
+        service
+            .route_message(
+                definition.clone(),
+                2,
+                Arc::new(Proof),
+                source("coordinator", "sub", 2),
+                foreign,
+                OBSERVED.into()
+            )
+            .is_err()
+    );
+    assert!(
+        service
+            .route_message(
+                definition.clone(),
+                100,
+                Arc::new(Proof),
+                source("coordinator", "sub", 2),
+                message.clone(),
+                OBSERVED.into()
+            )
+            .is_err()
+    );
+    let mut stale = definition.clone();
+    stale.contract_revision += 1;
+    assert!(
+        store.subscribe(stale, 2, Arc::new(Proof)).is_err(),
+        "stale contract fails before journal access"
+    );
+    for index in 0..MAX_TOPIC_SUBSCRIPTIONS {
+        let mut member = definition.clone();
+        member.subscription_id = MessageId::new(format!("capacity-{index}")).expect("member ID");
+        member.channel = "bounded-topic".into();
+        assert!(
+            store
+                .subscribe(member, 2, Arc::new(Proof))
+                .expect("bounded member")
+        );
+    }
+    let mut overflow = definition.clone();
+    overflow.subscription_id = MessageId::new("capacity-overflow").expect("member ID");
+    overflow.channel = "bounded-topic".into();
+    assert!(
+        store
+            .subscribe(overflow.clone(), 2, Arc::new(Proof))
+            .is_err(),
+        "storm cannot exceed topic capacity"
+    );
+    assert!(
+        !store
+            .subscription(overflow, 2, Arc::new(Proof))
+            .expect("rejected membership absent")
+    );
+    let durable = store.snapshot().expect("before reopen");
+    drop(store);
+    let store = open();
+    assert!(
+        store
+            .subscription(definition.clone(), 3, Arc::new(Proof))
+            .expect("membership survives restart")
+    );
+    assert_eq!(store.snapshot().expect("messages survive restart"), durable);
+    let page = store
+        .pending_messages(definition.inbox_scope(), None, 16)
+        .expect("recipient replay");
+    assert_eq!(
+        page.messages,
+        vec![message.clone()],
+        "routing is not an application ACK"
+    );
+    enabled.store(false, Ordering::SeqCst);
+    assert!(
+        store
+            .subscribe(definition.clone(), 3, Arc::new(Proof))
+            .is_err()
+    );
+    assert!(
+        store
+            .subscription(definition.clone(), 3, Arc::new(Proof))
+            .is_err()
+    );
+    assert!(
+        store
+            .route_subscribed(
+                definition.clone(),
+                3,
+                Arc::new(Proof),
+                source("coordinator", "sub", 1),
+                message,
+                OBSERVED.into()
+            )
+            .is_err(),
+        "revoked exact source retry must fail"
+    );
+    assert_eq!(store.snapshot().expect("denial leaves state"), durable);
+    drop(store);
+    let store = Store::open(&database).expect("default policy denies");
+    assert!(store.subscription(definition, 3, Arc::new(Proof)).is_err());
+    drop(store);
+    let connection = rusqlite::Connection::open(&database).expect("owned corruption fixture");
+    connection
+        .execute(
+            "UPDATE coordination_subscriptions SET channel='corrupt-index'",
+            [],
+        )
+        .expect("corrupt fixture index");
+    drop(connection);
+    assert!(
+        Store::open(&database).is_err(),
+        "startup must reject journal/index disagreement"
+    );
+}
