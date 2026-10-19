@@ -6,6 +6,29 @@ This additive update retains the full audit below at its original source/time.
 Only P00/P01 are fully accepted; all30 other parents remain open. Do not rebuild
 the following later integrated components or infer that they are live:
 
+**09:45Z component addendum:** source
+`d9cd57464b01f08a59fef97159d5a040dddc4dbe` adds the optional reserve-only
+managed inference-slot journal and atomic Store claim/budget/hold/outbox path.
+Root Mac and actual capped Linux each pass the same full219Store cases,
+including16new cases; strict Store/server all-target Clippy, fmt and separate
+static review pass. See `native-inference-slots-20261019T0945Z.json` and
+`docs/architecture/inference-slots.md`. This is candidate component evidence,
+not a claim it is already merged or deployed. Current policy is absent by
+default; physical pool mapping/allotment must be independently authenticated.
+NativeTaskLoop/ResourceGate/model-selection composition, a production common
+policy fence/issuer, provider, settlement/release and full parents remain open.
+
+**09:42Z deployment correction:** SC156 serialized backup885617 deployed
+`af6aeea9bb7353f80ef2ef9d573aba1790f0c593` at09:40:41Z after its freshly built
+release passed15real smoke checks. Root independently verified all14manifest
+file hashes and both process executable hashes at09:42:31.675Z, health/UI/feed,
+18891redirect307, Rust producer0turns,256displayed/528retained history rows and
+absence of retired owned Python and priorfcd PIDs. Receipt
+`native-af6aeea9-independent-20261019T0942Z.json` supersedes the older full
+primary proof. It does not recount browser controls, measure original first
+history time, grant provider execution or accept parents. Root performed no
+service control; the written SC156 deploy coverage remains serialized.
+
 **08:41Z component addendum:** source84cbf43e9d37c8b2fa4648a04de745fb05113126
 composes explicit budget-backed native-loop admission/retry/dispatch with the
 existing atomic Store/controller path. Actual Mac16/16 and Linux16/16 are the

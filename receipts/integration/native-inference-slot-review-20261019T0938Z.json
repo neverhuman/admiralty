@@ -1,0 +1,61 @@
+{
+  "kind": "independent-static-component-review",
+  "recorded_utc": "2026-10-19T09:38:30.216857+00:00",
+  "reviewer": "audit_product",
+  "source_commit": "d9cd57464b01f08a59fef97159d5a040dddc4dbe",
+  "base_commit": "af6aeea9bb7353f80ef2ef9d573aba1790f0c593",
+  "verdict": "CLEAR",
+  "files": [
+    {
+      "path": "crates/admiralty-store/src/lib.rs",
+      "sha256": "91431c90418642dd9b247d8f1d71f5d4a719f5784a96d7bb04e7a0b2b3c7caf5"
+    },
+    {
+      "path": "crates/admiralty-store/src/inference_slots.rs",
+      "sha256": "095ebc4879039b8d33179df7214ed54968d8527a5cadf531182718f54caef0e5"
+    },
+    {
+      "path": "crates/admiralty-store/src/admission_reservations.rs",
+      "sha256": "d61d2dbdfb9919e0885999912457a67cd6a8ede0a260ac89280dec62140a0fac"
+    },
+    {
+      "path": "crates/admiralty-store/migrations/0010_inference_slots.sql",
+      "sha256": "f6c97f36509fd3120681ad8ac3c264885088b15b1b57a5c5174fdca99ca98486"
+    },
+    {
+      "path": "crates/admiralty-store/tests/inference_slots.rs",
+      "sha256": "4003682ca4aa0d14891464c9bb2735c141552429e01e773332ccbaa481b572a2"
+    },
+    {
+      "path": "README.md",
+      "sha256": "7834767d885d83ec6bc8c5a56f8a48229369a3bf42863f4ac360fb650998addc"
+    },
+    {
+      "path": "docs/architecture/durable-admission.md",
+      "sha256": "71689cbfe4318e1577328705f3af80944ce884293bfd60ff8965ffd336e51ee7"
+    },
+    {
+      "path": "docs/architecture/inference-slots.md",
+      "sha256": "6b2e0516230ef6bb45712ab8cfefb87fc77631fb7b8dbe7b91b9be55ea865407"
+    }
+  ],
+  "reviewed": [
+    "Atomic four-record staging and rollback; projection publication only after commit",
+    "Original immutable receipts and current proof checks on replay; no ordinary/budget-only upgrades or downgrades",
+    "Both association directions plus checked original event/budget/intent during open/rebuild/backup",
+    "Default authorities absent; actual TaskView supplies binding; final slot check sees staged Claimed projection",
+    "Retained unknown/old-generation occupancy; immutable unique capacity keys; no release surface",
+    "All ten external test definitions including fresh last-slot loser, postclaim denial and late SQL abort",
+    "Observational callback contract and explicit sequential-policy/no joint authorization-through-COMMIT guarantee"
+  ],
+  "findings": [],
+  "tests_executed_by_reviewer": false,
+  "test_results_claimed_by_reviewer": false,
+  "prior_cross_mutating_counterexample": "static reasoning only, not an executed repro",
+  "limits": [
+    "No physical pool/model mapping authentication demonstrated by private test policy",
+    "Historical TaskView helper is not full two-attempt execution qualification",
+    "No NativeTaskLoop/ResourceGate activation, provider, production issuer/fence, release/settlement or full parent acceptance",
+    "No source edits, test reruns, remote or operational effects"
+  ]
+}

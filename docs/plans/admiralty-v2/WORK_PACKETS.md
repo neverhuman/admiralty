@@ -64,6 +64,15 @@ Every packet outputs an implementation commit/candidate and `receipts/<packet>/<
 
 ### P03 — Authoritative writer, replay, outbox and read projections
 
+**Reserve-only slot component 2026-10-19:** migration0010 and
+`claim_with_budget_and_slot` join the original task claim, budget journal,
+managed inference hold and exact launch intent under one writer transaction.
+Both association directions are checked during open/rebuild/backup; exact
+replays cannot upgrade or downgrade ordinary/budget-only admission. Pool policy
+is absent by default. This does not activate a production issuer or qualify the
+whole crash matrix. See `docs/architecture/inference-slots.md` and the pinned
+component receipt recorded in EXECUTION.
+
 **Component update 2026-10-19:** actual Store `admission_reservations.rs` and
 `claim_with_reservation` now join the bounded budget journal, claim and exact
 launch intent under one writer transaction. Migration0009, replay/backup,
@@ -177,6 +186,12 @@ not satisfy the entire crash matrix or accept this parent.
 
 ### P10 — Usage, valuation, reservations and cohorts
 
+**Reserve-only slot component 2026-10-19:** the durable journal retains holds
+across generation changes, stops, lease expiry and unknown execution. It has no
+release/refund/reset API. An independently admitted managed allotment is not
+physical backend capacity authentication or reconciliation of other consumers.
+Trusted usage valuation, settlement and production issuance remain open.
+
 **Component update 2026-10-19:** durable Reserve/SetLimits/RequestStop reuse the
 existing runtime reducer; stop/expiry retain liabilities. The source-bound
 durable-admission receipt covers persistence and atomic claim tests. Trusted
@@ -244,6 +259,15 @@ reported usage is not billing or settlement.
 **Validate:** `rtk cargo test -p admiralty-testkit --test plan_import`; Playwright `workplan-import.spec.ts`. **Pass:** repeated import is idempotent, checkboxes/legacy PASS cannot become trusted acceptance, ambiguous scope is reviewable before admission.
 
 ### P14 — Atomic admission, fairness, cheap-capable routing and recovery
+
+**Reserve-only slot component 2026-10-19:** the optional Store path now commits
+claim/budget/hold/outbox together, with current policy sampling and retained
+occupancy across pool generations. Alias keys cannot reset occupancy; capacity
+reductions below held slots fail. This is not yet composed with NativeTaskLoop,
+ResourceGate or model-selection execution. Independent Boolean policies are
+sampled sequentially; joint revocation through COMMIT needs a common retained
+snapshot/epoch/lease fence, not repeated checks. No production fence, physical
+start, provider, release, recovery or parent acceptance is activated.
 
 **Component update 2026-10-19:** explicit `NativeTaskLoop::admit_reserved`
 retains the original command/proof and joins the merged Store/controller budget

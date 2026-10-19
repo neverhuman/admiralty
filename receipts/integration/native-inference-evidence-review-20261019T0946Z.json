@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T09:45:44.423Z",
+  "reviewer": "audit_evidence",
+  "verdict": "CLEAR",
+  "source_commit": "d9cd57464b01f08a59fef97159d5a040dddc4dbe",
+  "reviewed_component": {
+    "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/receipts/integration/native-inference-slots-20261019T0945Z.json",
+    "bytes": 17103,
+    "sha256": "68f5840a27614a6a78ec459d1629abda584a2c423e0cb39e93be89fdd3d62ac8"
+  },
+  "reviewed_static_source_review": {
+    "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/receipts/integration/native-inference-slot-review-20261019T0938Z.json",
+    "bytes": 2884,
+    "sha256": "7dae102b27a444e23cc993b19eb1ed0f5b31f7b29113adac6cedabedfb28cfd6",
+    "original_byte_identical": true,
+    "prior_cross_mutating_counterexample": "static reasoning only; no executed reproduction claimed"
+  },
+  "verified": {
+    "local_refs_hashes_and_sizes": 27,
+    "source_files_at_exact_Git_object": 8,
+    "post_run_Linux_source_files_match": 8,
+    "mac": {
+      "summaries": 16,
+      "totals": [
+        219,
+        0,
+        0,
+        0
+      ],
+      "named_cases": 219
+    },
+    "linux": {
+      "summaries": 16,
+      "totals": [
+        219,
+        0,
+        0,
+        0
+      ],
+      "named_cases": 219
+    },
+    "same_case_multiset": "219 target/name/status entries verified exactly equal across Mac/Linux",
+    "new_cases_subset": 16,
+    "strict_Store_Server_all_targets_Clippy": "raw exit0 record/source/log hashes verified",
+    "preserved_initial_failures": "raw hashes verified, compile failures not counted as tests; two9pass1fail fixture expectation failures retained",
+    "outer_inside_after_fleet_gates": "CPU<=85/MemAvailable>=20GiB/controller active/freeze0 recorded; unique target/jobs1/testthreads1/one invocation",
+    "observational_policy_limit": "sequential observational callbacks do not provide joint authorization/revocation through COMMIT; common fence and physical pool identity not activated"
+  },
+  "deployment_proof": {
+    "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/receipts/integration/native-af6aeea9-independent-20261019T0942Z.json",
+    "bytes": 5178,
+    "sha256": "b704fe8eff4081c455673630b33ba8f2c9c56acf5f1d9ea3497c187e0674c79a",
+    "source_revision": "af6aeea9bb7353f80ef2ef9d573aba1790f0c593",
+    "observed_utc": "2026-10-19T09:42:31.675Z",
+    "manifest_sha256": "15fb06197d89028ecb41d4cfadee14a8625a941f026eee99e8d9f291d6db50e4",
+    "manifest_files": 14,
+    "processes": [
+      {
+        "name": "admiraltyd",
+        "pid": 2704251,
+        "exe": "/home/ubuntu/admiralty-v2-build/deployments/af6aeea9bb7353f80ef2ef9d573aba1790f0c593/bin/admiraltyd",
+        "start_ticks": "58829578",
+        "sha256": "ea3ae52f8ade6a368fa9783547abf4a491c1e5d5af0c97f548ba7a535a7f2c16"
+      },
+      {
+        "name": "admiralty-observe",
+        "pid": 2703800,
+        "exe": "/home/ubuntu/admiralty-v2-build/deployments/af6aeea9bb7353f80ef2ef9d573aba1790f0c593/bin/admiralty-observe",
+        "start_ticks": "58829547",
+        "sha256": "dbe80446db9d5af8f26db7e2244ee5f47cec391c282d884ec00798957ee4e387"
+      }
+    ],
+    "http": {
+      "ui": 200,
+      "legacy": 200,
+      "redirect_18891": 307
+    },
+    "collector_implementation": "rust",
+    "collector_model_turns": 0,
+    "history_displayed_rows": 256,
+    "history_retained_rows": 528,
+    "original_first_history_timestamp": null,
+    "old_recorded_pids_absent": true,
+    "retired_owned_Python_pattern_pids": [],
+    "verifier": {
+      "path": "/private/tmp/admiralty-verify-af6.cjs",
+      "bytes": 7471,
+      "sha256": "db5f8aa1158040f973cc3ec9d4f365e4f7f250de43e884a41daf3dd2deb8f892",
+      "inspection": "bounded14-file streaming hashes plus exact /proc exe paths/hashes and start-tick recheck; manifest pin reread; bounded public GETs and read-only pgrep; no service/provider commands"
+    },
+    "outside_gate": {
+      "path": "/private/tmp/admiralty-af6-independent-20261019T0942Z.stderr",
+      "sha256": "380e43606b4b5b5300f41b1816aab7608072f77eb13fd4baf9d729b5214da08c",
+      "observed": {
+        "observed_utc": "2026-10-19T09:42:30.037Z",
+        "cpu_percent": 7.652338214454413,
+        "mem_available_kib": 103078272,
+        "controller_active": true,
+        "freeze": "0",
+        "admitted": true,
+        "provider_started": false
+      }
+    }
+  },
+  "limits": {
+    "reviewer_test_execution": false,
+    "reviewer_remote_actions": false,
+    "source_edits": false,
+    "provider_actions": false,
+    "service_control": false,
+    "deployment_bytes_rehashed_by_this_reviewer": false,
+    "source_archive_independently_rehashed_by_this_reviewer": false,
+    "full_browser_qualification": false,
+    "UI_controls_recounted": false,
+    "original_first_history_timestamp_remeasured": false,
+    "production_issuer_or_common_fence_installed": false,
+    "model_capacity_activation": false,
+    "general_native_execution_qualified": false,
+    "full_parent_acceptance": false,
+    "hosted_CI_green": false
+  }
+}
