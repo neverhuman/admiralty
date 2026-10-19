@@ -1338,3 +1338,38 @@ PR90 merged to `1ecdd19fb3cda9e9bc5b5be069c356d94831c768` and PR91 to `779a008f9
 Actual preflight found the safe installed supported CLI is296865480bytes, larger than the old128MiB object-read path. The repaired probe streams a raw fingerprint through64KiB buffers with separate384MiB/30s metadata bounds and exact descriptor/path identity checks. It does not enlarge ArtifactStore, generic-read, HOME, executable or runtime limits. Fifteen actual component tests and strict server all-target Clippy/fmt pass; [the source-bound component receipt](../../../receipts/integration/native-codex-probe-component-20261019T0143Z.json) preserves the original blocker and worker evidence. Independent static review is clear. No actual provider generation is recorded by this component receipt; the Linux qualification build/run remains separate.
 
 Rollout reconciliation at01:32:53Z pins merged source779a008 and the real fixed-toy/factory/capture receipts. Before/after hashes are `1edbdda027b9942b1a007e8e3e9baa63c5d21f199bc44e1e815e12d8933d253e` and `91a647293f72eeb6af54a0c1450b8672ee4edb610077bc620bf6b7405f170307`. P00/P01 original criterion receipts were independently hash-verified; only their recorded reference status is normalized from verified_packet_criteria to verified with explicit criterion kind/scope, archived original reference and original verification timestamp. This repairs the existing sc_audit enum mismatch without changing parent acceptance or claiming a new check. Every parent status and unrelated packet stays intact. P00/P01 alone accepted;30parents and general coding execution remain open.
+
+### Git/Fleet integration and durable attention — 2026-10-19T02:26Z
+
+SSH recovered. The0149 fixture completed preparation without authorization;
+metadata is stale and it will never be run. Root independently checked live779a008
+at02:10:16Z: all twelve manifest hashes match and both Rust processes execute
+source-pinned deployment binaries. Health is ok/native_execution_qualified=false.
+No retired Admiralty Python producer matched the scoped process check.
+
+PR95 merged02:18:49Z to35e58904b2e5f9215d48329962f1514a2cf86610 after exact32dea091
+neverhumanbot approval and matched-head rebase. Source-bound local build and
+all18actual-backend browser checks pass; hosted browser/contracts pass. Hosted
+Rust fails four private-directory fixtures plus an inherited controlled-child
+capture deadline. Original logs are archived in the
+[single deferred cleanup backlog](../../../../CI_CLEANUP_BACKLOG.md). Jepson's
+02:12Z code-first ruling authorizes this local-CI-only cutover merge; no red check
+is green. Commodore alone owns the new Git/Fleet deployment.
+
+The registered Store attention journal persists observations and delivery
+decisions, atomically creates new wake intents, preserves immutable historical
+receipts and unknown effects, and validates history on open/rebuild/backup.
+Nine actual registered integration tests pass; the frozen worker's affected
+Store129-test checks and independent source/registration review are preserved in
+[the component receipt](../../../receipts/integration/durable-attention-20261019T0224Z.json).
+Current authenticated scope/clock authority and safe-turn transport remain
+separate. Accepted parents remain P00/P01 alone,2/32;30parents remain open.
+
+Parallel disjoint local work advances exact-policy/precision-safe intake,
+atomic request-to-plan recording and an explicitly authorized attention service
+bridge. A fresh0224 Codex fixture/request716ce940 was independently inspected;
+its exact external0400 one-run authorization started02:25:12Z after a1.5second
+host CPU sample45.04% and empty owned slice. Source7159a02/binaryd0236103,
+CPU0–1,512MiB,32tasks,120seconds/maxconcurrency1 remain pinned. This start alone
+establishes no provider identity, acceptance or qualification; outcomes must be
+read from actual capture/check/Store evidence. Prior failed grants remain consumed.
