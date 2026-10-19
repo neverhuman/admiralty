@@ -1,9 +1,7 @@
-//! Compile the actual unregistered production module against actual sibling
-//! exports. Root integration owns services/mod.rs registration. These fixtures
-//! qualify composition/custody only, never a provider turn or Linux execution.
-pub use admiralty_server::services::{controller, native_executor};
-#[path = "../src/services/native_codex_plan.rs"]
-mod native_codex_plan;
+//! Exercise the registered production module and actual sibling exports.
+//! These fixtures qualify composition/custody only, never a provider turn or
+//! Linux execution.
+pub use admiralty_server::services::{controller, native_codex_plan, native_executor};
 
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
