@@ -72,6 +72,21 @@ be retained as raw observations and never become Admiralty coordination messages
 Help-derived advertised flags remain separate from unsupported authentication,
 usage, continuation and permission semantics.
 
+The bounded 2026-10-19 native probes are retained beside each version's matrix.
+AGY 1.4.2 emitted `event: init/step_update/result` and exited 3 with an individual
+quota error (429). Grok 1.0.62 emitted `type: available_commands/error` and exited
+1 with an exhausted balance (402). These differ from the historical synthetic
+`type` and JSON-RPC parser vectors. `parse_failure_capture` handles the captured
+native error dialects separately, requires complete framing and a final error,
+and rejects mixed dialects, malformed records and AGY conversation drift.
+
+The resulting `FailureObservation` reports the provider's availability claim;
+it grants no fallback, account identity, tool permission or acceptance. Even
+reported zero counters on the error path leave qualified usage unknown. Neither
+probe qualified a successful task, continuation, own-model native eligibility
+or permission enforcement. Those capabilities remain specifically unsupported;
+the offline paths and existing manager/legacy observations remain available.
+
 Launch proposals accept the complete existing `LaunchSpec`, fill an initially
 empty argv and enforce the shared aggregate argv and serialized request bounds.
 Absolute lexical paths and option-like requested values are checked; filesystem
@@ -92,12 +107,14 @@ rtk cargo test -p admiralty-testkit --test provider_matrix --locked
 rtk cargo clippy --workspace --all-targets --locked -- -D warnings
 ```
 
-The provider targets run 22 Claude and 12 matrix tests without inference. Four
+The provider targets run 27 Claude and 21 matrix tests without inference. Four
 shared-decoder tests cover chunk boundaries, ambiguous JSON, EOF and limits.
 Original Claude recordings are retained; new counterexample files are explicitly
 synthetic and tracked in Git despite the repository's general JSONL ignore rule.
 
-P21/P22 remain partial. Activation still needs immutable prepared-launch binding,
+Native capability qualification remains partial. The 2026-10-19 Speed 4 rollout
+records source integration after a local build and the step's own test; it does
+not enable unsupported capabilities. Activation still needs admitted execution,
 trusted executable/configuration/resource observations, journal/watermark
-integration and bounded real transport/continuity/usage qualification. Such work
+integration and capability-specific real transport/usage qualification. Such work
 must preserve existing Gemini manager observations and ordinary legacy sessions.

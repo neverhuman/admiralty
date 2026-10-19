@@ -187,3 +187,35 @@ pub fn observe(
         provider: None,
     })
 }
+
+/// Provider-reported availability only. An error cannot authenticate an account,
+/// settle usage, qualify a transport, or authorize model fallback.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReportedFailureKind {
+    QuotaExhausted,
+    PaymentRequired,
+    Other,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FailureObservation {
+    pub kind: ReportedFailureKind,
+    pub message: String,
+    pub session_id: Option<String>,
+    pub event_count: usize,
+}
+
+impl FailureObservation {
+    pub fn native_execution_qualified(&self) -> bool {
+        false
+    }
+
+    pub fn parent_acceptance(&self) -> bool {
+        false
+    }
+
+    /// Error-path zero counters do not establish a qualified usage observation.
+    pub fn usage(&self) -> Option<u64> {
+        None
+    }
+}

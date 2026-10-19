@@ -544,3 +544,179 @@ fn injected_loss_of_grok_final_lf_is_reported_as_incomplete_framing() {
         Err(grok::GrokError::Stream(ObservationError::Framing))
     ));
 }
+
+#[test]
+fn captured_native_failures_report_specific_unavailability_without_usage_or_authority() {
+    let a = agy::parse_failure_capture(
+        agy::VERSION,
+        include_bytes!("../fixtures/providers/agy/1.4.2/live-unavailable.jsonl"),
+    )
+    .expect("actual native event/init/result failure dialect");
+    assert_eq!(a.kind, process::ReportedFailureKind::QuotaExhausted);
+    assert_eq!(
+        a.session_id.as_deref(),
+        Some("5175a56f-4864-49a7-904d-63fe50e85876")
+    );
+    assert_eq!(a.event_count, 4);
+    let g = grok::parse_failure_capture(
+        "grok 1.0.62 (1474f9cbdd91) [stable]",
+        include_bytes!("../fixtures/providers/grok/1.0.62/live-unavailable.jsonl"),
+    )
+    .expect("actual native type/available_commands/error failure dialect");
+    assert_eq!(g.kind, process::ReportedFailureKind::PaymentRequired);
+    assert_eq!(g.session_id, None, "no session identity was emitted");
+    for observation in [a, g] {
+        assert!(!observation.native_execution_qualified());
+        assert!(!observation.parent_acceptance());
+        assert_eq!(
+            observation.usage(),
+            None,
+            "failure zeros do not establish usage"
+        );
+    }
+}
+
+fn native_wire(values: &[serde_json::Value]) -> Vec<u8> {
+    values
+        .iter()
+        .flat_map(|value| {
+            let mut bytes = serde_json::to_vec(value).expect("synthetic mutation encoding");
+            bytes.push(b'\n');
+            bytes
+        })
+        .collect()
+}
+
+#[test]
+fn native_agy_failure_requires_complete_same_conversation_terminal_error() {
+    let raw = include_bytes!("../fixtures/providers/agy/1.4.2/live-unavailable.jsonl");
+    let values: Vec<serde_json::Value> = raw
+        .split(|b| *b == b'\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| serde_json::from_slice(line).expect("retained native JSON"))
+        .collect();
+    assert!(agy::parse_failure_capture(agy::VERSION, &raw[..raw.len() - 1]).is_err());
+    assert!(
+        agy::parse_failure_capture(agy::VERSION, &native_wire(&values[..values.len() - 1]))
+            .is_err()
+    );
+    for index in 1..values.len() {
+        let mut changed = values.clone();
+        let key = if index == values.len() - 1 {
+            "result"
+        } else {
+            "step_update"
+        };
+        changed[index][key]["conversation_id"] = serde_json::json!("foreign-session");
+        assert!(agy::parse_failure_capture(agy::VERSION, &native_wire(&changed)).is_err());
+    }
+    let mut changed = values.clone();
+    changed[0]["type"] = serde_json::json!("init");
+    assert!(
+        agy::parse_failure_capture(agy::VERSION, &native_wire(&changed)).is_err(),
+        "mixed dialects are ambiguous"
+    );
+    let mut changed = values.clone();
+    changed.last_mut().expect("result")["result"]["status"] = serde_json::json!("SUCCESS");
+    assert!(
+        agy::parse_failure_capture(agy::VERSION, &native_wire(&changed)).is_err(),
+        "a failure parser cannot qualify success"
+    );
+    let mut changed = values.clone();
+    changed.push(values[1].clone());
+    assert!(
+        agy::parse_failure_capture(agy::VERSION, &native_wire(&changed)).is_err(),
+        "no event after terminal error"
+    );
+    assert!(
+        agy::parse_failure_capture(agy::VERSION, b"{\"event\":\"init\",\"event\":\"result\"}\n")
+            .is_err()
+    );
+}
+
+#[test]
+fn native_grok_failure_rejects_truncation_bad_lists_and_synthetic_rpc_mixups() {
+    let raw = include_bytes!("../fixtures/providers/grok/1.0.62/live-unavailable.jsonl");
+    let values: Vec<serde_json::Value> = raw
+        .split(|b| *b == b'\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| serde_json::from_slice(line).expect("retained native JSON"))
+        .collect();
+    assert!(
+        grok::parse_failure_capture("grok 1.0.62 (1474f9cbdd91) [stable]", &raw[..raw.len() - 1])
+            .is_err()
+    );
+    assert!(
+        grok::parse_failure_capture(
+            "grok 1.0.62 (1474f9cbdd91) [stable]",
+            &native_wire(&values[..values.len() - 1])
+        )
+        .is_err()
+    );
+    for key in ["tools", "commands"] {
+        let mut changed = values.clone();
+        changed[0][key] = serde_json::json!([null]);
+        assert!(
+            grok::parse_failure_capture(
+                "grok 1.0.62 (1474f9cbdd91) [stable]",
+                &native_wire(&changed)
+            )
+            .is_err()
+        );
+    }
+    let mut changed = values.clone();
+    changed[0]["jsonrpc"] = serde_json::json!("2.0");
+    assert!(
+        grok::parse_failure_capture(
+            "grok 1.0.62 (1474f9cbdd91) [stable]",
+            &native_wire(&changed)
+        )
+        .is_err()
+    );
+    let mut changed = values.clone();
+    changed.push(values[0].clone());
+    assert!(
+        grok::parse_failure_capture(
+            "grok 1.0.62 (1474f9cbdd91) [stable]",
+            &native_wire(&changed)
+        )
+        .is_err()
+    );
+    let mut changed = values;
+    changed.last_mut().expect("error")["message"] =
+        serde_json::json!("some other provider failure");
+    assert_eq!(
+        grok::parse_failure_capture(
+            "grok 1.0.62 (1474f9cbdd91) [stable]",
+            &native_wire(&changed)
+        )
+        .expect("other failure")
+        .kind,
+        process::ReportedFailureKind::Other
+    );
+    assert!(
+        grok::parse_failure_capture(
+            "grok 1.0.62 (1474f9cbdd91) [stable]",
+            b"{\"type\":\"error\",\"message\":\"first\",\"message\":\"second\"}\n"
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn native_failure_dialects_require_the_observed_pinned_version() {
+    assert!(
+        agy::parse_failure_capture(
+            "1.4.3",
+            include_bytes!("../fixtures/providers/agy/1.4.2/live-unavailable.jsonl")
+        )
+        .is_err()
+    );
+    assert!(
+        grok::parse_failure_capture(
+            "grok 1.0.63 (next) [stable]",
+            include_bytes!("../fixtures/providers/grok/1.0.62/live-unavailable.jsonl")
+        )
+        .is_err()
+    );
+}

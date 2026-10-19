@@ -200,3 +200,60 @@ pub fn parse_stream(bytes: &[u8]) -> Result<Vec<Observation>, GrokError> {
     decoder.finish()?;
     Ok(observations)
 }
+
+/// Decode the captured native 1.0.62 failure stream. Actual CLI records use
+/// `type: available_commands/error`, rather than the synthetic JSON-RPC fixture.
+/// Tool listings grant no permissions; a missing terminal error is incomplete.
+pub fn parse_failure_capture(
+    version: &str,
+    bytes: &[u8],
+) -> Result<process::FailureObservation, GrokError> {
+    qualify(version, "")?;
+    let values = super::observation::decode_complete(bytes)?;
+    let mut failure = None;
+    for (index, value) in values.iter().enumerate() {
+        if value.get("jsonrpc").is_some() || value.get("method").is_some() {
+            return Err(GrokError::InvalidProfile);
+        }
+        match value.get("type").and_then(Value::as_str) {
+            Some("available_commands") => {
+                for key in ["tools", "commands"] {
+                    let entries = value
+                        .get(key)
+                        .and_then(Value::as_array)
+                        .ok_or(GrokError::InvalidProfile)?;
+                    if !entries.iter().all(|v| {
+                        v.as_str().is_some_and(|s| {
+                            !s.trim().is_empty()
+                                && s.len() <= 256
+                                && !s.chars().any(char::is_control)
+                        })
+                    }) {
+                        return Err(GrokError::InvalidProfile);
+                    }
+                }
+            }
+            Some("error") if index + 1 == values.len() => {
+                let message = value
+                    .get("message")
+                    .and_then(Value::as_str)
+                    .filter(|s| !s.trim().is_empty())
+                    .ok_or(GrokError::InvalidProfile)?;
+                failure = Some(process::FailureObservation {
+                    kind: if message.contains("402 Payment Required")
+                        && message.contains("usage balance exhausted")
+                    {
+                        process::ReportedFailureKind::PaymentRequired
+                    } else {
+                        process::ReportedFailureKind::Other
+                    },
+                    message: message.into(),
+                    session_id: None,
+                    event_count: values.len(),
+                });
+            }
+            _ => return Err(GrokError::InvalidProfile),
+        }
+    }
+    failure.ok_or(GrokError::InvalidProfile)
+}
