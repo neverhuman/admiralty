@@ -50,6 +50,9 @@
     "./provenance-contribution": {
       "types": "./generated/provenance-contribution.ts"
     },
+    "./views-snapshot": {
+      "types": "./generated/views-snapshot.ts"
+    },
     "./validators": {
       "types": "./generated/validators.d.mts",
       "import": "./generated/validators.mjs",
