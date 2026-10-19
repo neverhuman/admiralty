@@ -116,7 +116,7 @@ pub struct RejectedAdmission {
     pub plan: Box<NativeExecutionPlan>,
     /// Reserved-mode rejection returns the original command and both opaque
     /// proof roles. Ordinary admission returns None; nothing is reissued.
-    pub budget: Option<NativeBudgetAdmission>,
+    pub budget: Option<Box<NativeBudgetAdmission>>,
 }
 impl std::fmt::Debug for RejectedAdmission {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -400,7 +400,7 @@ impl NativeTaskLoop {
                 return Err(RejectedAdmission {
                     reason,
                     plan: Box::new(plan),
-                    budget,
+                    budget: budget.map(Box::new),
                 });
             }
         };
@@ -413,7 +413,7 @@ impl NativeTaskLoop {
                     return Err(RejectedAdmission {
                         reason: LoopError::InvalidBinding,
                         plan: Box::new(plan),
-                        budget: Some(admission),
+                        budget: Some(Box::new(admission)),
                     });
                 };
                 let mut expected = plan.reservation.clone();
@@ -430,7 +430,7 @@ impl NativeTaskLoop {
             return Err(RejectedAdmission {
                 reason: LoopError::RegistrationRejected,
                 plan: Box::new(plan),
-                budget: budget.map(|retained| retained.admission),
+                budget: budget.map(|retained| Box::new(retained.admission)),
             });
         }
         let run_id = request.run_id.clone();
