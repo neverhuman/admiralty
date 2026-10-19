@@ -55,6 +55,8 @@ pub struct SlotCommand {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+// Keep the frozen public command API's directly owned claim; command size is bounded.
+#[allow(clippy::large_enum_variant)]
 pub enum SlotEvent {
     SetPool {
         pool_id: String,
