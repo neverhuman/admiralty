@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { parseDomainRecordV2, parseNativeFleet } from '../src/validation';
 import {
@@ -10,6 +11,7 @@ import {
   computeDistBundleDigest,
   createBoundedCdpFrameReader,
   ensureBuiltDashboard,
+  isProcessAlive,
   launchBrowserHarness,
   startDashboardTestServer,
   startIsolatedNativeAdmiraltyServer,
@@ -410,7 +412,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
   beforeAll(async () => {
     server = await startDashboardTestServer();
     browser = await launchBrowserHarness();
-  }, 30_000);
+  }, 60_000);
 
   afterAll(async () => {
     await browser?.close();
@@ -456,6 +458,123 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
 
       expect(browser.browserVersion.product).toMatch(/Chrome\//);
       expect(browser.browserVersion.protocolVersion).toBeTruthy();
+
+      // Verify maxStartupAttempts (finite integer in 1..2) and startupTimeoutMs validation
+      for (const invalidAttempts of [0, -1, 1.5, 3, Number.POSITIVE_INFINITY, Number.NaN]) {
+        await expect(launchBrowserHarness({ maxStartupAttempts: invalidAttempts })).rejects.toThrow(
+          /Invalid maxStartupAttempts: expected finite integer in 1\.\.2/,
+        );
+      }
+      for (const invalidTimeout of [0, -100, Number.POSITIVE_INFINITY, Number.NaN]) {
+        await expect(launchBrowserHarness({ startupTimeoutMs: invalidTimeout })).rejects.toThrow(
+          /Invalid startupTimeoutMs: expected positive finite integer/,
+        );
+      }
+
+      // Verify bounded browser startup timeout recovery, process-group reaping, and profileDir cleanup
+      const spawnedAttempts: Array<{
+        attempt: number;
+        pid: number | undefined;
+        profileDir: string;
+        priorCleanedBeforeSpawn?: boolean;
+      }> = [];
+      const recoveredBrowser = await launchBrowserHarness({
+        maxStartupAttempts: 2,
+        _testStallAttempts: [1],
+        _testStallTimeoutMs: 150,
+        _testOnAttemptSpawn(attempt, info) {
+          const prior = spawnedAttempts[0];
+          const priorCleanedBeforeSpawn =
+            attempt === 2 && prior
+              ? !existsSync(prior.profileDir) &&
+                (typeof prior.pid === 'number' ? !isProcessAlive(prior.pid) : true)
+              : undefined;
+          spawnedAttempts.push({ attempt, ...info, priorCleanedBeforeSpawn });
+        },
+      });
+      try {
+        expect(spawnedAttempts.length).toBe(2);
+        expect(spawnedAttempts[0]?.attempt).toBe(1);
+        expect(spawnedAttempts[1]?.attempt).toBe(2);
+        // Attempt 1's process group and profile directory must be completely cleaned up before attempt 2 spawns
+        expect(spawnedAttempts[1]?.priorCleanedBeforeSpawn).toBe(true);
+        expect(existsSync(spawnedAttempts[0]!.profileDir)).toBe(false);
+        if (typeof spawnedAttempts[0]?.pid === 'number') {
+          expect(isProcessAlive(spawnedAttempts[0].pid)).toBe(false);
+        }
+        expect(recoveredBrowser.browserVersion.product).toMatch(/Chrome\//);
+      } finally {
+        await recoveredBrowser.close();
+      }
+      expect(existsSync(spawnedAttempts[1]!.profileDir)).toBe(false);
+
+      // Verify fatal-frame startup cleanup regression: when onFatalError triggers terminateBrowserProcessTree,
+      // startup catch awaits the shared memoized cleanup Promise so attempt 1's process group and profileDir
+      // are completely cleaned up BEFORE attempt 2 spawns
+      const fatalFrameAttempts: Array<{
+        attempt: number;
+        pid: number | undefined;
+        profileDir: string;
+        priorCleanedBeforeSpawn?: boolean;
+      }> = [];
+      const fatalRecoveredBrowser = await launchBrowserHarness({
+        maxStartupAttempts: 2,
+        _testFatalFrameAttempts: [1],
+        _testOnAttemptSpawn(attempt, info) {
+          const prior = fatalFrameAttempts[0];
+          const priorCleanedBeforeSpawn =
+            attempt === 2 && prior
+              ? !existsSync(prior.profileDir) &&
+                (typeof prior.pid === 'number' ? !isProcessAlive(prior.pid) : true)
+              : undefined;
+          fatalFrameAttempts.push({ attempt, ...info, priorCleanedBeforeSpawn });
+        },
+      });
+      try {
+        expect(fatalFrameAttempts.length).toBe(2);
+        expect(fatalFrameAttempts[1]?.priorCleanedBeforeSpawn).toBe(true);
+        expect(existsSync(fatalFrameAttempts[0]!.profileDir)).toBe(false);
+        if (typeof fatalFrameAttempts[0]?.pid === 'number') {
+          expect(isProcessAlive(fatalFrameAttempts[0].pid)).toBe(false);
+        }
+        expect(fatalRecoveredBrowser.browserVersion.product).toMatch(/Chrome\//);
+      } finally {
+        await fatalRecoveredBrowser.close();
+      }
+      expect(existsSync(fatalFrameAttempts[1]!.profileDir)).toBe(false);
+      if (typeof fatalFrameAttempts[1]?.pid === 'number') {
+        expect(isProcessAlive(fatalFrameAttempts[1].pid)).toBe(false);
+      }
+
+      // Verify all-attempts-exhausted failure cleans up every attempt and retains diagnostic evidence
+      const failedAttempts: Array<{ attempt: number; pid: number | undefined; profileDir: string }> = [];
+      await expect(
+        launchBrowserHarness({
+          maxStartupAttempts: 2,
+          _testStallAttempts: [1, 2],
+          _testStallTimeoutMs: 150,
+          _testOnAttemptSpawn(attempt, info) {
+            failedAttempts.push({ attempt, ...info });
+          },
+        }),
+      ).rejects.toThrow(
+        /Browser startup failed after 2 attempts \(attempt 1\/2: [\s\S]* \|\| attempt 2\/2: [\s\S]*\)/,
+      );
+      expect(failedAttempts.length).toBe(2);
+      for (const item of failedAttempts) {
+        expect(existsSync(item.profileDir)).toBe(false);
+        if (typeof item.pid === 'number') {
+          expect(isProcessAlive(item.pid)).toBe(false);
+        }
+      }
+
+      // Verify waitForCondition/waitForSelector enforces bounded stage timeout and throws stage-specific diagnostics
+      // without hanging for CDP_COMMAND_TIMEOUT_MS (20,000ms) into the outer Vitest test deadline
+      const stageStartMs = Date.now();
+      await expect(browser.waitForSelector('#non-existent-stage-probe', 200)).rejects.toThrow(
+        /Timed out waiting for selector "#non-existent-stage-probe" after 200ms/,
+      );
+      expect(Date.now() - stageStartMs).toBeLessThan(2_500);
     },
     30_000,
   );
