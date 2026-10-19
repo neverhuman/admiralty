@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T00:33:23.503Z",
+  "tested_source": "d7ced28bbcb71471a105752f0e035e4f714abc27",
+  "receiving_base": "196b873b80f12f36eeffe9a555749b962ea4f815",
+  "worker_commits": {
+    "scoped_claim": "7e6c0838209be248e79a7f51fca02b6ce28636b7",
+    "plan_retention": "85dd61e7cd63aa4a32dcb864d35bfb34d994e133",
+    "context_storage": "9a36f3813c229e7905bb0a5157b21636f0d695c1",
+    "native_task_loop": "625ece069ada9dfb318c2501cac850f5aad21744"
+  },
+  "checks": [
+    {
+      "command": "cargo test --workspace --locked",
+      "passed": 1128,
+      "failed": 0,
+      "ignored": 5,
+      "filtered": 0,
+      "suites": 132
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0
+    }
+  ],
+  "ignored_helpers": [
+    "execution::tests::deterministic_fake_child",
+    "model_selection::tests::model_admission_fake_child",
+    "services::native_executor::tests::child_marker",
+    "git_fixture::tests::child_control",
+    "owned_daemon_worker"
+  ],
+  "independent_reviews": {
+    "native_task_loop": {
+      "reviewer": "audit_evidence",
+      "source_sha256": "4e8878710d2f378efd0849efe5a1319a226bcfc5f56fc430d2592feeb541adb1",
+      "result": "no P0/P1 blocker"
+    },
+    "context_storage": {
+      "reviewer": "audit_evidence",
+      "source_sha256": "eb6f8f205606821377fcf0c72f6b5eadfecbb419dfb6ed9f906abbc6e2a0bf9f",
+      "result": "no P0/P1 blocker"
+    },
+    "scoped_claim_and_plan_retention": {
+      "reviewer": "root integrator",
+      "result": "actual source/ownership/lock/fencing checks clear"
+    }
+  },
+  "component_checks": {
+    "store": 120,
+    "context_dedicated": 11,
+    "native_task_loop": 8,
+    "controller": 8,
+    "executor_retention": 12,
+    "executor_ignored_helper": 1
+  },
+  "source_files_sha256": {
+    "crates/admiralty-server/src/services/controller.rs": "5b6ad1d442bda581a936465d1893c9ab5dc0657501018320dce7db7920f0e445",
+    "crates/admiralty-server/src/services/mod.rs": "3df0f61f5cc81aeec1b75938e6f4c38fa5e9f315b4d3ace749d26cf7dda3d19a",
+    "crates/admiralty-server/src/services/native_executor.rs": "57ab1e165c6e8c41cf95df3b82395d7635684c66f11b5c5671241fcbed335af0",
+    "crates/admiralty-server/src/services/native_task_loop.rs": "4e8878710d2f378efd0849efe5a1319a226bcfc5f56fc430d2592feeb541adb1",
+    "crates/admiralty-store/migrations/0004_context_renders.sql": "3af56da0673bbb0767893535f6b4db71d30d4692ff49b0ea2fe6c8a336cb6feb",
+    "crates/admiralty-store/src/context_renders.rs": "eb6f8f205606821377fcf0c72f6b5eadfecbb419dfb6ed9f906abbc6e2a0bf9f",
+    "crates/admiralty-store/src/lib.rs": "7716811b375117e747a368119887b09d3b4dd2caa17bced7752499276b4f667b",
+    "crates/admiralty-store/src/outbox.rs": "be94e770216f7670b86d7376ff343fbd407b5ccfab58db59fd2f9213f13c3690"
+  },
+  "logs": {
+    "native-followup-workspace": {
+      "path": "target/quality/native-followup-workspace.log",
+      "sha256": "f01755afc1e819fe982d8fce4ff4517e56b98b4b4ce87fcd18797ad99698a4e4"
+    },
+    "native-followup-clippy": {
+      "path": "target/quality/native-followup-clippy.log",
+      "sha256": "945b5b34a57be35f9df10d23776053327007db1f1fc6e308b54d85328c264463"
+    },
+    "native-followup-fmt": {
+      "path": "target/quality/native-followup-fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "pr78-9ad8c9f-workspace-tests": {
+      "path": "target/quality/pr78-9ad8c9f-workspace-tests.log",
+      "sha256": "a0b090955dcddab483936c6a1f1bf1e5faf163695cab45d14c3a4170633f2be3"
+    },
+    "pr78-9ad8c9f-clippy": {
+      "path": "target/quality/pr78-9ad8c9f-clippy.log",
+      "sha256": "7f1ca34d49e157818f3e46b57ff413e994389b00b74e74b2b949ef5d5e9f904a"
+    },
+    "main-c230002-browser-failed": {
+      "path": "target/quality/main-c230002-browser-failed.log",
+      "sha256": "74b62d93a092b97065426173403ead1b0c953491a02dd95096ee46cafbee7ccf"
+    },
+    "main-196b873-browser-failed": {
+      "path": "target/quality/main-196b873-browser-failed.log",
+      "sha256": "c642eab9aea59af3f2b2fa0baf73d06789e092b04f383944bfe0513694d8735a"
+    },
+    "pr78-9ad8c9f-rust-failed": {
+      "path": "target/quality/pr78-9ad8c9f-rust-failed.log",
+      "sha256": "f6676da203b18b33ec2e3a71afc38becf383d837e938df42f7e74cd5ca636bcc"
+    }
+  },
+  "pr78": {
+    "reviewed_head": "9ad8c9fc0181159c626f4f74529a8fa8c18b2138",
+    "receiving_main": "196b873b80f12f36eeffe9a555749b962ea4f815",
+    "merged_utc": "2026-10-19T00:18:55Z",
+    "exact_head_workspace_tests": 35,
+    "source_candidate_tests": 13,
+    "preparation_tests": 14,
+    "reviewer": "neverhumanbot",
+    "method": "rebase --match-head-commit"
+  },
+  "live_observation": {
+    "observed_utc": "2026-10-19T00:27:24.123Z",
+    "deployed_source": "c2300024848fd921031dee47f82288423afb6fda",
+    "manifest_sha256": "edb27988b3fa5c23f35c446b961177fc69d47285124e853bc73097d9372f43b8",
+    "verified_artifacts": 12,
+    "actual_daemon_and_observer_paths_checked": true,
+    "primary_http": 200,
+    "compatibility_http": 307,
+    "collector": "rust",
+    "model_turns": 0,
+    "acceptance_authority": false,
+    "retained_temporal_controls": 13,
+    "old_owned_python_respawn_observed": false
+  },
+  "ci": {
+    "main_rust_contracts_c230": "39179429955 success",
+    "main_rust_contracts_196": "39180222022 success",
+    "browser_c230": "39179429964 failed startup deadline; 4 deterministic passed, 9 browser skipped",
+    "browser_196": "39180222033 failed 30s scale journey;12 passed,1 failed",
+    "pr78_contracts": "39179970894 contracts child status null on second regeneration after~33s; original error/signal discarded so cause unconfirmed; stricter actual-exit assertions and bounded diagnostics separately tested",
+    "pr_browser_qualifications": [
+      "39179349401 13/13 success",
+      "39179970890 13/13 success"
+    ]
+  },
+  "rollout_reconciliation": {
+    "observed_utc": "2026-10-19T00:13:32.131Z",
+    "before_sha256": "cdfbd0af46fdf938976a6a0f6f73f5b63e5422ae2cdfd33541c2e4f9a7ca4b54",
+    "after_sha256": "e7a65ad3de83a8e7c843c515f0e31829b98713c159f1e1e12599806194a270e6",
+    "all_parent_statuses_preserved": true,
+    "accepted": [
+      "P00",
+      "P01"
+    ],
+    "other_parents_open": 30
+  },
+  "limits": [
+    "Trusted local components only; no new HTTP/startup executor, provider selection/credential issuer or automatic acceptance",
+    "Actual Linux TaskLoop observation-to-started callback/closed completion/source/check/Store chain is still unqualified; deterministic fixed-child proof is in progress, never coding-provider qualification",
+    "Unknown effect ACK blocks completion handoff; explicit Store reconciliation and retirement/new-attempt protocol remain open",
+    "Role-render application ACK is recorded trusted caller data, not authenticated transport/provider memory or measured savings",
+    "Context history cap256 renders/8MiB, baseline commands1024/4MiB, pages<=8/256KiB; no silent eviction",
+    "No whole P02-P31 acceptance, signed installer or major release tag implied"
+  ],
+  "native_execution_qualified": false,
+  "parent_acceptance": false,
+  "contract_process_diagnostics": {
+    "worker_commit": "783838109eb479fe69db4c880d72452d26b6d030",
+    "root_cherry_pick": "a1cc5e8",
+    "source_file": "packages/contracts/runtime.test.mjs",
+    "source_sha256": "9e29d60d9b5048512a8edf94b60315ff8bc6f7d4216a0da5ee5cfa96721256fc",
+    "original_failure": {
+      "run_id": "39179970894",
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/pr78-9ad8c9f-rust-failed.log",
+      "log_sha256": "f6676da203b18b33ec2e3a71afc38becf383d837e938df42f7e74cd5ca636bcc",
+      "stage": "contracts generation after deliberate drift",
+      "observed_status": null,
+      "error_and_signal": "not captured by previous assertion",
+      "diagnosis": "Timeout is plausible from the approximately 33.6-second duration and 30-second spawn bound, but original error/signal cannot be reconstructed."
+    },
+    "validation": {
+      "command": "rtk proxy env TMPDIR=/private/tmp/admiralty-durable-context-checks-lfbf2j7b node --test packages/contracts/runtime.test.mjs",
+      "node": "v25.2.1",
+      "platform": "macOS",
+      "tests": 11,
+      "passed": 11,
+      "failed": 0,
+      "original_contract_checks": 10,
+      "added_outcome_diagnostic_checks": 1,
+      "test_log_sha256": "11bf10f89d3b67affc891e3cc53072c2fc519c0fa17fcdf278c93d0ef34b9e7e",
+      "node_check": 0,
+      "diff_check": 0
+    },
+    "change": "Keep 30000ms timeout, make 1MiB capture explicit, SIGKILL direct child on deadline, report bounded stage/command/cwd/duration/error/signal/stdout/stderr, require actual exit 1 for drift and external-reference rejection.",
+    "limits": [
+      "No claim the intermittent CI condition is repaired or reproduced.",
+      "The original error and signal were lost; no definite root cause asserted.",
+      "Local Node25 execution is not a new Node24 Linux fleet CI result.",
+      "This is direct-child bounded execution, not a process-tree supervisor.",
+      "Generator, schemas, guards, drift checks and outputs unchanged."
+    ]
+  },
+  "post_workspace_check_delta": "Only package contract test diagnostics, README, ledger and receipts changed after d7ced28; Rust production hashes unchanged."
+}
