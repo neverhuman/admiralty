@@ -48,6 +48,14 @@ adoption. Callers must obtain those capabilities from their separate authority
 boundaries. This registry does not provide race-free protection against a
 filesystem change after validation; callers that later act on a path must
 revalidate identity at that action boundary.
+
+Create-only `workspace::preparation` retains descriptors for the managed parent,
+checkout, and its original private `.git` directory. Its
+`PreparedWorkspace::validate_current_custody()` rejects a replaced Git directory
+even when the replacement has the same owner and mode, and rejects permission
+drift on the retained metadata. These checks preserve the trusted-local boundary;
+they do not authenticate unchanged Git contents or establish isolated execution.
+
 This is a bounded local observation prototype, tested on the current host with
 Unix-specific protections. It does not provide a retained directory handle,
 race-free sandbox, mount or hard-link exclusion, Unicode path qualification,
