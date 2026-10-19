@@ -139,9 +139,19 @@ pub struct SlotBinding<'a> {
 }
 
 /// Installed at Store startup; request JSON cannot supply an authority.
-/// Callbacks must be bounded, nonblocking, non-reentrant, and perform no I/O.
+/// Callbacks are observational: they must not directly or indirectly mutate or
+/// revoke any admission-authority state. They must be bounded, nonblocking,
+/// non-reentrant, and perform no I/O. Fault-injection callbacks belong only to
+/// scoped diagnostic tests; they are not an installed production issuer.
 /// Policy must independently attest physical capacity identity and allotment, as
 /// well as the claim's model, resource, budget, scope, and launch bindings.
+///
+/// The Store samples separate policies sequentially at defined validation points.
+/// These Boolean callbacks do not provide joint authorization or revocation
+/// guarantees through COMMIT under asynchronous policy changes. Such guarantees
+/// require a common retained snapshot, epoch, or lease fence, which this component
+/// neither provides nor activates. SQL writes remain atomic, and request data
+/// cannot issue a grant or bypass the installed authorities.
 pub trait InferenceSlotAuthority: Send + Sync {
     fn authorize_write(
         &self,
