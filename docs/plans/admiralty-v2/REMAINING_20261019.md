@@ -1,5 +1,25 @@
 # Remaining Admiralty work — 19 October 2026
 
+## Later component reconciliation
+
+This additive update retains the full audit below at its original source/time.
+Only P00/P01 are fully accepted; all30 other parents remain open. Do not rebuild
+the following later integrated components or infer that they are live:
+
+| Later source/evidence | What is implemented; what remains |
+| --- | --- |
+| PR110–114, receiving maina9e0f557 | Private scoped native intake HTTP/config, raw React capture and actual private Rust/browser retry/readback with repaired axe contrast; private integrity-pinned installer including separate Linux evidence. See the corresponding committed `native-intake-*`, `native-private-install-*` and `native-install-linux-*` receipts. No live intake config/issuer, full enriched/delivery UI, provider or full P30 acceptance. |
+| PR115 receiving main03989ae76f93f38f6e3d2a63619c39b8fde74989 | Actual offline work-order CLI preview/capture/explicit record/exact reads/all-state duplicate query, five actual binary cases and strict checks. Receipt `native-work-order-cli-20261019T0727Z.json` pins code9da94ab. WO6 enrichment/duplicate/attention/delivery UI and production request-to-delivery journey remain open. |
+| Durable admission codee766ce6af29beb141568a7f07b86ad3b0e86153d, exact receiving merge recorded in EXECUTION | The actual Store reservation journal and controller atomically join budget/claim/outbox with current authority, CAS, bounded immutable history, retry, rollback and backup checks. Receipt `native-durable-admission-20261019T0730Z.json` pins25 scoped admission/controller cases plus5 composed CLI cases. No production budget issuer/global model-slot admission, real provider execution, trusted settlement or restart recovery; P03/P10/P14 remain open. |
+| Primary and supervisors | Last complete independent primary proof remains6395 at06:53Z in `native-6395f8c-independent-20261019T0655Z.json`. A separate read-only07:09Z check again found6395 daemon/observer executable paths, healthok/executionfalse, no retired owned Python and quota errors on both actual Gemini4Argon supervisors. It was not a fresh full manifest/hash/browser proof. SoleCommodore deploy ownership has not been transferred. |
+| CI | Exacta9e browser39212711302 passed; contracts/fmt/strict Clippy passed, Rust workflow39212711288 failed the retained controlled-capture deadline with86pass/1fail/2ignored. Single CI backlog contains the actual log/hash; no new cleanup lane or weakened guard. |
+
+The next ready implementation is production budget/resource/model-slot policy,
+provider/context/closure/recovery composition, and the remaining WO6 views.
+Fresh exact provider authorization and a real deploy-writer handoff/coverage
+decision remain separate operational gates. Existing consumed grants are not
+reused; source implementation continues independently of them.
+
 **Audited source:** `066706b1d563d7554e19b9ffb0b2137cf66f14e8`, verified `origin/main`. **Audit observation:** `2026-10-19T05:30:52Z`, from the actual UTC clock. **Parent state: 2/32 accepted; only P00 and P01 accepted at their recorded foundation scope; P02–P31 remain open.** This update promotes no parent.
 
 ## Objective, method and boundaries
