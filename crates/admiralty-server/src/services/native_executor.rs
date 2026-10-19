@@ -16,7 +16,7 @@ use admiralty_runtime::{
         AdmissionIdentity, ClosedAdmission, RecoveryIdentity, ResourceGate,
         ResourcePermitAuthority, ResourcePermitClaims, RunningAdmission, VerifiedResourcePermit,
     },
-    session::{CaptureState, LaunchSpec, SessionHost},
+    session::{CaptureState, LaunchSpec, OutputChunk, SessionHost, SessionStatus},
     workspace::{preparation::PreparedWorkspace, registry::WorkspaceSpec},
 };
 use serde::Serialize;
@@ -32,6 +32,7 @@ use std::{
 };
 
 const MAX_RUN_ID_BYTES: usize = 128;
+const MAX_COMPLETED_CAPTURE_CHUNKS: usize = 16_384;
 
 /// Trusted service-local persistence boundary. Called only with an actual
 /// resource observation whose recovery identity was durably journaled first.
@@ -154,6 +155,31 @@ pub struct ClosedExecution {
     closure: ClosedAdmission,
     prepared_workspace: PreparedWorkspace,
     output: Vec<u8>,
+    capture: Option<CompletedCapture>,
+}
+
+/// Actual bounded session output, retaining its original stream tags and byte
+/// offsets through the producer's final EOF watermark. Only the owned host's
+/// complete, exited capture can create this process-local value; no serialized
+/// status or caller-supplied chunks can reconstruct it. It does not assert a
+/// successful exit, provider identity, changed source, or acceptance.
+pub struct CompletedCapture {
+    run_id: String,
+    chunks: Vec<OutputChunk>,
+    final_status: SessionStatus,
+}
+impl CompletedCapture {
+    /// Owned SessionHost run that produced these chunks. Callers must bind it
+    /// to the accompanying completion receipt and prepared provider launch.
+    pub fn run_id(&self) -> &str {
+        &self.run_id
+    }
+    pub fn chunks(&self) -> &[OutputChunk] {
+        &self.chunks
+    }
+    pub fn final_status(&self) -> &SessionStatus {
+        &self.final_status
+    }
 }
 impl ClosedExecution {
     pub fn receipt(&self) -> &RuntimeReceipt {
@@ -183,6 +209,32 @@ impl ClosedExecution {
     /// Captured transcript bytes; this is NOT a source/code candidate artifact.
     pub fn output(&self) -> &[u8] {
         &self.output
+    }
+    /// Nonempty authenticated transcript with the actual final host status.
+    /// `None` is reserved for a silent completed child; it is not a successful
+    /// empty provider result. Incomplete or uncertain captures remain pending.
+    pub fn capture(&self) -> Option<&CompletedCapture> {
+        self.capture.as_ref()
+    }
+    /// Transfer the original tagged capture alongside the existing one-shot
+    /// workspace/closure handoff. Flattened bytes retain compatibility only;
+    /// provider parsers must consume the tagged capture and its actual status.
+    pub fn into_completion_with_capture(
+        self,
+    ) -> (
+        RuntimeReceipt,
+        PreparedWorkspace,
+        ClosedAdmission,
+        Vec<u8>,
+        Option<CompletedCapture>,
+    ) {
+        (
+            self.receipt,
+            self.prepared_workspace,
+            self.closure,
+            self.output,
+            self.capture,
+        )
     }
 }
 
@@ -461,26 +513,22 @@ impl NativeExecutor {
         {
             return Ok(None);
         }
-        let output = match collect_output(
-            &entry.host,
-            run_id,
-            status.output_offset,
-            self.capture_limit,
-        ) {
-            Ok(bytes) => bytes,
+        let collected = match collect_output(&entry.host, run_id, &status, self.capture_limit) {
+            Ok(captured) => captured,
             Err(_) => return Ok(None),
         };
         let closure = match prove_closed(&mut entry.running, &entry.host) {
             Ok(proof) => proof,
             Err(_) => return Ok(None),
         };
-        let output_digest = content_digest(&output).map_err(|_| NativeExecutorError::Digest)?;
+        let output_digest =
+            content_digest(&collected.output).map_err(|_| NativeExecutorError::Digest)?;
         let outcome = write_closed_evidence(
             &self.journal,
             &entry.recovery,
             &closure,
             &output_digest,
-            output.len() as u64,
+            collected.output.len() as u64,
             &entry.intent.provider,
             &entry.intent.model,
         )?;
@@ -518,7 +566,8 @@ impl NativeExecutor {
                 receipt: receipt.clone(),
                 closure,
                 prepared_workspace: closed_run.prepared_workspace,
-                output,
+                output: collected.output,
+                capture: collected.capture,
             },
         );
         // Dropping this run's SessionHost is safe only after proven closure.
@@ -927,17 +976,43 @@ fn validate_bindings(
     Ok(())
 }
 
+struct CollectedOutput {
+    output: Vec<u8>,
+    capture: Option<CompletedCapture>,
+}
+
 fn collect_output(
     host: &SessionHost,
     run_id: &str,
-    output_len: u64,
+    observed: &SessionStatus,
     maximum: usize,
-) -> Result<Vec<u8>, NativeExecutorError> {
+) -> Result<CollectedOutput, NativeExecutorError> {
+    let output_len = observed.output_offset;
     if output_len > maximum as u64 {
         return Err(NativeExecutorError::Capacity);
     }
+    if observed.exit.is_none()
+        || observed.capture_failed
+        || observed.capture_state != CaptureState::Complete
+        || observed.final_output_offset != Some(output_len)
+        || observed.input_outcome_unknown
+        || observed.pid == 0
+    {
+        return Err(NativeExecutorError::LaunchUnknown);
+    }
     let mut output = Vec::with_capacity(output_len as usize);
+    let mut chunks = Vec::new();
     let mut cursor = 0;
+    if output_len == 0 {
+        // Silent compatibility completions still validate the actual journal;
+        // a corrupt empty source must not bypass capture checks via `None`.
+        let tail = host
+            .tail(run_id, 0, 1)
+            .map_err(|_| NativeExecutorError::Journal)?;
+        if tail.next_offset != 0 || !tail.chunks.is_empty() {
+            return Err(NativeExecutorError::Journal);
+        }
+    }
     while cursor < output_len {
         let tail = host
             .tail(run_id, cursor, (maximum - cursor as usize).min(64 * 1024))
@@ -945,15 +1020,52 @@ fn collect_output(
         if tail.next_offset <= cursor || tail.next_offset > output_len {
             return Err(NativeExecutorError::Journal);
         }
+        let mut chunk_cursor = cursor;
         for chunk in tail.chunks {
+            if chunks.len() >= MAX_COMPLETED_CAPTURE_CHUNKS {
+                return Err(NativeExecutorError::Capacity);
+            }
+            let next = chunk_cursor
+                .checked_add(chunk.bytes.len() as u64)
+                .ok_or(NativeExecutorError::Capacity)?;
+            if chunk.bytes.is_empty() || chunk.offset != chunk_cursor || next > tail.next_offset {
+                return Err(NativeExecutorError::Journal);
+            }
             output.extend_from_slice(&chunk.bytes);
+            chunks.push(chunk);
+            chunk_cursor = next;
+        }
+        if chunk_cursor != tail.next_offset {
+            return Err(NativeExecutorError::Journal);
         }
         cursor = tail.next_offset;
     }
     if output.len() != output_len as usize {
         return Err(NativeExecutorError::Journal);
     }
-    Ok(output)
+    // Re-read from the owned host after draining, rather than manufacturing a
+    // status from byte counts or copying the earlier observation. A fixed EOF
+    // boundary and exited process identity must still match the original run.
+    let final_status = host
+        .status(run_id)
+        .map_err(|_| NativeExecutorError::LaunchUnknown)?;
+    if final_status.pid != observed.pid
+        || final_status.start_identity != observed.start_identity
+        || final_status.exit != observed.exit
+        || final_status.capture_failed
+        || final_status.capture_state != CaptureState::Complete
+        || final_status.input_outcome_unknown
+        || final_status.output_offset != output_len
+        || final_status.final_output_offset != Some(output_len)
+    {
+        return Err(NativeExecutorError::LaunchUnknown);
+    }
+    let capture = (!chunks.is_empty()).then_some(CompletedCapture {
+        run_id: run_id.to_owned(),
+        chunks,
+        final_status,
+    });
+    Ok(CollectedOutput { output, capture })
 }
 
 #[cfg(target_os = "linux")]
@@ -2085,6 +2197,170 @@ mod tests {
     fn journal_fixture() -> PathBuf {
         private_fixture("native-journal-test")
     }
+
+    fn capture_child(root: &Path, run: &str, script: &str) -> SessionHost {
+        let host = SessionHost::new();
+        host.launch_with_environment(
+            LaunchSpec {
+                run_id: run.into(),
+                program: PathBuf::from("/bin/sh"),
+                args: vec!["-c".into(), script.into()],
+                cwd: root.into(),
+                spool_dir: root.join(run),
+            },
+            &[],
+        )
+        .expect("actual controlled child with empty environment");
+        host
+    }
+
+    fn completed_status(host: &SessionHost, run: &str) -> SessionStatus {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            if let Ok(status) = host.status(run)
+                && status.exit.is_some()
+                && status.capture_state != CaptureState::Capturing
+            {
+                return status;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "controlled child capture deadline"
+            );
+            thread::sleep(Duration::from_millis(5));
+        }
+    }
+
+    #[test]
+    fn completed_capture_retains_actual_tagged_chunks_and_final_host_watermark() {
+        use admiralty_runtime::session::OutputStream;
+        let root = private_fixture("native-capture-tags");
+        let host = capture_child(
+            &root,
+            "tagged",
+            "printf 'actual stdout'; printf 'actual stderr' >&2",
+        );
+        host.close_input("tagged").expect("close actual input");
+        let observed = completed_status(&host, "tagged");
+        let captured = collect_output(&host, "tagged", &observed, 1024).expect("actual capture");
+        let proof = captured.capture.expect("nonempty complete tagged capture");
+        assert_eq!(proof.run_id(), "tagged");
+        assert_eq!(
+            proof.final_status(),
+            &host.status("tagged").expect("actual final status")
+        );
+        assert_eq!(proof.final_status().exit, Some((Some(0), true)));
+        assert_eq!(proof.final_status().final_output_offset, Some(26));
+        assert!(proof.final_status().input_closed);
+        // SessionHost explicitly reports no start identity off Linux; retain
+        // that exact observation rather than inventing a portable substitute.
+        assert_eq!(proof.final_status().start_identity, observed.start_identity);
+        let original = host.tail("tagged", 0, 1024).expect("original host chunks");
+        assert_eq!(proof.chunks(), original.chunks);
+        let mut cursor = 0;
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        let mut flattened = Vec::new();
+        for chunk in proof.chunks() {
+            assert_eq!(chunk.offset, cursor);
+            cursor += chunk.bytes.len() as u64;
+            flattened.extend_from_slice(&chunk.bytes);
+            match chunk.stream {
+                OutputStream::Stdout => stdout.extend_from_slice(&chunk.bytes),
+                OutputStream::Stderr => stderr.extend_from_slice(&chunk.bytes),
+            }
+        }
+        assert_eq!(stdout, b"actual stdout");
+        assert_eq!(stderr, b"actual stderr");
+        assert_eq!(flattened, captured.output);
+        assert_eq!(cursor, proof.final_status().output_offset);
+        drop(host);
+        fs::remove_dir_all(root).expect("owned capture cleanup");
+    }
+
+    #[test]
+    fn capture_rejects_actual_incomplete_overlimit_truncated_and_unknown_sources() {
+        let root = private_fixture("native-capture-deny");
+        let waiting = capture_child(&root, "waiting", "read ignored");
+        let incomplete = waiting.status("waiting").expect("actual live status");
+        assert!(incomplete.exit.is_none());
+        assert!(matches!(
+            collect_output(&waiting, "waiting", &incomplete, 1024),
+            Err(NativeExecutorError::LaunchUnknown)
+        ));
+        waiting
+            .close_input("waiting")
+            .expect("finish actual waiting child");
+        let _ = completed_status(&waiting, "waiting");
+        drop(waiting);
+
+        let host = capture_child(&root, "bounded", "printf 'bounded bytes'");
+        host.close_input("bounded").expect("close actual input");
+        let observed = completed_status(&host, "bounded");
+        assert!(matches!(
+            collect_output(&host, "bounded", &observed, 3),
+            Err(NativeExecutorError::Capacity)
+        ));
+        assert!(collect_output(&host, "missing", &observed, 1024).is_err());
+        let mut changed_identity = observed.clone();
+        changed_identity.pid += 1;
+        assert!(matches!(
+            collect_output(&host, "bounded", &changed_identity, 1024),
+            Err(NativeExecutorError::LaunchUnknown)
+        ));
+        File::options()
+            .write(true)
+            .open(root.join("bounded/output.journal"))
+            .expect("owned journal")
+            .set_len(1)
+            .expect("simulate actual truncated capture");
+        assert!(matches!(
+            collect_output(&host, "bounded", &observed, 1024),
+            Err(NativeExecutorError::Journal)
+        ));
+        drop(host);
+        fs::remove_dir_all(root).expect("owned capture cleanup");
+    }
+
+    #[test]
+    fn silent_completed_child_has_legacy_output_but_no_authenticated_provider_transcript() {
+        let root = private_fixture("native-capture-silent");
+        let host = capture_child(&root, "silent", "exit 0");
+        host.close_input("silent").expect("close actual input");
+        let observed = completed_status(&host, "silent");
+        let collected =
+            collect_output(&host, "silent", &observed, 1024).expect("silent completion");
+        assert!(collected.output.is_empty());
+        assert!(collected.capture.is_none());
+        File::options()
+            .write(true)
+            .open(root.join("silent/output.journal"))
+            .expect("owned empty journal")
+            .set_len(1)
+            .expect("simulate inconsistent silent capture");
+        assert!(matches!(
+            collect_output(&host, "silent", &observed, 1024),
+            Err(NativeExecutorError::Journal)
+        ));
+        drop(host);
+        fs::remove_dir_all(root).expect("owned capture cleanup");
+    }
+
+    #[test]
+    fn actual_producer_capture_failure_cannot_yield_typed_transcript() {
+        let root = private_fixture("native-capture-failed");
+        // Exceed SessionHost's bounded journal with an actual local producer;
+        // no synthesized CaptureState or completion flag can qualify this run.
+        let host = capture_child(&root, "failed", "/usr/bin/head -c 9000000 /dev/zero");
+        host.close_input("failed").expect("close actual input");
+        let observed = completed_status(&host, "failed");
+        assert!(observed.capture_failed);
+        assert_eq!(observed.capture_state, CaptureState::Failed);
+        assert!(collect_output(&host, "failed", &observed, 16 * 1024 * 1024).is_err());
+        drop(host);
+        fs::remove_dir_all(root).expect("owned capture cleanup");
+    }
+
     #[test]
     fn journal_descriptor_stays_with_original_directory_after_path_substitution() {
         let root = journal_fixture();
