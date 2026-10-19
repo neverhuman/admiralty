@@ -737,15 +737,28 @@
   box-shadow: none;
 }
 .atlas-agent.owner {
-  padding-left: 60px;
+  display: grid;
+  grid-template-columns: 35px minmax(0, 1fr);
+  align-content: center;
+  column-gap: 12px;
+  row-gap: 5px;
+  padding-left: 16px;
   border-color: #48536a;
   background: #202b3e;
+}
+.atlas-agent.owner .atlas-agent-top {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
 }
 .atlas-agent.owner .atlas-model,
 .atlas-agent.owner .atlas-agent-bottom {
   display: none;
 }
 .atlas-agent.owner > strong {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
   font-size: 19px;
 }
 .atlas-agent.watcher {
@@ -781,7 +794,10 @@
   border-style: dashed;
 }
 .atlas-owner-avatar {
-  position: absolute;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: center;
+  justify-self: center;
   pointer-events: none;
 }
 .atlas-owner-avatar .avatar {
