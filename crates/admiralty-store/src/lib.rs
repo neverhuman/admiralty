@@ -1,5 +1,6 @@
 //! Single-owner durable event store. Replay only applies the pure domain reducer.
 pub mod artifacts;
+pub mod context_renders;
 pub mod custody;
 pub mod inbox;
 pub mod outbox;
@@ -65,6 +66,8 @@ pub enum StoreError {
     Outbox(#[from] outbox::OutboxError),
     #[error(transparent)]
     Workplan(#[from] workplans::WorkplanStoreError),
+    #[error(transparent)]
+    ContextRender(#[from] context_renders::ContextRenderError),
     #[error(transparent)]
     Inbox(#[from] inbox::InboxError),
     #[error("store already has an owner")]
@@ -149,6 +152,29 @@ pub trait LifecycleAuthority: Send + Sync {
 }
 
 enum Request {
+    RecordContextRender {
+        request: Box<context_renders::RecordContextRender>,
+        reply: Reply<context_renders::ContextRenderReceipt>,
+    },
+    GetContextRender {
+        scope: context_renders::ContextScope,
+        key: context_renders::RenderKey,
+        reply: Reply<Option<context_renders::StoredContextRender>>,
+    },
+    ContextRenderPage {
+        scope: context_renders::ContextScope,
+        cursor: Option<context_renders::RenderCursor>,
+        limit: usize,
+        reply: Reply<context_renders::ContextRenderPage>,
+    },
+    AdvanceContextBaseline {
+        request: Box<context_renders::AdvanceContextBaseline>,
+        reply: Reply<context_renders::BaselineReceipt>,
+    },
+    ContextBaseline {
+        scope: context_renders::ContextScope,
+        reply: Reply<Option<context_renders::ContextBaseline>>,
+    },
     ClaimOutboxKey {
         now: Option<u64>,
         owner: String,
@@ -380,6 +406,66 @@ impl Store {
             input: Box::new(input),
             reply,
         })
+    }
+
+    /// Trusted in-process storage seam. The caller must independently authorize
+    /// this recipient and namespace. Recording is neither delivery nor authority.
+    pub fn record_context_render(
+        &self,
+        request: context_renders::RecordContextRender,
+    ) -> Result<context_renders::ContextRenderReceipt> {
+        context_renders::validate_record_request(&request)?;
+        self.ask(|reply| Request::RecordContextRender {
+            request: Box::new(request),
+            reply,
+        })
+    }
+
+    /// Exact scoped retrieval; no recipient, project or fleet-wide fallback.
+    pub fn context_render(
+        &self,
+        scope: context_renders::ContextScope,
+        key: context_renders::RenderKey,
+    ) -> Result<Option<context_renders::StoredContextRender>> {
+        context_renders::validate_get_request(&scope, &key)?;
+        self.ask(|reply| Request::GetContextRender { scope, key, reply })
+    }
+
+    /// Bounded immutable render history. The cursor is bound to this exact scope.
+    pub fn context_renders_page(
+        &self,
+        scope: context_renders::ContextScope,
+        cursor: Option<context_renders::RenderCursor>,
+        limit: usize,
+    ) -> Result<context_renders::ContextRenderPage> {
+        context_renders::validate_page_request(&scope, cursor.as_ref(), limit)?;
+        self.ask(|reply| Request::ContextRenderPage {
+            scope,
+            cursor,
+            limit,
+            reply,
+        })
+    }
+
+    /// Explicit application-ACK observation with exact prior-baseline CAS.
+    /// Callers authenticate observations separately; this never contacts a provider.
+    pub fn advance_context_baseline(
+        &self,
+        request: context_renders::AdvanceContextBaseline,
+    ) -> Result<context_renders::BaselineReceipt> {
+        context_renders::validate_advance(&request)?;
+        self.ask(|reply| Request::AdvanceContextBaseline {
+            request: Box::new(request),
+            reply,
+        })
+    }
+
+    pub fn context_baseline(
+        &self,
+        scope: context_renders::ContextScope,
+    ) -> Result<Option<context_renders::ContextBaseline>> {
+        context_renders::validate_page_request(&scope, None, 1)?;
+        self.ask(|reply| Request::ContextBaseline { scope, reply })
     }
 
     /// Trusted in-process dispatcher seam on the single writer connection.
@@ -1051,6 +1137,7 @@ impl Writer {
         migration.execute_batch(include_str!("../migrations/0003_atomic_effects.sql"))?;
         migration.commit()?;
         workplans::initialize(&connection)?;
+        context_renders::initialize(&connection)?;
         let generation = connection
             .query_row(
                 "SELECT value FROM metadata WHERE key='recovery_generation'",
@@ -1088,6 +1175,41 @@ impl Writer {
     fn run(&mut self, receiver: mpsc::Receiver<Request>, changes: tokio::sync::watch::Sender<()>) {
         while let Ok(request) = receiver.recv() {
             match request {
+                Request::RecordContextRender { request, reply } => {
+                    let _ = reply.send(
+                        context_renders::record(&mut self.connection, *request)
+                            .map_err(StoreError::from),
+                    );
+                }
+                Request::GetContextRender { scope, key, reply } => {
+                    let _ = reply.send(
+                        context_renders::get(&self.connection, &scope, &key)
+                            .map_err(StoreError::from),
+                    );
+                }
+                Request::ContextRenderPage {
+                    scope,
+                    cursor,
+                    limit,
+                    reply,
+                } => {
+                    let _ = reply.send(
+                        context_renders::page(&self.connection, &scope, cursor.as_ref(), limit)
+                            .map_err(StoreError::from),
+                    );
+                }
+                Request::AdvanceContextBaseline { request, reply } => {
+                    let _ = reply.send(
+                        context_renders::advance(&mut self.connection, *request)
+                            .map_err(StoreError::from),
+                    );
+                }
+                Request::ContextBaseline { scope, reply } => {
+                    let _ = reply.send(
+                        context_renders::baseline(&self.connection, &scope)
+                            .map_err(StoreError::from),
+                    );
+                }
                 Request::ClaimOutboxKey {
                     now,
                     owner,
@@ -1550,6 +1672,7 @@ impl Writer {
     }
 
     fn rebuild(&mut self) -> Result<Snapshot> {
+        context_renders::validate_all(&self.connection)?;
         let projection = replay(&self.connection)?;
         let pending_inbox = inbox::PendingInboxIndex::from_projection(&projection)?;
         workplans::validate_task_contracts(
@@ -1568,6 +1691,7 @@ impl Writer {
     }
 
     fn backup(&self, destination: &Path) -> Result<Snapshot> {
+        context_renders::validate_all(&self.connection)?;
         // Hard-link publication is atomic and refuses an existing destination.
         // Staging and destination share a directory, so publication cannot cross filesystems.
         let parent = destination
