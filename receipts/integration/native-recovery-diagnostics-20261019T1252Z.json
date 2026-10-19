@@ -1,0 +1,435 @@
+{
+  "schema_version": 1,
+  "kind": "native-recovery-diagnostics-component-qualification-v1",
+  "recorded_utc": "2026-10-19T12:51:50.530Z",
+  "recorded_only": true,
+  "source": {
+    "git_commit": "a6df0fb38314232a67290ec5bba86733d00dc327",
+    "base": "e6e364eee1207ead506de37ae57c750937d4be48",
+    "archive": {
+      "path": "/private/tmp/admiralty-recovery-source-a6df0fb.tar",
+      "bytes": 19855360,
+      "sha256": "23edf8e99a5240090d0cff3b42d0ff7bad8f27d2d26266f89cc0414b4334d797"
+    },
+    "archive_equals_actual_git_archive": true,
+    "files": [
+      {
+        "path": "crates/admiralty-server/src/services/native_executor.rs",
+        "bytes": 112225,
+        "sha256": "87b6db47f751492435f114ae2e74ad78b442d8b998b4a4219ca753654eda1abe",
+        "git_blob": "c0610fdafcb66a83d9cffd959de220445b27de01"
+      },
+      {
+        "path": "crates/admiralty-runtime/src/resource_gate.rs",
+        "bytes": 94667,
+        "sha256": "8bfbfba7b00b49afd74efa1d73331209b49db5ac0bc3cef26192fd9c04efaad2",
+        "git_blob": "a694a1839405fee0b85a01b3fe64bb7778a54e0b"
+      },
+      {
+        "path": "crates/admiralty-runtime/src/resource_gate_diagnostics_tests.rs",
+        "bytes": 24265,
+        "sha256": "fb26c9448b2f95559688682fe8164ea5a17171597dad4c120be4333f1af552c2",
+        "git_blob": "d6b9c382f4586562f29db21bb6358330ed78b8ba"
+      }
+    ],
+    "linux_posthash_matches": true
+  },
+  "component": {
+    "journal_inspection": "Bounded metadata-only Prepared/Observed/Closed artifact lengths and raw hashes from the retained private journal descriptor; no JSON parsing or capability reconstruction.",
+    "resource_history": "Fixed eight-slot history retains actual useful dynamic observations and unknown members; all-None event containers and limit-only observations do not displace genuine history.",
+    "authority_boundary": "Advisory diagnostics only. Existing authoritative closure/launch binding bytes and private capability semantics remain unchanged."
+  },
+  "checks": {
+    "macos": {
+      "server": {
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 94,
+        "raw": {
+          "path": "/private/tmp/adm-recovery-root-server.log",
+          "bytes": 1553,
+          "sha256": "3461ce09af46217ce8bd9ca9ba4423c3f2d3e8f7aaa2ccb913d4d1497e5c51cb"
+        }
+      },
+      "runtime": {
+        "passed": 14,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 184,
+        "raw": {
+          "path": "/private/tmp/adm-recovery-root-runtime.log",
+          "bytes": 2193,
+          "sha256": "7de387ae93ac56660b2429fb020919d481e83ab9a1b3b51b0f6b46afd027b0cb"
+        }
+      },
+      "strict_clippy": {
+        "packages": [
+          "admiralty-server",
+          "admiralty-runtime"
+        ],
+        "scope": "all targets; -D warnings",
+        "reported_exit_code": 0,
+        "completion_log_present": true,
+        "raw": {
+          "path": "/private/tmp/adm-recovery-root-clippy.log",
+          "bytes": 397,
+          "sha256": "8cdc861b1f6d3682d65877e4a6f6b50ecee48da79e9e44d380eeecdcc2dc73dd"
+        }
+      },
+      "format": {
+        "reported_exit_code": 0,
+        "retained_process_exit_metadata": false,
+        "raw": {
+          "path": "/private/tmp/adm-recovery-root-fmt.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "limit": "Root reported success; async output-only projection did not retain the process exit code. The raw log is empty. Independent worker format receipts/logs for the same final files are preserved; no rerun is claimed."
+      }
+    },
+    "linux": {
+      "passed": 22,
+      "failed": 0,
+      "ignored": 0,
+      "server_passed": 8,
+      "runtime_passed": 14,
+      "server_filtered": 94,
+      "runtime_filtered": 185,
+      "result": {
+        "path": "/private/tmp/adm-recovery-linux-result.json",
+        "bytes": 3583,
+        "sha256": "01c3052bc98d2642525bd71858c18bade825d107e8013ab9c75f21cf60aeaaa5"
+      },
+      "raw": {
+        "path": "/private/tmp/adm-recovery-linux-test.log",
+        "bytes": 5183,
+        "sha256": "41bfe671ca5e609bbbcf8f01323f494e64bbeb8582604a18ee1f5bfc507a0a1a"
+      },
+      "posthash": {
+        "path": "/private/tmp/adm-recovery-linux-posthash.json",
+        "bytes": 793,
+        "sha256": "a53a29cdcfc92b1be67506a4beab4dc74552859788e73b59590de2754db8b13a"
+      },
+      "source_inputs": {
+        "path": "/private/tmp/adm-recovery-linux-inputs.json",
+        "bytes": 234,
+        "sha256": "a3c3e1552fbad8d3960531199597c0621ef0c0d4745bc916f65f137c69d493e8"
+      },
+      "wrapper": {
+        "path": "/private/tmp/adm-recovery-linux-wrapper.log",
+        "bytes": 222,
+        "sha256": "048e2ba89ae430962e02f5341cf60c694fb7e131cb417790075a56b32ca09992"
+      },
+      "started_utc": "2026-10-19T12:46:03.403Z",
+      "finished_utc": "2026-10-19T12:47:18.781Z",
+      "elapsed_ms": 75378,
+      "outer_timeout_ms": 900000,
+      "process_exit_code": 0,
+      "signal": null,
+      "error": null,
+      "one_capped_invocation": true,
+      "jobs": 1,
+      "test_threads": 1,
+      "unique_target": "/home/ubuntu/admiralty-v2-build/native-recovery-a6df0fb3-20261019T124603Z/target-linux",
+      "private_tmp": "/home/ubuntu/admiralty-v2-build/native-recovery-a6df0fb3-20261019T124603Z/private-tmp",
+      "cache_copy_only": "/home/ubuntu/admiralty-v2-build/native-model-loop-a08d2e8d-20261019T102226Z/target-linux",
+      "workspace_packages_cleaned_in_new_target": true,
+      "source_cache_not_mutated": true,
+      "admission": {
+        "policy": "CPU <=85%; MemAvailable >=20GiB; fleetcap controller active; cgroup thawed; prescribed run-capped wrapper",
+        "outer": {
+          "observed_utc": "2026-10-19T12:46:03.285Z",
+          "cpu_percent": 20.61219647235625,
+          "mem_available_kib": 98681348,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        },
+        "inside": [
+          {
+            "observed_utc": "2026-10-19T12:46:04.660Z",
+            "cpu_percent": 21.04598879861166,
+            "mem_available_kib": 97871392,
+            "controller_active": true,
+            "freeze": "0",
+            "admitted": true,
+            "provider_started": false
+          },
+          {
+            "observed_utc": "2026-10-19T12:46:07.818Z",
+            "cpu_percent": 19.270669600754474,
+            "mem_available_kib": 97645972,
+            "controller_active": true,
+            "freeze": "0",
+            "admitted": true,
+            "provider_started": false
+          },
+          {
+            "observed_utc": "2026-10-19T12:46:09.162Z",
+            "cpu_percent": 21.230283911671922,
+            "mem_available_kib": 97352680,
+            "controller_active": true,
+            "freeze": "0",
+            "admitted": true,
+            "provider_started": false
+          }
+        ],
+        "after": {
+          "observed_utc": "2026-10-19T12:47:19.907Z",
+          "cpu_percent": 19.749290444654687,
+          "mem_available_kib": 96856336,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        }
+      },
+      "strict_clippy_run": false,
+      "provider_run": false,
+      "service_control": false
+    },
+    "case_identity": {
+      "distinct_scoped_cases": 22,
+      "same_actual_names_on_macos_and_linux": true,
+      "server": [
+        "services::native_executor::tests::existing_journal_rejects_registration_without_consuming_preparation",
+        "services::native_executor::tests::inspect_run_journal_fails_closed_on_link_and_oversized_artifact",
+        "services::native_executor::tests::inspect_run_journal_reports_ordered_raw_lengths_and_digests_only",
+        "services::native_executor::tests::inspect_run_journal_returns_empty_for_absent_run_artifacts",
+        "services::native_executor::tests::journal_descriptor_stays_with_original_directory_after_path_substitution",
+        "services::native_executor::tests::journal_preserves_collision_evidence_and_allows_only_exact_idempotent_record",
+        "services::native_executor::tests::rejected_registration_returns_original_preparation_for_invalid_and_journal_errors",
+        "services::native_executor::tests::resource_journal_versions_full_bytes_without_changing_authority_binding"
+      ],
+      "runtime": [
+        "resource_gate::diagnostics_tests::advisory_journal_changes_preserve_exact_legacy_closure_and_launch_binding_bytes",
+        "resource_gate::diagnostics_tests::bounded_original_directory_reads_numeric_values_without_inferring_a_cause",
+        "resource_gate::diagnostics_tests::deleted_fixture_has_only_explicit_unknown_metrics_never_zero",
+        "resource_gate::diagnostics_tests::first_closed_diagnostics_are_immutable_for_lost_journal_ack_retry",
+        "resource_gate::diagnostics_tests::history_defaults_for_legacy_json_and_rejects_wrong_array_length",
+        "resource_gate::diagnostics_tests::history_keeps_last_eight_readable_snapshots_across_unknown_final_observations",
+        "resource_gate::diagnostics_tests::history_preserves_partial_unknowns_and_skips_limit_only_observations",
+        "resource_gate::diagnostics_tests::identity_failure_and_gone_final_sample_preserve_last_observed_snapshot",
+        "resource_gate::diagnostics_tests::legacy_absent_advisory_fields_decode_to_empty_data_not_a_capability",
+        "resource_gate::diagnostics_tests::malformed_duplicate_overflow_and_extra_event_fields_fail_closed",
+        "resource_gate::diagnostics_tests::per_file_byte_and_event_count_bounds_precede_projection",
+        "resource_gate::diagnostics_tests::renamed_original_directory_is_retained_and_replacement_is_never_reopened",
+        "resource_gate::diagnostics_tests::symlink_and_directory_metrics_never_return_other_file_contents",
+        "resource_gate::diagnostics_tests::unsupported_missing_and_unbounded_files_do_not_become_zero"
+      ],
+      "new_definitions_subset": 6,
+      "new_case_names": [
+        "services::native_executor::tests::inspect_run_journal_reports_ordered_raw_lengths_and_digests_only",
+        "services::native_executor::tests::inspect_run_journal_returns_empty_for_absent_run_artifacts",
+        "services::native_executor::tests::inspect_run_journal_fails_closed_on_link_and_oversized_artifact",
+        "resource_gate::diagnostics_tests::history_keeps_last_eight_readable_snapshots_across_unknown_final_observations",
+        "resource_gate::diagnostics_tests::history_preserves_partial_unknowns_and_skips_limit_only_observations",
+        "resource_gate::diagnostics_tests::history_defaults_for_legacy_json_and_rejects_wrong_array_length"
+      ],
+      "counts_nonadditive": true,
+      "scope": "22 distinct cases exercised on each platform, not44 distinct tests. Worker runs/retries and six new definitions are overlapping evidence, not additional counts. Filtered cases are not accepted."
+    }
+  },
+  "preserved_worker_evidence": {
+    "receipts": [
+      {
+        "path": "/private/tmp/ADMIRALTY_NATIVE_JOURNAL_INSPECTION_receipt.json",
+        "bytes": 10306,
+        "sha256": "f1e7fcb13f272bf20f392666ef11f12c6adf5176d00bad74412cb38452bd3a64"
+      },
+      {
+        "path": "/private/tmp/ADMIRALTY_NATIVE_JOURNAL_INSPECTION_followup_receipt.json",
+        "bytes": 6696,
+        "sha256": "2deea58a139e2ea474fb6be37fb207e2ec280fd4eb4de2410d9cc7a2f4157d07"
+      },
+      {
+        "path": "/private/tmp/ADMIRALTY_NATIVE_RESOURCE_HISTORY_receipt.json",
+        "bytes": 11663,
+        "sha256": "bc6310838a32792131ed230b5189295136f8aafb3e5b5bb4b4c88e097b8813a7"
+      },
+      {
+        "path": "/private/tmp/ADMIRALTY_NATIVE_RESOURCE_HISTORY_followup_receipt.json",
+        "bytes": 4167,
+        "sha256": "acac4b3f37ce570274532b4f55fbe0231983f579774da76c4cd0584e8f7991b9"
+      }
+    ],
+    "unique_actual_raw_files": 93,
+    "all_declared_raw_hashes_and_lengths_match": true,
+    "recorded_nonzero_runs": [
+      {
+        "worker_receipt": "/private/tmp/ADMIRALTY_NATIVE_JOURNAL_INSPECTION_receipt.json",
+        "author_reported_exit": 1,
+        "description": "Shell wrapper then attempted assignment to zsh read-only variable `status`; rustfmt had already run. Preserved tool-result stderr transcript. This wrapper failure is not a formatting failure.",
+        "raw_paths": [
+          "/private/tmp/adm-native-journal-logs/command-shell-error.stdout"
+        ]
+      },
+      {
+        "worker_receipt": "/private/tmp/ADMIRALTY_NATIVE_JOURNAL_INSPECTION_receipt.json",
+        "author_reported_exit": 101,
+        "description": "Initial compile failure: ambiguous Read/Write by_ref; preserved compiler output. Corrected to Read::by_ref.",
+        "raw_paths": [
+          "/private/tmp/adm-native-journal-logs/inspect.stdout",
+          "/private/tmp/adm-native-journal-logs/inspect.stderr"
+        ]
+      },
+      {
+        "worker_receipt": "/private/tmp/ADMIRALTY_NATIVE_JOURNAL_INSPECTION_followup_receipt.json",
+        "author_reported_exit": 101,
+        "description": "compile failure: unavailable rustix::fs::mkfifoat in this target, invalid std::os::unix::fs::rename path, and st_nlink integer mismatch; retained compiler output.",
+        "raw_paths": [
+          "/private/tmp/adm-native-journal-logs/followup-inspect.stdout",
+          "/private/tmp/adm-native-journal-logs/followup-inspect.stderr"
+        ]
+      },
+      {
+        "worker_receipt": "/private/tmp/ADMIRALTY_NATIVE_JOURNAL_INSPECTION_followup_receipt.json",
+        "author_reported_exit": 101,
+        "description": "2 passed, 1 failed because the initial Unix socket fixture path exceeded SUN_LEN; retained test failure.",
+        "raw_paths": [
+          "/private/tmp/adm-native-journal-logs/followup-inspect2.stdout",
+          "/private/tmp/adm-native-journal-logs/followup-inspect2.stderr"
+        ]
+      },
+      {
+        "worker_receipt": "/private/tmp/ADMIRALTY_NATIVE_RESOURCE_HISTORY_receipt.json",
+        "author_reported_exit": 101,
+        "description": "3 new tests passed; partial/limit-only case failed because fixture cleanup expected an already-removed metric.",
+        "raw_paths": [
+          "/private/tmp/adm-native-history-logs/history.stdout",
+          "/private/tmp/adm-native-history-logs/history.stderr"
+        ]
+      },
+      {
+        "worker_receipt": "/private/tmp/ADMIRALTY_NATIVE_RESOURCE_HISTORY_receipt.json",
+        "author_reported_exit": 101,
+        "description": "Clippy caught 3 test-file issues and a large_enum_variant warning at source_candidate.rs:113 after diagnostics size grew. This attribution was confirmed by boxing only the history array; final strict Clippy passes.",
+        "raw_paths": [
+          "/private/tmp/adm-native-history-logs/clippy.stdout",
+          "/private/tmp/adm-native-history-logs/clippy.stderr"
+        ]
+      },
+      {
+        "worker_receipt": "/private/tmp/ADMIRALTY_NATIVE_RESOURCE_HISTORY_receipt.json",
+        "author_reported_exit": 101,
+        "description": "Own test-file issues were corrected; large_enum_variant remained until the fixed history array was boxed.",
+        "raw_paths": [
+          "/private/tmp/adm-native-history-logs/clippy2.stdout",
+          "/private/tmp/adm-native-history-logs/clippy2.stderr"
+        ]
+      },
+      {
+        "worker_receipt": "/private/tmp/ADMIRALTY_NATIVE_RESOURCE_HISTORY_followup_receipt.json",
+        "author_reported_exit": 101,
+        "description": "13 passed, 1 failed: assertion expected old limit-only latest snapshot after recording an empty-event Observed snapshot. Preserved failing proof; corrected assertion to retain existing latest behavior.",
+        "raw_paths": [
+          "/private/tmp/adm-native-history-logs/followup-diagnostics.stdout",
+          "/private/tmp/adm-native-history-logs/followup-diagnostics.stderr"
+        ]
+      },
+      {
+        "worker_receipt": "/private/tmp/ADMIRALTY_NATIVE_RESOURCE_HISTORY_followup_receipt.json",
+        "author_reported_exit": 101,
+        "description": "Compile failure from consuming the empty-event fixture in a duplicate assertion; preserved compiler output.",
+        "raw_paths": [
+          "/private/tmp/adm-native-history-logs/followup-diagnostics2.stdout",
+          "/private/tmp/adm-native-history-logs/followup-diagnostics2.stderr"
+        ]
+      }
+    ],
+    "initial_history_count_correction": "The first history_ run had3 passing cases:2 new history definitions plus1 unrelated reservation case; the third new history definition failed. An old author note saying3 new passed is not repeated as a qualification claim."
+  },
+  "independent_source_review": {
+    "path": "/private/tmp/ADMIRALTY_NATIVE_JOURNAL_HISTORY_REVIEW_a6df_20261019.json",
+    "bytes": 10379,
+    "sha256": "8a21f6fa1ba38ddd2e9ea51070fdd22ab770a4ea333bc4fa545da8229f70e6a7"
+  },
+  "ci_context": {
+    "workflow": "Admiralty checks",
+    "run_id": 39250210472,
+    "head_sha": "e6e364eee1207ead506de37ae57c750937d4be48",
+    "status": "completed",
+    "conclusion": "failure",
+    "run": {
+      "path": "/private/tmp/adm-ci-e6e-run-39250210472.json",
+      "bytes": 6957,
+      "sha256": "000cf6910ec7cda007573f24935d87af4ed432a67b2eeb3145d1c82f71b5e3a7"
+    },
+    "failed_step_raw": {
+      "path": "/private/tmp/adm-ci-e6e-rust-39250210472.log",
+      "bytes": 193173,
+      "sha256": "4888d93249a19aca019fdfa6606783012f64e444f1a1af07d4ea09476ef14b6a"
+    },
+    "rust_job_failed": true,
+    "failure": "actual_producer_capture_failure_cannot_yield_typed_transcript: controlled child capture deadline",
+    "server_suite_at_failure": {
+      "passed": 96,
+      "failed": 1,
+      "ignored": 2
+    },
+    "raw_process_exit_code": 101,
+    "cause_qualified": false,
+    "full_ci_green": false,
+    "cleanup_lane_started": false,
+    "scope": "Pinned earlier e6e main run, separate from the scoped a6df diagnostics checks; this packet does not repair or claim that full workflow green."
+  },
+  "production_context": {
+    "receipt": {
+      "path": "/private/tmp/native-e6e364ee-independent-20261019T1225Z.json",
+      "bytes": 5177,
+      "sha256": "11ebfbc2d25fa4590240e9b957146d5c37f8025c9b785b3026d61214cad5e7fc"
+    },
+    "source_revision": "e6e364eee1207ead506de37ae57c750937d4be48",
+    "observed_utc": "2026-10-19T12:23:52.714Z",
+    "native_execution_qualified": false,
+    "scope": "Existing independent production observation at its original timestamp, not a new inspection or evidence that a6df diagnostics are deployed."
+  },
+  "qualification": {
+    "component_scoped_tests": true,
+    "recovery_authorized": false,
+    "recovery_executed": false,
+    "capability_reconstructed": false,
+    "provider_executed": false,
+    "new_grant": false,
+    "resource_cause_diagnosed": false,
+    "retroactive_history_reconstructed": false,
+    "admission_authority_qualified": false,
+    "general_native_execution_qualified": false,
+    "parent_acceptance_changed": false,
+    "accepted_parent_packets_remain": [
+      "P00",
+      "P01"
+    ]
+  },
+  "limits": [
+    "The three artifact hashes are sequential sampled metadata, not one atomic journal snapshot, lifecycle completeness proof, evidence validation or recovery authorization. Missing/open-raced-away entries can be absent from a report.",
+    "Pre/post checks detect ordinary concurrent changes; they cannot make a security boundary against root or arbitrary same-UID mutation after the last check. Metadata can become stale immediately after sampling.",
+    "Reads are byte-bounded regular-file I/O, not a hard wall-clock guarantee for every filesystem/storage failure.",
+    "The8-slot bound covers runtime-produced diagnostic collections; public diagnostic Deserialize still requires caller transport/JSON bounds and does not authenticate owner_digest or samples. Existing public fields/serde trust semantics are unchanged.",
+    "sample_attempts and stored attempt numbers saturate at u32MAX as before; sequence numbers then cease to be strictly increasing. They are advisory, not timestamps or unique authority IDs.",
+    "More history can increase advisory closed-journal bytes; unchanged512KiB cap still fails closed. No resource-exhaustion cause, live Linux qualification, provider behavior, admission/current-authority policy, dispatch or recovery claim follows.",
+    "No new auth boundary or external route was added; inspect_run_journal is a trusted in-process executor metadata seam."
+  ],
+  "archive_inputs": {
+    "manifest": {
+      "path": "/private/tmp/native-recovery-diagnostics-payloads-20261019T1252Z.json",
+      "bytes": 29111,
+      "sha256": "f00ea00620e4c940d050f221a022b2fca209f57fe208f042a056f01760e03a05"
+    },
+    "payload_count": 115,
+    "local_files_only": true,
+    "remote_archive_verified": false,
+    "canonical_receipt_is_additional_payload": true
+  },
+  "reviewer_actions": {
+    "source_edits": false,
+    "repository_edits": false,
+    "builds": false,
+    "tests": false,
+    "remote": false,
+    "provider": false,
+    "services": false
+  }
+}

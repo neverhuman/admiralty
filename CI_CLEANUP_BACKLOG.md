@@ -6,6 +6,13 @@ neverhumanbot approval and matched-head rebase. Red/queued CI is never green.
 One cleanup lane takes this list after remaining cutover implementation lands;
 build failures remain immediate work.
 
+Main e6e364e checks39250210472 failed the controlled-child capture deadline at
+`native_executor.rs:2319`:96serverpassed/1failed/2ignored; later targets were not
+reached. Exact log `/private/tmp/adm-ci-e6e-rust-39250210472.log` is retained and
+hashed in the recovery-diagnostics receipt. Browser/accessibility39250210328
+passed. No cause inference, rerun, cancellation or runner control. This remains
+the single cleanup list, not a green workflow or a separate cleanup lane.
+
 Actual main65c1 Rust39246533041 ended cancelled; check annotation118039708355
 explicitly reports the maximum15minute job deadline. Browser39246532871 passed.
 No resource-pressure/cancellation-actor inference or green Rust claim.

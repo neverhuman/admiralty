@@ -2736,3 +2736,81 @@ annotation118039708355. Browser runs for both passed. Red evidence remains in
 the one Root CI backlog; no cause inference, rerun, cancellation or runner control.
 Fresh exact bcf5 diagnostic question/request remains pending: no new provider
 fixture, CLI metadata, authorization/grant or provider turn. Never reuse SC155.
+
+
+### 12:54Z — Recovery diagnostic support, consumed coding probe and release gates
+
+Source a6df0fb38314232a67290ec5bba86733d00dc327 adds bounded existing-run
+journal metadata inspection and an eight-entry history of readable resource
+samples. Descriptor/entry checks reject unsafe journal files; history keeps
+individual samples/unknowns and preserves frozen closure behavior. Neither API
+parses a journal into authority, retries an effect, refunds liability or supplies
+a recovery controller. Read docs/architecture/native-recovery-diagnostics.md.
+
+Actual Root8server journal +14runtime diagnostic cases pass; cappedLinux runs
+the SAME22 names, with6new definitions a subset, in75.378s. Unique copiedtarget,
+privateTMP, jobs1/testthreads1 and fresh outside/inside fleetcap gates recorded;
+all3post-source hashes match. Strict Root runtime/server all-targetClippy passes.
+Rootfmt was reported0 with empty log but its async exit metadata was lost;
+worker fmt exits/hashes are retained, not invented. Source review is clear with
+disclosed sampled-metadata/sameUID/advisory-history limitations. All9nonzero
+worker draft runs remain in the evidence set; no test/guard weakened. See
+native-recovery-diagnostics-20261019T1252Z.json and hash-bound source review.
+
+The human's fresh ONE bcf5 diagnostic grant was consumed once12:31Z. Actual CLI
+turn completed0/capture5events, but code-mode helper handshake/spawn EAGAIN
+prevented editing/verifier; probe17 SourcePreflight rejects unchanged source.
+Cause/model/effort/final accounting remain unknown. Provider-reported usage is
+not billing. Initial counters readable, final counters missing; new history
+cannot retroactively repair this older binary. Recorded systemd max380.317s
+was permit remainder versus software executor120s, actualrun17.779s: no timeout
+enforcement proof. A new source repair must bound launch/backend max before
+any separately authorized provider diagnostic. No grant/fixture/nonce reuse.
+Read native-human-bcf5-diagnostic-20261019T1245Z.json and independent review.
+Read-only12:46unitstate is inactive/dead/MainPID0, emptyControlGroup/resultsuccess
+and both recordedPIDs absent; no service control or unknown-effect refund.
+
+SC156sole backup deployed e6e; Root independently verified12:23:52.714Z all14
+manifest/file/process hashes, health/UI/feed200,18891redirect307,Rust0turns,
+history256displayed610retained and no retiredownedPython/prior65PIDs.
+Original first-history/browser controls not remeasured. Nativeexecutionfalse.
+Main e6e browser39250210328 passed; checks39250210472 failed96serverpass/
+1controlledcapturedeadline/2ignored. Exact rawSHA4888d93249a19aca019fdfa6606783012f64e444f1a1af07d4ea09476ef14b6a
+retained/archived; no cause inference/rerun/cancel/runnercontrol.
+
+P00/P01 alone accepted;2/32 is not simply absent bookkeeping during Geminiquota.
+Fresh P02 static audit (bf8e233e694a6dffb41d603970edb4031c3e0442a9920402295c845b3f2c3cc3)
+credits full coordination/scheduling/delivery contracts and identifies actual
+independent outcome/taskrevisioncompat/executionrequirement/export gaps.
+Provideractivation is not aP02criterion. Remaining groups are listed at top
+of REMAINING_20261019.md; other parents are not accepted by this component.
+
+The user explicitly selected MIT. RootLICENSE and all9Rust/3JavaScript package
+declarations now agree in actual lockedoffline metadata. Contributor/security
+guides added; Python is needed only for retained compatibility checks, not
+native runtime/ingestion. Dependency/asset/support/install/release qualification
+remains separate; no published GitHub release at the recorded API snapshot.
+Fresh screen reads between actual12:45:23Z and12:51:13Z show Gemini4Argon Admiral
+and Commodore resuming; nominal1253/1255 filenames are not observed timestamps.
+Root notified both of the consumed grant and acceptance/soleCAS boundary via
+file pointer. A resumption is not an inferred deploy-authority handback.
+
+Remote evidence archive d9232d836c78933395f709000ebc8fb6a4ff81e04b50dfb32e376693464096af
+was independently rehashed12:53:51Z underfresh cappedgates:126unique payloads,
+manifest92941f7b8ab05fde2faa19f3b1185d108abc20ee09e38296eeaea396517d735b.
+This is source/failure evidence, no additional test/provider run.
+
+### 12:57Z — Kernel launch timer bound composed before opening the release PR
+
+Worker3f19a292839006c065c7a72c8f5af1a1e4cd960c, Root0ab8214, fixes the
+observed timer mismatch by requiring the existing trusted executor Duration at
+AdmittedLaunch::launch. Both actual callers supply their original limit; backend
+RuntimeMaxSec floors the positive minimum of that duration and original permit/
+resource lease remainder. Zero/submillisecond/expired bounds fail before launch.
+Claims/caps/digests/unknown-effect custody and software timer are unchanged.
+Actual Root4wrapper cases pass (3newsubset), strict Mac runtime/server all-target
+Clippy/fmt0 recorded; separate worker same cases nonadditive. Static review
+9a23db98aa90a17c179fb982acd970b0542cfe1754e5682fe6f6bfb85381dc3c CLEAR.
+Current Linux cfg-only caller compile and combined26cases follow below; no
+provider, actual timeout or stop-grace qualification is claimed. The two earlier
+draft compile/read-path failures remain preserved in the worker receipt.

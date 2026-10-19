@@ -19,15 +19,18 @@ The earlier `eb62` probe used exit17 for its wrong-oracle check and for other ch
 | Area | Evidence still required |
 | --- | --- |
 | Native coding execution | Compose the production controller with authenticated current policy, provider preparation, credentials, reservation/lease authority, source-candidate publication, independent checks and trusted lifecycle decisions. |
-| Model admission | Atomically bind policy decisions, cumulative accounting and capacity reservations to actual dispatch; a selected model or proposal is not a reserved inference slot. |
-| Browser command journeys | Actual mounted native commands and pinned axe checks pass on receiving main `3fdb101`. Preserve earlier startup/scale failures and complete the focused harness repairs, receiving-source validation and performance criteria. |
+| Model admission | Atomic claim/budget/managed-slot/outbox admission and paired policy fencing are implemented components. Authenticate and install the production pool/allotment policy, compose actual dispatch/start custody, and qualify settlement/release; a routing proposal alone is not a physical allocation. |
+| Browser command journeys | Exact e6e364e browser/accessibility workflow39250210328 passed. Scoped real native intake/related-work journeys also pass; positive populated/multipage states remain unit coverage. Complete remaining enriched intake, attention/delivery, performance and release journeys; retain earlier failures. |
 | Recovery | Qualify current external fencing and session/effect reconciliation across restart; preserved journals and proposals must not silently relaunch unknown work. |
 | Compatibility retirement | Rust `admiralty-observe` now supplies the real-data feed; the owned Python collector, rollout observer and restart wrapper were retired with archived evidence. Continue verifying no respawn and reconcile any remaining owned compatibility jobs. Shared fleet Admiral/ticker and other projects are outside that retirement. |
-| Distribution | Qualify a clean-machine installation, supported targets and release provenance. Existing staging/packaging tools do not install, sign or publish releases. |
+| Distribution | Private immutable version-directory installation is implemented and scoped-tested. Clean-machine installation, supported targets, release provenance, activation, signing and publication remain unqualified. |
 | Full work packets | Reconcile every P00–P31 acceptance criterion against source, actual tests and operational evidence. Recorded checks, a successful web deployment and component test totals do not close these parent packets. |
 
 Production startup currently leaves general native execution unqualified. A request cannot override that boundary or install a new authority. Provider identity remains unknown unless independently observed; requested names are not observations. Credentials, private configuration, runtime data and transcripts remain outside Git.
 
 ## License
 
-No repository license file or package license declaration is currently committed. An explicit project license remains part of public release preparation; this page does not select license terms.
+The maintainer selected MIT on19October2026. See the root [LICENSE](../../LICENSE)
+and Rust/JavaScript package declarations. Dependency licenses, third-party asset
+attributions and the final distribution inventory still require release review;
+the project license does not replace those checks.

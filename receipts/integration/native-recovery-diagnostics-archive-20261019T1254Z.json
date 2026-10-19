@@ -1,0 +1,28 @@
+{
+  "observed_utc": "2026-10-19T12:53:51.457Z",
+  "source": "a6df0fb38314232a67290ec5bba86733d00dc327",
+  "archive_sha256": "d9232d836c78933395f709000ebc8fb6a4ff81e04b50dfb32e376693464096af",
+  "manifest_sha256": "92941f7b8ab05fde2faa19f3b1185d108abc20ee09e38296eeaea396517d735b",
+  "payloads_verified": 126,
+  "directory": "/home/ubuntu/admiralty-v2-build/receipts/native-recovery-diagnostics-20261019T1255Z",
+  "gate": {
+    "observed_utc": "2026-10-19T12:53:51.320Z",
+    "cpu_percent": 20.409604519774017,
+    "mem_available_kib": 97470820,
+    "controller_active": true,
+    "freeze": "0",
+    "admitted": true,
+    "provider_started": false
+  },
+  "after": {
+    "observed_utc": "2026-10-19T12:53:52.570Z",
+    "cpu_percent": 23.010667720268675,
+    "mem_available_kib": 97441996,
+    "controller_active": true,
+    "freeze": "0",
+    "admitted": true,
+    "provider_started": false
+  },
+  "provider_run": false,
+  "service_control": false
+}

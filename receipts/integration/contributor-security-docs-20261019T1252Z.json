@@ -1,0 +1,66 @@
+{
+  "base_sha": "a6df0fb38314232a67290ec5bba86733d00dc327",
+  "branch": "codex/contributor-security-docs",
+  "candidate_sha": "238f42f1197e6b37fcb3e36324b010bc7349f4d8",
+  "changed_paths": [
+    "CONTRIBUTING.md",
+    "SECURITY.md"
+  ],
+  "checks": [
+    {
+      "command": "rtk git diff --check",
+      "exit_code": 0,
+      "raw_logs": [
+        "/private/tmp/adm-contrib-doc-logs/diffcheck.stdout",
+        "/private/tmp/adm-contrib-doc-logs/diffcheck.stderr"
+      ]
+    },
+    {
+      "command": "rtk python3 local Markdown link/anchor checker over CONTRIBUTING.md and SECURITY.md",
+      "exit_code": 0,
+      "raw_logs": [
+        "/private/tmp/adm-contrib-doc-logs/links.stdout",
+        "/private/tmp/adm-contrib-doc-logs/links.stderr"
+      ],
+      "result": "8 links checked; all local targets and anchors resolve."
+    }
+  ],
+  "limitations": [
+    "No repository license selected or declared.",
+    "No support matrix, installer qualification, security response SLA, private contact address, or private reporting enablement claim added.",
+    "No other repository files were edited."
+  ],
+  "raw_logs": [
+    {
+      "bytes": 1,
+      "path": "/private/tmp/adm-contrib-doc-logs/diffcheck.stdout",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "bytes": 0,
+      "path": "/private/tmp/adm-contrib-doc-logs/diffcheck.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 496,
+      "path": "/private/tmp/adm-contrib-doc-logs/links.stdout",
+      "sha256": "e1e1c12a7132be18152e2e869a62fbe52bf5210f98e0b186438680bbb6499812"
+    },
+    {
+      "bytes": 0,
+      "path": "/private/tmp/adm-contrib-doc-logs/links.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "security_page_observation": {
+    "checked": "2026-10-19 via public GitHub page",
+    "observation": "The page showed no SECURITY.md detected and no published advisories before this candidate was published. Public page visibility did not establish whether private vulnerability reporting is enabled in repository settings; policy text directs reporters to use the private form only if the repository UI offers it, otherwise request a private channel without disclosing details.",
+    "url": "https://github.com/neverhuman/admiralty/security"
+  },
+  "source_sha256": {
+    "CONTRIBUTING.md": "45b901f03fde250a4bb5d30d63d5c8046299069f9795dbc52c712bcd45b4df01",
+    "SECURITY.md": "4c2d5ddcf732cff094dfe728ad6c7ca88a597f09a8582013bf6a2f1c76d7afaa"
+  },
+  "tests": "No unit tests run; changes are documentation only.",
+  "worktree": "/private/tmp/admiralty-contributor-security-docs"
+}

@@ -5,11 +5,9 @@ request, discussion, or commit that includes exploit details, credentials,
 tokens, private configuration, customer data, or a reproducer that exposes a
 live system.
 
-When checked on 2026-10-19, the public [GitHub Security page](https://github.com/neverhuman/admiralty/security)
-reported that no `SECURITY.md` was detected and that there were no published
-advisories. This public view did not establish whether GitHub private
-vulnerability reporting is enabled in repository settings. If the repository's
-Security page offers **Report a vulnerability**, use that private GitHub form.
+If the [GitHub Security page](https://github.com/neverhuman/admiralty/security)
+offers **Report a vulnerability**, use that private GitHub form. This policy
+does not establish whether private vulnerability reporting is enabled.
 If it does not, contact a maintainer through a privately agreed channel and
 first ask how to share details securely. Do not put vulnerability details in a
 public issue to request a contact, and do not guess or publish an email address.

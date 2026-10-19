@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "packet": "P02 acceptance audit only",
+  "base": "e6e364eee1207ead506de37ae57c750937d4be48",
+  "capsule": {
+    "path": "/private/tmp/ADMIRALTY_P02_ACCEPTANCE_AUDIT_e6e.md",
+    "bytes": 14482,
+    "sha256": "bf8e233e694a6dffb41d603970edb4031c3e0442a9920402295c845b3f2c3cc3"
+  },
+  "evidence": {
+    "path": "/private/tmp/ADMIRALTY_P02_ACCEPTANCE_AUDIT_e6e-evidence.json",
+    "bytes": 30567,
+    "sha256": "acbf13b66f77911ae0dbdc72c13ff58876552f12add77ee918e7b96310d5d49d"
+  },
+  "observed_head": "31fdcbabfad5b762e47d376bc9c138328da0652f",
+  "status_short": "?? receipts/integration/native-e6e364ee-independent-20261019T1225Z.json\n",
+  "new_test_build_remote_provider_service_forge_config_grant_or_acceptance_actions": false,
+  "acceptance_state_changed": false
+}
