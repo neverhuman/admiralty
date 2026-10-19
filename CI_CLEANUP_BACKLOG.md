@@ -47,6 +47,28 @@ build failures remain immediate work.
    `7b1c3270f4b1fecadc7a279addb7da7cce5b0b4e62c76fcaadc371359f6819a6`
    is retained at `/private/tmp/adm-ci-pr100-clippy-117870271726.log`.
    New receiving-main hosted validation remains separate from this local result.
+7. Receiving main8e99eaac run39195765992/job117878811711 passed formatting and
+   strict workspace Clippy, then failed all5 `native_codex_plan` integration
+   fixtures at line229 with `UnsafeSourceMetadata`. This is a test failure,
+   separate from a workflow timeout or an actual provider run. Original log
+   `/private/tmp/adm-ci-8e-checks-39195765992.log` has SHA-256
+   `90c88ef5349787b70b6148490d7036cbd9758d9b577f55582bf591647e4fdf2e`.
+   Receiving main9c4ba020 run39197760130/job117884103627 instead reached the
+   controlled capture deadline in item2 (76server tests passed,1failed,2ignored).
+   Its log `/private/tmp/adm-ci-9c4-checks-39197760130.log` hashes
+   `4eaf60f5f945940338e943f5a1378c17ecae11b25283fed192bd477d69a02396`.
+   Both contract jobs passed; neither full workflow passed. Owner: final cleanup
+   lane after implementation. Preserve workspace and capture guards.
+8. Receiving main9c4ba020 browser run39197760190/job117884103872 passed18cases
+   and failed the Atlas dark accessibility case: pinned axe reported
+   `label-content-name-mismatch` on hierarchy cards. The source-visible name
+   must be included in the accessible name. This is distinct from the negative
+   diagnostic timeout in item5; do not weaken axe, remove the assertion or call
+   it transient without evidence. Original log
+   `/private/tmp/adm-ci-9c4-browser-39197760190.log` hashes
+   `9d12d61fd694656071641321f7ab32e5af2877496581f25a596ca8ac538c77f3`.
+   Owner: final P12 cleanup after implementation; existing S3 coordination owns
+   any already claimed UI repair. No additional CI cleanup worker is assigned.
 
 Raw failures and computed hashes are retained in
 [the failure receipt](receipts/integration/ci-cleanup-evidence-20261019T0224Z.json).

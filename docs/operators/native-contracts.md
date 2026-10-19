@@ -56,3 +56,42 @@ lease or acceptance. Every page retains family context and maps each page-local
 source index to the exact source bytes, pin and span; original record offsets
 and snapshot-bound continuations remain explicit. Authenticated acquisition,
 reviewed enrichment, recording and dispatch are separate operations.
+
+## Current attention authorization
+
+Protected Store attention mutations require a startup-installed
+`AttentionAuthority` and an opaque in-process actor proof. Matching JSON labels,
+context hashes or read credentials do not supply that permission. The sole
+writer validates the actual retained capsule/task bindings, checks current
+authority before historical retries and checks again before committing a new
+command or returning its recorded result. Unbound Store mutations deny.
+
+`NativeAttentionWriterAuthority` composes the real credential registry and an
+independently installed exact action policy. Registry contention and revocation
+deny; registry locks do not span an external policy callback or queue wait.
+The policy still owns current role, source, task and evidence admission. Changes
+outside the writer after its last callback remain the issuer's synchronization
+responsibility. This is not an atomic transaction across an external policy DB.
+
+Legacy history remains readable and replayable with its original receipt
+formula. New commands retain their complete versioned binding while private
+proofs remain in memory. Request context and observed pending evidence remain
+separate: recording a wake neither compiles that batch into the context nor sends
+provider input. No startup/router issuer or transport is activated here.
+
+## Advisory native resource observations
+
+An observed run retains its original cgroup directory descriptor. Fixed bounded
+reads preserve first, latest and final PID/memory/event observations. Missing,
+malformed, unbounded or collected metrics stay explicitly unknown. Sampling
+does not alter CPU, memory, task, permit, process or closure checks. Native
+executor polling samples at most every250ms; closure freezes its observations
+for stable journal retries. Kernel collection can still precede a final read.
+
+The opaque closure's `authoritative_binding()` retains its original five-field
+serialization. New closed journals use explicit version2, a separate legacy
+authority digest and advisory data; `native-evidence-v2:` identifies the full
+new journal bytes. Probe authority comparisons use the original binding, and
+the task-loop probe retains resource evidence before changed-source preflight.
+These fixture-tested diagnostics do not retrospectively prove the prior
+provider's EAGAIN cause or qualify a new Linux/provider run.
