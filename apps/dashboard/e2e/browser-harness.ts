@@ -886,7 +886,11 @@ export async function startDashboardTestServer(
         return;
       }
 
-      if (parsedUrl.pathname === '/v1/legacy') {
+      if (
+        parsedUrl.pathname === '/v1/legacy' ||
+        parsedUrl.pathname === '/v1/legacy/detail' ||
+        parsedUrl.pathname === '/v1/legacy/detail/initial'
+      ) {
         if (!checkAuthorized(req, res)) return;
         if (legacyStatus !== 200 || !legacy) {
           sendJson(res, legacyStatus === 200 ? 404 : legacyStatus, {
@@ -1446,11 +1450,66 @@ export interface LaunchBrowserHarnessOptions {
   _testOnAttemptSpawn?: (attempt: number, info: { pid: number | undefined; profileDir: string }) => void;
 }
 
+export function captureOwnedProcessDiagnostics(pid: number | undefined, listenPort?: number): string {
+  if (typeof pid !== 'number' || pid <= 0) return 'pid=none';
+  if (process.platform !== 'linux') return `pid=${pid}`;
+  let state = 'unknown';
+  let startTicks = 'unknown';
+  let exe = 'unavailable';
+  let wchan = 'unavailable';
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, 'utf8').trim();
+    const closeParen = stat.lastIndexOf(')');
+    if (closeParen !== -1) {
+      const fields = stat.slice(closeParen + 2).split(/\s+/);
+      state = fields[0] ?? 'unknown';
+      startTicks = fields[19] ?? 'unknown';
+    }
+  } catch {
+    state = 'exited';
+  }
+  try {
+    exe = realpathSync(`/proc/${pid}/exe`);
+  } catch {
+    // Process exited or exe link unreadable
+  }
+  try {
+    wchan = readFileSync(`/proc/${pid}/wchan`, 'utf8').trim() || 'none';
+  } catch {
+    // Ignore
+  }
+  let listener = 'n/a';
+  if (typeof listenPort === 'number' && listenPort > 0) {
+    try {
+      const hexPort = listenPort.toString(16).toUpperCase().padStart(4, '0');
+      const tcp = readFileSync('/proc/net/tcp', 'utf8');
+      const listening = tcp
+        .split('\n')
+        .some((line) => line.includes(`0100007F:${hexPort}`) && line.trim().split(/\s+/)[3] === '0A');
+      listener = listening ? `127.0.0.1:${listenPort}=LISTEN` : `127.0.0.1:${listenPort}=NOT_LISTENING`;
+    } catch {
+      listener = 'unavailable';
+    }
+  }
+  return `pid=${pid} state=${state} start_ticks=${startTicks} wchan=${wchan} exe=${exe} listener=${listener}`;
+}
+
 export function isProcessAlive(pid: number): boolean {
   const proc = process as unknown as { kill?: (targetPid: number, signal?: string | number) => boolean };
   if (typeof proc.kill !== 'function') return false;
   try {
     proc.kill(pid, 0);
+    if (process.platform === 'linux') {
+      try {
+        const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
+        const closeParen = stat.lastIndexOf(')');
+        if (closeParen !== -1 && stat.slice(closeParen + 2).startsWith('Z ')) {
+          return false;
+        }
+      } catch {
+        return false;
+      }
+    }
     return true;
   } catch {
     return false;
@@ -1466,7 +1525,10 @@ async function waitForOwnedProcessExit(child: ChildProcess, timeoutMs: number): 
   const deadline = Date.now() + timeoutMs;
   while (typeof pid === 'number' && isProcessAlive(pid)) {
     if (Date.now() >= deadline) {
-      throw new Error(`Owned process ${pid} is still alive after ${timeoutMs}ms; retain its private files and do not retry startup`);
+      const diag = captureOwnedProcessDiagnostics(pid);
+      throw new Error(
+        `Owned process ${pid} is still alive after ${timeoutMs}ms; retain its private files and do not retry startup [${diag}]`,
+      );
     }
     await new Promise((resolve) => setTimeout(resolve, Math.min(20, Math.max(1, deadline - Date.now()))));
   }
@@ -1999,6 +2061,7 @@ async function launchBrowserHarnessAttempt(
       if (parsed.hostname !== '127.0.0.1' && parsed.hostname !== 'localhost') {
         throw new Error(`Refusing non-loopback navigation in E2E harness: ${url}`);
       }
+      await evaluate(`window.stop?.()`, STOP_LOADING_TIMEOUT_MS).catch(() => undefined);
       await sendCdp('Page.stopLoading', {}, sessionId, STOP_LOADING_TIMEOUT_MS).catch(() => undefined);
       let firstNavError: string | null = null;
       let navigationResult: Record<string, unknown> | undefined;
@@ -2013,7 +2076,11 @@ async function launchBrowserHarnessAttempt(
         await navigate();
       } catch (err) {
         firstNavError = err instanceof Error ? err.message : String(err);
+        await evaluate(`window.stop?.()`, STOP_LOADING_TIMEOUT_MS).catch(() => undefined);
         await sendCdp('Page.stopLoading', {}, sessionId, STOP_LOADING_TIMEOUT_MS).catch(() => undefined);
+        await sendCdp('Page.navigate', { url: 'about:blank' }, sessionId, STOP_LOADING_TIMEOUT_MS).catch(
+          () => undefined,
+        );
         try {
           await navigate();
         } catch (retryErr) {
@@ -2291,7 +2358,10 @@ export async function startIsolatedNativeAdmiraltyServer(options?: {
       '--assets',
       DIST_DIR,
     ],
-    { stdio: ['ignore', 'pipe', 'pipe'] },
+    {
+      stdio: ['ignore', 'ignore', 'pipe'],
+      env: { ...process.env, TMPDIR: privateDir },
+    },
   );
 
   child.stderr?.on('data', (chunk: Buffer) => {
@@ -2303,6 +2373,7 @@ export async function startIsolatedNativeAdmiraltyServer(options?: {
 
   const deadline = Date.now() + 25_000;
   let ready = false;
+  let lastReadyReason = 'listener has not responded';
   while (Date.now() < deadline) {
     if (exitState.exited) {
       rmSync(privateDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
@@ -2313,23 +2384,28 @@ export async function startIsolatedNativeAdmiraltyServer(options?: {
     try {
       const res = await fetch(`${baseUrl}/v2/fleet`, {
         headers: { Authorization: `Bearer ${ownerToken}` },
-        signal: AbortSignal.timeout(Math.min(1_000, Math.max(1, deadline - Date.now()))),
+        signal: AbortSignal.timeout(Math.min(2_500, Math.max(1, deadline - Date.now()))),
       });
+      void res.body?.cancel().catch(() => undefined);
       if (res.status === 200) {
         ready = true;
         break;
       }
-    } catch {
-      // Wait for listener readiness
+      lastReadyReason = `HTTP ${res.status}`;
+    } catch (err) {
+      lastReadyReason = err instanceof Error ? err.message.slice(0, 200) : 'fetch failed';
     }
     await new Promise((r) => setTimeout(r, 40));
   }
 
   if (!ready) {
+    const childDiag = captureOwnedProcessDiagnostics(getChildPid(child), port);
     child.kill('SIGKILL');
     await waitForOwnedProcessExit(child, 5_000);
     rmSync(privateDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
-    throw new Error(`Timed out waiting for isolated admiraltyd at ${baseUrl} (stderr=${stderrLog.trim()})`);
+    throw new Error(
+      `Timed out waiting for isolated admiraltyd at ${baseUrl} (stderr=${stderrLog.trim()}; reason=${lastReadyReason}; child=${childDiag})`,
+    );
   }
 
   return {

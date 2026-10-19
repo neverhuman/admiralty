@@ -1,30 +1,104 @@
 #!/bin/bash
 # Hourly history export for neverhuman/admiralty (cron on xbabe2, see data/history/README.md).
 # Runs in its OWN clone so it never touches the live checkout at /home/ubuntu/admiralty or any service.
-# Commits ONLY files under data/history/ and pushes them straight to main as jepsontaylor (documented exception).
-set -u
+# Commits ONLY explicit allowlisted files under data/history/ and pushes them straight to main as jepsontaylor (documented exception).
+set -euo pipefail
 CLONE=${ADMIRALTY_HISTORY_CLONE:-/home/ubuntu/.admiralty-history}
 LOG=${ADMIRALTY_HISTORY_LOG:-/home/ubuntu/xbabe2_kicker/captains-dashboard/history_export.log}
+LOCK=${ADMIRALTY_HISTORY_LOCK:-/tmp/admiralty_history_export.lock}
 export PATH=/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin HOME=/home/ubuntu
 exec >>"$LOG" 2>&1
-exec 9>/tmp/admiralty_history_export.lock
+exec 9>"$LOCK"
 flock -n 9 || { echo "$(date -u +%FT%TZ) skip: previous run still active"; exit 0; }
 echo "$(date -u +%FT%TZ) start"
 [ -d "$CLONE/.git" ] || git clone -q https://github.com/neverhuman/admiralty.git "$CLONE" || exit 1
 cd "$CLONE" || exit 1
-git config user.name jepsontaylor; git config user.email 130782313+jepsontaylor@users.noreply.github.com
-# never carry stray local edits: anything outside data/history is reset to origin
+git config user.name jepsontaylor
+git config user.email 130782313+jepsontaylor@users.noreply.github.com
+
+is_allowed_export_path() {
+  case "$1" in
+    data/history/README.md|\
+    data/history/rates_index.json|\
+    data/history/status.jsonl|\
+    data/history/summary.json|\
+    data/history/quota/codex_quota.csv|\
+    data/history/resources/disk_used.csv|\
+    data/history/resources/host_snapshots.csv|\
+    data/history/tokens/codex_sessions.csv|\
+    data/history/tokens/claude_hourly.csv|\
+    data/history/timeseries/history.csv|\
+    data/history/timeseries/history_[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].jsonl|\
+    data/history/ledger/model_usage.csv|\
+    data/history/ledger/model_usage_[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].jsonl|\
+    data/history/token_yield/token_yield_[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].jsonl|\
+    data/history/snapshots/projects_[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].jsonl)
+      return 0 ;;
+    *)
+      return 1 ;;
+  esac
+}
+
+# Require full index and worktree custody BEFORE fetch/merge/export.
+# Never reset or overwrite pre-existing staged or dirty work.
+if ! git diff --cached --quiet; then
+  echo "pre-existing staged index entries; refusing without modifying index or worktree"
+  git status --short
+  exit 1
+fi
+if [ -n "$(git status --porcelain --untracked-files=all -- . ':!data/history')" ]; then
+  echo "dirty outside data/history; refusing without modifying index or worktree"
+  git status --short
+  exit 1
+fi
+if ! git diff --quiet -- data/history || [ -n "$(git status --porcelain --untracked-files=all -- data/history)" ]; then
+  echo "pre-existing dirty or untracked files under data/history; refusing without modifying index or worktree"
+  git status --short
+  exit 1
+fi
+
 git fetch -q origin main || exit 1
-if [ -n "$(git status --porcelain -- . ':!data/history')" ]; then echo "dirty outside data/history; refusing"; git status --short; exit 1; fi
 git merge -q --ff-only origin/main || { echo "cannot fast-forward"; exit 1; }
-nice -n 15 ionice -c3 python3 -B tools/export_history.py --out "$CLONE/data/history" || { echo "export failed or secret scan hit (exit $?) - nothing committed"; git checkout -q -- data/history 2>/dev/null; git clean -fdq -- data/history; exit 1; }
-git add -A data/history
-if git diff --cached --quiet; then echo "no data change"; exit 0; fi
-bad=$(git diff --cached --name-only | grep -v '^data/history/' || true)
-[ -n "$bad" ] && { echo "refusing: staged files outside data/history: $bad"; git reset -q; exit 1; }
-git commit -q -m "data(history): hourly export $(date -u +%FT%H:%MZ)" -m "Automated: tools/export_history.py via tools/history_export_cron.sh (data/history only; see data/history/README.md)."
+
+if ! nice -n 15 ionice -c3 python3 -B tools/export_history.py --out "$CLONE/data/history"; then
+  echo "export failed or scan hit - restoring clean HEAD data/history tracked files"
+  git checkout -q HEAD -- data/history 2>/dev/null || true
+  find "$CLONE/data/history" -name '*.tmp' -type f -delete 2>/dev/null || true
+  exit 1
+fi
+
+candidate_paths=()
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  p="${line:3}"
+  if ! is_allowed_export_path "$p"; then
+    echo "refusing: exporter modified or created non-allowlisted path: $p"
+    exit 1
+  fi
+  candidate_paths+=("$p")
+done < <(git status --porcelain --untracked-files=all)
+
+for p in "${candidate_paths[@]}"; do
+  [ -f "$p" ] && git add -- "$p"
+done
+
+if git diff --cached --quiet; then
+  echo "no data change"
+  exit 0
+fi
+
+while IFS= read -r staged_path; do
+  [ -z "$staged_path" ] && continue
+  if ! is_allowed_export_path "$staged_path"; then
+    echo "refusing: staged path outside exact export allowlist: $staged_path"
+    exit 1
+  fi
+done < <(git diff --cached --name-only)
+
+git commit -q -m "data(history): hourly export $(date -u +%FT%H:%MZ)" -m "Automated: tools/export_history.py via tools/history_export_cron.sh (exact allowlisted data/history paths only; see data/history/README.md)."
 for i in 1 2 3; do
   git push -q origin HEAD:main && { echo "pushed $(git rev-parse --short HEAD)"; exit 0; }
   git fetch -q origin main && git rebase -q origin/main || { git rebase --abort; echo "rebase failed"; exit 1; }
 done
-echo "push failed after retries"; exit 1
+echo "push failed after retries"
+exit 1

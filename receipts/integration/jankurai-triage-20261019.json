@@ -135,8 +135,9 @@
       "owner": "2062267.agy_captain_admiralty via Admiral",
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Return an executable pinned secret/dependency/provenance scan proposal and proof scope; no blanket exclusions or new credentials.",
-      "status": "triage_required",
-      "audit_resolved": false
+      "status": "in_progress_partial_scanner_scope_open",
+      "audit_resolved": false,
+      "disposition": "scripts/check/security-supply-chain.sh and agent/security-policy.toml enforce actionlint, gitleaks, cargo metadata --locked, and 0700 non-symlink supply-chain digests fail-closed (no missing-tool skip, verified by negative control test); kept OPEN until cargo audit, pnpm audit, pip-audit, and grype are provisioned across all LAN runners."
     },
     {
       "task_id": "ADM-AUDIT-005",
@@ -152,8 +153,9 @@
       "owner": "2062267.agy_captain_admiralty via Admiral",
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Return an executable pinned secret/dependency/provenance scan proposal and proof scope; no blanket exclusions or new credentials.",
-      "status": "triage_required",
-      "audit_resolved": false
+      "status": "in_progress_partial_scanner_scope_open",
+      "audit_resolved": false,
+      "disposition": "scripts/check/security-supply-chain.sh and agent/security-policy.toml enforce actionlint, gitleaks, cargo metadata --locked, and 0700 non-symlink supply-chain digests fail-closed (no missing-tool skip, verified by negative control test); kept OPEN until cargo audit, pnpm audit, pip-audit, and grype are provisioned across all LAN runners."
     },
     {
       "task_id": "ADM-AUDIT-006",
@@ -339,8 +341,9 @@
       "owner": "2062267.agy_captain_admiralty via Admiral",
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Return an executable pinned secret/dependency/provenance scan proposal and proof scope; no blanket exclusions or new credentials.",
-      "status": "triage_required",
-      "audit_resolved": false
+      "status": "in_progress_partial_scanner_scope_open",
+      "audit_resolved": false,
+      "disposition": "scripts/check/security-supply-chain.sh and agent/security-policy.toml enforce actionlint, gitleaks, cargo metadata --locked, and 0700 non-symlink supply-chain digests fail-closed (no missing-tool skip, verified by negative control test); kept OPEN until cargo audit, pnpm audit, pip-audit, and grype are provisioned across all LAN runners."
     },
     {
       "task_id": "ADM-AUDIT-017",
@@ -441,8 +444,9 @@
       "owner": "Codex Root (current integration task)",
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
-      "status": "triage_required",
-      "audit_resolved": false
+      "status": "in_progress_manifest_scope_documented",
+      "audit_resolved": false,
+      "disposition": "agent/boundaries.toml declares truthful rust-ts-vite-react-sqlite-bounded-python stack id and agent/proof-lanes.toml documents exact schema-drift vs boundary-manifest proof scope; kept OPEN."
     },
     {
       "task_id": "ADM-AUDIT-023",
@@ -475,8 +479,9 @@
       "owner": "Codex Root (current integration task)",
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
-      "status": "triage_required",
-      "audit_resolved": false
+      "status": "in_progress_manifest_scope_documented",
+      "audit_resolved": false,
+      "disposition": "agent/boundaries.toml declares truthful rust-ts-vite-react-sqlite-bounded-python stack id and agent/proof-lanes.toml documents exact schema-drift vs boundary-manifest proof scope; kept OPEN."
     },
     {
       "task_id": "ADM-AUDIT-025",
@@ -1181,7 +1186,8 @@
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
-      "audit_resolved": false
+      "audit_resolved": false,
+      "disposition": "Bound to PYTHON_EXCEPTIONS.md (40-file ceiling enforced by cargo test --test python_policy) and PY_TO_RUST_PLAN.md (ADM-PY01..06); retained as open until full compatibility retirement."
     },
     {
       "task_id": "ADM-AUDIT-066",
@@ -1198,7 +1204,8 @@
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
-      "audit_resolved": false
+      "audit_resolved": false,
+      "disposition": "Bound to PYTHON_EXCEPTIONS.md (40-file ceiling enforced by cargo test --test python_policy) and PY_TO_RUST_PLAN.md (ADM-PY01..06); retained as open until full compatibility retirement."
     },
     {
       "task_id": "ADM-AUDIT-067",
@@ -1215,7 +1222,8 @@
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
-      "audit_resolved": false
+      "audit_resolved": false,
+      "disposition": "Bound to PYTHON_EXCEPTIONS.md (40-file ceiling enforced by cargo test --test python_policy) and PY_TO_RUST_PLAN.md (ADM-PY01..06); retained as open until full compatibility retirement."
     },
     {
       "task_id": "ADM-AUDIT-068",
@@ -1232,7 +1240,8 @@
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
-      "audit_resolved": false
+      "audit_resolved": false,
+      "disposition": "Bound to PYTHON_EXCEPTIONS.md (40-file ceiling enforced by cargo test --test python_policy) and PY_TO_RUST_PLAN.md (ADM-PY01..06); retained as open until full compatibility retirement."
     },
     {
       "task_id": "ADM-AUDIT-069",
@@ -1249,7 +1258,8 @@
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
-      "audit_resolved": false
+      "audit_resolved": false,
+      "disposition": "Bound to PYTHON_EXCEPTIONS.md (40-file ceiling enforced by cargo test --test python_policy) and PY_TO_RUST_PLAN.md (ADM-PY01..06); retained as open until full compatibility retirement."
     },
     {
       "task_id": "ADM-AUDIT-070",
@@ -1266,7 +1276,8 @@
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
-      "audit_resolved": false
+      "audit_resolved": false,
+      "disposition": "Bound to PYTHON_EXCEPTIONS.md (40-file ceiling enforced by cargo test --test python_policy) and PY_TO_RUST_PLAN.md (ADM-PY01..06); retained as open until full compatibility retirement."
     },
     {
       "task_id": "ADM-AUDIT-071",
@@ -1283,7 +1294,8 @@
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
-      "audit_resolved": false
+      "audit_resolved": false,
+      "disposition": "Bound to PYTHON_EXCEPTIONS.md (40-file ceiling enforced by cargo test --test python_policy) and PY_TO_RUST_PLAN.md (ADM-PY01..06); retained as open until full compatibility retirement."
     },
     {
       "task_id": "ADM-AUDIT-072",
@@ -1300,7 +1312,8 @@
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
-      "audit_resolved": false
+      "audit_resolved": false,
+      "disposition": "Bound to PYTHON_EXCEPTIONS.md (40-file ceiling enforced by cargo test --test python_policy) and PY_TO_RUST_PLAN.md (ADM-PY01..06); retained as open until full compatibility retirement."
     },
     {
       "task_id": "ADM-AUDIT-073",
@@ -1319,7 +1332,8 @@
       "status": "source_reviewed_detector_false_positive",
       "audit_resolved": false,
       "source_review": "INSERT OR REPLACE uses SQL ? placeholders and a separate parameter tuple.",
-      "closure_requirement": "Auditor correction or narrowly reviewed policy disposition plus retained negative proof; this classification does not clear the current strict gate."
+      "closure_requirement": "Auditor correction or narrowly reviewed policy disposition plus retained negative proof; this classification does not clear the current strict gate.",
+      "disposition": "Original off + cut + 1 and 'claude-' + str(sid) tuple expressions retained without syntax camouflage; ? parameter binding verified against SQL-injection metacharacters in test_token_yield_parameterized_sql_rejects_injection_metacharacters."
     },
     {
       "task_id": "ADM-AUDIT-074",
@@ -1338,7 +1352,8 @@
       "status": "source_reviewed_detector_false_positive",
       "audit_resolved": false,
       "source_review": "INSERT OR REPLACE uses SQL ? placeholders and a separate parameter tuple.",
-      "closure_requirement": "Auditor correction or narrowly reviewed policy disposition plus retained negative proof; this classification does not clear the current strict gate."
+      "closure_requirement": "Auditor correction or narrowly reviewed policy disposition plus retained negative proof; this classification does not clear the current strict gate.",
+      "disposition": "Original off + cut + 1 and 'claude-' + str(sid) tuple expressions retained without syntax camouflage; ? parameter binding verified against SQL-injection metacharacters in test_token_yield_parameterized_sql_rejects_injection_metacharacters."
     },
     {
       "task_id": "ADM-AUDIT-075",
@@ -1357,7 +1372,8 @@
       "status": "source_reviewed_detector_false_positive",
       "audit_resolved": false,
       "source_review": "INSERT OR REPLACE uses14SQL ? placeholders and a separate parameter tuple.",
-      "closure_requirement": "Auditor correction or narrowly reviewed policy disposition plus retained negative proof; this classification does not clear the current strict gate."
+      "closure_requirement": "Auditor correction or narrowly reviewed policy disposition plus retained negative proof; this classification does not clear the current strict gate.",
+      "disposition": "Original off + cut + 1 and 'claude-' + str(sid) tuple expressions retained without syntax camouflage; ? parameter binding verified against SQL-injection metacharacters in test_token_yield_parameterized_sql_rejects_injection_metacharacters."
     },
     {
       "task_id": "ADM-AUDIT-076",
@@ -1476,7 +1492,8 @@
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
-      "audit_resolved": false
+      "audit_resolved": false,
+      "disposition": "Bound to PYTHON_EXCEPTIONS.md (40-file ceiling enforced by cargo test --test python_policy) and PY_TO_RUST_PLAN.md (ADM-PY01..06); retained as open until full compatibility retirement."
     },
     {
       "task_id": "ADM-AUDIT-083",
@@ -1493,7 +1510,8 @@
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
-      "audit_resolved": false
+      "audit_resolved": false,
+      "disposition": "Bound to PYTHON_EXCEPTIONS.md (40-file ceiling enforced by cargo test --test python_policy) and PY_TO_RUST_PLAN.md (ADM-PY01..06); retained as open until full compatibility retirement."
     },
     {
       "task_id": "ADM-AUDIT-084",
@@ -1509,8 +1527,9 @@
       "owner": "2062267.agy_captain_admiralty via Admiral",
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Review retired-owned-job status and the explicitly scoped data/history staging/cleanup. Do not run the cron or remove private/custody-held data.",
-      "status": "triage_required",
-      "audit_resolved": false
+      "status": "remediated_and_5_case_bare_remote_tested",
+      "audit_resolved": true,
+      "disposition": "Enforced pre-export index/worktree custody (no git clean, no git reset of pre-existing index) and exact is_allowed_export_path allowlist in tools/history_export_cron.sh; verified across 5 cases against a local bare remote in tests/legacy/test_rollout.py; original c2a5398b negative receipt 907929d8... preserved."
     },
     {
       "task_id": "ADM-AUDIT-085",
@@ -1526,13 +1545,40 @@
       "owner": "2062267.agy_captain_admiralty via Admiral",
       "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Review retired-owned-job status and the explicitly scoped data/history staging/cleanup. Do not run the cron or remove private/custody-held data.",
-      "status": "triage_required",
-      "audit_resolved": false
+      "status": "remediated_and_5_case_bare_remote_tested",
+      "audit_resolved": true,
+      "disposition": "Enforced pre-export index/worktree custody (no git clean, no git reset of pre-existing index) and exact is_allowed_export_path allowlist in tools/history_export_cron.sh; verified across 5 cases against a local bare remote in tests/legacy/test_rollout.py; original c2a5398b negative receipt 907929d8... preserved."
     }
   ],
   "full_release_qualified": false,
   "general_native_execution_qualified": false,
-  "updated_at_utc": "2026-10-19T20:57:11.619118+00:00",
+  "updated_at_utc": "2026-10-19T23:39:00Z",
   "onboarding_decision": "SC-DEC-186J: advisory reporting, original strict baseline retained unresolved",
-  "schedule_source": "JANKURAI_CLEANUP_BACKLOG.md: Commodore-owned phased targets, not accepted completion"
+  "schedule_source": "JANKURAI_CLEANUP_BACKLOG.md: Commodore-owned phased targets, not accepted completion",
+  "sc186o_slice1_dispositions": {
+    "base_main_head": "b958736f36bfc656961c30af5df5499c6c1dd239",
+    "original_staged_commit_preserved": "c2a5398bb151dc826074bfd43f07a24d6e0a4338",
+    "original_staged_bundle_sha256": "89f46857a0896075d5245e1dbe1d2c2130d8e2efc697c50d3ba4fb217255a616",
+    "intermediate_f320be58_commit_preserved": "f320be58e5a20da4c235400ba35e44eaccf4038f",
+    "intermediate_f320be58_bundle_sha256": "5b79b1df9b35c6fa3d62f284d5b46cf5ccc35896c4ad23921004dba8c01a1248",
+    "root_negative_control_failure_preserved": {
+      "receipt_path": "/tmp/adm-history-negative-h138499r/negative-control-receipt.json",
+      "receipt_sha256": "907929d861396aa58b42643984988873af00c12c3dee1dda557601ddbe0c800d",
+      "script_sha256": "29fc13e88d05c0665dce4a876bc059fc9937742d8c43cfdba8dec2098fec2e73",
+      "safety_property_passed": false
+    },
+    "policy_suppression_used": false,
+    "audit_policy_precommit_blocking": true,
+    "audit_policy_excluded_paths": [],
+    "sqlite_stack_id": "rust-ts-vite-react-sqlite-bounded-python",
+    "remediated_findings": [
+      "ADM-AUDIT-084 (HLT-035-GIT-BAD-BEHAVIOR: tools/history_export_cron.sh destructive git clean removed; pre-export index/worktree custody enforced; failure restores only tracked data/history from HEAD and removes .tmp without git reset)",
+      "ADM-AUDIT-085 (HLT-035-GIT-BAD-BEHAVIOR: tools/history_export_cron.sh unbounded git add -A replaced with pre-export custody check and exact is_allowed_export_path allowlist before and after git add; verified by 5-case local bare remote test)"
+    ],
+    "calibrated_or_partial_open_findings": [
+      "ADM-AUDIT-004, ADM-AUDIT-005, ADM-AUDIT-016 (security_supply_chain): KEPT OPEN (audit_resolved=false). scripts/check/security-supply-chain.sh and agent/security-policy.toml enforce actionlint, gitleaks, cargo metadata --locked, and 0700 non-symlink provenance digests fail-closed with no missing-tool skip; cargo audit, pnpm audit, pip-audit, and grype remain unprovisioned on xbabe1/xbabe3.",
+      "ADM-AUDIT-073, ADM-AUDIT-074, ADM-AUDIT-075 (test_detector_review on dashboard/token_yield.py:70,89,102): KEPT AS source_reviewed_detector_false_positive (audit_resolved=false). Original off + cut + 1 and 'claude-' + str(sid) expressions retained without syntax camouflage; test_token_yield_parameterized_sql_rejects_injection_metacharacters proves ? parameter binding in isolated SQLite DB.",
+      "ADM-AUDIT-022, ADM-AUDIT-024 (routing on agent/boundaries.toml and agent/proof-lanes.toml): KEPT OPEN (audit_resolved=false). agent/boundaries.toml uses truthful rust-ts-vite-react-sqlite-bounded-python and agent/proof-lanes.toml scopes contract-drift to schema drift without claiming full boundary-manifest proof."
+    ]
+  }
 }

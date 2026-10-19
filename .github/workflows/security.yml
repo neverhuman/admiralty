@@ -1,0 +1,37 @@
+name: Security and Supply-Chain Qualification
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  security-supply-chain:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on:
+      group: neverhuman-lan
+      labels: [self-hosted, Linux, X64, lan-ci]
+    timeout-minutes: 15
+    steps:
+      - name: Record selected runner
+        run: printf 'runner=%s os=%s arch=%s\n' "$RUNNER_NAME" "$RUNNER_OS" "$RUNNER_ARCH"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Prepare private test scratch outside the checkout
+        run: |
+          umask 077
+          scratch=$(mktemp -d /tmp/adm-sec.XXXXXX)
+          test "$(stat -c %a "$scratch")" = 700
+          printf 'TMPDIR=%s\n' "$scratch" >> "$GITHUB_ENV"
+      - name: Run enforced workflow, secret, and lockfile supply-chain checks (actionlint, gitleaks, cargo metadata --locked)
+        run: bash tools/security-lane.sh

@@ -6,7 +6,7 @@ import { chmodSync, mkdtempSync, readFileSync, realpathSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join, resolve } from 'node:path';
 import {
-  DIST_DIR, REPO_ROOT, ensureBuiltDashboard, launchBrowserHarness,
+  DIST_DIR, REPO_ROOT, captureOwnedProcessDiagnostics, ensureBuiltDashboard, launchBrowserHarness,
   type BrowserHarness,
 } from './browser-harness';
 
@@ -188,14 +188,18 @@ async function startPrivateNativeFixture(): Promise<NativeFixture> {
     let ready = false, lastReadyReason = 'listener has not responded';
     while (Date.now() < deadline) {
       if (exited || stderrOverflow) throw new Error(`Owned child exited during startup (${JSON.stringify(exitState)}); ${redact(stderr)}`);
-      try { await fleet(Math.max(1, Math.min(300, deadline - Date.now()))); ready = true; break; }
+      try { await fleet(Math.max(1, Math.min(2_500, deadline - Date.now()))); ready = true; break; }
       catch (error) {
-        // Every fetch AND response body is bounded by the remaining outer8s budget.
+        // Every fetch AND response body is bounded by the remaining outer readiness budget.
         lastReadyReason = error instanceof Error ? redact(error.message).slice(0, 200) : 'readiness response failed';
       }
       await sleep(Math.min(35, Math.max(0, deadline - Date.now())));
     }
-    if (!ready) throw new Error(`Owned native readiness exceeded8s (${lastReadyReason}); ${redact(stderr)}`);
+    if (!ready) {
+      const childPid = (child as (ChildProcess & { pid?: number }) | undefined)?.pid;
+      const childDiag = captureOwnedProcessDiagnostics(childPid, address.port);
+      throw new Error(`Owned native readiness exceeded8s (${lastReadyReason}; child=${childDiag}); ${redact(stderr)}`);
+    }
     return { root, baseUrl, ownerToken, intakeToken, binarySha256: binary.sha256, build, fleet, close };
   } catch (error) {
     await close();

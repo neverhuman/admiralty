@@ -24,7 +24,7 @@ The earlier `eb62` probe used exit17 for its wrong-oracle check and for other ch
 | Model admission | Atomic claim/budget/managed-slot/outbox admission and paired policy fencing are implemented components. Authenticate and install the production pool/allotment policy, compose actual dispatch/start custody, and qualify settlement/release; a routing proposal alone is not a physical allocation. |
 | Browser command journeys | Exact e6e364e browser/accessibility workflow39250210328 passed. Scoped real native intake/related-work journeys also pass; positive populated/multipage states remain unit coverage. Complete remaining enriched intake, attention/delivery, performance and release journeys; retain earlier failures. |
 | Recovery | Qualify current external fencing and session/effect reconciliation across restart; preserved journals and proposals must not silently relaunch unknown work. |
-| Dashboard availability | Lossless gzip and progressive detail reduce the initial data transfer. Large source PNG icons also compete with snapshots on the SSH connection; optimized image delivery is being qualified. Server health alone does not establish a rendered, refreshing dashboard. See [the measured incident](dashboard-availability.md); final production load timing remains open. |
+| Dashboard availability | Lossless gzip, progressive `/v1/legacy/detail/initial` (`281.3–539.9ms` current facts), on-demand `/v1/legacy/detail` (`1,683.1–1,841.3ms` complete detail with exact zero-tolerance producer parity), and lossless resized WebP brand icons (`42,502` bytes vs `1,870,565` bytes, `97.7%` smaller; `0` repeat cached asset network bytes) are verified on deployed `b958736f36bfc656961c30af5df5499c6c1dd239` through the user's SSH forward (`PID 4977`, Chrome 155). Server health alone does not establish a rendered, refreshing dashboard. See [the measured incident and `b958736f` verification](dashboard-availability.md); ongoing tunnel degradation and hosted `xbabe3` browser readiness budgets remain tracked. |
 | Compatibility retirement | Rust `admiralty-observe` now supplies the real-data feed; the owned Python collector, rollout observer and restart wrapper were retired with archived evidence. Continue verifying no respawn and reconcile any remaining owned compatibility jobs. Shared fleet Admiral/ticker and other projects are outside that retirement. |
 | Distribution | Private immutable version-directory installation is implemented and scoped-tested. Clean-machine installation, supported targets, release provenance, activation, signing and publication remain unqualified. |
 | Full work packets | Reconcile every P00–P31 acceptance criterion against source, actual tests and operational evidence. Recorded checks, a successful web deployment and component test totals do not close these parent packets. |
@@ -32,8 +32,8 @@ The earlier `eb62` probe used exit17 for its wrong-oracle check and for other ch
 Production startup currently leaves general native execution unqualified. A request cannot override that boundary or install a new authority. Provider identity remains unknown unless independently observed; requested names are not observations. Credentials, private configuration, runtime data and transcripts remain outside Git.
 
 Run the [complete local CI command](local-ci.md) before pushing qualification
-repairs. The repaired source passes1,703Rust executions (five existing helpers
-ignored) and24actual browser cases on macOS; see the
+repairs. The current source passes1,715Rust executions (five existing helpers
+ignored) and24actual browser cases; see the
 [source-bound receipt](../../receipts/integration/local-ci-20261019.json).
 Those results qualify source components and local journeys, not a full release.
 

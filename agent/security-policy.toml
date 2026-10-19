@@ -1,0 +1,12 @@
+# Scope note: actionlint, gitleaks, and cargo metadata --locked are enforced fail-closed
+# across local CI and all LAN runners (xbabe1/xbabe2/xbabe3). Dependency/container scanners
+# (cargo audit, pnpm audit, pip-audit, grype) are not yet provisioned across all LAN runners;
+# ADM-AUDIT-004, ADM-AUDIT-005, and ADM-AUDIT-016 remain OPEN until full 6-tool qualification.
+schema_version = "1.0.0"
+enabled_tools = ["actionlint", "gitleaks"]
+required_tools = ["actionlint", "gitleaks"]
+advisory_tools = []
+unprovisioned_tools = ["cargo audit", "pnpm audit", "pip-audit", "grype"]
+
+[severity_thresholds]
+fail_lane_on = "high"

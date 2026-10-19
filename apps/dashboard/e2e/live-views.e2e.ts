@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   mkdirSync,
   writeFileSync,
@@ -156,6 +156,9 @@ describe("built live views against the real Rust server", () => {
     await browser?.close();
     await server?.close();
   });
+  beforeEach(async () => {
+    await browser.resetPage();
+  });
   async function connect(route: string, source = server) {
     await browser.goto(`${source.baseUrl}/#/${route}`);
     await browser.waitForSelector(".lv-feed.is-connected, .lv-error button");
@@ -222,7 +225,14 @@ describe("built live views against the real Rust server", () => {
   it("renders exact Git ancestry and checkout details, paused inspection and full-window mode", async () => {
     await browser.goto(`${server.baseUrl}/#/git`);
     await browser.waitForText("Session access");
-    await browser.clickButtonByText("Session access");
+    const sessionButtonText = await browser.evaluate<string>(`(() => {
+      const btn = Array.from(document.querySelectorAll('button')).find(b => {
+        const t = (b.textContent ?? '').trim();
+        return t === 'Session access' || t === 'Connect session access';
+      });
+      return btn ? (btn.textContent ?? '').trim() : 'Session access';
+    })()`);
+    await browser.clickButtonByText(sessionButtonText);
     await browser.fillInputByLabel("Bearer token", server.ownerToken);
     await browser.clickButtonByText("Apply token");
     await browser.waitForSelector(".git-canvas");

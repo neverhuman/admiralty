@@ -104,4 +104,19 @@ both projections and a serialized reopen. The original failure is retained in
 No approximate equality replaces the final production fidelity check. Existing
 provider cost readers also share this feature, so the complete workspace/native
 reopen/backup and browser matrix must pass before push; no schema or authority
-changes are introduced. Final receiving-source readback remains separate.
+changes are introduced.
+
+At receiving main `b958736f36bfc656961c30af5df5499c6c1dd239`, deployed on `:18890`
+by the sole deployment owner and independently verified through the existing user
+SSH forward (`PID 4977`, Chrome 155), `/v1/legacy/detail/initial` compacts initial
+card and table numbers while keeping `compact_initial: true` and
+`complete_detail: false` explicit until the operator requests `/v1/legacy/detail`.
+Same-generation initial values and on-demand complete detail match the original
+producer fields with zero floating-point tolerance (`sha256: 99aec907e6b819b0859fa303615b7ec2f477c24c549f1b2aec341e8e169a0313`).
+Initial current facts render in `281.3 / 539.9 / 492.5ms`, on-demand complete
+detail loads in `1,841.3 / 1,826.0 / 1,683.1ms`, repeat loads transfer `0` network
+bytes for cached JS/CSS/images, and lossless resized WebP brand icons remain
+`42,502` bytes vs `1,870,565` bytes (`97.7%` smaller). Earlier tunnel timeout
+failures and hosted `xbabe3` browser readiness variance remain retained as separate
+operational evidence; this dashboard availability proof does not qualify general
+native coding execution or full release acceptance beyond `P00/P01`.

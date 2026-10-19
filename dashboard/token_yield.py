@@ -6,8 +6,8 @@ Attribution: session cwd -> git toplevel -> project; commits in that repo author
 (or with an `Agent-Session: <id>` trailer = exact). Landing: commit is an ancestor of, or has a patch-id present on,
 origin/main (local ref, not fetched) / the integration PR branch."""
 import os, re, json, glob, time, sqlite3, subprocess, datetime, collections
-HOME = '/home/ubuntu'
-BASE = os.environ.get('CDASH_RUNTIME', '/home/ubuntu/xbabe2_kicker/captains-dashboard')  # runtime data dir (status.json, history, tokens.db); code lives in admiralty/dashboard
+HOME = os.environ.get('ADMIRALTY_TY_HOME', '/home/ubuntu')
+BASE = os.environ.get('CDASH_RUNTIME', HOME + '/xbabe2_kicker/captains-dashboard')  # runtime data dir (status.json, history, tokens.db); code lives in admiralty/dashboard
 DB = BASE + '/tokens.db'; OUT = BASE + '/token_yield.json'; STATUS = BASE + '/status.json'
 SINCE_H = float(os.environ.get('TY_SINCE_H', '48'))
 RATES = {'gpt-6-astra': (250, 25, 1250), 'gpt-5.6-sol': (100, 10, 500), 'gpt-5.6-terra': (50, 5, 300), 'gpt-6.1-sol': (50, 2.5, 250),

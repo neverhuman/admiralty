@@ -1,0 +1,10 @@
+minimum_score = 85
+fail_on = ["critical", "high"]
+advisory_on = ["medium", "low"]
+
+[scan]
+excluded_paths = []
+
+[precommit_gate]
+blocking = true
+enabled = true
