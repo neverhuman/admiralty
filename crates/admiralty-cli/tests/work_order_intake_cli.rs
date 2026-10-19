@@ -89,7 +89,9 @@ impl Drop for Fixture {
 }
 
 fn invoke(args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_admiralty"))
+    Command::new("sh")
+        .args(["-c", "umask 002; exec \"$@\"", "intake-test-wrapper"])
+        .arg(env!("CARGO_BIN_EXE_admiralty"))
         .args(args)
         .output()
         .unwrap()
