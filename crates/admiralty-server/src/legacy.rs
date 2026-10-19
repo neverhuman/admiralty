@@ -200,6 +200,49 @@ mod delivery_tests {
     use serde_json::json;
 
     #[test]
+    fn projected_source_decimals_round_trip_without_changing_float_bits() {
+        // These source literals lost one ULP under serde_json's fast parser.
+        // Compare with Rust's correctly rounded parser, not a second JSON parse.
+        for literal in [
+            "10.311165210389579",
+            "97.30287417226819",
+            "125.57848358154297",
+            "1.2368568906011719",
+            "96.42857142857143",
+            "-0.0",
+            "1e-308",
+        ] {
+            let raw = format!(
+                r#"{{"generated_utc":"2026-10-19T22:26:07Z","projects":{{}},"global_resources":{{"observed":{literal}}}}}"#
+            );
+            let source: serde_json::Value = serde_json::from_str(&raw).expect("valid source");
+            let expected = literal.parse::<f64>().expect("source float").to_bits();
+            for initial in [true, false] {
+                let projected = detail_projection(source.clone(), initial);
+                assert_eq!(
+                    projected["global_resources"]["observed"]
+                        .as_f64()
+                        .expect("numeric observation")
+                        .to_bits(),
+                    expected,
+                    "source literal {literal}, initial={initial}"
+                );
+                let encoded = serde_json::to_vec(&projected).expect("encoded projection");
+                let decoded: serde_json::Value =
+                    serde_json::from_slice(&encoded).expect("decoded projection");
+                assert_eq!(
+                    decoded["global_resources"]["observed"]
+                        .as_f64()
+                        .expect("decoded observation")
+                        .to_bits(),
+                    expected,
+                    "serialized literal {literal}, initial={initial}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn initial_projection_keeps_current_facts_warnings_unknowns_and_source_age() {
         let source = json!({"generated_utc":"2026-10-19T12:00:00Z","order":["fleet"],
             "projects":{"fleet":{"name":"Fleet","total":null,"stages":{"verified":4,"done":1},

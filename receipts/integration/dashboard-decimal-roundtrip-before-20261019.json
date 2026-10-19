@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T22:29:15.120879+00:00",
+  "source": "3375621032f9d23eaf47aec336ed7b734db108c2",
+  "locked_serde_json": "1.0.154",
+  "production_comparison": {
+    "generated_utc": "2026-10-19T22:26:07Z",
+    "differences": 9,
+    "kind": "one ULP in floating observations only",
+    "maximum_absolute_difference": 1.4210854715202004e-14,
+    "examples": [
+      {
+        "source_literal": "10.311165210389579",
+        "projected_literal": "10.31116521038958"
+      },
+      {
+        "source_literal": "96.42857142857143",
+        "projected_literal": "96.42857142857144"
+      }
+    ],
+    "original_strict_comparison": "failed; retained without weakening numeric equality"
+  },
+  "negative_control": {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "admiralty-server",
+      "projected_source_decimals_round_trip_without_changing_float_bits",
+      "--locked"
+    ],
+    "exit": 101,
+    "passed": 0,
+    "failed": 1,
+    "first_literal": "10.311165210389579",
+    "observed_bits": 4621994288029666667,
+    "expected_bits": 4621994288029666666,
+    "oracle": "Rust str::parse::<f64>(), independent of serde_json parser",
+    "log_sha256": "2f71935fdef94b598e4cb5e72349844bb1d02b2ce410000eca6fd114161a3ebd"
+  },
+  "scope": "Correct rounding via existing float_roundtrip feature, no new dependency packages, versions, JSON schemas, tolerance or native authority. Full local and live receiving-source checks required."
+}
