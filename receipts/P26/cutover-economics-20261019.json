@@ -1,0 +1,34 @@
+{
+  "packet": "P26",
+  "scope": "Source-bound report explorer cutover slice",
+  "source_revision": "ac19cae24b2f3b0200cb4ea986a024e26e58903f",
+  "local_build": "passed: TypeScript + Vite production bundle",
+  "focused_tests": "17 passed (8 report + 9 existing token-efficiency cases)",
+  "browser": "1 built-dashboard CDP journey passed; pinned axe violations=0, incomplete=0",
+  "artifacts": [
+    {
+      "path": "/home/ubuntu/lanes/admiralty/accept-p26-p31/target/p26-economics/build-verified.log",
+      "sha256": "c9c0523d97d8bf4571e67a19af948301adfcb271f4a667ffaf7ad1c2bc560592"
+    },
+    {
+      "path": "/home/ubuntu/lanes/admiralty/accept-p26-p31/target/p26-economics/vitest-final.log",
+      "sha256": "11e0e89ad28cbe29f5922eb332739e3fdf1e18c75bf99eba2441aab339fd24d5"
+    },
+    {
+      "path": "/home/ubuntu/lanes/admiralty/accept-p26-p31/target/p26-economics/browser-verified.log",
+      "sha256": "a1c43fbca63567177d4bc75ac5ba2ee004a3b2e2c06bdd6edb32e71738c7f489"
+    },
+    {
+      "path": "/home/ubuntu/lanes/admiralty/accept-p26-p31/target/p26-economics/browser-final.log",
+      "sha256": "e0a57776d6a4d1a7bd4039f7749436ad35d76b6d5bb9828e27c159b79d830df5"
+    }
+  ],
+  "retained_failure": "Initial browser run caught new button color contrast; repaired with existing text-button styling. Earlier aggregate assertion exposed mixing cohorts; cohorts now stay separate.",
+  "limitations": [
+    "Manual bounded report import; normalized native service feed is unavailable.",
+    "Imported provenance is declared, not authenticated. No measured live savings, execution, deployment or complete parent acceptance claimed.",
+    "No Playwright dependency added; uses existing actual Chromium/CDP Vitest harness."
+  ],
+  "full_packet_acceptance": false,
+  "deployment_performed": false
+}
