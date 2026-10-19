@@ -3,6 +3,7 @@ import { data, list, text, label, freshness, safeHref, stageLabel, stageClass, p
 import { TemporalPlots } from './TemporalPlots';
 import { LegacyHierarchy } from './LegacyHierarchy';
 import { TokenEfficiency } from './TokenEfficiency';
+import { Economics } from '../features/economics/Economics';
 import { ModelBadge } from './ModelBadge';
 import { routeHref } from '../router';
 import './legacy-evidence.css';
@@ -75,6 +76,7 @@ export function LegacyFleetView({ snapshot, selected = 'all' }: { snapshot: Lega
       <aside className="legacy-side">
         <a className="text-button" href={routeHref('atlas')}>Open full Fleet Atlas ↗</a><LegacyHierarchy snapshot={snapshot} />
         <TokenEfficiency snapshot={snapshot} />
+        <Economics />
         <div className="legacy-auxiliary panel legacy-side-panel">
           <SourceSection title="Fleet resources" value={snapshot.global_resources} />
           <SourceSection title="Admiral" value={snapshot.super_captain} />
