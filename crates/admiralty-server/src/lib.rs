@@ -3,6 +3,7 @@ pub mod legacy;
 pub mod model_selection;
 pub mod models;
 pub mod native_attention;
+pub mod native_attention_context;
 pub mod services;
 pub mod startup;
 mod views;
