@@ -7,7 +7,7 @@ import { launchBrowserHarness, startIsolatedNativeAdmiraltyServer, REPO_ROOT,
 
 it('renders public Git/Atlas observations after private401 and reconnects with owner access', async () => {
   const binary = process.env.ADMIRALTY_E2E_ADMIRALTYD_BIN;
-  const expectedHash = process.env.ADMIRALTY_E2E_NATIVE_BINARY_SHA256;
+  const expectedHash = process.env.ADMIRALTY_E2E_ADMIRALTYD_SHA256;
   if (!binary || !expectedHash || !/^[a-f0-9]{64}$/.test(expectedHash)) throw new Error('Exact native binary and SHA256 required');
   const size = (statSync(binary) as unknown as { size: number }).size;
   if (size > 128 * 1024 * 1024) throw new Error('Native fixture binary exceeds hash bound');
