@@ -226,8 +226,15 @@ impl SubscriptionAuthority for NativeRoutingAuthority {
         let Ok(registry) = self.credentials.try_read() else {
             return false;
         };
+        let Ok(current_utc) = now() else {
+            return false;
+        };
         if !registry.is_active_actor(&proof.actor)
-            || !now().is_ok_and(|current| observed_utc <= current && current - observed_utc <= 5)
+            || observed_utc > current_utc
+            || current_utc - observed_utc > 5
+            || subscription
+                .expires_at_utc
+                .is_some_and(|expiry| current_utc >= expiry)
         {
             return false;
         }
