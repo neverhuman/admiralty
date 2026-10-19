@@ -2447,17 +2447,26 @@ mod tests {
     }
 
     fn completed_status(host: &SessionHost, run: &str) -> SessionStatus {
-        let deadline = Instant::now() + Duration::from_secs(5);
+        completed_status_with_timeout(host, run, Duration::from_secs(5))
+    }
+
+    fn completed_status_with_timeout(
+        host: &SessionHost,
+        run: &str,
+        timeout: Duration,
+    ) -> SessionStatus {
+        let deadline = Instant::now() + timeout;
         loop {
-            if let Ok(status) = host.status(run)
+            let observed = host.status(run);
+            if let Ok(status) = &observed
                 && status.exit.is_some()
                 && status.capture_state != CaptureState::Capturing
             {
-                return status;
+                return status.clone();
             }
             assert!(
                 Instant::now() < deadline,
-                "controlled child capture deadline"
+                "controlled child capture deadline after {timeout:?}: {observed:?}"
             );
             thread::sleep(Duration::from_millis(5));
         }
@@ -2585,7 +2594,10 @@ mod tests {
         // no synthesized CaptureState or completion flag can qualify this run.
         let host = capture_child(&root, "failed", "/usr/bin/head -c 9000000 /dev/zero");
         host.close_input("failed").expect("close actual input");
-        let observed = completed_status(&host, "failed");
+        // This crosses 8 MiB through >1000 actual sync_data durability
+        // boundaries. It tests capture failure, not a five-second storage SLA.
+        // Keep all real byte limits, failure assertions and child-exit checks.
+        let observed = completed_status_with_timeout(&host, "failed", Duration::from_secs(30));
         assert!(observed.capture_failed);
         assert_eq!(observed.capture_state, CaptureState::Failed);
         assert!(collect_output(&host, "failed", &observed, 16 * 1024 * 1024).is_err());
