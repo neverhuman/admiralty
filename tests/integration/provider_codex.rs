@@ -8,7 +8,8 @@ use admiralty_core::{
 };
 use admiralty_runtime::{
     providers::codex::{
-        CodexEffort, CodexError, CodexNdjsonStream, CodexTermination, MAX_STREAM_BYTES,
+        CodexCliObservation, CodexEffort, CodexError, CodexNdjsonStream, CodexTermination,
+        MAX_STREAM_BYTES, SUPPORTED_CLI_VERSION,
     },
     recovery::plan_recovery,
     session::{OutputChunk, OutputStream},
@@ -540,4 +541,53 @@ fn p24_p29_round11_item4_final_validation_gate() {
     assert!(!rejected.execution_granted);
     assert!(!rejected.publication_granted);
     assert!(!rejected.authority_granted);
+}
+
+#[test]
+fn required_codex_flags_must_be_complete_help_tokens() {
+    let exec_flags = [
+        "--json",
+        "--color",
+        "--ignore-user-config",
+        "--strict-config",
+        "--ephemeral",
+        "--model",
+        "--sandbox",
+        "--cd",
+    ];
+    let root_flags = ["--no-daemon", "--ask-for-approval"];
+    let exec_help = exec_flags.join(" ");
+    let root_help = root_flags.join(" ");
+    let observe = |exec: &str, root: &str| {
+        CodexCliObservation::from_help(
+            "node-fixture",
+            PathBuf::from("/usr/bin/codex"),
+            SUPPORTED_CLI_VERSION,
+            exec,
+            root,
+            Some(1),
+        )
+    };
+    assert!(observe(&exec_help, &root_help).is_ok());
+    for flag in exec_flags {
+        for replacement in [format!("{flag}-extra"), format!("prefix{flag}")] {
+            assert!(
+                observe(&exec_help.replace(flag, &replacement), &root_help).is_err(),
+                "a longer token must not qualify {flag}: {replacement}",
+            );
+        }
+    }
+    for flag in root_flags {
+        for replacement in [format!("{flag}-extra"), format!("prefix{flag}")] {
+            assert!(
+                observe(&exec_help, &root_help.replace(flag, &replacement)).is_err(),
+                "a longer token must not qualify {flag}: {replacement}",
+            );
+        }
+    }
+    let indented = exec_flags
+        .iter()
+        .map(|flag| format!("  {flag} <VALUE>\n"))
+        .collect::<String>();
+    assert!(observe(&indented, "  --no-daemon\n  --ask-for-approval <POLICY>\n").is_ok());
 }

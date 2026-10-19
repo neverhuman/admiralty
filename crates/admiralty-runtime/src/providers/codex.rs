@@ -173,13 +173,20 @@ impl CodexCliObservation {
             "--sandbox",
             "--cd",
         ] {
-            if !exec_help.contains(flag) {
+            if !exec_help
+                .split_ascii_whitespace()
+                .any(|token| token == flag)
+            {
                 return Err(CodexError::Invalid(
                     "required exec flag absent from observed help",
                 ));
             }
         }
-        if !root_help.contains("--no-daemon") || !root_help.contains("--ask-for-approval") {
+        if ["--no-daemon", "--ask-for-approval"].iter().any(|flag| {
+            !root_help
+                .split_ascii_whitespace()
+                .any(|token| token == *flag)
+        }) {
             return Err(CodexError::Invalid(
                 "required root flag absent from observed help",
             ));
