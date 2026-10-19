@@ -12,8 +12,10 @@ use admiralty_core::{
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::{
+    collections::BTreeMap,
     ffi::{OsStr, OsString},
     fs,
+    io::Read,
     path::{Path, PathBuf},
     thread,
     time::{Duration, Instant},
@@ -26,6 +28,10 @@ const MAX_STATUS_OUTPUT_BYTES: usize = 256 * 1024;
 const MAX_TAIL_PAGE_BYTES: usize = 256 * 1024;
 const MAX_TRUSTED_PATH_BYTES: usize = 16 * 1024;
 const SOURCE_PROBE_TIMEOUT_SECS: u32 = 10;
+const MAX_EXECUTABLE_BYTES: u64 = 256 * 1024 * 1024;
+const MAX_ENVIRONMENT_EXECUTABLE_BYTES: u64 = 512 * 1024 * 1024;
+const ENVIRONMENT_PROBE_TIMEOUT: Duration = Duration::from_secs(10);
+const RUNNER_LOCALE: &str = "C";
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
 
 #[derive(Debug, thiserror::Error)]
@@ -36,6 +42,8 @@ pub enum TrustedCheckError {
     CandidateCustody,
     #[error("candidate source differs from its pinned identity or is dirty")]
     CandidateDrift,
+    #[error("trusted check executable or controlled environment differs from its pinned identity")]
+    EnvironmentDrift,
     #[error("trusted check timed out")]
     TimedOut,
     #[error("trusted check exceeded its output bound")]
@@ -56,6 +64,9 @@ pub enum TrustedCheckError {
 pub struct ExecutedChecks {
     receipt: VerificationReceipt,
     execution_digest: String,
+    environment: ExecutionEnvironment,
+    environment_digest: String,
+    cache_key_digest: String,
 }
 
 impl ExecutedChecks {
@@ -66,6 +77,66 @@ impl ExecutedChecks {
     pub fn execution_digest(&self) -> &str {
         &self.execution_digest
     }
+
+    pub fn environment_digest(&self) -> &str {
+        &self.environment_digest
+    }
+
+    /// Exact inputs and observed execution environment, without a run/receipt ID.
+    /// A matching key never authenticates an issuer or grants acceptance.
+    pub fn cache_key_digest(&self) -> &str {
+        &self.cache_key_digest
+    }
+
+    pub fn candidate_checkout(&self) -> &Path {
+        &self.environment.candidate_checkout
+    }
+
+    /// Recheck executable bytes and controlled variables against this proof.
+    /// Performs bounded filesystem I/O; never call inside a Store authority
+    /// callback or while holding the evidence catalog's state lock.
+    pub fn revalidate_environment(
+        &self,
+        contract: &TaskContract,
+        policy: &VerificationPolicy,
+    ) -> Result<(), TrustedCheckError> {
+        validate_request(
+            &self.receipt.inputs,
+            contract,
+            policy,
+            &self.receipt.receipt_id,
+        )?;
+        let candidate = validate_candidate(self.candidate_checkout())?;
+        let current = capture_environment(&candidate, contract, policy)?;
+        if current != self.environment {
+            return Err(TrustedCheckError::EnvironmentDrift);
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+struct ExecutableIdentity {
+    path: PathBuf,
+    sha256: String,
+    bytes: u64,
+    mode: u32,
+}
+
+/// Observed argv executables and the variables the runner actually installs.
+/// Shared libraries, interpreter children and kernel state are outside this
+/// identity. Private HOME/TMPDIR names vary per run; their creation policy is fixed.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+struct ExecutionEnvironment {
+    os: &'static str,
+    architecture: &'static str,
+    candidate_checkout: PathBuf,
+    search_path: String,
+    home_policy: &'static str,
+    temporary_policy: &'static str,
+    lang: &'static str,
+    lc_all: &'static str,
+    executables: Vec<ExecutableIdentity>,
 }
 
 #[derive(Debug)]
@@ -108,14 +179,19 @@ pub fn execute_checks(
     if candidate.starts_with(&spool) || spool.starts_with(&candidate) {
         return Err(TrustedCheckError::CandidateCustody);
     }
-    let search_path = trusted_search_path()?;
-    let git_program = resolve_trusted_git(&search_path)?;
+    let environment = capture_environment(&candidate, contract, policy)?;
+    let search_path = OsStr::new(&environment.search_path);
+    let git_program = environment.executables[0].path.clone();
+    let environment_digest = content_digest(&("trusted-check-environment-v1", &environment))
+        .map_err(|error| TrustedCheckError::Evidence(error.to_string()))?;
+    let cache_key_digest = content_digest(&("trusted-check-cache-v1", inputs, &environment_digest))
+        .map_err(|error| TrustedCheckError::Evidence(error.to_string()))?;
     let mut sequence = 0_u32;
     let mut run = RunContext {
         host,
         candidate: &candidate,
         spool: &spool,
-        search_path: &search_path,
+        search_path,
         run_prefix,
         sequence: &mut sequence,
     };
@@ -140,6 +216,9 @@ pub fn execute_checks(
     if after != before {
         return Err(TrustedCheckError::CandidateDrift);
     }
+    if capture_environment(&candidate, contract, policy)? != environment {
+        return Err(TrustedCheckError::EnvironmentDrift);
+    }
 
     let receipt = VerificationReceipt {
         schema_version: admiralty_core::verification::RECEIPT_SCHEMA_VERSION,
@@ -155,12 +234,162 @@ pub fn execute_checks(
     if !validated.all_checks_passed() {
         return Err(TrustedCheckError::ExitMismatch);
     }
-    let execution_digest = content_digest(&("trusted-check-execution-v1", &before, &receipt))
-        .map_err(|error| TrustedCheckError::Evidence(error.to_string()))?;
+    let execution_digest = content_digest(&(
+        "trusted-check-execution-v2",
+        &before,
+        &receipt,
+        &environment_digest,
+        &cache_key_digest,
+    ))
+    .map_err(|error| TrustedCheckError::Evidence(error.to_string()))?;
     Ok(ExecutedChecks {
         receipt,
         execution_digest,
+        environment,
+        environment_digest,
+        cache_key_digest,
     })
+}
+
+fn capture_environment(
+    candidate: &Path,
+    contract: &TaskContract,
+    policy: &VerificationPolicy,
+) -> Result<ExecutionEnvironment, TrustedCheckError> {
+    let search_path = trusted_search_path()?;
+    let git_program = resolve_trusted_git(&search_path)?;
+    let deadline = Instant::now() + ENVIRONMENT_PROBE_TIMEOUT;
+    let mut remaining = MAX_ENVIRONMENT_EXECUTABLE_BYTES;
+    let mut hashed = BTreeMap::new();
+    let mut paths = vec![git_program];
+    for check in contract.checks.iter().chain(
+        policy
+            .required_negative_checks
+            .iter()
+            .map(|negative| &negative.check),
+    ) {
+        let cwd = check_cwd(candidate, check)?;
+        paths.push(resolve_program(&check.program, &cwd, &search_path)?);
+    }
+    let mut executables = Vec::with_capacity(paths.len());
+    for path in paths {
+        let identity = match hashed.entry(path.clone()) {
+            std::collections::btree_map::Entry::Occupied(entry) => entry.into_mut(),
+            std::collections::btree_map::Entry::Vacant(entry) => {
+                entry.insert(hash_executable(&path, &mut remaining, deadline)?)
+            }
+        };
+        executables.push(identity.clone());
+    }
+    Ok(ExecutionEnvironment {
+        os: std::env::consts::OS,
+        architecture: std::env::consts::ARCH,
+        candidate_checkout: candidate.to_path_buf(),
+        search_path: search_path
+            .to_str()
+            .ok_or(TrustedCheckError::Invalid(
+                "trusted PATH is not valid UTF-8",
+            ))?
+            .to_owned(),
+        home_policy: "fresh-owned-0700-empty-home-per-process-v1",
+        temporary_policy: "fresh-owned-0700-empty-tmp-per-process-v1",
+        lang: RUNNER_LOCALE,
+        lc_all: RUNNER_LOCALE,
+        executables,
+    })
+}
+
+fn hash_executable(
+    path: &Path,
+    remaining: &mut u64,
+    deadline: Instant,
+) -> Result<ExecutableIdentity, TrustedCheckError> {
+    #[cfg(unix)]
+    let mut file = fs::File::from(
+        rustix::fs::open(
+            path,
+            rustix::fs::OFlags::RDONLY
+                | rustix::fs::OFlags::NOFOLLOW
+                | rustix::fs::OFlags::NONBLOCK,
+            rustix::fs::Mode::empty(),
+        )
+        .map_err(|_| TrustedCheckError::EnvironmentDrift)?,
+    );
+    #[cfg(not(unix))]
+    let mut file = fs::File::open(path).map_err(|_| TrustedCheckError::EnvironmentDrift)?;
+    let before = file
+        .metadata()
+        .map_err(|_| TrustedCheckError::EnvironmentDrift)?;
+    if !before.is_file() || before.len() > MAX_EXECUTABLE_BYTES || before.len() > *remaining {
+        return Err(TrustedCheckError::Invalid(
+            "executable exceeds hashing bounds",
+        ));
+    }
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 32 * 1024];
+    let mut bytes = 0_u64;
+    loop {
+        if Instant::now() >= deadline {
+            return Err(TrustedCheckError::TimedOut);
+        }
+        let count = file
+            .read(&mut buffer)
+            .map_err(|_| TrustedCheckError::EnvironmentDrift)?;
+        if count == 0 {
+            break;
+        }
+        bytes += count as u64;
+        if bytes > MAX_EXECUTABLE_BYTES || bytes > *remaining || bytes > before.len() {
+            return Err(TrustedCheckError::EnvironmentDrift);
+        }
+        hasher.update(&buffer[..count]);
+    }
+    let after = file
+        .metadata()
+        .map_err(|_| TrustedCheckError::EnvironmentDrift)?;
+    let named = fs::symlink_metadata(path).map_err(|_| TrustedCheckError::EnvironmentDrift)?;
+    if bytes != before.len()
+        || !same_executable_metadata(&before, &after)
+        || !same_executable_metadata(&after, &named)
+    {
+        return Err(TrustedCheckError::EnvironmentDrift);
+    }
+    *remaining -= bytes;
+    #[cfg(unix)]
+    let mode = {
+        use std::os::unix::fs::PermissionsExt;
+        after.permissions().mode()
+    };
+    #[cfg(not(unix))]
+    let mode = u32::from(after.permissions().readonly());
+    Ok(ExecutableIdentity {
+        path: path.to_path_buf(),
+        sha256: format!("sha256:{:x}", hasher.finalize()),
+        bytes,
+        mode,
+    })
+}
+
+fn same_executable_metadata(a: &fs::Metadata, b: &fs::Metadata) -> bool {
+    if !a.is_file() || !b.is_file() || a.len() != b.len() {
+        return false;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        a.dev() == b.dev()
+            && a.ino() == b.ino()
+            && a.mode() == b.mode()
+            && a.mtime() == b.mtime()
+            && a.mtime_nsec() == b.mtime_nsec()
+            && a.ctime() == b.ctime()
+            && a.ctime_nsec() == b.ctime_nsec()
+    }
+    #[cfg(not(unix))]
+    {
+        a.modified().ok() == b.modified().ok()
+            && a.permissions().readonly() == b.permissions().readonly()
+    }
 }
 
 fn validate_request(
@@ -395,8 +624,8 @@ fn prepare_child_environment(
         (OsString::from("PATH"), search_path.to_os_string()),
         (OsString::from("HOME"), home.into_os_string()),
         (OsString::from("TMPDIR"), temporary.into_os_string()),
-        (OsString::from("LANG"), OsString::from("C")),
-        (OsString::from("LC_ALL"), OsString::from("C")),
+        (OsString::from("LANG"), OsString::from(RUNNER_LOCALE)),
+        (OsString::from("LC_ALL"), OsString::from(RUNNER_LOCALE)),
     ])
 }
 
@@ -493,15 +722,7 @@ fn execute_one(
     check: &CheckSpec,
     expected_exit: i32,
 ) -> Result<ProcessOutput, TrustedCheckError> {
-    let cwd = run.candidate.join(&check.cwd);
-    let cwd = cwd
-        .canonicalize()
-        .map_err(|_| TrustedCheckError::Invalid("check cwd is unavailable"))?;
-    if !cwd.starts_with(run.candidate) || !cwd.is_dir() {
-        return Err(TrustedCheckError::Invalid(
-            "check cwd escapes the candidate checkout",
-        ));
-    }
+    let cwd = check_cwd(run.candidate, check)?;
     let program = resolve_program(&check.program, &cwd, run.search_path)?;
     let timeout = check.timeout_secs.min(MAX_CHECK_TIMEOUT_SECS);
     let output = run_owned(
@@ -516,6 +737,19 @@ fn execute_one(
         return Err(TrustedCheckError::ExitMismatch);
     }
     Ok(output)
+}
+
+fn check_cwd(candidate: &Path, check: &CheckSpec) -> Result<PathBuf, TrustedCheckError> {
+    let cwd = candidate.join(&check.cwd);
+    let cwd = cwd
+        .canonicalize()
+        .map_err(|_| TrustedCheckError::Invalid("check cwd is unavailable"))?;
+    if !cwd.starts_with(candidate) || !cwd.is_dir() {
+        return Err(TrustedCheckError::Invalid(
+            "check cwd escapes the candidate checkout",
+        ));
+    }
+    Ok(cwd)
 }
 
 fn run_owned(

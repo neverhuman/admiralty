@@ -123,3 +123,36 @@ integration approval and acceptance must be checked by the eventual trusted
 executor and authoritative decision path. This prototype qualifies none of
 those effects. Its offline tests establish bounded consistency and replay
 behavior only.
+
+## Runtime executable and environment binding
+
+`admiralty_runtime::trusted_checks::execute_checks` runs bounded argv checks
+through its owned `SessionHost`. Its opaque, serialize-only `ExecutedChecks`
+records `environment_digest()` and `cache_key_digest()` alongside the portable
+receipt. The environment binds the canonical candidate path, OS/architecture,
+sanitized PATH, controlled `LANG`/`LC_ALL`, and a versioned policy creating empty
+private HOME/TMPDIR directories for each process. It records resolved Git and
+check executable paths, modes, lengths and streamed SHA-256 hashes. Probes have
+a deadline, a 256 MiB per-executable bound and a 512 MiB aggregate byte bound.
+Executable/environment changes between the before/after probes reject the run.
+
+The cache key binds all `VerificationInputs` and that observed environment;
+contract and protected-policy digests bind the complete named checks and oracle
+pins. Run IDs and the fresh HOME/TMPDIR names are excluded. Identical keys are
+reproducible for the same canonical checkout path; moving the checkout changes
+the key because absolute working directories can affect checks. Keys are input
+identities, not permission to reuse an unauthenticated receipt. The v2
+execution digest binds the run-specific receipt and environment/cache identities.
+
+`ExecutedChecks::revalidate_environment(contract, policy)` rehashes the current
+executables and rejects a changed environment or stale contract/policy. Native
+catalog registration and acceptance preparation invoke it outside catalog/grant
+locks and Store writer callbacks. Writer callbacks remain I/O-free; their
+currentness checks retain the existing process-local revocation policy.
+
+This identity does not cover shared libraries, interpreter child programs,
+kernel or other host state, or prevent transient changes between probes. It
+does not reserve verification resources, authenticate a verifier, validate the
+protected oracle's actual artifact closure, or qualify cross-restart custody.
+Those checks and independent current dependency/delivery evidence remain
+requirements of the authoritative acceptance path.
