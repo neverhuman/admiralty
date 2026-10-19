@@ -1,0 +1,196 @@
+{
+  "kind": "independent-read-only-slotted-evidence-audit",
+  "recorded_utc": "2026-10-19T10:28:30.102538+00:00",
+  "reviewer": "audit_product",
+  "verdict": "CLEAR",
+  "source_commit": "a08d2e8d2bfc55121a0ce96532aa9c8fa822c65b",
+  "canonical_receipt": {
+    "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/receipts/integration/native-slotted-loop-20261019T1025Z.json",
+    "sha256": "b2c4c153ac77ae66a4f99a962210b542fcbe13c922b454d95955d24030eaa5a8",
+    "bytes": 23504,
+    "unchanged_during_review": true
+  },
+  "local_references": {
+    "count": 57,
+    "all_digests_and_sizes_match": true,
+    "details": {
+      "path": "/private/tmp/adm-slotted-evidence-file-checks-a08.json",
+      "sha256": "579f6ff6edc51b7b7c0b362831881008fa0e023ee6abbf43136abfab3ab93693"
+    }
+  },
+  "raw_results": {
+    "final_mac_integration": [
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.28
+      },
+      {
+        "passed": 13,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 15.08
+      }
+    ],
+    "final_mac_unit": {
+      "passed": 16,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 82,
+      "seconds": 8.81
+    },
+    "final_linux": [
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 6.95
+      },
+      {
+        "passed": 13,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 23.24
+      },
+      {
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 82,
+        "seconds": 23.38
+      }
+    ],
+    "same34_test_name_multiset_across_platforms": true,
+    "new13_subset_of34": true,
+    "prior_c175_runs_and_worker_runs_not_additive": true,
+    "linux_wrapper_code": 0,
+    "fresh_recorded_outside_inside_after_gates": true,
+    "final_clippy_log_finished_successfully": true,
+    "fmt_diff_logs_empty_and_matching_reported_success": true
+  },
+  "archives": [
+    {
+      "path": "/private/tmp/admiralty-slotted-native-revised-source.tar",
+      "bytes": 19374080,
+      "sha256": "e2628e169c68103ddaf8403c96e1b523427e48a22635477af52523cfcb267dd0",
+      "archive_commit": "a08d2e8d2bfc55121a0ce96532aa9c8fa822c65b",
+      "expected_source": "a08d2e8d2bfc55121a0ce96532aa9c8fa822c65b",
+      "commit_matches": true,
+      "members": 1143,
+      "selected_files": [
+        {
+          "path": "crates/admiralty-server/src/services/controller.rs",
+          "sha256": "ac635372ef34a2ee4d254e8a6ce0411003b20ef48f88cff108b8f5ad71e47ed8",
+          "matches_posthash": true
+        },
+        {
+          "path": "crates/admiralty-server/src/services/native_codex_plan.rs",
+          "sha256": "81bc6bbca148560db28db9d331aaca9badde190a485d7d4dc8b80ca51fa56b6a",
+          "matches_posthash": true
+        },
+        {
+          "path": "crates/admiralty-server/src/services/native_task_loop.rs",
+          "sha256": "1959c0f9df46cc0dc97eae1ce327bd6a134607c55c5fba826c556ed654d72941",
+          "matches_posthash": true
+        },
+        {
+          "path": "crates/admiralty-server/tests/controller_slots.rs",
+          "sha256": "375d9c12e28f857b41f8b078152d369fd1ec7be6c5c7fd226f89a0348d9456f0",
+          "matches_posthash": true
+        },
+        {
+          "path": "crates/admiralty-server/tests/native_codex_plan.rs",
+          "sha256": "632d9065759cd7cac05ef2167d11ed11ab448e34dfdf1265c796c224a85e84e0",
+          "matches_posthash": true
+        }
+      ]
+    },
+    {
+      "path": "/private/tmp/admiralty-slotted-native-source.tar",
+      "bytes": 19374080,
+      "sha256": "86c791c68e91cdaf3794855dfbcb95fa071baf18fc14d3ee32a997355fd66a18",
+      "archive_commit": "c175412b532142939bc48de89070d3d74d8a73d7",
+      "expected_source": "c175412b532142939bc48de89070d3d74d8a73d7",
+      "commit_matches": true,
+      "members": 1143,
+      "selected_files": [
+        {
+          "path": "crates/admiralty-server/src/services/controller.rs",
+          "sha256": "ac635372ef34a2ee4d254e8a6ce0411003b20ef48f88cff108b8f5ad71e47ed8",
+          "matches_posthash": true
+        },
+        {
+          "path": "crates/admiralty-server/src/services/native_codex_plan.rs",
+          "sha256": "81bc6bbca148560db28db9d331aaca9badde190a485d7d4dc8b80ca51fa56b6a",
+          "matches_posthash": true
+        },
+        {
+          "path": "crates/admiralty-server/src/services/native_task_loop.rs",
+          "sha256": "1959c0f9df46cc0dc97eae1ce327bd6a134607c55c5fba826c556ed654d72941",
+          "matches_posthash": true
+        },
+        {
+          "path": "crates/admiralty-server/tests/controller_slots.rs",
+          "sha256": "5c949b798d4e11f7ce0e65e5602c9f163305149e12b48a6bcea00d8f0bb710a7",
+          "matches_posthash": true
+        },
+        {
+          "path": "crates/admiralty-server/tests/native_codex_plan.rs",
+          "sha256": "632d9065759cd7cac05ef2167d11ed11ab448e34dfdf1265c796c224a85e84e0",
+          "matches_posthash": true
+        }
+      ]
+    }
+  ],
+  "source_checks": {
+    "all_three_production_files_byte_identical_c175_to_a08": true,
+    "both_archives_pax_commit_and_full_bytes_sha256_verified": true,
+    "each_archive_selected_five_source_test_members_match_its_actual_posthash": true,
+    "c175_to_a08_only_test_bool_assert_representation_change_verified": true,
+    "prior_clippy_failure_preserved": true
+  },
+  "docs": [
+    {
+      "path": "README.md",
+      "sha256": "678a3f820bf88d688ab201b1ac408f39fe5d108071eda8cf1b022274c6cbfae5"
+    },
+    {
+      "path": "docs/architecture/inference-slots.md",
+      "sha256": "9f61f91ec011091205b1b5f1450fc2ba64216b32cf9087e88756c7c755889b78"
+    },
+    {
+      "path": "docs/plans/admiralty-v2/EXECUTION.md",
+      "sha256": "873a764ff240d6e1de57d0c96b60ffda58bff4da2af7d798fb4444eb4190558f"
+    },
+    {
+      "path": "docs/plans/admiralty-v2/WORK_PACKETS.md",
+      "sha256": "b2a7f0b5813da2f0c61625f6261c83412e5f28d9fa2da87391e65f53595c15fe"
+    },
+    {
+      "path": "docs/plans/admiralty-v2/REMAINING_20261019.md",
+      "sha256": "6f84f8166bbf0f2ca27f2de66f391bfe14e7fa42f7d11a460a72ab45d39df97e"
+    }
+  ],
+  "documentation_scope": "Controller declared-only vs private factory mapping; full vs routing digests and requested/observed identity distinct; no default route/issuer/common fence/physical pool proof/provider/release/recovery/full parent acceptance. Existing 2/32 parent state retained. Live a9 observation retains10:00 timestamp, not an a08 deployment or fresh browser claim.",
+  "separate_source_review": {
+    "path": "/private/tmp/adm-slotted-native-a08-review-xep0y0/review.json",
+    "sha256": "05a456880f4a922ff4961e9f6480bc1c895cfef871cdf994b764cf0794954508",
+    "verdict_read": "CLEAR",
+    "reviewer": "audit_evidence"
+  },
+  "findings": [],
+  "limits": [
+    "No tests/builds/provider/fleet/service/CI controls or source/doc edits during this audit",
+    "Auditor authored the earlier factory/loop test candidate; this review audits separate Root execution artifacts, not a new independent source verdict",
+    "Original worker failures and prior c175 pass/failure evidence remain separately source-bound",
+    "ResourceGate deliberately unconfigured; tests establish scoped composition, not child/provider completion or physical-capacity authentication",
+    "Remote execution/gates are verified as recorded evidence; reviewer performed only bounded local file/archive reads",
+    "Remote post-run hashes cover the five declared source/test files; no independent full remote tree/binary attestation by this audit",
+    "No production issuer/common fence, default scheduler route, settlement/release, recovery, general native qualification, parent promotion or full CI green"
+  ]
+}
