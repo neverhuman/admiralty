@@ -185,6 +185,20 @@ pub trait AttentionAuthority: Send + Sync {
         binding: &AttentionCommandBinding<'_>,
         proof: &(dyn Any + Send + Sync),
     ) -> bool;
+    /// Independent source-context read permission. Recording permission alone
+    /// must never disclose retained source capsules. Checked on the writer both
+    /// before loading sources and immediately before returning the snapshot.
+    /// Called for the original Wake (outcome Some) AND each original Observe
+    /// source (outcome None). Proof identifies the CURRENT reader, which need
+    /// not be the source's historical credential. Check each actual full source
+    /// namespace, not just membership of the wake's project/root.
+    fn authorize_delivery_context(
+        &self,
+        _binding: &AttentionCommandBinding<'_>,
+        _proof: &(dyn Any + Send + Sync),
+    ) -> bool {
+        false
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -1004,4 +1018,336 @@ pub(crate) fn validate_all(connection: &Connection) -> Result<()> {
         replay(connection, &def, None)?;
     }
     Ok(())
+}
+
+pub const MAX_DELIVERY_CONTEXT_SOURCES: usize = 16;
+pub const MAX_DELIVERY_CONTEXT_BYTES: usize = 1024 * 1024;
+
+/// Trusted in-process scoped read request, never an authentication grant.
+/// The original durable wake and its original opaque actor must still be
+/// authorized by independently installed current recording AND read policies.
+#[derive(Clone, Debug, Serialize)]
+pub struct LoadDeliveryContext {
+    pub scope: AttentionScope,
+    pub command_id: String,
+    pub receipt_digest: String,
+}
+pub(crate) fn validate_load_delivery_context(request: &LoadDeliveryContext) -> Result<()> {
+    validate_scope(&request.scope)?;
+    if !id(&request.command_id) || !digest(&request.receipt_digest) {
+        return Err(AttentionError::Invalid);
+    }
+    json(request, MAX_COMMAND_BYTES)?;
+    Ok(())
+}
+
+/// Actual immutable source selected from the replay-validated original journal.
+/// Private fields/no decoder prevent request JSON from manufacturing this read
+/// capability. These are fidelity/custody facts, never current execution grants.
+#[derive(Debug, Serialize)]
+pub struct DeliveryContextSource {
+    reference: admiralty_core::governor::DeliveryRef,
+    observe_request: AuthorizedAttentionCommand,
+    render: StoredContextRender,
+    current_contract: admiralty_core::TaskContract,
+}
+impl DeliveryContextSource {
+    pub fn reference(&self) -> &admiralty_core::governor::DeliveryRef {
+        &self.reference
+    }
+    pub fn observe_request(&self) -> &AuthorizedAttentionCommand {
+        &self.observe_request
+    }
+    pub fn render(&self) -> &StoredContextRender {
+        &self.render
+    }
+    pub fn current_contract(&self) -> &admiralty_core::TaskContract {
+        &self.current_contract
+    }
+}
+
+/// One Store writer/read-transaction snapshot. It includes complete original
+/// source renders rather than interpreting a caller's evidence label as custody.
+#[derive(Debug, Serialize)]
+pub struct AuthorizedDeliveryContext {
+    wake_request: AuthorizedAttentionCommand,
+    result: AttentionResult,
+    request_render: StoredContextRender,
+    baseline: Option<context_renders::ContextBaseline>,
+    sources: Vec<DeliveryContextSource>,
+}
+impl AuthorizedDeliveryContext {
+    pub fn wake_request(&self) -> &AuthorizedAttentionCommand {
+        &self.wake_request
+    }
+    pub fn result(&self) -> &AttentionResult {
+        &self.result
+    }
+    pub fn request_render(&self) -> &StoredContextRender {
+        &self.request_render
+    }
+    pub fn baseline(&self) -> Option<&context_renders::ContextBaseline> {
+        self.baseline.as_ref()
+    }
+    pub fn sources(&self) -> &[DeliveryContextSource] {
+        &self.sources
+    }
+}
+
+fn authorize_context_read(
+    authority: &dyn AttentionAuthority,
+    def: &DefinitionRow,
+    request: &AuthorizedAttentionCommand,
+    context: &StoredContextRender,
+    proof: &(dyn Any + Send + Sync),
+    outcome: &AttentionOutcome,
+) -> Result<()> {
+    authorize_request(authority, def, request, context, proof, Some(outcome))?;
+    let request_digest = authorized_request_digest(&def.definition_digest, request)?;
+    if !authority.authorize_delivery_context(
+        &AttentionCommandBinding {
+            definition: &def.definition,
+            definition_digest: &def.definition_digest,
+            request,
+            request_digest: &request_digest,
+            stored_context: context,
+            outcome: Some(outcome),
+        },
+        proof,
+    ) {
+        return Err(AttentionError::AccessDenied);
+    }
+    Ok(())
+}
+
+fn authorize_source_read(
+    authority: &dyn AttentionAuthority,
+    def: &DefinitionRow,
+    request: &AuthorizedAttentionCommand,
+    context: &StoredContextRender,
+    proof: &(dyn Any + Send + Sync),
+) -> Result<()> {
+    authorize_definition(Some(authority), &def.definition)?;
+    let request_digest = authorized_request_digest(&def.definition_digest, request)?;
+    if !authority.authorize_delivery_context(
+        &AttentionCommandBinding {
+            definition: &def.definition,
+            definition_digest: &def.definition_digest,
+            request,
+            request_digest: &request_digest,
+            stored_context: context,
+            outcome: None,
+        },
+        proof,
+    ) {
+        return Err(AttentionError::AccessDenied);
+    }
+    Ok(())
+}
+
+fn update_tag(
+    update: &admiralty_core::governor::UpdateKind,
+) -> admiralty_core::governor::UpdateTag {
+    use admiralty_core::governor::{UpdateKind, UpdateTag};
+    match update {
+        UpdateKind::Progress { .. } => UpdateTag::Progress,
+        UpdateKind::Blocked { .. } => UpdateTag::Blocked,
+        UpdateKind::Question { .. } => UpdateTag::Question,
+        UpdateKind::Candidate { .. } => UpdateTag::Candidate,
+        UpdateKind::Decision { .. } => UpdateTag::Decision,
+        UpdateKind::Health { .. } => UpdateTag::Health,
+    }
+}
+
+fn current_source_contract(
+    projection: &admiralty_core::Projection,
+    request: &AuthorizedAttentionCommand,
+    render: &StoredContextRender,
+) -> Result<admiralty_core::TaskContract> {
+    let AttentionOperation::Observe { update } = &request.command.operation else {
+        return Err(AttentionError::Integrity);
+    };
+    let current = &projection
+        .tasks
+        .get(&update.scope.task_id)
+        .ok_or(AttentionError::ContextBinding)?
+        .contract;
+    if current.project_id != request.command.scope.project_id
+        || current.root_id != request.command.scope.root_id
+        || current.revision != update.scope.revision
+        || current.authority_ref != update.authority_ref
+    {
+        return Err(AttentionError::ContextBinding);
+    }
+    let facts = decode_role_capsule(
+        &render.capsule.text,
+        render.scope.role,
+        &request.command.scope.epoch,
+        &request.binding.context.facts_digest,
+    )
+    .map_err(|_| AttentionError::ContextBinding)?;
+    let matches = |task: &ProtectedTaskFacts| &task.contract == current;
+    let present = match facts {
+        RoleFacts::Decision(f) => matches(&f.task),
+        RoleFacts::Handoff(f) => matches(&f.task),
+        RoleFacts::ProjectExceptions(f) => f.exceptions.iter().any(matches),
+        RoleFacts::FleetExceptions(f) => {
+            f.projects.iter().any(|p| p.exceptions.iter().any(matches))
+        }
+    };
+    if !present {
+        return Err(AttentionError::ContextBinding);
+    }
+    admiralty_core::limits::bounded_json_size(current, MAX_COMMAND_BYTES)
+        .map_err(|_| AttentionError::Invalid)?;
+    Ok(current.clone())
+}
+
+/// Bounded exact read on the existing Store writer. No new journal, outbox,
+/// baseline, delivery or authority is created. The caller must retain the
+/// independently expected receipt digest. Legacy unbound observations/wakes
+/// cannot produce this capability. Current contracts are looked up individually
+/// from the writer-owned projection, never cloned from a fleet-wide snapshot.
+pub(crate) fn load_authorized_delivery_context(
+    connection: &mut Connection,
+    projection: &admiralty_core::Projection,
+    requested: LoadDeliveryContext,
+    authority: Option<&dyn AttentionAuthority>,
+    proof: &(dyn Any + Send + Sync),
+) -> Result<AuthorizedDeliveryContext> {
+    validate_load_delivery_context(&requested)?;
+    let authority = authority.ok_or(AttentionError::AccessDenied)?;
+    let tx = connection.transaction_with_behavior(TransactionBehavior::Deferred)?;
+    let def =
+        definition(&tx, &requested.scope.journal_id)?.ok_or(AttentionError::MissingJournal)?;
+    if def.definition.scope != requested.scope {
+        return Err(AttentionError::MissingJournal);
+    }
+    let replayed = replay(&tx, &def, Some(&requested.command_id))?;
+    let (stored, result) = replayed.matching.ok_or(AttentionError::MissingJournal)?;
+    let StoredCommand::Authorized(wake) = stored else {
+        return Err(AttentionError::AccessDenied);
+    };
+    let request = wake.request;
+    if !matches!(
+        request.command.operation,
+        AttentionOperation::TakeDelivery { .. }
+    ) || result.receipt_digest != requested.receipt_digest
+    {
+        return Err(AttentionError::ContextBinding);
+    }
+    let AttentionOutcome::Delivery {
+        decision: DeliveryDecision::Wake { delivery },
+    } = &result.receipt.outcome
+    else {
+        return Err(AttentionError::ContextBinding);
+    };
+    if delivery.refs.is_empty() || delivery.refs.len() > MAX_DELIVERY_CONTEXT_SOURCES {
+        return Err(AttentionError::Capacity);
+    }
+    let context = checked_context(&tx, &request)?;
+    authorize_context_read(
+        authority,
+        &def,
+        &request,
+        &context,
+        proof,
+        &result.receipt.outcome,
+    )?;
+    let baseline = context_renders::baseline(&tx, &request.binding.context.scope)?;
+    if baseline
+        .as_ref()
+        .is_some_and(|b| b.context_epoch != requested.scope.epoch)
+    {
+        return Err(AttentionError::ContextBinding);
+    }
+    let mut selected: Vec<Option<DeliveryContextSource>> =
+        (0..delivery.refs.len()).map(|_| None).collect();
+    let mut selected_bytes = 0usize;
+    let mut statement = tx.prepare("SELECT command_json FROM main.attention_commands WHERE journal_id=?1 ORDER BY sequence LIMIT 4097")?;
+    let mut rows = statement.query([&requested.scope.journal_id])?;
+    let mut scanned = 0;
+    while let Some(row) = rows.next()? {
+        scanned += 1;
+        if scanned > MAX_COMMANDS {
+            return Err(AttentionError::Capacity);
+        }
+        let bytes = crate::stored_text(row, 0, MAX_COMMAND_BYTES)?;
+        let command: StoredCommand = serde_json::from_str(&bytes)?;
+        let AttentionOperation::Observe { update } = &command.command().operation else {
+            continue;
+        };
+        for (index, reference) in delivery.refs.iter().enumerate() {
+            if selected[index].is_some() || update.source != reference.source {
+                continue;
+            }
+            let StoredCommand::Authorized(original) = &command else {
+                // The first source observation owns ingestion identity. A later
+                // authorized duplicate cannot retroactively grant it custody.
+                return Err(AttentionError::AccessDenied);
+            };
+            if update.recipient != delivery.recipient
+                || update.scope != reference.scope
+                || update.authority_ref != reference.authority_ref
+                || update.evidence_ref != reference.evidence_ref
+                || update_tag(&update.update) != reference.kind
+                || hash(update)? != reference.update_digest
+                || original.request.command.scope != requested.scope
+            {
+                return Err(AttentionError::Integrity);
+            }
+            let render = checked_context(&tx, &original.request)?;
+            authorize_source_read(authority, &def, &original.request, &render, proof)?;
+            let current_contract = current_source_contract(projection, &original.request, &render)?;
+            let source = DeliveryContextSource {
+                reference: reference.clone(),
+                observe_request: original.request.clone(),
+                render,
+                current_contract,
+            };
+            selected_bytes = selected_bytes
+                .checked_add(
+                    admiralty_core::limits::bounded_json_size(&source, MAX_DELIVERY_CONTEXT_BYTES)
+                        .map_err(|_| AttentionError::Capacity)?,
+                )
+                .ok_or(AttentionError::Capacity)?;
+            if selected_bytes > MAX_DELIVERY_CONTEXT_BYTES {
+                return Err(AttentionError::Capacity);
+            }
+            selected[index] = Some(source);
+        }
+    }
+    drop(rows);
+    drop(statement);
+    let sources = selected
+        .into_iter()
+        .map(|source| source.ok_or(AttentionError::Integrity))
+        .collect::<Result<Vec<_>>>()?;
+    let output = AuthorizedDeliveryContext {
+        wake_request: request,
+        result,
+        request_render: context,
+        baseline,
+        sources,
+    };
+    json(&output, MAX_DELIVERY_CONTEXT_BYTES)?;
+    for source in &output.sources {
+        authorize_source_read(
+            authority,
+            &def,
+            &source.observe_request,
+            &source.render,
+            proof,
+        )?;
+    }
+    authorize_context_read(
+        authority,
+        &def,
+        &output.wake_request,
+        &output.request_render,
+        proof,
+        &output.result.receipt.outcome,
+    )?;
+    tx.commit()?;
+    Ok(output)
 }
