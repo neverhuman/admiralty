@@ -132,7 +132,10 @@ async function startPrivateNativeFixture(): Promise<NativeFixture> {
       confirmed = exited;
     }
     try {
-      writePrivate(join(root, 'native-exit.json'), { ...exitState, confirmed, stderrOverflow, stderr: redact(stderr).slice(-16 * 1024) });
+      writePrivate(join(root, 'native-exit.json'), {
+        ...exitState, owned_child_pid: (child as (ChildProcess & { pid?: number }) | undefined)?.pid ?? null,
+        confirmed, stderrOverflow, stderr: redact(stderr).slice(-16 * 1024),
+      });
     } finally { fdFs.closeSync(binary.fd); }
     if (!confirmed) throw new Error(`Owned native child termination is unconfirmed; preserve ${root}`);
     // Preserve this private fixture on success AND failure for independent proof.
@@ -343,4 +346,6 @@ it('captures a real native Unicode source once and replays an identical browser 
     try { await native.close(); } catch (error) { failure ??= error; }
   }
   if (failure) throw new Error(`Native intake browser proof failed; private evidence preserved at ${native.root}: ${failure instanceof Error ? failure.message.replaceAll(native.ownerToken, '[owner credential]').replaceAll(native.intakeToken, '[intake credential]') : 'unknown failure'}`);
+  // Emit only bounded non-secret metadata, after confirmed direct-child teardown.
+  console.info(JSON.stringify({ kind: 'native-intake-browser-proof', root: native.root, binary_sha256: native.binarySha256 }));
 }, 120_000);
