@@ -282,3 +282,22 @@ are retained. Cancellation actor and resource cause remain unknown. Receipt
 319a1286b1fe1fb60e2bca1a5345acb4499aba7d7999ab44dff9c40982835d6f,
 binds52hashed payloads in the model/visual packet archive. No rerun, cancellation
 or runner control was performed for this observation.
+
+### 19 October 14:06Z exact6709bf5 browser repair
+
+Main39263549713/job118097168099 reports16pass/5fail across21cases: two retained
+session helpers wait for an absent access button although Connected; one real-Git
+path uses old access text; Atlas owner text has a partial-overlap contrast
+incomplete; the new public test rejects the Linux debug binary above128MiB.
+Exact raw/artifact receipt20902242a95faec88b22c679741e07710fdcb10fb5941ea17f7393605f0053c0
+is preserved at /private/tmp/adm-ci-main6709bf5-evidence.upjwr5/ci-evidence-receipt.json.
+
+Source22cb3ca repairs these direct new-release paths and passes the full21case
+Mac browser suite. The first full local run also exposed an obsolete aria-label
+coordinate query; visible exact agent identity now preserves the same before/after
+assertion. New fixture-only hash is streamed/bounded, and native build-step debug
+metadata is disabled; no production generic bounds or test assertions changed.
+Actual Linux size/CI result and exact owner occluder are not inferred from Mac.
+All earlier failures are retained. This is the same release-defect lane, not an
+additional general CI cleanup worker. Newer Rust workflow outcomes remain
+independent; no rerun/cancel/shared-runner control occurred.

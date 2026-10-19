@@ -1,0 +1,91 @@
+{
+  "source_commit": "22cb3ca336135841ca8ecda203730f27aed7d5ab",
+  "receipt_sha256": "0dc6a64f317eec9f4be88a2703a62c4ee9b8e85d69edff7596ec3c8d5de193f8",
+  "payload_manifest_sha256": "b2b6d0837555ada250bbecc2dff0f85fb9d6de0606756dbef0e07f648aad187b",
+  "payloads_verified": 65,
+  "payload_hash_mismatches": 0,
+  "source_sha_map_matches_current_and_tar": true,
+  "browser": {
+    "files": 4,
+    "tests": 21,
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 29.7,
+    "raw_log": "/private/tmp/adm-pr128-access-repair/final-all21.log",
+    "raw_log_sha256": "516fe300ace75a89a647c0e1d66b0599cc1844e803e5820341a249e05938e772",
+    "exit": "0"
+  },
+  "dashboard_build_exit": "0",
+  "e2e_typecheck_exit": "0",
+  "axe_modes": [
+    {
+      "label": "atlas dark",
+      "violations": 0,
+      "incomplete": 0
+    },
+    {
+      "label": "roster dark",
+      "violations": 0,
+      "incomplete": 0
+    },
+    {
+      "label": "roster light",
+      "violations": 0,
+      "incomplete": 0
+    },
+    {
+      "label": "atlas light",
+      "violations": 0,
+      "incomplete": 0
+    },
+    {
+      "label": "git light",
+      "violations": 0,
+      "incomplete": 0
+    },
+    {
+      "label": "git inventory light",
+      "violations": 0,
+      "incomplete": 0
+    },
+    {
+      "label": "git inventory dark",
+      "violations": 0,
+      "incomplete": 0
+    },
+    {
+      "label": "git dark",
+      "violations": 0,
+      "incomplete": 0
+    },
+    {
+      "label": "mobile roster",
+      "violations": 0,
+      "incomplete": 0
+    },
+    {
+      "label": "git-public",
+      "violations": 0,
+      "incomplete": 0
+    },
+    {
+      "label": "atlas-public",
+      "violations": 0,
+      "incomplete": 0
+    }
+  ],
+  "axe_all_clean": true,
+  "public_proof": {
+    "private_without_bearer": 401,
+    "legacy_public": 200,
+    "provider_turns": 0
+  },
+  "clarification": "axe sourceSha256 is the pinned axe-core script hash, confirmed by workflow lockfile verification; it is not the production bundle source hash.",
+  "limitations": [
+    "No independently verified new-source production cutover, Linux layout/CI result or measured Linux binary size. Last full primary proof68bae13:42; sole owner885617 ACKed6709 deployment13:54.",
+    "No proof check-to-spawn atomicity/network filesystem latency from fixture hash. Outer suite deadline is separate from hash-loop deadline.",
+    "No provider execution/issuer/capacity/settlement/recovery/general qualification/parent acceptance. Consumed humanbcf5/SC155 grants not reusable; repaired68bae probe BUILDONLY.",
+    "No asset retirement/runner control. Root sole rollout CAS still4a26574d until explicit operational reconciliation."
+  ]
+}

@@ -1,0 +1,236 @@
+{
+  "schema_version": 1,
+  "kind": "full-browser-session-and-fixture-qualification-repair",
+  "recorded_utc": "2026-10-19T14:04:52.959Z",
+  "base": "6709bf51a39ab51938852da4719a5a9061a3329f",
+  "source_commit": "22cb3ca336135841ca8ecda203730f27aed7d5ab",
+  "source_sha256": {
+    ".github/workflows/dashboard-e2e.yml": "e7eaf0548813775d5b48ed89b134ac6d1d3aab5557a45b4d8e6b468925c4397a",
+    "apps/dashboard/e2e/live-views.e2e.ts": "7a0e6c8bcdcc28918a9b412ead6ebf65a55ce2d92ec69a61de47c368389a2afe",
+    "apps/dashboard/e2e/public-views.e2e.ts": "855185e67426b8984d84f71d2cbbde9fe5d15b22854f63b45718462e8cbd1824",
+    "apps/dashboard/src/features/live-views/FleetAtlas.tsx": "bdf51f192134ec2a26a0d0d1cc253623fb4554cca9241e796a6be223720c9bdc",
+    "apps/dashboard/src/features/live-views/live-views.css": "05c3c0b25aba934c3e3d292316b8b9af4c83ae308afe9afe39e0631c5ea17b81"
+  },
+  "problem": {
+    "actual_linux_main": "6709bf51a39ab51938852da4719a5a9061a3329f",
+    "run": 39263549713,
+    "passed": 16,
+    "failed": 5,
+    "failures": [
+      "two live-view sessions already Connected but helper awaited access button",
+      "temporary real-Git case used obsolete access label",
+      "owner name partially overlapped: axe contrast incomplete, exact occluder unestablished",
+      "Linux debug binary exceeded new test128MiB hashing preflight"
+    ],
+    "receipt": {
+      "path": "/private/tmp/adm-ci-main6709bf5-evidence.upjwr5/ci-evidence-receipt.json",
+      "bytes": 16828,
+      "sha256": "20902242a95faec88b22c679741e07710fdcb10fb5941ea17f7393605f0053c0"
+    }
+  },
+  "changes": [
+    "Atomically reuse native Connected or open existing access UI, enter fixture bearer only when needed; same helper for actual temporary-Git server. Native connected requires private parsed SSE; no API/token injection bypass.",
+    "Coordinate test queries actual visible exact agent name after accessible-name repair; still requires before style string and identical after style.",
+    "Owner avatar moved inside actual owner button into reserved35px grid column with independent role/name rows. No detached overlay; compact profile hiding preserved. Structural repair, actual CI occluder not proven.",
+    "Fixture-only exact native hash uses64KiB reads/512MiB bound/15s monotonic loop deadline, owned regular nofollow fd, byte count/hash and before/after fd/path identity. No source fallback/skip or production128MiB ArtifactStore/runtime/generic guard changes.",
+    "Browser native build step sets CARGO_PROFILE_DEV_DEBUG=0 only to reduce debug metadata/build work. Same native targets/toolchain/assertions/overflow/jobs/deadlines, actual built SHA exported. Actual Linux byte count/new-source result not claimed."
+  ],
+  "validation": {
+    "platform": "Mac",
+    "full_browser_cases": 21,
+    "files": 4,
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0,
+    "elapsed_seconds": 29.7,
+    "new_case_definitions": 0,
+    "scope": "Full browser suite; real native Rust/temporary Git and mock command fixtures as each test declares. Synthetic producer observations do not qualify fleet/provider execution.",
+    "native_binary_sha256": "9dfb630fe1c513c0aabea975a761a3a5222002844c5c92620f55504505068f1e",
+    "public_proof": {
+      "recorded_utc": "2026-10-19T14:02:07.800Z",
+      "native_binary": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/context-integrated-final/debug/admiraltyd",
+      "native_sha256": "9dfb630fe1c513c0aabea975a761a3a5222002844c5c92620f55504505068f1e",
+      "source_timestamp": "2026-10-18T12:00:00Z",
+      "private_without_bearer": 401,
+      "explicit_public_legacy": 200,
+      "modes": [
+        "git-public",
+        "atlas-public",
+        "authenticated-native"
+      ],
+      "colors": {
+        "gemini": "rgb(88, 166, 255)",
+        "sol": "rgb(210, 153, 34)",
+        "luna": "rgb(63, 185, 80)",
+        "claude": "rgb(188, 140, 255)"
+      },
+      "axes": [
+        {
+          "mode": "git-public",
+          "axe": {
+            "url": "http://127.0.0.1:58463/#/git?project=harbor&scope=harbor&focus=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "timestamp": "2026-10-19T14:02:07.647Z",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.14.0"
+            },
+            "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+            "violations": [],
+            "incomplete": [],
+            "passesCount": 30,
+            "inapplicableCount": 33
+          }
+        },
+        {
+          "mode": "atlas-public",
+          "axe": {
+            "url": "http://127.0.0.1:58463/#/atlas",
+            "timestamp": "2026-10-19T14:02:07.751Z",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.14.0"
+            },
+            "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+            "violations": [],
+            "incomplete": [],
+            "passesCount": 28,
+            "inapplicableCount": 35
+          }
+        }
+      ],
+      "source_time_seen_in_real_git_inspector": true,
+      "provider_turns": 0,
+      "scope": "Real isolated Rust service and production React bundle; synthetic producer observations, no live fleet/provider qualification"
+    },
+    "existing_axe": [
+      {
+        "label": "atlas dark",
+        "violations": 0,
+        "incomplete": 0
+      },
+      {
+        "label": "roster dark",
+        "violations": 0,
+        "incomplete": 0
+      },
+      {
+        "label": "roster light",
+        "violations": 0,
+        "incomplete": 0
+      },
+      {
+        "label": "atlas light",
+        "violations": 0,
+        "incomplete": 0
+      },
+      {
+        "label": "git light",
+        "violations": 0,
+        "incomplete": 0
+      },
+      {
+        "label": "git inventory light",
+        "violations": 0,
+        "incomplete": 0
+      },
+      {
+        "label": "git inventory dark",
+        "violations": 0,
+        "incomplete": 0
+      },
+      {
+        "label": "git dark",
+        "violations": 0,
+        "incomplete": 0
+      },
+      {
+        "label": "mobile roster",
+        "violations": 0,
+        "incomplete": 0
+      }
+    ],
+    "dashboard_typecheck_and_build_exit": 0,
+    "e2e_typecheck_exit": 0,
+    "actionlint": {
+      "exit": 0,
+      "configuration": "self-hosted labels lan-ci/browser158; same actual runner group",
+      "raw_stdout_retained": false,
+      "proof": "Root tool invocation returned0; not a fabricated empty raw log"
+    },
+    "linux_source_tests_or_success": false,
+    "hosted_green": false,
+    "provider_calls": 0
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/adm-root-cross-review-3e240b2.json",
+      "bytes": 1848,
+      "sha256": "c8018ab32458a5270c7d2428ddc3c326ba4b1c388c56cd144d3774c6921e2460"
+    },
+    {
+      "path": "/private/tmp/adm-public-fingerprint-session-static-review-22cb3ca.json",
+      "bytes": 3587,
+      "sha256": "70dbeb9794aac5c8a92c95d39036569a91cf3f5ff3dc0491e0381df5847379c4"
+    }
+  ],
+  "imports": [
+    {
+      "candidate": "95414d8a467e75fb2cf06d447bc6e4ac23621434",
+      "integrated": "a3ebb87"
+    },
+    {
+      "candidate": "b25b1d7ce03c866cda1aa4b1c23f3f53aab88cbd",
+      "integrated": "43ec997"
+    },
+    {
+      "candidate": "667a43d9e795e3d62d1e50bbefbe3faee384a3f3",
+      "integrated": "3e240b2"
+    }
+  ],
+  "preserved_failures": [
+    "Original exact Linux16pass5fail",
+    "Root first helper2fail4pass from transient access label; atomic existing-control fix",
+    "First full21 local20pass1fail from obsolete aria-label selector, now visible identity selector",
+    "Worker initial hash-fix no tsc setup127; Root caught bad realpathSync import from node:path before integration; corrected to node:fs plus monotonic clock; actual typechecks pass"
+  ],
+  "prior_operations": {
+    "pr127_merge": {
+      "path": "/private/tmp/native-pr127-merge-20261019T1351Z.json",
+      "bytes": 6002,
+      "sha256": "df6bc39c5de50ff8ffe73d30f6054d5f1dc993c2d2db9aee5f9133913d90ee58"
+    },
+    "archive_custody": {
+      "path": "/private/tmp/native-model-public-views-archive-custody-20261019T1353Z.json",
+      "bytes": 82117,
+      "sha256": "8d4a5662a1cd3a7338d3a156a556765b584fc05fcafbed4fd9f2e421c081139e"
+    },
+    "deployer_ack": {
+      "path": "/private/tmp/CODEX_ACK_SC167_P18A_PR127_DEPLOY_20261019T135416Z.md",
+      "bytes": 1175,
+      "sha256": "957f56edbd5b2c813b632c8b83179b91bbe3fc2a3d237fe139e6e86e7316e492"
+    },
+    "prior_review_wording_correction": "Reviewe110d8f6 phrase production bundle sourceSHA20c09... refers to pinned axe script hash, not React bundle hash. Original immutable review retained; actual bundle provenance comes from dist/deployment manifests."
+  },
+  "archive": {
+    "directory": "/home/ubuntu/admiralty-v2-build/receipts/native-browser-session-20261019T1406Z",
+    "manifest": {
+      "path": "/private/tmp/adm-pr128-access-repair/payloads.json",
+      "bytes": 16987,
+      "sha256": "b2b6d0837555ada250bbecc2dff0f85fb9d6de0606756dbef0e07f648aad187b"
+    },
+    "payloads": 65,
+    "source": {
+      "path": "/private/tmp/adm-pr128-access-repair/source.tar",
+      "bytes": 20111360,
+      "sha256": "cecede3d974fa6e3b2fb8a56f3184399e492fa351cff25896f29df6fbacda808"
+    },
+    "remote_verification": "pending separate custody proof"
+  },
+  "limits": [
+    "No independently verified new-source production cutover, Linux layout/CI result or measured Linux binary size. Last full primary proof68bae13:42; sole owner885617 ACKed6709 deployment13:54.",
+    "No proof check-to-spawn atomicity/network filesystem latency from fixture hash. Outer suite deadline is separate from hash-loop deadline.",
+    "No provider execution/issuer/capacity/settlement/recovery/general qualification/parent acceptance. Consumed humanbcf5/SC155 grants not reusable; repaired68bae probe BUILDONLY.",
+    "No asset retirement/runner control. Root sole rollout CAS still4a26574d until explicit operational reconciliation."
+  ],
+  "next": "Review exact-source proof; merge with exact-head bot approval and matched rebase; serialize deployment after admitted6709 attempt; observe actual full Linux outcome and live model/visual regressions."
+}
