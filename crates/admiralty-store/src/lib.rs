@@ -8,6 +8,7 @@ pub mod intake;
 pub mod intake_capture;
 pub mod outbox;
 pub mod questions;
+pub mod usage_observations;
 pub mod workplans;
 use admiralty_core::{
     DomainEvent, LifecycleAction, LifecycleCommand, MessageId, ProjectId, Projection,
@@ -79,6 +80,8 @@ pub enum StoreError {
     IntakeCapture(#[from] intake_capture::CaptureError),
     #[error(transparent)]
     Question(#[from] questions::QuestionStoreError),
+    #[error(transparent)]
+    Usage(#[from] usage_observations::UsageError),
     #[error(transparent)]
     Inbox(#[from] inbox::InboxError),
     #[error("store already has an owner")]
@@ -171,10 +174,21 @@ pub struct StoreAuthorities {
     pub intake: Option<Arc<dyn intake::IntakeAuthority>>,
     pub intake_capture: Option<Arc<dyn intake_capture::IntakeCaptureAuthority>>,
     pub questions: Option<Arc<dyn questions::QuestionAuthority>>,
+    pub usage: Option<Arc<dyn usage_observations::UsageAuthority>>,
     pub attention: Option<Arc<dyn attention::AttentionAuthority>>,
 }
 
 enum Request {
+    RecordUsage {
+        request: Box<usage_observations::UsageCommand>,
+        proof: usage_observations::UsageProof,
+        reply: Reply<usage_observations::UsageResult>,
+    },
+    ReadUsage {
+        request: Box<usage_observations::UsageRead>,
+        proof: usage_observations::UsageProof,
+        reply: Reply<usage_observations::UsagePage>,
+    },
     CaptureIntake {
         request: Box<intake_capture::CaptureIntakeRequest>,
         reply: Reply<intake_capture::CaptureResult>,
@@ -464,6 +478,30 @@ impl Store {
         })
     }
 
+    pub fn record_usage_observation(
+        &self,
+        request: usage_observations::UsageCommand,
+        proof: usage_observations::UsageProof,
+    ) -> Result<usage_observations::UsageResult> {
+        usage_observations::validate_command(&request)?;
+        self.ask(|reply| Request::RecordUsage {
+            request: Box::new(request),
+            proof,
+            reply,
+        })
+    }
+    pub fn read_usage_observations(
+        &self,
+        request: usage_observations::UsageRead,
+        proof: usage_observations::UsageProof,
+    ) -> Result<usage_observations::UsagePage> {
+        usage_observations::validate_read(&request)?;
+        self.ask(|reply| Request::ReadUsage {
+            request: Box::new(request),
+            proof,
+            reply,
+        })
+    }
     fn open_configured(path: &Path, authorities: StoreAuthorities) -> Result<Self> {
         let path = canonical_database_path(path)?;
         let mut lock_path = path.as_os_str().to_os_string();
@@ -488,6 +526,7 @@ impl Store {
                     writer.intake_authority = authorities.intake;
                     writer.intake_capture_authority = authorities.intake_capture;
                     writer.question_authority = authorities.questions;
+                    writer.usage_authority = authorities.usage;
                     writer.attention_authority = authorities.attention;
                     if ready_tx.send(Ok(())).is_ok() {
                         writer.run(receiver, writer_changes);
@@ -1375,6 +1414,7 @@ struct Writer {
     intake_authority: Option<Arc<dyn intake::IntakeAuthority>>,
     intake_capture_authority: Option<Arc<dyn intake_capture::IntakeCaptureAuthority>>,
     question_authority: Option<Arc<dyn questions::QuestionAuthority>>,
+    usage_authority: Option<Arc<dyn usage_observations::UsageAuthority>>,
     attention_authority: Option<Arc<dyn attention::AttentionAuthority>>,
     _lock: File,
 }
@@ -1420,6 +1460,7 @@ impl Writer {
         intake::initialize(&connection)?;
         intake_capture::initialize(&connection)?;
         questions::initialize(&connection)?;
+        usage_observations::initialize(&connection)?;
         let generation = connection
             .query_row(
                 "SELECT value FROM metadata WHERE key='recovery_generation'",
@@ -1454,6 +1495,7 @@ impl Writer {
             intake_authority: None,
             intake_capture_authority: None,
             question_authority: None,
+            usage_authority: None,
             attention_authority: None,
             _lock: lock,
         })
@@ -1462,6 +1504,40 @@ impl Writer {
     fn run(&mut self, receiver: mpsc::Receiver<Request>, changes: tokio::sync::watch::Sender<()>) {
         while let Ok(request) = receiver.recv() {
             match request {
+                Request::RecordUsage {
+                    request,
+                    proof,
+                    reply,
+                } => {
+                    let task = self.projection.tasks.get(&request.scope.task_id);
+                    let _ = reply.send(
+                        usage_observations::record_authorized(
+                            &mut self.connection,
+                            &request,
+                            self.usage_authority.as_deref(),
+                            proof.as_ref(),
+                            task,
+                        )
+                        .map_err(StoreError::from),
+                    );
+                }
+                Request::ReadUsage {
+                    request,
+                    proof,
+                    reply,
+                } => {
+                    let task = self.projection.tasks.get(&request.scope.task_id);
+                    let _ = reply.send(
+                        usage_observations::read_authorized(
+                            &mut self.connection,
+                            &request,
+                            self.usage_authority.as_deref(),
+                            proof.as_ref(),
+                            task,
+                        )
+                        .map_err(StoreError::from),
+                    );
+                }
                 Request::CaptureIntake { request, reply } => {
                     let result = self
                         .intake_capture_authority
@@ -2116,6 +2192,7 @@ impl Writer {
         intake::validate_all(&self.connection)?;
         intake_capture::validate_all(&self.connection)?;
         questions::validate_all(&self.connection)?;
+        usage_observations::validate_all(&self.connection)?;
         let projection = replay(&self.connection)?;
         let pending_inbox = inbox::PendingInboxIndex::from_projection(&projection)?;
         workplans::validate_task_contracts(
@@ -2139,6 +2216,7 @@ impl Writer {
         intake::validate_all(&self.connection)?;
         intake_capture::validate_all(&self.connection)?;
         questions::validate_all(&self.connection)?;
+        usage_observations::validate_all(&self.connection)?;
         // Hard-link publication is atomic and refuses an existing destination.
         // Staging and destination share a directory, so publication cannot cross filesystems.
         let parent = destination
