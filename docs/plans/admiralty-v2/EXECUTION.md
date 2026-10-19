@@ -2176,3 +2176,25 @@ never be reset to queued. Keep resource permit/plan reservation separate from
 budget proof, and do not install production issuers/global capacity by adding
 this composition seam. Validate actual nonzero atomic retry/revoke/collision,
 rollback/registration custody and unknown-dispatch cases before any activation.
+
+### 08:14Z — PR117 merged; latest browser failure retained
+
+Actual neverhumanbot approved exact07c66f7db4d7f40b19259ceff1ab221b247e9a6d
+at08:09:31Z, transparently registering Root/separate Codex findings. Matched-head
+rebase mergedPR117 at08:09:40Z to749d9d299f23ef806f00c3893be484049616d9f5.
+No open PRs remained. Root rebased the next clean source branch to that main and
+wrote the exact-source result/deploy capsule in the existing coordination area.
+The actual fresh Gemini4Argon supervisor hardcopies still show quota errors;
+SC156 backup Luna has pending old input. Root leaves a written pointer without
+overwriting input or adopting service control. Latest independent primary is
+stillfcd at its recorded07:59 time;749 is requested, not independently deployed.
+
+New749 browser workflow39220795727 finishes19pass/1fail: `atlas dark` has pinned
+axe `label-content-name-mismatch` on hierarchy cards. This is a concrete semantic
+failure, distinct from navigation/readiness/resource-pressure hypotheses. Complete
+raw log/hash is retained in the single CI backlog. Rust39220795716 remains in
+progress at this observation. No rerun, shared-runner change, weakened assertion
+or extra CI cleanup lane is introduced. Current scoped CLI5/diagnostic21 checks
+remain scoped evidence; neither this failure nor source merge changes parent
+acceptance. Root's existing30-minute automation now contains the actual source,
+deployed proof, SC155 consumed failure, SC156 coverage and next budget-loop task.
