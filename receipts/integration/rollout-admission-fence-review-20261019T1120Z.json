@@ -1,0 +1,97 @@
+{
+  "kind": "independent-static-fence-operations-cas-review",
+  "observed_utc": "2026-10-19T11:18:42.375Z",
+  "reviewer": "audit_evidence",
+  "verdict": "CLEAR",
+  "script": {
+    "path": "/private/tmp/fence-ops-cas-inputs/reconcile.cjs",
+    "sha256": "fddc6d1d6a51364c7eec71f0d4e39bc16e01198c88163624d048574fb689defa",
+    "bytes": 9248,
+    "executed": false
+  },
+  "expected_rollout_sha256": "64b0ceb2bafbe73625b2cde6418683ab624c603ac45d18504b9eb2241f5f54b2",
+  "verified_pins": [
+    {
+      "role": "component",
+      "name": "native-admission-fence-20261019T1105Z.json",
+      "bytes": 53730,
+      "sha256": "8fdf0088da31fe9af307fd0a37c1ee8025c3c6f5c1389ac71d97cd1fd46ccc48"
+    },
+    {
+      "role": "static_review",
+      "name": "native-admission-fence-review-20261019T1105Z.json",
+      "bytes": 9062,
+      "sha256": "a2256778d77e3873a9e02e39644151daf872fde47b1c94103a44ed200f63ea5d"
+    },
+    {
+      "role": "evidence",
+      "name": "native-admission-fence-evidence-review-20261019T1108Z.json",
+      "bytes": 11499,
+      "sha256": "c2e3e0468bd2d96567456c5d91e2d9160a866a3873652b8eb6c9199070a6d242"
+    },
+    {
+      "role": "archive",
+      "name": "native-admission-fence-archive-20261019T1110Z.json",
+      "bytes": 282,
+      "sha256": "d004909aaea5892312d4c7305d00ad6282f9c7b7c00007acd2014f184d13ed59"
+    },
+    {
+      "role": "live",
+      "name": "native-e71e12f7-independent-20261019T1050Z.json",
+      "bytes": 5174,
+      "sha256": "1d973db54ea4d03a6c10c2b21b23261216354d929fbffb0f29148c089cac8726"
+    },
+    {
+      "role": "deploy",
+      "name": "native-e71e-owner-deploy-20261019T1042Z.json",
+      "bytes": 8878,
+      "sha256": "62668fdf340ddb014fb6e362a55d4a3310d2bf0dfcba338cc4211a08ef0f9b35"
+    },
+    {
+      "role": "merge",
+      "name": "native-pr123-merge-20261019T1112Z.json",
+      "bytes": 721,
+      "sha256": "cf41f35af7df3d38a916062048531eaa02333f1edcc22cb80326f8b2ee29f2ee"
+    },
+    {
+      "role": "ci",
+      "name": "ci-pr123-browser-20261019T1118Z.json",
+      "bytes": 1050,
+      "sha256": "9f675dc87cb0481aa8ddf212d0657a4627b46610a25c485eb6511390756eba76"
+    }
+  ],
+  "manifest": {
+    "path": "/private/tmp/fence-ops-cas-inputs/pins.json",
+    "sha256": "9d30e47fde33695ff577ccb91ae4e9663c795b6958d7b0ce52d2a0349d82a040",
+    "matches_script": true
+  },
+  "prior_clock_finding": {
+    "original_script_sha256": "8405cafa349696950460e413ce717ace86c079677193fb1a9e62ec0190ac7f53",
+    "finding": "CI text used11:18 from filename rather than actual pinned observation11:17:07.130Z",
+    "status": "Corrected to exact pinned observation; hash comparison proves this is the sole subsequent script change."
+  },
+  "reviewed_guards": [
+    "All eight local JSON files match exact names/bytes/hash and actual field shapes",
+    "Component feee227Mac/227Linux, static/evidence CLEAR, archived30 hash-verified payloads remain source-bound and nonactivated",
+    "Exact approved PR123 head5e480630 versus receiving mainbcf5 are bound, with no bot test execution or open-PR extrapolation beyond actual merge snapshot",
+    "Receiving sourcebcf5 is distinct from independently observed productione71 at10:49:10.466Z; no new primary refresh or provider/SC155 clock inference",
+    "CI correctly records pinned19pass1fail Atlasdark axe label-content-name-mismatch, receiving runs in_progress at exact11:17:07.130Z, no general CI green or resource cause",
+    "All32 packet objects, producer source and source_history are compared unchanged; accepted order must remain P00/P01; integrator clocks only advance separately",
+    "Protected preimage is create-only/fdatasync via fsync, archive and parent directories synced before replacement; create-only temp is fsynced, exact original hash rechecked before rename, containing B synced afterward",
+    "Result proof is synced; separate operator readback remains required after actual execution"
+  ],
+  "findings": [],
+  "limits": [
+    "Read-only static/local artifact review, no script execution, remote calls, tests, builds or repository edits",
+    "No fresh remote observation of expected rollout preimage or later production/CI state by this reviewer; operator performs final live CAS and readback",
+    "Owner11:15 source-preparation hardcopy statement is recorded operator context, not independently verified by these eight JSON pins; it makes no live-deployment qualification claim",
+    "No provider/grant/service/parent-acceptance activation is added by the script"
+  ],
+  "reviewer_actions": {
+    "cas_executions": 0,
+    "remote_calls": 0,
+    "test_runs": 0,
+    "builds": 0,
+    "repo_edits": 0
+  }
+}

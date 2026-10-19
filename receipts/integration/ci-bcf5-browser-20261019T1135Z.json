@@ -1,0 +1,151 @@
+{
+  "observed_utc": "2026-10-19T11:33:44.027Z",
+  "source": "bcf5cce911e538de7c3f6d0b2e8e59f3185ebdd2",
+  "run": 39242735139,
+  "status": "completed",
+  "conclusion": "failure",
+  "job": 118027201976,
+  "steps": [
+    {
+      "completedAt": "2026-10-19T11:10:48Z",
+      "conclusion": "success",
+      "name": "Set up job",
+      "number": 1,
+      "startedAt": "2026-10-19T11:10:44Z",
+      "status": "completed"
+    },
+    {
+      "completedAt": "2026-10-19T11:10:49Z",
+      "conclusion": "success",
+      "name": "Record selected runner",
+      "number": 2,
+      "startedAt": "2026-10-19T11:10:48Z",
+      "status": "completed"
+    },
+    {
+      "completedAt": "2026-10-19T11:10:55Z",
+      "conclusion": "success",
+      "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+      "number": 3,
+      "startedAt": "2026-10-19T11:10:49Z",
+      "status": "completed"
+    },
+    {
+      "completedAt": "2026-10-19T11:10:55Z",
+      "conclusion": "success",
+      "name": "Prepare private test scratch outside the checkout",
+      "number": 4,
+      "startedAt": "2026-10-19T11:10:55Z",
+      "status": "completed"
+    },
+    {
+      "completedAt": "2026-10-19T11:11:37Z",
+      "conclusion": "success",
+      "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+      "number": 5,
+      "startedAt": "2026-10-19T11:10:55Z",
+      "status": "completed"
+    },
+    {
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "name": "Install pinned Rust and build native observation binaries from exact checked-out source",
+      "number": 6,
+      "startedAt": "2026-10-19T11:11:37Z",
+      "status": "in_progress"
+    },
+    {
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "name": "Verify or provision qualified Chromium/Chrome binary in job scratch",
+      "number": 7,
+      "startedAt": "0001-01-01T00:00:00Z",
+      "status": "pending"
+    },
+    {
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "name": "Prepare pinned pnpm in job scratch",
+      "number": 8,
+      "startedAt": "0001-01-01T00:00:00Z",
+      "status": "pending"
+    },
+    {
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "name": "Run pnpm install --frozen-lockfile --ignore-scripts",
+      "number": 9,
+      "startedAt": "0001-01-01T00:00:00Z",
+      "status": "pending"
+    },
+    {
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "name": "Verify pinned axe-core 4.14.0 from lockfile",
+      "number": 10,
+      "startedAt": "0001-01-01T00:00:00Z",
+      "status": "pending"
+    },
+    {
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "name": "Run pnpm --dir apps/dashboard typecheck",
+      "number": 11,
+      "startedAt": "0001-01-01T00:00:00Z",
+      "status": "pending"
+    },
+    {
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "name": "Run pnpm --dir apps/dashboard exec tsc -p e2e/tsconfig.json --noEmit",
+      "number": 12,
+      "startedAt": "0001-01-01T00:00:00Z",
+      "status": "pending"
+    },
+    {
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "name": "Build fresh dashboard bundle from exact checked-out source",
+      "number": 13,
+      "startedAt": "0001-01-01T00:00:00Z",
+      "status": "pending"
+    },
+    {
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "name": "Run browser E2E and pinned axe-core 4.14.0 WCAG 2.1 AA qualification against built dashboard",
+      "number": 14,
+      "startedAt": "0001-01-01T00:00:00Z",
+      "status": "pending"
+    },
+    {
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+      "number": 27,
+      "startedAt": "0001-01-01T00:00:00Z",
+      "status": "pending"
+    },
+    {
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+      "number": 28,
+      "startedAt": "0001-01-01T00:00:00Z",
+      "status": "pending"
+    }
+  ],
+  "failed_step_not_established": true,
+  "failed_log_fetch": {
+    "code": 1,
+    "error": "log not found: 118027201976",
+    "raw_log_bytes": 0
+  },
+  "failure_cause_unknown": true,
+  "retest_rerun_or_runner_control": false,
+  "api_snapshot": {
+    "path": "/private/tmp/ci-bcf5-browser-39242735139.json",
+    "bytes": 3414,
+    "sha256": "a1972ec44b5742a598f8cdc049b8e9bd43ebb01c4bc4cf827f4fdf8db1310037"
+  }
+}

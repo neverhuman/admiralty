@@ -72,6 +72,15 @@ workspace metadata/head/tree. Live filesystem descriptor/inode custody and
 current resource authorization remain the existing execution gates' job. Every
 factory rejection returns the original bound preparation, proofs and claim.
 
+The factory requires an explicit `NativeCodexAdmissionReadProofs` bundle in
+addition to the two write proofs. This container only retains existing opaque
+capabilities; it mints no authority. Both original read capabilities remain
+private in the returned slot binding and are returned on every factory failure.
+The loop samples budget and slot reads before registration and uses only those
+retained read roles for current-ledger checks. Controller admission and replay
+continue using only the original write roles. There is no implicit fallback
+from a denied read to a write token and no caller-selected weaker path.
+
 `NativeTaskLoop::admit_slotted` returns the original plan and private slot
 binding on pre-admission or registration rejection. Once registered, it retains
 those capabilities, original commands/proofs, hold, physical key/generation and
@@ -88,7 +97,7 @@ public constructor or authenticated production loader. This is separate from
 external credential/physical-pool and dispatch/start fencing.
 
 These are explicit trusted-local composition APIs. They install no startup
-issuer, live registry/pool authentication, common policy fence, physical-start
+issuer, live registry/pool authentication, enabled paired policy fence, physical-start
 linearization or default scheduler/provider route. Provider completion, usage
 valuation, settlement/release, restart process reconciliation and full
 P03/P10/P14 acceptance remain separate. No host names or model endpoints are

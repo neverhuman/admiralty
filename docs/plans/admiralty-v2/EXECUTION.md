@@ -1354,7 +1354,7 @@ PR90 merged to `1ecdd19fb3cda9e9bc5b5be069c356d94831c768` and PR91 to `779a008f9
 
 Actual preflight found the safe installed supported CLI is296865480bytes, larger than the old128MiB object-read path. The repaired probe streams a raw fingerprint through64KiB buffers with separate384MiB/30s metadata bounds and exact descriptor/path identity checks. It does not enlarge ArtifactStore, generic-read, HOME, executable or runtime limits. Fifteen actual component tests and strict server all-target Clippy/fmt pass; [the source-bound component receipt](../../../receipts/integration/native-codex-probe-component-20261019T0143Z.json) preserves the original blocker and worker evidence. Independent static review is clear. No actual provider generation is recorded by this component receipt; the Linux qualification build/run remains separate.
 
-Rollout reconciliation at01:32:53Z pins merged source779a008 and the real fixed-toy/factory/capture receipts. Before/after hashes are `1edbdda027b9942b1a007e8e3e9baa63c5d21f199bc44e1e815e12d8933d253e` and `91a647293f72eeb6af54a0c1450b8672ee4edb610077bc620bf6b7405f170307`. P00/P01 original criterion receipts were independently hash-verified; only their recorded reference status is normalized from verified_packet_criteria to verified with explicit criterion kind/scope, archived original reference and original verification timestamp. This repairs the existing sc_audit enum mismatch without changing parent acceptance or claiming a new check. Every parent status and unrelated packet stays intact. P00/P01 alone accepted;30parents and general coding execution remain open.
+Rollout reconciliation at01:32:53Z pins merged source779a008 and the real fixed-toy/factory/capture receipts. Before/after hashes are `1edbdda027b9942b1a007e8e3e9baa63c5d21f199bc44e1e815e12d8933d253e` and `91a647293f72eeb6af54a0c1450b8672ee4edb610077bc620bf6b7405f170307`. P00/P01 original criterion receipts were independently hash-verified; only their recorded reference status is normalized from verified_packet_criteria to verified with explicit criterion kind/scope, archived original reference and original verification timestamp. This repairs the existing sc_audit enum mismatch without changing parent acceptance or claiming a new check. Every parent status and unrelated packet stays intact. P00/P01 alone accepted;30 parents and general coding execution remain open.
 
 ### CI efficiency follow-up and provider prerequisite failure — 2026-10-19T01:52Z
 
@@ -1390,7 +1390,7 @@ Nine actual registered integration tests pass; the frozen worker's affected
 Store129-test checks and independent source/registration review are preserved in
 [the component receipt](../../../receipts/integration/durable-attention-20261019T0224Z.json).
 Current authenticated scope/clock authority and safe-turn transport remain
-separate. Accepted parents remain P00/P01 alone,2/32;30parents remain open.
+separate. Accepted parents remain P00/P01 alone,2/32;30 parents remain open.
 
 Parallel disjoint local work advances exact-policy/precision-safe intake,
 atomic request-to-plan recording and an explicitly authorized attention service
@@ -1503,7 +1503,7 @@ attention cases, strict server all-target Clippy and formatting pass. The
 original failure and receiving-main browser diagnostic mismatch are retained
 on the canonical CI cleanup backlog; no cleanup worker was assigned.
 
-Root independently checked the live f590837a deployment at03:10:25Z: all14
+Root independently checked the live f590837a deployment at03:10:25Z: all 14
 manifest hashes, both actual native process executables, health/UI/feed200,
 18891redirect307 and Rust producer. No retired owned Python producer was found.
 The Mac SSH tunnel had no listener; root restored owned loopback18890/18891
@@ -2417,7 +2417,7 @@ policies are sampled sequentially; joint revocation through COMMIT requires a
 common retained snapshot/epoch/lease fence. Repeated Boolean checks cannot
 provide that fence. No production issuer/fence or physical pool mapping is
 installed, so this source is an optional Store component, not global capacity
-or provider activation. P00/P01 alone remain accepted; other30parents stay open.
+or provider activation. P00/P01 alone remain accepted; other30 parents stay open.
 
 Fresh09:30forge state had zero open PRs; af6 browser39228085850 passed while
 af6 checks39228085831 was cancelled by an unestablished external actor/reason.
@@ -2597,3 +2597,94 @@ accepted; 30 parents stay open. Next ready work remains authentic installation
 and external resource/custody composition, source-pinned provider diagnostics
 with a separately fresh exact route authorization, context/closure/recovery and
 the remaining WO6/onboarding/release criteria.
+
+### 2026-10-19 11:20Z — PR123 merged, exact operational reconciliation
+
+PR123 exact `5e480630...` received actual neverhumanbot approval at 11:10:15Z
+and matched-head rebase merged11:10:35Z to `bcf5cce911e538de7c3f6d0b2e8e59f3185ebdd2`.
+Root read zero open PRs at 11:12:06Z and all three qualified code/test hashes
+match receiving main. [Merge evidence](../../../receipts/integration/native-pr123-merge-20261019T1112Z.json)
+records local-CI-only eligibility and no bot test-execution claim. The sole
+SC156 deployer actually read the file-pointer handoff and began the bcf5 build;
+Root performs no service control and does not call merged source deployed.
+
+[Eight-pin rollout CAS](../../../receipts/integration/rollout-admission-fence-pr123-20261019T1120Z.json)
+at 11:19:00.944Z/readback11:22:01.677Z records sourcebcf5 versus independently
+observed productione71e at its original10:49:10.466Z clock. New hash `18cf1203...`;
+fsynced preimage/temp/dirs and final expected-hash recheck preserve all 32 packet
+objects, source and source-history. P00/P01 alone accepted,30 parents open.
+[Separate static CAS review](../../../receipts/integration/rollout-admission-fence-review-20261019T1120Z.json)
+is clear after correcting the pinned CI observation clock.
+
+[Exact PR123 browser evidence](../../../receipts/integration/ci-pr123-browser-20261019T1118Z.json)
+records19pass1fail: Atlas dark pinnedaxe4.14.0 reports visible/accessibility-name
+mismatch on13 hierarchy cards. Raw `20aaf626...` is hash-verified in the owned
+receipt archive. Receivingbcf browser/checks were still in progress at the
+pinned11:17:07.130Z snapshot. Root retains the single later CI cleanup backlog;
+no new cleanup lane, assertion weakening, rerun/cancellation or runner control.
+
+A fresh claimed read-capability repair follows the actual common-fence review:
+NativeTaskLoop reused write proofs for ledger reads, which the paired cohort
+correctly denies. Factory source, loop integration and role-strict regression
+tests have disjoint owners. Explicit read capabilities must stay with original
+preparation across every rejection/retry/unknown effect, with no write-token
+fallback. This is not an authenticated production installer or provider grant.
+The sole deployer may serially BUILD a source-stamped diagnostic example only
+after primary deployment; no fixture/metadata/auth/grant/provider run is granted.
+SC155 remains consumed and unknown, and no parent acceptance is promoted.
+
+### 2026-10-19 11:35Z — explicit read-capability composition qualified
+
+Source `9405ea948e48de4c01db1dc08b42872a9019a6d0` fixes the actual
+factory/loop mismatch: paired Store write proofs intentionally cannot read
+ledgers. A required custody-only read bundle and NativeBudgetAdmission read
+proof remain distinct from unchanged write admission proofs. Observational
+budget/slot read preflight precedes registration, without a global-ledger CAS
+comparison or retained read lease. Both retained currentness checks and the
+post-final-clock runtime wrapper use only those read roles. All factory
+rejections return the original read bundle; all budget preflight/registration
+rejections now return the original boxed command/write/read custody too.
+Unknown effects retain plan, holds and liabilities with no refund/requeue.
+
+[The component receipt](../../../receipts/integration/native-admission-read-proofs-20261019T1135Z.json)
+pins actual Mac and actual capped Linux SAME32 cases:15 integration plus17
+loop cases,82 unrelated lib cases filtered. Three new cases are a subset; the
+38 factory-rejection variants remain one case. Strict server all-target Clippy
+and workspace formatting pass. Source archive `6bb1d22d...`, Linux raw
+`e6c1ccf4...`, all four post-source hashes match. One Linux invocation at
+11:31:14–11:33:07Z follows completed deployment/diagnostic BUILD-only work,
+fresh outside/inside/after gates, jobs1/testthreads1, privateTMP/unique copied
+target, rebuilt workspace packages and original cache unchanged. Fixtures
+independently preserve prior write revocation, test read-only revocation with
+no executor attempt/retained hold, and wrong read rejection with original
+plan/proof custody and no effects. They are explicit local role-strict policies,
+not actual paired-cohort startup issuer qualification; ResourceGate remains
+unconfigured in these loop journeys. Separate static source review is clear.
+
+Independent primary proof at 11:26:51.124Z now verifies actualbcf5:all 14
+manifest/files plus daemon3144998/start59452855 and observer3144488/start59452829
+executable hashes, health/UI/feed200/18891redirect307, Rust0modelturns,
+history256displayed581retained/no retired owned Python/prior e71PIDs.
+[Proof](../../../receipts/integration/native-bcf5cce9-independent-20261019T1130Z.json)
+does not remeasure original first-history or browser controls; execution stays
+unqualified and Root controls no service. The sole owner separately built a
+source-stamped diagnostic example, binary `15e885c9...`; Root read-only hashing
+confirms the archived artifact. The example was NOT run and no metadata, fixture,
+credentials or grant prepared. A fresh exact one-run route request is now pending;
+SC155 stays consumed, never reused. Implementation proceeds independently.
+
+Exact PR123 Rust39242527299 reports95serverpass/1controlled-capture-deadline
+fail/2ignored. Mainbcf browser39242735139 later failed; API lists no failed
+step and failed-log fetch returned log-not-found118027201976. Its exact cause
+is unknown, separate from PR123 axe findings. Raw/API evidence is retained on
+the single Root-owned later CI backlog. No CI rerun/cancel/runner control or
+weakened guard follows. Production policy/catalog/physical-resource authority,
+provider completion, settlement/recovery/WO6/release and30 parent acceptances
+remain open. No source component activates them by itself.
+
+The evidence audit verifies 109 referenced canonical/worker artifacts and
+identical 32 case names; the owned remote archive verifies 69 unique payloads
+under SHA `e58e7321...`. The archive verifier first failed to parse a generated
+newline literal. The invalid verifier is preserved beside its corrected version
+in the owned receipt directory; the repaired verifier checks the same unchanged
+archive and every payload hash. No source test was rerun or guard weakened.

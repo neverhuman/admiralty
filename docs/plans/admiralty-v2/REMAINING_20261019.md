@@ -260,3 +260,17 @@ Original audit commit `10fba6de41404e4589783f218244228e2e1c4816` remains b2b9e7a
 Every continuation returns base/head, exact source hashes, API/registration dependencies, actual argv/cwd/toolchain/limits, passed/failed/ignored/filtered counts, raw log hashes, preserved failures and independent review. Root separately records deployment identities, activation and parent acceptance. Actual build plus affected step smoke remains required; non-build CI cleanup stays on the single [CI_CLEANUP_BACKLOG.md](../../../CI_CLEANUP_BACKLOG.md) under the02:12 human ruling. No new CI babysitting lane is assigned.
 
 Documentation checks for this update: one exact P02–P31 row each, P00/P01 alone accepted2/32, all existing local Markdown targets resolve, source/receipt hashes and registered symbols match the audit pin, and `rtk proxy git diff --check`. The future canonical Linux receipt is an explicit root-copy dependency, not a broken existing Markdown link or a test rerun. No implementation suite was executed by this audit.
+
+### Read-capability composition addendum 2026-10-19 11:35Z
+
+The earlier paired-cohort component now has explicit factory/loop read-capability
+composition. Source9405ea9 passes the same 32 actual Mac/Linux scoped cases, three
+new subset, strict server all-target Clippy/fmt and separate review. All rejected
+capabilities and unknown effects retain custody. See the pinned native-admission-
+read-proofs1135 receipt; local role-strict fixtures are not an actual authenticated
+paired-cohort startup/server-loop canary. Budget/slot read samples are observational,
+not a physical-start lease. The installed production catalog/pool/resource issuer,
+provider/context/independent closure/settlement/recovery and remaining WO6/product
+gates remain. P00/P01 alone are accepted. Primarybcf5 independently observed at
+11:26:51Z and new build-only diagnostic15e885c9 do not qualify a provider; fresh
+exact diagnostic route request is pending and consumed SC155 is never reused.

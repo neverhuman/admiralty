@@ -1,0 +1,8 @@
+{
+  "observed_utc": "2026-10-19T11:39:05.314Z",
+  "source": "9405ea948e48de4c01db1dc08b42872a9019a6d0",
+  "payloads": 69,
+  "archive_sha256": "e58e732145c051d29db356f2af1b9d6b0a30dbdd91f9556747f13a6fe3148c5b",
+  "all_payloads_hash_verified": true,
+  "root_service_control": false
+}

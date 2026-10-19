@@ -1,0 +1,433 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T11:35:31.626Z",
+  "source_commit": "9405ea948e48de4c01db1dc08b42872a9019a6d0",
+  "base_commit": "bcf5cce911e538de7c3f6d0b2e8e59f3185ebdd2",
+  "scope": "Explicit separately retained read proof roles through native Codex factory, preflight, budget/slot currentness and rejected custody; no implicit write-proof read fallback",
+  "files": [
+    {
+      "path": "crates/admiralty-server/src/services/native_codex_plan.rs",
+      "bytes": 34602,
+      "sha256": "4b837497dd7003cd9fe0091373bc2c92778f85fd3ea9f6221208747d318d0643",
+      "raw": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_codex_plan.rs",
+        "bytes": 34602,
+        "sha256": "4b837497dd7003cd9fe0091373bc2c92778f85fd3ea9f6221208747d318d0643"
+      }
+    },
+    {
+      "path": "crates/admiralty-server/src/services/native_task_loop.rs",
+      "bytes": 80744,
+      "sha256": "54e7bff1b845abf92ff7c176d8ad3039cffa48cc6118189893ea063d31cd30e2",
+      "raw": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_task_loop.rs",
+        "bytes": 80744,
+        "sha256": "54e7bff1b845abf92ff7c176d8ad3039cffa48cc6118189893ea063d31cd30e2"
+      }
+    },
+    {
+      "path": "crates/admiralty-server/src/services/native_task_loop_budget_tests.rs",
+      "bytes": 30863,
+      "sha256": "1869fd425db05d6b5154039a0262b5cd7daf3f259feddeccd8b6fe0abb1c6d3d",
+      "raw": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_task_loop_budget_tests.rs",
+        "bytes": 30863,
+        "sha256": "1869fd425db05d6b5154039a0262b5cd7daf3f259feddeccd8b6fe0abb1c6d3d"
+      }
+    },
+    {
+      "path": "crates/admiralty-server/tests/native_codex_plan.rs",
+      "bytes": 82849,
+      "sha256": "4003a389b076851095ecfcef0805f365a1c87ec758a20e978c65e6b945214d3d",
+      "raw": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/tests/native_codex_plan.rs",
+        "bytes": 82849,
+        "sha256": "4003a389b076851095ecfcef0805f365a1c87ec758a20e978c65e6b945214d3d"
+      }
+    }
+  ],
+  "source_archive": {
+    "path": "/private/tmp/admiralty-readproof-source-9405ea9.tar",
+    "bytes": 19599360,
+    "sha256": "6bb1d22dd07e9882bc9e05c5edd670991e1a11070f0405af4150b5beda753d9d"
+  },
+  "implementation": {
+    "factory_bundle": "NativeCodexAdmissionReadProofs holds already-issued opaque budget/slot read proofs, cannot mint or authenticate",
+    "failure_returns": "All factory failures return original read bundle as fifth tuple item; all budget preflight/registration failures return original boxed command/write/read capability container",
+    "preflight": "Observational budget and slot read checks before registration, no global ledger CAS comparison or retained read lease",
+    "retention": "Read capabilities stay privately with exact original slot binding; controller writes/retries use original write roles",
+    "currentness": "Dispatch and post-final-clock current ledger reads use only retained read roles; unknown effects/held ownership never requeue, refund or release",
+    "unchanged": "Original ModelSpec/full vs routing digests, producer/kernel namespaces, original provider/workspace/resource/effect binding and actual Store write authority checks"
+  },
+  "checks": {
+    "mac": {
+      "source": "9405ea948e48de4c01db1dc08b42872a9019a6d0",
+      "evidence_directory": "/private/tmp/adm-readproof-root-91LCGv",
+      "files": [
+        {
+          "path": "crates/admiralty-server/src/services/native_codex_plan.rs",
+          "bytes": 34602,
+          "sha256": "4b837497dd7003cd9fe0091373bc2c92778f85fd3ea9f6221208747d318d0643"
+        },
+        {
+          "path": "crates/admiralty-server/src/services/native_task_loop.rs",
+          "bytes": 80744,
+          "sha256": "54e7bff1b845abf92ff7c176d8ad3039cffa48cc6118189893ea063d31cd30e2"
+        },
+        {
+          "path": "crates/admiralty-server/src/services/native_task_loop_budget_tests.rs",
+          "bytes": 30863,
+          "sha256": "1869fd425db05d6b5154039a0262b5cd7daf3f259feddeccd8b6fe0abb1c6d3d"
+        },
+        {
+          "path": "crates/admiralty-server/tests/native_codex_plan.rs",
+          "bytes": 82849,
+          "sha256": "4003a389b076851095ecfcef0805f365a1c87ec758a20e978c65e6b945214d3d"
+        }
+      ],
+      "post_source_hashes": [
+        {
+          "path": "crates/admiralty-server/src/services/native_codex_plan.rs",
+          "sha256": "4b837497dd7003cd9fe0091373bc2c92778f85fd3ea9f6221208747d318d0643"
+        },
+        {
+          "path": "crates/admiralty-server/src/services/native_task_loop.rs",
+          "sha256": "54e7bff1b845abf92ff7c176d8ad3039cffa48cc6118189893ea063d31cd30e2"
+        },
+        {
+          "path": "crates/admiralty-server/src/services/native_task_loop_budget_tests.rs",
+          "sha256": "1869fd425db05d6b5154039a0262b5cd7daf3f259feddeccd8b6fe0abb1c6d3d"
+        },
+        {
+          "path": "crates/admiralty-server/tests/native_codex_plan.rs",
+          "sha256": "4003a389b076851095ecfcef0805f365a1c87ec758a20e978c65e6b945214d3d"
+        }
+      ],
+      "results": [
+        {
+          "name": "integration",
+          "source": "9405ea948e48de4c01db1dc08b42872a9019a6d0",
+          "argv": [
+            "cargo",
+            "test",
+            "-p",
+            "admiralty-server",
+            "--test",
+            "native_codex_plan",
+            "--locked",
+            "--",
+            "--test-threads=1"
+          ],
+          "cwd": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+          "started_utc": "2026-10-19T11:28:06.294Z",
+          "finished_utc": "2026-10-19T11:29:04.062Z",
+          "code": 0,
+          "signal": null,
+          "error": null,
+          "log": {
+            "path": "/private/tmp/adm-readproof-root-91LCGv/integration.log",
+            "bytes": 2147,
+            "sha256": "d0a1b0af3ab01a75d3d7e9c44dc73a3405f2b00e64ad2d7ec4c966060faa6c5f"
+          }
+        },
+        {
+          "name": "loop",
+          "source": "9405ea948e48de4c01db1dc08b42872a9019a6d0",
+          "argv": [
+            "cargo",
+            "test",
+            "-p",
+            "admiralty-server",
+            "--lib",
+            "services::native_task_loop::",
+            "--locked",
+            "--",
+            "--test-threads=1"
+          ],
+          "cwd": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+          "started_utc": "2026-10-19T11:29:04.063Z",
+          "finished_utc": "2026-10-19T11:29:28.156Z",
+          "code": 0,
+          "signal": null,
+          "error": null,
+          "log": {
+            "path": "/private/tmp/adm-readproof-root-91LCGv/loop.log",
+            "bytes": 2503,
+            "sha256": "6dd80b8b9ea40fd8ec70e7d31bfeab19d3d7f3af8bf4c73caaaf68022d3f00a8"
+          }
+        },
+        {
+          "name": "clippy",
+          "source": "9405ea948e48de4c01db1dc08b42872a9019a6d0",
+          "argv": [
+            "cargo",
+            "clippy",
+            "-p",
+            "admiralty-server",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "cwd": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+          "started_utc": "2026-10-19T11:29:28.157Z",
+          "finished_utc": "2026-10-19T11:29:53.794Z",
+          "code": 0,
+          "signal": null,
+          "error": null,
+          "log": {
+            "path": "/private/tmp/adm-readproof-root-91LCGv/clippy.log",
+            "bytes": 501,
+            "sha256": "81169a5efa2f9a64e513b4fb552c21d5c7133cd0ee11ced82bd1ed5eb30ada2e"
+          }
+        },
+        {
+          "name": "fmt",
+          "source": "9405ea948e48de4c01db1dc08b42872a9019a6d0",
+          "argv": [
+            "cargo",
+            "fmt",
+            "--all",
+            "--",
+            "--check"
+          ],
+          "cwd": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+          "started_utc": "2026-10-19T11:29:53.794Z",
+          "finished_utc": "2026-10-19T11:29:55.165Z",
+          "code": 0,
+          "signal": null,
+          "error": null,
+          "log": {
+            "path": "/private/tmp/adm-readproof-root-91LCGv/fmt.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        }
+      ],
+      "provider_calls": 0,
+      "linux_jobs": 0,
+      "service_control": false,
+      "integration_passed": 15,
+      "loop_passed": 17,
+      "loop_filtered": 82,
+      "ignored_matched": 0
+    },
+    "linux": {
+      "invocation": {
+        "schema_version": 1,
+        "source": "9405ea948e48de4c01db1dc08b42872a9019a6d0",
+        "source_archive_sha256": "6bb1d22dd07e9882bc9e05c5edd670991e1a11070f0405af4150b5beda753d9d",
+        "source_directory": "/home/ubuntu/admiralty-v2-build/native-readproof-9405ea94-20261019T113114Z",
+        "started_utc": "2026-10-19T11:31:14.837Z",
+        "finished_utc": "2026-10-19T11:33:07.976Z",
+        "code": 0,
+        "signal": null,
+        "error": null,
+        "outer": {
+          "observed_utc": "2026-10-19T11:31:14.714Z",
+          "cpu_percent": 20.21763128844031,
+          "mem_available_kib": 71337704,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        },
+        "inside_gates_in_log": true,
+        "log_sha256": "e6c1ccf4965f128690415e20070682571f31e084e08ceda63ec1122c5d461459",
+        "log_bytes": 5771,
+        "tail": [
+          "    Finished `test` profile [unoptimized] target(s) in 11.30s",
+          "     Running unittests src/lib.rs (target-linux/debug/deps/admiralty_server-9bd2583ce72fd672)",
+          "",
+          "running 17 tests",
+          "test services::native_task_loop::budget_tests::current_budget_dispatch_reaches_only_the_unconfigured_executor_without_a_child ... ok",
+          "test services::native_task_loop::budget_tests::dispatch_denial_marks_effect_unknown_without_runtime_or_admission_retry ... ok",
+          "test services::native_task_loop::budget_tests::failed_writer_admission_retains_registered_plan_for_authorized_retry ... ok",
+          "test services::native_task_loop::budget_tests::mismatched_reservation_and_command_return_actual_preparation_without_effects ... ok",
+          "test services::native_task_loop::budget_tests::protected_admission_commits_one_debit_claim_and_exact_outbox_effect ... ok",
+          "test services::native_task_loop::budget_tests::request_stop_invalidates_retry_and_dispatch_while_liability_stays_outstanding ... ok",
+          "test services::native_task_loop::budget_tests::revoked_budget_authority_blocks_dispatch_replay_and_cannot_reset_unknown_effect ... ok",
+          "test services::native_task_loop::budget_tests::stop_at_second_dispatch_clock_sample_fences_runtime_and_preserves_liability ... ok",
+          "test services::native_task_loop::budget_tests::wrong_budget_read_proof_rejects_preflight_and_returns_original_plan_and_custody ... ok",
+          "test services::native_task_loop::tests::actual_durable_claim_with_lost_reply_replays_without_registering_or_spawning_again ... ok",
+          "test services::native_task_loop::tests::clock_unavailable_is_retryable_before_claim_but_expired_lease_never_launches ... ok",
+          "test services::native_task_loop::tests::completion_backpressure_never_calls_one_shot_custody_transfer ... ok",
+          "test services::native_task_loop::tests::denied_admission_keeps_registration_and_exact_retry_claims_once ... ok",
+          "test services::native_task_loop::tests::exact_dispatch_key_leaves_foreign_pending_task_and_effect_untouched ... ok",
+          "test services::native_task_loop::tests::existing_recovery_evidence_rejects_registration_and_returns_actual_preparation ... ok",
+          "test services::native_task_loop::tests::full_preflight_rejects_stale_scope_identity_and_preserves_original_plan ... ok",
+          "test services::native_task_loop::tests::lease_bounds_and_retained_admission_capacity_reject_before_losing_plan ... ok",
+          "",
+          "test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 82 filtered out; finished in 24.12s",
+          "",
+          ""
+        ],
+        "jobs": 1,
+        "test_threads": 1,
+        "unique_target": "/home/ubuntu/admiralty-v2-build/native-readproof-9405ea94-20261019T113114Z/target-linux",
+        "private_tmp": "/home/ubuntu/admiralty-v2-build/native-readproof-9405ea94-20261019T113114Z/private-tmp",
+        "cache_copy_only": "/home/ubuntu/admiralty-v2-build/native-model-loop-a08d2e8d-20261019T102226Z/target-linux",
+        "workspace_packages_cleaned_in_new_target": true,
+        "original_cache_not_mutated": true,
+        "provider_run": false,
+        "service_control": false,
+        "after": {
+          "observed_utc": "2026-10-19T11:33:09.110Z",
+          "cpu_percent": 19.282723753851016,
+          "mem_available_kib": 78820428,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        }
+      },
+      "raw": {
+        "path": "/private/tmp/adm-readproof-linux-test.log",
+        "bytes": 5771,
+        "sha256": "e6c1ccf4965f128690415e20070682571f31e084e08ceda63ec1122c5d461459"
+      },
+      "post_source": {
+        "path": "/private/tmp/adm-readproof-linux-posthash.json",
+        "bytes": 898,
+        "sha256": "cb9b43daefb2a6efb1ae9c1738fc351e671717a3e1cc169b2f9d71bffef550d4"
+      },
+      "integration_passed": 15,
+      "loop_passed": 17,
+      "loop_filtered": 82,
+      "ignored_matched": 0,
+      "wrapper": {
+        "path": "/private/tmp/adm-readproof-linux-wrapper.log",
+        "bytes": 222,
+        "sha256": "048e2ba89ae430962e02f5341cf60c694fb7e131cb417790075a56b32ca09992"
+      },
+      "orchestration": {
+        "path": "/private/tmp/admiralty-linux-readproof.cjs",
+        "bytes": 4121,
+        "sha256": "cc3474690b385419d767e425ccfdb0d35a6fb67f31b59795089a245fdff13197"
+      }
+    }
+  },
+  "counts": {
+    "same_actual_mac_and_linux_cases": 32,
+    "case_names": [
+      "services::native_task_loop::budget_tests::current_budget_dispatch_reaches_only_the_unconfigured_executor_without_a_child",
+      "services::native_task_loop::budget_tests::dispatch_denial_marks_effect_unknown_without_runtime_or_admission_retry",
+      "services::native_task_loop::budget_tests::failed_writer_admission_retains_registered_plan_for_authorized_retry",
+      "services::native_task_loop::budget_tests::mismatched_reservation_and_command_return_actual_preparation_without_effects",
+      "services::native_task_loop::budget_tests::protected_admission_commits_one_debit_claim_and_exact_outbox_effect",
+      "services::native_task_loop::budget_tests::request_stop_invalidates_retry_and_dispatch_while_liability_stays_outstanding",
+      "services::native_task_loop::budget_tests::revoked_budget_authority_blocks_dispatch_replay_and_cannot_reset_unknown_effect",
+      "services::native_task_loop::budget_tests::stop_at_second_dispatch_clock_sample_fences_runtime_and_preserves_liability",
+      "services::native_task_loop::budget_tests::wrong_budget_read_proof_rejects_preflight_and_returns_original_plan_and_custody",
+      "services::native_task_loop::tests::actual_durable_claim_with_lost_reply_replays_without_registering_or_spawning_again",
+      "services::native_task_loop::tests::clock_unavailable_is_retryable_before_claim_but_expired_lease_never_launches",
+      "services::native_task_loop::tests::completion_backpressure_never_calls_one_shot_custody_transfer",
+      "services::native_task_loop::tests::denied_admission_keeps_registration_and_exact_retry_claims_once",
+      "services::native_task_loop::tests::exact_dispatch_key_leaves_foreign_pending_task_and_effect_untouched",
+      "services::native_task_loop::tests::existing_recovery_evidence_rejects_registration_and_returns_actual_preparation",
+      "services::native_task_loop::tests::full_preflight_rejects_stale_scope_identity_and_preserves_original_plan",
+      "services::native_task_loop::tests::lease_bounds_and_retained_admission_capacity_reject_before_losing_plan",
+      "tests::actual_preparation_and_adapter_argv_bind_without_observed_identity_or_spawn",
+      "tests::bind_clock_cannot_move_backwards_from_actual_provider_preparation",
+      "tests::moved_original_workspace_is_returned_on_custody_error_not_reopened",
+      "tests::preparation_mismatch_returns_original_workspace_and_runtime_guards_stay_strict",
+      "tests::private_slot_binding_rejects_public_request_and_plan_mutation_after_extraction",
+      "tests::resource_and_authority_rejections_return_every_original_input_without_release",
+      "tests::slot_factory_binds_distinct_model_ids_digest_domains_and_global_node_without_a_turn",
+      "tests::slot_factory_does_not_equate_codex_and_kernel_incarnation_namespaces",
+      "tests::slot_factory_rejection_matrix_returns_original_preparation_proofs_and_claim_for_correction",
+      "tests::slotted_loop_current_dispatch_reaches_only_unconfigured_executor_and_stays_held",
+      "tests::slotted_loop_pool_rotation_before_or_at_second_clock_fences_runtime",
+      "tests::slotted_loop_preserves_receipts_across_unrelated_updates_and_current_revocation",
+      "tests::slotted_loop_read_revocation_holds_without_executor_attempt_and_retains_hold",
+      "tests::slotted_loop_rejections_return_original_private_binding_for_explicit_correction",
+      "tests::wrong_slotted_read_proof_rejects_preflight_without_effects_or_retained_run"
+    ],
+    "new_cases_subset": 3,
+    "new_case_names": [
+      "services::native_task_loop::budget_tests::wrong_budget_read_proof_rejects_preflight_and_returns_original_plan_and_custody",
+      "tests::slotted_loop_read_revocation_holds_without_executor_attempt_and_retains_hold",
+      "tests::wrong_slotted_read_proof_rejects_preflight_without_effects_or_retained_run"
+    ],
+    "worker_platform_revisions_not_additive": true,
+    "not_full_server_or_workspace_suite": true
+  },
+  "test_boundaries": {
+    "authority": "Explicit role-strict local fixture policies, not an installed actual paired cohort issuer",
+    "gate": "ResourceGate unconfigured in loop journeys; valid dispatch reaches refusal without coding child",
+    "existing_write_revocation_preserved": true,
+    "wrong_budget_read_scope": "budget-only preflight",
+    "wrong_slot_read_scope": "slotted preflight with original Weak-held capability retained",
+    "factory_rejections": "38 nested variants remain one named case; original read/write Arcs retained"
+  },
+  "worker_source": {
+    "path": "/private/tmp/adm-read-proofs-factory-source-worker-receipt.json",
+    "bytes": 17789,
+    "sha256": "02fc7d12d8bd924276191bc03432fb1f8724d9112751722e2ef1ba1b9337f37a"
+  },
+  "worker_tests": {
+    "path": "/private/tmp/adm-readproof-test-worker-receipt.json",
+    "bytes": 21942,
+    "sha256": "c8d009604e8972f94b0f350a2424306fad043fa4ea3a887982435b0ba51d34fd"
+  },
+  "static_review": {
+    "path": "/private/tmp/adm-readproof-final-source-review.json",
+    "bytes": 6865,
+    "sha256": "42be0a5f8602ca51fc8e2522978d4b58ed5a1f5bbde3940f814d4995b10a18cf"
+  },
+  "reviewer_test_execution": false,
+  "production": {
+    "independent": {
+      "path": "/private/tmp/admiralty-bcf5-independent-20261019T1130Z.json",
+      "bytes": 5178,
+      "sha256": "9604301cb1eebca400732786b4c97566e3331f3f225252af116abeabc507319f"
+    },
+    "source": "bcf5cce911e538de7c3f6d0b2e8e59f3185ebdd2",
+    "observed_utc": "2026-10-19T11:26:51.124Z",
+    "no_root_service_control": true,
+    "read_proof_source_not_yet_merged_or_deployed": true
+  },
+  "operations": {
+    "pr123_merge": {
+      "path": "/private/tmp/native-pr123-merge-20261019T1112Z.json",
+      "bytes": 721,
+      "sha256": "cf41f35af7df3d38a916062048531eaa02333f1edcc22cb80326f8b2ee29f2ee"
+    },
+    "pr123_CAS": {
+      "path": "/private/tmp/rollout-fence-pr123-20261019T1120Z.json",
+      "bytes": 2528,
+      "sha256": "65162cec1a1eb3deb4133d82a3923e247b320cb6b61e3cfb9044457adb4ec780"
+    },
+    "CAS_actual_readback": {
+      "path": "/private/tmp/rollout-fence-pr123-actual-readback-20261019T1124Z.json",
+      "bytes": 148,
+      "sha256": "54f0fc797b1d0fd4989ea7a3ad3e195c6f9b7edba2649326e9cb0ab754a65eff"
+    },
+    "diagnostic_build_only": {
+      "path": "/private/tmp/native-bcf5-diagnostic-build-independent-20261019T1135Z.json",
+      "bytes": 1926,
+      "sha256": "7de1ebae4c69139a55e536b66437991dc280a0c49ada35894ef2038499edef33"
+    },
+    "fresh_route_request": {
+      "path": "/private/tmp/CODEX_REQUEST_FRESH_BCF5_DIAGNOSTIC_ROUTE_20261019T1135Z.md",
+      "bytes": 2256,
+      "sha256": "00b1cba587bb3eccc029d27f8b81cd461bc76ce6f992a39d49d753dfdd712bf5"
+    },
+    "fresh_human_route_question_pending_no_grant": true
+  },
+  "limits": {
+    "production_issuer_or_authenticated_catalog_installed": false,
+    "actual_paired_cohort_server_loop_qualified": false,
+    "external_pool_or_credential_authority": false,
+    "physical_start_qualified": false,
+    "provider_run": false,
+    "new_provider_grant": false,
+    "SC155_reused": false,
+    "settlement_or_release": false,
+    "restart_recovery": false,
+    "general_native_execution_qualified": false,
+    "full_parent_acceptance": false,
+    "full_hosted_CI_green": false
+  }
+}

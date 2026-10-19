@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T11:17:07.130Z",
+  "source": "5e480630050ed58337784a860ffe5d35fa70d12b",
+  "pr": 123,
+  "run": 39242527317,
+  "job": 118026528649,
+  "conclusion": "failure",
+  "tests_passed": 19,
+  "tests_failed": 1,
+  "failure": {
+    "test": "passes axe in both themes, graph/roster/inventory and narrow screens with reduced motion",
+    "view": "atlas dark",
+    "rule": "label-content-name-mismatch",
+    "impact": "serious",
+    "nodes": 13
+  },
+  "raw": {
+    "path": "/private/tmp/adm-ci-pr123-browser-39242527317.log",
+    "bytes": 53942,
+    "sha256": "20aaf626379c15ede8e29393cd354c3be9ac640dd68a73b44dd45f5cc9c6cdf6"
+  },
+  "resource_cause_established": false,
+  "no_rerun_or_runner_control": true,
+  "main_source": "bcf5cce911e538de7c3f6d0b2e8e59f3185ebdd2",
+  "main_browser": {
+    "run": 39242735139,
+    "status": "in_progress"
+  },
+  "main_checks": {
+    "run": 39242735024,
+    "status": "in_progress"
+  },
+  "cleanup_owner": "Root, single existing CI_CLEANUP_BACKLOG.md after implementation"
+}

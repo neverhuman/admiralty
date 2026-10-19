@@ -273,6 +273,17 @@ all-target Clippy and separate review pass. See
 catalog loader/issuer, external credential/pool or physical-start fencing,
 provider, mutation/settlement route, recovery or full parent acceptance follows.
 
+**Read-capability composition update:** the native factory/loop now explicitly
+retain distinct opaque budget and slot read capabilities beside original write
+proofs. Preflight denial returns original plan/proofs; later read revocation
+holds dispatch and occupancy. Actual Mac and capped Linux each pass the same 32
+affected cases (15 integration,17 loop;82 unrelated lib cases filtered), with
+three new cases as a subset, strict all-target server Clippy/fmt and separate
+source review. See `receipts/integration/native-admission-read-proofs-20261019T1135Z.json`.
+These use explicit local role-strict fixture authorities, not an actual paired
+cohort startup issuer. Read samples do not supply a commit/start lease. The
+authenticated catalog, physical resource/provider/recovery gates remain open.
+
 **Slotted composition update 2026-10-19:** explicit `admit_one_slotted`,
 `BoundNativeCodexPlan::bind_inference_slot` and `NativeTaskLoop::admit_slotted`
 now retain the original prepared model mapping, commands/proofs and exact
