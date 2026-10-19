@@ -7,8 +7,8 @@ pub use admiralty_server::services::{controller, native_codex_plan, native_execu
 mod tests {
     use super::{controller, native_codex_plan, native_executor};
     use admiralty_core::{
-        AcceptanceCriterion, AttemptId, CheckSpec, PrincipalId, ProjectId, RootId, SchedulingState,
-        SourceIdentity, TaskContract, TaskId, TaskView, content_digest, nodes::NodeId,
+        content_digest, nodes::NodeId, AcceptanceCriterion, AttemptId, CheckSpec, PrincipalId,
+        ProjectId, RootId, SchedulingState, SourceIdentity, TaskContract, TaskId, TaskView,
     };
     use admiralty_runtime::{
         models::{ModelSpec, Provider},
@@ -29,12 +29,12 @@ mod tests {
         },
         session::{CaptureState, LaunchSpec, OutputStream, SessionError, SessionHost},
         workspace::{
-            preparation::{PreparedWorkspace, WorkspacePreparation, prepare_workspace},
+            preparation::{prepare_workspace, PreparedWorkspace, WorkspacePreparation},
             registry::NodeRef,
         },
     };
     use admiralty_server::{
-        model_selection::{InferenceSlotClaim, model_config_digest},
+        model_selection::{model_config_digest, InferenceSlotClaim},
         services::{
             native_loop::StartedScope,
             native_task_loop::{
@@ -44,7 +44,6 @@ mod tests {
         },
     };
     use admiralty_store::{
-        BudgetAndSlotAdmission, Store, StoreAuthorities,
         admission_reservations::{
             self, ReservationAuthority, ReservationBinding, ReservationCommand, ReservationProof,
         },
@@ -52,11 +51,11 @@ mod tests {
             self, InferenceSlotAuthority, SlotBinding, SlotClaim, SlotCommand, SlotEvent,
             SlotLedger, SlotProof,
         },
-        outbox,
+        outbox, BudgetAndSlotAdmission, Store, StoreAuthorities,
     };
     use native_codex_plan::{
-        BoundNativeCodexPlan, CodexPlanError, CodexPlanInput, CodexResourceBinding,
-        PreparedNativeCodexPlan, prepare_codex_plan,
+        prepare_codex_plan, BoundNativeCodexPlan, CodexPlanError, CodexPlanInput,
+        CodexResourceBinding, NativeCodexAdmissionReadProofs, PreparedNativeCodexPlan,
     };
     use std::{
         any::Any,
@@ -67,8 +66,8 @@ mod tests {
         os::unix::fs::{DirBuilderExt, PermissionsExt},
         path::{Path, PathBuf},
         sync::{
-            Arc,
             atomic::{AtomicBool, Ordering},
+            Arc,
         },
         thread,
         time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -538,6 +537,7 @@ mod tests {
         BudgetAndSlotAdmission,
         InferenceSlotClaim,
         SlotExpected,
+        NativeCodexAdmissionReadProofs,
     ) {
         let prepared = fixture.prepare();
         let request = prepared.launch_request().clone();
@@ -623,9 +623,17 @@ mod tests {
             slot_command,
             slot_proof: Arc::new("fixture-private-slot-proof".to_owned()),
         };
+        let reads = slot_read_proofs();
         let admission = current(fixture, &prepared);
         let bound = prepared.bind_resources(resources, &admission).unwrap();
-        (bound, inputs, inference, expected)
+        (bound, inputs, inference, expected, reads)
+    }
+
+    fn slot_read_proofs() -> NativeCodexAdmissionReadProofs {
+        NativeCodexAdmissionReadProofs {
+            budget: Arc::new("fixture-private-budget-read-proof".to_owned()),
+            slot: Arc::new("fixture-private-slot-read-proof".to_owned()),
+        }
     }
 
     fn slot_claim_mut(inputs: &mut BudgetAndSlotAdmission) -> &mut SlotClaim {
@@ -656,7 +664,7 @@ mod tests {
                 fixture.model.node_id = None;
                 fixture.admission.selected_model_digest = content_digest(&fixture.model).unwrap();
             }
-            let (bound, inputs, inference, expected) = slot_inputs(&mut fixture);
+            let (bound, inputs, inference, expected, reads) = slot_inputs(&mut fixture);
             assert_ne!(fixture.model.id, fixture.model.provider_model);
             assert_ne!(
                 content_digest(&fixture.model).unwrap(),
@@ -665,7 +673,7 @@ mod tests {
             let budget_proof = Arc::clone(&inputs.budget_proof);
             let slot_proof = Arc::clone(&inputs.slot_proof);
             let slot_bound = bound
-                .bind_inference_slot(inputs, inference.clone())
+                .bind_inference_slot(inputs, inference.clone(), reads)
                 .unwrap();
             let (plan, request, provider, _, _, retained) = slot_bound.into_parts();
             assert!(retained.matches_plan(&request, &plan));
@@ -714,9 +722,12 @@ mod tests {
     fn slot_factory_rejection_matrix_returns_original_preparation_proofs_and_claim_for_correction()
     {
         let mut fixture = slot_fixture();
-        let (mut bound, original, inference, expected) = slot_inputs(&mut fixture);
+        let (mut bound, original, inference, expected, original_reads) = slot_inputs(&mut fixture);
         for case in 0..38 {
             let mut inputs = clone_slot_inputs(&original);
+            let reads = slot_read_proofs();
+            let read_budget = Arc::clone(&reads.budget);
+            let read_slot = Arc::clone(&reads.slot);
             let mut claimed = inference.clone();
             match case {
                 0 => claimed.model_id = "different-registry-id".into(),
@@ -849,14 +860,14 @@ mod tests {
             let budget_proof = Arc::clone(&inputs.budget_proof);
             let slot_proof = Arc::clone(&inputs.slot_proof);
             let failure = bound
-                .bind_inference_slot(inputs, claimed.clone())
+                .bind_inference_slot(inputs, claimed.clone(), reads)
                 .err()
                 .unwrap_or_else(|| panic!("factory accepted invalid binding case {case}"));
             let debug = format!("{failure:?}");
             assert!(!debug.contains("fixture-private-budget-proof"));
             assert!(!debug.contains("fixture-private-slot-proof"));
             assert!(!debug.contains(fixture.root.0.to_str().unwrap()));
-            let (error, returned, inputs, returned_claim) = failure.into_parts();
+            let (error, returned, inputs, returned_claim, returned_reads) = failure.into_parts();
             assert_eq!(error, CodexPlanError::ResourceBinding, "case {case}");
             assert_eq!(inputs.budget_command, command_before, "case {case}");
             assert_eq!(inputs.slot_command, slot_before, "case {case}");
@@ -865,13 +876,18 @@ mod tests {
                 "case {case}"
             );
             assert!(Arc::ptr_eq(&inputs.slot_proof, &slot_proof), "case {case}");
+            assert!(
+                Arc::ptr_eq(&returned_reads.budget, &read_budget),
+                "case {case}"
+            );
+            assert!(Arc::ptr_eq(&returned_reads.slot, &read_slot), "case {case}");
             assert_eq!(returned_claim, claimed, "case {case}");
             bound = returned;
         }
         // Explicit correction uses the same returned original preparation; no
         // reconstructed workspace, silent profile rewrite, or automatic retry.
         let (plan, request, provider, _, _, retained) = bound
-            .bind_inference_slot(original, inference)
+            .bind_inference_slot(original, inference, original_reads)
             .unwrap()
             .into_parts();
         assert!(retained.matches_plan(&request, &plan));
@@ -892,15 +908,17 @@ mod tests {
         // kernel incarnations. Existing Store profile cannot bind that request;
         // rejection must preserve it, rather than silently rewrite either value.
         let mut fixture = Fixture::new();
-        let (bound, inputs, inference, expected) = slot_inputs(&mut fixture);
+        let (bound, inputs, inference, expected, reads) = slot_inputs(&mut fixture);
         let source_before = inputs.budget_command.source.clone();
         assert_ne!(
             source_before.incarnation,
             expected.reservation.scope.incarnation
         );
         let proof_before = Arc::clone(&inputs.slot_proof);
-        let (_, bound, returned, claim) = bound
-            .bind_inference_slot(inputs, inference.clone())
+        let reads_budget_before = Arc::clone(&reads.budget);
+        let reads_slot_before = Arc::clone(&reads.slot);
+        let (_, bound, returned, claim, returned_reads) = bound
+            .bind_inference_slot(inputs, inference.clone(), reads)
             .err()
             .unwrap()
             .into_parts();
@@ -908,6 +926,8 @@ mod tests {
         assert_eq!(returned.slot_command.source, source_before);
         assert_eq!(claim, inference);
         assert!(Arc::ptr_eq(&returned.slot_proof, &proof_before));
+        assert!(Arc::ptr_eq(&returned_reads.budget, &reads_budget_before));
+        assert!(Arc::ptr_eq(&returned_reads.slot, &reads_slot_before));
         let (plan, request, provider, _, _) = bound.into_parts();
         assert_eq!(request.source, source_before);
         assert_eq!(plan.reservation, expected.reservation);
@@ -921,9 +941,9 @@ mod tests {
     #[test]
     fn private_slot_binding_rejects_public_request_and_plan_mutation_after_extraction() {
         let mut fixture = slot_fixture();
-        let (bound, inputs, inference, expected) = slot_inputs(&mut fixture);
+        let (bound, inputs, inference, expected, reads) = slot_inputs(&mut fixture);
         let (mut plan, request, _, _, _, retained) = bound
-            .bind_inference_slot(inputs, inference)
+            .bind_inference_slot(inputs, inference, reads)
             .unwrap()
             .into_parts();
         assert!(retained.matches_plan(&request, &plan));
@@ -1020,6 +1040,7 @@ mod tests {
     struct LoopPolicy {
         claim: SlotClaim,
         slot_live: AtomicBool,
+        slot_read_live: AtomicBool,
     }
     fn fixture_proof(proof: &(dyn Any + Send + Sync), expected: &str) -> bool {
         proof
@@ -1055,7 +1076,7 @@ mod tests {
             }
         }
         fn authorize_read(&self, _: &ReservationLedger, p: &(dyn Any + Send + Sync)) -> bool {
-            fixture_proof(p, "fixture-private-budget-proof")
+            fixture_proof(p, "fixture-private-budget-read-proof")
         }
     }
     impl InferenceSlotAuthority for LoopPolicy {
@@ -1094,7 +1115,8 @@ mod tests {
             }
         }
         fn authorize_read(&self, _: &SlotLedger, p: &(dyn Any + Send + Sync)) -> bool {
-            self.slot_live.load(Ordering::SeqCst) && fixture_proof(p, "fixture-private-slot-proof")
+            self.slot_read_live.load(Ordering::SeqCst)
+                && fixture_proof(p, "fixture-private-slot-read-proof")
         }
     }
     struct LoopAdmission {
@@ -1153,17 +1175,20 @@ mod tests {
         request: controller::LaunchRequest,
         budget_proof: ReservationProof,
         slot_proof: SlotProof,
+        budget_read_proof: ReservationProof,
+        slot_read_proof: SlotProof,
         original_inputs: BudgetAndSlotAdmission,
         // Last: private paths outlive both Store and retained actual preparation.
         fixture: Fixture,
     }
     fn configure_loop_budget(
         store: &Store,
-        proof: ReservationProof,
+        read_proof: ReservationProof,
+        write_proof: ReservationProof,
         scope: &ReservationScope,
         seq: u64,
     ) {
-        let ledger = store.reservation_ledger(Arc::clone(&proof)).unwrap();
+        let ledger = store.reservation_ledger(read_proof).unwrap();
         let id = format!("loop-budget-limits-{seq}");
         store
             .record_reservation(
@@ -1189,18 +1214,19 @@ mod tests {
                         },
                     },
                 },
-                proof,
+                write_proof,
             )
             .unwrap();
     }
     fn configure_loop_pool(
         store: &Store,
-        proof: SlotProof,
+        read_proof: SlotProof,
+        write_proof: SlotProof,
         pool: &str,
         generation: &str,
         seq: u64,
     ) {
-        let ledger = store.inference_slot_ledger(Arc::clone(&proof)).unwrap();
+        let ledger = store.inference_slot_ledger(read_proof).unwrap();
         store
             .record_inference_slot(
                 SlotCommand {
@@ -1220,16 +1246,17 @@ mod tests {
                         managed_capacity: 2,
                     },
                 },
-                proof,
+                write_proof,
             )
             .unwrap();
     }
     fn loop_fixture() -> SlotLoopFixture {
         let mut fixture = slot_fixture();
-        let (bound, mut inputs, inference, expected) = slot_inputs(&mut fixture);
+        let (bound, mut inputs, inference, expected, reads) = slot_inputs(&mut fixture);
         let policy = Arc::new(LoopPolicy {
             claim: slot_claim_mut(&mut inputs).clone(),
             slot_live: AtomicBool::new(true),
+            slot_read_live: AtomicBool::new(true),
         });
         let store = Store::open_with_startup_authorities(
             fixture.root.0.join("loop.sqlite"),
@@ -1242,14 +1269,18 @@ mod tests {
         .unwrap();
         let budget_proof = Arc::clone(&inputs.budget_proof);
         let slot_proof = Arc::clone(&inputs.slot_proof);
+        let budget_read_proof = Arc::clone(&reads.budget);
+        let slot_read_proof = Arc::clone(&reads.slot);
         configure_loop_budget(
             &store,
+            Arc::clone(&budget_read_proof),
             Arc::clone(&budget_proof),
             &expected.reservation.scope,
             1,
         );
         configure_loop_pool(
             &store,
+            Arc::clone(&slot_read_proof),
             Arc::clone(&slot_proof),
             "fixture-managed-pool",
             "fixture-generation",
@@ -1268,20 +1299,22 @@ mod tests {
                 "fixture-setup".into(),
             )
             .unwrap();
-        let budget = store.reservation_ledger(Arc::clone(&budget_proof)).unwrap();
+        let budget = store
+            .reservation_ledger(Arc::clone(&budget_read_proof))
+            .unwrap();
         inputs.budget_command.expected_ledger_revision = budget.revision;
         inputs.budget_command.expected_ledger_digest =
             admission_reservations::ledger_digest(&budget).unwrap();
         sync_budget_digest(&mut inputs);
         let slots = store
-            .inference_slot_ledger(Arc::clone(&slot_proof))
+            .inference_slot_ledger(Arc::clone(&slot_read_proof))
             .unwrap();
         inputs.slot_command.expected_ledger_revision = slots.revision;
         inputs.slot_command.expected_ledger_digest =
             inference_slots::ledger_digest(&slots).unwrap();
         let original_inputs = clone_slot_inputs(&inputs);
         let (plan, request, _, _, _, slot) = bound
-            .bind_inference_slot(inputs, inference)
+            .bind_inference_slot(inputs, inference, reads)
             .unwrap()
             .into_parts();
         let admission = LoopAdmission {
@@ -1324,6 +1357,8 @@ mod tests {
             request,
             budget_proof,
             slot_proof,
+            budget_read_proof,
+            slot_read_proof,
             original_inputs,
             fixture,
         }
@@ -1342,11 +1377,11 @@ mod tests {
         fn counts(&self) -> (usize, u64, usize, u64, usize) {
             let budget = self
                 .store
-                .reservation_ledger(Arc::clone(&self.budget_proof))
+                .reservation_ledger(Arc::clone(&self.budget_read_proof))
                 .unwrap();
             let slots = self
                 .store
-                .inference_slot_ledger(Arc::clone(&self.slot_proof))
+                .inference_slot_ledger(Arc::clone(&self.slot_read_proof))
                 .unwrap();
             (
                 self.store.events_after(0, 128).unwrap().len(),
@@ -1377,7 +1412,7 @@ mod tests {
             assert_eq!(self.counts().4, 1);
             assert!(
                 self.store
-                    .reservation_ledger(Arc::clone(&self.budget_proof))
+                    .reservation_ledger(Arc::clone(&self.budget_read_proof))
                     .unwrap()
                     .reservations["fixture-kernel-reservation"]
                     .outstanding
@@ -1402,7 +1437,8 @@ mod tests {
     }
     struct RotatePoolClock {
         store: Store,
-        proof: SlotProof,
+        read_proof: SlotProof,
+        write_proof: SlotProof,
         calls: Cell<u32>,
     }
     impl controller::DispatchClock for RotatePoolClock {
@@ -1412,7 +1448,8 @@ mod tests {
             if n == 2 {
                 configure_loop_pool(
                     &self.store,
-                    Arc::clone(&self.proof),
+                    Arc::clone(&self.read_proof),
+                    Arc::clone(&self.write_proof),
                     "fixture-managed-pool",
                     "fixture-next-generation",
                     2,
@@ -1429,9 +1466,16 @@ mod tests {
         assert_eq!(f.counts(), (2, 2, 1, 2, 1));
         let original = f.receipts();
         let scope = f.policy.claim.scope.clone();
-        configure_loop_budget(&f.store, Arc::clone(&f.budget_proof), &scope, 2);
+        configure_loop_budget(
+            &f.store,
+            Arc::clone(&f.budget_read_proof),
+            Arc::clone(&f.budget_proof),
+            &scope,
+            2,
+        );
         configure_loop_pool(
             &f.store,
+            Arc::clone(&f.slot_read_proof),
             Arc::clone(&f.slot_proof),
             "fixture-unrelated-pool",
             "fixture-generation",
@@ -1445,7 +1489,7 @@ mod tests {
         assert!(matches!(retry, AdmissionStatus::Queued(ref d) if d.duplicate));
         assert_eq!(f.receipts(), original);
         assert_eq!(f.counts(), before);
-        f.policy.slot_live.store(false, Ordering::SeqCst);
+        f.policy.slot_read_live.store(false, Ordering::SeqCst);
         assert!(matches!(
             f.task_loop
                 .retry_admission(&f.request.run_id, &f.admission)
@@ -1463,13 +1507,13 @@ mod tests {
                 ..
             }
         ));
-        f.policy.slot_live.store(true, Ordering::SeqCst);
+        f.policy.slot_read_live.store(true, Ordering::SeqCst);
         assert_eq!(f.counts(), before);
         assert_eq!(f.receipts(), original);
         f.assert_held();
         assert_eq!(
             f.store
-                .inference_slot_ledger(Arc::clone(&f.slot_proof))
+                .inference_slot_ledger(Arc::clone(&f.slot_read_proof))
                 .unwrap()
                 .holds
                 .len(),
@@ -1492,7 +1536,8 @@ mod tests {
             let status = if at_second_clock {
                 let clock = RotatePoolClock {
                     store: f.store.clone(),
-                    proof: Arc::clone(&f.slot_proof),
+                    read_proof: Arc::clone(&f.slot_read_proof),
+                    write_proof: Arc::clone(&f.slot_proof),
                     calls: Cell::new(0),
                 };
                 let status = f
@@ -1504,6 +1549,7 @@ mod tests {
             } else {
                 configure_loop_pool(
                     &f.store,
+                    Arc::clone(&f.slot_read_proof),
                     Arc::clone(&f.slot_proof),
                     "fixture-managed-pool",
                     "fixture-next-generation",
@@ -1525,7 +1571,7 @@ mod tests {
             f.assert_held();
             let slots = f
                 .store
-                .inference_slot_ledger(Arc::clone(&f.slot_proof))
+                .inference_slot_ledger(Arc::clone(&f.slot_read_proof))
                 .unwrap();
             assert_eq!(slots.holds.len(), 1);
             assert_eq!(
@@ -1587,7 +1633,7 @@ mod tests {
         f.assert_held();
         assert_eq!(
             f.store
-                .inference_slot_ledger(Arc::clone(&f.slot_proof))
+                .inference_slot_ledger(Arc::clone(&f.slot_read_proof))
                 .unwrap()
                 .holds
                 .len(),
