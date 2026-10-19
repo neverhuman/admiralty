@@ -1,0 +1,304 @@
+{
+  "$defs": {
+    "IntakeFormat": {
+      "enum": [
+        "plain_text",
+        "json_batch"
+      ],
+      "type": "string"
+    },
+    "OriginReference": {
+      "additionalProperties": false,
+      "description": "Opaque lookup data only: no fetching, path traversal or authorization.",
+      "properties": {
+        "record_id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "system": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "system",
+        "record_id",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "PrincipalId": {
+      "type": "string"
+    },
+    "ProjectId": {
+      "type": "string"
+    },
+    "RequesterAttribution": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "unknown",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "claimed",
+              "type": "string"
+            },
+            "requester": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "requester"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RootId": {
+      "type": "string"
+    },
+    "ScopeSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_generation": {
+          "allOf": [
+            {
+              "pattern": "^(?:0|[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|1844674407370955[0-0][0-9]{3}|18446744073709551[0-5][0-9]{2}|184467440737095516[0-0][0-9]{1}|1844674407370955161[0-4]|18446744073709551615)(?![\\s\\S])",
+              "type": "string"
+            },
+            {
+              "not": {
+                "const": "0"
+              }
+            }
+          ],
+          "description": "Canonical positive decimal string on the public wire; never a JS number."
+        },
+        "authority_ref": {
+          "type": "string"
+        },
+        "principal": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "root_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RootId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "principal",
+        "authority_ref",
+        "authority_generation"
+      ],
+      "type": "object"
+    },
+    "SourcePayload": {
+      "description": "Source references are claims until the Store verifies bytes and an\ninterlocked lifetime pin. Merely decoding an ArtifactClaim grants no custody.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "inline_utf8",
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "text"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "artifact_ref": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "artifact_claim",
+              "type": "string"
+            },
+            "pin_receipt_ref": {
+              "type": "string"
+            },
+            "raw_digest": {
+              "type": "string"
+            },
+            "size_bytes": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "raw_digest",
+            "size_bytes",
+            "artifact_ref",
+            "pin_receipt_ref"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SourceProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "captured_at": {
+          "description": "Supplied observation time; no wall-clock lookup or freshness claim.",
+          "type": "string"
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OriginReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requester": {
+          "$ref": "#/$defs/RequesterAttribution"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "source_id",
+        "revision",
+        "captured_at",
+        "requester"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "canonical_digest": {
+      "type": "string"
+    },
+    "constraints": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "format": {
+      "$ref": "#/$defs/IntakeFormat",
+      "description": "Exact chosen parse mode, never inferred from JSON-looking source bytes."
+    },
+    "id": {
+      "type": "string"
+    },
+    "outcome": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "parser_revision": {
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/SourceProvenance"
+    },
+    "rationale": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "raw_digest": {
+      "type": "string"
+    },
+    "requested_timing": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "revision": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "scope": {
+      "$ref": "#/$defs/ScopeSnapshot"
+    },
+    "source_payload": {
+      "$ref": "#/$defs/SourcePayload"
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "revision",
+    "scope",
+    "provenance",
+    "constraints",
+    "raw_digest",
+    "canonical_digest",
+    "parser_revision",
+    "format",
+    "source_payload"
+  ],
+  "title": "WorkOrderRevision",
+  "type": "object"
+}

@@ -11,6 +11,10 @@ use admiralty_core::{
 };
 use admiralty_core::{
     config::{ConfigLayer, ConfigLayerReceipt, ConfigPatch, ProvenanceContribution},
+    intake::{
+        DeliveryRequirement, DuplicatePage, DuplicateQuery, IntakeBatch, IntakePreview,
+        RecordIntakeReceipt, RecordIntakeRequest, SourceProvenance, WorkOrderRevision,
+    },
     interfaces::InterfaceContract,
     verification::{VerificationPolicy, VerificationReceipt},
     workplans::Workplan,
@@ -31,7 +35,7 @@ use std::{
 
 type CliResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 const MAX_JSON_BYTES: u64 = 1024 * 1024;
-const SCHEMA_FILES: [&str; 13] = [
+const SCHEMA_FILES: [&str; 22] = [
     "task-contract.schema.json",
     "coordination-message.schema.json",
     "domain-event.schema.json",
@@ -45,6 +49,15 @@ const SCHEMA_FILES: [&str; 13] = [
     "config-layer-receipt.schema.json",
     "provenance-contribution.schema.json",
     "views-snapshot.schema.json",
+    "intake-batch.schema.json",
+    "source-provenance.schema.json",
+    "intake-preview.schema.json",
+    "work-order-revision.schema.json",
+    "record-intake-request.schema.json",
+    "record-intake-receipt.schema.json",
+    "delivery-requirement.schema.json",
+    "duplicate-query.schema.json",
+    "duplicate-page.schema.json",
 ];
 
 #[derive(Parser)]
@@ -489,6 +502,15 @@ fn schema_documents() -> CliResult<Vec<(&'static str, Vec<u8>)>> {
         serde_json::to_value(schemars::schema_for!(ConfigLayerReceipt))?,
         serde_json::to_value(schemars::schema_for!(ProvenanceContribution))?,
         serde_json::to_value(schemars::schema_for!(admiralty_core::views::ViewsSnapshot))?,
+        serde_json::to_value(schemars::schema_for!(IntakeBatch))?,
+        serde_json::to_value(schemars::schema_for!(SourceProvenance))?,
+        serde_json::to_value(schemars::schema_for!(IntakePreview))?,
+        serde_json::to_value(schemars::schema_for!(WorkOrderRevision))?,
+        serde_json::to_value(schemars::schema_for!(RecordIntakeRequest))?,
+        serde_json::to_value(schemars::schema_for!(RecordIntakeReceipt))?,
+        serde_json::to_value(schemars::schema_for!(DeliveryRequirement))?,
+        serde_json::to_value(schemars::schema_for!(DuplicateQuery))?,
+        serde_json::to_value(schemars::schema_for!(DuplicatePage))?,
     ];
     SCHEMA_FILES
         .into_iter()
@@ -1147,6 +1169,15 @@ mod tests {
             "ProvenanceContribution",
             false,
         )?;
+        public_contract_fixture::<IntakeBatch>(&fixtures, "IntakeBatch", true)?;
+        public_contract_fixture::<SourceProvenance>(&fixtures, "SourceProvenance", true)?;
+        public_contract_fixture::<IntakePreview>(&fixtures, "IntakePreview", true)?;
+        public_contract_fixture::<WorkOrderRevision>(&fixtures, "WorkOrderRevision", true)?;
+        public_contract_fixture::<RecordIntakeRequest>(&fixtures, "RecordIntakeRequest", true)?;
+        public_contract_fixture::<RecordIntakeReceipt>(&fixtures, "RecordIntakeReceipt", true)?;
+        public_contract_fixture::<DeliveryRequirement>(&fixtures, "DeliveryRequirement", true)?;
+        public_contract_fixture::<DuplicateQuery>(&fixtures, "DuplicateQuery", true)?;
+        public_contract_fixture::<DuplicatePage>(&fixtures, "DuplicatePage", true)?;
         // Exercise existing bounded parsers as well as serde; these pure
         // parsers do not authenticate a verifier or execute any task/check.
         admiralty_core::workplans::preview_workplan(&serde_json::to_vec(&fixtures["Workplan"])?)?;
@@ -1159,6 +1190,90 @@ mod tests {
             "provider_claim"
         );
         assert!(fixtures["VerificationReceipt"]["checks"][0]["exit_code"].is_null());
+        Ok(())
+    }
+
+    #[test]
+    fn public_intake_fixtures_bind_actual_source_without_issuing_authority() -> CliResult<()> {
+        use admiralty_core::intake::{AuthorizedIntakeScope, IntakePolicy, SourcePayload};
+        let fixtures: Value = serde_json::from_str(include_str!(
+            "../../../packages/contracts/fixtures/public-roots.json"
+        ))?;
+        let request = admiralty_core::intake::parse_record_request(&serde_json::to_vec(
+            &fixtures["RecordIntakeRequest"],
+        )?)?;
+        let policy = IntakePolicy::default();
+        request.validate_with_policy(&policy)?;
+        let preview: IntakePreview = serde_json::from_value(fixtures["IntakePreview"].clone())?;
+        // Synthetic, independently constructed test context. Decoding a public
+        // ScopeSnapshot is never how production obtains this trusted input.
+        let scope = AuthorizedIntakeScope {
+            principal: PrincipalId::new("authenticated-operator")?,
+            project_id: Some(ProjectId::new("project")?),
+            root_id: Some(RootId::new("root")?),
+            authority_ref: "scope:intake".into(),
+            authority_generation: 9_007_199_254_740_993,
+        };
+        let SourcePayload::InlineUtf8 { text } = &request.work_order.source_payload else {
+            return Err(invalid("expected explicit inline fixture source"));
+        };
+        preview.verify_source(text.as_bytes(), &scope, &policy)?;
+        let receipt: RecordIntakeReceipt =
+            serde_json::from_value(fixtures["RecordIntakeReceipt"].clone())?;
+        receipt.validate()?;
+        assert_eq!(receipt.request_digest, content_digest(&request)?);
+        assert_eq!(receipt.preview_manifest_digest, preview.manifest_digest);
+        assert_eq!(receipt.task_bindings[0], request.selected_tasks[0].binding);
+        let query: DuplicateQuery = serde_json::from_value(fixtures["DuplicateQuery"].clone())?;
+        let page: DuplicatePage = serde_json::from_value(fixtures["DuplicatePage"].clone())?;
+        page.validate_for(&query)?;
+
+        let mut changed = request.clone();
+        changed.policy_digest = format!("sha256:{}", "b".repeat(64));
+        assert!(changed.validate_with_policy(&policy).is_err());
+        let mut changed = preview.clone();
+        changed.format = admiralty_core::intake::IntakeFormat::PlainText;
+        assert!(
+            changed
+                .verify_source(text.as_bytes(), &scope, &policy)
+                .is_err()
+        );
+        for field in ["authenticated", "execution_qualified", "acceptance_granted"] {
+            let mut claim = fixtures["RecordIntakeRequest"].clone();
+            claim[field] = true.into();
+            assert!(serde_json::from_value::<RecordIntakeRequest>(claim).is_err());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn public_intake_generation_matches_shared_positive_decimal_wire_cases() -> CliResult<()> {
+        let fixtures: Value = serde_json::from_str(include_str!(
+            "../../../packages/contracts/fixtures/public-roots.json"
+        ))?;
+        let cases: Vec<Value> = serde_json::from_str(include_str!(
+            "../../../packages/contracts/fixtures/decimal-u64.json"
+        ))?;
+        for case in cases {
+            let value = case["value"].clone();
+            let accepted =
+                case["accepted"].as_bool().expect("fixture boolean") && value != json!("0");
+            let mut record = fixtures["RecordIntakeRequest"].clone();
+            record["authority_generation"] = value.clone();
+            record["work_order"]["scope"]["authority_generation"] = value.clone();
+            let result = serde_json::from_value::<RecordIntakeRequest>(record);
+            assert_eq!(result.is_ok(), accepted, "positive decimal: {value}");
+            if let Ok(parsed) = result {
+                assert_eq!(serde_json::to_value(parsed)?["authority_generation"], value);
+            }
+            let mut preview = fixtures["IntakePreview"].clone();
+            preview["authorized_scope"]["authority_generation"] = value.clone();
+            assert_eq!(
+                serde_json::from_value::<IntakePreview>(preview).is_ok(),
+                accepted,
+                "nested positive decimal: {value}"
+            );
+        }
         Ok(())
     }
 

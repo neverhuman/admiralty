@@ -202,5 +202,533 @@
   "ProvenanceContribution": {
     "origin": "private",
     "source_ref": null
+  },
+  "IntakeBatch": {
+    "schema_version": 1,
+    "items": [
+      {
+        "text": "Deliver a checked change.\n\nDo not remove the guard.",
+        "title": "Scoped request",
+        "rationale": "Preserve one request across paragraphs",
+        "requested_timing": null,
+        "constraints": [
+          "Do not remove the guard"
+        ],
+        "claimed_project_id": "project",
+        "outcomes": [
+          {
+            "id": "outcome-one",
+            "description": "Deliver a checked change",
+            "source_spans": [
+              {
+                "start": 38,
+                "end": 45
+              }
+            ],
+            "constraints": [
+              "Do not remove the guard"
+            ],
+            "task": {
+              "schema_version": 1,
+              "project_id": "project",
+              "root_id": "root",
+              "task_id": "task",
+              "revision": 1,
+              "title": "Scoped task",
+              "objective": "Deliver a checked change",
+              "non_goals": [
+                "No publication"
+              ],
+              "owned_paths": [
+                "src/task.rs"
+              ],
+              "forbidden_paths": [
+                "private"
+              ],
+              "read_first": [
+                "README.md"
+              ],
+              "dependencies": [],
+              "criteria": [
+                {
+                  "id": "C1",
+                  "text": "Named check passes",
+                  "check_ids": [
+                    "T1"
+                  ]
+                }
+              ],
+              "checks": [
+                {
+                  "id": "T1",
+                  "program": "cargo",
+                  "args": [
+                    "test"
+                  ],
+                  "cwd": ".",
+                  "timeout_secs": 60
+                }
+              ],
+              "authority_ref": "policy:test",
+              "max_attempts": 2,
+              "simulated": true
+            },
+            "delivery": {
+              "schema_version": 1,
+              "task_id": "task",
+              "contract_revision": 1,
+              "contract_digest": "sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba",
+              "generation": 1,
+              "targets": [
+                {
+                  "id": "repository",
+                  "target_kind": "repository",
+                  "requirement": {
+                    "kind": "required",
+                    "stage": "merged"
+                  }
+                },
+                {
+                  "id": "deployment",
+                  "target_kind": "deployment",
+                  "requirement": {
+                    "kind": "optional",
+                    "stage": "installed"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "SourceProvenance": {
+    "schema_version": 1,
+    "source_id": "public-source",
+    "revision": "1",
+    "captured_at": "2026-10-19T00:00:00Z",
+    "requester": {
+      "kind": "unknown"
+    },
+    "origin": {
+      "system": "fixture",
+      "record_id": "record:one",
+      "revision": "1"
+    }
+  },
+  "IntakePreview": {
+    "schema_version": 1,
+    "parser_revision": "wo1-json-raw-spans-v1",
+    "policy_revision": "wo1-v1",
+    "policy_digest": "sha256:2da2e94d6b4b4d8e9388bfeaae7972540f742e276066ab67848fb694ce2f0af9",
+    "format": "json_batch",
+    "raw_digest": "sha256:d752f77dc08165ebdec3fa986f09a7d710b663ffd88d8824163e8d803195d4b9",
+    "canonical_digest": "sha256:56ab422c5a38ba18f09338925c395a8e88fee9935e0e18d822a35a9262de44b2",
+    "raw_byte_length": 1331,
+    "provenance": {
+      "schema_version": 1,
+      "source_id": "public-source",
+      "revision": "1",
+      "captured_at": "2026-10-19T00:00:00Z",
+      "requester": {
+        "kind": "unknown"
+      },
+      "origin": {
+        "system": "fixture",
+        "record_id": "record:one",
+        "revision": "1"
+      }
+    },
+    "authorized_scope": {
+      "principal": "authenticated-operator",
+      "project_id": "project",
+      "root_id": "root",
+      "authority_ref": "scope:intake",
+      "authority_generation": "9007199254740993"
+    },
+    "requests": [
+      {
+        "index": 0,
+        "raw_span": {
+          "start": 29,
+          "end": 1329
+        },
+        "text": "Deliver a checked change.\n\nDo not remove the guard.",
+        "title": "Scoped request",
+        "rationale": "Preserve one request across paragraphs",
+        "requested_timing": null,
+        "constraints": [
+          "Do not remove the guard"
+        ],
+        "claimed_project_id": "project",
+        "outcomes": [
+          {
+            "outcome": {
+              "id": "outcome-one",
+              "description": "Deliver a checked change",
+              "source_spans": [
+                {
+                  "start": 38,
+                  "end": 45
+                }
+              ],
+              "constraints": [
+                "Do not remove the guard"
+              ],
+              "task": {
+                "schema_version": 1,
+                "project_id": "project",
+                "root_id": "root",
+                "task_id": "task",
+                "revision": 1,
+                "title": "Scoped task",
+                "objective": "Deliver a checked change",
+                "non_goals": [
+                  "No publication"
+                ],
+                "owned_paths": [
+                  "src/task.rs"
+                ],
+                "forbidden_paths": [
+                  "private"
+                ],
+                "read_first": [
+                  "README.md"
+                ],
+                "dependencies": [],
+                "criteria": [
+                  {
+                    "id": "C1",
+                    "text": "Named check passes",
+                    "check_ids": [
+                      "T1"
+                    ]
+                  }
+                ],
+                "checks": [
+                  {
+                    "id": "T1",
+                    "program": "cargo",
+                    "args": [
+                      "test"
+                    ],
+                    "cwd": ".",
+                    "timeout_secs": 60
+                  }
+                ],
+                "authority_ref": "policy:test",
+                "max_attempts": 2,
+                "simulated": true
+              },
+              "delivery": {
+                "schema_version": 1,
+                "task_id": "task",
+                "contract_revision": 1,
+                "contract_digest": "sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba",
+                "generation": 1,
+                "targets": [
+                  {
+                    "id": "repository",
+                    "target_kind": "repository",
+                    "requirement": {
+                      "kind": "required",
+                      "stage": "merged"
+                    }
+                  },
+                  {
+                    "id": "deployment",
+                    "target_kind": "deployment",
+                    "requirement": {
+                      "kind": "optional",
+                      "stage": "installed"
+                    }
+                  }
+                ]
+              }
+            },
+            "outcome_digest": "sha256:3416f36ced491a1dd383d29367799f201a6af7a2e7eec8844f8d4d7c7bda06b9",
+            "contract_digest": "sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba",
+            "unresolved": []
+          }
+        ],
+        "unresolved": [
+          "attribution_unknown"
+        ]
+      }
+    ],
+    "manifest_digest": "sha256:f50c1acc28005033de1957e2df9f69a46579afd58abbf6e0bfc3c53e34b489df"
+  },
+  "WorkOrderRevision": {
+    "schema_version": 1,
+    "id": "public-work-order",
+    "revision": 1,
+    "scope": {
+      "principal": "authenticated-operator",
+      "project_id": "project",
+      "root_id": "root",
+      "authority_ref": "scope:intake",
+      "authority_generation": "9007199254740993"
+    },
+    "provenance": {
+      "schema_version": 1,
+      "source_id": "public-source",
+      "revision": "1",
+      "captured_at": "2026-10-19T00:00:00Z",
+      "requester": {
+        "kind": "unknown"
+      },
+      "origin": {
+        "system": "fixture",
+        "record_id": "record:one",
+        "revision": "1"
+      }
+    },
+    "title": "Scoped request",
+    "outcome": "Deliver a checked change",
+    "rationale": "Preserve one request across paragraphs",
+    "constraints": [
+      "Do not remove the guard"
+    ],
+    "requested_timing": null,
+    "raw_digest": "sha256:d752f77dc08165ebdec3fa986f09a7d710b663ffd88d8824163e8d803195d4b9",
+    "canonical_digest": "sha256:56ab422c5a38ba18f09338925c395a8e88fee9935e0e18d822a35a9262de44b2",
+    "parser_revision": "wo1-json-raw-spans-v1",
+    "format": "json_batch",
+    "source_payload": {
+      "kind": "inline_utf8",
+      "text": "{\"schema_version\":1,\"items\":[{\"text\":\"Deliver a checked change.\\n\\nDo not remove the guard.\",\"title\":\"Scoped request\",\"rationale\":\"Preserve one request across paragraphs\",\"requested_timing\":null,\"constraints\":[\"Do not remove the guard\"],\"claimed_project_id\":\"project\",\"outcomes\":[{\"id\":\"outcome-one\",\"description\":\"Deliver a checked change\",\"source_spans\":[{\"start\":38,\"end\":45}],\"constraints\":[\"Do not remove the guard\"],\"task\":{\"schema_version\":1,\"project_id\":\"project\",\"root_id\":\"root\",\"task_id\":\"task\",\"revision\":1,\"title\":\"Scoped task\",\"objective\":\"Deliver a checked change\",\"non_goals\":[\"No publication\"],\"owned_paths\":[\"src/task.rs\"],\"forbidden_paths\":[\"private\"],\"read_first\":[\"README.md\"],\"dependencies\":[],\"criteria\":[{\"id\":\"C1\",\"text\":\"Named check passes\",\"check_ids\":[\"T1\"]}],\"checks\":[{\"id\":\"T1\",\"program\":\"cargo\",\"args\":[\"test\"],\"cwd\":\".\",\"timeout_secs\":60}],\"authority_ref\":\"policy:test\",\"max_attempts\":2,\"simulated\":true},\"delivery\":{\"schema_version\":1,\"task_id\":\"task\",\"contract_revision\":1,\"contract_digest\":\"sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba\",\"generation\":1,\"targets\":[{\"id\":\"repository\",\"target_kind\":\"repository\",\"requirement\":{\"kind\":\"required\",\"stage\":\"merged\"}},{\"id\":\"deployment\",\"target_kind\":\"deployment\",\"requirement\":{\"kind\":\"optional\",\"stage\":\"installed\"}}]}}]}]}"
+    }
+  },
+  "RecordIntakeRequest": {
+    "schema_version": 1,
+    "command_id": "public-intake-command",
+    "expected_work_order_revision": 0,
+    "plan_id": "plan",
+    "expected_plan_revision": 0,
+    "preview_manifest_digest": "sha256:f50c1acc28005033de1957e2df9f69a46579afd58abbf6e0bfc3c53e34b489df",
+    "policy_revision": "wo1-v1",
+    "policy_digest": "sha256:2da2e94d6b4b4d8e9388bfeaae7972540f742e276066ab67848fb694ce2f0af9",
+    "authority_generation": "9007199254740993",
+    "work_order": {
+      "schema_version": 1,
+      "id": "public-work-order",
+      "revision": 1,
+      "scope": {
+        "principal": "authenticated-operator",
+        "project_id": "project",
+        "root_id": "root",
+        "authority_ref": "scope:intake",
+        "authority_generation": "9007199254740993"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source_id": "public-source",
+        "revision": "1",
+        "captured_at": "2026-10-19T00:00:00Z",
+        "requester": {
+          "kind": "unknown"
+        },
+        "origin": {
+          "system": "fixture",
+          "record_id": "record:one",
+          "revision": "1"
+        }
+      },
+      "title": "Scoped request",
+      "outcome": "Deliver a checked change",
+      "rationale": "Preserve one request across paragraphs",
+      "constraints": [
+        "Do not remove the guard"
+      ],
+      "requested_timing": null,
+      "raw_digest": "sha256:d752f77dc08165ebdec3fa986f09a7d710b663ffd88d8824163e8d803195d4b9",
+      "canonical_digest": "sha256:56ab422c5a38ba18f09338925c395a8e88fee9935e0e18d822a35a9262de44b2",
+      "parser_revision": "wo1-json-raw-spans-v1",
+      "format": "json_batch",
+      "source_payload": {
+        "kind": "inline_utf8",
+        "text": "{\"schema_version\":1,\"items\":[{\"text\":\"Deliver a checked change.\\n\\nDo not remove the guard.\",\"title\":\"Scoped request\",\"rationale\":\"Preserve one request across paragraphs\",\"requested_timing\":null,\"constraints\":[\"Do not remove the guard\"],\"claimed_project_id\":\"project\",\"outcomes\":[{\"id\":\"outcome-one\",\"description\":\"Deliver a checked change\",\"source_spans\":[{\"start\":38,\"end\":45}],\"constraints\":[\"Do not remove the guard\"],\"task\":{\"schema_version\":1,\"project_id\":\"project\",\"root_id\":\"root\",\"task_id\":\"task\",\"revision\":1,\"title\":\"Scoped task\",\"objective\":\"Deliver a checked change\",\"non_goals\":[\"No publication\"],\"owned_paths\":[\"src/task.rs\"],\"forbidden_paths\":[\"private\"],\"read_first\":[\"README.md\"],\"dependencies\":[],\"criteria\":[{\"id\":\"C1\",\"text\":\"Named check passes\",\"check_ids\":[\"T1\"]}],\"checks\":[{\"id\":\"T1\",\"program\":\"cargo\",\"args\":[\"test\"],\"cwd\":\".\",\"timeout_secs\":60}],\"authority_ref\":\"policy:test\",\"max_attempts\":2,\"simulated\":true},\"delivery\":{\"schema_version\":1,\"task_id\":\"task\",\"contract_revision\":1,\"contract_digest\":\"sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba\",\"generation\":1,\"targets\":[{\"id\":\"repository\",\"target_kind\":\"repository\",\"requirement\":{\"kind\":\"required\",\"stage\":\"merged\"}},{\"id\":\"deployment\",\"target_kind\":\"deployment\",\"requirement\":{\"kind\":\"optional\",\"stage\":\"installed\"}}]}}]}]}"
+      }
+    },
+    "selected_tasks": [
+      {
+        "binding": {
+          "work_order_id": "public-work-order",
+          "work_order_revision": 1,
+          "request_index": 0,
+          "outcome_id": "outcome-one",
+          "outcome_digest": "sha256:3416f36ced491a1dd383d29367799f201a6af7a2e7eec8844f8d4d7c7bda06b9",
+          "source_spans": [
+            {
+              "start": 38,
+              "end": 45
+            }
+          ],
+          "task_id": "task",
+          "contract_revision": 1,
+          "contract_digest": "sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba"
+        },
+        "task": {
+          "schema_version": 1,
+          "project_id": "project",
+          "root_id": "root",
+          "task_id": "task",
+          "revision": 1,
+          "title": "Scoped task",
+          "objective": "Deliver a checked change",
+          "non_goals": [
+            "No publication"
+          ],
+          "owned_paths": [
+            "src/task.rs"
+          ],
+          "forbidden_paths": [
+            "private"
+          ],
+          "read_first": [
+            "README.md"
+          ],
+          "dependencies": [],
+          "criteria": [
+            {
+              "id": "C1",
+              "text": "Named check passes",
+              "check_ids": [
+                "T1"
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "T1",
+              "program": "cargo",
+              "args": [
+                "test"
+              ],
+              "cwd": ".",
+              "timeout_secs": 60
+            }
+          ],
+          "authority_ref": "policy:test",
+          "max_attempts": 2,
+          "simulated": true
+        },
+        "delivery": {
+          "schema_version": 1,
+          "task_id": "task",
+          "contract_revision": 1,
+          "contract_digest": "sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba",
+          "generation": 1,
+          "targets": [
+            {
+              "id": "repository",
+              "target_kind": "repository",
+              "requirement": {
+                "kind": "required",
+                "stage": "merged"
+              }
+            },
+            {
+              "id": "deployment",
+              "target_kind": "deployment",
+              "requirement": {
+                "kind": "optional",
+                "stage": "installed"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "RecordIntakeReceipt": {
+    "schema_version": 1,
+    "command_id": "public-intake-command",
+    "request_digest": "sha256:7f750b87bb579b76fa06f88383f9f9fa5c4229ee6e542fd4530b2a9f5326fb13",
+    "work_order_id": "public-work-order",
+    "work_order_revision": 1,
+    "plan_id": "plan",
+    "plan_revision": 1,
+    "preview_manifest_digest": "sha256:f50c1acc28005033de1957e2df9f69a46579afd58abbf6e0bfc3c53e34b489df",
+    "task_bindings": [
+      {
+        "work_order_id": "public-work-order",
+        "work_order_revision": 1,
+        "request_index": 0,
+        "outcome_id": "outcome-one",
+        "outcome_digest": "sha256:3416f36ced491a1dd383d29367799f201a6af7a2e7eec8844f8d4d7c7bda06b9",
+        "source_spans": [
+          {
+            "start": 38,
+            "end": 45
+          }
+        ],
+        "task_id": "task",
+        "contract_revision": 1,
+        "contract_digest": "sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba"
+      }
+    ],
+    "duplicate": false
+  },
+  "DeliveryRequirement": {
+    "schema_version": 1,
+    "task_id": "task",
+    "contract_revision": 1,
+    "contract_digest": "sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba",
+    "generation": 1,
+    "targets": [
+      {
+        "id": "repository",
+        "target_kind": "repository",
+        "requirement": {
+          "kind": "required",
+          "stage": "merged"
+        }
+      },
+      {
+        "id": "deployment",
+        "target_kind": "deployment",
+        "requirement": {
+          "kind": "optional",
+          "stage": "installed"
+        }
+      }
+    ]
+  },
+  "DuplicateQuery": {
+    "schema_version": 1,
+    "project_id": "project",
+    "raw_digest": "sha256:d752f77dc08165ebdec3fa986f09a7d710b663ffd88d8824163e8d803195d4b9",
+    "canonical_digest": "sha256:56ab422c5a38ba18f09338925c395a8e88fee9935e0e18d822a35a9262de44b2",
+    "origin": {
+      "system": "fixture",
+      "record_id": "record:one",
+      "revision": "1"
+    },
+    "command_id": "public-intake-command",
+    "cursor": null,
+    "limit": 100
+  },
+  "DuplicatePage": {
+    "schema_version": 1,
+    "query_digest": "sha256:e372da74b1c23b6d1b34b8b44f8af10e910eabd48259ea3fe08e34004e242d1a",
+    "candidates": [
+      {
+        "task_id": "task",
+        "contract_revision": 1,
+        "contract_digest": "sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba",
+        "reason": "advisory_raw_content",
+        "lifecycle": "registered_only",
+        "freshness": "no_lifecycle_observation",
+        "evidence_refs": [
+          "work-order:public-work-order:1"
+        ]
+      }
+    ],
+    "coverage": {
+      "kind": "incomplete",
+      "reason": "bounded immutable intake lineage only"
+    }
   }
 }
