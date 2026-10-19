@@ -363,12 +363,63 @@ fn history_preserves_partial_unknowns_and_skips_limit_only_observations() {
         ResourceUsageSample::Observed { ref snapshot }
             if matches!(&snapshot.pids_peak, ResourceReading::Unavailable { .. })
                 && matches!(&snapshot.memory_current, ResourceReading::Observed { .. })
+                && matches!(&snapshot.pids_events, ResourceReading::Observed { value }
+                    if value.max == Some(0))
+                && matches!(&snapshot.cgroup_events, ResourceReading::Observed { value }
+                    if value.populated == Some(true) && value.frozen == Some(false))
     ));
 
     remove_dynamic_files(dir.path());
     let limits_only = pin.sample();
     diagnostics.record(limits_only.clone(), false, false);
     assert_eq!(diagnostics.history.iter().flatten().count(), 1);
+
+    // A present, parsed event file with no known counters/flags is not a
+    // dynamic observation. Limit fields stay intact in latest but add no slot.
+    let ResourceUsageSample::Observed { mut snapshot } = limits_only.clone() else {
+        panic!("limit-only fixture sample remains observed");
+    };
+    snapshot.pids_current = ResourceReading::Unavailable {
+        reason: ResourceReadFailure::Missing,
+    };
+    snapshot.pids_peak = ResourceReading::Unavailable {
+        reason: ResourceReadFailure::Missing,
+    };
+    snapshot.memory_current = ResourceReading::Unavailable {
+        reason: ResourceReadFailure::Missing,
+    };
+    snapshot.memory_peak = ResourceReading::Unavailable {
+        reason: ResourceReadFailure::Missing,
+    };
+    snapshot.pids_events = ResourceReading::Observed {
+        value: PidsEventCounters { max: None },
+    };
+    snapshot.pids_events_local = ResourceReading::Observed {
+        value: PidsEventCounters { max: None },
+    };
+    snapshot.memory_events = ResourceReading::Observed {
+        value: MemoryEventCounters {
+            low: None,
+            high: None,
+            max: None,
+            oom: None,
+            oom_kill: None,
+            oom_group_kill: None,
+        },
+    };
+    snapshot.memory_events_local = snapshot.memory_events.clone();
+    snapshot.cgroup_events = ResourceReading::Observed {
+        value: CgroupEventCounters {
+            populated: None,
+            frozen: None,
+        },
+    };
+    let empty_events = ResourceUsageSample::Observed { snapshot };
+    diagnostics.record(empty_events.clone(), false, false);
+    assert_eq!(diagnostics.history.iter().flatten().count(), 1);
+
+    // The fixture's retained history demonstrates Some(0) and Some(false)
+    // count as actual observations, rather than being mistaken for emptiness.
     assert_eq!(
         diagnostics.history[0]
             .as_ref()
@@ -378,7 +429,7 @@ fn history_preserves_partial_unknowns_and_skips_limit_only_observations() {
     );
     assert_eq!(
         diagnostics.latest,
-        match limits_only {
+        match empty_events {
             ResourceUsageSample::Observed { snapshot } => Some(snapshot),
             _ => unreachable!(),
         }
