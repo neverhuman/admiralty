@@ -1020,9 +1020,31 @@ pub(crate) async fn events(
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn private_fixture_dir() -> tempfile::TempDir {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let dir = tempfile::Builder::new()
+                .permissions(std::fs::Permissions::from_mode(0o700))
+                .tempdir()
+                .expect("private fixture");
+            assert_eq!(
+                dir.path()
+                    .metadata()
+                    .expect("metadata")
+                    .permissions()
+                    .mode()
+                    & 0o777,
+                0o700
+            );
+            dir
+        }
+        #[cfg(not(unix))]
+        tempfile::tempdir().expect("fixture")
+    }
     #[test]
     fn lane_claims_cannot_overwrite_another_project_or_hide_its_inventory() {
-        let dir = tempfile::tempdir().expect("fixture");
+        let dir = private_fixture_dir();
         let store = Store::open(dir.path().join("db")).expect("store");
         let source = json!({"generated_utc":"2026-10-18T12:00:00Z","host":"n","projects":{},
             "agents":[{"id":"100.worker","screen":"worker","host":"n","project":"p","task":"p-task","branch":"p-branch","model":"exact-model"}],
@@ -1046,7 +1068,7 @@ mod tests {
     }
     #[test]
     fn conflicting_project_and_manager_claims_are_unassigned_and_order_independent() {
-        let dir = tempfile::tempdir().expect("fixture");
+        let dir = private_fixture_dir();
         let store = Store::open(dir.path().join("db")).expect("store");
         let mut source = json!({"generated_utc":"2026-10-18T12:00:00Z","host":"n","projects":{"p":{},"q":{}},
             "agents":[{"id":"100.worker_x","screen":"worker_x","host":"n","project":"unassigned","model":"exact-model"},{"id":"10.shared","screen":"shared","host":"n","project":"unassigned"}],
@@ -1099,7 +1121,7 @@ mod tests {
     }
     #[test]
     fn ambiguous_short_screen_names_do_not_bind_lanes_or_managers() {
-        let dir = tempfile::tempdir().expect("fixture");
+        let dir = private_fixture_dir();
         let store = Store::open(dir.path().join("db")).expect("store");
         let mut source = json!({"generated_utc":"2026-10-18T12:00:00Z","host":"n","projects":{"p":{}},
             "agents":[{"id":"1.same","screen":"same","host":"n","project":"unassigned","model":"model","model_source":"cached footer","model_observed_utc":"2026-10-18T10:00:00Z"},{"id":"2.same","screen":"same","host":"n","project":"unassigned"}],
@@ -1144,7 +1166,7 @@ mod tests {
     }
     #[test]
     fn unknown_project_and_owner_named_worker_remain_discoverable() {
-        let dir = tempfile::tempdir().expect("fixture");
+        let dir = private_fixture_dir();
         let store = Store::open(dir.path().join("store.sqlite")).expect("store");
         let source = json!({"generated_utc":"2026-10-18T12:00:00Z","host":"node","projects":{},"hierarchy":{"owner":"Owner"},
             "agents":[{"id":"12.Owner","screen":"Owner","host":"node","project":"orphan"}]});
@@ -1162,7 +1184,7 @@ mod tests {
     }
     #[test]
     fn explicit_watcher_observation_retains_identity_and_reported_model() {
-        let dir = tempfile::tempdir().expect("fixture");
+        let dir = private_fixture_dir();
         let store = Store::open(dir.path().join("store.sqlite")).expect("store");
         let source = json!({"generated_utc":"2026-10-18T12:00:00Z","host":"node","projects":{},
             "hierarchy":{"grokbot":{"id":"22.grokbot","host":"node","model":"grok-4","model_source":"heartbeat","agent_running":true}},
@@ -1183,7 +1205,7 @@ mod tests {
     }
     #[test]
     fn projection_retains_taskless_projects_node_identity_and_honest_model_presence() {
-        let dir = tempfile::tempdir().expect("fixture");
+        let dir = private_fixture_dir();
         let store = Store::open(dir.path().join("store.sqlite")).expect("store");
         let source = json!({"generated_utc":"2026-10-18T12:00:00Z","host":"a","projects":{},"project_catalog":[{"id":"empty","name":"Empty"}],"agents":[{"id":"1.same","screen":"same","host":"a","project":"empty","model":null},{"id":"1.same","screen":"same","host":"b","project":"unassigned","model":"model-b"}],"hierarchy":{"captains":[{"key":"empty","screen":"manager","workers":[{"screen":"same","host":"a"}]}]}});
         let result = project(&store.snapshot().expect("snapshot"), Some(&source), false);
