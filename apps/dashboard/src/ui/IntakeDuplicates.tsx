@@ -81,7 +81,7 @@ export function IntakeDuplicateResults({
     <h3>Related work</h3>
     {previous && <p role="status">Showing previous results; the latest page request failed.</p>}
     <p>{coverageLabel(coverage)}</p>
-    <p>Query digest: <code style={{ overflowWrap: 'anywhere' }}>{queryDigest}</code></p>
+    <p>Latest page query digest: <code style={{ overflowWrap: 'anywhere' }}>{queryDigest}</code></p>
     {candidates.length === 0
       ? <p>No related work returned on this page. Coverage describes how much of the lookup was checked.</p>
       : <div style={tableWrap}>
@@ -150,6 +150,7 @@ export default function IntakeDuplicates({
 
   async function load(cursor: string | null, append: boolean) {
     if (disabled || !token || !intakeToken) return;
+    if (controller.current) return;
     const projectId = preview.authorized_scope.project_id;
     const rootId = preview.authorized_scope.root_id;
     if (!projectId || !rootId) {
@@ -176,7 +177,20 @@ export default function IntakeDuplicates({
     controller.current = activeController;
     const requestGeneration = ++generation.current;
     if (prior) setState({ ...prior, loading: true, error: null, previous: false });
-    else setState(null);
+    else setState({
+      previewIdentity,
+      token,
+      intakeToken,
+      fetcher,
+      candidates: [],
+      coverage: { kind: 'incomplete', reason: 'Search is in progress.' },
+      queryDigest: '',
+      pages: 0,
+      seenCursors: [],
+      loading: true,
+      error: null,
+      previous: false,
+    });
     try {
       const query = buildDuplicateQuery(preview, cursor, PAGE_LIMIT);
       const expectedDigest = await duplicateQueryDigest(query);
@@ -250,10 +264,13 @@ export default function IntakeDuplicates({
       style={button}
       disabled={disabled || !token || !intakeToken || currentState?.loading === true}
       onClick={() => void load(null, false)}
-    >{currentState?.loading ? 'Searching…' : 'Find related work'}</button>
+    >{currentState?.loading && currentState.pages === 0 ? 'Searching…' : 'Find related work'}</button>
     {!token || !intakeToken ? <p>Both owner access and the separate intake token are required.</p> : null}
+    {currentState?.loading && <p role="status" aria-live="polite">
+      {currentState.pages > 0 ? 'Loading next page…' : 'Searching related work…'}
+    </p>}
     {currentState?.error && <p role="alert">{currentState.error}</p>}
-    {currentState && <>
+    {currentState && currentState.pages > 0 && <>
       <IntakeDuplicateResults
         candidates={currentState.candidates}
         coverage={currentState.coverage}
