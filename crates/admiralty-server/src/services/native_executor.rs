@@ -1249,7 +1249,7 @@ impl PrivateJournal {
         Ok(artifacts)
     }
     fn read_artifact(&self, name: &str) -> Result<Option<(u64, String)>, NativeExecutorError> {
-        use rustix::fs::{AtFlags, OFlags, openat, statat};
+        use rustix::fs::{AtFlags, FileType, OFlags, openat, statat};
         self.validate_current()?;
         if Path::new(name).components().count() != 1
             || !matches!(
@@ -1266,6 +1266,15 @@ impl PrivateJournal {
             Err(rustix::io::Errno::NOENT) => return Ok(None),
             Err(_) => return Err(NativeExecutorError::Journal),
         };
+        if FileType::from_raw_mode(entry.st_mode) != FileType::RegularFile
+            || entry.st_uid != rustix::process::geteuid().as_raw()
+            || entry.st_nlink != 1
+            || entry.st_mode & 0o077 != 0
+            || entry.st_size < 0
+            || entry.st_size as u64 > 512 * 1024
+        {
+            return Err(NativeExecutorError::Journal);
+        }
         let fd = match openat(
             &self.directory,
             name,
@@ -1306,6 +1315,19 @@ impl PrivateJournal {
             || before.mtime_nsec() != after.mtime_nsec()
             || before.ctime() != after.ctime()
             || before.ctime_nsec() != after.ctime_nsec()
+        {
+            return Err(NativeExecutorError::Journal);
+        }
+        let after_entry = statat(&self.directory, name, AtFlags::SYMLINK_NOFOLLOW)
+            .map_err(|_| NativeExecutorError::Journal)?;
+        if FileType::from_raw_mode(after_entry.st_mode) != FileType::RegularFile
+            || after_entry.st_dev as u64 != before.dev()
+            || after_entry.st_ino as u64 != before.ino()
+            || after_entry.st_uid != before.uid()
+            || after_entry.st_nlink as u64 != before.nlink()
+            || after_entry.st_mode as u32 != before.mode()
+            || after_entry.st_size < 0
+            || after_entry.st_size as u64 != before.len()
         {
             return Err(NativeExecutorError::Journal);
         }
@@ -2698,6 +2720,10 @@ mod tests {
             executor.inspect_run_journal("bad/run"),
             Err(NativeExecutorError::InvalidBinding)
         ));
+        assert!(matches!(
+            executor.inspect_run_journal(&"r".repeat(MAX_RUN_ID_BYTES + 1)),
+            Err(NativeExecutorError::InvalidBinding)
+        ));
         drop(executor);
         fs::remove_dir_all(temp).expect("owned fixture cleanup");
     }
@@ -2733,6 +2759,16 @@ mod tests {
             Err(NativeExecutorError::Journal)
         ));
         fs::remove_file(journal.join(&prepared)).expect("remove test link");
+        let socket_path = std::env::temp_dir().join(format!("admj-{}", std::process::id()));
+        let _socket =
+            std::os::unix::net::UnixListener::bind(&socket_path).expect("create socket fixture");
+        fs::rename(&socket_path, journal.join(&prepared)).expect("place nonregular artifact");
+        assert!(matches!(
+            executor.inspect_run_journal(run_id),
+            Err(NativeExecutorError::Journal)
+        ));
+        drop(_socket);
+        fs::remove_file(journal.join(&prepared)).expect("remove socket fixture");
         let private = journal.join(&prepared);
         fs::write(&private, b"private evidence").expect("private test artifact");
         fs::set_permissions(&private, fs::Permissions::from_mode(0o600))
