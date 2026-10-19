@@ -4,7 +4,7 @@ Planning baseline: `1e8ed17eff27ed3ab80dc6860fc8eda301406aee`. Implementation st
 
 Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). Integrator assigns one current base/interface version and exact write scope per packet. Update this table from evidence; do not infer completion from agent messages.
 
-Latest independent remaining-work audit: [18 October, source 7bb2784d](REMAINING_AUDIT_2026-10-18.md). Its 32-packet matrix reconciles current source and live 19:16–19:20 UTC observations; older merge-window and queued-CI notes below remain historical. P00 artifact closeout and P01–P31 implementation/qualification gates remain open. No native activation or whole-packet acceptance is established by the dashboard's shared-workspace `verified` labels.
+Latest full remaining-work matrix: [18 October, source 7bb2784d](REMAINING_AUDIT_2026-10-18.md), with later source-specific corrections below. The native Rust dashboard/observer are now primary; P00/P01 foundation criteria are accepted at `ebc5a8dc`. P02–P31 remain open. Older merge-window, deployment and queued-CI notes are historical. Dashboard shared-workspace `verified` labels never establish whole-packet acceptance or general autonomous execution qualification.
 
 Native release priority (owner steering, 18 October): I0 scoped pending index is
 merged in [PR63](https://github.com/neverhuman/admiralty/pull/63), receiving main
@@ -23,8 +23,8 @@ registered resource limits, unrelated jobs and preserved work remain in force.
 
 | Packet | State | Owner | Integrated commit or candidate | Evidence and next action |
 | --- | --- | --- | --- | --- |
-| P00 | review | evidence lane + integration review | independently checked at `a9ba930e` | 37 pinned hashes, 11 synthetic cases, distinct 449/503 baselines and unknown-explicit inventory worksheet satisfy inspected artifact criteria; hashed current execution evidence recorded, authorized engineering receipt closeout pending |
-| P01 | in_progress | integration + quality review | combined source `318ac713` | All 30 named targets registered; Mac 582 and clean Linux 584 Rust checks plus strict gates pass; hosted jobs queued without a runner; full fault/simulator matrix pending |
+| P00 | accepted | evidence lane + independent integration review | `ebc5a8dc081185d2824f653fc3924147d66d11ed` | 37 pinned hashes, 11 explicitly synthetic cases, distinct 449/503 baselines, unknown-explicit inventory and actual legacy-import checks; criterion receipt and archived atomic rollout update below |
+| P01 | accepted | integration + independent quality review | `ebc5a8dc081185d2824f653fc3924147d66d11ed` | Named harnesses, pinned toolchains/CI, deterministic fake clock/fault/forge and actual effect-free binary help verified; 1,061 receiving-main Rust checks; production execution remains a separate gate |
 | P02 | in_progress | domain + integration review | reviewed `03772f94` | Typed contracts, pure reducers and schema/TS checks are integrated; complete authority/policy negotiation remains pending |
 | P03 | in_progress | local store agent + integration reviewer | reviewed `29acc013` | Atomic domain/outbox admission, immutable request/effect associations, replay and receive-time retry compatibility tested; durable executor admission loop pending |
 | P04 | in_progress | artifact + custody lanes + strong review | reviewed `29acc013` | Transactional asset/pin catalog with full observation binding, fixed clock policy and receipt closure; trusted filesystem observation/startup activation pending |
@@ -1047,3 +1047,64 @@ writer composition, deterministic role capsules and existing-type public schema
 exports. Grok's three repair lanes keep their original exclusive scopes. The
 Commodore remains the sole deployment writer; native general execution stays
 explicitly unqualified until the complete actual chain passes.
+
+## Durable starts, compact capsules and contract closure — 2026-10-19T00:10Z
+
+The next combined source records actual native starts through a required trusted
+`StartedSink`: the executor journals the observation, then the Store sink appends
+the fully scoped `TaskStarted` event before completion can be handed off. Sink
+failure retains the original admission, session host and descriptor-backed
+workspace. Exact retry/reopen, mismatched binding, capacity and callback-failure
+tests pass. Unstarted plans have a lock-protected withdrawal path; unknown or
+already prepared launches cannot silently release their retained owners.
+
+Four additional deterministic capsule compilers cover decisions, handoffs,
+project exceptions and fleet exceptions. Protected facts, exact decimal budgets,
+immutable references and unknowns survive bounded encoding. The decoder checks
+the independently retained role, epoch and protected-fact digest. These payloads
+grant no authority; persisted render baselines and measured context savings are
+still open. Eight existing domain roots now join the original four Rust-derived
+public schemas, TypeScript contracts and runtime guards, including exact u64
+decimal-string bounds. No serialization policy or private authority type is
+made public by this export.
+
+Independent integration caught an initial dashboard bundle increase from the
+additional guards. Splitting unused roots restores the initial bundle while
+preserving the original four executable guards. Native package staging now
+requires the exact nine hash-bound sibling modules; missing/unknown dependencies
+fail before staging. Tests actually import the staged closure in Node and
+exercise all twelve guards. The Rust CI job therefore installs the same pinned
+Node24 action already used by the contract job. This is explicit component
+staging, not a JavaScript sandbox, signed bundle or supported installer.
+
+The [aggregate receipt](../../../receipts/integration/native-composition-20261019T0010Z.json)
+distinguishes the earlier full workspace run at `56663d1c` (1,076 passed,
+four ignored) from later changes. After PR77, all 51 server tests pass. Final
+source `6b7d7173dc564645ffb7a015902b271718e14468` passes all 48 CLI tests,
+101 frontend tests, ten contract/actual TypeScript-consumer tests, generation
+drift, strict CLI Clippy, formatting and the production TypeScript/Vite build.
+Its main JS is 496.23kB raw / 114.60kB Vite gzip; the earlier controlled base
+comparison is recorded separately. None of these results is silently attributed
+to a later receiving-main SHA.
+
+PR77's conservative repair is merged at `19c42ffb`: settlement requires an
+explicit trusted verifier, default unknown closure retains liability/capacity,
+and linked admission checks current authority/time. The component is not an
+installed atomic production model-budget issuer. PR69 is merged at `37a1d2ab`
+after exact-head browser CI run39178216770 passed all thirteen tests with pinned
+axe and a mandatory actual Rust backend. Its original owner receipt contained
+an incorrect explanatory axe hash; the original is retained with a separate
+correction, while approval relies on the actual successful CI log. Fixture
+lost-response retries remain distinct from real native API coverage.
+
+The prior `ebc5a8dc` main CI job hit its 15-minute limit after passing formatting,
+Clippy and many tests; no assertion failure was observed. A read-only audit
+found concrete progress in newer jobs and substantial runner I/O/speed variance.
+No tests, limits or unrelated runner services were removed or weakened. The
+deployment owner has advanced the live service to `ebc5a8dc`; later merged source
+must be deployed with its own source-pinned build evidence. PR78's new bounded
+source-candidate revision remains under exact-head review. The complete real
+provider → immutable changed source → independent checks → Store acceptance
+chain, restart continuity, durable accounting/coordination and remaining P02–P31
+criteria stay open. No general execution qualification or new parent acceptance
+is claimed.

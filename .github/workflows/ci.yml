@@ -28,6 +28,10 @@ jobs:
           test "$(stat -c %a "$scratch")" = 700
           printf 'TMPDIR=%s\n' "$scratch" >> "$GITHUB_ENV"
           stat -c 'scratch-ancestor=%n uid=%u mode=%a' / /tmp "$scratch"
+      # The Rust package tests import the real staged JS guards in Node.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
       - name: Install pinned Rust
         run: |
           export CARGO_HOME="$RUNNER_TEMP/admiralty-cargo"
