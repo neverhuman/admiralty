@@ -11,8 +11,11 @@ import {
   computeDistBundleDigest,
   createBoundedCdpFrameReader,
   ensureBuiltDashboard,
+  fillInputByLabelStage,
   isProcessAlive,
   launchBrowserHarness,
+  MAX_STAGE_EVALUATE_BUDGET_MS,
+  selectByLabelStage,
   startDashboardTestServer,
   startIsolatedNativeAdmiraltyServer,
   type BrowserHarness,
@@ -575,6 +578,112 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
         /Timed out waiting for selector "#non-existent-stage-probe" after 200ms/,
       );
       expect(Date.now() - stageStartMs).toBeLessThan(2_500);
+
+      // Verify fillInputByLabel and selectByLabel validate timeoutMs, cap each evaluate call to
+      // Math.min(2_500, remainingMs) (never 20,000ms), stop when remaining <= 0, and preserve failure/error context
+      for (const invalidStageTimeout of [0, -50, 1.5, Number.POSITIVE_INFINITY, Number.NaN]) {
+        await expect(
+          fillInputByLabelStage(
+            async <T>(): Promise<T> => ({ ok: true } as unknown as T),
+            'Title',
+            'val',
+            invalidStageTimeout,
+          ),
+        ).rejects.toThrow(/Invalid fillInputByLabel timeoutMs: expected positive finite integer/);
+        await expect(
+          selectByLabelStage(
+            async <T>(): Promise<T> => ({ ok: true } as unknown as T),
+            'Select task',
+            'task-001',
+            invalidStageTimeout,
+          ),
+        ).rejects.toThrow(/Invalid selectByLabel timeoutMs: expected positive finite integer/);
+      }
+
+      const recordedInputBudgets: number[] = [];
+      await expect(
+        fillInputByLabelStage(
+          async <T>(_expr: string, evalTimeoutMs: number): Promise<T> => {
+            recordedInputBudgets.push(evalTimeoutMs);
+            await new Promise((r) => setTimeout(r, 45));
+            if (recordedInputBudgets.length === 1) {
+              throw new Error('CDP Runtime.evaluate transient failure on poll 1');
+            }
+            return {
+              ok: false,
+              reason: 'label "Revise contract title" found but associated input/textarea is missing (for="revise-title")',
+            } as unknown as T;
+          },
+          'Revise contract title',
+          'Updated title',
+          140,
+        ),
+      ).rejects.toThrow(
+        /Input for label not found: Revise contract title after 140ms \(reason: label "Revise contract title" found but associated input\/textarea is missing \(for="revise-title"\); lastEvalError: CDP Runtime\.evaluate transient failure on poll 1\)/,
+      );
+      expect(recordedInputBudgets.length).toBeGreaterThanOrEqual(2);
+      for (const budget of recordedInputBudgets) {
+        expect(budget).toBeGreaterThan(0);
+        expect(budget).toBeLessThanOrEqual(140);
+        expect(budget).toBeLessThanOrEqual(MAX_STAGE_EVALUATE_BUDGET_MS);
+      }
+      // Verify strictly decreasing remaining budget across poll iterations
+      expect(recordedInputBudgets[1]!).toBeLessThan(recordedInputBudgets[0]!);
+
+      // Verify 5,000ms default stage timeout caps individual evaluate calls at MAX_STAGE_EVALUATE_BUDGET_MS (2,500ms)
+      let firstFiveSecBudget = 0;
+      await fillInputByLabelStage(
+        async <T>(_expr: string, evalTimeoutMs: number): Promise<T> => {
+          firstFiveSecBudget = evalTimeoutMs;
+          return { ok: true } as unknown as T;
+        },
+        'Title',
+        'Ready value',
+      );
+      expect(firstFiveSecBudget).toBeGreaterThan(0);
+      expect(firstFiveSecBudget).toBeLessThanOrEqual(MAX_STAGE_EVALUATE_BUDGET_MS);
+
+      const recordedSelectBudgets: number[] = [];
+      await expect(
+        selectByLabelStage(
+          async <T>(_expr: string, evalTimeoutMs: number): Promise<T> => {
+            recordedSelectBudgets.push(evalTimeoutMs);
+            await new Promise((r) => setTimeout(r, 45));
+            if (recordedSelectBudgets.length === 1) {
+              throw new Error('Runtime.evaluate timed out after 65ms');
+            }
+            return {
+              ok: false,
+              reason: 'option "task-ui-cmd-999" not present in <select> (available options: [task-001, task-002])',
+            } as unknown as T;
+          },
+          'Select task',
+          'task-ui-cmd-999',
+          140,
+        ),
+      ).rejects.toThrow(
+        /Select for label not found: Select task \(option task-ui-cmd-999\) after 140ms \(reason: option "task-ui-cmd-999" not present in <select> \(available options: \[task-001, task-002\]\); lastEvalError: Runtime\.evaluate timed out after 65ms\)/,
+      );
+      expect(recordedSelectBudgets.length).toBeGreaterThanOrEqual(2);
+      for (const budget of recordedSelectBudgets) {
+        expect(budget).toBeGreaterThan(0);
+        expect(budget).toBeLessThanOrEqual(140);
+        expect(budget).toBeLessThanOrEqual(MAX_STAGE_EVALUATE_BUDGET_MS);
+      }
+      expect(recordedSelectBudgets[1]!).toBeLessThan(recordedSelectBudgets[0]!);
+
+      // Verify live browser.fillInputByLabel and browser.selectByLabel enforce bounded stage timeouts and preserve DOM failure context
+      const liveFillStartMs = Date.now();
+      await expect(browser.fillInputByLabel('Non-existent input label probe', 'val', 160)).rejects.toThrow(
+        /Input for label not found: Non-existent input label probe after 160ms \(reason: label or aria-label Non-existent input label probe not found/,
+      );
+      expect(Date.now() - liveFillStartMs).toBeLessThan(1_500);
+
+      const liveSelectStartMs = Date.now();
+      await expect(browser.selectByLabel('Non-existent select label probe', 'opt-missing', 160)).rejects.toThrow(
+        /Select for label not found: Non-existent select label probe \(option opt-missing\) after 160ms \(reason: label Non-existent select label probe not found/,
+      );
+      expect(Date.now() - liveSelectStartMs).toBeLessThan(1_500);
     },
     30_000,
   );
