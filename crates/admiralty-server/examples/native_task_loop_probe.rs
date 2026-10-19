@@ -242,6 +242,9 @@ mod probe {
         }
         private_directory(output.parent().ok_or("missing check parent")?)?;
         create_private(output)?;
+        // Retain the exact create-only output directory while the compiler
+        // runs; a pathname replacement cannot authorize chmod on another tree.
+        let output_directory = open_private_output_directory(output)?;
         let source = read_owned_file(Path::new("src/main.rs"), 4096)?;
         if source.is_empty() {
             return Err("source is empty".into());
@@ -264,6 +267,7 @@ mod probe {
             output,
             Duration::from_secs(20),
         )?;
+        normalize_compiler_output(output, &output_directory)?;
         validate_program(&binary)?;
         verify_compiled_output(
             fixed_command(
@@ -278,6 +282,86 @@ mod probe {
             expected,
         )?;
         println!("compiled changed source matches protected oracle");
+        Ok(())
+    }
+    fn open_private_output_directory(path: &Path) -> Result<fs::File> {
+        private_directory(path)?;
+        let directory = fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(
+                (rustix::fs::OFlags::DIRECTORY
+                    | rustix::fs::OFlags::NOFOLLOW
+                    | rustix::fs::OFlags::CLOEXEC)
+                    .bits() as i32,
+            )
+            .open(path)?;
+        validate_output_directory(path, &directory)?;
+        Ok(directory)
+    }
+    fn validate_output_directory(path: &Path, directory: &fs::File) -> Result<()> {
+        let actual = directory.metadata()?;
+        let entry = fs::symlink_metadata(path)?;
+        if !actual.is_dir()
+            || actual.uid() != rustix::process::geteuid().as_raw()
+            || actual.mode() & 0o7777 != 0o700
+            || !entry.is_dir()
+            || entry.uid() != actual.uid()
+            || entry.mode() & 0o7777 != 0o700
+            || entry.dev() != actual.dev()
+            || entry.ino() != actual.ino()
+        {
+            return Err("compiler output directory custody changed".into());
+        }
+        Ok(())
+    }
+    fn normalize_compiler_output(output: &Path, directory: &fs::File) -> Result<()> {
+        validate_output_directory(output, directory)?;
+        // No process-global umask mutation. Only the exact new compiler output
+        // below our retained private directory may become private/executable.
+        let fd = rustix::fs::openat(
+            directory,
+            "toy",
+            rustix::fs::OFlags::RDONLY
+                | rustix::fs::OFlags::NOFOLLOW
+                | rustix::fs::OFlags::NONBLOCK
+                | rustix::fs::OFlags::CLOEXEC,
+            rustix::fs::Mode::empty(),
+        )?;
+        let file = fs::File::from(fd);
+        let before = file.metadata()?;
+        let entry = fs::symlink_metadata(output.join("toy"))?;
+        if !before.is_file()
+            || before.uid() != rustix::process::geteuid().as_raw()
+            || before.nlink() != 1
+            || before.mode() & 0o7000 != 0
+            || before.mode() & 0o111 == 0
+            || before.len() == 0
+            || before.len() > 128 * 1024 * 1024
+            || !entry.is_file()
+            || entry.dev() != before.dev()
+            || entry.ino() != before.ino()
+        {
+            return Err(
+                "compiler output must be an owned executable single-link regular file".into(),
+            );
+        }
+        file.set_permissions(fs::Permissions::from_mode(0o700))?;
+        file.sync_all()?;
+        let after = file.metadata()?;
+        let entry = fs::symlink_metadata(output.join("toy"))?;
+        if after.dev() != before.dev()
+            || after.ino() != before.ino()
+            || after.uid() != before.uid()
+            || after.nlink() != 1
+            || after.len() != before.len()
+            || after.mode() & 0o7777 != 0o700
+            || !entry.is_file()
+            || entry.dev() != after.dev()
+            || entry.ino() != after.ino()
+        {
+            return Err("compiler output changed during private-mode normalization".into());
+        }
+        validate_output_directory(output, directory)?;
         Ok(())
     }
     fn fixed_command(
@@ -1647,6 +1731,50 @@ mod probe {
             assert!(mismatch.is::<OracleMismatch>());
             assert_eq!(failure_exit(mismatch.as_ref()), ORACLE_MISMATCH_EXIT);
             assert_ne!(ORACLE_MISMATCH_EXIT, 17);
+        }
+        #[test]
+        fn compiler_output_775_is_normalized_without_weakening_program_validation() {
+            let dir = private_fixture();
+            let output = dir.path().join("compiler-output");
+            create_private(&output).unwrap();
+            let custody = open_private_output_directory(&output).unwrap();
+            let binary = output.join("toy");
+            write_new(&binary, b"owned compiler output").unwrap();
+            fs::set_permissions(&binary, fs::Permissions::from_mode(0o775)).unwrap();
+            assert!(validate_program(&binary).is_err());
+            normalize_compiler_output(&output, &custody).unwrap();
+            assert_eq!(fs::metadata(&binary).unwrap().mode() & 0o7777, 0o700);
+            assert_eq!(
+                read_owned_file(&binary, 128).unwrap(),
+                b"owned compiler output"
+            );
+            validate_program(&binary).unwrap();
+        }
+        #[test]
+        fn compiler_output_normalization_refuses_links_and_replaced_directory() {
+            let dir = private_fixture();
+            let output = dir.path().join("compiler-output");
+            create_private(&output).unwrap();
+            let custody = open_private_output_directory(&output).unwrap();
+            let outside = dir.path().join("outside");
+            write_new(&outside, b"must not chmod").unwrap();
+            fs::set_permissions(&outside, fs::Permissions::from_mode(0o775)).unwrap();
+            let binary = output.join("toy");
+            std::os::unix::fs::symlink(&outside, &binary).unwrap();
+            assert!(normalize_compiler_output(&output, &custody).is_err());
+            assert_eq!(fs::metadata(&outside).unwrap().mode() & 0o7777, 0o775);
+            fs::remove_file(&binary).unwrap();
+            fs::hard_link(&outside, &binary).unwrap();
+            assert!(normalize_compiler_output(&output, &custody).is_err());
+            assert_eq!(fs::metadata(&outside).unwrap().mode() & 0o7777, 0o775);
+            fs::remove_file(&binary).unwrap();
+            let moved = dir.path().join("original-output");
+            fs::rename(&output, &moved).unwrap();
+            create_private(&output).unwrap();
+            write_new(&binary, b"replacement output").unwrap();
+            fs::set_permissions(&binary, fs::Permissions::from_mode(0o775)).unwrap();
+            assert!(normalize_compiler_output(&output, &custody).is_err());
+            assert_eq!(fs::metadata(&binary).unwrap().mode() & 0o7777, 0o775);
         }
     }
 }
