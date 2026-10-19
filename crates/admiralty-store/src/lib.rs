@@ -78,6 +78,8 @@ pub enum StoreError {
     #[error(transparent)]
     IntakeCapture(#[from] intake_capture::CaptureError),
     #[error(transparent)]
+    Question(#[from] questions::QuestionStoreError),
+    #[error(transparent)]
     Inbox(#[from] inbox::InboxError),
     #[error("store already has an owner")]
     AlreadyOwned,
@@ -160,6 +162,17 @@ pub trait LifecycleAuthority: Send + Sync {
     ) -> bool;
 }
 
+/// Independently installed startup policies. This type is never deserialized
+/// from a request; default construction installs no authority. Each policy is
+/// rechecked by the sole writer on every corresponding command/replay.
+#[derive(Default)]
+pub struct StoreAuthorities {
+    pub lifecycle: Option<Arc<dyn LifecycleAuthority>>,
+    pub intake: Option<Arc<dyn intake::IntakeAuthority>>,
+    pub intake_capture: Option<Arc<dyn intake_capture::IntakeCaptureAuthority>>,
+    pub questions: Option<Arc<dyn questions::QuestionAuthority>>,
+}
+
 enum Request {
     CaptureIntake {
         request: Box<intake_capture::CaptureIntakeRequest>,
@@ -170,6 +183,14 @@ enum Request {
         id: String,
         revision: Option<u32>,
         reply: Reply<Option<intake_capture::CapturedIntake>>,
+    },
+    QuestionCommand {
+        request: Box<questions::QuestionCommand>,
+        reply: Reply<questions::QuestionReceipt>,
+    },
+    QuestionRead {
+        request: Box<questions::QuestionRead>,
+        reply: Reply<Option<questions::DurableQuestion>>,
     },
     RecordIntake {
         request: Box<admiralty_core::intake::RecordIntakeRequest>,
@@ -340,24 +361,37 @@ pub struct Store {
 
 impl Store {
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
-        Self::open_configured(path.as_ref(), None, None, None)
+        Self::open_with_startup_authorities(path, StoreAuthorities::default())
     }
 
-    /// Trusted composition boundary. Default `open` denies native mutations.
+    /// Trusted composition boundary. Default open denies native mutations.
     pub fn open_with_lifecycle_authority(
         path: impl AsRef<Path>,
         authority: Arc<dyn LifecycleAuthority>,
     ) -> Result<Self> {
-        Self::open_configured(path.as_ref(), Some(authority), None, None)
+        Self::open_with_startup_authorities(
+            path,
+            StoreAuthorities {
+                lifecycle: Some(authority),
+                ..Default::default()
+            },
+        )
     }
 
-    /// Trusted startup-only composition; default constructors preserve denial.
+    /// Preserves the existing trusted lifecycle/intake startup composition.
     pub fn open_with_authorities(
         path: impl AsRef<Path>,
         lifecycle: Option<Arc<dyn LifecycleAuthority>>,
         intake: Option<Arc<dyn intake::IntakeAuthority>>,
     ) -> Result<Self> {
-        Self::open_configured(path.as_ref(), lifecycle, intake, None)
+        Self::open_with_startup_authorities(
+            path,
+            StoreAuthorities {
+                lifecycle,
+                intake,
+                ..Default::default()
+            },
+        )
     }
 
     /// Trusted startup-only raw capture; no default issuer or task admission.
@@ -365,15 +399,61 @@ impl Store {
         path: impl AsRef<Path>,
         authority: Arc<dyn intake_capture::IntakeCaptureAuthority>,
     ) -> Result<Self> {
-        Self::open_configured(path.as_ref(), None, None, Some(authority))
+        Self::open_with_startup_authorities(
+            path,
+            StoreAuthorities {
+                intake_capture: Some(authority),
+                ..Default::default()
+            },
+        )
     }
 
-    fn open_configured(
-        path: &Path,
-        authority: Option<Arc<dyn LifecycleAuthority>>,
-        intake_authority: Option<Arc<dyn intake::IntakeAuthority>>,
-        intake_capture_authority: Option<Arc<dyn intake_capture::IntakeCaptureAuthority>>,
+    /// Trusted startup installs current question policy; default open denies it.
+    pub fn open_with_question_authority(
+        path: impl AsRef<Path>,
+        authority: Arc<dyn questions::QuestionAuthority>,
     ) -> Result<Self> {
+        Self::open_with_startup_authorities(
+            path,
+            StoreAuthorities {
+                questions: Some(authority),
+                ..Default::default()
+            },
+        )
+    }
+
+    /// Compose explicit independent policies without replacing any other policy.
+    /// No production policy or request-issued authority is created here.
+    pub fn open_with_startup_authorities(
+        path: impl AsRef<Path>,
+        authorities: StoreAuthorities,
+    ) -> Result<Self> {
+        Self::open_configured(path.as_ref(), authorities)
+    }
+
+    pub fn question_command(
+        &self,
+        request: questions::QuestionCommand,
+    ) -> Result<questions::QuestionReceipt> {
+        questions::validate_command(&request)?;
+        self.ask(|reply| Request::QuestionCommand {
+            request: Box::new(request),
+            reply,
+        })
+    }
+
+    pub fn question(
+        &self,
+        request: questions::QuestionRead,
+    ) -> Result<Option<questions::DurableQuestion>> {
+        questions::validate_read_request(&request)?;
+        self.ask(|reply| Request::QuestionRead {
+            request: Box::new(request),
+            reply,
+        })
+    }
+
+    fn open_configured(path: &Path, authorities: StoreAuthorities) -> Result<Self> {
         let path = canonical_database_path(path)?;
         let mut lock_path = path.as_os_str().to_os_string();
         lock_path.push(".writer.lock");
@@ -393,9 +473,10 @@ impl Store {
             .name("admiralty-store-writer".into())
             .spawn(move || match Writer::open(&path, lock) {
                 Ok(mut writer) => {
-                    writer.lifecycle_authority = authority;
-                    writer.intake_authority = intake_authority;
-                    writer.intake_capture_authority = intake_capture_authority;
+                    writer.lifecycle_authority = authorities.lifecycle;
+                    writer.intake_authority = authorities.intake;
+                    writer.intake_capture_authority = authorities.intake_capture;
+                    writer.question_authority = authorities.questions;
                     if ready_tx.send(Ok(())).is_ok() {
                         writer.run(receiver, writer_changes);
                     }
@@ -1256,6 +1337,7 @@ struct Writer {
     lifecycle_authority: Option<Arc<dyn LifecycleAuthority>>,
     intake_authority: Option<Arc<dyn intake::IntakeAuthority>>,
     intake_capture_authority: Option<Arc<dyn intake_capture::IntakeCaptureAuthority>>,
+    question_authority: Option<Arc<dyn questions::QuestionAuthority>>,
     _lock: File,
 }
 
@@ -1299,6 +1381,7 @@ impl Writer {
         attention::initialize(&connection)?;
         intake::initialize(&connection)?;
         intake_capture::initialize(&connection)?;
+        questions::initialize(&connection)?;
         let generation = connection
             .query_row(
                 "SELECT value FROM metadata WHERE key='recovery_generation'",
@@ -1318,6 +1401,7 @@ impl Writer {
             }
         };
         let projection = replay(&connection)?;
+        questions::validate_all(&connection)?;
         let pending_inbox = inbox::PendingInboxIndex::from_projection(&projection)?;
         workplans::validate_task_contracts(
             &connection,
@@ -1331,6 +1415,7 @@ impl Writer {
             lifecycle_authority: None,
             intake_authority: None,
             intake_capture_authority: None,
+            question_authority: None,
             _lock: lock,
         })
     }
@@ -1409,6 +1494,30 @@ impl Writer {
                     );
                 }
 
+                Request::QuestionCommand { request, reply } => {
+                    let task = self.projection.tasks.get(&request.scope.question.task_id);
+                    let _ = reply.send(
+                        questions::append_authorized(
+                            &mut self.connection,
+                            &request,
+                            self.question_authority.as_deref(),
+                            task,
+                        )
+                        .map_err(StoreError::from),
+                    );
+                }
+                Request::QuestionRead { request, reply } => {
+                    let task = self.projection.tasks.get(&request.scope.question.task_id);
+                    let _ = reply.send(
+                        questions::read_authorized(
+                            &self.connection,
+                            &request,
+                            self.question_authority.as_deref(),
+                            task,
+                        )
+                        .map_err(StoreError::from),
+                    );
+                }
                 Request::RegisterAttention { request, reply } => {
                     let _ = reply.send(
                         attention::register(&mut self.connection, *request)
@@ -1926,6 +2035,7 @@ impl Writer {
         attention::validate_all(&self.connection)?;
         intake::validate_all(&self.connection)?;
         intake_capture::validate_all(&self.connection)?;
+        questions::validate_all(&self.connection)?;
         let projection = replay(&self.connection)?;
         let pending_inbox = inbox::PendingInboxIndex::from_projection(&projection)?;
         workplans::validate_task_contracts(
@@ -1948,6 +2058,7 @@ impl Writer {
         attention::validate_all(&self.connection)?;
         intake::validate_all(&self.connection)?;
         intake_capture::validate_all(&self.connection)?;
+        questions::validate_all(&self.connection)?;
         // Hard-link publication is atomic and refuses an existing destination.
         // Staging and destination share a directory, so publication cannot cross filesystems.
         let parent = destination
