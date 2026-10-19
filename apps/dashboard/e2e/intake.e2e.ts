@@ -333,8 +333,12 @@ it('captures a real native Unicode source once and replays an identical browser 
       expect(JSON.stringify(proof).includes(secret)).toBe(false);
     }
     const after = await native.fleet(); assertEmptyNativeFleet(after);
+    const accessibility = await browser.runAxeAudit();
+    expect(accessibility.violations, JSON.stringify(accessibility.violations)).toEqual([]);
+    expect(accessibility.incomplete, JSON.stringify(accessibility.incomplete)).toEqual([]);
     writePrivate(join(native.root, 'browser-proof.json'), {
       binary_sha256: native.binarySha256, production_build: native.build,
+      accessibility,
       transport: proof, native_tasks_before: before.tasks, native_tasks_after: after.tasks,
       native_execution_qualified: false, provider_executed: false, acceptance_granted: false,
       outbox_scope: 'No public outbox inspection API; assert zero native tasks/messages and only preview/capture/read POSTs, not general delivery qualification',
