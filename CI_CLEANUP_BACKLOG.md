@@ -6,6 +6,19 @@ neverhumanbot approval and matched-head rebase. Red/queued CI is never green.
 One cleanup lane takes this list after remaining cutover implementation lands;
 build failures remain immediate work.
 
+Latest source-specific evidence: main36aa0eb workflow39208749813/job117917214621
+passed contracts, formatting and strict workspace Clippy. Its CLI90unit cases,
+5archive CLI and7installer CLI cases passed, so item10's archive-directory
+failure is repaired on this source. The workflow still failed the controlled
+capture deadline from item2:86server cases passed,1failed,2ignored, at
+`native_executor.rs:2319`. Complete failed-job log is retained at
+`/private/tmp/adm-ci-36aa-rust-39208749813.log`, SHA-256
+`d7047ae6d5aa85ffb1507a6171efa5c71e929399b64eee689d3b0c58942ecbed`.
+The exact36aa browser/accessibility workflow39208749754 passed. These results
+do not qualify later6395 intake UI, prove the capture cause or make CI fully
+green. The historical failures below remain preserved; no rerun/runner control
+or additional cleanup lane was started.
+
 1. PR95 Rust job117853119416: four `views` tests create scratch parents with
    inherited group/world-writable permissions. Store correctly refuses them.
    PR96 job117859845225 exposes six affected view fixtures. All six reproduce

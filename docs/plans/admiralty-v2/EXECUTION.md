@@ -1997,3 +1997,42 @@ child/browser journey; it is not run or counted as qualified here. Following the
 code-first ruling, that follow-up does not hold locally built/reviewed component
 integration. No additional CI cleanup lane or unchanged-suite rerun is started.
 All30open parents remain open and native autonomous execution remains false.
+
+### Real native intake browser and accessibility proof — 06:48Z
+
+PR112 merged06:30:14Z to6395f8c76146e5b74e2a8ab3c039987ac70aecb8 after
+neverhumanbot approved exactc388f7c035b7f42a18521d319653f6aa73b76aef at06:30Z.
+Root sent the sole Commodore a new file pointer requesting this build or verified
+successor; root performed no primary service control or live issuer creation.
+
+The [first browser receipt](../../../receipts/integration/native-intake-browser-20261019T0636Z.json)
+records one actual private native-server/browser case passing6.51seconds. It
+commits the original117-byte Unicode source before deliberately dropping that
+response, navigates away/back, retries identical bytes/command ID, observes
+replayed:true and reads the exact original revision. Actual native tasks and
+coordination messages stay zero; both authority flags remain false. Separate
+credentials never appear in markup/storage/URLs or saved transport proof. That
+first case did not run axe and is preserved with its exact earlier source.
+
+Adding the existing pinned axe scan then failed the new form: Owner access and
+Preview exact source inherited light text on browser-default light buttons,
+ratio1.18:1. The actual failed run, bounded failure transport and owned-child exit
+are retained. Root changed only six scoped button styles, with no API/state,
+rule, sandbox, timeout or assertion change. The
+[final receipt](../../../receipts/integration/native-intake-browser-axe-20261019T0648Z.json)
+pins4c5b2fdbf8e74a0224e1a7ec5a6a6ebfc2005c89: one actual case passes2.15seconds;
+axe4.14.0 reports zero violations/incomplete,29passes. Source/bundle hashes,
+actual binary7f414502 and direct child60163/SIGTERM/confirmed exit/PID absence
+are bound to the proof. Dashboard and E2E typechecks pass. Independent final
+source/proof review is clear. Existing123UI and68Linux suites are not repeated.
+
+The new E2E source requires an exact binary SHA and never falls back or skips.
+Three workflow lines export the hash of the actual newly built binary, preserving
+all jobs, existing backend, runner labels, deadlines, sandbox and axe. Actionlint
+passes with the actual existing custom-label catalog; its first plain invocation
+reported only those undeclared custom labels. This is test registration for new
+functionality, not an additional CI cleanup lane. The controlled capture deadline
+from the broader36aa Rust run remains on the single backlog; archive/installer
+groups on that source passed. Neither this private journey nor its strict axe
+result qualifies a production intake grant, coding provider, general outbox,
+reload recovery or any complete parent. Accepted2/32; native execution false.
