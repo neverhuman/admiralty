@@ -1587,7 +1587,7 @@ mod probe {
                 spool_dir: root.join("worker-spool/owned-child"),
             }
         };
-        let environment_values = BTreeMap::from([
+        let mut environment_values = BTreeMap::from([
             ("PATH".into(), "/usr/bin:/bin".into()),
             (
                 "HOME".into(),
@@ -1604,6 +1604,12 @@ mod probe {
             ("LANG".into(), "C".into()),
             ("LC_ALL".into(), "C".into()),
         ]);
+        if codex_fixture.is_some() {
+            // Request a small default async pool within the unchanged32-task
+            // kernel fence. Provider settings/separate pools may ignore it.
+            // Bind it explicitly in the fresh request, never inherit the host.
+            environment_values.insert("TOKIO_WORKER_THREADS".into(), "2".into());
+        }
         let environment = QualifiedEnvironment::new(environment_values.clone())?;
         let backend = SystemdBackendConfig {
             runtime_directory: args.runtime_directory.clone(),

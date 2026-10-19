@@ -36,6 +36,7 @@ pub mod economics;
 pub mod excursions;
 pub mod governor;
 pub mod interfaces;
+pub mod intake;
 pub mod limits;
 pub mod nodes;
 pub mod placement;
