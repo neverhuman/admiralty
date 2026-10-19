@@ -164,6 +164,7 @@
   font-size: 24px;
   letter-spacing: -0.7px;
   font-weight: 600;
+  color: var(--lv-text);
 }
 .lv-readonly {
   margin-left: 8px;
@@ -519,6 +520,8 @@
   min-height: 65px;
   padding: 10px 24px;
   border-bottom: 1px solid var(--lv-line);
+  background: var(--lv-bg);
+  color: var(--lv-text);
 }
 .atlas-summary > div:not(.atlas-legend) {
   display: flex;
@@ -530,6 +533,7 @@
   font-weight: 500;
   letter-spacing: -1px;
   font-variant-numeric: tabular-nums;
+  color: var(--lv-text);
 }
 .atlas-summary > div > span,
 .atlas-summary-note {
@@ -1278,6 +1282,8 @@
   --lv-muted: #4d6078;
   --lv-faint: #7b8da3;
   --lv-accent: #245eab;
+  background: #f5f7fb;
+  color: #172c45;
 }
 .theme-light.visual-console .topbar,
 .theme-light.visual-console .sidebar {

@@ -226,7 +226,7 @@ export interface DashboardTestServer {
   requests: RecordedRequest[];
   clearRequests(): void;
   assertNoOverflow(): void;
-  setFleet(fleet: FleetFixture, includeTerminalV2Tasks?: boolean): void;
+  setFleet(fleet: FleetFixture | NativeFleetV2Fixture, includeTerminalV2Tasks?: boolean): void;
   setFleetV2(fleetV2: NativeFleetV2Fixture | Record<string, unknown>): void;
   getFleetV2Snapshot(): NativeFleetV2Fixture;
   setFleetStatus(status: number, errorDetail?: string): void;
@@ -985,6 +985,13 @@ export async function startDashboardTestServer(
       }
     },
     setFleet(next, includeTerminalV2Tasks = true) {
+      if (next.schema_version === 2) {
+        statefulFleetV2 = next;
+        customFleetV2Payload = null;
+        domainEventHistory.length = 0;
+        fleetStatus = 200;
+        return;
+      }
       fleet = next;
       statefulFleetV2 = fleetV1ToV2(next, { includeTerminalLifecycleTasks: includeTerminalV2Tasks });
       customFleetV2Payload = null;
@@ -2021,6 +2028,7 @@ async function launchBrowserHarnessAttempt(
     evaluate,
     async captureScreenshot(path: string) {
       const result = await sendCdp('Page.captureScreenshot', { format: 'png' }, sessionId) as { data: string };
+      mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, Buffer.from(result.data, 'base64'));
     },
     async waitForText(expectedText: string, timeoutMs = 10_000) {
