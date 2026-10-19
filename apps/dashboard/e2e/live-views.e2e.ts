@@ -282,6 +282,13 @@ describe("built live views against the real Rust server", () => {
     server.writeLegacySnapshot(long);
     await connect("git");
     await browser.waitForText("100 commits");
+    if (
+      await browser.evaluate(
+        `Boolean(document.querySelector('.git-inventory'))`,
+      )
+    )
+      await browser.clickButtonByText("Graph");
+    await browser.waitForSelector(".git-scroll");
     expect(
       await browser.evaluate<number>(
         `document.querySelector('.git-scroll').scrollWidth`,
