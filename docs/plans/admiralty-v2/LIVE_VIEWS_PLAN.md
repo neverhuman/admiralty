@@ -2,7 +2,7 @@
 
 Date: 18 October 2026 (America/Denver). Inspection base: `d7ced28bbcb71471a105752f0e035e4f714abc27`.
 Integration base: `99f4e26cebfab97afa661ed05aea6192bfd5935c`; directly qualified source: `a21532a3147e7a30d47caf02f18d27fa05fb5545`.
-Branch: `codex/live-git-fleet-final`. Owner/integrator: this chat.
+Branch: `codex/live-view-review-repairs` (PR96; base views merged in PR95). Owner/integrator: this chat.
 Workspace: `/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty`.
 
 ## Objective and acceptance
@@ -135,7 +135,7 @@ Final handoff names source/merge SHAs and branch, plan/receipt/operator paths, p
 
 ## Implementation status and source qualification
 
-LV01–LV06 and the local correctness/browser portion of LV07 are implemented on `codex/live-git-fleet-final`, [PR95](https://github.com/neverhuman/admiralty/pull/95). Source `a21532a3147e7a30d47caf02f18d27fa05fb5545`, based on main `99f4e26cebfab97afa661ed05aea6192bfd5935c`, was qualified directly with a clean checkout. The [final source receipt](receipts/LV/a21532a3147e7a30d47caf02f18d27fa05fb5545.json) contains exact commands, source identity, environment, computed file/build hashes, compressed raw logs, screenshots and the authorized read-only review. This evidence-only follow-up changes no runtime bytes. Exact-head neverhumanbot approval and normal merge gates remain required at receipt creation.
+LV01–LV06 and the local correctness/browser portion of LV07 are implemented in merged [PR95](https://github.com/neverhuman/admiralty/pull/95), with the two later independent-review repairs on `codex/live-view-review-repairs`, [PR96](https://github.com/neverhuman/admiralty/pull/96). Source `a21532a3147e7a30d47caf02f18d27fa05fb5545`, based on main `99f4e26cebfab97afa661ed05aea6192bfd5935c`, was qualified directly with a clean checkout. The [final source receipt](receipts/LV/a21532a3147e7a30d47caf02f18d27fa05fb5545.json) contains exact commands, source identity, environment, computed file/build hashes, compressed raw logs, screenshots and the authorized read-only review. PR95 integrated frozen `32dea091` into `35e5890` before the later repairs were published. PR96 starts at `35e5890`; source integration candidate `cc3ee42e0b603cdf0703a34a7fba5b67154b6640` has the exact `ecb1bff` tree, and all twelve runtime objects match the qualified `a21532a` source. This evidence-only correction changes no runtime bytes. Exact-head neverhumanbot approval and normal merge gates remain required at receipt creation.
 
 Direct qualification passes 1,164 Rust tests with five existing ignored; 114 dashboard tests; eleven contract runtime tests; 88 legacy tests run with one existing skip; all nineteen browser checks. Actual temporary repository → Rust observer → native HTTP/SSE → production bundle and synthetic 500-agent census journeys pass. Nine pinned axe surfaces across both themes, map/roster/Git/inventory and narrow reduced-motion presentation have zero violations and zero incomplete. Package/canary self-tests pass (ten/eighteen). These are local macOS results; hosted Linux CI success is not inferred.
 
