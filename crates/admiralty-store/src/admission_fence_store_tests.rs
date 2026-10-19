@@ -34,6 +34,23 @@ use std::{
 
 const BARRIER_TIMEOUT: Duration = Duration::from_secs(5);
 
+fn private_directory() -> tempfile::TempDir {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        // Explicit creation mode is independent of a shared runner's umask.
+        // Never relax Store's parent-directory custody check for a fixture.
+        tempfile::Builder::new()
+            .permissions(std::fs::Permissions::from_mode(0o700))
+            .tempdir()
+            .unwrap()
+    }
+    #[cfg(not(unix))]
+    {
+        tempfile::tempdir().unwrap()
+    }
+}
+
 struct Fixture {
     event: DomainEvent,
     intent: OutboxIntent,
@@ -368,7 +385,7 @@ fn db_counts(path: &Path) -> (i64, i64, i64, i64, i64, i64, i64) {
 
 #[test]
 fn actual_store_holds_paired_cohort_lease_through_commit_and_old_proof_retry_denies() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = private_directory();
     let path = directory.path().join("fenced.sqlite");
     let fixture = seed(&path);
     let event_digest = crate::digest(&serde_json::to_string(&fixture.event).unwrap());
@@ -563,7 +580,7 @@ fn actual_store_holds_paired_cohort_lease_through_commit_and_old_proof_retry_den
 
 #[test]
 fn actual_store_denial_after_acquire_releases_cohort_lease_without_writes() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = private_directory();
     let path = directory.path().join("denied.sqlite");
     let fixture = seed(&path);
     let event_digest = crate::digest(&serde_json::to_string(&fixture.event).unwrap());
@@ -633,7 +650,7 @@ fn actual_store_denial_after_acquire_releases_cohort_lease_without_writes() {
 
 #[test]
 fn stale_budget_cas_rolls_back_all_admission_records_and_releases_the_lease() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = private_directory();
     let path = directory.path().join("stale-budget.sqlite");
     let fixture = seed(&path);
     let advance_policy = Arc::new(ReadCredential);
@@ -716,7 +733,7 @@ fn stale_budget_cas_rolls_back_all_admission_records_and_releases_the_lease() {
 
 #[test]
 fn outbox_collision_incident_commit_keeps_admission_effects_absent_and_releases_lease() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = private_directory();
     let path = directory.path().join("outbox-incident.sqlite");
     let fixture = seed(&path);
     let seed_policy = Arc::new(ReadCredential);
