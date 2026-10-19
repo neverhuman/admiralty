@@ -25,6 +25,7 @@ describe('related work result view', () => {
   it('renders complete coverage and candidate values as escaped evidence text, never links', () => {
     const html = results({ kind: 'complete' });
     expect(html).toContain('Coverage complete for this query.');
+    expect(html).toContain('Latest page query digest:');
     expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
     expect(html).toContain('&lt;script&gt;started&lt;/script&gt;');
     expect(html).toContain('ref:&lt;unsafe&gt;');
