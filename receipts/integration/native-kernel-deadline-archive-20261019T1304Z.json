@@ -1,0 +1,28 @@
+{
+  "observed_utc": "2026-10-19T13:04:09.520Z",
+  "source": "3a2135e384d36cc82e686211e5ebb0e38ff0fa5f",
+  "archive_sha256": "b0ca4b9fc97b2ed840b7c50fbc5d971542d6de55974f24426cdcde84fe47b0d0",
+  "manifest_sha256": "54c61c770f69283856dfa6295d8feb9e9e24fc83e5a6aa0c12b69ffbb563f291",
+  "payloads_verified": 78,
+  "directory": "/home/ubuntu/admiralty-v2-build/receipts/native-kernel-deadline-20261019T1303Z",
+  "gate": {
+    "observed_utc": "2026-10-19T13:04:09.312Z",
+    "cpu_percent": 18.2616881079385,
+    "mem_available_kib": 87656184,
+    "controller_active": true,
+    "freeze": "0",
+    "admitted": true,
+    "provider_started": false
+  },
+  "after": {
+    "observed_utc": "2026-10-19T13:04:10.693Z",
+    "cpu_percent": 20.818924866394216,
+    "mem_available_kib": 87873628,
+    "controller_active": true,
+    "freeze": "0",
+    "admitted": true,
+    "provider_started": false
+  },
+  "provider_run": false,
+  "service_control": false
+}

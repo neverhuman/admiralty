@@ -2814,3 +2814,26 @@ Clippy/fmt0 recorded; separate worker same cases nonadditive. Static review
 Current Linux cfg-only caller compile and combined26cases follow below; no
 provider, actual timeout or stop-grace qualification is claimed. The two earlier
 draft compile/read-path failures remain preserved in the worker receipt.
+
+### 13:04Z — Final combined source qualification and MIT metadata
+
+Exact3a2135e384d36cc82e686211e5ebb0e38ff0fa5f actual cappedLinux142.426s
+passes26distinctcases (8journal+14history+4wrapper,9newsubset) and strict
+runtime/server all-targetClippy, including compilation of Linux-only lifecycle
+example caller. Actual Mac names match26 exactly; wrapper code/metadata reuse
+before3a docs commit is explicit, final journal/history run after3a. All4post
+source hashes match. ActualMacstrictClippy/fmt0 exit files now preserved, not
+the earlier lost metadata. No provider or timeout/stop-grace experiment.
+Canonical native-kernel-deadline-final-20261019T1302Z.json SHA
+6d6748c800287d4cbbcec7f56396e6c57f0717b1b812bb429f290bcec6a8a2f0.
+Remote archive b0ca4b9fc97b2ed840b7c50fbc5d971542d6de55974f24426cdcde84fe47b0d0
+independently rehashes78payloads13:04:09Z under fresh cappedgates. Initial
+recovery22 and worker copies are nonadditive. Source/static/docs reviews retain
+their exact separate scopes; all failed drafts preserved. OwnerMIT choice,
+LICENSE, all9Rust/3JavaScript declarations and contributor/security guides
+are ready. Public distribution/dependency/asset/support/installation/final
+qualification and remaining production/product criteria are not accepted.
+
+Independent final evidence review62235e1710d8880c61352f0a8b74a4219dc51e338c27aea2db18f6c08f8b5fa2
+CLEAR:13direct+56nestedworker hashes,26namedcases,4source hashes and cb2d archive.
+Source review remains9a23; docs/license review1816. No bot test-execution claim.

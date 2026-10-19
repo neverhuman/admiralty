@@ -1,0 +1,225 @@
+{
+  "schema_version": 1,
+  "kind": "native-kernel-deadline-and-final-diagnostic-source",
+  "recorded_utc": "2026-10-19T13:02:16.958Z",
+  "source_revision": "3a2135e384d36cc82e686211e5ebb0e38ff0fa5f",
+  "code_candidate": "3f19a292839006c065c7a72c8f5af1a1e4cd960c",
+  "root_code_import": "0ab8214",
+  "scope": "Required trusted executor Duration at launch, floored positive min with original permit/lease remainder; both actual callers migrated; metadata/journal/history retained unchanged except separate timer call seam.",
+  "validation": {
+    "distinct_cases": 26,
+    "new_subset": 9,
+    "journal_cases": 8,
+    "history_cases": 14,
+    "wrapper_cases": 4,
+    "same_mac_linux_names": true,
+    "mac_source_reuse": "Wrapper test ran before metadata/docs commit3a2135e with identical final four Rust source bytes and license metadata; final journal/history tests ran after3a2135e. No embedded-source-stamp claim.",
+    "mac_clippy_all_targets_exit": 0,
+    "mac_fmt_exit": 0,
+    "linux": {
+      "schema_version": 1,
+      "source": "3a2135e384d36cc82e686211e5ebb0e38ff0fa5f",
+      "source_archive_sha256": "cb2da699f68a8164586c9349813f27bca046ca0ce4ffb6f897bb3f2f843ed7b4",
+      "source_directory": "/home/ubuntu/admiralty-v2-build/native-finaldeadline-3a2135e3-20261019T125854Z",
+      "started_utc": "2026-10-19T12:58:54.974Z",
+      "finished_utc": "2026-10-19T13:01:17.400Z",
+      "code": 0,
+      "signal": null,
+      "error": null,
+      "outer": {
+        "observed_utc": "2026-10-19T12:58:54.479Z",
+        "cpu_percent": 9.35828877005348,
+        "mem_available_kib": 102629972,
+        "controller_active": true,
+        "freeze": "0",
+        "admitted": true,
+        "provider_started": false
+      },
+      "inside_gates_in_log": true,
+      "log_sha256": "5e12c87d184997339a5017ebd2e07f6d7a770aea4554d9c3228a965cc3fb23d8",
+      "log_bytes": 9463,
+      "tail": [
+        "    Checking http-body-util v0.1.5",
+        "    Checking mime v0.3.17",
+        "    Checking fallible-streaming-iterator v0.1.9",
+        "    Checking strsim v0.11.1",
+        "    Checking fallible-iterator v0.3.0",
+        "    Checking ryu v1.0.23",
+        "    Checking clap_lex v1.1.1",
+        "    Checking clap_builder v4.6.7",
+        "    Checking serde_urlencoded v0.7.1",
+        "    Checking rusqlite v0.40.2",
+        "    Checking axum-core v0.5.6",
+        "    Checking num-traits v0.2.19",
+        "    Checking hyper-util v0.1.21",
+        "    Checking tower v0.5.3",
+        "    Checking uuid v1.28.0",
+        "    Checking serde_path_to_error v0.1.20",
+        "    Checking iana-time-zone v0.1.65",
+        "    Checking matchit v0.8.4",
+        "    Checking axum v0.8.9",
+        "    Checking chrono v0.4.45",
+        "    Checking admiralty-store v0.1.0 (/home/ubuntu/admiralty-v2-build/native-finaldeadline-3a2135e3-20261019T125854Z/crates/admiralty-store)",
+        "    Checking clap v4.6.7",
+        "    Checking admiralty-server v0.1.0 (/home/ubuntu/admiralty-v2-build/native-finaldeadline-3a2135e3-20261019T125854Z/crates/admiralty-server)",
+        "    Finished `dev` profile [unoptimized] target(s) in 1m 10s",
+        ""
+      ],
+      "jobs": 1,
+      "test_threads": 1,
+      "unique_target": "/home/ubuntu/admiralty-v2-build/native-finaldeadline-3a2135e3-20261019T125854Z/target-linux",
+      "private_tmp": "/home/ubuntu/admiralty-v2-build/native-finaldeadline-3a2135e3-20261019T125854Z/private-tmp",
+      "cache_copy_only": "/home/ubuntu/admiralty-v2-build/native-recovery-a6df0fb3-20261019T124603Z/target-linux",
+      "workspace_packages_cleaned_in_new_target": true,
+      "original_cache_not_mutated": true,
+      "provider_run": false,
+      "service_control": false,
+      "after": {
+        "observed_utc": "2026-10-19T13:01:18.698Z",
+        "cpu_percent": 21.40221402214022,
+        "mem_available_kib": 89757104,
+        "controller_active": true,
+        "freeze": "0",
+        "admitted": true,
+        "provider_started": false
+      },
+      "scope": "Actual26 tests and runtime/server strict all-target Clippy, including Linux cfg-only lifecycle example compilation, no example execution"
+    },
+    "case_names": [
+      "resource_gate::diagnostics_tests::advisory_journal_changes_preserve_exact_legacy_closure_and_launch_binding_bytes",
+      "resource_gate::diagnostics_tests::bounded_original_directory_reads_numeric_values_without_inferring_a_cause",
+      "resource_gate::diagnostics_tests::deleted_fixture_has_only_explicit_unknown_metrics_never_zero",
+      "resource_gate::diagnostics_tests::first_closed_diagnostics_are_immutable_for_lost_journal_ack_retry",
+      "resource_gate::diagnostics_tests::history_defaults_for_legacy_json_and_rejects_wrong_array_length",
+      "resource_gate::diagnostics_tests::history_keeps_last_eight_readable_snapshots_across_unknown_final_observations",
+      "resource_gate::diagnostics_tests::history_preserves_partial_unknowns_and_skips_limit_only_observations",
+      "resource_gate::diagnostics_tests::identity_failure_and_gone_final_sample_preserve_last_observed_snapshot",
+      "resource_gate::diagnostics_tests::legacy_absent_advisory_fields_decode_to_empty_data_not_a_capability",
+      "resource_gate::diagnostics_tests::malformed_duplicate_overflow_and_extra_event_fields_fail_closed",
+      "resource_gate::diagnostics_tests::per_file_byte_and_event_count_bounds_precede_projection",
+      "resource_gate::diagnostics_tests::renamed_original_directory_is_retained_and_replacement_is_never_reopened",
+      "resource_gate::diagnostics_tests::symlink_and_directory_metrics_never_return_other_file_contents",
+      "resource_gate::diagnostics_tests::unsupported_missing_and_unbounded_files_do_not_become_zero",
+      "resource_gate::tests::wrapper_bounds_runtime_by_executor_permit_and_resource_lease",
+      "resource_gate::tests::wrapper_floors_positive_milliseconds_and_bounds_duration_overflow",
+      "resource_gate::tests::wrapper_rejects_zero_submillisecond_and_expired_runtime_bounds",
+      "resource_gate::tests::wrapper_sets_actual_working_directory_slice_clean_environment_and_remaining_time",
+      "services::native_executor::tests::existing_journal_rejects_registration_without_consuming_preparation",
+      "services::native_executor::tests::inspect_run_journal_fails_closed_on_link_and_oversized_artifact",
+      "services::native_executor::tests::inspect_run_journal_reports_ordered_raw_lengths_and_digests_only",
+      "services::native_executor::tests::inspect_run_journal_returns_empty_for_absent_run_artifacts",
+      "services::native_executor::tests::journal_descriptor_stays_with_original_directory_after_path_substitution",
+      "services::native_executor::tests::journal_preserves_collision_evidence_and_allows_only_exact_idempotent_record",
+      "services::native_executor::tests::rejected_registration_returns_original_preparation_for_invalid_and_journal_errors",
+      "services::native_executor::tests::resource_journal_versions_full_bytes_without_changing_authority_binding"
+    ]
+  },
+  "source_files": [
+    {
+      "path": "crates/admiralty-server/src/services/native_executor.rs",
+      "bytes": 112240,
+      "sha256": "737385b6892670d1ccce05745fad23880e7b9d4fd115d0a424c4c669e62c64fc"
+    },
+    {
+      "path": "crates/admiralty-runtime/src/resource_gate.rs",
+      "bytes": 100108,
+      "sha256": "41c17e6be7c1ce2ba13872d7d15b063ed2ba8244156d6c22a1a8b64ff256af5c"
+    },
+    {
+      "path": "crates/admiralty-runtime/src/resource_gate_diagnostics_tests.rs",
+      "bytes": 24265,
+      "sha256": "fb26c9448b2f95559688682fe8164ea5a17171597dad4c120be4333f1af552c2"
+    },
+    {
+      "path": "crates/admiralty-server/examples/native_lifecycle_probe.rs",
+      "bytes": 44567,
+      "sha256": "8e33ed6f72f451cbec6c10124d80e20d5a66a3e0dad1324a0b707fb4f2c8ec39"
+    }
+  ],
+  "references": [
+    {
+      "path": "/private/tmp/adm-deadline-final-journal.log",
+      "bytes": 1552,
+      "sha256": "2430e8959b7c728475b115018f22e1e7762eb1e1ebbf7e2312254477f7d4e588"
+    },
+    {
+      "path": "/private/tmp/adm-deadline-final-history.log",
+      "bytes": 1894,
+      "sha256": "bba551bf0af5bd441437864b1f2632049d119d49983c389e7643473ff123f34f"
+    },
+    {
+      "path": "/private/tmp/adm-deadline-root-tests.log",
+      "bytes": 819,
+      "sha256": "fbafe246de37dcde1f8a6ffa8f078cb5e65cb6769574d10260c5d715d470155e"
+    },
+    {
+      "path": "/private/tmp/adm-deadline-root-clippy.log",
+      "bytes": 501,
+      "sha256": "612e79ae30617c37db25149ea11d1e9134126b6d46b70cf96fe0c10a28ea0e59"
+    },
+    {
+      "path": "/private/tmp/adm-deadline-root-fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/adm-finaldeadline-linux-result.json",
+      "bytes": 2429,
+      "sha256": "dcd591a11c52d0961f5aab446d936670f86b4ac81e2d586c5d9fc57ddef79719"
+    },
+    {
+      "path": "/private/tmp/adm-finaldeadline-linux-test.log",
+      "bytes": 9463,
+      "sha256": "5e12c87d184997339a5017ebd2e07f6d7a770aea4554d9c3228a965cc3fb23d8"
+    },
+    {
+      "path": "/private/tmp/adm-finaldeadline-linux-posthash.json",
+      "bytes": 889,
+      "sha256": "7c25edf24f530456639cf9c6ce309a64b4f653e9548a6b6d9db30f7e2b3e63e5"
+    },
+    {
+      "path": "/private/tmp/adm-finaldeadline-linux-inputs.json",
+      "bytes": 234,
+      "sha256": "ec5770737806c6141706cfddb4f2e45c50b43417a78de59f6d91225e3f1a7185"
+    },
+    {
+      "path": "/private/tmp/admiralty-finaldeadline-source.tar",
+      "bytes": 19988480,
+      "sha256": "cb2da699f68a8164586c9349813f27bca046ca0ce4ffb6f897bb3f2f843ed7b4"
+    },
+    {
+      "path": "/private/tmp/ADMIRALTY_RUNTIME_DEADLINE_BOUND_3f19a29_static_review.json",
+      "bytes": 2980,
+      "sha256": "9a23db98aa90a17c179fb982acd970b0542cfe1754e5682fe6f6bfb85381dc3c"
+    },
+    {
+      "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/source-worker-receipt.json",
+      "bytes": 33007,
+      "sha256": "7faa03ddb55c22b4218db1ca782ddf748336d4850f0d4c09b018b827f27279ed"
+    },
+    {
+      "path": "/private/tmp/adm-native-recovery-docs-license-final-review.json",
+      "bytes": 9792,
+      "sha256": "1816e8b584390becfac2afbac7c7d2ed0ef95f989fd8eefdc83711fda9f2d896"
+    }
+  ],
+  "review": {
+    "source": "9a23db98aa90a17c179fb982acd970b0542cfe1754e5682fe6f6bfb85381dc3c",
+    "docs_license": "1816e8b584390becfac2afbac7c7d2ed0ef95f989fd8eefdc83711fda9f2d896"
+  },
+  "limits": {
+    "systemd_timeout_or_stop_grace_exercised": false,
+    "provider_executed": false,
+    "grant_created": false,
+    "production_issuer_installed": false,
+    "automatic_recovery_qualified": false,
+    "parent_acceptance": false,
+    "service_control": false,
+    "full_ci_green": false
+  },
+  "notes": [
+    "Historical bcf5 one-run grant remains consumed; this source qualification authorizes no retry.",
+    "The earlier a6df22-case evidence and worker copies of the same tests are nonadditive.",
+    "Private version install/admission components credited; distribution and remaining full criteria stay open."
+  ]
+}
