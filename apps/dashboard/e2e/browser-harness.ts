@@ -2090,8 +2090,14 @@ async function launchBrowserHarnessAttempt(
       await selectByLabelStage(evaluate, labelText, value, timeoutMs);
     },
     async pressKey(key: string) {
-      await sendCdp('Input.dispatchKeyEvent', { type: 'keyDown', key }, sessionId);
-      await sendCdp('Input.dispatchKeyEvent', { type: 'keyUp', key }, sessionId);
+      // Chromium needs a virtual key code for native Tab focus and Enter
+      // button activation; a key label alone only reaches event listeners.
+      const keyCode = ({ Enter: 13, Tab: 9, Escape: 27, ' ': 32 } as Record<string, number>)[key];
+      const fields = keyCode ? { key, windowsVirtualKeyCode: keyCode } : { key };
+      await sendCdp('Input.dispatchKeyEvent', { type: 'keyDown', ...fields,
+        ...(key === 'Enter' ? { code: 'Enter', text: '\r', unmodifiedText: '\r' } : {}),
+      }, sessionId);
+      await sendCdp('Input.dispatchKeyEvent', { type: 'keyUp', ...fields }, sessionId);
     },
     async runAxeAudit(): Promise<AxeAuditReport> {
       const axeBundle = loadPinnedAxeCoreBundle();

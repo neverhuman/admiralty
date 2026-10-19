@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import IntegrationQuality from '../features/integration/IntegrationQuality';
 import {
   validateCoordinationMessage,
   validateDomainEventV2,
@@ -25,7 +26,7 @@ import { createSseParser, cursorFromId, type ConnectionState } from '../events';
 import * as sharedValidation from '../validation';
 import { assertBoundedJson, decimal, parseCursor, parseFleet, type DomainRecord } from '../validation';
 
-export type CommandJourneyTab = 'intake' | 'detail' | 'attention' | 'actions';
+export type CommandJourneyTab = 'intake' | 'detail' | 'attention' | 'actions' | 'integration';
 
 export type AnyTaskState =
   | Fleet['tasks'][number]['state']
@@ -4202,6 +4203,7 @@ export function CommandJourneys({
     { id: 'detail', label: 'Task detail & evidence', badge: fleet?.tasks.length },
     { id: 'attention', label: 'Attention & coordination', badge: attentionCount },
     { id: 'actions', label: 'Operator actions' },
+    { id: 'integration', label: 'Integration & quality' },
   ];
 
   return (
@@ -4287,6 +4289,12 @@ export function CommandJourneys({
           onRefreshSnapshot={() => void triggerRefresh()}
           onAccess={onAccess}
         />
+      )}
+      {tab === 'integration' && (
+        <IntegrationQuality fleet={fleet} onSelectTask={taskId => {
+          setSelectedTaskId(taskId);
+          setTab('detail');
+        }} />
       )}
     </div>
   );
