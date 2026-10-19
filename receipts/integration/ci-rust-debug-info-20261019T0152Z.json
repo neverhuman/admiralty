@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "kind": "ci-rust-debug-info-local-validation",
+  "base_commit": "99f4e26cebfab97afa661ed05aea6192bfd5935c",
+  "workflow_source_sha256": "401ead111d5b57fd904bd9248f3c06f29b866fbc3c321620bc9e292e90f34736",
+  "docs_sha256": "50d732217a0e9913e84f52e7dceba2fc776c48f46be95bdb09472823fa4726ca",
+  "actionlint_version": "1.7.12",
+  "actionlint_labels": [
+    "lan-ci"
+  ],
+  "workflow_semantics_equal_except": [
+    "rust-and-legacy.env.CARGO_PROFILE_DEV_DEBUG=0",
+    "rust-and-legacy.env.CARGO_PROFILE_TEST_DEBUG=0",
+    "selected runner flag diagnostic"
+  ],
+  "retained": [
+    "CARGO_BUILD_JOBS=2",
+    "RUST_TEST_THREADS=1",
+    "15minute deadline",
+    "runner group+labels",
+    "all check steps",
+    "all triggers/pinned toolchains/actions",
+    "read-only permissions/concurrency"
+  ],
+  "controlled_fixture": {
+    "no_dependencies": true,
+    "network": false,
+    "dev_debug_assertions": true,
+    "dev_overflow_expected_exit": 101,
+    "test_debug_assertions": true,
+    "test_overflow_expected_panic_pass": true,
+    "tests_passed": 2,
+    "verbose_rustc_no_debuginfo2": true
+  },
+  "checks": [
+    {
+      "name": "actionlint",
+      "argv": [
+        "actionlint",
+        "-config-file",
+        "/private/tmp/adm-ci-profile-proof-cswk6n8f/actionlint.yaml",
+        "/private/tmp/admiralty-ci-rust-debug-99f4e26/.github/workflows/ci.yml"
+      ],
+      "exit": 0,
+      "log": "retained worker artifact: actionlint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "fixture-dev-build",
+      "argv": [
+        "cargo",
+        "build",
+        "--offline",
+        "-vv"
+      ],
+      "exit": 0,
+      "log": "retained worker artifact: fixture-dev-build.log",
+      "sha256": "f15375f36c262771da53fd1ed87f784628f36670d14138c758c96f5656f4cab3"
+    },
+    {
+      "name": "fixture-dev-debug-assertion",
+      "argv": [
+        "/private/tmp/adm-ci-profile-proof-cswk6n8f/target/debug/ci-debug-profile-probe"
+      ],
+      "exit": 0,
+      "log": "retained worker artifact: fixture-dev-debug-assertion.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "fixture-dev-overflow",
+      "argv": [
+        "/private/tmp/adm-ci-profile-proof-cswk6n8f/target/debug/ci-debug-profile-probe",
+        "overflow"
+      ],
+      "exit": 101,
+      "log": "retained worker artifact: fixture-dev-overflow.log",
+      "sha256": "368d0c719ecfba963057928a8512976c10d4d232f012d73a40a6cc06f3f0299d"
+    },
+    {
+      "name": "fixture-test-profile",
+      "argv": [
+        "cargo",
+        "test",
+        "--offline",
+        "-vv"
+      ],
+      "exit": 0,
+      "log": "retained worker artifact: fixture-test-profile.log",
+      "sha256": "d187e245945773ceba9054097cf19bd61e08f3c81f5b95d2806abb512c5c970d"
+    },
+    {
+      "name": "diff-check",
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        ".github/workflows/ci.yml",
+        "docs/operators/ci-runners.md"
+      ],
+      "exit": 0,
+      "log": "retained worker artifact: diff-check.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "limits": [
+    "No repository suite rerun, live job trigger, runner/service/toolchain or deadline change.",
+    "Minimal actual Cargo1.95 fixture confirms profile default behavior; it is not a workspace performance measurement.",
+    "Line-debug information differs; debug assertions/overflow defaults and checks remain enabled.",
+    "No claim of passing actual GitHub CI or resolved timeout.",
+    "Receiving-source hosted CI remains separate; source integration does not repair or qualify fleet connectivity."
+  ],
+  "source_commit": "de9cff9761f15594baf63f2bd99d5cf5c99c1515",
+  "scope": [
+    ".github/workflows/ci.yml",
+    "docs/operators/ci-runners.md"
+  ],
+  "review": {
+    "static_workflow_semantic_invariants": true,
+    "no_other_workflow_changed": true,
+    "runner_configuration_unchanged": true,
+    "assertion_and_overflow_behavior_confirmed_in_isolated_fixture": true,
+    "independent_root_review_pending": false,
+    "independent_reviewer": "audit_evidence",
+    "exact_workflow_sha256_verified": "401ead111d5b57fd904bd9248f3c06f29b866fbc3c321620bc9e292e90f34736"
+  },
+  "observed_utc": "2026-10-19T01:51:25.635Z"
+}
