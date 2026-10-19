@@ -1005,6 +1005,10 @@ fn validate_plan(
 }
 
 #[cfg(test)]
+#[path = "native_task_loop_budget_tests.rs"]
+mod budget_tests;
+
+#[cfg(test)]
 #[allow(clippy::expect_used, clippy::unwrap_used)]
 mod tests {
     use super::*;
