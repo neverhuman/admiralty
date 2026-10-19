@@ -13,6 +13,65 @@ import { validateTaskContract, validateCoordinationMessage, validateDomainEvent,
   SUPPORTED_SCHEMA_VERSION, CONTRACT_SCHEMA_FINGERPRINTS } from './generated/validators.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const CHILD_TIMEOUT_MS = 30_000;
+const CHILD_MAX_BUFFER_BYTES = 1024 * 1024;
+const DIAGNOSTIC_OUTPUT_CHARS = 8192;
+
+// These trusted fixture tools have finite capture and direct-child deadlines.
+// SIGKILL prevents an ignored SIGTERM from leaving spawnSync waiting forever.
+// This is not a process-tree supervisor or a retry mechanism.
+function runChild(args, { cwd, env = process.env, timeout = CHILD_TIMEOUT_MS,
+  maxBuffer = CHILD_MAX_BUFFER_BYTES } = {}) {
+  const started = performance.now();
+  const result = spawnSync(process.execPath, args, {
+    cwd, env, encoding: 'utf8', timeout, maxBuffer, killSignal: 'SIGKILL',
+  });
+  return { ...result, command: [process.execPath, ...args], cwd, timeout, maxBuffer,
+    elapsed_ms: Math.ceil(performance.now() - started) };
+}
+
+function childDiagnostic(stage, result) {
+  const output = text => typeof text === 'string' ? {
+    utf8_bytes: Buffer.byteLength(text), truncated: text.length > DIAGNOSTIC_OUTPUT_CHARS,
+    text: text.slice(0, DIAGNOSTIC_OUTPUT_CHARS),
+  } : null;
+  return JSON.stringify({ stage, command: result.command, cwd: result.cwd,
+    elapsed_ms: result.elapsed_ms, timeout_ms: result.timeout, max_buffer_bytes: result.maxBuffer,
+    status: result.status, signal: result.signal,
+    error: result.error ? { name: result.error.name, code: result.error.code,
+      message: result.error.message, errno: result.error.errno, syscall: result.error.syscall } : null,
+    stdout: output(result.stdout), stderr: output(result.stderr) }, null, 2);
+}
+
+function expectChildExit(result, expectedStatus, stage) {
+  const diagnostic = childDiagnostic(stage, result);
+  assert.equal(result.error, undefined, diagnostic);
+  assert.equal(result.signal, null, diagnostic);
+  assert.equal(result.status, expectedStatus, diagnostic);
+}
+
+// Exercise the real outcome shape, including errors which have status=null.
+// Expected application failure must never accidentally accept timeout or ENOBUFS.
+test('subprocess assertions distinguish bounded tool failures from expected exit codes', () => {
+  const nonzero = runChild(['-e', 'process.stdout.write("fixture stdout"); process.stderr.write("fixture stderr"); process.exitCode = 7;']);
+  expectChildExit(nonzero, 7, 'diagnostic-fixture:nonzero');
+  assert.throws(() => expectChildExit(nonzero, 0, 'diagnostic-fixture:unexpected-exit'), error =>
+    error.message.includes('diagnostic-fixture:unexpected-exit') && error.message.includes('fixture stdout')
+      && error.message.includes('fixture stderr') && error.message.includes('"status": 7'));
+  const timedOut = runChild(['-e', 'process.on("SIGTERM", () => {}); setInterval(() => {}, 1000);'], { timeout: 100 });
+  assert.equal(timedOut.error?.code, 'ETIMEDOUT', childDiagnostic('diagnostic-fixture:timeout', timedOut));
+  assert.throws(() => expectChildExit(timedOut, 1, 'diagnostic-fixture:timeout'), error =>
+    error.message.includes('ETIMEDOUT') && error.message.includes('SIGKILL') && error.message.includes('timeout_ms'));
+  const overflow = runChild(['-e', 'process.stdout.write("x".repeat(1024 * 1024));'], { maxBuffer: 128 });
+  assert.equal(overflow.error?.code, 'ENOBUFS', childDiagnostic('diagnostic-fixture:output-limit', overflow));
+  assert.throws(() => expectChildExit(overflow, 1, 'diagnostic-fixture:output-limit'), /ENOBUFS/);
+  const summary = JSON.parse(childDiagnostic('diagnostic-fixture:bounded-log', {
+    stdout: 'x'.repeat(DIAGNOSTIC_OUTPUT_CHARS * 2), stderr: null,
+  }));
+  assert.equal(summary.stdout.text.length, DIAGNOSTIC_OUTPUT_CHARS);
+  assert.equal(summary.stdout.truncated, true);
+});
+
 const contract = () => ({ schema_version: 1, project_id: 'project', root_id: 'root', task_id: 'task', revision: 1,
   title: 'Scoped task', objective: 'Deliver a checked change', non_goals: ['No publication'], owned_paths: ['src/task.rs'],
   forbidden_paths: ['private'], read_first: ['README.md'], dependencies: [],
@@ -132,26 +191,26 @@ test('generation and drift checks cover standalone code and declarations without
     await cp(path.join(root, 'scripts/contracts/generate.mjs'), path.join(directory, 'scripts/contracts/generate.mjs'));
     await cp(path.join(root, 'schemas'), path.join(directory, 'schemas'), { recursive: true });
     await symlink(path.join(root, 'node_modules'), path.join(directory, 'node_modules'), 'dir');
-    const invoke = args => spawnSync(process.execPath, ['scripts/contracts/generate.mjs', ...args], { cwd: directory, encoding: 'utf8', timeout: 30_000 });
-    assert.equal(invoke([]).status, 0);
-    assert.equal(invoke(['--check']).status, 0);
+    const invoke = args => runChild(['scripts/contracts/generate.mjs', ...args], { cwd: directory });
+    expectChildExit(invoke([]), 0, 'contracts:initial-generation');
+    expectChildExit(invoke(['--check']), 0, 'contracts:initial-check');
     const runtime = path.join(directory, 'packages/contracts/generated/validators.mjs');
     const declarations = path.join(directory, 'packages/contracts/generated/validators.d.mts');
     const separateGuard = path.join(directory, 'packages/contracts/generated/validators-workplan.mjs');
     await writeFile(runtime, '// drift\n'); await writeFile(declarations, '// drift\n'); await writeFile(separateGuard, '// drift\n');
     const checked = invoke(['--check']);
-    assert.notEqual(checked.status, 0);
+    expectChildExit(checked, 1, 'contracts:intentional-drift-check');
     assert.match(checked.stderr, /validators\.mjs/); assert.match(checked.stderr, /validators\.d\.mts/); assert.match(checked.stderr, /validators-workplan\.mjs/);
     assert.equal(await readFile(runtime, 'utf8'), '// drift\n');
     assert.equal(await readFile(declarations, 'utf8'), '// drift\n');
     assert.equal(await readFile(separateGuard, 'utf8'), '// drift\n');
-    assert.equal(invoke([]).status, 0);
-    assert.equal(invoke(['--check']).status, 0);
+    expectChildExit(invoke([]), 0, 'contracts:regenerate-after-drift');
+    expectChildExit(invoke(['--check']), 0, 'contracts:check-after-regeneration');
     const schema = path.join(directory, 'schemas/task-contract.schema.json');
     const value = JSON.parse(await readFile(schema, 'utf8')); value.properties.title = { $ref: 'https://example.com/schema' };
     await writeFile(schema, JSON.stringify(value));
     const external = invoke([]);
-    assert.notEqual(external.status, 0); assert.match(external.stderr, /external retrieval is disabled/);
+    expectChildExit(external, 1, 'contracts:reject-external-reference'); assert.match(external.stderr, /external retrieval is disabled/);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
@@ -282,10 +341,9 @@ test('a real TypeScript consumer resolves every public root, subpath and precisi
   const require = createRequire(path.join(root, 'apps/dashboard/package.json'));
   const manifest = require('typescript/package.json');
   const compiler = path.resolve(path.dirname(require.resolve('typescript/package.json')), manifest.bin.tsc);
-  const checked = spawnSync(process.execPath, [compiler, '--project', 'packages/contracts/tsconfig.json', '--pretty', 'false'], {
-    cwd: root, encoding: 'utf8', timeout: 30_000, maxBuffer: 1024 * 1024,
+  const checked = runChild([compiler, '--project', 'packages/contracts/tsconfig.json', '--pretty', 'false'], {
+    cwd: root,
     env: { ...process.env, GOMAXPROCS: '1' },
   });
-  assert.ifError(checked.error);
-  assert.equal(checked.status, 0, `${checked.stdout}\n${checked.stderr}`);
+  expectChildExit(checked, 0, 'contracts:typescript-consumer');
 });
