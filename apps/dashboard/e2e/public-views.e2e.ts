@@ -1,17 +1,67 @@
 import { expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { readFileSync, statSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import * as nodeFs from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { join, realpathSync, resolve } from 'node:path';
 import { launchBrowserHarness, startIsolatedNativeAdmiraltyServer, REPO_ROOT,
   type BrowserHarness, type IsolatedNativeAdmiraltyServer } from './browser-harness';
 
+interface NativeFileStat {
+  dev: number; ino: number; size: number; uid: number; mode: number;
+  nlink: number; mtimeMs: number; ctimeMs: number;
+  isFile(): boolean;
+}
+const nativeFdFs = nodeFs as unknown as {
+  constants: { O_RDONLY: number; O_NOFOLLOW: number; O_NONBLOCK: number };
+  openSync(path: string, flags: number): number;
+  closeSync(fd: number): void;
+  fstatSync(fd: number): NativeFileStat;
+  lstatSync(path: string): NativeFileStat;
+  readSync(fd: number, buffer: Uint8Array, offset: number, length: number, position: number | null): number;
+};
+const nativeProcess = process as typeof process & { getuid(): number };
+const MAX_NATIVE_BINARY_BYTES = 512 * 1024 * 1024;
+const NATIVE_HASH_BUDGET_MS = 15_000;
+
+function nativeFileIdentity(stat: NativeFileStat): string {
+  return [stat.dev, stat.ino, stat.size, stat.uid, stat.mode, stat.nlink, stat.mtimeMs, stat.ctimeMs].join(':');
+}
+
+function verifyNativeBinaryPin(supplied: string | undefined, pin: string | undefined): void {
+  if (!supplied || !supplied.startsWith('/') || !pin || !/^[0-9a-f]{64}$/.test(pin)) {
+    throw new Error('Exact native binary and SHA256 required; no build/fallback/skip is permitted');
+  }
+  const path = realpathSync(supplied);
+  if (path !== resolve(supplied)) throw new Error('Use the canonical native binary path');
+  const fd = nativeFdFs.openSync(path, nativeFdFs.constants.O_RDONLY | nativeFdFs.constants.O_NOFOLLOW | nativeFdFs.constants.O_NONBLOCK);
+  try {
+    const before = nativeFdFs.fstatSync(fd);
+    if (!before.isFile() || before.uid !== nativeProcess.getuid() || before.size <= 0 || before.size > MAX_NATIVE_BINARY_BYTES) {
+      throw new Error('Native fixture binary must be an owned bounded regular file');
+    }
+    const hash = createHash('sha256'), buffer = new Uint8Array(64 * 1024);
+    const deadline = Date.now() + NATIVE_HASH_BUDGET_MS;
+    let bytes = 0;
+    for (;;) {
+      if (Date.now() >= deadline) throw new Error('Native fixture binary hash exceeded its time bound');
+      const n = nativeFdFs.readSync(fd, buffer, 0, buffer.length, null);
+      if (!n) break;
+      bytes += n;
+      if (bytes > before.size || bytes > MAX_NATIVE_BINARY_BYTES) throw new Error('Native fixture binary changed while hashing');
+      hash.update(buffer.subarray(0, n) as Buffer);
+    }
+    if (bytes !== before.size || hash.digest('hex') !== pin
+      || nativeFileIdentity(nativeFdFs.fstatSync(fd)) !== nativeFileIdentity(before)
+      || nativeFileIdentity(nativeFdFs.lstatSync(path)) !== nativeFileIdentity(before)) {
+      throw new Error('Native fixture binary pin/identity mismatch');
+    }
+  } finally { nativeFdFs.closeSync(fd); }
+}
+
 it('renders public Git/Atlas observations after private401 and reconnects with owner access', async () => {
-  const binary = process.env.ADMIRALTY_E2E_ADMIRALTYD_BIN;
   const expectedHash = process.env.ADMIRALTY_E2E_ADMIRALTYD_SHA256;
-  if (!binary || !expectedHash || !/^[a-f0-9]{64}$/.test(expectedHash)) throw new Error('Exact native binary and SHA256 required');
-  const size = (statSync(binary) as unknown as { size: number }).size;
-  if (size > 128 * 1024 * 1024) throw new Error('Native fixture binary exceeds hash bound');
-  expect(createHash('sha256').update(readFileSync(binary)).digest('hex')).toBe(expectedHash);
+  const binary = process.env.ADMIRALTY_E2E_ADMIRALTYD_BIN;
+  verifyNativeBinaryPin(binary, expectedHash);
   const stamp = '2026-10-18T12:00:00Z', oid = 'a'.repeat(40), node = 'fixture-node';
   const source = {
     generated_utc: stamp, host: node, simulated: false, order: ['harbor'],
