@@ -21,10 +21,11 @@ use admiralty_runtime::{
     workspace::{preparation::PreparedWorkspace, registry::WorkspaceSpec},
 };
 use serde::Serialize;
+use sha2::{Digest as _, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs::File,
-    io::Write,
+    io::{Read, Write},
     os::unix::fs::MetadataExt,
     path::{Component, Path, PathBuf},
     sync::{Arc, Mutex},
@@ -134,6 +135,23 @@ pub struct NativeExecutor {
     launch_fenced_runs: Mutex<BTreeSet<String>>,
     completed: Mutex<BTreeMap<String, ClosedExecution>>,
     started_sink: Arc<dyn StartedSink>,
+}
+
+/// Fixed, opaque artifact category returned by [`NativeExecutor::inspect_run_journal`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RunJournalArtifactKind {
+    Prepared,
+    Observed,
+    Closed,
+}
+
+/// Bounded metadata for one raw per-run journal file. The journal bytes and
+/// their interpretation are deliberately not exposed by this read-only API.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RunJournalArtifact {
+    pub kind: RunJournalArtifactKind,
+    pub bytes: u64,
+    pub sha256: String,
 }
 
 struct PendingRun {
@@ -323,6 +341,19 @@ impl NativeExecutor {
             completed: Mutex::new(BTreeMap::new()),
             started_sink,
         })
+    }
+
+    /// Inspect the fixed journal artifacts for a run without parsing or
+    /// changing them. This reports bytes and raw SHA-256 only; it does not
+    /// validate evidence, authorize recovery, or reconstruct capabilities.
+    pub fn inspect_run_journal(
+        &self,
+        run_id: &str,
+    ) -> Result<Vec<RunJournalArtifact>, NativeExecutorError> {
+        if !valid_run_id(run_id) {
+            return Err(NativeExecutorError::InvalidBinding);
+        }
+        self.journal.inspect_run(run_id)
     }
 
     /// Return the original preparation capability only before launch has taken
@@ -1196,6 +1227,92 @@ impl PrivateJournal {
             Err(rustix::io::Errno::NOENT) => Ok(false),
             Err(_) => Err(NativeExecutorError::Journal),
         }
+    }
+    fn inspect_run(&self, run_id: &str) -> Result<Vec<RunJournalArtifact>, NativeExecutorError> {
+        self.validate_current()?;
+        let mut artifacts = Vec::with_capacity(3);
+        for (kind, suffix) in [
+            (RunJournalArtifactKind::Prepared, "prepared"),
+            (RunJournalArtifactKind::Observed, "observed"),
+            (RunJournalArtifactKind::Closed, "closed"),
+        ] {
+            let name = journal_name(run_id, suffix)?;
+            if let Some((bytes, sha256)) = self.read_artifact(&name)? {
+                artifacts.push(RunJournalArtifact {
+                    kind,
+                    bytes,
+                    sha256,
+                });
+            }
+        }
+        self.validate_current()?;
+        Ok(artifacts)
+    }
+    fn read_artifact(&self, name: &str) -> Result<Option<(u64, String)>, NativeExecutorError> {
+        use rustix::fs::{AtFlags, OFlags, openat, statat};
+        self.validate_current()?;
+        if Path::new(name).components().count() != 1
+            || !matches!(
+                Path::new(name).components().next(),
+                Some(Component::Normal(_))
+            )
+        {
+            return Err(NativeExecutorError::Journal);
+        }
+        // Reject links and special files before opening. NONBLOCK also ensures
+        // a raced-in FIFO cannot stall inspection; NOFOLLOW prevents links.
+        let entry = match statat(&self.directory, name, AtFlags::SYMLINK_NOFOLLOW) {
+            Ok(entry) => entry,
+            Err(rustix::io::Errno::NOENT) => return Ok(None),
+            Err(_) => return Err(NativeExecutorError::Journal),
+        };
+        let fd = match openat(
+            &self.directory,
+            name,
+            OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::NONBLOCK | OFlags::CLOEXEC,
+            rustix::fs::Mode::empty(),
+        ) {
+            Ok(fd) => fd,
+            Err(rustix::io::Errno::NOENT) => return Ok(None),
+            Err(_) => return Err(NativeExecutorError::Journal),
+        };
+        let mut file = File::from(fd);
+        let before = file.metadata().map_err(|_| NativeExecutorError::Journal)?;
+        if !before.is_file()
+            || before.dev() != entry.st_dev as u64
+            || before.ino() != entry.st_ino as u64
+            || before.uid() != rustix::process::geteuid().as_raw()
+            || before.nlink() != 1
+            || before.mode() & 0o077 != 0
+            || before.len() > 512 * 1024
+        {
+            return Err(NativeExecutorError::Journal);
+        }
+        let mut contents = Vec::with_capacity(before.len() as usize);
+        Read::by_ref(&mut file)
+            .take(512 * 1024 + 1)
+            .read_to_end(&mut contents)
+            .map_err(|_| NativeExecutorError::Journal)?;
+        let after = file.metadata().map_err(|_| NativeExecutorError::Journal)?;
+        if contents.len() as u64 != before.len()
+            || before.dev() != after.dev()
+            || before.ino() != after.ino()
+            || before.uid() != after.uid()
+            || before.gid() != after.gid()
+            || before.mode() != after.mode()
+            || before.nlink() != after.nlink()
+            || before.len() != after.len()
+            || before.mtime() != after.mtime()
+            || before.mtime_nsec() != after.mtime_nsec()
+            || before.ctime() != after.ctime()
+            || before.ctime_nsec() != after.ctime_nsec()
+        {
+            return Err(NativeExecutorError::Journal);
+        }
+        self.validate_current()?;
+        let digest = Sha256::digest(&contents);
+        let sha256 = digest.iter().map(|byte| format!("{byte:02x}")).collect();
+        Ok(Some((contents.len() as u64, sha256)))
     }
     fn write_new<T: Serialize>(&self, name: &str, value: &T) -> Result<(), NativeExecutorError> {
         self.write(name, value, false)
@@ -2517,6 +2634,135 @@ mod tests {
             .expect("restore owned fixture");
         drop(journal);
         fs::remove_dir_all(root).expect("remove owned fixture");
+    }
+
+    #[test]
+    fn inspect_run_journal_reports_ordered_raw_lengths_and_digests_only() {
+        let Fixture {
+            temp,
+            journal,
+            executor,
+            ..
+        } = fixture();
+        let run_id = "inspect-opaque-1";
+        let raw = [
+            ("prepared", b"not-json prepared\n".as_slice()),
+            ("observed", b"{unparsed observed".as_slice()),
+            ("closed", b"closed\0bytes".as_slice()),
+        ];
+        for (kind, bytes) in raw {
+            let path = journal.join(journal_name(run_id, kind).expect("fixed artifact name"));
+            fs::write(&path, bytes).expect("seed opaque artifact");
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o600))
+                .expect("private artifact mode");
+        }
+        let before: Vec<_> = ["prepared", "observed", "closed"]
+            .into_iter()
+            .map(|kind| {
+                let path = journal.join(journal_name(run_id, kind).expect("fixed artifact name"));
+                (path.clone(), fs::read(path).expect("original bytes"))
+            })
+            .collect();
+
+        let reports = executor
+            .inspect_run_journal(run_id)
+            .expect("inspect opaque fixed artifacts");
+        assert_eq!(
+            reports
+                .iter()
+                .map(|artifact| artifact.kind)
+                .collect::<Vec<_>>(),
+            vec![
+                RunJournalArtifactKind::Prepared,
+                RunJournalArtifactKind::Observed,
+                RunJournalArtifactKind::Closed,
+            ]
+        );
+        for (artifact, (_, original)) in reports.iter().zip(&before) {
+            assert_eq!(artifact.bytes, original.len() as u64);
+            assert_eq!(
+                artifact.sha256,
+                Sha256::digest(original)
+                    .iter()
+                    .map(|byte| format!("{byte:02x}"))
+                    .collect::<String>()
+            );
+        }
+        for (path, bytes) in &before {
+            assert_eq!(
+                fs::read(path).expect("inspection leaves bytes unchanged"),
+                *bytes
+            );
+        }
+        assert!(matches!(
+            executor.inspect_run_journal("bad/run"),
+            Err(NativeExecutorError::InvalidBinding)
+        ));
+        drop(executor);
+        fs::remove_dir_all(temp).expect("owned fixture cleanup");
+    }
+
+    #[test]
+    fn inspect_run_journal_returns_empty_for_absent_run_artifacts() {
+        let Fixture { temp, executor, .. } = fixture();
+        assert!(
+            executor
+                .inspect_run_journal("inspect-empty")
+                .expect("empty inspection")
+                .is_empty()
+        );
+        drop(executor);
+        fs::remove_dir_all(temp).expect("owned fixture cleanup");
+    }
+
+    #[test]
+    fn inspect_run_journal_fails_closed_on_link_and_oversized_artifact() {
+        let Fixture {
+            temp,
+            journal,
+            executor,
+            ..
+        } = fixture();
+        let run_id = "inspect-hostile-1";
+        let prepared = journal_name(run_id, "prepared").expect("fixed artifact name");
+        let target = journal.join("outside-target");
+        fs::write(&target, b"do not follow").expect("target");
+        std::os::unix::fs::symlink(&target, journal.join(&prepared)).expect("substitute link");
+        assert!(matches!(
+            executor.inspect_run_journal(run_id),
+            Err(NativeExecutorError::Journal)
+        ));
+        fs::remove_file(journal.join(&prepared)).expect("remove test link");
+        let private = journal.join(&prepared);
+        fs::write(&private, b"private evidence").expect("private test artifact");
+        fs::set_permissions(&private, fs::Permissions::from_mode(0o600))
+            .expect("private artifact mode");
+        fs::set_permissions(&private, fs::Permissions::from_mode(0o644))
+            .expect("simulate exposed artifact");
+        assert!(matches!(
+            executor.inspect_run_journal(run_id),
+            Err(NativeExecutorError::Journal)
+        ));
+        fs::set_permissions(&private, fs::Permissions::from_mode(0o600))
+            .expect("restore private artifact");
+        let alias = journal.join("hardlink-alias");
+        fs::hard_link(&private, &alias).expect("create hardlink");
+        assert!(matches!(
+            executor.inspect_run_journal(run_id),
+            Err(NativeExecutorError::Journal)
+        ));
+        fs::remove_file(alias).expect("remove hardlink");
+        fs::remove_file(private).expect("remove intermediate artifact");
+        let oversized = journal.join(&prepared);
+        fs::write(&oversized, vec![b'x'; 512 * 1024 + 1]).expect("oversized file");
+        fs::set_permissions(&oversized, fs::Permissions::from_mode(0o600))
+            .expect("private oversized artifact");
+        assert!(matches!(
+            executor.inspect_run_journal(run_id),
+            Err(NativeExecutorError::Journal)
+        ));
+        drop(executor);
+        fs::remove_dir_all(temp).expect("owned fixture cleanup");
     }
 
     #[test]
