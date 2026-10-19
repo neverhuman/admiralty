@@ -2254,3 +2254,58 @@ browser19pass/1axe failure remain in the single backlog, with no causal resource
 claim, guard relaxation, rerun or new cleanup lane. Source implementation keeps
 moving. No production issuer, global capacity, provider, settlement, recovery,
 physical-start linearization or full P03/P10/P14/WO/release acceptance is claimed.
+
+### 08:53Z — PR119 merged, rollout preserved, actual deploy owner advancing
+
+Actual neverhumanbot approved exact530db6ebf7d4f3c29b9735262f8969a0fd882706
+at08:47:13Z, transparently registering Root and separate Codex source/evidence
+review. Matched-head rebase mergedPR119 at08:47:27Z to
+18417d88def462e69d44bd6641d04109b373a67b. The actual postmerge08:50:55.821Z
+forge snapshot has no open PRs. Root rebased onto receiving main; new work uses
+an isolated branch. The [merge receipt](../../../receipts/integration/native-budget-loop-merge-20261019T0852Z.json)
+and [final independent review](../../../receipts/integration/native-budget-loop-review-20261019T0844Z.json)
+pin that scope; no bot test execution or whole-CI qualification is claimed.
+
+Fresh097 CI results are preserved in the same single backlog: Rust39221684261
+reached `native_codex_plan` and failed all5cases with `UnsafeSourceMetadata`
+at229; browser39221684219 reported19pass/1Atlas dark axe mismatch. The old749
+Node-guard deadline remains distinct. Both raw097 logs are archived with exact
+hashes. These are failed workflows, not assumed resource issues or authorization
+for weaker guards. No extra cleanup lane/rerun/cancellation/runner control.
+
+Root's sole-writer rollout CAS at08:52:50.738Z verified eight exact artifact
+name/size/hash pins, fsynced the immutable preimage/archive directories before
+replace, and read back new SHA
+c8bbfb619105d6692a2ce74a9eceece10ca05086d4126e62699fc9de7daec002.
+The [proof](../../../receipts/integration/rollout-budget-loop-20261019T0853Z.json)
+and [independent script review](../../../receipts/integration/rollout-budget-loop-review-20261019T0853Z.json)
+preserve every32parent status/criterion/prior evidence and original producer
+source/history objects. Only additiveP08/P14/P31 component notes and exact main
+reconciliation change; P00/P01 alone remain accepted. The full primary proof
+still retains its recorded07:59 time, distinct from cheap08:31/08:39 checks.
+
+Fresh08:52:25 hardcopies show the Admiral/Commodore still on actual Gemini4Argon
+with quota errors. The SC156 backup885617 session now actually shows
+GPT-6.1-Sol xhigh and an active background build ofPR119, replacing the older
+pending-input/Luna observation. Root read the written08:24 GB order and actual
+08:47 blocked097 receipt: that candidate was not deployed because main advanced.
+The receiving18417 build is active; no latest-source deployment is yet inferred.
+Root's `CODEX_OBS_SC156_BUILD_18417D8_20261019T0853Z.md` leaves this owner in
+control and keeps Root's next receipt merges off main during this specific
+serialized build. There is no global merge freeze, second deployer or overwritten
+Screen input. Result/deploy capsules name current18417 or a verified successor.
+
+Next source review confirms model_selection already proposes linked slot/kernel
+reservations and execution/settlement gates; its updated capacity is a cloned
+snapshot and settlement explicitly has `durable_store_committed:false`. Do not
+rebuild those components. The next bounded gap is a reserve-only durable inference
+pool/slot journal joined to the exact claim/budget/outbox transaction. Root owns
+migration/Store/shared registration, a future disjoint worker only new
+`inference_slots.rs` and its tests after a frozen interface. Require independently
+authorized managed-slot allotment/current policy; aliases or new generations
+cannot reset held occupancy. Exact retries must make no second debit/hold;
+unknown dispatch/stop/expiry/revocation never release a slot. Actual tests must
+cover last-slot races across projects, current-policy denial, replay/upgrade
+rejection, identity/capacity reduction, rollback, corruption and reopen. No worker
+is reported running on that packet yet; no issuer/release/settlement/provider or
+whole-parent qualification is implied by this next-step review.
