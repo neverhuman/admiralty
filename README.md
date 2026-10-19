@@ -164,6 +164,11 @@ return the original preparation before admission or hold later dispatch without
 discarding the original budget/slot custody. A write token is never substituted
 for a ledger-read grant; see [durable admission](docs/architecture/durable-admission.md).
 
+[Bounded recovery diagnostics](docs/architecture/native-recovery-diagnostics.md)
+inspect existing journal metadata and retain the last eight readable resource
+samples when final cgroup files disappear. These observations do not authorize
+retries, release unknown liabilities or establish a resource-failure cause.
+
 Workplans can be previewed and registered as immutable revisions in an exclusively owned offline database:
 
 ```sh
@@ -236,4 +241,4 @@ Checks do not invoke paid providers. Real provider, fleet, failure-recovery and 
 
 ## License
 
-Project licensing is [pending an explicit repository license](docs/operators/release-status.md#license).
+Admiralty is available under the [MIT License](LICENSE).

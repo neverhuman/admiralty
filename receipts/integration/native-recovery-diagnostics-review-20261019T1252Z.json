@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "kind": "independent read-only source review",
+  "reviewer": "/root/slot_journal",
+  "recorded_utc": "2026-10-19T12:43:16.483467+00:00",
+  "base": "e6e364eee1207ead506de37ae57c750937d4be48",
+  "initial_reviewed_head": "503a98d36051fc0bdd51f12e201cc4730371f81e",
+  "final_reviewed_head": "a6df0fb38314232a67290ec5bba86733d00dc327",
+  "observed_head_at_receipt": "a6df0fb38314232a67290ec5bba86733d00dc327",
+  "verdict": "clear_with_disclosed_limits",
+  "blocking_findings": [],
+  "source_files": [
+    {
+      "path": "crates/admiralty-server/src/services/native_executor.rs",
+      "bytes": 112225,
+      "sha256": "87b6db47f751492435f114ae2e74ad78b442d8b998b4a4219ca753654eda1abe",
+      "git_blob": "c0610fdafcb66a83d9cffd959de220445b27de01",
+      "matches_working_tree": true
+    },
+    {
+      "path": "crates/admiralty-runtime/src/resource_gate.rs",
+      "bytes": 94667,
+      "sha256": "8bfbfba7b00b49afd74efa1d73331209b49db5ac0bc3cef26192fd9c04efaad2",
+      "git_blob": "a694a1839405fee0b85a01b3fe64bb7778a54e0b",
+      "matches_working_tree": true
+    },
+    {
+      "path": "crates/admiralty-runtime/src/resource_gate_diagnostics_tests.rs",
+      "bytes": 24265,
+      "sha256": "fb26c9448b2f95559688682fe8164ea5a17171597dad4c120be4333f1af552c2",
+      "git_blob": "d6b9c382f4586562f29db21bb6358330ed78b8ba",
+      "matches_working_tree": true
+    }
+  ],
+  "scoped_diff": {
+    "path": "/private/tmp/ADMIRALTY_NATIVE_JOURNAL_HISTORY_REVIEW_a6df_20261019.diff",
+    "bytes": 26563,
+    "sha256": "b2b8788e8ecf85dc7c7797ca595ccb97924475bc95559f92fd92da01688f1416"
+  },
+  "reviewed_behavior": [
+    {
+      "area": "opaque per-run journal metadata",
+      "locations": [
+        "native_executor.rs:349",
+        "native_executor.rs:1231-1337"
+      ],
+      "assessment": "Only valid run IDs and the prepared/observed/closed hashed-run filenames reach retained PrivateJournal directory FD. At most three reports, each containing fixed kind, raw byte length and 64-character lowercase raw SHA-256. No journal bytes, path, argv, environment or parsed evidence returned. No trust, recovery or authority constructor added."
+    },
+    {
+      "area": "descriptor and entry custody",
+      "locations": [
+        "native_executor.rs:1178-1221",
+        "native_executor.rs:1252-1334"
+      ],
+      "assessment": "Original directory capability uses descriptor-relative no-follow traversal. Each inspected artifact has no-follow pre-entry regular-file/effective-UID/single-link/private-mode/512KiB checks; nonblocking no-follow open; matching descriptor device/inode plus private ownership/type/size; bounded read with one-byte sentinel; post-read descriptor metadata equality including timestamps; post-entry type/device/inode/UID/link/mode/size; directory validation before/after. Returned errors are static labels. No pathname reopening redirects the file read."
+    },
+    {
+      "area": "bounded actual observation sequence",
+      "locations": [
+        "resource_gate.rs:320-412"
+      ],
+      "assessment": "Boxed fixed [Option<HistoricalResourceSample>;8] stores oldest-first last eight runtime-recorded Observed snapshots having at least one dynamic known scalar/counter/flag. Static pids.max and memory.max never qualify. Samples retain full metric unknown reasons, owner digest/device/inode and original attempt number; no count is synthesized from limits. Eviction and insertion are fixed bounded work."
+    },
+    {
+      "area": "final empty-container repair",
+      "locations": [
+        "resource_gate.rs:398-412",
+        "resource_gate_diagnostics_tests.rs:350-435"
+      ],
+      "assessment": "Before a6df, Observed event containers whose known members were all None incorrectly counted as useful and could evict genuine history. Final code requires at least one Some member for pids/memory/cgroup event containers. is_some counts zero and false correctly; test adds the all-None counterexample. Known scalar Observed fields remain qualifying."
+    },
+    {
+      "area": "original diagnostic and authoritative behavior",
+      "locations": [
+        "resource_gate.rs:345-375",
+        "resource_gate.rs:996-1034",
+        "resource_gate.rs:1090-1110",
+        "resource_gate_diagnostics_tests.rs:526-691"
+      ],
+      "assessment": "before/latest/final/failure semantics unchanged: Observed all-unknown snapshot may still become latest; history retention does not reinterpret it. sample_attempts increments on every non-frozen sample. Final closure installs existing private frozen fence before cloning; record returns without changes when frozen. History is excluded from authoritative closure tuple via unchanged authoritative_binding/closure digest. Private fence remains skipped on serde; JSON cannot reconstruct closure capability."
+    },
+    {
+      "area": "serde and size",
+      "locations": [
+        "resource_gate.rs:331-343",
+        "resource_gate_diagnostics_tests.rs:439-446"
+      ],
+      "assessment": "Struct-level legacy defaults populate absent history with eight None entries; native serde array length requires exactly eight when present. Fixed count and numeric metric shape bound runtime-produced growth; sampled owner digest is generated internally. Per-artifact reader/writer cap remains512KiB. No backend/admission limit was reduced or bypassed."
+    }
+  ],
+  "counterexamples_considered": [
+    {
+      "case": "limits exist, every dynamic file unavailable",
+      "result": "latest remains the actual observed snapshot with unknown dynamic fields; history is not displaced"
+    },
+    {
+      "case": "present event files contain only unsupported keys so recognized members are None",
+      "result": "final has_dynamic_observation rejects them for history; all-None regression present"
+    },
+    {
+      "case": "genuine event counter0 or flagfalse",
+      "result": "final is_some predicate admits them; no truthiness or positive-value test"
+    },
+    {
+      "case": "more than8 genuine samples, then unavailable/final identity change",
+      "result": "history retains attempts3..10 in test sequence; failure attempts11..13 advance counter without clearing history"
+    },
+    {
+      "case": "symlink, nonregular socket, group-readable file, hard link,512KiB+1 artifact",
+      "result": "new inspector negative fixture cases exercise fail-closed guards"
+    },
+    {
+      "case": "replaced journal pathname or raced-in FIFO/symlink",
+      "result": "retained descriptor and nonblocking/no-follow read prevent path redirection or FIFO stall; original directory substitution test predates this packet and covers the shared capability"
+    },
+    {
+      "case": "advisory JSON attempts to set frozen or carry invented snapshots",
+      "result": "serde skips internal fence; production inspector does not parse bytes into a runtime object or authority. Deserialized diagnostic values are not authenticated evidence"
+    }
+  ],
+  "test_source_assessment": {
+    "new_server_cases": [
+      "inspect_run_journal_reports_ordered_raw_lengths_and_digests_only",
+      "inspect_run_journal_returns_empty_for_absent_run_artifacts",
+      "inspect_run_journal_fails_closed_on_link_and_oversized_artifact"
+    ],
+    "new_runtime_cases": [
+      "history_keeps_last_eight_readable_snapshots_across_unknown_final_observations",
+      "history_preserves_partial_unknowns_and_skips_limit_only_observations",
+      "history_defaults_for_legacy_json_and_rejects_wrong_array_length"
+    ],
+    "existing_relevant_cases": [
+      "renamed_original_directory_is_retained_and_replacement_is_never_reopened",
+      "identity_failure_and_gone_final_sample_preserve_last_observed_snapshot",
+      "first_closed_diagnostics_are_immutable_for_lost_journal_ack_retry",
+      "journal_descriptor_stays_with_original_directory_after_path_substitution",
+      "legacy authoritative closure byte/digest comparison"
+    ],
+    "adequacy": "Meaningful behavior and hostile-file coverage for this bounded advisory change. Existing frozen/closure tests serialize the expanded diagnostics and therefore cover new history too. Reviewer inspected test source only and claims no test execution or count.",
+    "nonblocking_coverage_limits": [
+      "Positive Some(0)/Some(false) fixture also has known dynamic scalar readings, so event-only zero/false qualification is not isolated as a test. Final explicit is_some source is correct.",
+      "Wrong array test uses too-short length; fixed-size serde array also rejects overlength by construction, but no new explicit length9 case was added.",
+      "No deterministic concurrent overwrite/rename-at-read hook is exercised by the new tests; metadata guards were assessed statically."
+    ]
+  },
+  "limits": [
+    "The three artifact hashes are sequential sampled metadata, not one atomic journal snapshot, lifecycle completeness proof, evidence validation or recovery authorization. Missing/open-raced-away entries can be absent from a report.",
+    "Pre/post checks detect ordinary concurrent changes; they cannot make a security boundary against root or arbitrary same-UID mutation after the last check. Metadata can become stale immediately after sampling.",
+    "Reads are byte-bounded regular-file I/O, not a hard wall-clock guarantee for every filesystem/storage failure.",
+    "The8-slot bound covers runtime-produced diagnostic collections; public diagnostic Deserialize still requires caller transport/JSON bounds and does not authenticate owner_digest or samples. Existing public fields/serde trust semantics are unchanged.",
+    "sample_attempts and stored attempt numbers saturate at u32MAX as before; sequence numbers then cease to be strictly increasing. They are advisory, not timestamps or unique authority IDs.",
+    "More history can increase advisory closed-journal bytes; unchanged512KiB cap still fails closed. No resource-exhaustion cause, live Linux qualification, provider behavior, admission/current-authority policy, dispatch or recovery claim follows.",
+    "No new auth boundary or external route was added; inspect_run_journal is a trusted in-process executor metadata seam."
+  ],
+  "actions": {
+    "source_edits": false,
+    "builds": false,
+    "tests": false,
+    "remote": false,
+    "forge": false,
+    "services": false,
+    "provider": false,
+    "grants": false,
+    "acceptance_changes": false
+  },
+  "new_validation_runs": []
+}

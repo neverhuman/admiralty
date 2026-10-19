@@ -1,0 +1,61 @@
+{
+  "observed_utc": "2026-10-19T12:53:06.923Z",
+  "decision": "User explicitly selected MIT in reply to call_83ea12f93f23473a96f5ebc45aba42c5/0",
+  "license_source": "https://opensource.org/license/mit",
+  "copyright_notice": "2026 Admiralty contributors",
+  "rust_packages": [
+    {
+      "name": "admiralty-round16-qualification",
+      "license": "MIT"
+    },
+    {
+      "name": "admiralty-core",
+      "license": "MIT"
+    },
+    {
+      "name": "admiralty-runtime",
+      "license": "MIT"
+    },
+    {
+      "name": "admiralty-store",
+      "license": "MIT"
+    },
+    {
+      "name": "admiralty-server",
+      "license": "MIT"
+    },
+    {
+      "name": "admiralty-cli",
+      "license": "MIT"
+    },
+    {
+      "name": "admiralty-testkit",
+      "license": "MIT"
+    },
+    {
+      "name": "admiralty-integration-tests",
+      "license": "MIT"
+    },
+    {
+      "name": "admiralty-observe",
+      "license": "MIT"
+    }
+  ],
+  "javascript_packages": [
+    {
+      "path": "package.json",
+      "license": "MIT"
+    },
+    {
+      "path": "apps/dashboard/package.json",
+      "license": "MIT"
+    },
+    {
+      "path": "packages/contracts/package.json",
+      "license": "MIT"
+    }
+  ],
+  "license_sha256": "26857af5468e70d056dc1cb952314c0a7b2efc4aa00b54f9a087c2317c31bb65",
+  "qualification": "metadata-only; no new runtime test, dependency license clearance or fullrelease acceptance",
+  "cargo_metadata_exit": 0
+}

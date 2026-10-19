@@ -1,4 +1,5 @@
 [package]
+license.workspace = true
 name = "admiralty-integration-tests"
 version.workspace = true
 edition.workspace = true

@@ -1,0 +1,730 @@
+{
+  "schema": "admiralty.native-kernel-deadline.worker-receipt/v1",
+  "created_at_utc": "2026-10-19T12:57:22.364484+00:00",
+  "worker": "/root/slot_journal",
+  "worktree": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+  "branch": "codex/native-kernel-deadline-bound",
+  "base_commit": "a6df0fb38314232a67290ec5bba86733d00dc327",
+  "candidate_commit": "3f19a292839006c065c7a72c8f5af1a1e4cd960c",
+  "clean_worktree": true,
+  "changed_files_exact": [
+    "crates/admiralty-runtime/src/resource_gate.rs",
+    "crates/admiralty-server/examples/native_lifecycle_probe.rs",
+    "crates/admiralty-server/src/services/native_executor.rs"
+  ],
+  "sources": [
+    {
+      "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree/crates/admiralty-runtime/src/resource_gate.rs",
+      "sha256": "41c17e6be7c1ce2ba13872d7d15b063ed2ba8244156d6c22a1a8b64ff256af5c",
+      "bytes": 100108,
+      "relative_path": "crates/admiralty-runtime/src/resource_gate.rs",
+      "base_sha256": "8bfbfba7b00b49afd74efa1d73331209b49db5ac0bc3cef26192fd9c04efaad2"
+    },
+    {
+      "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree/crates/admiralty-server/src/services/native_executor.rs",
+      "sha256": "737385b6892670d1ccce05745fad23880e7b9d4fd115d0a424c4c669e62c64fc",
+      "bytes": 112240,
+      "relative_path": "crates/admiralty-server/src/services/native_executor.rs",
+      "base_sha256": "87b6db47f751492435f114ae2e74ad78b442d8b998b4a4219ca753654eda1abe"
+    },
+    {
+      "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree/crates/admiralty-server/examples/native_lifecycle_probe.rs",
+      "sha256": "8e33ed6f72f451cbec6c10124d80e20d5a66a3e0dad1324a0b707fb4f2c8ec39",
+      "bytes": 44567,
+      "relative_path": "crates/admiralty-server/examples/native_lifecycle_probe.rs",
+      "base_sha256": "012f621ae4dd1bbabb08e148b07403403d9712abc22eb6978922b0abe12bb435"
+    }
+  ],
+  "implementation": {
+    "required_api": "AdmittedLaunch::launch(self, host: &SessionHost, execution_limit: Duration)",
+    "kernel_milliseconds": "floor(min(execution_limit, original permit expiry remainder, original resource lease expiry remainder))",
+    "arithmetic": "checked u64 expiry subtraction; execution Duration::as_millis u128 minimum before u64 conversion; reject effective zero with Expired",
+    "execution_limit_source": {
+      "NativeExecutor::launch_registered_plan": "self.deadline",
+      "native_lifecycle_probe": "Duration::from_secs(deadline_seconds)"
+    },
+    "preserved": [
+      "original authenticated permit and resource lease claims",
+      "wire fields and content digest domains",
+      "resource caps, authority policy checks, recovery behavior and software executor deadline",
+      "frozen diagnostic journal and dynamic observation history behavior"
+    ]
+  },
+  "validation": {
+    "focused_wrapper_tests": {
+      "label": "focused-wrapper-tests-corrected",
+      "exit": 0,
+      "passed": 4,
+      "failed": 0,
+      "filtered_out": 197,
+      "new_tests": 3,
+      "migrated_existing_tests": 1
+    },
+    "cases": [
+      "380.317 second permit/resource lease and 120 second executor yields RuntimeMaxSec=120.000s",
+      "earlier permit, earlier resource lease, and equal expiry bounds",
+      "zero and positive submillisecond duration rejected; exact/past permit or lease expiry rejected",
+      "1 millisecond accepted; 1.999999 milliseconds floors to 1 millisecond",
+      "Duration::MAX minimum and near-u64::MAX expiry arithmetic do not overflow",
+      "claims remain equal; replacing only timer yields identical serialized LaunchSpec"
+    ],
+    "strict_mac_all_targets_clippy": {
+      "label": "clippy-runtime-server-all-targets",
+      "exit": 0,
+      "packages": [
+        "admiralty-runtime",
+        "admiralty-server"
+      ],
+      "warnings_denied": true
+    },
+    "workspace_fmt_check": {
+      "label": "fmt-final",
+      "exit": 0
+    },
+    "diff_check": {
+      "label": "final-source-audit",
+      "exit": 0
+    },
+    "runtime_environment": {
+      "host": "aarch64-apple-darwin",
+      "rustc": "1.95.0",
+      "cargo": "1.95.0",
+      "jobs": 1,
+      "test_threads": 1,
+      "cargo_net_offline": true,
+      "target": "/private/tmp/adm-native-kernel-deadline.RF8D6h/target",
+      "tmpdir": "/private/tmp/adm-native-kernel-deadline.RF8D6h/tmp",
+      "cache_seed": "/private/tmp/adm-native-history-target",
+      "cache_seed_operation": "local APFS clone, read only source; private destination"
+    }
+  },
+  "failed_evidence_preserved": [
+    {
+      "label": "focused-wrapper-tests",
+      "exit": 101,
+      "tests_executed": 0,
+      "cause": "test-only comparison initially required unimplemented LaunchSpec PartialEq",
+      "repair": "compare serialized LaunchSpec values without modifying its public type",
+      "source_hash_limitation": "initial draft source hash was not sampled before this failed run; final source is pinned above"
+    },
+    {
+      "label": "static-review",
+      "exit": 1,
+      "nested_rg_exit": 2,
+      "cause": "read command referred to session.rs; actual source is session/mod.rs",
+      "repair": "corrected read-only command in static-review-corrected",
+      "source_mutation": false
+    }
+  ],
+  "command_artifacts": [
+    {
+      "label": "bounds-read",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/bounds-read.json",
+        "sha256": "c70749270672c9570221ff74c4982b2c63762fcba97d81422a931a3cd9443a73",
+        "bytes": 724
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-c",
+        "from pathlib import Path; p=Path(\"crates/admiralty-runtime/src/resource_gate.rs\"); print(\"\\n\".join(p.read_text().splitlines()[0:85])); p=Path(\"crates/admiralty-server/examples/native_lifecycle_probe.rs\"); lines=p.read_text().splitlines(); print(\"\\n\".join(lines[815:837])); print(\"\\n\".join(str(x) for x in Path(\"/private/tmp\").glob(\"adm-*\")))"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03200566675513983,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/bounds-read.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/bounds-read.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/bounds-read.stdout",
+        "sha256": "2eeb5cad284d4ed8a8ab4877b6051dfe3bb6edc87444536fecdd3fcaa2777fcf",
+        "bytes": 18289
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/bounds-read.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "label": "clippy-runtime-server-all-targets",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/clippy-runtime-server-all-targets.json",
+        "sha256": "30cc719a0c629d48984e203bc8aee1d54ba417aef04903e1dfd3d9d223b5734b",
+        "bytes": 781
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "env",
+        "CARGO_BUILD_JOBS=1",
+        "CARGO_TARGET_DIR=/private/tmp/adm-native-kernel-deadline.RF8D6h/target",
+        "TMPDIR=/private/tmp/adm-native-kernel-deadline.RF8D6h/tmp",
+        "RUST_TEST_THREADS=1",
+        "CARGO_NET_OFFLINE=true",
+        "cargo",
+        "clippy",
+        "-p",
+        "admiralty-runtime",
+        "-p",
+        "admiralty-server",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 0,
+      "elapsed_seconds": 42.54615029133856,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/clippy-runtime-server-all-targets.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/clippy-runtime-server-all-targets.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/clippy-runtime-server-all-targets.stdout",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/clippy-runtime-server-all-targets.stderr",
+        "sha256": "59a3c49d6963c90bddc7a5012d69505dfd8b1e497c122fd735f0b057cc8a63cd",
+        "bytes": 3325
+      }
+    },
+    {
+      "label": "clone-local-cache",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/clone-local-cache.json",
+        "sha256": "d9be0dbbd226594fc40a33c58fa13d1e91ead1c608ccbd54422b2f7ea68b620a",
+        "bytes": 474
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "cp",
+        "-cR",
+        "/private/tmp/adm-native-history-target/.",
+        "/private/tmp/adm-native-kernel-deadline.RF8D6h/target"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 0,
+      "elapsed_seconds": 0.5069207497872412,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/clone-local-cache.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/clone-local-cache.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/clone-local-cache.stdout",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/clone-local-cache.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "label": "commit-source",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/commit-source.json",
+        "sha256": "a896d6808381be679a5704efecb05a25ff714a6cfc4cc23fe3be31d53ae1f6a0",
+        "bytes": 428
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "git",
+        "commit",
+        "-m",
+        "Bound native kernel runtime by executor deadline"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03781550005078316,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/commit-source.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/commit-source.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/commit-source.stdout",
+        "sha256": "8d029e7feca0e2dc5f74558ad51749aecaec32ec8a718d84d4490b993c37ad84",
+        "bytes": 146
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/commit-source.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "label": "diff-review",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/diff-review.json",
+        "sha256": "353ba612e1c09ba1ca06aefe94f717d68cf9c64423ae7430652bd4235d9c8ad7",
+        "bytes": 549
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "git",
+        "diff",
+        "--",
+        "crates/admiralty-runtime/src/resource_gate.rs",
+        "crates/admiralty-server/src/services/native_executor.rs",
+        "crates/admiralty-server/examples/native_lifecycle_probe.rs"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 0,
+      "elapsed_seconds": 0.021351458970457315,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/diff-review.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/diff-review.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/diff-review.stdout",
+        "sha256": "b50d54e40df3eff3dd9006b229717ab0a39cbe09346d44a9b7c6fd499928252d",
+        "bytes": 10108
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/diff-review.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "label": "final-source-audit",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/final-source-audit.json",
+        "sha256": "702c2b131c3b8e5f1787a1c4c20b0915049ffaca1bfe89ee9890b0cd1f8fd324",
+        "bytes": 1121
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-c",
+        "import subprocess,json,hashlib; from pathlib import Path; print(subprocess.check_output([\"git\",\"rev-parse\",\"HEAD\"],text=True)); print(subprocess.check_output([\"git\",\"status\",\"--porcelain=v1\"],text=True)); print(subprocess.check_output([\"git\",\"show\",\"--format=\",\"--name-only\",\"HEAD\"],text=True)); subprocess.run([\"git\",\"diff\",\"HEAD^\",\"HEAD\",\"--check\"],check=True); print(\"changed production sections\", subprocess.check_output([\"git\",\"diff\",\"HEAD^\",\"HEAD\",\"--numstat\"],text=True)); print(\"rustc\",subprocess.check_output([\"rustc\",\"-Vv\"],text=True)); print(\"cargo\",subprocess.check_output([\"cargo\",\"-V\"],text=True)); print(\"platform\",subprocess.check_output([\"uname\",\"-a\"],text=True))"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 0,
+      "elapsed_seconds": 0.1258120839484036,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/final-source-audit.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/final-source-audit.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/final-source-audit.stdout",
+        "sha256": "3263e70f75beb086f202319d6776e129d56e5634cd0084662d07d5fff35edfda",
+        "bytes": 841
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/final-source-audit.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "label": "fmt-final",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/fmt-final.json",
+        "sha256": "6c98e969a06252f1707a7fa9c1f3657d6ffd716c5ffb8154a4e30146f6f60498",
+        "bytes": 388
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 0,
+      "elapsed_seconds": 1.39254383277148,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/fmt-final.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/fmt-final.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/fmt-final.stdout",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/fmt-final.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "label": "fmt-initial",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/fmt-initial.json",
+        "sha256": "a66cedf9b31ec16a6cb34d9d34574bfd47dc2b43737ca407c52b4b22342a068b",
+        "bytes": 394
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 0,
+      "elapsed_seconds": 1.6821990422904491,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/fmt-initial.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/fmt-initial.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/fmt-initial.stdout",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/fmt-initial.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "label": "focused-wrapper-tests-corrected",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/focused-wrapper-tests-corrected.json",
+        "sha256": "566ec3f38a737a457ea64537dac1370ec24f4acbfb1dca436a7e61359f5b69c2",
+        "bytes": 769
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "env",
+        "CARGO_BUILD_JOBS=1",
+        "CARGO_TARGET_DIR=/private/tmp/adm-native-kernel-deadline.RF8D6h/target",
+        "TMPDIR=/private/tmp/adm-native-kernel-deadline.RF8D6h/tmp",
+        "RUST_TEST_THREADS=1",
+        "CARGO_NET_OFFLINE=true",
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-runtime",
+        "--locked",
+        "--lib",
+        "resource_gate::tests::wrapper_",
+        "--",
+        "--test-threads=1"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 0,
+      "elapsed_seconds": 7.546121875289828,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/focused-wrapper-tests-corrected.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/focused-wrapper-tests-corrected.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/focused-wrapper-tests-corrected.stdout",
+        "sha256": "f464727120291a71760ba30f678180507997d21fc48b8a2e3b54902e7f926ade",
+        "bytes": 522
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/focused-wrapper-tests-corrected.stderr",
+        "sha256": "3fb7cdc17360eb66ac66eb391061c5cc9d98b28ac37be504e54fa40063b52441",
+        "bytes": 330
+      }
+    },
+    {
+      "label": "focused-wrapper-tests",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/focused-wrapper-tests.json",
+        "sha256": "f3ac37d2e6de40b96ca6b5f76111adbf29622cdc4aa96f659eee879a58225249",
+        "bytes": 752
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "env",
+        "CARGO_BUILD_JOBS=1",
+        "CARGO_TARGET_DIR=/private/tmp/adm-native-kernel-deadline.RF8D6h/target",
+        "TMPDIR=/private/tmp/adm-native-kernel-deadline.RF8D6h/tmp",
+        "RUST_TEST_THREADS=1",
+        "CARGO_NET_OFFLINE=true",
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-runtime",
+        "--locked",
+        "--lib",
+        "resource_gate::tests::wrapper_",
+        "--",
+        "--test-threads=1"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 101,
+      "elapsed_seconds": 16.893801082856953,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/focused-wrapper-tests.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/focused-wrapper-tests.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/focused-wrapper-tests.stdout",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/focused-wrapper-tests.stderr",
+        "sha256": "894a7c5bb9b9f0ea8568e885b2ba32e347a394c731e934dabe8af748e6d473c0",
+        "bytes": 1191
+      }
+    },
+    {
+      "label": "launch-call-audit",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/launch-call-audit.json",
+        "sha256": "aac4eee1358530ea13260a195acb179219ed8fec91b37cc9b310c1cdc0b5bff2",
+        "bytes": 814
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-c",
+        "from pathlib import Path; import subprocess; print(\"\\n\".join(Path(\"crates/admiralty-runtime/src/session/mod.rs\").read_text().splitlines()[100:120])); subprocess.run([\"rg\",\"-n\",r\"\\.launch\\(&host|AdmittedLaunch|RuntimeMaxSec\",\"crates/admiralty-runtime/src/resource_gate.rs\",\"crates/admiralty-server/src\",\"crates/admiralty-server/examples\",\"tests\"],check=True); subprocess.run([\"git\",\"diff\",\"--check\"],check=True)"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 0,
+      "elapsed_seconds": 0.2557331663556397,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/launch-call-audit.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/launch-call-audit.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/launch-call-audit.stdout",
+        "sha256": "9c6e52ef6da61cc588ca5338ab2597aa43536e62da4355c263b2457cff203247",
+        "bytes": 2078
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/launch-call-audit.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "label": "precommit-audit",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/precommit-audit.json",
+        "sha256": "8daa613bcf8ab1e0dad2a66b93f7db474bbbc96e78e4e2926c5c1e1d0210acc1",
+        "bytes": 875
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-c",
+        "from pathlib import Path; import subprocess,hashlib,json; subprocess.run([\"git\",\"diff\",\"--check\"],check=True); subprocess.run([\"git\",\"status\",\"--short\"],check=True); files=[\"crates/admiralty-runtime/src/resource_gate.rs\",\"crates/admiralty-server/src/services/native_executor.rs\",\"crates/admiralty-server/examples/native_lifecycle_probe.rs\"]; print(json.dumps({p:{\"sha256\":hashlib.sha256(Path(p).read_bytes()).hexdigest(),\"bytes\":Path(p).stat().st_size} for p in files},indent=2))"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 0,
+      "elapsed_seconds": 0.21150700002908707,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/precommit-audit.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/precommit-audit.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/precommit-audit.stdout",
+        "sha256": "4f4d0557002801291e374d09cc2177b62f6e174b7612c26c01279723b5c5d7bd",
+        "bytes": 675
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/precommit-audit.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "label": "source-read",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/source-read.json",
+        "sha256": "ed6f4d8526189809693fc39d1dc5573fe1613963c4c782407c6e0300c561400e",
+        "bytes": 969
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-c",
+        "from pathlib import Path; p=Path(\"crates/admiralty-runtime/src/resource_gate.rs\"); lines=p.read_text().splitlines(); ranges=[(790,870),(1350,1445),(2180,2395)]; print(\"\\n\".join(\"\\n\".join(f\"{i+1}: {line}\" for i,line in enumerate(lines[a-1:b],a-1)) for a,b in ranges)); print(\"CALLS:\"); import subprocess; subprocess.run([\"rg\",\"-n\",r\"admitted\\.launch|\\.wrap\\(\",\"crates/admiralty-runtime/src/resource_gate.rs\",\"crates/admiralty-server/src/services/native_executor.rs\",\"crates/admiralty-server/examples/native_lifecycle_probe.rs\"]); print(Path(\"Cargo.toml\").read_text()[:3500])"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 0,
+      "elapsed_seconds": 0.061440625227987766,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/source-read.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/source-read.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/source-read.stdout",
+        "sha256": "16ea5026a71b311521f5d067aa0ca517f5248b0fd8f559f42a9447fbe2ab6dd6",
+        "bytes": 20164
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/source-read.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "label": "stage-source",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/stage-source.json",
+        "sha256": "6a57fffebe1deb1a6125b727b57c17fccbb432aae4a7fc22c028fee93111833f",
+        "bytes": 539
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "git",
+        "add",
+        "crates/admiralty-runtime/src/resource_gate.rs",
+        "crates/admiralty-server/src/services/native_executor.rs",
+        "crates/admiralty-server/examples/native_lifecycle_probe.rs"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 0,
+      "elapsed_seconds": 0.08540999982506037,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/stage-source.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/stage-source.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/stage-source.stdout",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/stage-source.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "label": "static-review-corrected",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/static-review-corrected.json",
+        "sha256": "c249416835fb83929e84be16584ad445bd767aea4878d0235636075c773675c0",
+        "bytes": 1050
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-c",
+        "from pathlib import Path; import subprocess; subprocess.run([\"rg\",\"-n\",r\"pub struct LaunchSpec\",\"crates/admiralty-runtime/src\"],check=True); print(Path(\"/private/tmp/adm-recovery-root-clippy.log\").read_text()[:1500]); print(\"root cache exists\", Path(\"/Users/bentaylor/Documents/ChatGPT/admiralty/target\").exists()); print(\"recent proof targets:\"); print(\"\\n\".join(str(p) for p in Path(\"/private/tmp\").glob(\"*target*\") if p.is_dir())); print(\"recent history files:\"); print(\"\\n\".join(str(p) for p in Path(\"/private/tmp/adm-native-history-logs\").iterdir()) if Path(\"/private/tmp/adm-native-history-logs\").is_dir() else \"absent\")"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 0,
+      "elapsed_seconds": 0.04481929121538997,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/static-review-corrected.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/static-review-corrected.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/static-review-corrected.stdout",
+        "sha256": "18faa428a75cc51d33091e7664b7a55ee03f0793e24907de8d48a2be9fd4e7a3",
+        "bytes": 3752
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/static-review-corrected.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "label": "static-review",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/static-review.json",
+        "sha256": "adba8784b91876ae6ce6f61066f9c146db41d33f9b4fcb2895542dcbd94d6d28",
+        "bytes": 896
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "-c",
+        "from pathlib import Path; import subprocess; subprocess.run([\"git\",\"diff\",\"--stat\"],check=True); subprocess.run([\"rg\",\"-n\",r\"admitted\\.launch|pub struct LaunchSpec|derive\",\"crates/admiralty-runtime/src/session.rs\",\"crates/admiralty-server/src/services/native_executor.rs\",\"crates/admiralty-server/examples/native_lifecycle_probe.rs\"],check=True); print(\"cache:\"); print(Path(\"/private/tmp/adm-recovery-root-clippy.log\").read_text()[:1000]); print(Path(\"/private/tmp/adm-native-history-logs\").is_dir())"
+      ],
+      "cwd": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+      "exit_code": 1,
+      "elapsed_seconds": 0.23341916734352708,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/static-review.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/static-review.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/static-review.stdout",
+        "sha256": "4926fd80774b86c9cef5b58882c51f2f8217646267b01bdd65012f3e06d3d48b",
+        "bytes": 1359
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/static-review.stderr",
+        "sha256": "f3a634785edfd414f413a779376754a43c4ba0b4172151cfc7cb9fbd8923dee3",
+        "bytes": 1564
+      }
+    },
+    {
+      "label": "worktree-create",
+      "metadata": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree-create.json",
+        "sha256": "c4f24cce75e60a88680b0396e455ab8d4e4d9ce23690095b44279180902cf85f",
+        "bytes": 531
+      },
+      "argv": [
+        "rtk",
+        "proxy",
+        "git",
+        "worktree",
+        "add",
+        "-b",
+        "codex/native-kernel-deadline-bound",
+        "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree",
+        "a6df0fb38314232a67290ec5bba86733d00dc327"
+      ],
+      "cwd": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+      "exit_code": 0,
+      "elapsed_seconds": 0.32356354128569365,
+      "stdout": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree-create.stdout",
+      "stderr": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree-create.stderr",
+      "stdout_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree-create.stdout",
+        "sha256": "66c9ecb8beef72358964e8251db4728a856a7dc311c6ce6cba51ace5bc5e7a60",
+        "bytes": 64
+      },
+      "stderr_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/worktree-create.stderr",
+        "sha256": "ec0415543ff74887b7d01a0b0ceb34fd8f848e88aa393b21c9d1e10072cce52a",
+        "bytes": 69
+      }
+    }
+  ],
+  "bootstrap_tool_evidence": [
+    {
+      "command": "rtk proxy cat /Users/bentaylor/.codex/RTK.md /private/tmp/ADMIRALTY_RUNTIME_DEADLINE_BOUND_a6df_20261019.md",
+      "exit": 0,
+      "tool_chunk_id": "9e4ac0",
+      "raw_capture": "tool transcript; output truncated, source capsule separately hashed below"
+    },
+    {
+      "command": "rtk proxy mktemp -d /private/tmp/adm-native-kernel-deadline.XXXXXX",
+      "exit": 0,
+      "tool_chunk_id": "c0681a",
+      "result": "/private/tmp/adm-native-kernel-deadline.RF8D6h"
+    },
+    {
+      "command": "rtk proxy cat /Users/bentaylor/.codex/RTK.md",
+      "exit": 0,
+      "tool_chunk_id": "d16eb7",
+      "raw_capture": "tool transcript"
+    },
+    {
+      "command": "rtk proxy python3 -c <create external logger and private tmp/target directories>",
+      "exit": 0,
+      "tool_chunk_id": "c27eb5",
+      "logger_artifact": {
+        "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/run_logged.py",
+        "sha256": "577f361bbbf3e1d806b42c1d24ee9c9327bf41cbb1269faf94af367de7fe01e7",
+        "bytes": 664
+      }
+    }
+  ],
+  "design_input": {
+    "path": "/private/tmp/ADMIRALTY_RUNTIME_DEADLINE_BOUND_a6df_20261019.md",
+    "sha256": "02892887824d921f11efd5f2d98fb349bedff25751f7193bd311aabf2c790120",
+    "bytes": 12961
+  },
+  "closure_artifacts": {
+    "receipt_generation_metadata": "/private/tmp/adm-native-kernel-deadline.RF8D6h/receipt-generation.json",
+    "note": "receipt-generation logs are written after this manifest is generated, avoiding a self-referential digest"
+  },
+  "limits": [
+    "Mac all-target Clippy does not typecheck cfg(target_os=linux) lifecycle probe body; Root must compile the migrated Linux caller",
+    "unit tests exercise the actual pure systemd wrapper argument builder, not real systemd timeout enforcement",
+    "huge-duration test verifies bounded arithmetic and formatting only, not systemd acceptance of an extreme duration",
+    "no provider, remote, service, authorization grant, runtime activation, recovery retry, forge or parent acceptance actions performed",
+    "no timeout enforcement qualification claimed; historical 17.8 second run never exercised its timer"
+  ]
+}

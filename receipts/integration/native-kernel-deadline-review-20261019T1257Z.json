@@ -1,0 +1,26 @@
+{
+  "review_kind": "static_source_review",
+  "review_status": "CLEAR",
+  "base_commit": "a6df0fb38314232a67290ec5bba86733d00dc327",
+  "candidate_commit": "3f19a292839006c065c7a72c8f5af1a1e4cd960c",
+  "capsule": "/private/tmp/ADMIRALTY_RUNTIME_DEADLINE_BOUND_a6df_20261019.md",
+  "files_reviewed": {
+    "crates/admiralty-runtime/src/resource_gate.rs": "41c17e6be7c1ce2ba13872d7d15b063ed2ba8244156d6c22a1a8b64ff256af5c",
+    "crates/admiralty-server/src/services/native_executor.rs": "737385b6892670d1ccce05745fad23880e7b9d4fd115d0a424c4c669e62c64fc",
+    "crates/admiralty-server/examples/native_lifecycle_probe.rs": "8e33ed6f72f451cbec6c10124d80e20d5a66a3e0dad1324a0b707fb4f2c8ec39"
+  },
+  "findings": [
+    "AdmittedLaunch::launch now requires execution_limit: Duration; candidate-wide search found exactly two call sites, both migrated: NativeExecutor passes its existing self.deadline and lifecycle probe passes Duration::from_secs(deadline_seconds).",
+    "The executor deadline is existing trusted configuration (constructor still rejects zero and values above 3600 seconds); no plan/request/claim field or deadline policy was added.",
+    "Final wrap uses fresh unix-ms input already taken at the final pre-spawn wrapper point, computes positive remaining time as min(permit expiry, resource lease expiry) minus now, and emits min(execution_limit.as_millis(), remaining_ms), flooring to milliseconds. Conversion follows the u128 minimum and rejects zero, so zero/sub-ms/expired values fail closed and Duration::MAX cannot overflow the bounded result.",
+    "The diff changes no claims, signed authority checks, caps, digests, custody, software wait, pending recovery, or lifecycle policy. Preflight errors still map to LaunchFailure with recovery=None before host launch; only RuntimeMaxSec construction changes in wrapper output.",
+    "Added wrapper tests cover 120s versus 380317ms, tighter permit and resource lease bounds, exact 120s, zero/sub-ms rejection, expiry boundary/past cases, 1ms flooring, near-u64 limit, Duration::MAX, and wrapper equality after normalizing the changed timer argument."
+  ],
+  "blockers": [],
+  "test_and_validation_limitations": [
+    "No build, test, runtime, systemd, or Linux validation was performed; this is source-only review.",
+    "The historical observation in the capsule reports an approximately 17.8 second run with RuntimeMaxSec=380.317s and a configured executor deadline of 120s. That run did not exercise either timeout; this review does not qualify actual kernel enforcement, wall-clock termination, startup timing, or kill behavior.",
+    "The normalized-wrapper equality assertion checks that other wrapper fields remain equivalent while normalizing the timer argument; it is supplementary to the direct bound assertions, not independent evidence of production timeout behavior."
+  ],
+  "review_scope": "Only the candidate diff for the three listed files and the frozen design capsule; no edits or external actions."
+}

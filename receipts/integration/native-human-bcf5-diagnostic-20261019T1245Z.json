@@ -1,0 +1,285 @@
+{
+  "schema_version": 1,
+  "kind": "failed-human-authorized-native-codex-diagnostic-v1",
+  "recorded_utc": "2026-10-19T12:47:09.829Z",
+  "recorded_only": true,
+  "source": {
+    "git_commit": "bcf5cce911e538de7c3f6d0b2e8e59f3185ebdd2",
+    "diagnostic_binary_sha256": "15e885c911bc2bf8ee2fb50ab69d63e6fcbdd1880d3119daa4bbe1676af1fed5",
+    "diagnostic_binary_bytes": 10643448,
+    "request_sha256": "fc73bf1946a00cc5cc4a77a61794633b019ee9db916338fd672f81bcbf26dcd0",
+    "request_bytes": 17945,
+    "fixture_nonce": "18890a45-722b-4f73-808b-cab76b32d0e0",
+    "toy_base_commit": "1ec3d8a4108e48864f0c292edd918b9949347e3e",
+    "toy_base_tree": "b4b9207a619438c266804abd0e2892af36f16c3a",
+    "scope": "One fixed owned toy; src/main.rs only; historical bcf5 diagnostic artifact, not latest main or general fleet execution."
+  },
+  "authorization": {
+    "authorization_id": "human-bcf5-one-e419cda7-e0f2-4706-8deb-58dd6c7fd763",
+    "source": "Direct human authorization for exactly this one diagnostic; no SC155 reuse.",
+    "grant": {
+      "path": "/private/tmp/CODEX_HUMAN_BCF5_ONCE_GRANTED_20261019T1230Z.json",
+      "bytes": 853,
+      "sha256": "9a057e0be8085bc4742e106e9d45ee4d520b448d9ea6090c84fc433287d8bff9"
+    },
+    "approved_utc": "2026-10-19T12:31:41.531Z",
+    "consumed": true,
+    "consumption_marker_sha256": "3af88e39831ccfb46f87462819c768a438ba83c10f389b62bc9f560c970f9b2b",
+    "decision_and_marker_byte_identical": true,
+    "automatic_retry": false,
+    "new_run_authorized": false
+  },
+  "execution": {
+    "started_utc": "2026-10-19T12:31:41.588Z",
+    "finished_utc": "2026-10-19T12:31:59.367Z",
+    "elapsed_ms": 17779,
+    "probe_exit_code": 17,
+    "probe_signal": null,
+    "provider_process_exit_code": 0,
+    "provider_process_success": true,
+    "provider_capture_complete": true,
+    "provider_termination": "provider_turn_completed",
+    "actual_completed_provider_turns_in_capture": 1,
+    "provider_observed": "codex_cli",
+    "requested_model": "gpt-6-luna",
+    "requested_effort": "medium",
+    "model_observed": null,
+    "effort_observed": null,
+    "status": "failed-coding-task",
+    "failure_stage": "SourcePreflight",
+    "failure_reason": "Trusted source preflight reported no source changes relative to pinned base commit; captured agent also reported no edit and no verifier run.",
+    "source_postrun_bytes_independently_measured_by_reviewer": false,
+    "dispatch_effect": "Runtime output receipt recorded; Candidate disposition here is not a verified changed-source candidate or task acceptance."
+  },
+  "tool_failure": {
+    "observed": "Code-mode host handshake failure and subsequent spawn EAGAIN (os error 11) inside the single completed provider turn.",
+    "cause": null,
+    "cause_limit": "No proof attributes this to TasksMax/PidsMax, host capacity, an ancestor cgroup limit, or another root cause. Internal tool startup attempts are not a second authorized provider run."
+  },
+  "deadlines": {
+    "software_executor_seconds": 120,
+    "dispatch_lease_seconds": 121,
+    "systemd_runtime_max_seconds": 380.317,
+    "systemd_semantics": "Remaining permit-expiry duration at launch, separate from the software executor deadline.",
+    "actual_elapsed_ms": 17779,
+    "timeout_enforcement_exercised": false
+  },
+  "capture": {
+    "physical_journal_bytes": 1774,
+    "physical_journal_sha256": "257c2edc5f0ffc72fbf6b9104554dc522d3de61cacd3d3286df7d8ff207a7219",
+    "frames": 10,
+    "frame_header_bytes": 130,
+    "producer_payload_watermark_bytes": 1644,
+    "stdout_bytes": 716,
+    "stderr_bytes": 928,
+    "ndjson_events": 5,
+    "parser_failed": false,
+    "truncated_line": false,
+    "scope": "Independent bounded framing check: contiguous tagged offsets through 1644 and a completed turn. Physical framing bytes are separate from the producer output watermark."
+  },
+  "reported_usage": {
+    "cache_write_input_tokens": "0",
+    "cached_input_tokens": "76928",
+    "input_tokens": "82683",
+    "output_tokens": "348",
+    "semantics": "Actual one-turn provider reports only. Cached input is a reported subset, not additional billable input; reasoning output is not added again to output. No pricing, settlement, model inference or retroactive accounting.",
+    "reasoning_output_tokens": "43",
+    "turns": 1,
+    "billing_settlement": false
+  },
+  "resources": {
+    "authoritative_closed_observation": {
+      "cpu_set": [
+        0,
+        1
+      ],
+      "memory_max_bytes": 536870912,
+      "tasks_max": 32,
+      "exact_program_cwd_identity_and_environment_bindings": true,
+      "closure_digest": "sha256:bff04ff30f427814456473f9595c55124045ae0954e4d7a6604b47114258de0f"
+    },
+    "advisory_only": true,
+    "initial": {
+      "pids_current": 20,
+      "pids_max": 32,
+      "pids_peak": 20,
+      "pids_events_max": 0,
+      "memory_current_bytes": 14798848,
+      "memory_peak_bytes": 14798848,
+      "memory_max_bytes": 536870912,
+      "memory_events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "pids_events_local": null
+    },
+    "sample_attempts": 45,
+    "final_counter_state": "All measured final counters unavailable/missing; retained directory identity does not fabricate final zero counters.",
+    "causal_diagnosis_qualified": false
+  },
+  "accounting": {
+    "request_reservation_outstanding": true,
+    "request_reservation_unit": "PROBE",
+    "request_reservation_original": "1",
+    "request_reservation_settled": "0",
+    "final_durable_liability_state": null,
+    "final_settlement_proof": false,
+    "refund_or_release_inferred": false,
+    "historical_accounting_retroactively_qualified": false,
+    "limit": "No final Store liability/settlement snapshot or historical-accounting proof was supplied. Process closure and token reports do not settle liability."
+  },
+  "qualification": {
+    "coding_provider_qualified": false,
+    "native_execution_qualified": false,
+    "trusted_acceptance": false,
+    "changed_source_verified": false,
+    "positive_oracle_qualified": false,
+    "negative_oracle_qualified": false,
+    "general_capacity_qualified": false,
+    "network_or_credential_sandbox_qualified": false,
+    "timeout_enforcement_qualified": false,
+    "parent_acceptance_changed": false
+  },
+  "next_action": "Preserve this consumed fixture, decisions and journals. Investigate tool-start failures read-only or with separately scoped authority. Do not retry or substitute this grant; a new provider execution requires fresh explicit authorization.",
+  "driver": {
+    "path": "/private/tmp/admiralty-human-bcf5-driver.cjs",
+    "bytes": 9800,
+    "sha256": "83c94922c56746d66d6dd64df6e1f20cd3a540e2a7036647bab86a13d4701bc2"
+  },
+  "independent_reviews": [
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome-review-0BOYer/review.json",
+      "bytes": 7998,
+      "sha256": "3bab0744b7c4146076dc5c85a30ed62bb3954f2bca34ebb1fa4c0f0c11cbcd9b"
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-full-request-review-AzsH7M/review.json",
+      "bytes": 2400,
+      "sha256": "c683eba838b55dcc74a71ca9c070321e0924dc65970ba6a7a93589c9f11f438b"
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-driver-static-review.json",
+      "bytes": 2539,
+      "sha256": "49a70d75fe63784fa7bdc468b1fec77d6af901e51d329eb06ebc55564a7e1f57"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/operator-authorization-request.json",
+      "bytes": 17945,
+      "sha256": "fc73bf1946a00cc5cc4a77a61794633b019ee9db916338fd672f81bcbf26dcd0",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/fixture/operator-authorization-request.json",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/reviewed-request.json",
+      "bytes": 17945,
+      "sha256": "fc73bf1946a00cc5cc4a77a61794633b019ee9db916338fd672f81bcbf26dcd0",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/fixture/operator-authorization-request.json",
+      "original_ref_status": "This local reviewed-request is an exact-byte copy of the original operator-authorization request; no distinct remote reviewed-request filename is asserted."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/operator-decision.json",
+      "bytes": 1960,
+      "sha256": "3af88e39831ccfb46f87462819c768a438ba83c10f389b62bc9f560c970f9b2b",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/operator-decision.json",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/CODEX_HUMAN_BCF5_CONSUMED_ONCE_20261019T1230Z.json",
+      "bytes": 1960,
+      "sha256": "3af88e39831ccfb46f87462819c768a438ba83c10f389b62bc9f560c970f9b2b",
+      "original_private_ref": "/home/ubuntu/xbabe2_kicker/captains-20261017/CODEX_HUMAN_BCF5_CONSUMED_ONCE_20261019T1230Z.json",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/dispatch.json",
+      "bytes": 650,
+      "sha256": "e210e4c8a6027ecf935db7d2d5a3e4ae839118d5a61cb5fbad31957d02ba715a",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/fixture/dispatch.json",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/failure.json",
+      "bytes": 415,
+      "sha256": "4cf1665a03d74ce8d92a12cca632caabf309454748071741792ac2e87561723b",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/fixture/failure.json",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/provider-observation.json",
+      "bytes": 1345,
+      "sha256": "033128cec88f47623a23b5c27a9d7b6a816e5c19f771eb6a3209f35ef3cbd9b6",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/fixture/provider-observation.json",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/resource-observation.json",
+      "bytes": 4550,
+      "sha256": "c0b08b348620c1a633c95cb5b1587c061666d76cb84444672a536c045542f2e4",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/fixture/resource-observation.json",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/run-exit.json",
+      "bytes": 274,
+      "sha256": "c5217c7052a3eb5d6501fd8cb537027cdb2a59b71357533aa54213fa2267c5ac",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/run-exit.json",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/run-started.json",
+      "bytes": 155,
+      "sha256": "80a23e59231814d5921acc5c3b2c79212bd6cf44a0b132ee3f81bed47f8110e5",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/fixture/run-started.json",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/run.json",
+      "bytes": 5700,
+      "sha256": "d94fc9424b6a9aafb90b17134fbb7ef9d683e008c3cd634109fe162eaf9e0801",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/fixture/worker-spool/cx-5d0da8e86eaad7290aba5bd526b3b333e617abcba4b48166a02189510d4c7c1e/run.json",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/run.stderr",
+      "bytes": 142,
+      "sha256": "64d09039c9025936fbae290d2c3d879d46c6c75d806e2b6457d1615618ff8a51",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/run.stderr",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/output.journal",
+      "bytes": 1774,
+      "sha256": "257c2edc5f0ffc72fbf6b9104554dc522d3de61cacd3d3286df7d8ff207a7219",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/fixture/worker-spool/cx-5d0da8e86eaad7290aba5bd526b3b333e617abcba4b48166a02189510d4c7c1e/output.journal",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/journal/sha256:5040ac41990a13083d25eacf845f629796ababb7432ea5c40853f8ff3f97f980.closed.json",
+      "bytes": 6113,
+      "sha256": "5662dda26353e26864f97c5d4d62de683db10fb99ddae5193a00fe7bff059859",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/fixture/journal/sha256:5040ac41990a13083d25eacf845f629796ababb7432ea5c40853f8ff3f97f980.closed.json",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/journal/sha256:5040ac41990a13083d25eacf845f629796ababb7432ea5c40853f8ff3f97f980.observed.json",
+      "bytes": 984,
+      "sha256": "8d528e4c80f2cdff20ca5492870f59f1d54ad166a6d9b75a5bfe6d58e0387a4e",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/fixture/journal/sha256:5040ac41990a13083d25eacf845f629796ababb7432ea5c40853f8ff3f97f980.observed.json",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    },
+    {
+      "path": "/private/tmp/adm-human-bcf5-outcome/journal/sha256:5040ac41990a13083d25eacf845f629796ababb7432ea5c40853f8ff3f97f980.prepared.json",
+      "bytes": 7246,
+      "sha256": "9451559af3b521351d4ae4a8421adbe25693b147831401e280666d517a24b4f4",
+      "original_private_ref": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-human-bcf5-20261019T1230Z/fixture/journal/sha256:5040ac41990a13083d25eacf845f629796ababb7432ea5c40853f8ff3f97f980.prepared.json",
+      "original_ref_status": "Retained origin named by run fixture/driver; this receipt rehashes the copied local artifact, not the remote origin."
+    }
+  ],
+  "privacy": "No raw task capsule, provider transcript, credential, token, HOME/auth file content, or private configuration bytes are embedded. Raw evidence remains in protected private references. No repository, remote, provider or service action was performed to create this receipt."
+}

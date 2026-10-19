@@ -2,6 +2,52 @@
 
 ## Later component reconciliation
 
+**12:50Z release gates, not a bookkeeping hold:** PR125/e6e364e is the primary
+Rust dashboard/observer, independently verified at12:23:52.714Z. There were zero
+open PRs at12:50:19.167Z. Browser/accessibility39250210328 passed; main checks39250210472
+failed the controlled child capture deadline (96serverpassed/1failed/2ignored).
+The hard switch of the dashboard is done; a public major release is not yet
+published. Gemini quota is not preventing Root from recording component proof
+or accepting a packet whose entire criteria are actually met.
+
+Remaining release work groups are:
+
+1. **Execution and authentic production admission:** install authenticated
+   budget/model/physical-pool/resource policy and prove actual admitted source
+   changes, trusted checks, Store acceptance and context delivery. Existing
+   journals/factory/controller/fence components are implemented, not activated
+   end-to-end. Keep registry, requested and observed model identities separate.
+2. **Completion and recovery:** compose independent closure, conservative unknown
+   effects, settlement/release and restart/restore. New bounded journal metadata
+   inspection/resource history is diagnostic support, not this whole gate.
+3. **Product and contracts:** complete enriched intake/task selection, attention
+   and delivery UI, remaining fleet/provider pathways and open packet criteria.
+   P02's fresh source audit finds specific public contract gaps: independent
+   attempt outcomes, task-revision/interface compatibility, immutable execution
+   requirements and generated schema/export coverage. Provider activation is
+   not a P02 criterion; do not use it to defer unrelated contract acceptance.
+4. **Final qualification:** resolve the single CI backlog, run source-bound
+   supported provider/fleet/recovery/installation journeys and publish honest
+   support limits. Do not repeat unchanged passing suites as a substitute for
+   implementing the missing paths.
+5. **Distribution:** build/install-test release archives, manifest/checksums,
+   SBOM/provenance, complete operator/README/support and rights checks, then
+   publish the major release and fleet handoff. No GitHub release exists in the
+12:50:19.167Z API snapshot (`adm-recovery-forge-1255.json`).
+
+The newly human-authorized ONE bcf5 diagnostic was consumed at12:31Z. Its CLI
+turn completed with process0, but the code-mode helper repeatedly reported
+EAGAIN, made no edits and did not run the verifier. The probe exited17 at source
+preflight; model/effort remain unobserved. Resource cause and final accounting
+remain unknown; no retry or fallback is authorized. Its short successful process
+exit does not qualify timeout enforcement: recorded systemd RuntimeMaxSec used
+the permit remainder (~380s), whereas the software executor deadline was120s.
+The new launch/backend source repair clamps that maximum to the existing trusted
+executor duration and original permit/lease expiry. Qualify/build the repaired
+source before another separately authorized diagnostic; argument/unit tests do
+not establish actual timeout/stop-grace enforcement.
+The new diagnostics cannot reconstruct this old binary's missing final counters.
+
 This additive update retains the full audit below at its original source/time.
 Only P00/P01 are fully accepted; all30 other parents remain open. Do not rebuild
 the following later integrated components or infer that they are live:
