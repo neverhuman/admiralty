@@ -83,6 +83,10 @@ pub struct ReservationBinding<'a> {
 
 /// Installed at Store startup; request JSON cannot supply an authority.
 /// Callbacks must be bounded, nonblocking, non-reentrant, and perform no I/O.
+/// They must observe authorization state without directly or indirectly mutating
+/// any admission authority. Independent policies are sampled sequentially;
+/// authorization/revocation through COMMIT requires a shared retained fence,
+/// which this callback interface does not provide.
 pub trait ReservationAuthority: Send + Sync {
     fn authorize_write(
         &self,
