@@ -131,6 +131,113 @@ fn attest_all_provenance(observations: &[DeliveryObservation]) -> BTreeSet<Strin
     set
 }
 
+fn build_attested_check_receipt(
+    contract: &TaskContract,
+    requirement: &DeliveryRequirement,
+    receipt_id: &str,
+    source_commit_sha: &str,
+    source_tree_sha: &str,
+) -> AttestedCheckReceipt {
+    let mut neg_check = contract.checks[0].clone();
+    neg_check.id = "neg-cargo-test".into();
+    let policy = VerificationPolicy {
+        schema_version: 1,
+        verifier: PrincipalId::new("verifier-service").expect("valid principal"),
+        protected_oracle_digest: digest('9'),
+        required_negative_checks: vec![RequiredNegativeCheck {
+            check: neg_check.clone(),
+            expected_exit_code: 0,
+            fixture_digest: digest('8'),
+        }],
+    };
+    let policy_digest = content_digest(&policy).expect("policy digest");
+    let inputs = VerificationInputs {
+        project_id: contract.project_id.clone(),
+        root_id: contract.root_id.clone(),
+        task_id: contract.task_id.clone(),
+        attempt_id: AttemptId::new("attempt-1").expect("valid attempt"),
+        candidate_ref: "candidate:wo5-1".into(),
+        contract_revision: contract.revision,
+        contract_digest: requirement.contract_digest.clone(),
+        verification_policy_digest: policy_digest,
+        source_commit_sha: source_commit_sha.to_owned(),
+        source_tree_sha: source_tree_sha.to_owned(),
+        source_artifact_digest: digest('a'),
+        protected_oracle_digest: digest('9'),
+    };
+    let v_receipt = VerificationReceipt {
+        schema_version: 1,
+        receipt_id: receipt_id.to_owned(),
+        producer: ReceiptProducer::IndependentVerifier,
+        verifier: PrincipalId::new("verifier-service").expect("valid principal"),
+        inputs: inputs.clone(),
+        checks: vec![CheckResult {
+            check: contract.checks[0].clone(),
+            exit_code: Some(0),
+            stdout_digest: digest('6'),
+            stderr_digest: digest('7'),
+        }],
+        negative_checks: vec![CheckResult {
+            check: neg_check,
+            exit_code: Some(0),
+            stdout_digest: digest('6'),
+            stderr_digest: digest('7'),
+        }],
+    };
+    let validated_receipt =
+        validate_receipt(contract, &inputs, &policy, &v_receipt).expect("validate check receipt");
+    AttestedCheckReceipt {
+        validated_receipt,
+        inputs,
+        negative_checks_passed: true,
+    }
+}
+
+fn attest_observations(
+    observations: &[DeliveryObservation],
+) -> BTreeMap<String, AttestedObservation> {
+    let mut map = BTreeMap::new();
+    for obs in observations {
+        if matches!(obs.trust, ObservationTrust::ClaimedEvidence { .. }) {
+            let attested =
+                AttestedObservation::for_observation(obs).expect("valid attested observation");
+            map.insert(obs.observation_id.clone(), attested);
+        }
+    }
+    map
+}
+
+fn attest_check_receipts(
+    contract: &TaskContract,
+    requirement: &DeliveryRequirement,
+    observations: &[DeliveryObservation],
+) -> BTreeMap<String, AttestedCheckReceipt> {
+    let mut map = BTreeMap::new();
+    for obs in observations {
+        if let StageObservationDetail::Check {
+            source_commit_sha,
+            source_tree_sha,
+            producer: ReceiptProducer::IndependentVerifier,
+            all_checks_passed: true,
+            negative_checks_passed: true,
+            receipt_digest,
+        } = &obs.detail
+        {
+            let check_receipt = build_attested_check_receipt(
+                contract,
+                requirement,
+                &obs.observation_id,
+                source_commit_sha,
+                source_tree_sha,
+            );
+            if check_receipt.validated_receipt.receipt_digest() == receipt_digest {
+                map.insert(receipt_digest.clone(), check_receipt);
+            }
+        }
+    }
+    map
+}
+
 fn context_for(
     contract: TaskContract,
     requirement: DeliveryRequirement,
@@ -138,6 +245,7 @@ fn context_for(
     now_tick: u64,
     observations: &[DeliveryObservation],
 ) -> TrustedDeliveryContext {
+    let attested_check_receipts = attest_check_receipts(&contract, &requirement, observations);
     TrustedDeliveryContext {
         contract,
         requirement,
@@ -146,7 +254,8 @@ fn context_for(
         default_owner,
         now_tick: DecimalU64::new(now_tick),
         attested_provenance_refs: attest_all_provenance(observations),
-        validated_receipts: BTreeMap::new(),
+        attested_observations: attest_observations(observations),
+        attested_check_receipts,
     }
 }
 
@@ -262,6 +371,10 @@ fn full_repo_observations(
     let tree = oid('2');
     let base = oid('3');
     let merged_head = oid('4');
+    let check_obs_id = format!("{prefix}-check");
+    let check_receipt =
+        build_attested_check_receipt(contract, requirement, &check_obs_id, &head, &tree);
+    let check_receipt_digest = check_receipt.validated_receipt.receipt_digest().to_owned();
     let effect_receipt =
         (intent_stage == IntentStage::ReconciledSuccess).then(|| ReconciliationReceipt {
             intent_key: format!("intent:{prefix}"),
@@ -308,7 +421,7 @@ fn full_repo_observations(
             },
         },
         DeliveryObservation {
-            observation_id: format!("{prefix}-check"),
+            observation_id: check_obs_id,
             join: join.clone(),
             target_kind: DeliveryTargetKind::Repository,
             trust: claimed_trust(&format!("{prefix}-check"), 'b'),
@@ -320,7 +433,7 @@ fn full_repo_observations(
                 producer: ReceiptProducer::IndependentVerifier,
                 all_checks_passed: true,
                 negative_checks_passed: true,
-                receipt_digest: digest('b'),
+                receipt_digest: check_receipt_digest,
             },
         },
         DeliveryObservation {
@@ -599,67 +712,36 @@ fn missing_reviews_checks_and_unattested_provenance_never_grant_delivery() {
     assert_eq!(ut.stages.merge, StageEvaluation::UnattestedProvenance);
     assert_eq!(ut.highest_verified_stage, None);
 
-    // Case C: Observation wrapper provenance is attested, but inner `ApprovalEvidence.provenance_ref`
-    // and `ReconciliationReceipt.provenance_ref` are NOT attested, and `ValidatedReceipt` binding is
-    // required by context for `Check` but missing for `unattested-check`!
+    // Case C: Observation wrapper is content-attested, but inner `ApprovalEvidence.provenance_ref`
+    // and `ReconciliationReceipt.provenance_ref` are NOT attested, and `attested_check_receipts`
+    // is either empty or missing the binding for `unattested-check`!
     unattested_ctx.attested_provenance_refs = BTreeSet::from([
         "evidence:unattested-impl".to_owned(),
         "evidence:unattested-check".to_owned(),
         "evidence:unattested-review".to_owned(),
         "evidence:unattested-merge".to_owned(),
     ]);
-    // Insert a ValidatedReceipt for a different receipt digest so `validated_receipts` is non-empty,
-    // proving `IndependentVerifier` in JSON cannot bypass a missing ValidatedReceipt binding.
-    let mut neg_check = contract.checks[0].clone();
-    neg_check.id = "neg-cargo-test".into();
-    let policy = VerificationPolicy {
-        schema_version: 1,
-        verifier: PrincipalId::new("verifier-service").expect("valid principal"),
-        protected_oracle_digest: digest('9'),
-        required_negative_checks: vec![RequiredNegativeCheck {
-            check: neg_check.clone(),
-            expected_exit_code: 0,
-            fixture_digest: digest('8'),
-        }],
-    };
-    let policy_digest = content_digest(&policy).expect("policy digest");
-    let v_receipt = VerificationReceipt {
-        schema_version: 1,
-        receipt_id: "vr-other".into(),
-        producer: ReceiptProducer::IndependentVerifier,
-        verifier: PrincipalId::new("verifier-service").expect("valid principal"),
-        inputs: VerificationInputs {
-            project_id: contract.project_id.clone(),
-            root_id: contract.root_id.clone(),
-            task_id: contract.task_id.clone(),
-            attempt_id: AttemptId::new("attempt-1").expect("valid attempt"),
-            candidate_ref: "candidate:wo5-1".into(),
-            contract_revision: contract.revision,
-            contract_digest: requirement.contract_digest.clone(),
-            verification_policy_digest: policy_digest,
-            source_commit_sha: oid('1'),
-            source_tree_sha: oid('2'),
-            source_artifact_digest: digest('a'),
-            protected_oracle_digest: digest('9'),
-        },
-        checks: vec![CheckResult {
-            check: contract.checks[0].clone(),
-            exit_code: Some(0),
-            stdout_digest: digest('6'),
-            stderr_digest: digest('7'),
-        }],
-        negative_checks: vec![CheckResult {
-            check: neg_check,
-            exit_code: Some(0),
-            stdout_digest: digest('6'),
-            stderr_digest: digest('7'),
-        }],
-    };
-    let observed_vr =
-        validate_receipt(&contract, &v_receipt.inputs, &policy, &v_receipt).expect("validate vr");
-    unattested_ctx
-        .validated_receipts
-        .insert(observed_vr.receipt_digest().to_owned(), observed_vr);
+    unattested_ctx.attested_observations = attest_observations(&unattested_obs);
+    for attested in unattested_ctx.attested_observations.values_mut() {
+        attested.sub_provenance_refs.clear();
+    }
+
+    // Even when `attested_check_receipts` is empty, `Check` must fail closed as `UnattestedProvenance`.
+    let empty_receipts_proj = project_delivery(&unattested_ctx, &batch_for(unattested_obs.clone()))
+        .expect("project with empty attested_check_receipts");
+    assert_eq!(
+        empty_receipts_proj.targets[0].stages.check,
+        StageEvaluation::UnattestedProvenance
+    );
+
+    // Insert an AttestedCheckReceipt for a different receipt ID ("vr-other") so `attested_check_receipts`
+    // is non-empty, proving `IndependentVerifier` in JSON cannot bypass a missing receipt binding.
+    let other_check =
+        build_attested_check_receipt(&contract, &requirement, "vr-other", &oid('1'), &oid('2'));
+    unattested_ctx.attested_check_receipts.insert(
+        other_check.validated_receipt.receipt_digest().to_owned(),
+        other_check,
+    );
 
     let inner_unattested = project_delivery(&unattested_ctx, &batch_for(unattested_obs))
         .expect("project inner unattested");
@@ -1669,4 +1751,340 @@ fn existing_task_contract_v1_bytes_and_digest_unchanged() {
         content_digest(&contract).expect("digest"),
         content_digest(&roundtrip).expect("roundtrip digest")
     );
+}
+
+// REVIEWER COUNTEREXAMPLES: expected safety assertions, red on frozen 85c432ba.
+fn reviewer_one_deployment() -> (TaskContract, DeliveryRequirement, Vec<DeliveryObservation>) {
+    let task = task_contract();
+    let requirement = DeliveryRequirement {
+        schema_version: 1,
+        task_id: task.task_id.clone(),
+        contract_revision: task.revision,
+        contract_digest: content_digest(&task).expect("digest"),
+        generation: 1,
+        targets: vec![DeliveryTarget {
+            id: "deploy-only".into(),
+            target_kind: DeliveryTargetKind::Deployment,
+            requirement: TargetRequirement::Required {
+                stage: DeliveryStage::Released,
+            },
+        }],
+    };
+    let observations =
+        full_deployment_observations(&task, &requirement, "deploy-only", "review", true);
+    (task, requirement, observations)
+}
+
+#[test]
+fn reviewer_counterexample_changed_evidence_digest_cannot_reuse_trusted_ref() {
+    let (task, requirement, mut observations) = reviewer_one_deployment();
+    let ctx = context_for(
+        task,
+        requirement,
+        ResponsibleActor::RoleQueue {
+            role: ResponsibleRole::Commodore,
+        },
+        110,
+        &observations,
+    );
+    if let ObservationTrust::ClaimedEvidence {
+        evidence_digest, ..
+    } = &mut observations[0].trust
+    {
+        *evidence_digest = digest('f');
+    } else {
+        panic!("fixture requires claimed evidence");
+    }
+    let actual = project_delivery(&ctx, &batch_for(observations)).expect("bounded projection");
+    assert!(
+        !actual.overall_satisfied,
+        "changed evidence digest reused admitted ref and satisfied delivery"
+    );
+}
+
+#[test]
+fn reviewer_counterexample_stage_before_mismatched_package_cannot_satisfy() {
+    let (task, requirement, mut observations) = reviewer_one_deployment();
+    if let StageObservationDetail::Package {
+        source_commit_sha, ..
+    } = &mut observations[0].detail
+    {
+        *source_commit_sha = oid('a');
+    } else {
+        panic!("fixture package");
+    }
+    observations.swap(0, 1); // Stage(B), Package(A), Install(B), Running(B), Release(B)
+    let ctx = context_for(
+        task,
+        requirement,
+        ResponsibleActor::RoleQueue {
+            role: ResponsibleRole::Commodore,
+        },
+        110,
+        &observations,
+    );
+    let actual = project_delivery(&ctx, &batch_for(observations)).expect("bounded projection");
+    assert!(
+        !actual.overall_satisfied,
+        "package source A + staged/running source B satisfied Released"
+    );
+}
+
+#[test]
+fn reviewer_counterexample_foreign_session_attempt_cannot_satisfy() {
+    let (task, requirement, mut observations) = reviewer_one_deployment();
+    if let StageObservationDetail::Running { sessions, .. } = &mut observations[3].detail {
+        sessions[0].attempt_id = AttemptId::new("foreign-old-attempt").expect("valid id");
+    } else {
+        panic!("fixture running");
+    }
+    let ctx = context_for(
+        task,
+        requirement,
+        ResponsibleActor::RoleQueue {
+            role: ResponsibleRole::Commodore,
+        },
+        110,
+        &observations,
+    );
+    let actual = project_delivery(&ctx, &batch_for(observations)).expect("bounded projection");
+    assert!(
+        !actual.overall_satisfied,
+        "old-attempt session satisfied current attempt Released"
+    );
+}
+
+#[test]
+fn reviewer_counterexample_attention_fact_overflow_must_fail_closed() {
+    let (task, requirement, observations) = reviewer_one_deployment();
+    let ctx = context_for(
+        task,
+        requirement,
+        ResponsibleActor::RoleQueue {
+            role: ResponsibleRole::Commodore,
+        },
+        110,
+        &observations,
+    );
+    let mut batch = batch_for(observations);
+    for n in 0..22 {
+        batch
+            .operational_blockers
+            .push(OperationalBlockerObservation {
+                blocker_id: format!("blocker-{n}"),
+                target_id: Some("deploy-only".into()),
+                owner: ResponsibleActor::RoleQueue {
+                    role: ResponsibleRole::Commodore,
+                },
+                provenance_ref: format!("evidence:blocker-{n}"),
+                observed_tick: DecimalU64::new(100),
+                valid_through_tick: DecimalU64::new(200),
+                blocker: OperationalBlockerKind::DecisionBlocker {
+                    question_id: format!("question-{n}"),
+                    detail: format!("distinct required decision {n}"),
+                },
+            });
+    }
+    assert!(
+        matches!(project_delivery(&ctx, &batch), Err(DeliveryError::Bound)),
+        "66 distinct protected facts were silently reduced to 64"
+    );
+}
+
+#[test]
+fn content_bound_attestation_rejects_mutated_detail_producer_and_mismatched_check_inputs() {
+    let contract = task_contract();
+    let requirement = DeliveryRequirement {
+        schema_version: 1,
+        task_id: contract.task_id.clone(),
+        contract_revision: contract.revision,
+        contract_digest: content_digest(&contract).expect("contract digest"),
+        generation: 1,
+        targets: vec![DeliveryTarget {
+            id: "repo-main".into(),
+            target_kind: DeliveryTargetKind::Repository,
+            requirement: TargetRequirement::Required {
+                stage: DeliveryStage::Merged,
+            },
+        }],
+    };
+    let observations = full_repo_observations(
+        &contract,
+        &requirement,
+        "repo-main",
+        "bound",
+        IntentStage::ReconciledSuccess,
+    );
+    let ctx = context_for(
+        contract,
+        requirement,
+        ResponsibleActor::RoleQueue {
+            role: ResponsibleRole::Commodore,
+        },
+        110,
+        &observations,
+    );
+
+    // 1. Mutate source_commit_sha inside Implementation while reusing attested provenance_ref/observation_id.
+    let mut mutated_impl = observations.clone();
+    if let StageObservationDetail::Implementation {
+        source_commit_sha, ..
+    } = &mut mutated_impl[0].detail
+    {
+        *source_commit_sha = oid('9');
+    }
+    let proj_impl = project_delivery(&ctx, &batch_for(mutated_impl)).expect("project mutated impl");
+    assert!(!proj_impl.overall_satisfied);
+    assert_eq!(
+        proj_impl.targets[0].stages.implementation,
+        StageEvaluation::UnattestedProvenance
+    );
+
+    // 2. Mutate producer_id inside ClaimedEvidence while reusing attested provenance_ref.
+    let mut mutated_producer = observations.clone();
+    if let ObservationTrust::ClaimedEvidence { producer_id, .. } = &mut mutated_producer[2].trust {
+        *producer_id = PrincipalId::new("spoofed-producer").expect("valid principal");
+    }
+    let proj_prod =
+        project_delivery(&ctx, &batch_for(mutated_producer)).expect("project mutated producer");
+    assert!(!proj_prod.overall_satisfied);
+    assert_eq!(
+        proj_prod.targets[0].stages.review,
+        StageEvaluation::UnattestedProvenance
+    );
+
+    // 3. Mismatched VerificationInputs (wrong candidate_ref or source_commit_sha) in AttestedCheckReceipt fails closed.
+    let mut bad_check_ctx = ctx.clone();
+    for check_receipt in bad_check_ctx.attested_check_receipts.values_mut() {
+        check_receipt.inputs.candidate_ref = "candidate:other".into();
+    }
+    let proj_bad_inputs = project_delivery(&bad_check_ctx, &batch_for(observations))
+        .expect("project mismatched check inputs");
+    assert!(!proj_bad_inputs.overall_satisfied);
+    assert_eq!(
+        proj_bad_inputs.targets[0].stages.check,
+        StageEvaluation::Failed
+    );
+}
+
+#[test]
+fn permutation_invariance_and_full_bundle_identity_comparison_across_stage_orders() {
+    let (task, requirement, canonical_obs) = reviewer_one_deployment();
+    let ctx = context_for(
+        task.clone(),
+        requirement.clone(),
+        ResponsibleActor::RoleQueue {
+            role: ResponsibleRole::Commodore,
+        },
+        110,
+        &canonical_obs,
+    );
+    let canonical_proj =
+        project_delivery(&ctx, &batch_for(canonical_obs.clone())).expect("canonical projection");
+    assert!(canonical_proj.overall_satisfied);
+    assert_eq!(
+        canonical_proj.completion_state,
+        DeliveryCompletionState::Satisfied
+    );
+
+    // 1. Release before prerequisites (and completely reversed observation order) must produce
+    // identical stage evaluations, completion state, and projection_digest!
+    let mut reversed_obs = canonical_obs.clone();
+    reversed_obs.reverse();
+    // Even if Release has an earlier observed_tick than Package/Stage/Install/Running:
+    reversed_obs[0].observed_tick = DecimalU64::new(95);
+    let rev_ctx = context_for(
+        task,
+        requirement,
+        ResponsibleActor::RoleQueue {
+            role: ResponsibleRole::Commodore,
+        },
+        110,
+        &reversed_obs,
+    );
+    let rev_proj = project_delivery(&rev_ctx, &batch_for(reversed_obs)).expect("reversed");
+    assert!(rev_proj.overall_satisfied);
+    assert_eq!(
+        rev_proj.completion_state,
+        DeliveryCompletionState::Satisfied
+    );
+    assert_eq!(rev_proj.targets[0].stages, canonical_proj.targets[0].stages);
+    assert_eq!(
+        rev_proj.targets[0].highest_verified_stage,
+        Some(DeliveryStage::Released)
+    );
+
+    // 2. Full BundleIdentity comparison: matching bundle_digest but differing version or bundle_id fails closed.
+    let (task2, req2, mut bad_bundle_obs) = reviewer_one_deployment();
+    if let StageObservationDetail::Install {
+        installed_bundle, ..
+    } = &mut bad_bundle_obs[2].detail
+    {
+        installed_bundle.version = "0.1.9-hotfix".into();
+    }
+    let bad_bundle_ctx = context_for(
+        task2,
+        req2,
+        ResponsibleActor::RoleQueue {
+            role: ResponsibleRole::Commodore,
+        },
+        110,
+        &bad_bundle_obs,
+    );
+    let bad_bundle_proj = project_delivery(&bad_bundle_ctx, &batch_for(bad_bundle_obs))
+        .expect("project mismatched bundle version");
+    assert!(!bad_bundle_proj.overall_satisfied);
+    assert_eq!(
+        bad_bundle_proj.targets[0].stages.install,
+        StageEvaluation::Failed
+    );
+    assert_eq!(
+        bad_bundle_proj.targets[0].stages.running,
+        StageEvaluation::Failed
+    );
+    assert_eq!(
+        bad_bundle_proj.targets[0].stages.release,
+        StageEvaluation::Failed
+    );
+
+    // 3. Attention fact threshold: 21 DecisionBlockers (63 facts <= 64) succeeds and preserves
+    // all 63 facts identically in forward and reversed blocker order.
+    let (task3, req3, obs3) = reviewer_one_deployment();
+    let ctx3 = context_for(
+        task3,
+        req3,
+        ResponsibleActor::RoleQueue {
+            role: ResponsibleRole::Commodore,
+        },
+        110,
+        &obs3,
+    );
+    let mut batch_forward = batch_for(obs3.clone());
+    for n in 0..21 {
+        batch_forward
+            .operational_blockers
+            .push(OperationalBlockerObservation {
+                blocker_id: format!("blocker-{n:02}"),
+                target_id: Some("deploy-only".into()),
+                owner: ResponsibleActor::RoleQueue {
+                    role: ResponsibleRole::Commodore,
+                },
+                provenance_ref: format!("evidence:blocker-{n:02}"),
+                observed_tick: DecimalU64::new(100),
+                valid_through_tick: DecimalU64::new(200),
+                blocker: OperationalBlockerKind::DecisionBlocker {
+                    question_id: format!("question-{n:02}"),
+                    detail: format!("distinct required decision {n:02}"),
+                },
+            });
+    }
+    let mut batch_reversed = batch_for(obs3);
+    batch_reversed.operational_blockers = batch_forward.operational_blockers.clone();
+    batch_reversed.operational_blockers.reverse();
+
+    let proj_fwd = project_delivery(&ctx3, &batch_forward).expect("21 blockers forward");
+    let proj_rev = project_delivery(&ctx3, &batch_reversed).expect("21 blockers reversed");
+    assert_eq!(proj_fwd.attention_items, proj_rev.attention_items);
+    assert_eq!(proj_fwd.projection_digest, proj_rev.projection_digest);
+    assert_eq!(proj_fwd.attention_items[0].facts.len(), 63);
 }

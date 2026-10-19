@@ -11,7 +11,7 @@ use crate::{
     },
     limits::bounded_json_size,
     publication::{ApprovalEvidence, IntentStage, ReconciliationReceipt},
-    verification::{ReceiptProducer, ValidatedReceipt},
+    verification::{ReceiptProducer, ValidatedReceipt, VerificationInputs},
 };
 use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
@@ -112,12 +112,134 @@ impl JsonSchema for DecimalU64 {
     }
 }
 
+/// Caller-supplied content-bound attestation for a single [`DeliveryObservation`].
+///
+/// Never implements `Deserialize`. Binds the exact observation ID, canonical
+/// full-observation digest, canonical stage-detail digest, claimed evidence
+/// digest, producer principal, provenance reference, and inner sub-provenance
+/// references so reusing a `provenance_ref` with mutated JSON content cannot
+/// pass attestation.
+///
+/// ```compile_fail
+/// use admiralty_core::delivery::AttestedObservation;
+/// let _: AttestedObservation = serde_json::from_str("{}")
+///     .expect("AttestedObservation must not implement Deserialize");
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AttestedObservation {
+    pub observation_id: String,
+    pub observation_digest: String,
+    pub detail_digest: String,
+    pub evidence_digest: String,
+    pub producer_id: PrincipalId,
+    pub provenance_ref: String,
+    pub sub_provenance_refs: BTreeSet<String>,
+}
+
+impl AttestedObservation {
+    /// Construct a content-bound attestation record for a verified [`DeliveryObservation`].
+    pub fn for_observation(obs: &DeliveryObservation) -> Result<Self> {
+        obs.validate()?;
+        let ObservationTrust::ClaimedEvidence {
+            producer_id,
+            provenance_ref,
+            evidence_digest,
+        } = &obs.trust
+        else {
+            return Err(DeliveryError::Invalid(
+                "untrusted observation cannot be attested",
+            ));
+        };
+        let detail_digest = compute_observation_detail_digest(
+            &obs.join,
+            obs.target_kind,
+            obs.observed_tick,
+            obs.valid_through_tick,
+            &obs.detail,
+        )?;
+        let observation_digest = compute_observation_digest(obs)?;
+        let sub_provenance_refs = collect_sub_provenance_refs(&obs.detail);
+        Ok(Self {
+            observation_id: obs.observation_id.clone(),
+            observation_digest,
+            detail_digest,
+            evidence_digest: evidence_digest.clone(),
+            producer_id: producer_id.clone(),
+            provenance_ref: provenance_ref.clone(),
+            sub_provenance_refs,
+        })
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        validate_identifier(&self.observation_id)?;
+        validate_identifier(self.producer_id.as_str())?;
+        validate_reference(&self.provenance_ref)?;
+        if !valid_digest(&self.observation_digest)
+            || !valid_digest(&self.detail_digest)
+            || !valid_digest(&self.evidence_digest)
+        {
+            return Err(DeliveryError::Invalid("attested observation digest"));
+        }
+        if self.sub_provenance_refs.len() > MAX_BUNDLE_SESSIONS {
+            return Err(DeliveryError::Bound);
+        }
+        for sub_ref in &self.sub_provenance_refs {
+            validate_reference(sub_ref)?;
+        }
+        Ok(())
+    }
+
+    pub fn matches_outer_observation(&self, obs: &DeliveryObservation) -> bool {
+        let ObservationTrust::ClaimedEvidence {
+            producer_id,
+            provenance_ref,
+            evidence_digest,
+        } = &obs.trust
+        else {
+            return false;
+        };
+        self.observation_id == obs.observation_id
+            && &self.producer_id == producer_id
+            && &self.provenance_ref == provenance_ref
+            && &self.evidence_digest == evidence_digest
+            && compute_observation_detail_digest(
+                &obs.join,
+                obs.target_kind,
+                obs.observed_tick,
+                obs.valid_through_tick,
+                &obs.detail,
+            )
+            .is_ok_and(|d| d == self.detail_digest)
+            && compute_observation_digest(obs).is_ok_and(|d| d == self.observation_digest)
+    }
+}
+
+/// Caller-supplied non-Deserialize verified check receipt binding.
+///
+/// Wraps a [`ValidatedReceipt`] together with the [`VerificationInputs`] and
+/// negative-check outcome verified by `verification::validate_receipt`. It is
+/// input to `Check` stage evaluation only and never grants execution authority
+/// or task acceptance.
+///
+/// ```compile_fail
+/// use admiralty_core::delivery::AttestedCheckReceipt;
+/// let _: AttestedCheckReceipt = serde_json::from_str("{}")
+///     .expect("AttestedCheckReceipt must not implement Deserialize");
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AttestedCheckReceipt {
+    pub validated_receipt: ValidatedReceipt,
+    pub inputs: VerificationInputs,
+    pub negative_checks_passed: bool,
+}
+
 /// Caller-owned non-Deserialize binding context.
 ///
 /// JSON observations cannot self-authenticate their own `provenance_ref`,
-/// `ReceiptProducer::IndependentVerifier`, or `ApprovalEvidence`. Only
-/// provenance references and validated receipts supplied here by the trusted
-/// caller can attest an observation's custody/source.
+/// `evidence_digest`, `ReceiptProducer::IndependentVerifier`, or
+/// `ApprovalEvidence`. Only content-bound observation attestations and
+/// validated check receipts supplied here by the trusted caller can attest an
+/// observation's custody/source.
 ///
 /// ```compile_fail
 /// use admiralty_core::delivery::TrustedDeliveryContext;
@@ -134,15 +256,18 @@ pub struct TrustedDeliveryContext {
     pub now_tick: DecimalU64,
     /// Provenance references independently verified by the caller/Store/gateway.
     pub attested_provenance_refs: BTreeSet<String>,
-    /// Optional non-Deserialize `ValidatedReceipt` bindings keyed by `receipt_digest`.
-    pub validated_receipts: BTreeMap<String, ValidatedReceipt>,
+    /// Content-bound observation attestations keyed by `observation_id`.
+    pub attested_observations: BTreeMap<String, AttestedObservation>,
+    /// Non-Deserialize verified check receipt bindings keyed by `receipt_digest`.
+    pub attested_check_receipts: BTreeMap<String, AttestedCheckReceipt>,
 }
 
 impl TrustedDeliveryContext {
     pub fn validate(&self) -> Result<()> {
         if self.requirement.targets.len() > MAX_DELIVERY_TARGETS
             || self.attested_provenance_refs.len() > MAX_STAGE_OBSERVATIONS * 4
-            || self.validated_receipts.len() > MAX_STAGE_OBSERVATIONS
+            || self.attested_observations.len() > MAX_STAGE_OBSERVATIONS
+            || self.attested_check_receipts.len() > MAX_STAGE_OBSERVATIONS
         {
             return Err(DeliveryError::Bound);
         }
@@ -162,10 +287,32 @@ impl TrustedDeliveryContext {
         for prov in &self.attested_provenance_refs {
             validate_reference(prov)?;
         }
-        for (digest_key, receipt) in &self.validated_receipts {
-            if !valid_digest(digest_key) || digest_key != receipt.receipt_digest() {
-                return Err(DeliveryError::Invalid("validated_receipts key mismatch"));
+        for (obs_id, attested) in &self.attested_observations {
+            if obs_id != &attested.observation_id {
+                return Err(DeliveryError::Invalid("attested_observations key mismatch"));
             }
+            attested.validate()?;
+        }
+        for (digest_key, check_receipt) in &self.attested_check_receipts {
+            if !valid_digest(digest_key)
+                || digest_key != check_receipt.validated_receipt.receipt_digest()
+            {
+                return Err(DeliveryError::Invalid(
+                    "attested_check_receipts key mismatch",
+                ));
+            }
+            if check_receipt.inputs.contract_revision == 0
+                || !valid_digest(&check_receipt.inputs.contract_digest)
+                || !valid_digest(&check_receipt.inputs.verification_policy_digest)
+                || !valid_git_oid(&check_receipt.inputs.source_commit_sha)
+                || !valid_git_oid(&check_receipt.inputs.source_tree_sha)
+                || check_receipt.inputs.source_commit_sha == check_receipt.inputs.source_tree_sha
+                || !valid_digest(&check_receipt.inputs.source_artifact_digest)
+                || !valid_digest(&check_receipt.inputs.protected_oracle_digest)
+            {
+                return Err(DeliveryError::Invalid("attested_check_receipts inputs"));
+            }
+            validate_reference(&check_receipt.inputs.candidate_ref)?;
         }
         Ok(())
     }
@@ -1552,6 +1699,13 @@ pub fn project_delivery(
     Ok(projection)
 }
 
+struct VerifiedOuterObs<'a> {
+    obs: &'a DeliveryObservation,
+    attested: &'a AttestedObservation,
+    evidence_ref: String,
+    freshness: FreshnessState,
+}
+
 fn evaluate_target(
     context: &TrustedDeliveryContext,
     target: &DeliveryTarget,
@@ -1604,18 +1758,19 @@ fn evaluate_target(
         release: StageEvaluation::Unknown,
     };
 
-    let mut lookup_hints = Vec::new();
-    let mut candidate_commit: Option<String> = None;
-    let mut candidate_tree: Option<String> = None;
-    let mut external_outcome = ExternalOutcomeState::Clear {};
-    let mut desired_bundle: Option<BundleIdentity> = None;
-    let mut staged_bundle: Option<BundleIdentity> = None;
-    let mut installed_bundle: Option<BundleIdentity> = None;
-    let mut released_bundle: Option<BundleIdentity> = None;
-    let mut runtime_projection: Option<BundleRuntimeProjection> = None;
-    let mut packaged_commit: Option<String> = None;
+    let mut ordered_observations: Vec<&DeliveryObservation> = observations.to_vec();
+    ordered_observations.sort_by(|a, b| {
+        a.observed_tick
+            .cmp(&b.observed_tick)
+            .then_with(|| a.observation_id.cmp(&b.observation_id))
+    });
 
-    for obs in observations {
+    let mut lookup_hints = Vec::new();
+    let mut external_outcome = ExternalOutcomeState::Clear {};
+    let mut fresh_attested: Vec<VerifiedOuterObs<'_>> = Vec::new();
+
+    // Pass 1: Per-observation freshness, trust, outer content-attestation, and hints.
+    for obs in ordered_observations {
         let freshness = evaluate_freshness(obs.observed_tick, obs.valid_through_tick, now_tick);
         let evidence_ref = match &obs.trust {
             ObservationTrust::ClaimedEvidence { provenance_ref, .. } => provenance_ref.clone(),
@@ -1675,6 +1830,25 @@ fn evaluate_target(
             continue;
         }
 
+        if let StageObservationDetail::Check { producer, .. } = &obs.detail
+            && *producer != ReceiptProducer::IndependentVerifier
+        {
+            record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::UntrustedClaim);
+            pending_attention.push(PendingAttention {
+                target_id: Some(target.id.clone()),
+                reason: AttentionReason::FailedVerificationCheck,
+                owner: default_owner.clone(),
+                observed_tick: obs.observed_tick,
+                evidence_ref,
+                freshness,
+                facts: vec![
+                    format!("observation_id={}", obs.observation_id),
+                    "check_error=provider_claim_not_independent".into(),
+                ],
+            });
+            continue;
+        }
+
         let claimed_prov = match &obs.trust {
             ObservationTrust::ClaimedEvidence { provenance_ref, .. } => Some(provenance_ref),
             ObservationTrust::UntrustedClaim { .. }
@@ -1685,544 +1859,718 @@ fn evaluate_target(
             continue;
         };
 
-        // Provenance fields in JSON never authenticate themselves: the caller's
-        // non-Deserialize `TrustedDeliveryContext` must attest `provenance_ref`.
-        if !context.attested_provenance_refs.contains(provenance_ref) {
+        let attested_obs = context
+            .attested_provenance_refs
+            .contains(provenance_ref)
+            .then(|| context.attested_observations.get(&obs.observation_id))
+            .flatten()
+            .filter(|attested| attested.matches_outer_observation(obs));
+
+        let Some(attested) = attested_obs else {
             record_stage_evaluation(
                 &mut stages,
                 &obs.detail,
                 StageEvaluation::UnattestedProvenance,
             );
             continue;
-        }
+        };
 
-        match &obs.detail {
+        fresh_attested.push(VerifiedOuterObs {
+            obs,
+            attested,
+            evidence_ref,
+            freshness,
+        });
+    }
+
+    // Pass 2A: Collect stage identities across all fresh content-attested observations
+    // so stage evaluation is completely independent of input observation order.
+    let mut impl_identities: Vec<(&str, &str, &str)> = Vec::new();
+    let mut check_identities: Vec<(&str, &str)> = Vec::new();
+    let mut review_heads: Vec<&str> = Vec::new();
+    let mut merge_heads: Vec<&str> = Vec::new();
+
+    let mut pkg_identities: Vec<(&str, &str, &str)> = Vec::new();
+    let mut stage_bundles: Vec<&BundleIdentity> = Vec::new();
+    let mut desired_bundles: Vec<&BundleIdentity> = Vec::new();
+    let mut installed_bundles: Vec<&BundleIdentity> = Vec::new();
+    let mut released_bundles: Vec<&BundleIdentity> = Vec::new();
+    let mut has_install_obs = false;
+
+    for v in &fresh_attested {
+        match &v.obs.detail {
             StageObservationDetail::Implementation {
                 source_commit_sha,
                 source_tree_sha,
+                source_artifact_digest,
                 ..
             } => {
-                let commit_conflict = candidate_commit
-                    .as_ref()
-                    .is_some_and(|c| c != source_commit_sha)
-                    || candidate_tree
-                        .as_ref()
-                        .is_some_and(|t| t != source_tree_sha);
-                if commit_conflict {
-                    record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Failed);
-                } else {
-                    candidate_commit = Some(source_commit_sha.clone());
-                    candidate_tree = Some(source_tree_sha.clone());
-                    record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Verified);
-                }
+                impl_identities.push((
+                    source_commit_sha.as_str(),
+                    source_tree_sha.as_str(),
+                    source_artifact_digest.as_str(),
+                ));
             }
             StageObservationDetail::Check {
                 source_commit_sha,
                 source_tree_sha,
-                producer,
-                all_checks_passed,
-                negative_checks_passed,
-                receipt_digest,
+                ..
             } => {
-                let commit_matches = candidate_commit
-                    .as_ref()
-                    .is_none_or(|c| c == source_commit_sha)
-                    && candidate_tree.as_ref().is_none_or(|t| t == source_tree_sha);
-                let receipt_unattested = !context.validated_receipts.is_empty()
-                    && !context.validated_receipts.contains_key(receipt_digest);
-                let validated_ok = context
-                    .validated_receipts
-                    .get(receipt_digest)
-                    .is_none_or(ValidatedReceipt::all_checks_passed);
-                if *producer != ReceiptProducer::IndependentVerifier {
-                    record_stage_evaluation(
-                        &mut stages,
-                        &obs.detail,
-                        StageEvaluation::UntrustedClaim,
-                    );
-                    pending_attention.push(PendingAttention {
-                        target_id: Some(target.id.clone()),
-                        reason: AttentionReason::FailedVerificationCheck,
-                        owner: default_owner.clone(),
-                        observed_tick: obs.observed_tick,
-                        evidence_ref,
-                        freshness,
-                        facts: vec![
-                            format!("observation_id={}", obs.observation_id),
-                            "check_error=provider_claim_not_independent".into(),
-                        ],
-                    });
-                } else if receipt_unattested {
-                    record_stage_evaluation(
-                        &mut stages,
-                        &obs.detail,
-                        StageEvaluation::UnattestedProvenance,
-                    );
-                    pending_attention.push(PendingAttention {
-                        target_id: Some(target.id.clone()),
-                        reason: AttentionReason::FailedVerificationCheck,
-                        owner: default_owner.clone(),
-                        observed_tick: obs.observed_tick,
-                        evidence_ref,
-                        freshness,
-                        facts: vec![
-                            format!("observation_id={}", obs.observation_id),
-                            format!("receipt_digest={receipt_digest}"),
-                            "check_error=missing_validated_receipt_binding".into(),
-                        ],
-                    });
-                } else if !commit_matches
-                    || !all_checks_passed
-                    || !negative_checks_passed
-                    || !validated_ok
-                {
-                    record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Failed);
-                    pending_attention.push(PendingAttention {
-                        target_id: Some(target.id.clone()),
-                        reason: AttentionReason::FailedVerificationCheck,
-                        owner: default_owner.clone(),
-                        observed_tick: obs.observed_tick,
-                        evidence_ref,
-                        freshness,
-                        facts: vec![
-                            format!("observation_id={}", obs.observation_id),
-                            format!("receipt_digest={receipt_digest}"),
-                            format!("all_checks_passed={all_checks_passed}"),
-                            format!("negative_checks_passed={negative_checks_passed}"),
-                            format!("commit_matches={commit_matches}"),
-                        ],
-                    });
-                } else {
-                    candidate_commit.get_or_insert_with(|| source_commit_sha.clone());
-                    candidate_tree.get_or_insert_with(|| source_tree_sha.clone());
-                    record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Verified);
-                }
+                check_identities.push((source_commit_sha.as_str(), source_tree_sha.as_str()));
             }
             StageObservationDetail::Review {
-                head_commit_sha,
-                required_reviewers,
-                approvals,
+                head_commit_sha, ..
             } => {
-                let head_matches = candidate_commit
-                    .as_ref()
-                    .is_none_or(|c| c == head_commit_sha);
-                let configured: BTreeSet<&String> = required_reviewers.iter().collect();
-                let approvals_attested = approvals
-                    .iter()
-                    .all(|a| context.attested_provenance_refs.contains(&a.provenance_ref));
-                let valid_review = !configured.is_empty()
-                    && configured.len() == required_reviewers.len()
-                    && head_matches
-                    && approvals_attested
-                    && approvals.iter().all(|a| configured.contains(&a.reviewer))
-                    && configured.iter().all(|req| {
-                        let matching: Vec<_> =
-                            approvals.iter().filter(|a| &a.reviewer == *req).collect();
-                        !matching.is_empty()
-                            && matching
-                                .iter()
-                                .all(|a| !a.dismissed && &a.head == head_commit_sha)
-                    });
-                if !approvals.is_empty() && !approvals_attested {
-                    record_stage_evaluation(
-                        &mut stages,
-                        &obs.detail,
-                        StageEvaluation::UnattestedProvenance,
-                    );
-                    pending_attention.push(PendingAttention {
-                        target_id: Some(target.id.clone()),
-                        reason: AttentionReason::MissingReviewApproval,
-                        owner: default_owner.clone(),
-                        observed_tick: obs.observed_tick,
-                        evidence_ref,
-                        freshness,
-                        facts: vec![
-                            format!("observation_id={}", obs.observation_id),
-                            "review_error=unattested_approval_provenance".into(),
-                        ],
-                    });
-                } else if valid_review {
-                    record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Verified);
-                } else {
-                    record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Failed);
-                    pending_attention.push(PendingAttention {
-                        target_id: Some(target.id.clone()),
-                        reason: AttentionReason::MissingReviewApproval,
-                        owner: default_owner.clone(),
-                        observed_tick: obs.observed_tick,
-                        evidence_ref,
-                        freshness,
-                        facts: vec![
-                            format!("observation_id={}", obs.observation_id),
-                            format!("head_commit_sha={head_commit_sha}"),
-                            format!("required_reviewers={}", required_reviewers.join(",")),
-                            format!("approvals_count={}", approvals.len()),
-                        ],
-                    });
-                }
+                review_heads.push(head_commit_sha.as_str());
             }
             StageObservationDetail::Merge {
-                target_ref,
-                expected_head_sha,
-                expected_base_sha,
-                observed_head_sha,
-                intent_key,
-                intent_stage,
-                effect_receipt,
-                rescue_binding,
+                expected_head_sha, ..
             } => {
-                let head_matches = candidate_commit
-                    .as_ref()
-                    .is_none_or(|c| c == expected_head_sha);
-                match intent_stage {
-                    IntentStage::Ambiguous => {
+                merge_heads.push(expected_head_sha.as_str());
+            }
+            StageObservationDetail::Package {
+                source_commit_sha,
+                package_manifest_digest,
+                version,
+            } => {
+                pkg_identities.push((
+                    source_commit_sha.as_str(),
+                    package_manifest_digest.as_str(),
+                    version.as_str(),
+                ));
+            }
+            StageObservationDetail::Stage { staged_bundle } => {
+                stage_bundles.push(staged_bundle);
+            }
+            StageObservationDetail::Install {
+                installed_bundle, ..
+            } => {
+                has_install_obs = true;
+                installed_bundles.push(installed_bundle);
+            }
+            StageObservationDetail::Running {
+                desired_bundle,
+                installed_bundle: obs_installed,
+                ..
+            } => {
+                desired_bundles.push(desired_bundle);
+                if let Some(inst) = obs_installed {
+                    installed_bundles.push(inst);
+                }
+            }
+            StageObservationDetail::Release {
+                released_bundle, ..
+            } => {
+                released_bundles.push(released_bundle);
+            }
+        }
+    }
+
+    let has_impl_obs = !impl_identities.is_empty();
+    let has_impl_conflict = impl_identities.windows(2).any(|w| w[0] != w[1]);
+    let canonical_impl = (!has_impl_conflict)
+        .then(|| impl_identities.first().copied())
+        .flatten();
+
+    let has_check_conflict = check_identities.windows(2).any(|w| w[0] != w[1]);
+    let has_review_conflict = review_heads.windows(2).any(|w| w[0] != w[1]);
+    let has_merge_conflict = merge_heads.windows(2).any(|w| w[0] != w[1]);
+
+    let canonical_repo_commit: Option<(&str, Option<&str>)> = if has_impl_obs {
+        canonical_impl.map(|(c, t, _)| (c, Some(t)))
+    } else if !check_identities.is_empty() {
+        (!has_check_conflict).then(|| (check_identities[0].0, Some(check_identities[0].1)))
+    } else if !review_heads.is_empty() {
+        (!has_review_conflict).then(|| (review_heads[0], None))
+    } else if !merge_heads.is_empty() {
+        (!has_merge_conflict).then(|| (merge_heads[0], None))
+    } else {
+        None
+    };
+
+    let has_pkg_obs = !pkg_identities.is_empty();
+    let has_pkg_conflict = pkg_identities.windows(2).any(|w| w[0] != w[1]);
+    let canonical_pkg = (!has_pkg_conflict)
+        .then(|| pkg_identities.first().copied())
+        .flatten();
+
+    let has_stage_obs = !stage_bundles.is_empty();
+    let has_stage_conflict = stage_bundles.windows(2).any(|w| w[0] != w[1]);
+    let canonical_staged = (!has_stage_conflict)
+        .then(|| stage_bundles.first().copied())
+        .flatten();
+
+    let has_running_obs = !desired_bundles.is_empty();
+    let has_desired_conflict = desired_bundles.windows(2).any(|w| w[0] != w[1]);
+    let canonical_desired = (!has_desired_conflict)
+        .then(|| desired_bundles.first().copied())
+        .flatten();
+
+    let has_installed_conflict = installed_bundles.windows(2).any(|w| w[0] != w[1]);
+    let canonical_installed = (!has_installed_conflict)
+        .then(|| installed_bundles.first().copied())
+        .flatten();
+
+    let has_release_obs = !released_bundles.is_empty();
+    let has_release_conflict = released_bundles.windows(2).any(|w| w[0] != w[1]);
+    let canonical_released = (!has_release_conflict)
+        .then(|| released_bundles.first().copied())
+        .flatten();
+
+    let desired_bundle: Option<BundleIdentity> = desired_bundles.last().map(|b| (*b).clone());
+    let staged_bundle: Option<BundleIdentity> = stage_bundles.last().map(|b| (*b).clone());
+    let installed_bundle: Option<BundleIdentity> = installed_bundles.last().map(|b| (*b).clone());
+    let released_bundle: Option<BundleIdentity> = released_bundles.last().map(|b| (*b).clone());
+    let mut runtime_projection: Option<BundleRuntimeProjection> = None;
+
+    // Pass 2B: Evaluate repository and deployment stages against the complete collected stage sets.
+    if has_impl_obs {
+        let eval = if has_impl_conflict {
+            StageEvaluation::Failed
+        } else {
+            StageEvaluation::Verified
+        };
+        stages.implementation = merge_stage_evaluation(stages.implementation, eval);
+    }
+
+    for v in &fresh_attested {
+        if let StageObservationDetail::Check {
+            source_commit_sha,
+            source_tree_sha,
+            all_checks_passed,
+            negative_checks_passed,
+            receipt_digest,
+            ..
+        } = &v.obs.detail
+        {
+            let commit_matches = !has_impl_conflict
+                && !has_check_conflict
+                && canonical_repo_commit.is_some_and(|(c, t)| {
+                    c == source_commit_sha.as_str() && t == Some(source_tree_sha.as_str())
+                });
+            let Some(attested_receipt) = context.attested_check_receipts.get(receipt_digest) else {
+                record_stage_evaluation(
+                    &mut stages,
+                    &v.obs.detail,
+                    StageEvaluation::UnattestedProvenance,
+                );
+                pending_attention.push(PendingAttention {
+                    target_id: Some(target.id.clone()),
+                    reason: AttentionReason::FailedVerificationCheck,
+                    owner: default_owner.clone(),
+                    observed_tick: v.obs.observed_tick,
+                    evidence_ref: v.evidence_ref.clone(),
+                    freshness: v.freshness,
+                    facts: vec![
+                        format!("observation_id={}", v.obs.observation_id),
+                        format!("receipt_digest={receipt_digest}"),
+                        "check_error=missing_validated_receipt_binding".into(),
+                    ],
+                });
+                continue;
+            };
+            let inputs = &attested_receipt.inputs;
+            let inputs_bound = inputs.project_id == contract.project_id
+                && inputs.root_id == contract.root_id
+                && inputs.task_id == contract.task_id
+                && inputs.contract_revision == contract.revision
+                && inputs.contract_digest == requirement.contract_digest
+                && &inputs.attempt_id == attempt_id
+                && inputs.candidate_ref == candidate_ref
+                && &inputs.source_commit_sha == source_commit_sha
+                && &inputs.source_tree_sha == source_tree_sha
+                && canonical_impl
+                    .is_none_or(|(_, _, art)| inputs.source_artifact_digest.as_str() == art)
+                && attested_receipt.validated_receipt.receipt_digest() == receipt_digest;
+            let validated_ok = attested_receipt.validated_receipt.all_checks_passed()
+                && attested_receipt.negative_checks_passed;
+            if commit_matches
+                && inputs_bound
+                && *all_checks_passed
+                && *negative_checks_passed
+                && validated_ok
+            {
+                record_stage_evaluation(&mut stages, &v.obs.detail, StageEvaluation::Verified);
+            } else {
+                record_stage_evaluation(&mut stages, &v.obs.detail, StageEvaluation::Failed);
+                pending_attention.push(PendingAttention {
+                    target_id: Some(target.id.clone()),
+                    reason: AttentionReason::FailedVerificationCheck,
+                    owner: default_owner.clone(),
+                    observed_tick: v.obs.observed_tick,
+                    evidence_ref: v.evidence_ref.clone(),
+                    freshness: v.freshness,
+                    facts: vec![
+                        format!("observation_id={}", v.obs.observation_id),
+                        format!("receipt_digest={receipt_digest}"),
+                        format!("all_checks_passed={all_checks_passed}"),
+                        format!("negative_checks_passed={negative_checks_passed}"),
+                        format!("commit_matches={commit_matches}"),
+                        format!("inputs_bound={inputs_bound}"),
+                    ],
+                });
+            }
+        }
+    }
+
+    for v in &fresh_attested {
+        if let StageObservationDetail::Review {
+            head_commit_sha,
+            required_reviewers,
+            approvals,
+        } = &v.obs.detail
+        {
+            let head_matches = !has_impl_conflict
+                && !has_review_conflict
+                && canonical_repo_commit.is_some_and(|(c, _)| c == head_commit_sha.as_str());
+            let configured: BTreeSet<&String> = required_reviewers.iter().collect();
+            let approvals_attested = approvals.iter().all(|a| {
+                context.attested_provenance_refs.contains(&a.provenance_ref)
+                    && v.attested.sub_provenance_refs.contains(&a.provenance_ref)
+            });
+            let valid_review = !configured.is_empty()
+                && configured.len() == required_reviewers.len()
+                && head_matches
+                && approvals_attested
+                && approvals.iter().all(|a| configured.contains(&a.reviewer))
+                && configured.iter().all(|req| {
+                    let matching: Vec<_> =
+                        approvals.iter().filter(|a| &a.reviewer == *req).collect();
+                    !matching.is_empty()
+                        && matching
+                            .iter()
+                            .all(|a| !a.dismissed && &a.head == head_commit_sha)
+                });
+            if !approvals.is_empty() && !approvals_attested {
+                record_stage_evaluation(
+                    &mut stages,
+                    &v.obs.detail,
+                    StageEvaluation::UnattestedProvenance,
+                );
+                pending_attention.push(PendingAttention {
+                    target_id: Some(target.id.clone()),
+                    reason: AttentionReason::MissingReviewApproval,
+                    owner: default_owner.clone(),
+                    observed_tick: v.obs.observed_tick,
+                    evidence_ref: v.evidence_ref.clone(),
+                    freshness: v.freshness,
+                    facts: vec![
+                        format!("observation_id={}", v.obs.observation_id),
+                        "review_error=unattested_approval_provenance".into(),
+                    ],
+                });
+            } else if valid_review {
+                record_stage_evaluation(&mut stages, &v.obs.detail, StageEvaluation::Verified);
+            } else {
+                record_stage_evaluation(&mut stages, &v.obs.detail, StageEvaluation::Failed);
+                pending_attention.push(PendingAttention {
+                    target_id: Some(target.id.clone()),
+                    reason: AttentionReason::MissingReviewApproval,
+                    owner: default_owner.clone(),
+                    observed_tick: v.obs.observed_tick,
+                    evidence_ref: v.evidence_ref.clone(),
+                    freshness: v.freshness,
+                    facts: vec![
+                        format!("observation_id={}", v.obs.observation_id),
+                        format!("head_commit_sha={head_commit_sha}"),
+                        format!("required_reviewers={}", required_reviewers.join(",")),
+                        format!("approvals_count={}", approvals.len()),
+                    ],
+                });
+            }
+        }
+    }
+
+    for v in &fresh_attested {
+        if let StageObservationDetail::Merge {
+            target_ref,
+            expected_head_sha,
+            expected_base_sha,
+            observed_head_sha,
+            intent_key,
+            intent_stage,
+            effect_receipt,
+            rescue_binding,
+        } = &v.obs.detail
+        {
+            let head_matches = !has_impl_conflict
+                && !has_merge_conflict
+                && canonical_repo_commit.is_some_and(|(c, _)| c == expected_head_sha.as_str());
+            let expected_commit_for_rescue = canonical_repo_commit
+                .map(|(c, _)| c)
+                .unwrap_or(expected_head_sha.as_str());
+            let expected_tree_for_rescue = canonical_repo_commit.and_then(|(_, t)| t);
+
+            match intent_stage {
+                IntentStage::Ambiguous => {
+                    record_stage_evaluation(
+                        &mut stages,
+                        &v.obs.detail,
+                        StageEvaluation::UncertainOutcome,
+                    );
+                    external_outcome = ExternalOutcomeState::Uncertain {
+                        target_ref: target_ref.clone(),
+                        intent_key: intent_key.clone(),
+                    };
+                    pending_attention.push(PendingAttention {
+                        target_id: Some(target.id.clone()),
+                        reason: AttentionReason::UncertainExternalOutcome,
+                        owner: default_owner.clone(),
+                        observed_tick: v.obs.observed_tick,
+                        evidence_ref: v.evidence_ref.clone(),
+                        freshness: v.freshness,
+                        facts: vec![
+                            format!("target_id={}", target.id),
+                            format!("target_ref={target_ref}"),
+                            format!("intent_key={intent_key}"),
+                            "status=ambiguous_remote_outcome_holds_slot".into(),
+                        ],
+                    });
+                    check_rescue_preservation(
+                        contract,
+                        attempt_id,
+                        candidate_ref,
+                        expected_commit_for_rescue,
+                        expected_tree_for_rescue,
+                        rescue_binding.as_ref(),
+                        &target.id,
+                        default_owner,
+                        v.obs.observed_tick,
+                        &v.evidence_ref,
+                        v.freshness,
+                        pending_attention,
+                    );
+                }
+                IntentStage::ReconciledSuccess => {
+                    let receipt_prov_unattested = effect_receipt.as_ref().is_some_and(|r| {
+                        !context.attested_provenance_refs.contains(&r.provenance_ref)
+                            || !v.attested.sub_provenance_refs.contains(&r.provenance_ref)
+                    });
+                    let receipt_ok = effect_receipt.as_ref().is_some_and(|r| {
+                        r.effect_occurred
+                            && context.attested_provenance_refs.contains(&r.provenance_ref)
+                            && v.attested.sub_provenance_refs.contains(&r.provenance_ref)
+                            && &r.intent_key == intent_key
+                            && &r.expected_head == expected_head_sha
+                            && &r.expected_base == expected_base_sha
+                            && r.observed_head != *expected_base_sha
+                            && Some(&r.observed_head) == observed_head_sha.as_ref()
+                            && r.scope.project_id == contract.project_id
+                            && r.scope.root_id == contract.root_id
+                            && r.scope.task_id == contract.task_id
+                            && &r.scope.target_ref == target_ref
+                    });
+                    if receipt_prov_unattested {
                         record_stage_evaluation(
                             &mut stages,
-                            &obs.detail,
-                            StageEvaluation::UncertainOutcome,
-                        );
-                        external_outcome = ExternalOutcomeState::Uncertain {
-                            target_ref: target_ref.clone(),
-                            intent_key: intent_key.clone(),
-                        };
-                        pending_attention.push(PendingAttention {
-                            target_id: Some(target.id.clone()),
-                            reason: AttentionReason::UncertainExternalOutcome,
-                            owner: default_owner.clone(),
-                            observed_tick: obs.observed_tick,
-                            evidence_ref: evidence_ref.clone(),
-                            freshness,
-                            facts: vec![
-                                format!("target_id={}", target.id),
-                                format!("target_ref={target_ref}"),
-                                format!("intent_key={intent_key}"),
-                                "status=ambiguous_remote_outcome_holds_slot".into(),
-                            ],
-                        });
-                        check_rescue_preservation(
-                            contract,
-                            attempt_id,
-                            candidate_ref,
-                            candidate_commit.as_deref().unwrap_or(expected_head_sha),
-                            candidate_tree.as_deref(),
-                            rescue_binding.as_ref(),
-                            &target.id,
-                            default_owner,
-                            obs.observed_tick,
-                            &evidence_ref,
-                            freshness,
-                            pending_attention,
-                        );
-                    }
-                    IntentStage::ReconciledSuccess => {
-                        let receipt_prov_unattested = effect_receipt.as_ref().is_some_and(|r| {
-                            !context.attested_provenance_refs.contains(&r.provenance_ref)
-                        });
-                        let receipt_ok = effect_receipt.as_ref().is_some_and(|r| {
-                            r.effect_occurred
-                                && context.attested_provenance_refs.contains(&r.provenance_ref)
-                                && &r.intent_key == intent_key
-                                && &r.expected_head == expected_head_sha
-                                && &r.expected_base == expected_base_sha
-                                && r.observed_head != *expected_base_sha
-                                && Some(&r.observed_head) == observed_head_sha.as_ref()
-                                && r.scope.project_id == contract.project_id
-                                && r.scope.root_id == contract.root_id
-                                && r.scope.task_id == contract.task_id
-                                && &r.scope.target_ref == target_ref
-                        });
-                        if receipt_prov_unattested {
-                            record_stage_evaluation(
-                                &mut stages,
-                                &obs.detail,
-                                StageEvaluation::UnattestedProvenance,
-                            );
-                            if !matches!(external_outcome, ExternalOutcomeState::Uncertain { .. }) {
-                                external_outcome = ExternalOutcomeState::Unlanded {
-                                    target_ref: target_ref.clone(),
-                                    rescue_preserved: false,
-                                    rescue_ref: None,
-                                };
-                            }
-                        } else if head_matches && receipt_ok {
-                            record_stage_evaluation(
-                                &mut stages,
-                                &obs.detail,
-                                StageEvaluation::Verified,
-                            );
-                            if matches!(external_outcome, ExternalOutcomeState::Clear {}) {
-                                let r = effect_receipt.as_ref().expect("checked Some");
-                                external_outcome = ExternalOutcomeState::Merged {
-                                    target_ref: target_ref.clone(),
-                                    observed_head_sha: r.observed_head.clone(),
-                                    provenance_ref: r.provenance_ref.clone(),
-                                };
-                            }
-                        } else {
-                            record_stage_evaluation(
-                                &mut stages,
-                                &obs.detail,
-                                StageEvaluation::Failed,
-                            );
-                            if !matches!(external_outcome, ExternalOutcomeState::Uncertain { .. }) {
-                                external_outcome = ExternalOutcomeState::Unlanded {
-                                    target_ref: target_ref.clone(),
-                                    rescue_preserved: false,
-                                    rescue_ref: None,
-                                };
-                            }
-                        }
-                    }
-                    IntentStage::Proposed
-                    | IntentStage::Claimed
-                    | IntentStage::ReconciledNoEffect => {
-                        record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Failed);
-                        let rescue_ok = check_rescue_preservation(
-                            contract,
-                            attempt_id,
-                            candidate_ref,
-                            candidate_commit.as_deref().unwrap_or(expected_head_sha),
-                            candidate_tree.as_deref(),
-                            rescue_binding.as_ref(),
-                            &target.id,
-                            default_owner,
-                            obs.observed_tick,
-                            &evidence_ref,
-                            freshness,
-                            pending_attention,
+                            &v.obs.detail,
+                            StageEvaluation::UnattestedProvenance,
                         );
                         if !matches!(external_outcome, ExternalOutcomeState::Uncertain { .. }) {
                             external_outcome = ExternalOutcomeState::Unlanded {
                                 target_ref: target_ref.clone(),
-                                rescue_preserved: rescue_ok,
-                                rescue_ref: rescue_binding.as_ref().map(|r| r.rescue_ref.clone()),
+                                rescue_preserved: false,
+                                rescue_ref: None,
+                            };
+                        }
+                    } else if head_matches && receipt_ok {
+                        record_stage_evaluation(
+                            &mut stages,
+                            &v.obs.detail,
+                            StageEvaluation::Verified,
+                        );
+                        if matches!(external_outcome, ExternalOutcomeState::Clear {}) {
+                            let r = effect_receipt.as_ref().expect("checked Some");
+                            external_outcome = ExternalOutcomeState::Merged {
+                                target_ref: target_ref.clone(),
+                                observed_head_sha: r.observed_head.clone(),
+                                provenance_ref: r.provenance_ref.clone(),
+                            };
+                        }
+                    } else {
+                        record_stage_evaluation(
+                            &mut stages,
+                            &v.obs.detail,
+                            StageEvaluation::Failed,
+                        );
+                        if !matches!(external_outcome, ExternalOutcomeState::Uncertain { .. }) {
+                            external_outcome = ExternalOutcomeState::Unlanded {
+                                target_ref: target_ref.clone(),
+                                rescue_preserved: false,
+                                rescue_ref: None,
                             };
                         }
                     }
                 }
-            }
-            StageObservationDetail::Package {
-                source_commit_sha, ..
-            } => {
-                if packaged_commit
-                    .as_ref()
-                    .is_some_and(|c| c != source_commit_sha)
-                {
-                    record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Failed);
-                } else {
-                    packaged_commit = Some(source_commit_sha.clone());
-                    record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Verified);
-                }
-            }
-            StageObservationDetail::Stage {
-                staged_bundle: bundle,
-            } => {
-                let commit_ok = packaged_commit
-                    .as_ref()
-                    .is_none_or(|c| c == &bundle.source_commit_sha);
-                let bundle_ok = staged_bundle.as_ref().is_none_or(|b| b == bundle);
-                if commit_ok && bundle_ok {
-                    staged_bundle = Some(bundle.clone());
-                    record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Verified);
-                } else {
-                    record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Failed);
-                }
-            }
-            StageObservationDetail::Install {
-                installed_bundle: bundle,
-                ..
-            } => {
-                let bundle_conflict = installed_bundle.as_ref().is_some_and(|b| b != bundle);
-                if !bundle_conflict {
-                    installed_bundle = Some(bundle.clone());
-                }
-                let matches_staged = staged_bundle
-                    .as_ref()
-                    .is_none_or(|s| s.bundle_digest == bundle.bundle_digest);
-                let matches_desired = desired_bundle
-                    .as_ref()
-                    .is_none_or(|d| d.bundle_digest == bundle.bundle_digest);
-                if !bundle_conflict && matches_staged && matches_desired {
-                    record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Verified);
-                } else {
-                    record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Failed);
-                }
-            }
-            StageObservationDetail::Running {
-                desired_bundle: desired,
-                installed_bundle: obs_installed,
-                sessions,
-                drain_disposition,
-            } => {
-                desired_bundle = Some(desired.clone());
-                if let Some(inst) = obs_installed {
-                    installed_bundle = Some(inst.clone());
-                }
-                let effective_installed = installed_bundle.as_ref();
-                if let Some(inst) = effective_installed {
-                    if inst.bundle_digest != desired.bundle_digest {
-                        stages.install =
-                            merge_stage_evaluation(stages.install, StageEvaluation::Failed);
+                IntentStage::Proposed | IntentStage::Claimed | IntentStage::ReconciledNoEffect => {
+                    record_stage_evaluation(&mut stages, &v.obs.detail, StageEvaluation::Failed);
+                    let rescue_ok = check_rescue_preservation(
+                        contract,
+                        attempt_id,
+                        candidate_ref,
+                        expected_commit_for_rescue,
+                        expected_tree_for_rescue,
+                        rescue_binding.as_ref(),
+                        &target.id,
+                        default_owner,
+                        v.obs.observed_tick,
+                        &v.evidence_ref,
+                        v.freshness,
+                        pending_attention,
+                    );
+                    if !matches!(external_outcome, ExternalOutcomeState::Uncertain { .. }) {
+                        external_outcome = ExternalOutcomeState::Unlanded {
+                            target_ref: target_ref.clone(),
+                            rescue_preserved: rescue_ok,
+                            rescue_ref: rescue_binding.as_ref().map(|r| r.rescue_ref.clone()),
+                        };
                     }
-                } else {
-                    stages.install =
-                        merge_stage_evaluation(stages.install, StageEvaluation::Failed);
                 }
+            }
+        }
+    }
 
-                let mut session_views = Vec::with_capacity(sessions.len());
-                let mut any_unknown_running = sessions.is_empty();
-                let mut all_match_desired = !sessions.is_empty();
+    // Deployment stages evaluated in strict dependency order over the complete collected bundle sets.
+    if has_pkg_obs {
+        let eval = if has_pkg_conflict {
+            StageEvaluation::Failed
+        } else {
+            StageEvaluation::Verified
+        };
+        stages.package = merge_stage_evaluation(stages.package, eval);
+    }
 
-                for s in sessions {
-                    // Never substitute requested_model or requested_bundle_digest for observed running!
-                    let prov_attested = s
-                        .provenance_ref
-                        .as_ref()
-                        .is_some_and(|p| context.attested_provenance_refs.contains(p));
-                    let running_known = s.observed_running_model.is_some()
-                        && s.observed_running_bundle_digest.is_some()
-                        && prov_attested;
-                    let matches_desired = running_known
-                        && s.observed_running_bundle_digest.as_deref()
-                            == Some(desired.bundle_digest.as_str());
-                    if !running_known {
-                        any_unknown_running = true;
-                    }
-                    if !matches_desired {
-                        all_match_desired = false;
-                    }
-                    session_views.push(SessionRuntimeView {
-                        session_id: s.session_id.clone(),
-                        attempt_id: s.attempt_id.clone(),
-                        requested_model: s.requested_model.clone(),
-                        requested_bundle_digest: s.requested_bundle_digest.clone(),
-                        observed_running_model: s.observed_running_model.clone(),
-                        observed_running_bundle_digest: s.observed_running_bundle_digest.clone(),
-                        running_identity_known: running_known,
-                        matches_desired_bundle: matches_desired,
-                        active_child_work: s.active_child_work,
-                        unlanded_candidate_ref: s.unlanded_candidate_ref.clone(),
+    if has_stage_obs {
+        let pkg_matches_stage = !has_pkg_conflict
+            && (!has_pkg_obs
+                || canonical_pkg.zip(canonical_staged).is_some_and(
+                    |((pkg_commit, _, pkg_ver), staged)| {
+                        pkg_commit == staged.source_commit_sha.as_str()
+                            && pkg_ver == staged.version.as_str()
+                    },
+                ));
+        let eval = if !has_stage_conflict && pkg_matches_stage {
+            StageEvaluation::Verified
+        } else {
+            StageEvaluation::Failed
+        };
+        stages.stage = merge_stage_evaluation(stages.stage, eval);
+    }
+
+    if has_install_obs {
+        let pkg_matches_inst = !has_pkg_conflict
+            && (!has_pkg_obs
+                || canonical_pkg.zip(canonical_installed).is_some_and(
+                    |((pkg_commit, _, pkg_ver), inst)| {
+                        pkg_commit == inst.source_commit_sha.as_str()
+                            && pkg_ver == inst.version.as_str()
+                    },
+                ));
+        let stage_matches_inst =
+            !has_stage_conflict && (!has_stage_obs || canonical_staged == canonical_installed);
+        let desired_matches_inst =
+            !has_desired_conflict && (!has_running_obs || canonical_desired == canonical_installed);
+        let eval = if !has_installed_conflict
+            && pkg_matches_inst
+            && stage_matches_inst
+            && desired_matches_inst
+        {
+            StageEvaluation::Verified
+        } else {
+            StageEvaluation::Failed
+        };
+        stages.install = merge_stage_evaluation(stages.install, eval);
+    }
+
+    for v in &fresh_attested {
+        if let StageObservationDetail::Running {
+            desired_bundle: desired,
+            installed_bundle: obs_installed,
+            sessions,
+            drain_disposition,
+        } = &v.obs.detail
+        {
+            let effective_installed = obs_installed.as_ref().or(installed_bundle.as_ref());
+            if has_installed_conflict || effective_installed.is_none_or(|inst| inst != desired) {
+                stages.install = merge_stage_evaluation(stages.install, StageEvaluation::Failed);
+            }
+
+            let mut session_views = Vec::with_capacity(sessions.len());
+            let mut any_unknown_running = sessions.is_empty();
+            let mut all_match_desired = !sessions.is_empty();
+            let mut any_mismatched_session_attempt = false;
+
+            for s in sessions {
+                // Never substitute requested_model or requested_bundle_digest for observed running!
+                let attempt_matches_current = &s.attempt_id == attempt_id;
+                let prov_attested = s.provenance_ref.as_ref().is_some_and(|p| {
+                    context.attested_provenance_refs.contains(p)
+                        && v.attested.sub_provenance_refs.contains(p)
+                });
+                let running_known = s.observed_running_model.is_some()
+                    && s.observed_running_bundle_digest.is_some()
+                    && prov_attested;
+                let matches_desired = running_known
+                    && attempt_matches_current
+                    && s.observed_running_bundle_digest.as_deref()
+                        == Some(desired.bundle_digest.as_str());
+                if !running_known {
+                    any_unknown_running = true;
+                }
+                if !matches_desired {
+                    all_match_desired = false;
+                }
+                if !attempt_matches_current {
+                    any_mismatched_session_attempt = true;
+                    pending_attention.push(PendingAttention {
+                        target_id: Some(target.id.clone()),
+                        reason: AttentionReason::JoinIdentityMismatch,
+                        owner: default_owner.clone(),
+                        observed_tick: v.obs.observed_tick,
+                        evidence_ref: v.evidence_ref.clone(),
+                        freshness: v.freshness,
+                        facts: vec![
+                            format!("observation_id={}", v.obs.observation_id),
+                            format!("session_id={}", s.session_id),
+                            format!("observed_attempt_id={}", s.attempt_id),
+                            format!("expected_attempt_id={attempt_id}"),
+                            "mismatch=SessionAttemptId".into(),
+                        ],
                     });
                 }
-
-                let incoming_alignment =
-                    if matches!(drain_disposition, DrainDisposition::RollbackRequired { .. }) {
-                        BundleAlignmentState::RollbackPending
-                    } else if effective_installed.is_none() {
-                        BundleAlignmentState::InstallMissing
-                    } else if effective_installed
-                        .is_some_and(|inst| inst.bundle_digest != desired.bundle_digest)
-                    {
-                        BundleAlignmentState::StaleInstalledBundle
-                    } else if any_unknown_running {
-                        BundleAlignmentState::ActualRunningUnknown
-                    } else if !all_match_desired
-                        || matches!(
-                            drain_disposition,
-                            DrainDisposition::Draining { .. }
-                                | DrainDisposition::PendingUpdate { .. }
-                        )
-                    {
-                        BundleAlignmentState::DrainingOldBundle
-                    } else {
-                        BundleAlignmentState::AlignedRunning
-                    };
-
-                let alignment = runtime_projection
-                    .as_ref()
-                    .map_or(incoming_alignment, |prev| {
-                        prev.alignment.min(incoming_alignment)
-                    });
-
-                match incoming_alignment {
-                    BundleAlignmentState::AlignedRunning => {
-                        record_stage_evaluation(
-                            &mut stages,
-                            &obs.detail,
-                            StageEvaluation::Verified,
-                        );
-                    }
-                    BundleAlignmentState::ActualRunningUnknown => {
-                        if stages.running == StageEvaluation::Verified {
-                            stages.running = StageEvaluation::Failed;
-                        }
-                        pending_attention.push(PendingAttention {
-                            target_id: Some(target.id.clone()),
-                            reason: AttentionReason::ActualRunningIdentityUnknown,
-                            owner: default_owner.clone(),
-                            observed_tick: obs.observed_tick,
-                            evidence_ref: evidence_ref.clone(),
-                            freshness,
-                            facts: vec![
-                                format!("target_id={}", target.id),
-                                format!("desired_bundle={}", desired.bundle_digest),
-                                "observed_running_identity=unknown".into(),
-                                "requested_substitute_accepted=false".into(),
-                            ],
-                        });
-                    }
-                    BundleAlignmentState::StaleInstalledBundle
-                    | BundleAlignmentState::DrainingOldBundle
-                    | BundleAlignmentState::RollbackPending
-                    | BundleAlignmentState::InstallMissing => {
-                        record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Failed);
-                        let installed_str = effective_installed
-                            .map(|b| b.bundle_digest.as_str())
-                            .unwrap_or("none");
-                        pending_attention.push(PendingAttention {
-                            target_id: Some(target.id.clone()),
-                            reason: AttentionReason::StaleInstalledBundle,
-                            owner: default_owner.clone(),
-                            observed_tick: obs.observed_tick,
-                            evidence_ref: evidence_ref.clone(),
-                            freshness,
-                            facts: vec![
-                                format!("target_id={}", target.id),
-                                format!("alignment={incoming_alignment:?}"),
-                                format!("desired_bundle={}", desired.bundle_digest),
-                                format!("installed_bundle={installed_str}"),
-                            ],
-                        });
-                    }
-                    BundleAlignmentState::NotObserved => {}
-                }
-
-                runtime_projection = Some(BundleRuntimeProjection {
-                    desired_bundle: desired_bundle.clone(),
-                    staged_bundle: staged_bundle.clone(),
-                    installed_bundle: installed_bundle.clone(),
-                    released_bundle: released_bundle.clone(),
-                    alignment,
-                    drain_disposition: Some(drain_disposition.clone()),
-                    sessions: session_views,
+                session_views.push(SessionRuntimeView {
+                    session_id: s.session_id.clone(),
+                    attempt_id: s.attempt_id.clone(),
+                    requested_model: s.requested_model.clone(),
+                    requested_bundle_digest: s.requested_bundle_digest.clone(),
+                    observed_running_model: s.observed_running_model.clone(),
+                    observed_running_bundle_digest: s.observed_running_bundle_digest.clone(),
+                    running_identity_known: running_known,
+                    matches_desired_bundle: matches_desired,
+                    active_child_work: s.active_child_work,
+                    unlanded_candidate_ref: s.unlanded_candidate_ref.clone(),
                 });
             }
-            StageObservationDetail::Release {
-                released_bundle: bundle,
-                ..
-            } => {
-                released_bundle = Some(bundle.clone());
-                let matches_desired = desired_bundle
-                    .as_ref()
-                    .is_none_or(|d| d.bundle_digest == bundle.bundle_digest);
-                let matches_installed = installed_bundle
-                    .as_ref()
-                    .is_some_and(|i| i.bundle_digest == bundle.bundle_digest);
-                if matches_desired
-                    && matches_installed
-                    && stages.package == StageEvaluation::Verified
-                    && stages.stage == StageEvaluation::Verified
-                    && stages.install == StageEvaluation::Verified
-                    && stages.running == StageEvaluation::Verified
+
+            let incoming_alignment =
+                if matches!(drain_disposition, DrainDisposition::RollbackRequired { .. }) {
+                    BundleAlignmentState::RollbackPending
+                } else if effective_installed.is_none() {
+                    BundleAlignmentState::InstallMissing
+                } else if has_installed_conflict
+                    || effective_installed.is_some_and(|inst| inst != desired)
                 {
-                    record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Verified);
+                    BundleAlignmentState::StaleInstalledBundle
+                } else if any_unknown_running {
+                    BundleAlignmentState::ActualRunningUnknown
+                } else if any_mismatched_session_attempt
+                    || !all_match_desired
+                    || matches!(
+                        drain_disposition,
+                        DrainDisposition::Draining { .. } | DrainDisposition::PendingUpdate { .. }
+                    )
+                {
+                    BundleAlignmentState::DrainingOldBundle
                 } else {
-                    record_stage_evaluation(&mut stages, &obs.detail, StageEvaluation::Failed);
+                    BundleAlignmentState::AlignedRunning
+                };
+
+            let upstream_bundles_match = !has_desired_conflict
+                && !has_stage_conflict
+                && !has_pkg_conflict
+                && (!has_stage_obs || canonical_staged == Some(desired))
+                && (!has_pkg_obs
+                    || canonical_pkg.is_some_and(|(pkg_commit, _, pkg_ver)| {
+                        pkg_commit == desired.source_commit_sha.as_str()
+                            && pkg_ver == desired.version.as_str()
+                    }));
+
+            let alignment = runtime_projection
+                .as_ref()
+                .map_or(incoming_alignment, |prev| {
+                    prev.alignment.min(incoming_alignment)
+                });
+
+            match incoming_alignment {
+                BundleAlignmentState::AlignedRunning if upstream_bundles_match => {
+                    record_stage_evaluation(&mut stages, &v.obs.detail, StageEvaluation::Verified);
                 }
-                if let Some(proj) = &mut runtime_projection {
-                    proj.released_bundle = released_bundle.clone();
+                BundleAlignmentState::ActualRunningUnknown => {
+                    if stages.running == StageEvaluation::Verified {
+                        stages.running = StageEvaluation::Failed;
+                    }
+                    pending_attention.push(PendingAttention {
+                        target_id: Some(target.id.clone()),
+                        reason: AttentionReason::ActualRunningIdentityUnknown,
+                        owner: default_owner.clone(),
+                        observed_tick: v.obs.observed_tick,
+                        evidence_ref: v.evidence_ref.clone(),
+                        freshness: v.freshness,
+                        facts: vec![
+                            format!("target_id={}", target.id),
+                            format!("desired_bundle={}", desired.bundle_digest),
+                            "observed_running_identity=unknown".into(),
+                            "requested_substitute_accepted=false".into(),
+                        ],
+                    });
                 }
+                BundleAlignmentState::AlignedRunning
+                | BundleAlignmentState::StaleInstalledBundle
+                | BundleAlignmentState::DrainingOldBundle
+                | BundleAlignmentState::RollbackPending
+                | BundleAlignmentState::InstallMissing => {
+                    record_stage_evaluation(&mut stages, &v.obs.detail, StageEvaluation::Failed);
+                    let installed_str = effective_installed
+                        .map(|b| b.bundle_digest.as_str())
+                        .unwrap_or("none");
+                    pending_attention.push(PendingAttention {
+                        target_id: Some(target.id.clone()),
+                        reason: AttentionReason::StaleInstalledBundle,
+                        owner: default_owner.clone(),
+                        observed_tick: v.obs.observed_tick,
+                        evidence_ref: v.evidence_ref.clone(),
+                        freshness: v.freshness,
+                        facts: vec![
+                            format!("target_id={}", target.id),
+                            format!("alignment={incoming_alignment:?}"),
+                            format!("desired_bundle={}", desired.bundle_digest),
+                            format!("installed_bundle={installed_str}"),
+                        ],
+                    });
+                }
+                BundleAlignmentState::NotObserved => {}
             }
+
+            runtime_projection = Some(BundleRuntimeProjection {
+                desired_bundle: desired_bundle.clone(),
+                staged_bundle: staged_bundle.clone(),
+                installed_bundle: installed_bundle.clone(),
+                released_bundle: released_bundle.clone(),
+                alignment,
+                drain_disposition: Some(drain_disposition.clone()),
+                sessions: session_views,
+            });
+        }
+    }
+
+    if has_release_obs {
+        let release_ok = !has_release_conflict
+            && stages.package == StageEvaluation::Verified
+            && stages.stage == StageEvaluation::Verified
+            && stages.install == StageEvaluation::Verified
+            && stages.running == StageEvaluation::Verified
+            && canonical_released.is_some()
+            && canonical_released == canonical_staged
+            && canonical_released == canonical_installed
+            && canonical_released == canonical_desired;
+        let eval = if release_ok {
+            StageEvaluation::Verified
+        } else {
+            StageEvaluation::Failed
+        };
+        stages.release = merge_stage_evaluation(stages.release, eval);
+        if let Some(proj) = &mut runtime_projection {
+            proj.released_bundle = released_bundle.clone();
         }
     }
 
@@ -2549,10 +2897,18 @@ fn compile_attention_items(
     let mut unchanged_item_ids = Vec::new();
     let mut active_ids = BTreeSet::new();
 
-    for ((target_id, reason), entries) in grouped {
+    for ((target_id, reason), mut entries) in grouped {
         if items.len() >= MAX_ATTENTION_ITEMS {
             return Err(DeliveryError::Bound);
         }
+        entries.sort_by(|a, b| {
+            a.observed_tick
+                .cmp(&b.observed_tick)
+                .then_with(|| a.evidence_ref.cmp(&b.evidence_ref))
+                .then_with(|| a.owner.cmp(&b.owner))
+                .then_with(|| a.facts.cmp(&b.facts))
+        });
+
         let target_label = target_id.as_deref().unwrap_or("task");
         let item_id = format!(
             "attn:{}:gen{}:{}:{}",
@@ -2576,9 +2932,13 @@ fn compile_attention_items(
             latest_tick = latest_tick.max(e.observed_tick);
             worst_freshness = worst_freshness.max(e.freshness);
             evidence_refs.insert(e.evidence_ref.clone());
+            if evidence_refs.len() > MAX_STAGE_OBSERVATIONS {
+                return Err(DeliveryError::Bound);
+            }
             for fact in &e.facts {
-                if facts_set.len() < MAX_ATTENTION_FACTS {
-                    facts_set.insert(fact.clone());
+                facts_set.insert(fact.clone());
+                if facts_set.len() > MAX_ATTENTION_FACTS {
+                    return Err(DeliveryError::Bound);
                 }
             }
         }
@@ -2690,6 +3050,49 @@ fn compile_attention_items(
     };
 
     Ok((items, delta))
+}
+
+pub fn compute_observation_detail_digest(
+    join: &DeliveryJoinIdentity,
+    target_kind: DeliveryTargetKind,
+    observed_tick: DecimalU64,
+    valid_through_tick: DecimalU64,
+    detail: &StageObservationDetail,
+) -> Result<String> {
+    canonical_domain_hash(
+        b"admiralty.delivery.observation-detail/v1\0",
+        &(join, target_kind, observed_tick, valid_through_tick, detail),
+    )
+}
+
+pub fn compute_observation_digest(obs: &DeliveryObservation) -> Result<String> {
+    canonical_domain_hash(b"admiralty.delivery.observation/v1\0", obs)
+}
+
+pub fn collect_sub_provenance_refs(detail: &StageObservationDetail) -> BTreeSet<String> {
+    let mut set = BTreeSet::new();
+    match detail {
+        StageObservationDetail::Review { approvals, .. } => {
+            for a in approvals {
+                set.insert(a.provenance_ref.clone());
+            }
+        }
+        StageObservationDetail::Merge {
+            effect_receipt: Some(receipt),
+            ..
+        } => {
+            set.insert(receipt.provenance_ref.clone());
+        }
+        StageObservationDetail::Running { sessions, .. } => {
+            for s in sessions {
+                if let Some(prov) = &s.provenance_ref {
+                    set.insert(prov.clone());
+                }
+            }
+        }
+        _ => {}
+    }
+    set
 }
 
 fn evaluate_freshness(
