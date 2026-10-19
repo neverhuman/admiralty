@@ -1108,3 +1108,78 @@ provider → immutable changed source → independent checks → Store acceptanc
 chain, restart continuity, durable accounting/coordination and remaining P02–P31
 criteria stay open. No general execution qualification or new parent acceptance
 is claimed.
+
+## Scoped dispatch and durable context composition — 2026-10-19T00:30Z
+
+PR78 is merged at `196b873b80f12f36eeffe9a555749b962ea4f815` after exact-head
+neverhumanbot approval of `9ad8c9fc0181159c626f4f74529a8fa8c18b2138` and
+matched-head rebase. Independent Mac checks pass all 35 workspace cases,
+including 13 source-candidate and 14 preparation tests, strict runtime Clippy and
+formatting. Bounded reads now cover the earlier preparation config path too;
+Git directory traversal checks admission before retaining child paths. None of
+this is substituted for actual successful Linux executor-to-candidate proof.
+
+The next integration at `d7ced28bbcb71471a105752f0e035e4f714abc27` passes the
+entire registered Rust workspace: **1,128 passed, zero failures, five intentional
+controlled child helpers ignored, zero filtered**, across 132 suite results.
+Strict workspace all-target Clippy and formatting pass on the same clean source.
+The [coordinator/context receipt](../../../receipts/integration/native-task-coordinator-20261019T0030Z.json)
+pins actual production sources and logs, each imported worker revision and the
+independent static reviews. This full run includes the newly merged source
+candidate, exact-key Store claims, ownership retention and durable context
+storage; it is not attributed to a later source revision.
+
+Exact-key claim and expiry now run on Store's sole writer without changing a
+foreign project's pending or expired intent. The global monotonic clock and
+existing fences remain intact. Registration rejection returns the original
+opaque plan. Known pre-spawn errors retain plan/reservation, and even an
+uncertain journal write with no visible file fences retry/withdrawal. Actual or
+ambiguous spawned handles continue through the existing pending registry.
+
+`NativeTaskLoop` constructs its own actual executor and StoreStartedSink against
+the same Store and immutable scope. It registers before atomic claim/intake,
+retains frozen requests after ambiguity, and dispatches only the retained exact
+launch key. A separately retained effect-acknowledgment state survives completion
+buffering; unconfirmed closed proof cannot be handed off for acceptance. Bounded
+backpressure precedes one-shot transfer. There is no setter that turns an
+unknown effect into success, nor an HTTP/startup activation added by this change.
+The current lifetime registry retains at most one attempt per task; retirement,
+new-attempt continuation and explicit unknown-effect reconciliation remain open.
+
+Role renders now persist exact protected text, scope/role/epoch/fact digests and
+explicit byte/estimated-token metadata through the sole Store writer. Immutable
+records, bounded pages/history, recipient baseline CAS and historical exact
+command replay survive reopen, rebuild and SQLite backup. Lost-ACK replay returns
+the historical receipt without rewinding the latest baseline. Corrupt stored
+history fails closed before backup publication. The 120 actual Store tests
+include eleven context cases. Application acknowledgment is a trusted caller's
+recorded observation; no authenticated delivery, provider memory or token-saving
+proof is invented. Live route/governor/delivery integration remains separate.
+
+The Commodore deployed PR80 main `c2300024848fd921031dee47f82288423afb6fda` at
+00:20 UTC. Independent verification checks all twelve manifest artifacts and
+actual daemon/observer executable paths. Primary18890 returns200; compatibility
+18891 returns307; Rust collection records zero model turns and no acceptance
+authority. The freshly loaded production React bundle has all thirteen metric
+controls and original history; old Admiralty Python producers have not respawned.
+Manifest SHA-256: `edb27988b3fa5c23f35c446b961177fc69d47285124e853bc73097d9372f43b8`.
+
+Current-main Rust/contracts CI at both c230 and196 is successful. Browser CI
+has two preserved receiving-main failures: c230 startup exceeded15 seconds;
+196 passed12 cases but its4/20/100-project functional journey exceeded30 seconds.
+The corresponding PR browser runs passed13/13; no failed main run is called
+green. S2 owns diagnosis/repair with sandbox, mandatory real backend and pinned
+axe unchanged. PR78's separate contracts failure reported a null generator child
+status after about33 seconds; discarded error/signal details prevent a definite
+cause. The follow-up retains the30-second bound, adds bounded termination/stage
+diagnostics and requires actual exit1 for expected rejection. All eleven contract
+tests, including actual interrupted-child controls, pass locally on Node25;
+this is not a new Node24 Linux CI result or a claim of intermittent CI repair. These are
+actionable harness findings, not a reason to stop unrelated implementation.
+
+All old PRs were cleared at 00:18:55 UTC; new work starts from the actual current
+main. Three new disjoint surge packets cover custody-preserving candidate errors,
+browser failure repair and a trusted local evidence catalog. A separate isolated
+Linux real-task-loop proof is being implemented; it will use a fixed child and
+fresh exact authorization, not a paid provider or reused failed permit. Native
+general execution remains false. P00/P01 remain the only accepted parent packets.
