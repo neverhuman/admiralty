@@ -75,6 +75,7 @@ pub struct PreparedWorkspace {
     attempt_id: AttemptId,
     _managed_parent: OwnedFd,
     _workspace_dir: OwnedFd,
+    _git_dir: OwnedFd,
 }
 
 impl PreparedWorkspace {
@@ -135,6 +136,7 @@ impl PreparedWorkspace {
         }
         ensure_private_fd(&self._managed_parent)?;
         ensure_private_fd(&self._workspace_dir)?;
+        ensure_private_fd(&self._git_dir)?;
         ensure_path_points_to_fd(parent_path, &self._managed_parent)?;
         ensure_path_points_to_fd(&self.workspace.workspace, &self._workspace_dir)?;
         ensure_same_directory(
@@ -142,6 +144,7 @@ impl PreparedWorkspace {
             destination_name,
             &self._workspace_dir,
         )?;
+        ensure_same_directory(&self._workspace_dir, ".git", &self._git_dir)?;
         Ok(())
     }
     pub(crate) fn managed_parent_fd(&self) -> std::os::fd::BorrowedFd<'_> {
@@ -279,6 +282,18 @@ pub fn prepare_workspace(
         return Err(PreparationError::UnsafeDestinationMetadata);
     }
     fs::set_permissions(&git_dir, fs::Permissions::from_mode(0o700))?;
+    let git_dir_fd = rustix::fs::openat(
+        &destination_fd,
+        ".git",
+        rustix::fs::OFlags::RDONLY
+            | rustix::fs::OFlags::DIRECTORY
+            | rustix::fs::OFlags::NOFOLLOW
+            | rustix::fs::OFlags::CLOEXEC,
+        rustix::fs::Mode::empty(),
+    )
+    .map_err(io::Error::from)?;
+    ensure_private_fd(&git_dir_fd)?;
+    ensure_same_directory(&destination_fd, ".git", &git_dir_fd)?;
     let destination_config = git_dir.join("config");
     let destination_config_meta = fs::symlink_metadata(&destination_config)
         .map_err(|_| PreparationError::UnsafeDestinationMetadata)?;
@@ -422,6 +437,8 @@ pub fn prepare_workspace(
     }
     ensure_path_points_to_fd(&parent_path, &parent_fd)?;
     ensure_same_directory(&parent_fd, &request.destination_name, &destination_fd)?;
+    ensure_private_fd(&git_dir_fd)?;
+    ensure_same_directory(&destination_fd, ".git", &git_dir_fd)?;
     Ok(PreparedWorkspace {
         workspace,
         head_oid: head,
@@ -430,6 +447,7 @@ pub fn prepare_workspace(
         attempt_id: request.attempt_id,
         _managed_parent: parent_fd,
         _workspace_dir: destination_fd,
+        _git_dir: git_dir_fd,
     })
 }
 
@@ -1761,6 +1779,45 @@ mod tests {
             Err(PreparationError::DestinationExists)
         ));
         assert_eq!(fs::read(file).expect("preserved file"), b"caller data\n");
+    }
+
+    #[test]
+    fn custody_rejects_replaced_git_directory_and_keeps_original_metadata() {
+        let fixture = fixture();
+        let prepared = prepare_workspace(request(&fixture, "git-custody")).expect("prepare");
+        prepared
+            .validate_current_custody()
+            .expect("original custody");
+        let path = &prepared.workspace().workspace;
+        let original = path.join("original-git");
+        fs::rename(path.join(".git"), &original).expect("retain original Git metadata");
+        let sentinel = fs::read(original.join("HEAD")).expect("original HEAD");
+        fs::create_dir(path.join(".git")).expect("replacement Git directory");
+        fs::set_permissions(path.join(".git"), fs::Permissions::from_mode(0o700))
+            .expect("same private permissions");
+        assert!(matches!(
+            prepared.validate_current_custody(),
+            Err(PreparationError::UnsafeDestinationMetadata)
+        ));
+        assert_eq!(
+            fs::read(original.join("HEAD")).expect("preserved HEAD"),
+            sentinel
+        );
+    }
+
+    #[test]
+    fn custody_rejects_git_directory_permission_drift() {
+        let fixture = fixture();
+        let prepared = prepare_workspace(request(&fixture, "git-permissions")).expect("prepare");
+        fs::set_permissions(
+            prepared.workspace().workspace.join(".git"),
+            fs::Permissions::from_mode(0o750),
+        )
+        .expect("change Git directory permissions");
+        assert!(matches!(
+            prepared.validate_current_custody(),
+            Err(PreparationError::UnsafeDestinationMetadata)
+        ));
     }
 
     #[test]
