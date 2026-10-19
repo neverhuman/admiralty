@@ -1,5 +1,5 @@
 #![cfg(unix)]
-//! Same daemon and owned child across client reconnects, not service restart.
+//! Client reconnects and explicit Linux service-manager restart qualification.
 
 use admiralty_runtime::session::daemon::{
     DaemonConfig, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, SessionDaemon,
@@ -20,6 +20,7 @@ use std::{
 use tempfile::TempDir;
 
 const WORKER_ROOT: &str = "ADMIRALTY_TEST_SESSION_WORKER_ROOT";
+const COORDINATOR_ROOT: &str = "ADMIRALTY_TEST_COORDINATOR_ROOT";
 const WAIT: Duration = Duration::from_secs(3);
 
 fn private_tempdir() -> io::Result<TempDir> {
@@ -300,6 +301,194 @@ fn daemon_client_reconnect_keeps_child_and_output_offsets_continuous() {
             .expect("finite daemon shutdown and reap")
             .success()
     );
+}
+
+/// Opt-in because this creates two test-owned transient systemd units using sudo.
+/// Both units run in the host's capped slice and are stopped by their owned guards.
+#[cfg(target_os = "linux")]
+#[test]
+#[ignore = "requires explicit local systemd transient-service qualification"]
+fn systemd_coordinator_restart_preserves_child_and_journal() {
+    let temporary = private_tempdir().expect("private service fixture");
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .create(temporary.path().join("p"))
+        .expect("private spool");
+    let session = TestService::start(
+        temporary.path(),
+        "session",
+        "owned_daemon_worker",
+        WORKER_ROOT,
+    );
+    let socket = temporary.path().join("s");
+    let deadline = Instant::now() + WAIT;
+    while !socket.exists() {
+        remaining(deadline).expect("session socket readiness");
+        thread::sleep(Duration::from_millis(10));
+    }
+    let coordinator = TestService::start(
+        temporary.path(),
+        "coordinator",
+        "owned_coordinator_worker",
+        COORDINATOR_ROOT,
+    );
+    let first = wait_for_file(&temporary.path().join("before.json"));
+    assert_eq!(first["result"]["status"]["output_offset"], "2");
+    assert_eq!(first["result"]["status"]["input_epoch"], "1");
+    assert_eq!(first["result"]["status"]["state"], "running");
+    assert!(
+        first["result"]["status"]["start_identity"]
+            .as_str()
+            .is_some()
+    );
+    coordinator.control("restart");
+    let after = wait_for_file(&temporary.path().join("after.json"));
+    for field in ["pid", "start_identity"] {
+        assert_eq!(
+            first["result"]["status"][field],
+            after["result"]["status"][field]
+        );
+    }
+    assert_eq!(after["result"]["status"]["input_epoch"], "2");
+    assert_eq!(after["result"]["status"]["output_offset"], "3");
+    let tail = exchange(
+        &socket,
+        &json!({"command":"tail","run_id":"restart","from":"0","max_bytes":8}),
+    )
+    .expect("continuous journal");
+    assert_eq!(tail_bytes(&tail), b"ABC");
+    assert_eq!(tail["result"]["next_offset"], "3");
+    await_exit(&socket, "restart", "3");
+    drop(coordinator);
+    drop(session);
+}
+
+#[cfg(target_os = "linux")]
+fn wait_for_file(path: &Path) -> Value {
+    let deadline = Instant::now() + WAIT;
+    loop {
+        if let Ok(bytes) = fs::read(path)
+            && let Ok(value) = serde_json::from_slice(&bytes)
+        {
+            return value;
+        }
+        remaining(deadline).expect("coordinator checkpoint readiness");
+        thread::sleep(Duration::from_millis(10));
+    }
+}
+
+#[cfg(target_os = "linux")]
+struct TestService(String);
+
+#[cfg(target_os = "linux")]
+impl TestService {
+    fn start(root: &Path, role: &str, worker: &str, variable: &str) -> Self {
+        let name = format!("admiralty-p07-test-{}-{role}.service", uuid::Uuid::new_v4());
+        let owned = Self(name);
+        let status = Command::new("sudo")
+            .args(["-n", "systemd-run", "--quiet", "--collect"])
+            .arg(format!("--unit={}", owned.0))
+            .args([
+                "--service-type=exec",
+                "--property=Slice=jarambit-evo.slice",
+                "--property=RuntimeMaxSec=30",
+                "--property=TimeoutStopSec=3",
+                "--property=UMask=0077",
+            ])
+            .arg(format!("--uid={}", rust_uid()))
+            .arg(format!("--setenv={variable}={}", root.display()))
+            .arg("--")
+            .arg(std::env::current_exe().expect("test binary"))
+            .args([
+                "--exact",
+                worker,
+                "--ignored",
+                "--nocapture",
+                "--test-threads=1",
+            ])
+            .status()
+            .expect("create owned transient service");
+        assert!(status.success(), "transient service start failed");
+        owned
+    }
+
+    fn control(&self, verb: &str) {
+        assert!(
+            Command::new("sudo")
+                .args(["-n", "systemctl", verb, &self.0])
+                .status()
+                .expect("owned transient service control")
+                .success()
+        );
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn rust_uid() -> u32 {
+    fs::metadata(std::env::current_exe().expect("test binary"))
+        .expect("test binary owner")
+        .uid()
+}
+
+#[cfg(target_os = "linux")]
+impl Drop for TestService {
+    fn drop(&mut self) {
+        let _ = Command::new("sudo")
+            .args(["-n", "systemctl", "stop", &self.0])
+            .status();
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+#[ignore = "test-owned transient coordinator worker"]
+fn owned_coordinator_worker() {
+    let root = PathBuf::from(std::env::var_os(COORDINATOR_ROOT).expect("owned coordinator root"));
+    let socket = root.join("s");
+    let before = root.join("before.json");
+    let checkpoint = if before.exists() {
+        let saved: Value = serde_json::from_slice(&fs::read(&before).expect("saved identity"))
+            .expect("saved status");
+        let current = exchange(&socket, &json!({"command":"status","run_id":"restart"}))
+            .expect("reconcile live child");
+        for field in ["pid", "start_identity", "input_epoch", "output_offset"] {
+            assert_eq!(
+                saved["result"]["status"][field],
+                current["result"]["status"][field]
+            );
+        }
+        let reply = exchange(
+            &socket,
+            &json!({"command":"input","run_id":"restart","expected_epoch":"1","bytes":[121,10]}),
+        )
+        .expect("second input");
+        assert_eq!(reply["result"]["input_epoch"], "2");
+        (
+            root.join("after.json"),
+            await_offset(&socket, "restart", "3"),
+        )
+    } else {
+        let launch = exchange(&socket, &json!({"command":"launch","spec":{
+            "run_id":"restart","program":"/bin/sh",
+            "args":["-c","printf A; IFS= read -r first; printf B; IFS= read -r second; printf C"],
+            "cwd":root,"spool_dir":root.join("p/restart")
+        }})).expect("coordinator launch");
+        assert_eq!(launch["result"]["kind"], "launched");
+        await_offset(&socket, "restart", "1");
+        let reply = exchange(
+            &socket,
+            &json!({"command":"input","run_id":"restart","expected_epoch":"0","bytes":[120,10]}),
+        )
+        .expect("first input");
+        assert_eq!(reply["result"]["input_epoch"], "1");
+        (before, await_offset(&socket, "restart", "2"))
+    };
+    fs::write(
+        checkpoint.0,
+        serde_json::to_vec(&checkpoint.1).expect("checkpoint JSON"),
+    )
+    .expect("checkpoint write");
+    thread::sleep(Duration::from_secs(20));
 }
 
 /// A subprocess of this test binary, selected only by OwnedDaemon. The parent

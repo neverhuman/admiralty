@@ -5,7 +5,7 @@
 //! restart, a launch whose result is unclear must be reconciled by an operator.
 //!
 //! It uses pipes rather than a PTY. Linux records `/proc` start time with the
-//! PID; other platforms currently record no second process identity. Restart
+//! PID and boot identity; other platforms record no second process identity. Restart
 //! adoption and durable process reattachment are intentionally unsupported.
 //! A run ID reservation persists in the spool root, preventing a second launch
 //! with that ID even if its original child outcome still needs reconciliation.
@@ -1320,10 +1320,27 @@ fn capture_thread<R: Read + Send + 'static>(
 
 #[cfg(target_os = "linux")]
 fn process_start_identity(pid: u32) -> Option<String> {
+    let boot = fs::read_to_string("/proc/sys/kernel/random/boot_id").ok()?;
+    let boot = uuid_format_boot_id(boot.trim())?;
     let stat = fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
     // comm is parenthesized and may contain spaces or ')'; parse after its last ')'.
     let rest = stat.rsplit_once(") ")?.1;
-    rest.split_whitespace().nth(19).map(str::to_owned) // field 22: starttime
+    let start = rest.split_whitespace().nth(19)?; // field 22: starttime
+    start.parse::<u64>().ok()?;
+    Some(format!("{boot}:{start}"))
+}
+
+#[cfg(target_os = "linux")]
+fn uuid_format_boot_id(boot: &str) -> Option<&str> {
+    (boot.len() == 36
+        && boot.bytes().enumerate().all(|(index, byte)| {
+            if matches!(index, 8 | 13 | 18 | 23) {
+                byte == b'-'
+            } else {
+                byte.is_ascii_hexdigit()
+            }
+        }))
+    .then_some(boot)
 }
 
 #[cfg(not(target_os = "linux"))]
