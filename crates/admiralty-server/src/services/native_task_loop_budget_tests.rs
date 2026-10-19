@@ -3,10 +3,10 @@
 //! retained loop state only, never Linux enforcement or a real provider.
 
 use super::{
+    controller::{self, CurrentAdmission},
+    tests::{fixture_with_authority, TestFixture},
     AdmissionStatus, DispatchAdmission, DispatchClock, DispatchIntent, HoldReason,
     NativeBudgetAdmission, TaskDispatchStatus,
-    controller::{self, CurrentAdmission},
-    tests::{TestFixture, fixture_with_authority},
 };
 use admiralty_core::TaskView;
 use admiralty_runtime::reservations::{
@@ -14,8 +14,8 @@ use admiralty_runtime::reservations::{
 };
 use admiralty_store::{
     admission_reservations::{
-        ReservationAuthority, ReservationBinding, ReservationCommand, ReservationProof,
-        ledger_digest,
+        ledger_digest, ReservationAuthority, ReservationBinding, ReservationCommand,
+        ReservationProof,
     },
     outbox,
 };
@@ -23,12 +23,13 @@ use std::{
     any::Any,
     fs,
     sync::{
-        Arc,
         atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc,
     },
 };
 
 struct BudgetProof;
+struct BudgetReadProof;
 
 #[derive(Default)]
 struct BudgetPolicy {
@@ -45,7 +46,7 @@ impl ReservationAuthority for BudgetPolicy {
 
     fn authorize_read(&self, _: &ReservationLedger, proof: &(dyn Any + Send + Sync)) -> bool {
         self.reads.fetch_add(1, Ordering::SeqCst);
-        proof.is::<BudgetProof>() && !self.revoked.load(Ordering::SeqCst)
+        proof.is::<BudgetReadProof>() && !self.revoked.load(Ordering::SeqCst)
     }
 }
 
@@ -88,7 +89,7 @@ impl StopOnSecondClock<'_> {
     fn stop_reservation(&self) {
         let ledger = self
             .store
-            .reservation_ledger(proof())
+            .reservation_ledger(read_proof())
             .expect("read reservation at second clock sample");
         let reservation = ledger.reservations["native-reservation"].clone();
         let command_id = "native-budget-stop-at-clock";
@@ -134,6 +135,10 @@ fn proof() -> ReservationProof {
     Arc::new(BudgetProof)
 }
 
+fn read_proof() -> ReservationProof {
+    Arc::new(BudgetReadProof)
+}
+
 fn budget_fixture() -> (TestFixture, Arc<BudgetPolicy>) {
     let policy = Arc::new(BudgetPolicy::default());
     let mut fixture = fixture_with_authority(Some(policy.clone() as Arc<dyn ReservationAuthority>));
@@ -143,7 +148,7 @@ fn budget_fixture() -> (TestFixture, Arc<BudgetPolicy>) {
 
     let ledger = fixture
         .store
-        .reservation_ledger(proof())
+        .reservation_ledger(read_proof())
         .expect("read initial reservation ledger");
     let limits = ReservationCommand {
         schema_version: 1,
@@ -177,7 +182,7 @@ fn budget_fixture() -> (TestFixture, Arc<BudgetPolicy>) {
 fn budget_for(fixture: &TestFixture) -> NativeBudgetAdmission {
     let ledger = fixture
         .store
-        .reservation_ledger(proof())
+        .reservation_ledger(read_proof())
         .expect("read budget ledger");
     let task = fixture
         .store
@@ -209,6 +214,7 @@ fn budget_for(fixture: &TestFixture) -> NativeBudgetAdmission {
             },
         },
         proof: proof(),
+        read_proof: read_proof(),
     }
 }
 
@@ -264,7 +270,7 @@ fn protected_admission_commits_one_debit_claim_and_exact_outbox_effect() {
     );
     let ledger = fixture
         .store
-        .reservation_ledger(proof())
+        .reservation_ledger(read_proof())
         .expect("one authorized debit");
     assert_eq!(ledger.revision, 2, "limits plus one reserve command");
     assert_eq!(ledger.reservations.len(), 1);
@@ -282,7 +288,7 @@ fn protected_admission_commits_one_debit_claim_and_exact_outbox_effect() {
     // leaving this reservation identical and therefore still admissible.
     let before_limits = fixture
         .store
-        .reservation_ledger(proof())
+        .reservation_ledger(read_proof())
         .expect("read before unrelated limits update");
     let limits_id = "budget-test-unrelated-limits";
     fixture
@@ -323,7 +329,7 @@ fn protected_admission_commits_one_debit_claim_and_exact_outbox_effect() {
     ));
     let after_limits = fixture
         .store
-        .reservation_ledger(proof())
+        .reservation_ledger(read_proof())
         .expect("unrelated update retains budget entry");
     assert_eq!(after_limits.revision, 3);
     assert_eq!(after_limits.reservations["native-reservation"].revision, 2);
@@ -335,45 +341,39 @@ fn protected_admission_commits_one_debit_claim_and_exact_outbox_effect() {
         .expect("one atomic outbox intent");
     assert_eq!(claim.idempotency_key, key);
     assert_eq!(claim.payload["run_id"], request.run_id);
-    assert!(
-        fixture
-            .store
-            .claim_outbox_key(
-                Some(11),
-                "budget-test-second".into(),
-                30,
-                claim.idempotency_key
-            )
-            .expect("same effect is not duplicated")
-            .is_none()
-    );
+    assert!(fixture
+        .store
+        .claim_outbox_key(
+            Some(11),
+            "budget-test-second".into(),
+            30,
+            claim.idempotency_key
+        )
+        .expect("same effect is not duplicated")
+        .is_none());
     fixture
         .store
         .fail_outbox_unknown(claim.token, "test leaves effect unresolved".into())
         .expect("unknown effect remains fenced");
-    assert!(
-        fixture
-            .store
-            .claim_outbox_key(
-                Some(50),
-                "budget-test-no-retry".into(),
-                30,
-                first.outbox_key
-            )
-            .expect("unknown effect is not made runnable")
-            .is_none()
-    );
+    assert!(fixture
+        .store
+        .claim_outbox_key(
+            Some(50),
+            "budget-test-no-retry".into(),
+            30,
+            first.outbox_key
+        )
+        .expect("unknown effect is not made runnable")
+        .is_none());
     let after_unknown = fixture
         .store
-        .reservation_ledger(proof())
+        .reservation_ledger(read_proof())
         .expect("unknown effect retains liability");
     assert!(after_unknown.reservations["native-reservation"].outstanding);
-    assert!(
-        after_unknown
-            .unresolved_liabilities
-            .values()
-            .any(|amount| { amount == &MinorUnits::new(1) })
-    );
+    assert!(after_unknown
+        .unresolved_liabilities
+        .values()
+        .any(|amount| { amount == &MinorUnits::new(1) }));
     assert!(policy.reads.load(Ordering::SeqCst) >= 3);
     assert!(policy.writes.load(Ordering::SeqCst) >= 2);
     cleanup_parts(fixture.temp, fixture.task_loop, fixture.store);
@@ -398,7 +398,7 @@ fn failed_writer_admission_retains_registered_plan_for_authorized_retry() {
         fixture.store.snapshot().expect("no claim").cursor.event_seq,
         "1"
     );
-    assert!(fixture.store.reservation_ledger(proof()).is_err());
+    assert!(fixture.store.reservation_ledger(read_proof()).is_err());
 
     policy.revoked.store(false, Ordering::SeqCst);
     assert!(matches!(
@@ -418,6 +418,48 @@ fn failed_writer_admission_retains_registered_plan_for_authorized_retry() {
         "2"
     );
     cleanup_parts(temp, fixture.task_loop, fixture.store);
+}
+
+#[test]
+fn wrong_budget_read_proof_rejects_preflight_and_returns_original_plan_and_custody() {
+    let (mut fixture, _) = budget_fixture();
+    let request = fixture.request.clone();
+    let expected_head = fixture.plan.prepared_workspace.head_oid().to_owned();
+    let mut budget = budget_for(&fixture);
+    budget.read_proof = Arc::new(String::from("foreign-read-capability"));
+    let original_command = budget.command.clone();
+    let original_write = Arc::clone(&budget.proof);
+    let original_read = Arc::clone(&budget.read_proof);
+
+    let rejected = fixture
+        .task_loop
+        .admit_reserved(request, fixture.plan, &Permit, budget)
+        .expect_err("foreign read capability is checked before plan registration");
+    assert_eq!(rejected.reason, super::LoopError::StoreUnavailable);
+    assert_eq!(rejected.plan.prepared_workspace.head_oid(), expected_head);
+    let returned = rejected
+        .budget
+        .expect("original budget custody is returned");
+    assert_eq!(returned.command, original_command);
+    assert!(Arc::ptr_eq(&returned.proof, &original_write));
+    assert!(Arc::ptr_eq(&returned.read_proof, &original_read));
+    assert!(fixture.task_loop.runs.is_empty());
+    assert_eq!(
+        fixture
+            .store
+            .snapshot()
+            .expect("no durable claim")
+            .cursor
+            .event_seq,
+        "1"
+    );
+    assert!(fixture
+        .store
+        .reservation_ledger(read_proof())
+        .expect("authorized read can inspect unchanged ledger")
+        .reservations
+        .is_empty());
+    cleanup_parts(fixture.temp, fixture.task_loop, fixture.store);
 }
 
 #[test]
@@ -484,7 +526,7 @@ fn mismatched_reservation_and_command_return_actual_preparation_without_effects(
         assert!(
             fixture
                 .store
-                .reservation_ledger(proof())
+                .reservation_ledger(read_proof())
                 .expect("limits remain readable")
                 .reservations
                 .is_empty(),
@@ -509,7 +551,7 @@ fn request_stop_invalidates_retry_and_dispatch_while_liability_stays_outstanding
 
     let ledger = fixture
         .store
-        .reservation_ledger(proof())
+        .reservation_ledger(read_proof())
         .expect("read current reservation");
     let reservation = ledger.reservations["native-reservation"].clone();
     let stop_id = "native-budget-stop";
@@ -558,7 +600,7 @@ fn request_stop_invalidates_retry_and_dispatch_while_liability_stays_outstanding
     assert!(!fixture.marker.exists(), "no child started");
     let stopped = fixture
         .store
-        .reservation_ledger(proof())
+        .reservation_ledger(read_proof())
         .expect("stopped liability remains visible");
     let stopped = &stopped.reservations["native-reservation"];
     assert!(stopped.stop_requested);
@@ -593,18 +635,16 @@ fn dispatch_denial_marks_effect_unknown_without_runtime_or_admission_retry() {
         }
     ));
     assert!(!fixture.marker.exists(), "dispatch denial starts no child");
-    assert!(
-        fixture
-            .store
-            .claim_outbox_key(
-                Some(50),
-                "budget-test-after-denial".into(),
-                30,
-                format!("launch/{}/{}", request.task_id, request.attempt_id),
-            )
-            .expect("unknown outbox effect remains fenced")
-            .is_none()
-    );
+    assert!(fixture
+        .store
+        .claim_outbox_key(
+            Some(50),
+            "budget-test-after-denial".into(),
+            30,
+            format!("launch/{}/{}", request.task_id, request.attempt_id),
+        )
+        .expect("unknown outbox effect remains fenced")
+        .is_none());
     assert!(matches!(
         fixture
             .task_loop
@@ -614,7 +654,7 @@ fn dispatch_denial_marks_effect_unknown_without_runtime_or_admission_retry() {
     ));
     let ledger = fixture
         .store
-        .reservation_ledger(proof())
+        .reservation_ledger(read_proof())
         .expect("uncertain dispatch retains budget liability");
     assert!(ledger.reservations["native-reservation"].outstanding);
     assert_eq!(ledger.reservations.len(), 1);
@@ -666,18 +706,16 @@ fn stop_at_second_dispatch_clock_sample_fences_runtime_and_preserves_liability()
         "stop occurs at the second sample; the controller also samples after the refused runtime call"
     );
     assert!(!fixture.marker.exists(), "no child starts after the stop");
-    assert!(
-        fixture
-            .store
-            .claim_outbox_key(
-                Some(50),
-                "budget-test-no-runtime-retry".into(),
-                30,
-                format!("launch/{}/{}", request.task_id, request.attempt_id),
-            )
-            .expect("ambiguous outbox stays fenced")
-            .is_none()
-    );
+    assert!(fixture
+        .store
+        .claim_outbox_key(
+            Some(50),
+            "budget-test-no-runtime-retry".into(),
+            30,
+            format!("launch/{}/{}", request.task_id, request.attempt_id),
+        )
+        .expect("ambiguous outbox stays fenced")
+        .is_none());
     assert!(matches!(
         fixture
             .task_loop
@@ -687,7 +725,7 @@ fn stop_at_second_dispatch_clock_sample_fences_runtime_and_preserves_liability()
     ));
     let ledger = fixture
         .store
-        .reservation_ledger(proof())
+        .reservation_ledger(read_proof())
         .expect("read stopped reservation liability");
     let reservation = &ledger.reservations["native-reservation"];
     assert!(reservation.stop_requested);
@@ -731,21 +769,19 @@ fn revoked_budget_authority_blocks_dispatch_replay_and_cannot_reset_unknown_effe
             .expect("restoring authority cannot turn unknown dispatch back into queued"),
         AdmissionStatus::Held(HoldReason::DispatchUncertain)
     ));
-    assert!(
-        fixture
-            .store
-            .claim_outbox_key(
-                Some(50),
-                "budget-revoked-no-retry".into(),
-                30,
-                format!("launch/{}/{}", request.task_id, request.attempt_id),
-            )
-            .expect("durable unknown cannot be claimed again")
-            .is_none()
-    );
+    assert!(fixture
+        .store
+        .claim_outbox_key(
+            Some(50),
+            "budget-revoked-no-retry".into(),
+            30,
+            format!("launch/{}/{}", request.task_id, request.attempt_id),
+        )
+        .expect("durable unknown cannot be claimed again")
+        .is_none());
     let ledger = fixture
         .store
-        .reservation_ledger(proof())
+        .reservation_ledger(read_proof())
         .expect("restored read authority");
     assert_eq!(ledger.reservations.len(), 1);
     assert_eq!(ledger.revision, 2, "revocation and replay add no debit");
@@ -797,7 +833,7 @@ fn current_budget_dispatch_reaches_only_the_unconfigured_executor_without_a_chil
     );
     let ledger = fixture
         .store
-        .reservation_ledger(proof())
+        .reservation_ledger(read_proof())
         .expect("retained liability");
     assert_eq!(ledger.revision, 2);
     assert!(ledger.reservations["native-reservation"].outstanding);
