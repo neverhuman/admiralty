@@ -1,0 +1,64 @@
+{
+  "headRefOid": "32dea091f09910059392d4fb014810b30d01bbf3",
+  "mergeCommit": {
+    "oid": "35e58904b2e5f9215d48329962f1514a2cf86610"
+  },
+  "mergedAt": "2026-10-19T02:18:49Z",
+  "mergedBy": {
+    "id": "U_kgDOB8uUaQ",
+    "is_bot": false,
+    "login": "jepsontaylor",
+    "name": "Jepson Taylor"
+  },
+  "reviews": [
+    {
+      "id": "PRR_kwDOVOBZTs8AAAABS8a7uA",
+      "author": {
+        "login": "neverhumanbot"
+      },
+      "authorAssociation": "MEMBER",
+      "body": "Exact-head source integration review at32dea091f09910059392d4fb014810b30d01bbf3: root and independent peer reviewed all12runtime object identities against qualified d6b0be0cc71707400f4f3d54383d017cba171b21,87source hashes/47artifacts and receipt078475621b7cd5c283bbc12f147d7a4a86b770a5d62de7e3aec3acf436c5f018. All prior filter/retention/identity/schema findings repaired. Actual local Rust build/strict checks,1162Rust tests,114dashboard,11contracts and18real-backend browser checks are preserved; hosted contracts/browser pass. Hosted Rust is RED: four new Store tempdir permission fixtures and inherited native_executor controlled-child capture deadline; raw logs are preserved and these are not called green. Latest Jepson ruling JEPSON_RULING_20261019T0212Z_admiralty_speed_code_first_ci_last.md authorizes locally built cutover+step-smoke merges with these cleanup failures tracked separately. Review is source integration/local-CI-only, not production execution/rollout/full parent acceptance. No approval assertion that bot independently executed tests.",
+      "submittedAt": "2026-10-19T02:17:45Z",
+      "includesCreatedEdit": false,
+      "reactionGroups": [],
+      "state": "APPROVED",
+      "commit": {
+        "oid": "32dea091f09910059392d4fb014810b30d01bbf3"
+      }
+    }
+  ],
+  "state": "MERGED",
+  "statusCheckRollup": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-19T02:08:28Z",
+      "conclusion": "FAILURE",
+      "detailsUrl": "https://github.com/neverhuman/admiralty/actions/runs/39187573118/job/117853119416",
+      "name": "rust-and-legacy",
+      "startedAt": "2026-10-19T02:01:07Z",
+      "status": "COMPLETED",
+      "workflowName": "Admiralty checks"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-19T01:59:39Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/neverhuman/admiralty/actions/runs/39187573124/job/117853119328",
+      "name": "dashboard-e2e",
+      "startedAt": "2026-10-19T01:56:52Z",
+      "status": "COMPLETED",
+      "workflowName": "Dashboard E2E & Accessibility Qualification"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-19T01:57:44Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/neverhuman/admiralty/actions/runs/39187573118/job/117853119153",
+      "name": "contracts",
+      "startedAt": "2026-10-19T01:56:57Z",
+      "status": "COMPLETED",
+      "workflowName": "Admiralty checks"
+    }
+  ],
+  "url": "https://github.com/neverhuman/admiralty/pull/95"
+}

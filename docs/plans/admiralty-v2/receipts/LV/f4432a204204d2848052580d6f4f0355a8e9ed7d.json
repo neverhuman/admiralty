@@ -1,0 +1,402 @@
+{
+  "packet": "LV-fixture-permissions",
+  "state": "review",
+  "owner": "01a15190-e9e0-7191-8541-4299dd17a89e",
+  "recorded_utc": "2026-10-19T02:46:20.575603+00:00",
+  "head_sha": "f4432a204204d2848052580d6f4f0355a8e9ed7d",
+  "base_sha": "f655b15922810c0e8155c5714e8125b11ad0794d",
+  "branch": "codex/live-view-fixture-permissions",
+  "cherry_pick_of": "4432c832f82aed7a823699c94e65889d8919e83f",
+  "changed_source_paths": [
+    "crates/admiralty-server/src/views.rs"
+  ],
+  "contract_version": "Unchanged; test-only repair",
+  "objective": "Repair all six owned view Store fixtures under runner umask0002 without weakening Store or modifying production views.",
+  "criteria": [
+    {
+      "name": "Hosted permission failure reproduced locally for all six view tests",
+      "result": "pass",
+      "evidence": [
+        "fixture-umask-0002-before.log",
+        "fixture-umask-0002-before.json"
+      ]
+    },
+    {
+      "name": "All72 server-library tests pass on current-main base under umask0002;2 existing ignored",
+      "result": "pass",
+      "evidence": [
+        "main-fixture-server-tests-umask0002.log"
+      ]
+    },
+    {
+      "name": "Formatting, strict server Clippy and native server/observer build",
+      "result": "pass",
+      "evidence": [
+        "validation-main-private-fixtures.json"
+      ]
+    },
+    {
+      "name": "Production views and permission guards unchanged",
+      "result": "pass",
+      "evidence": [
+        "Only source diff is below #[cfg(test)] in views.rs; full file equals independently reviewed4432c832",
+        "production_views_prefix_sha256=cdcee772f1997bc44a1fea214462ea059e5fed889af3e41b2cb7ced1d3241e9a"
+      ]
+    }
+  ],
+  "validation": {
+    "source_head": "f4432a204204d2848052580d6f4f0355a8e9ed7d",
+    "base_head": "f655b15922810c0e8155c5714e8125b11ad0794d",
+    "cherry_pick_of": "4432c832f82aed7a823699c94e65889d8919e83f",
+    "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+    "umask": "0002",
+    "production_views_prefix_sha256": "cdcee772f1997bc44a1fea214462ea059e5fed889af3e41b2cb7ced1d3241e9a",
+    "production_prefix_unchanged": true,
+    "environment": {
+      "TMPDIR": "/private/tmp/admiralty-views-qual-cbapuf30",
+      "CARGO_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+      "CARGO_BUILD_JOBS": "4",
+      "RUST_TEST_THREADS": "1"
+    },
+    "commands": [
+      {
+        "name": "main-fixture-fmt",
+        "argv": [
+          "rtk",
+          "proxy",
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "started_utc": "2026-10-19T02:44:50.182777+00:00",
+        "ended_utc": "2026-10-19T02:44:51.418166+00:00",
+        "exit_code": 0,
+        "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/main-fixture-fmt.log"
+      },
+      {
+        "name": "main-fixture-clippy",
+        "argv": [
+          "rtk",
+          "proxy",
+          "cargo",
+          "clippy",
+          "-p",
+          "admiralty-server",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "started_utc": "2026-10-19T02:44:51.418432+00:00",
+        "ended_utc": "2026-10-19T02:44:55.975781+00:00",
+        "exit_code": 0,
+        "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/main-fixture-clippy.log"
+      },
+      {
+        "name": "main-fixture-server-tests-umask0002",
+        "argv": [
+          "rtk",
+          "proxy",
+          "cargo",
+          "test",
+          "-p",
+          "admiralty-server",
+          "--lib",
+          "--locked"
+        ],
+        "started_utc": "2026-10-19T02:44:55.976149+00:00",
+        "ended_utc": "2026-10-19T02:45:18.604941+00:00",
+        "exit_code": 0,
+        "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/main-fixture-server-tests-umask0002.log"
+      },
+      {
+        "name": "main-fixture-native-build",
+        "argv": [
+          "rtk",
+          "proxy",
+          "cargo",
+          "build",
+          "--locked",
+          "-p",
+          "admiralty-server",
+          "-p",
+          "admiralty-observe"
+        ],
+        "started_utc": "2026-10-19T02:45:18.605196+00:00",
+        "ended_utc": "2026-10-19T02:45:25.633676+00:00",
+        "exit_code": 0,
+        "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/main-fixture-native-build.log"
+      }
+    ]
+  },
+  "prior_direct_qualification": {
+    "head_sha": "4432c832f82aed7a823699c94e65889d8919e83f",
+    "metadata": "validation-private-fixtures.json",
+    "result": "Same four commands passed before cherry-pick;72 server pass/2 existing ignored under umask0002"
+  },
+  "historical_full_qualification": {
+    "head_sha": "a21532a3147e7a30d47caf02f18d27fa05fb5545",
+    "receipt": "docs/plans/admiralty-v2/receipts/LV/a21532a3147e7a30d47caf02f18d27fa05fb5545.json",
+    "receipt_sha256": "6aefaf37d344079d12c30b94a9fddf591af948bb7f491cd77fdc9a8be484931a",
+    "rust_passed": 1164,
+    "rust_existing_ignored": 5,
+    "dashboard_passed": 114,
+    "contract_runtime_passed": 11,
+    "browser_passed": 19,
+    "axe_pinned_surfaces": 9,
+    "axe_violations": 0,
+    "axe_incomplete": 0,
+    "scope": "Historical local macOS component evidence. Not a full-suite rerun of this current-main follow-up."
+  },
+  "hosted_pr96_status": {
+    "head_sha": "795a4b979e2a3f060f7e3c17572d5137cf52387c",
+    "browser": "SUCCESS",
+    "contracts": "SUCCESS",
+    "rust_and_legacy": "FAILURE",
+    "rust_failures": "Six owned view fixture permission failures plus separately owned native_executor controlled-child deadline. Raw log preserved. This receipt does not assert hosted success for the fix."
+  },
+  "integration_history": [
+    {
+      "pull_request": "https://github.com/neverhuman/admiralty/pull/95",
+      "head_sha": "32dea091f09910059392d4fb014810b30d01bbf3",
+      "merged_sha": "35e58904b2e5f9215d48329962f1514a2cf86610"
+    },
+    {
+      "pull_request": "https://github.com/neverhuman/admiralty/pull/96",
+      "head_sha": "795a4b979e2a3f060f7e3c17572d5137cf52387c",
+      "merged_sha": "5126af0e388061690aa45bf3c758afe5b9db80a6"
+    }
+  ],
+  "authorized_read_only_review": {
+    "reviewer": "/root/live_views_review",
+    "authorization": "User: Authorize read-only reviewer",
+    "reviewed_head": "4432c832f82aed7a823699c94e65889d8919e83f",
+    "scope": "Read-only source review; no files edited or tests rerun. Formal neverhumanbot approval is separate.",
+    "result": "No actionable findings. Entire change is #[cfg(test)]. Fixtures request0700 at directory creation and assert it; Store::open and permission checks unchanged. Production prefix byte-identical.",
+    "reviewed_file_equals_current_source": true,
+    "production_views_prefix_sha256": "cdcee772f1997bc44a1fea214462ea059e5fed889af3e41b2cb7ced1d3241e9a"
+  },
+  "qualified_runtime_objects": {
+    "apps": "e609ff631e1806eb58c49367925cec641656fcfd",
+    "crates": "56251a5f2082a32732bf1e22c1b6ff9bbbe10880",
+    "packages": "052850771597620fa342478d96aac23728ba7f13",
+    "schemas": "f12eb6a5a96990f34626d34b2a028cfb608db0e4",
+    "scripts": "a1f6aa1bcfc93a2b87b891708e38e16845804532",
+    ".github": "f0dd5e32de93f3664d6248a7837c4669956dbc9f",
+    "Cargo.toml": "ed7245d8a14b4b55fb21a958c346796e65355a04",
+    "Cargo.lock": "1897ce6e83514d36400275eab10b5e949ecba9db",
+    "package.json": "c912fa8998901a6c06da27a0f8e8dd11f78c5fb8",
+    "pnpm-lock.yaml": "1847f8d43b375e51e2ff84e03cad429cbf4be9db",
+    "pnpm-workspace.yaml": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+    "rust-toolchain.toml": "12dd5258cd08aebcc0bf38ac6675cb74cb6ec69a"
+  },
+  "owned_live_view_objects": {
+    "Cargo.lock": "1897ce6e83514d36400275eab10b5e949ecba9db",
+    "apps/dashboard/e2e/browser-harness.ts": "24797218eff32dc396556277f803184b91c3dd6c",
+    "apps/dashboard/e2e/live-views.e2e.ts": "e8c08dd2c91af1f9ea6542f5811810e72842ba4f",
+    "apps/dashboard/e2e/node-ambient.d.ts": "104c0afea04a43249e3e0a5be00e486d37f11259",
+    "apps/dashboard/e2e/vitest.config.ts": "1ebb968cc132ecb9deafaafb923c235baa8e7ea3",
+    "apps/dashboard/src/events.ts": "6cff615a0b19f778e17c83993f9953bd52ce8b99",
+    "apps/dashboard/src/features/live-views/FleetAtlas.tsx": "0dfa262479a36a5615779ab77cb49a34db9c9379",
+    "apps/dashboard/src/features/live-views/GitFlow.tsx": "45c03816dfbfdeec82709ac9577340c8e28b6198",
+    "apps/dashboard/src/features/live-views/LiveViews.tsx": "1f39ea05cb9de4a0aec8390c6c7aac348d49d2a2",
+    "apps/dashboard/src/features/live-views/feed.ts": "caba12bc3ddbadae34d1d871a951ebbc51ae8d28",
+    "apps/dashboard/src/features/live-views/geometry.ts": "8b07bd3fbff40e4893a6ac37b6a5cf5d07e78042",
+    "apps/dashboard/src/features/live-views/live-views.css": "00de6953c8f62821a93394ab5d0214acca59459c",
+    "apps/dashboard/src/features/live-views/live-views.test.ts": "07a0ac3882474a3874ce48915636f137cd981e7a",
+    "apps/dashboard/src/router.ts": "daa5482f24ade2655c7a224a73bbd2e50397e403",
+    "apps/dashboard/src/ui/App.tsx": "4acfdf3e713e9dcba5dddbe715a4e46db86c3b54",
+    "apps/dashboard/src/ui/LegacyDetailed.tsx": "19cf546bcc45cb9b044442bb4a85f70258795bfe",
+    "apps/dashboard/src/ui/ModelBadge.tsx": "7621798d2c72dfc3593999f3cc3908676e901e04",
+    "apps/dashboard/src/ui/legacy-evidence.css": "8eecda85ba8ae80e7c15ac8989c40a2f45c9e9bb",
+    "apps/dashboard/src/validation.ts": "f899dd60bd7dbf601d9a986c826450faa62efc6c",
+    "apps/dashboard/vite.config.ts": "80160915f86914fe1014601a12829efeb4c02f73",
+    "crates/admiralty-cli/src/main.rs": "b42d9afaac91feda4fe377dfdca4b3b402646936",
+    "crates/admiralty-cli/src/native_package.rs": "a1a271539c5b8f7e21e797cf4fc46f05651272fc",
+    "crates/admiralty-core/src/lib.rs": "9bdb36e79bc7fcd6380aab68f6d850fd52b9765e",
+    "crates/admiralty-core/src/views.rs": "112019a38e4593193776cf7bd829649dd407b7c9",
+    "crates/admiralty-observe/Cargo.toml": "7a12d4f0588c1bdb589f1b4f13b369f829e907ea",
+    "crates/admiralty-observe/src/git.rs": "c4fdf5987dbfaa6f64a162ac53d08cfa050fe9bf",
+    "crates/admiralty-observe/src/io.rs": "29858b7a83914afcc1545aab6b3febaf61c87db0",
+    "crates/admiralty-observe/src/lib.rs": "c4f456d8748ec6c8f64f81d60c061d9753b77f50",
+    "crates/admiralty-server/Cargo.toml": "ec7d855afb4874757893e19f5d8335808dac902f",
+    "crates/admiralty-server/src/legacy.rs": "1cd1417f35781c3a0d63c73977456cd45746bfae",
+    "crates/admiralty-server/src/lib.rs": "5b12f7e40453e049081ddd3288b5da87825ba0ca",
+    "crates/admiralty-server/src/services/native_commands.rs": "e7c824bbd2b51c3948617bb36b70c413111484a5",
+    "crates/admiralty-server/src/views.rs": "a1f854696539fd6d29e130f8dfcf17b92c588ec9",
+    "packages/contracts/generated/validators-views-snapshot.mjs": "6ddfdc7714dd1cba0d86fb4882c8b7a1ec75e2f4",
+    "packages/contracts/generated/validators.d.mts": "409514ea4754314ce87215031a38be88f2f2f0cb",
+    "packages/contracts/generated/validators.mjs": "3fae5d17230602d505e1cbf467167b8d7ba24883",
+    "packages/contracts/generated/views-snapshot.ts": "935d99368a4619d2f994e33520a51dbb4d7114a3",
+    "packages/contracts/index.ts": "11fe745d0203c6072f4b445ba39948162affe139",
+    "packages/contracts/runtime.test.mjs": "6d9e2cdb0867b7c27b10c44a55f304e70ca2b3a7",
+    "schemas/views-snapshot.schema.json": "3fe9227ea5c8a5a0c7aa8bd9512405837a15b5b7",
+    "scripts/contracts/generate.mjs": "7899e369bd4741376ca68ebe8901648dcba1a4ed"
+  },
+  "runtime_object_scope": "Actual source objects onf4432a2; qualification on this base is targeted format/server-Clippy/server-library/native-build, not an aggregate full-suite result. Other runtime roots unchanged from basef655b15. Aggregate crate/CI identities differ from historicala21532 due separately integrated Store/CI work.",
+  "artifacts": [
+    {
+      "source_name": "fixture-umask-0002-before.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/fixture-umask-0002-before.log.ad20759e054225c4.gz",
+      "sha256": "6af8a54db7a3b147d9f99182524155161a97dcfd45a3b0c8662bae3746251c2e",
+      "raw_sha256": "ad20759e054225c47c37fde9681796906a1efc338ace2e9d7e512067311f2475",
+      "raw_bytes": 3616,
+      "stored_bytes": 878,
+      "encoding": "gzip"
+    },
+    {
+      "source_name": "fixture-umask-0002-before.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/fixture-umask-0002-before.json.bf219dea4c8614af",
+      "sha256": "bf219dea4c8614af3f6f19957eb287f2931953ff3b60fc1ecbbee9fe514d5cba",
+      "raw_sha256": "bf219dea4c8614af3f6f19957eb287f2931953ff3b60fc1ecbbee9fe514d5cba",
+      "raw_bytes": 322,
+      "stored_bytes": 322,
+      "encoding": "identity"
+    },
+    {
+      "source_name": "hosted-rust-795a4b9.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/hosted-rust-795a4b9.log.6cd90fb0d698227b.gz",
+      "sha256": "57dce8796be627265bbbc4e2a45302a8a27562546662c535aeba38c5d0ce0c4a",
+      "raw_sha256": "6cd90fb0d698227bc626708b2f02489bbcb03450b06e8999d9f13da6f8811123",
+      "raw_bytes": 156082,
+      "stored_bytes": 26308,
+      "encoding": "gzip"
+    },
+    {
+      "source_name": "hosted-status-795a4b9.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/hosted-status-795a4b9.json.6714f2de5b771f3d",
+      "sha256": "6714f2de5b771f3dec221d16388f7e394ff543af49fe024aa35037f4a8cae58a",
+      "raw_sha256": "6714f2de5b771f3dec221d16388f7e394ff543af49fe024aa35037f4a8cae58a",
+      "raw_bytes": 1439,
+      "stored_bytes": 1439,
+      "encoding": "identity"
+    },
+    {
+      "source_name": "validation-private-fixtures.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-private-fixtures.json.e5233da11fe6ec0a",
+      "sha256": "e5233da11fe6ec0a55262036c7d0e36918c05db6b0de6d95af1f0a7a150c1064",
+      "raw_sha256": "e5233da11fe6ec0a55262036c7d0e36918c05db6b0de6d95af1f0a7a150c1064",
+      "raw_bytes": 2572,
+      "stored_bytes": 2572,
+      "encoding": "identity"
+    },
+    {
+      "source_name": "fixture-review.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/fixture-review.json.7d15c815651f3e46",
+      "sha256": "7d15c815651f3e463caddc8f678190997252363e498ddd52fb7edd8548c6b4ea",
+      "raw_sha256": "7d15c815651f3e463caddc8f678190997252363e498ddd52fb7edd8548c6b4ea",
+      "raw_bytes": 636,
+      "stored_bytes": 636,
+      "encoding": "identity"
+    },
+    {
+      "source_name": "validation-main-private-fixtures.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/validation-main-private-fixtures.json.01ac75a21d7c628f",
+      "sha256": "01ac75a21d7c628f7803222644d2bd1fd876bbfc626c6d51de6bebc43c397e1e",
+      "raw_sha256": "01ac75a21d7c628f7803222644d2bd1fd876bbfc626c6d51de6bebc43c397e1e",
+      "raw_bytes": 2676,
+      "stored_bytes": 2676,
+      "encoding": "identity"
+    },
+    {
+      "source_name": "pr95-actual-merge.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/pr95-actual-merge.json.52aa652a1ceac91f",
+      "sha256": "52aa652a1ceac91fd97d19413946a574f33979aa393e682dcfc2cfe79588b2c5",
+      "raw_sha256": "52aa652a1ceac91fd97d19413946a574f33979aa393e682dcfc2cfe79588b2c5",
+      "raw_bytes": 3019,
+      "stored_bytes": 3019,
+      "encoding": "identity"
+    },
+    {
+      "source_name": "pr96-actual-merge.json",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/pr96-actual-merge.json.e7f4905a6fbc131a",
+      "sha256": "e7f4905a6fbc131a3b48bf6360579353ed3ba0247807f36170485bdab16d1945",
+      "raw_sha256": "e7f4905a6fbc131a3b48bf6360579353ed3ba0247807f36170485bdab16d1945",
+      "raw_bytes": 2949,
+      "stored_bytes": 2949,
+      "encoding": "identity"
+    },
+    {
+      "source_name": "fixture-fmt.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/fixture-fmt.log.e3b0c44298fc1c14.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "raw_bytes": 0,
+      "stored_bytes": 20,
+      "encoding": "gzip"
+    },
+    {
+      "source_name": "fixture-clippy.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/fixture-clippy.log.0432ae08863703a1.gz",
+      "sha256": "f73bcc3c9d1e81b8349c89dcefbabce9c6f14722d8160a425b2fbf6484212b0a",
+      "raw_sha256": "0432ae08863703a12bef3c62104a18b06ea76dcb59cfb67b2d071bafe88adb0a",
+      "raw_bytes": 451,
+      "stored_bytes": 229,
+      "encoding": "gzip"
+    },
+    {
+      "source_name": "fixture-server-tests-umask0002.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/fixture-server-tests-umask0002.log.38ce000bd0b0dd12.gz",
+      "sha256": "cd5652194048e06b7aeb6af406d40955bf9e67b59a4d4f0c7d8bea1ca22b25a9",
+      "raw_sha256": "38ce000bd0b0dd127e8dddd72ba1c83892be81740a39dad37c80815bdd2b9343",
+      "raw_bytes": 8606,
+      "stored_bytes": 2662,
+      "encoding": "gzip"
+    },
+    {
+      "source_name": "fixture-native-build.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/fixture-native-build.log.2d5d7948dee0231f.gz",
+      "sha256": "a849486ce44e93f223264a91f337b848c08a9deff1efcef3708f6c7da1a11e77",
+      "raw_sha256": "2d5d7948dee0231fe9c1de88b642ab2a78c4ed36783c9e2dc5c775474d9b956e",
+      "raw_bytes": 194,
+      "stored_bytes": 165,
+      "encoding": "gzip"
+    },
+    {
+      "source_name": "main-fixture-fmt.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/main-fixture-fmt.log.e3b0c44298fc1c14.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "raw_bytes": 0,
+      "stored_bytes": 20,
+      "encoding": "gzip"
+    },
+    {
+      "source_name": "main-fixture-server-tests-umask0002.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/main-fixture-server-tests-umask0002.log.8d9abec71906f289.gz",
+      "sha256": "1540c5f03661b0beaf55d0ba8fd9aabb8f09290edc31ee4540e379b5930fd84b",
+      "raw_sha256": "8d9abec71906f289ef91d8823b7f1b54385c7537348fe6ea908aa48034bbc1c1",
+      "raw_bytes": 8726,
+      "stored_bytes": 2671,
+      "encoding": "gzip"
+    },
+    {
+      "source_name": "main-fixture-clippy.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/main-fixture-clippy.log.413bd0ec94db52ac.gz",
+      "sha256": "dabdc22ab69917d4b1d5d95c24883cf0987b9592f3960b6032dacbba38f739c2",
+      "raw_sha256": "413bd0ec94db52acb12b8264da2f7c349ea95ced000d96fdfb78e6fb499a9e2b",
+      "raw_bytes": 314,
+      "stored_bytes": 179,
+      "encoding": "gzip"
+    },
+    {
+      "source_name": "main-fixture-native-build.log",
+      "path": "docs/plans/admiralty-v2/receipts/LV/artifacts/main-fixture-native-build.log.b6aac731f995e2d7.gz",
+      "sha256": "74180be44397c43c1f6e2c247e9c104630f505c664c640ffeba2f411fbf3fbe7",
+      "raw_sha256": "b6aac731f995e2d7f87a4c957c138f9ca6681627f9ac404d300cc56dee055327",
+      "raw_bytes": 314,
+      "stored_bytes": 178,
+      "encoding": "gzip"
+    }
+  ],
+  "limitations": [
+    "Hosted follow-up outcome pending; local macOS proof does not establish Linux pass.",
+    "Separate native_executor deadline remains owned by runtime/CI lane; passing locally does not close its hosted issue.",
+    "No full1164 Rust/browser19 rerun for cfg(test)-only change.",
+    "Source integration does not deploy production or close parent packets."
+  ],
+  "next_action": "Publish evidence-only head, require neverhumanbot exact-head approval, normal matched-head rebase merge, record actual receiving source/objects."
+}

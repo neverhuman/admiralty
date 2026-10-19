@@ -1,0 +1,64 @@
+{
+  "headRefOid": "795a4b979e2a3f060f7e3c17572d5137cf52387c",
+  "mergeCommit": {
+    "oid": "5126af0e388061690aa45bf3c758afe5b9db80a6"
+  },
+  "mergedAt": "2026-10-19T02:34:11Z",
+  "mergedBy": {
+    "id": "U_kgDOB8uUaQ",
+    "is_bot": false,
+    "login": "jepsontaylor",
+    "name": "Jepson Taylor"
+  },
+  "reviews": [
+    {
+      "id": "PRR_kwDOVOBZTs8AAAABS8fMUQ",
+      "author": {
+        "login": "neverhumanbot"
+      },
+      "authorAssociation": "MEMBER",
+      "body": "Exact795a4b979e2a3f060f7e3c17572d5137cf52387c reviewed by root and independent audit_evidence. Project-conflict normalization retains ambiguous identity unassigned, preserves claims and prevents false configured-manager observation. Actual100-to150commit Inventory/Follow regression covers repaired frontier behavior. Verified all72artifacts raw/stored hashes and12runtime blobs against qualifieda21532; actual own build/19browser/1164Rust+114dashboard logs retain original negative/repair evidence. Main23cb1ec adds disjoint Store attention; only overlapping ledger has no textual three-way conflict. These are historical component/local macOS checks, not an aggregate current-main test, hostedgreen/deployment or fullparentacceptance. Matched-head rebase integrates onto actualmain preserving both ledger histories. LatestJepson0212 local-build+ownsmoke rule applies; inherited redCI retained in singlebacklog, no admin/bypass. Root+peer source review, no claim bot independentlyran tests.",
+      "submittedAt": "2026-10-19T02:33:26Z",
+      "includesCreatedEdit": false,
+      "reactionGroups": [],
+      "state": "APPROVED",
+      "commit": {
+        "oid": "795a4b979e2a3f060f7e3c17572d5137cf52387c"
+      }
+    }
+  ],
+  "state": "MERGED",
+  "statusCheckRollup": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-19T02:31:19Z",
+      "conclusion": "FAILURE",
+      "detailsUrl": "https://github.com/neverhuman/admiralty/actions/runs/39189786069/job/117859845225",
+      "name": "rust-and-legacy",
+      "startedAt": "2026-10-19T02:24:16Z",
+      "status": "COMPLETED",
+      "workflowName": "Admiralty checks"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-19T02:27:29Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/neverhuman/admiralty/actions/runs/39189786064/job/117859845095",
+      "name": "dashboard-e2e",
+      "startedAt": "2026-10-19T02:24:46Z",
+      "status": "COMPLETED",
+      "workflowName": "Dashboard E2E & Accessibility Qualification"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-19T02:28:35Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/neverhuman/admiralty/actions/runs/39189786069/job/117859845474",
+      "name": "contracts",
+      "startedAt": "2026-10-19T02:24:41Z",
+      "status": "COMPLETED",
+      "workflowName": "Admiralty checks"
+    }
+  ],
+  "url": "https://github.com/neverhuman/admiralty/pull/96"
+}

@@ -8,7 +8,12 @@ build failures remain immediate work.
 
 1. PR95 Rust job117853119416: four `views` tests create scratch parents with
    inherited group/world-writable permissions. Store correctly refuses them.
-   Repair only owned fixture permissions; preserve production/shared settings.
+   PR96 job117859845225 exposes six affected view fixtures. All six reproduce
+   under umask `0002`. The owned follow-up at `f4432a2` creates private `0700`
+   fixture directories atomically and asserts the mode; Store guards and
+   production/shared settings remain unchanged. Current-main targeted proof and
+   original failures are in the [fixture receipt](docs/plans/admiralty-v2/receipts/LV/f4432a204204d2848052580d6f4f0355a8e9ed7d.json).
+   Source integration and a new hosted result remain separate gates.
 2. Main779 job117850259638 and PR95 job117853119416:
    `native_executor::tests::actual_producer_capture_failure_cannot_yield_typed_transcript`
    hits its controlled-child deadline. It sends nine megabytes through

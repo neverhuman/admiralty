@@ -69,9 +69,9 @@ stores exact commands, computed hashes, failed runs/repairs and screenshots.
 Earlier PR86/88/93 candidates and the `9cde56d` receipt remain historical evidence.
 The final source preserves the upstream native task-loop probe, `sha2`
 dependency, browser form deadlines and CI resource limits. Published histories
-are preserved. PR95 merged its frozen head before the later repairs were published. PR96
-starts on `35e5890` and retains the exact `ecb1bff` tree; its twelve runtime
-objects match qualified source `a21532a`. This correction changes evidence only.
+are preserved. PR95 merged at `35e5890`; PR96 merged at `5126af0`, preserving
+upstream Store attention. Historical live-view qualification is source-bound;
+aggregate current-main crate/CI objects include separate upstream changes.
 
 Git Flow retains original ordered parents, shallow boundaries, refs and
 main/linked/detached/unborn checkouts with bounded working-state observations.
@@ -85,9 +85,16 @@ eleven contract runtime tests, legacy qualification and all nineteen browser
 checks. These include real temporary Git → observer → server → built UI,
 a synthetic 500-agent census, and nine pinned axe surfaces with zero violations
 and zero incomplete. Package/canary self-tests pass. Local macOS proof does not
-establish hosted Linux CI success. Exact-final-head neverhumanbot approval and
-normal merge gates remain pending at receipt creation. This follow-up changes
-documentation/evidence only; verify runtime object identities before integration.
+establish hosted Linux CI success. Hosted PR96 browser/contracts passed; Rust
+failed on six owned view-fixture permissions and a separate native-executor
+controlled-child deadline. Six failures reproduce under umask `0002`. The
+fixture-only repair creates `0700` scratch directories atomically and preserves
+Store guards and production views. Source `f4432a2`, on current main `f655b15`,
+is pinned in the [fixture receipt](receipts/LV/f4432a204204d2848052580d6f4f0355a8e9ed7d.json)
+with targeted format, strict server Clippy, server-library and build proof under
+umask `0002`. The authorized read-only reviewer found no actionable issues in
+the identical fixture change `4432c832`. No full-suite rerun is inferred.
+Exact-final-head neverhumanbot approval and normal merge gates remain required.
 
 The authorized read-only reviewer found no additional actionable findings after
 repairing conflicting project/manager claims and Git Follow latest after
