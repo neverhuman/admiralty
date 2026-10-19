@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import * as nodeFs from 'node:fs';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { join, realpathSync, resolve } from 'node:path';
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { launchBrowserHarness, startIsolatedNativeAdmiraltyServer, REPO_ROOT,
   type BrowserHarness, type IsolatedNativeAdmiraltyServer } from './browser-harness';
 
@@ -40,10 +40,10 @@ function verifyNativeBinaryPin(supplied: string | undefined, pin: string | undef
       throw new Error('Native fixture binary must be an owned bounded regular file');
     }
     const hash = createHash('sha256'), buffer = new Uint8Array(64 * 1024);
-    const deadline = Date.now() + NATIVE_HASH_BUDGET_MS;
+    const deadline = performance.now() + NATIVE_HASH_BUDGET_MS;
     let bytes = 0;
     for (;;) {
-      if (Date.now() >= deadline) throw new Error('Native fixture binary hash exceeded its time bound');
+      if (performance.now() >= deadline) throw new Error('Native fixture binary hash exceeded its time bound');
       const n = nativeFdFs.readSync(fd, buffer, 0, buffer.length, null);
       if (!n) break;
       bytes += n;
