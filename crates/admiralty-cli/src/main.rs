@@ -1,5 +1,6 @@
 //! Offline domain operations and an isolated, read-only demo. No provider execution.
 mod diagnostics;
+pub mod native_archive;
 pub mod native_intake;
 pub mod native_package;
 pub mod native_recovery;
@@ -270,6 +271,19 @@ fn bounded_absolute_path(value: &str) -> Result<PathBuf, String> {
 
 #[derive(Subcommand)]
 enum ReleaseCommand {
+    /// Archive a reviewed native stage; no install, signing, publishing or execution.
+    Archive {
+        #[arg(long, value_parser = bounded_absolute_path)]
+        staged_dir: PathBuf,
+        /// Owner-only expected PackageManifest JSON, reviewed independently of the staged tree.
+        #[arg(long, value_parser = bounded_absolute_path)]
+        manifest: PathBuf,
+        /// 64 lowercase hex SHA-256 digits over complete staged MANIFEST.json bytes, including newline.
+        #[arg(long)]
+        expected_manifest_sha256: String,
+        #[arg(long, value_parser = bounded_absolute_path)]
+        output: PathBuf,
+    },
     Stage {
         #[arg(long, value_parser = bounded_absolute_path)]
         input_root: PathBuf,
@@ -976,6 +990,30 @@ async fn run(cli: Cli) -> CliResult<()> {
             )?;
         }
         Command::Recover(args) => print_json(native_recovery::run(args)?)?,
+        Command::Release {
+            command:
+                ReleaseCommand::Archive {
+                    staged_dir,
+                    manifest,
+                    expected_manifest_sha256,
+                    output,
+                },
+        } => {
+            let expected: native_package::PackageManifest =
+                serde_json::from_slice(&read_private_command_input(&manifest)?)
+                    .map_err(|_| invalid("expected package manifest JSON is invalid"))?;
+            let receipt = native_archive::archive_native_package(
+                &staged_dir,
+                &expected,
+                &expected_manifest_sha256,
+                &output,
+            )?;
+            print_json(
+                json!({"recorded_only":true,"receipt":receipt,"source_commit_verified":false,
+                "installed":false,"signed":false,"published":false,"execution_granted":false,
+                "acceptance_granted":false,"native_execution_qualified":false,"activated":false}),
+            )?;
+        }
         Command::Release {
             command:
                 ReleaseCommand::Stage {
