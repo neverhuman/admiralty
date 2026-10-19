@@ -1,5 +1,10 @@
 # Building a deterministic source package
 
+This is the retained compatibility packager. New native releases use the
+[Rust stage/archive commands](native-archive.md). The two formats and
+qualification scopes are distinct; this historical script is not native ingestion
+or the primary archive path.
+
 `scripts/release/package.py` creates a `.tar.gz` from explicitly listed, already
 built regular files. It performs no compilation, download, installation, signing,
 publishing, deployment, or platform qualification. A target value labels the
