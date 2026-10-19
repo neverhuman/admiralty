@@ -47,6 +47,12 @@ restart/fleet/restore/rollback, full invariant/load matrix, 24-hour soak or
 prospective cost/context study. Those gates remain open until their own actual
 evidence is produced by the authorized operators.
 
+The private scratch root must also have protected ancestry. In particular,
+creating a `0700` child under a group-writable checkout is insufficient for the
+server's private configuration reader. Use a new owned fixture directory under
+an already protected runtime parent; preserve any refused run as evidence and
+do not change shared checkout/ancestor permissions to make a smoke test pass.
+
 The final deployer handoff must pin the source and package hashes, installed
 and running identities, enrolled nodes, registered roots, effective policies,
 service units, endpoints, backup watermark, old executor fence, rollback result
