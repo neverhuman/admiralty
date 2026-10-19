@@ -4,7 +4,9 @@
 //! proves journal/capture continuity, settles usage, or grants task acceptance.
 pub use super::observation::{MAX_EVENT_BYTES, MAX_EVENTS, MAX_STREAM_BYTES};
 use super::observation::{ObservationError, decode_complete};
-use crate::session::{MAX_INPUT_BYTES, MAX_LAUNCH_SPEC_BYTES};
+use crate::session::{
+    LaunchSpec, MAX_INPUT_BYTES, MAX_LAUNCH_SPEC_BYTES, validate_launch_envelope,
+};
 use admiralty_core::{content_digest, limits::bounded_json_size};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -14,6 +16,7 @@ use thiserror::Error;
 pub const ADAPTER_VERSION: u32 = 2;
 /// Captured fixture dialect, not a qualified executable/version attestation.
 pub const OBSERVED_CLI_VERSION: &str = "2.1.302";
+pub const CURRENT_CLI_VERSION: &str = "2.1.303";
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum ClaudeError {
@@ -133,6 +136,7 @@ impl ClaudeLaunch {
         self.validate()?;
         let mut args = vec![
             "--print".into(),
+            "--verbose".into(),
             "--output-format".into(),
             "stream-json".into(),
             "--input-format".into(),
@@ -146,7 +150,11 @@ impl ClaudeLaunch {
             "--tools".into(),
             String::new(),
             "--restricted".into(),
+            "--safe-mode".into(),
+            "--disable-slash-commands".into(),
             "--strict-mcp-config".into(),
+            "--mcp-config".into(),
+            "{\"mcpServers\":{}}".into(),
         ];
         if let PermissionChoice::Explicit(mode) = permission_choice(&self.permission_mode)? {
             args.extend(["--permission-mode".into(), mode.into()]);
@@ -204,6 +212,88 @@ impl ClaudeLaunch {
         frame.push(b'\n');
         Ok(frame)
     }
+}
+
+/// Immutable command/input binding for the existing session host. Preparation
+/// validates the complete envelope; execution still requires the host's custody,
+/// credential and resource admission. The caller must retain the capture journal.
+#[derive(Clone, Debug)]
+pub struct PreparedLaunch {
+    spec: LaunchSpec,
+    profile: ClaudeLaunch,
+    input: Vec<u8>,
+    cli_version: String,
+    binding_digest: String,
+}
+
+impl PreparedLaunch {
+    pub fn spec(&self) -> &LaunchSpec {
+        &self.spec
+    }
+
+    pub fn input(&self) -> &[u8] {
+        &self.input
+    }
+
+    pub fn binding_digest(&self) -> &str {
+        &self.binding_digest
+    }
+
+    /// Parse a complete captured turn against the configuration actually prepared.
+    /// A matching record remains provider-reported evidence, never acceptance.
+    pub fn parse_capture(&self, bytes: &[u8]) -> Result<Observation, ClaudeError> {
+        let observation = parse_stream(bytes, self.profile.session_id.as_deref())?;
+        if observation.version.as_deref() != Some(self.cli_version.as_str()) {
+            return Err(ClaudeError::VersionMismatch);
+        }
+        if observation.model.as_deref() != Some(self.profile.model.as_str())
+            || observation.permission_mode.as_deref() != Some(self.profile.permission_mode.as_str())
+            || observation.tools_disabled != Some(true)
+            || observation.mcp_servers_disabled != Some(true)
+        {
+            return Err(ClaudeError::Invalid(
+                "captured configuration differs from prepared launch",
+            ));
+        }
+        Ok(observation)
+    }
+}
+
+/// Exact provider model IDs are required here: aliases cannot bind an observed
+/// model. Neither a version string nor this value authenticates an executable.
+pub fn prepare_launch(
+    profile: ClaudeLaunch,
+    mut envelope: LaunchSpec,
+    prompt: &str,
+    cli_version: &str,
+) -> Result<PreparedLaunch, ClaudeError> {
+    profile.validate()?;
+    if !matches!(cli_version, OBSERVED_CLI_VERSION | CURRENT_CLI_VERSION) {
+        return Err(ClaudeError::VersionMismatch);
+    }
+    if !envelope.args.is_empty()
+        || envelope.program != profile.program
+        || envelope.cwd != profile.cwd
+        || profile.session_id.is_none()
+        || !profile.model.starts_with("claude-")
+    {
+        return Err(ClaudeError::Invalid(
+            "explicit session, exact model and matching empty envelope required",
+        ));
+    }
+    envelope.args = profile.args()?;
+    validate_launch_envelope(&envelope).map_err(|_| ClaudeError::Bounds)?;
+    let input = ClaudeLaunch::input_frame(prompt)?;
+    let binding_digest =
+        content_digest(&(ADAPTER_VERSION, &profile, &envelope, &input, cli_version))
+            .map_err(|_| ClaudeError::Json)?;
+    Ok(PreparedLaunch {
+        spec: envelope,
+        profile,
+        input,
+        cli_version: cli_version.into(),
+        binding_digest,
+    })
 }
 
 impl Effort {
@@ -291,6 +381,8 @@ pub struct Observation {
     pub version: Option<String>,
     pub model: Option<String>,
     pub permission_mode: Option<String>,
+    pub tools_disabled: Option<bool>,
+    pub mcp_servers_disabled: Option<bool>,
     pub event_types: Vec<String>,
     pub events: Vec<EventObservation>,
     pub permission_denials: usize,
@@ -334,6 +426,8 @@ pub fn parse_stream(
         version: None,
         model: None,
         permission_mode: None,
+        tools_disabled: None,
+        mcp_servers_disabled: None,
         event_types: Vec::new(),
         events: Vec::new(),
         permission_denials: 0,
@@ -373,7 +467,7 @@ pub fn parse_stream(
                 return Err(ClaudeError::ResumeMismatch);
             }
             let version = required(&value, "claude_code_version", 64)?;
-            if version != OBSERVED_CLI_VERSION {
+            if !matches!(version.as_str(), OBSERVED_CLI_VERSION | CURRENT_CLI_VERSION) {
                 return Err(ClaudeError::VersionMismatch);
             }
             out.model = Some(required(&value, "model", 256)?);
@@ -393,6 +487,16 @@ pub fn parse_stream(
             out.session_id = Some(session);
             out.version = Some(version);
             out.permission_mode = Some(mode);
+            for (key, target) in [
+                ("tools", &mut out.tools_disabled),
+                ("mcp_servers", &mut out.mcp_servers_disabled),
+            ] {
+                *target = match value.get(key) {
+                    None => None,
+                    Some(Value::Array(entries)) => Some(entries.is_empty()),
+                    _ => return Err(ClaudeError::Invalid("malformed tool configuration")),
+                };
+            }
             usage = supplied_usage(&value)?;
             if usage.is_some() {
                 return Err(ClaudeError::Invalid("usage on init is unsupported"));
@@ -481,6 +585,25 @@ pub fn parse_stream(
                     }
                     result_usage
                 }
+                "rate_limit_event" => {
+                    let info = value
+                        .get("rate_limit_info")
+                        .filter(|info| info.is_object())
+                        .ok_or(ClaudeError::Invalid(
+                            "rate limit information object required",
+                        ))?;
+                    let status = required(info, "status", 64)?;
+                    out.protocol_unknown |=
+                        !matches!(status.as_str(), "allowed" | "allowed_warning" | "rejected");
+                    // Quota is provider-reported metadata, never usage, permission
+                    // or authentication authority. It cannot replace terminal usage.
+                    if supplied_usage(&value)?.is_some() {
+                        return Err(ClaudeError::Invalid(
+                            "usage on rate limit metadata is unsupported",
+                        ));
+                    }
+                    None
+                }
                 _ => {
                     out.protocol_unknown = true;
                     supplied_usage(&value)?
@@ -550,6 +673,7 @@ pub fn qualification() -> Value {
         "provider":"claude-code", "fixture_cli_version":OBSERVED_CLI_VERSION, "adapter_version":ADAPTER_VERSION,
         "admission":"unadmitted_offline_proposal", "offline_structured_parser":true,
         "structured_stream":false, "launch_input_resume":false, "configuration_bound":false,
+        "prepared_command_input_binding":true, "bounded_cli_continuity_fixture":"2.1.303",
         "runtime_activation":false, "native_execution_qualified":false, "trusted_acceptance":false,
         "native_usage_categories":["input","cache_read","cache_write","output","thinking"],
         "parent_child_usage_deduplicated":false, "subagents":"opaque_native_not_managed_peers",

@@ -23,7 +23,7 @@ Provider wrappers validate their own supported event shapes and session semantic
 
 ## Claude fixture dialect
 
-The parser recognizes captured fixture dialect `2.1.302`, requires one leading
+The parser recognizes captured fixture dialects `2.1.302` and `2.1.303`, requires one leading
 parent init and one final parent result, and checks session identity wherever
 supplied. A result cannot overwrite a previous terminal event. Unsupported event
 semantics remain unknown; a provider-reported successful turn is not task acceptance.
@@ -46,6 +46,22 @@ qualified chunking; they are never truncated automatically.
 No proposal proves immutable task/configuration binding, executable identity,
 filesystem custody, resource permits, credentials, continuity or launch admission.
 The capability and observation APIs keep native qualification and acceptance false.
+
+`prepare_launch` binds the complete session-host envelope, exact provider model,
+explicit session selector, permission mode, CLI dialect and encoded input with a
+content digest. Its private prepared value checks captured model, session,
+version, permission mode and empty tool/MCP configurations. Missing configuration
+evidence fails closed. The generated argv now includes the required `--verbose`,
+safe mode, disabled skills and an explicit empty MCP configuration. This is
+command preparation and capture consistency; the existing execution boundary
+still owns custody, credential and resource admission.
+
+The retained `2.1.303` real CLI check completed a fresh turn and resumed the same
+session in a second process, which returned the token from the first turn. The
+receipt hashes the original captures and the reduced fixtures, with exit status
+and elapsed time for each turn. Quota events are metadata and never replace
+terminal usage. This small tool-free check does not qualify native nested usage,
+account attribution, permission enforcement or managed task execution.
 
 ## AGY, Grok and generic processes
 
