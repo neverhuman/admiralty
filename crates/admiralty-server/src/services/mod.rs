@@ -2,6 +2,7 @@ pub mod agent_routes;
 pub mod agent_tools;
 pub mod controller;
 pub mod coordination;
+pub mod coordinator;
 pub mod improvement;
 #[cfg(unix)]
 pub mod native_codex_plan;
