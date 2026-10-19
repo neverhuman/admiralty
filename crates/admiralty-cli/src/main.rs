@@ -1,6 +1,7 @@
 //! Offline domain operations and an isolated, read-only demo. No provider execution.
 mod diagnostics;
 pub mod native_archive;
+pub mod native_install;
 pub mod native_intake;
 pub mod native_package;
 pub mod native_recovery;
@@ -271,6 +272,17 @@ fn bounded_absolute_path(value: &str) -> Result<PathBuf, String> {
 
 #[derive(Subcommand)]
 enum ReleaseCommand {
+    /// Install integrity-pinned bytes into one new private version directory; no services or activation.
+    Install {
+        #[arg(long, value_parser = bounded_absolute_path)]
+        archive: PathBuf,
+        #[arg(long)]
+        expected_archive_sha256: String,
+        #[arg(long)]
+        expected_manifest_sha256: String,
+        #[arg(long, value_parser = bounded_absolute_path)]
+        destination: PathBuf,
+    },
     /// Archive a reviewed native stage; no install, signing, publishing or execution.
     Archive {
         #[arg(long, value_parser = bounded_absolute_path)]
@@ -990,6 +1002,35 @@ async fn run(cli: Cli) -> CliResult<()> {
             )?;
         }
         Command::Recover(args) => print_json(native_recovery::run(args)?)?,
+        Command::Release {
+            command:
+                ReleaseCommand::Install {
+                    archive,
+                    expected_archive_sha256,
+                    expected_manifest_sha256,
+                    destination,
+                },
+        } => {
+            let receipt = match native_install::install_native_package(
+                &archive,
+                &expected_archive_sha256,
+                &expected_manifest_sha256,
+                &destination,
+            ) {
+                Ok(receipt) => receipt,
+                Err(error) => {
+                    if let Some(reconciliation) = error.reconciliation() {
+                        print_json(
+                            json!({"recorded_only":true,"installation_outcome":"unknown","installed_bytes":null,"reconciliation":reconciliation,"execution_granted":false,"acceptance_granted":false,"activated":false}),
+                        )?;
+                    }
+                    return Err(Box::new(error));
+                }
+            };
+            print_json(
+                json!({"recorded_only":true,"receipt":receipt,"installed_bytes":true,"execution_granted":false,"acceptance_granted":false,"activated":false}),
+            )?;
+        }
         Command::Release {
             command:
                 ReleaseCommand::Archive {

@@ -181,7 +181,7 @@ fn relative_file(root: &File, path: &str) -> Result<File> {
     }
     Err(ArchiveError::Invalid("empty source path"))
 }
-fn portable(path: &str) -> bool {
+pub(crate) fn portable(path: &str) -> bool {
     if path.is_empty() || path.len() > 4096 || !path.is_ascii() {
         return false;
     }
@@ -265,7 +265,7 @@ fn valid_hash(hash: &str) -> bool {
 fn hash(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
-fn expected_tree(manifest: &PackageManifest) -> Result<BTreeMap<String, bool>> {
+pub(crate) fn expected_tree(manifest: &PackageManifest) -> Result<BTreeMap<String, bool>> {
     let mut tree = BTreeMap::new();
     tree.insert(MANIFEST.to_owned(), false);
     let mut seen = BTreeSet::new();
