@@ -2977,3 +2977,25 @@ these runs are nonadditive. Production custody guards, authority/SQL/replay test
 byte limits and assertions remain unchanged. The [follow-up receipt](../../../receipts/integration/native-coordination-umask-20261019.json)
 preserves every failure and the exact profile/source. PR156 is held for fresh
 exact-head Linux checks and renewed review; no second repair PR is opened.
+
+### PR157 local CI: complete HTTP responses before TCP reset
+
+The human requested full local CI rather than waiting on hosted runners. On
+`3a8de44cb9233691e29ba7025c5be741f8d4ba46`, fmt and strict workspace Clippy
+passed. The full Rust run then exposed one intermittent authorization fixture
+failure: `read_to_string` waited for EOF and received `ConnectionReset`.
+The remaining server result was107passed/two ignored. Twenty standalone
+diagnostic repeats passed; the original failed response bytes were not captured.
+An earlier attempt used an overly long Mac scratch path and failed a Unix-socket
+fixture; Root corrected that invocation to short private scratch.
+
+The test-only coordination HTTP reader now stops after one bounded declared
+Content-Length body, preserving status checks and rejection of incomplete or
+ambiguous frames. A deterministic complete-denial-plus-reset case proves the
+old EOF read fails and the framed read succeeds. All seven coordination cases
+pass, including truncated header/body, conflicting framing and length bounds.
+Production code, authentication, limits and deadlines are unchanged. The
+[receipt and original logs](../../../receipts/integration/native-test-http-framing-20261019.json)
+preserve both failures and the scoped source qualification. Full local matrix
+and renewed exact-head review follow this source commit; this entry does not
+claim hosted CI, full native execution or release acceptance.
