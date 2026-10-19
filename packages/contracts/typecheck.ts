@@ -83,14 +83,38 @@ import type { IntakePolicy } from '@admiralty/contracts';
 void [scopeSnapshot, numericGeneration];
 export type NestedIntakeTypes = [SourcePayload, ScopeSnapshot, RequesterAttribution, WorkOrderTaskBinding, SelectedTask];
 
-import { validateCoordinationEnvelopeV2 } from '@admiralty/contracts';
-import type { CoordinationEnvelopeV2 } from '@admiralty/contracts';
+import { validateCoordinationEnvelopeV2, validateViewsSnapshot } from '@admiralty/contracts';
+import type {
+  CoordinationEnvelopeV2, ViewsSnapshot, ViewAgent, ViewProject, ViewPresence,
+  ViewRole, GitRepository, GitCheckout, GitWorkingState, GitCommit, GitRef, ViewSource,
+} from '@admiralty/contracts';
 import type { CoordinationEnvelopeV2 as EnvelopeSubpath } from '@admiralty/contracts/coordination-envelope-v2';
+import type {
+  ViewsSnapshot as ViewsSnapshotSubpath,
+  ViewAgent as ViewAgentSubpath,
+  ViewProject as ViewProjectSubpath,
+  ViewPresence as ViewPresenceSubpath,
+  ViewRole as ViewRoleSubpath,
+} from '@admiralty/contracts/views-snapshot';
 if (validateCoordinationEnvelopeV2(input)) {
   const envelope: CoordinationEnvelopeV2 & EnvelopeSubpath = input;
   const version: 2 = envelope.protocol_version;
   const eventSequence: string = envelope.source_cursor.event_seq;
   void [version, eventSequence, envelope.authority.policy_digest, envelope.payload_ref.sha256];
 }
+if (validateViewsSnapshot(input)) {
+  const snapshot: ViewsSnapshot & ViewsSnapshotSubpath = input;
+  const agents: ViewAgent[] & ViewAgentSubpath[] = snapshot.agents;
+  const projects: ViewProject[] & ViewProjectSubpath[] = snapshot.projects;
+  const presence: (ViewPresence & ViewPresenceSubpath) | undefined = agents[0]?.presence;
+  const role: (ViewRole & ViewRoleSubpath) | undefined = agents[0]?.role;
+  const simulated: boolean = snapshot.simulated;
+  void [agents, projects, presence, role, simulated, snapshot.revision, snapshot.sources];
+}
+export type NestedViewsSnapshotTypes = [
+  ViewAgent, ViewProject, ViewPresence, ViewRole,
+  GitRepository, GitCheckout, GitWorkingState, GitCommit, GitRef, ViewSource,
+];
 // @ts-expect-error Comparison bindings are trusted in-process inputs, not public wire grants.
 import type { ExpectedBindings } from '@admiralty/contracts';
+

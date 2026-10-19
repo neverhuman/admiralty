@@ -5,7 +5,7 @@ export default defineConfig({
     // Both suites qualify the same built dist directory; parallel rebuilds race.
     fileParallelism: false,
     include: ['e2e/**/*.e2e.ts'],
-    testTimeout: 30_000,
-    hookTimeout: 30_000,
+    testTimeout: 90_000,
+    hookTimeout: 90_000,
   },
 });

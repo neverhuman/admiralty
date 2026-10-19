@@ -261,10 +261,10 @@ pub(crate) fn validate_route(
         || message.recipient != subscription.recipient
         || message.context_epoch != subscription.context_epoch
         || task_id != Some(&subscription.task_id)
-        || !projection
+        || projection
             .tasks
             .get(&subscription.task_id)
-            .is_some_and(|task| message.authority_ref == task.contract.authority_ref)
+            .is_none_or(|task| message.authority_ref != task.contract.authority_ref)
     {
         return Err(invalid(
             "message does not match the exact subscription scope",

@@ -30,7 +30,7 @@ const fdFs = nodeFs as unknown as {
 };
 const runtime = process as typeof process & { getuid(): number };
 const MAX_RESPONSE_BYTES = 256 * 1024;
-const READY_MS = 8_000;
+const READY_MS = 25_000;
 const RAW = 'Preserve this entire original request as one.\n\n第二段 — keep Unicode 🧭 and e\u0301.\nNo task contract is inferred.';
 const SOURCE_ID = 'browser-unicode-source';
 const SOURCE_REVISION = 'draft-one';

@@ -5,7 +5,7 @@ TypeScript types and browser-ready standalone validators. `pnpm contracts:check`
 regenerates expected output in memory and fails on drift without writing files.
 Use `pnpm --dir packages/contracts test` for runtime and generation checks.
 
-The runtime entry exports guards for the twenty-two public Rust roots currently
+The runtime entry exports guards for the twenty-three public Rust roots currently
 covered by this pipeline:
 
 - `TaskContract`, `CoordinationMessage`, `DomainEvent`, `DomainEventV2`
@@ -14,21 +14,27 @@ covered by this pipeline:
 - `ViewsSnapshot`
 - `IntakeBatch`, `SourceProvenance`, `IntakePreview`, `WorkOrderRevision`
 - `RecordIntakeRequest`, `RecordIntakeReceipt`, `DeliveryRequirement`
-- `DuplicateQuery`, `DuplicatePage`
+- `DuplicateQuery`, `DuplicatePage`, `CoordinationEnvelopeV2`
 
 Each guard is named `validate<Type>`. The package also exports
-`SUPPORTED_SCHEMA_VERSION` and source schema fingerprints. Root and nested types
-are available from the package root, with explicit type-only subpaths listed in `package.json`.
+`SUPPORTED_SCHEMA_VERSION` and source schema fingerprints. Package root `"."` and
+`"./validators"` provide both TypeScript declarations (`./index.ts` and
+`./generated/validators.d.mts`) and runtime ESM exports (`./generated/validators.mjs`),
+while all twenty-three `./<stem>` root subpaths in `package.json` (including
+`./views-snapshot` and `./coordination-envelope-v2`) are explicit type-only
+exports (`{ "types": "./generated/<stem>.ts" }`) with no runtime import entry.
 Validators are generated with pinned AJV 8.20.0 in draft 2020-12 mode. Each guard
 module has no runtime imports, AJV compiler, evaluation, network retrieval, coercion, default insertion, or removal of unknown properties. The
 compatibility entry statically re-exports the original four guards from one
-shared module and the eighteen additional roots from separate standalone modules.
+shared module (`generated/validators-base.mjs`) and the nineteen additional roots
+from separate standalone modules (`generated/validators-<stem>.mjs`).
 The package declares these modules free of initialization side effects, letting
 production bundlers omit unused roots while preserving the existing public API.
 AJV remains a build tool.
 
 Native release staging must explicitly select `generated/validators.mjs` and
-all nineteen `generated/validators-*.mjs` siblings with their individual SHA-256
+all twenty `generated/validators-*.mjs` siblings (`21` runtime `.mjs` modules
+total) with their individual SHA-256
 hashes. The CLI admits only the exact generated filenames and source-bound
 module bytes, verifies the fixed local export closure, and rejects missing or
 unknown dependencies before staging. Simple custom self-contained guards retain

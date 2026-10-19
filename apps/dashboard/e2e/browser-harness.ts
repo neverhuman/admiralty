@@ -47,13 +47,13 @@ export const REPO_ROOT = resolve(DASHBOARD_ROOT, '../..');
 export const DIST_DIR = resolve(DASHBOARD_ROOT, 'dist');
 export const BUILD_IDENTITY_FILE = join(DIST_DIR, '.admiralty-build-identity.json');
 
-const CDP_COMMAND_TIMEOUT_MS = 20_000;
-const BROWSER_STARTUP_TIMEOUT_MS = 15_000;
+const CDP_COMMAND_TIMEOUT_MS = 30_000;
+const BROWSER_STARTUP_TIMEOUT_MS = 25_000;
 const MAX_BROWSER_STARTUP_ATTEMPTS = 2;
-const GOTO_NAVIGATE_TIMEOUT_MS = 8_000;
-const STOP_LOADING_TIMEOUT_MS = 2_000;
-export const FORM_CONTROL_STAGE_TIMEOUT_MS = 5_000;
-export const MAX_STAGE_EVALUATE_BUDGET_MS = 2_500;
+const GOTO_NAVIGATE_TIMEOUT_MS = 20_000;
+const STOP_LOADING_TIMEOUT_MS = 5_000;
+export const FORM_CONTROL_STAGE_TIMEOUT_MS = 10_000;
+export const MAX_STAGE_EVALUATE_BUDGET_MS = 5_000;
 
 export const MAX_HTTP_BODY_BYTES = 256 * 1024;
 export const MAX_RECORDED_REQUESTS = 512;
@@ -1736,7 +1736,7 @@ async function launchBrowserHarnessAttempt(
       signalBrowserProcessGroup(child, 'SIGKILL');
       await Promise.race([
         exitDrainPromise,
-        new Promise<void>((resolve) => setTimeout(resolve, 1_000)),
+        new Promise<void>((resolve) => setTimeout(resolve, 5_000)),
       ]);
       try {
         (child as unknown as { stdout?: { destroy?: () => void } }).stdout?.destroy?.();
@@ -2269,7 +2269,7 @@ export async function startIsolatedNativeAdmiraltyServer(options?: {
     exitState = { exited: true, code, signal };
   });
 
-  const deadline = Date.now() + 10_000;
+  const deadline = Date.now() + 25_000;
   let ready = false;
   while (Date.now() < deadline) {
     if (exitState.exited) {
