@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T00:06:44.577Z",
+  "tested_final_source": "6b7d7173dc564645ffb7a015902b271718e14468",
+  "base_main": "37a1d2ab67883b302571b593d6addc349c132d24",
+  "post_test_delta": "README, execution ledger, this receipt and pinned Node24 CI prerequisite only",
+  "checks": [
+    {
+      "command": "cargo test --workspace --locked",
+      "source": "56663d1c8fa1663fbe384257a90b25ac9a5b912f",
+      "passed": 1076,
+      "ignored": 4,
+      "failed": 0,
+      "suites": 132,
+      "limits": "Precedes PR77/PR69 and the final CLI packaging changes; not exact final-source workspace qualification."
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "source": "56663d1c8fa1663fbe384257a90b25ac9a5b912f",
+      "exit_code": 0
+    },
+    {
+      "command": "cargo test -p admiralty-server --locked",
+      "source": "e3dd488a5db3689a28c0ec9d0c2c10b725faf82f",
+      "passed": 51,
+      "ignored": 2,
+      "failed": 0,
+      "limits": "After PR77 integration; later delta is UI, CLI packaging and docs."
+    },
+    {
+      "command": "cargo test -p admiralty-cli --locked",
+      "source": "6b7d7173dc564645ffb7a015902b271718e14468",
+      "passed": 48,
+      "ignored": 0,
+      "failed": 0
+    },
+    {
+      "command": "cargo clippy -p admiralty-cli --all-targets --locked -- -D warnings",
+      "exit_code": 0
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm contracts:check",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm --filter @admiralty/contracts test",
+      "passed": 10,
+      "failed": 0,
+      "includes": "actual pinned TypeScript consumer and staged all12 Node guard import via Rust packaging test"
+    },
+    {
+      "command": "pnpm --filter @admiralty/dashboard test --run",
+      "passed": 101,
+      "failed": 0
+    },
+    {
+      "command": "pnpm --filter @admiralty/dashboard build",
+      "exit_code": 0,
+      "main_raw_kb": 496.23,
+      "main_vite_gzip_kb": 114.6
+    }
+  ],
+  "integrated_repairs": [
+    {
+      "pr": 77,
+      "reviewed_head": "c8e08f28554505c01d646848393d6bce2bd01cd5",
+      "receiving_main": "19c42ffbb6cb9eafae7a4e17dcc2534fc4c23c2d",
+      "limits": "Explicit injected trusted closure verifier; default holds capacity/liability. No installed atomic production issuer."
+    },
+    {
+      "pr": 69,
+      "reviewed_head": "cfe157b0e59165dc5db804849422ed243376ba0d",
+      "receiving_main": "37a1d2ab67883b302571b593d6addc349c132d24",
+      "browser_ci": "https://github.com/neverhuman/admiralty/actions/runs/39178216770",
+      "passed": 13,
+      "limits": "Real Rust backend mandatory. Lost-response retry is stateful fixture coverage; not all journeys are UI-driven native execution."
+    }
+  ],
+  "ci_diagnosis": {
+    "run": "39176980709",
+    "head": "ebc5a8dc081185d2824f653fc3924147d66d11ed",
+    "result": "15-minute job timeout",
+    "assertion_failure_observed": false,
+    "audit_receipt_sha256": "6fe38c80c021ad4ad5e224903eb24edb6292bb1ed4cba263da49bd8fbc4be0fb",
+    "no_runner_or_test_limit_mutation": true
+  },
+  "source_files_sha256": {
+    "crates/admiralty-cli/src/main.rs": "3f1198e4488f16498dbb81109305ae79816d62627a3c98cf60027a12768b469d",
+    "crates/admiralty-cli/src/native_package.rs": "68a0c64160cd00ef8ab5caee2345dac035009fcef0823d7e660a468cc250eb64",
+    "crates/admiralty-core/src/config.rs": "bfd28451dac5e34776eaacc78d5c1edd0aaf36d62dab7cf819e8e1df0f120a04",
+    "crates/admiralty-core/src/coordination/context.rs": "672fc9a0e8e310e6d0568609ce4da18fd243e101b2d08909caf8bf1b4638b888",
+    "crates/admiralty-core/src/coordination/mod.rs": "fd8dc31d58b7d130553ff01379780ee9536dcc79239c45995946ce26f6bc06df",
+    "crates/admiralty-core/src/interfaces.rs": "a846188416022b8dd6a0fe793a1bb8b96fee4f5d6e412c9b0f1d775c669a431b",
+    "crates/admiralty-core/src/verification.rs": "d68f5c976be40deb43f0e3475d170b69735911d9adb7352553c89e01a605236d",
+    "crates/admiralty-core/src/workplans.rs": "366c42a5002907cd4fb5b8955f89335caf1dad306f1b5bb899bf1fb4d5c4057d",
+    "crates/admiralty-server/src/services/mod.rs": "6c5f317d25490e6919240d4536e44fe95373522aea6d766146839120fbd02e7f",
+    "crates/admiralty-server/src/services/native_executor.rs": "4bbca1220e57bf38ff4a8c60de3b7143464217cecad6fa78a70406c2df92188e",
+    "crates/admiralty-server/src/services/native_loop.rs": "12ba8bc10d7d360c8a9d40947d1a8384820d85d43c1b219f2fd15c54ee29f8ab",
+    "packages/contracts/README.md": "f1af7a02f6274d1cd01c017aae95e347fd0d33d9519b3dddb777a6890dba366a",
+    "packages/contracts/fixtures/decimal-u64.json": "ac217b4a4b6d753d0921e41effebca918093a02cd704a0109cf6956c621a7f32",
+    "packages/contracts/fixtures/public-roots.json": "fd565f88a91dda61586294d1fc5b4b3d2b29186e99f056718d19a319f0b2e847",
+    "packages/contracts/generated/config-layer-receipt.ts": "ad3f38128ead9f8cd23a14631fc671077c989774872e9c26b62e52825e0f9662",
+    "packages/contracts/generated/config-layer.ts": "df0d9be0416fe11cb571a045992ca9ee01fdf34daff6dfe85d9affcb7a176916",
+    "packages/contracts/generated/config-patch.ts": "e75f6cb6d4fab4cedef60b8581acd02730d06aba9cb93804084b3c2bc006628b",
+    "packages/contracts/generated/interface-contract.ts": "6a9b350e1c0fef2a816448254e3b798a961d2ef412aaec72433dff279560cb79",
+    "packages/contracts/generated/provenance-contribution.ts": "b7b47866d54297a2c3fbd3c46b0afc8a028d6178f56a96d84ab5e75af2fcb846",
+    "packages/contracts/generated/validators-base.mjs": "788a78e4c7c2c9b5cd5c167b901654ef7c87e932e2b23c55b277cfb43c583ced",
+    "packages/contracts/generated/validators-config-layer-receipt.mjs": "fabc76cced76fa3d8a02c545aef3c03d6c452a8e413bc8902ef40aede61d6496",
+    "packages/contracts/generated/validators-config-layer.mjs": "98ddec8a046fc717d990ada7d6cb080fe8825a0d16e773e48fea07f6bd4c9526",
+    "packages/contracts/generated/validators-config-patch.mjs": "ca8159b9febb7bff9c76767a81e17cf284f889e1ad0707581e6434f518580be2",
+    "packages/contracts/generated/validators-interface-contract.mjs": "e8d9e4dc1990dd6fdf0c27d09482fee1e26eddf4b65a51a6db9121407eef47d5",
+    "packages/contracts/generated/validators-provenance-contribution.mjs": "c20130ff96cd746924b2bb61636412d0704c996f2aa94f5fe22c0894c449c5ad",
+    "packages/contracts/generated/validators-verification-policy.mjs": "da88055c3f806eef6401edee8bcd9b2e03664ebd38b739ae79bbbc2fa8a31e1f",
+    "packages/contracts/generated/validators-verification-receipt.mjs": "af8278b6d9a2aaffff32884170c997c2530b983dc1b77b59031b8f5b60f1a2b0",
+    "packages/contracts/generated/validators-workplan.mjs": "7e7f794e7085c2978a14e1009b50308b27a822be35cd4b11358112047446a986",
+    "packages/contracts/generated/validators.d.mts": "b3ff0568fd9f6ee2af369f0046f99eaebb2a0d0590bd58a86a49361ca7883fbd",
+    "packages/contracts/generated/validators.mjs": "bc42a911cb3f811ae1a140a54a3d23946b7f4615fd611fe0ff593b20fe70c9b0",
+    "packages/contracts/generated/verification-policy.ts": "4965daaba7c427087e1ca43aa3193038a5ae513ae8e6104369f79e773b2f39f6",
+    "packages/contracts/generated/verification-receipt.ts": "1ebf9d26cfdabd0d227ab8a29956de0413db5fa62f9fd5bea2229f77cb1e04f3",
+    "packages/contracts/generated/workplan.ts": "c50598d595ecbb8a08f7ee25b9e7b408f8bb5bed8e3467c39b61a679bd0fc630",
+    "packages/contracts/index.ts": "6ea8036c02046997dda2ab20526258a9a64f33a35630b8429dc292601dd3b925",
+    "packages/contracts/package.json": "a5607c67783dd96aef65cffc3511d326941a474d9d73f74d61b662d71c3123f0",
+    "packages/contracts/runtime.test.mjs": "b461109e06750ea4d2208064938ba979420724d7001ae6071f17559d5eda5e77",
+    "packages/contracts/tsconfig.json": "b3166c95609a96d0013df244f2c78e402de47df5972af7d8cd8c7757ee0b9694",
+    "packages/contracts/typecheck.ts": "fa9a5518b3c4675e594a7081e5e74141840e44fefbbedb97beaa84be5bad578e",
+    "schemas/config-layer-receipt.schema.json": "c472ab2eba4fb0b04436d0babf96bfb0e1fc7eb89ae3cb492f5b3901a56ee225",
+    "schemas/config-layer.schema.json": "0d91b07bf58f1a5c47021ae89ef49bd039c0786a0e9609f37b465c5191da349c",
+    "schemas/config-patch.schema.json": "c18decfc5bcf880cbfa4b9ef94adf087046d8eab58bf9b54e441e027f2f020aa",
+    "schemas/interface-contract.schema.json": "acefdf1e45ea2829052025c273c727b4d90deca83f0c3463415d390a81e2c177",
+    "schemas/provenance-contribution.schema.json": "d25cf18286258b6254db595cb75d695eeaf4ae681600b9a31943fe1d21dcdc5a",
+    "schemas/verification-policy.schema.json": "6f507eb3147d8909fa7055785d8c7c2b654e3f441ef4c5c88766f6065c9eef2c",
+    "schemas/verification-receipt.schema.json": "3d8c36677287b1cb78ee14bc33dd45fad4f33045b29d8d3e962dc6575cc1c487",
+    "schemas/workplan.schema.json": "f00c1f4a6a6a5603e5c48ddce10b38dbd7390e27057a3294a843bc0054e0eaf5",
+    "scripts/contracts/generate.mjs": "059466e3016e8fc25f67b59f67e395b46da3a07324e68c542139b660962b8b1e",
+    "tests/integration/context_fidelity.rs": "4e9c320d83116d0fc9f8c69a43bd110336d2fb8aec68625cb9420110e71f895e"
+  },
+  "logs": {
+    "native-composition-aggregate-workspace": {
+      "path": "target/quality/native-composition-aggregate-workspace.log",
+      "sha256": "a5add1dcf89f59a1d2b471b83918ef5e74d42f00a0400bfdb74ad91729ad81fb",
+      "mtime_utc": "2026-10-18T23:49:15.172Z"
+    },
+    "native-composition-aggregate-clippy": {
+      "path": "target/quality/native-composition-aggregate-clippy.log",
+      "sha256": "5b0eadf261c6b910adc70a61d381168f0341701bcf06b9537b21baec2347b19c",
+      "mtime_utc": "2026-10-18T23:49:58.808Z"
+    },
+    "native-composition-after-pr77-server": {
+      "path": "target/quality/native-composition-after-pr77-server.log",
+      "sha256": "8f88b9dfebcd36f97348960f1f94d2f6b7de5d0360ce11e488c612ac5bcf2fe5",
+      "mtime_utc": "2026-10-18T23:53:14.383Z"
+    },
+    "native-final-cli-tests": {
+      "path": "target/quality/native-final-cli-tests.log",
+      "sha256": "f62967bc84254bd955d42636fbf773abb91bcb7fd877239ba19f9b7b09e1f1c7",
+      "mtime_utc": "2026-10-19T00:02:45.606Z"
+    },
+    "native-final-cli-clippy": {
+      "path": "target/quality/native-final-cli-clippy.log",
+      "sha256": "3bacc119d29315e4c9624de7567f065b2002daf2851bf13336f27ce7572895a6",
+      "mtime_utc": "2026-10-19T00:06:05.185Z"
+    },
+    "native-final-fmt": {
+      "path": "target/quality/native-final-fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mtime_utc": "2026-10-19T00:05:56.561Z"
+    },
+    "native-final-contract-drift": {
+      "path": "target/quality/native-final-contract-drift.log",
+      "sha256": "63aef183aa6b08bd9f60ee84307bab327f608dc1845b2300bb3fccebb982be02",
+      "mtime_utc": "2026-10-19T00:05:20.854Z"
+    },
+    "native-final-contract-tests": {
+      "path": "target/quality/native-final-contract-tests.log",
+      "sha256": "a786ff75020aa7386b158dc03b5d31cc0aab898d4003a0c5de75a3db8f728c38",
+      "mtime_utc": "2026-10-19T00:05:22.685Z"
+    },
+    "native-final-frontend-tests": {
+      "path": "target/quality/native-final-frontend-tests.log",
+      "sha256": "6928449808cf64fc818b675d10cd77b38b574c7a9ea0006003309f0872ffd25d",
+      "mtime_utc": "2026-10-19T00:05:23.681Z"
+    },
+    "native-final-frontend-build": {
+      "path": "target/quality/native-final-frontend-build.log",
+      "sha256": "594fecdd0c6f1d43f2758dc54c4e8f44672c0d1ea8a601909d7682c662d81a1e",
+      "mtime_utc": "2026-10-19T00:05:24.342Z"
+    },
+    "pr69-cfe157b-ci-e2e": {
+      "path": "target/quality/pr69-cfe157b-ci-e2e.log",
+      "sha256": "6f6194b4aefae635506111a3be89184371fe3af41e1e6f49d4e059d424eeb96e",
+      "mtime_utc": "2026-10-18T23:57:49.889Z"
+    }
+  },
+  "parent_acceptance": false,
+  "native_execution_qualified": false,
+  "installer_complete": false,
+  "remaining": [
+    "Production controller/provider/admission/immutable changed-source/trusted-check/Store acceptance composition",
+    "Actual successful Linux executor-to-candidate custody proof",
+    "Durable model accounting and coordination, session restart continuity",
+    "Full P02-P31 criteria; no component tests substitute for parent acceptance"
+  ]
+}
