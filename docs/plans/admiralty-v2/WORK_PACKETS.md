@@ -64,6 +64,13 @@ Every packet outputs an implementation commit/candidate and `receipts/<packet>/<
 
 ### P03 — Authoritative writer, replay, outbox and read projections
 
+**Component update 2026-10-19:** actual Store `admission_reservations.rs` and
+`claim_with_reservation` now join the bounded budget journal, claim and exact
+launch intent under one writer transaction. Migration0009, replay/backup,
+immutable associations and focused cases are recorded in
+`receipts/integration/native-durable-admission-20261019T0730Z.json`. This does
+not satisfy the entire crash matrix or accept this parent.
+
 **Depends on:** P02. **Owner:** store/integration. **Release:** R0.
 
 **Read first:** MASTER_PLAN §6; official SQLite WAL/backup guidance linked there; P02 event contracts.
@@ -170,6 +177,12 @@ Every packet outputs an implementation commit/candidate and `receipts/<packet>/<
 
 ### P10 — Usage, valuation, reservations and cohorts
 
+**Component update 2026-10-19:** durable Reserve/SetLimits/RequestStop reuse the
+existing runtime reducer; stop/expiry retain liabilities. The source-bound
+durable-admission receipt covers persistence and atomic claim tests. Trusted
+settlement/release, valuation, production issuance and cohorts remain open;
+reported usage is not billing or settlement.
+
 **Depends on:** P03, P08. **Owner:** economics. **Release:** R1.
 
 **Read first:** MASTER_PLAN §9.1; P00 accounting fixtures; provider native usage semantics.
@@ -231,6 +244,12 @@ Every packet outputs an implementation commit/candidate and `receipts/<packet>/<
 **Validate:** `rtk cargo test -p admiralty-testkit --test plan_import`; Playwright `workplan-import.spec.ts`. **Pass:** repeated import is idempotent, checkboxes/legacy PASS cannot become trusted acceptance, ambiguous scope is reviewable before admission.
 
 ### P14 — Atomic admission, fairness, cheap-capable routing and recovery
+
+**Component update 2026-10-19:** the explicit controller `admit_one_reserved`
+composes Store claim/budget/outbox admission and canonical planned effect
+identity. Current opaque authority is rechecked inside the writer and before
+every commit. No production issuer, global model-slot reservation, actual
+provider/recovery/fairness qualification or full parent acceptance is implied.
 
 **Depends on:** P06, P09, P10, P13. **Owner:** scheduler. **Release:** R1, multi-project tuning R2.
 
