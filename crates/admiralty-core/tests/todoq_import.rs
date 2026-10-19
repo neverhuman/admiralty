@@ -382,11 +382,13 @@ fn replay_file_order_and_pages_bind_exact_manifest() {
     assert_eq!(first, second);
     let page = first.page(None, 1).expect("valid synthetic fixture");
     assert_eq!(page.records.len(), 1);
-    assert_eq!(page.sources[0].path, "todos/a.md");
+    assert_eq!(page.sources[0].path, "family.toml");
+    assert_eq!(page.sources[1].path, "todos/a.md");
     let next = first
         .page(page.continuation.as_deref(), 1)
         .expect("valid synthetic fixture");
-    assert_eq!(next.sources[0].path, "todos/b.md");
+    assert_eq!(next.sources[0].path, "family.toml");
+    assert_eq!(next.sources[1].path, "todos/b.md");
     assert!(next.continuation.is_none());
     assert_eq!(first.page(None, 101), Err(ImportError::Cursor));
     assert_eq!(first.page(Some("foreign:0"), 1), Err(ImportError::Cursor));
@@ -716,18 +718,94 @@ fn exact_record_cap_pages_without_eviction_or_duplicate_omission() {
     assert_eq!(s.records.len(), 1000);
     let mut cursor = None;
     let mut ids = std::collections::BTreeSet::new();
+    let mut offset = 0;
     loop {
         let p = s
             .page(cursor.as_deref(), 100)
             .expect("valid synthetic fixture");
         assert!(p.records.len() <= 100);
-        for r in p.records {
-            assert!(ids.insert(r.todo.expect("valid synthetic fixture").id));
+        assert_eq!(usize::from(p.record_offset), offset);
+        assert_eq!(p.sources[0], s.sources[0]);
+        assert_eq!(p.queue, s.queue);
+        assert_eq!(p.family, s.family);
+        assert_eq!(p.family_diagnostics, s.family_diagnostics);
+        for (local, r) in p.records.iter().enumerate() {
+            let original = &s.records[offset + local];
+            let source = &p.sources[usize::from(r.source_index)];
+            assert_eq!(source, &s.sources[usize::from(original.source_index)]);
+            assert_eq!(r.todo, original.todo);
+            assert_eq!(r.diagnostics, original.diagnostics);
+            let todo = r.todo.as_ref().expect("valid synthetic fixture");
+            let suggestion = todo.suggestion.as_ref().expect("nonempty body");
+            assert_eq!(
+                &source.raw_text
+                    [suggestion.source_span.start as usize..suggestion.source_span.end as usize],
+                suggestion.text,
+            );
+            assert!(ids.insert(todo.id.clone()));
         }
+        offset += p.records.len();
         cursor = p.continuation;
         if cursor.is_none() {
             break;
         }
     }
     assert_eq!(ids.len(), 1000);
+}
+
+#[test]
+fn page_indices_resolve_exact_sources_including_malformed_and_later_pages() {
+    let files = [
+        File::new(
+            "todos/a.md",
+            &record("A", "status='open'", "Snowman ☃.\n\nSecond paragraph."),
+        ),
+        File::new(
+            "todos/b.md",
+            "+++\nid='broken'\nid='duplicate'\n+++\nMalformed body remains raw.\n",
+        ),
+        File::new("todos/c.md", &record("C", "", "Last exact request.")),
+    ];
+    let snapshot = parse(BATCH, &files, &[], &[], &ImportPolicy::default())
+        .expect("bounded synthetic snapshot");
+    let mut cursor = None;
+    let mut offset = 0;
+    loop {
+        let page = snapshot.page(cursor.as_deref(), 1).expect("bounded page");
+        assert_eq!(usize::from(page.record_offset), offset);
+        assert_eq!(page.sources[0], snapshot.sources[0]);
+        assert_eq!(page.queue, snapshot.queue);
+        assert_eq!(page.family, snapshot.family);
+        assert_eq!(page.family_diagnostics, snapshot.family_diagnostics);
+        for (local, record) in page.records.iter().enumerate() {
+            assert_eq!(usize::from(record.source_index), local + 1);
+            let expected = &snapshot.records[offset + local];
+            let original_source = &snapshot.sources[usize::from(expected.source_index)];
+            let resolved_source = page
+                .sources
+                .get(usize::from(record.source_index))
+                .expect("every page record index must resolve in its own page");
+            assert_eq!(resolved_source, original_source);
+            assert_eq!(record.todo, expected.todo);
+            assert_eq!(record.diagnostics, expected.diagnostics);
+            if let Some(suggestion) = record
+                .todo
+                .as_ref()
+                .and_then(|todo| todo.suggestion.as_ref())
+            {
+                assert_eq!(
+                    &resolved_source.raw_text[suggestion.source_span.start as usize
+                        ..suggestion.source_span.end as usize],
+                    suggestion.text,
+                );
+            }
+        }
+        offset += page.records.len();
+        cursor = page.continuation;
+        if cursor.is_none() {
+            break;
+        }
+    }
+    assert_eq!(offset, 3);
+    assert!(snapshot.records[1].todo.is_none());
 }

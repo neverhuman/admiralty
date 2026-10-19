@@ -204,6 +204,7 @@ pub struct TodoObservation {
 }
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct RecordObservation {
+    /// Index into the containing snapshot or page sources; stable source_key is unchanged.
     pub source_index: u16,
     /// None retains a malformed supplied file as an explicit observation.
     pub todo: Option<TodoObservation>,
@@ -226,7 +227,14 @@ pub struct SnapshotObservation {
 pub struct ObservationPage {
     pub schema_version: u32,
     pub snapshot_digest: String,
+    pub queue: QueuePin,
+    pub family: FamilyObservation,
+    pub family_diagnostics: Vec<Diagnostic>,
+    /// Original snapshot record ordinal of this page's first record.
+    pub record_offset: u16,
     pub records: Vec<RecordObservation>,
+    /// Family source at zero; selected records use page-local indices 1..=records.len().
+    /// Exact source_key/path/blob/digest/raw bytes remain identical to the snapshot.
     pub sources: Vec<SourceObservation>,
     pub continuation: Option<String>,
 }
@@ -276,19 +284,25 @@ impl SnapshotObservation {
         let end = start
             .saturating_add(usize::from(limit))
             .min(self.records.len());
-        let records = self.records[start..end].to_vec();
-        let mut sources = Vec::with_capacity(records.len());
-        for r in &records {
+        let mut records = self.records[start..end].to_vec();
+        let mut sources = Vec::with_capacity(records.len() + 1);
+        sources.push(self.sources.first().ok_or(ImportError::Cursor)?.clone());
+        for (local, record) in records.iter_mut().enumerate() {
             sources.push(
                 self.sources
-                    .get(usize::from(r.source_index))
+                    .get(usize::from(record.source_index))
                     .ok_or(ImportError::Cursor)?
                     .clone(),
             );
+            record.source_index = u16::try_from(local + 1).map_err(|_| ImportError::Cursor)?;
         }
         Ok(ObservationPage {
             schema_version: 1,
             snapshot_digest: self.snapshot_digest.clone(),
+            queue: self.queue.clone(),
+            family: self.family.clone(),
+            family_diagnostics: self.family_diagnostics.clone(),
+            record_offset: u16::try_from(start).map_err(|_| ImportError::Cursor)?,
             records,
             sources,
             continuation: (end < self.records.len())
