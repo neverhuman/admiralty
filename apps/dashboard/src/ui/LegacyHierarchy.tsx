@@ -1,3 +1,4 @@
+import grokbotMark from '../assets/grokbot-mark.webp';
 import { useState } from 'react';
 import { data, hierarchyCaptains, list, number, text, type Data, type LegacySnapshot } from '../legacy';
 import { ModelBadge } from './ModelBadge';
@@ -86,7 +87,7 @@ export function LegacyHierarchy({ snapshot }: { snapshot: LegacySnapshot }) {
     <div className="legacy-hierarchy-chain-scroll"><div className="legacy-hierarchy-chain">
       <div className="legacy-hierarchy-node legacy-hierarchy-person legacy-hierarchy-owner"><ProfileAvatar name={owner} profile={profile} className="legacy-hierarchy-avatar" /><div><b>{owner}</b><div className="legacy-hierarchy-muted">owner</div></div></div>
       <span className="legacy-hierarchy-arrow" aria-hidden="true">→</span>
-      <div className="legacy-hierarchy-node legacy-hierarchy-person">{isGrokbot && <img className="legacy-hierarchy-grokbot" src="/brand/grokbot.png" alt="Grokbot" width="44" height="44" />}<div><b>{watcherName}</b>{routines.length > 0 ? <details className="legacy-hierarchy-routines"><summary>{routines.length} routines</summary><ul>{routines.map((routine, index) => <li key={index}>{identity(routine) || text(data(routine).description) || 'Routine details not reported'}</li>)}</ul></details> : <div className="legacy-hierarchy-muted">watcher</div>}</div></div>
+      <div className="legacy-hierarchy-node legacy-hierarchy-person">{isGrokbot && <img className="legacy-hierarchy-grokbot" src={grokbotMark} loading="lazy" fetchPriority="low" decoding="async" alt="Grokbot" width="44" height="44" />}<div><b>{watcherName}</b>{routines.length > 0 ? <details className="legacy-hierarchy-routines"><summary>{routines.length} routines</summary><ul>{routines.map((routine, index) => <li key={index}>{identity(routine) || text(data(routine).description) || 'Routine details not reported'}</li>)}</ul></details> : <div className="legacy-hierarchy-muted">watcher</div>}</div></div>
       <span className="legacy-hierarchy-arrow" aria-hidden="true">→</span>
       <div className="legacy-hierarchy-node legacy-hierarchy-super"><div><b>Admiral</b> <State state={reportedState(superCaptain)} /></div><ModelBadge model={text(superCaptain.model) || 'unknown'} effort={text(superCaptain.effort)} tier={text(superCaptain.tier)} /><div className="legacy-hierarchy-muted legacy-hierarchy-screen">{screenName(superCaptain)}</div><div className="legacy-hierarchy-muted">{ticker === true ? 'ticker ✓' : ticker === false ? 'ticker not running' : 'ticker not reported'}{text(lastCheck.no) ? ` · check #${text(lastCheck.no)}` : ''}{text(lastCheck.utc ?? superStatus.updated_utc) ? ` · ${text(lastCheck.utc ?? superStatus.updated_utc)}` : ''}</div></div>
     </div></div>

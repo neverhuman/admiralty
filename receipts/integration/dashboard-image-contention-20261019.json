@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "measured_utc": "2026-10-19T22:07:35.011718+00:00",
+  "production_source": "22a3774f2311377dd2f6f9b939322e66060d5fea",
+  "origin": "http://localhost:18890",
+  "browser": "Chrome155 on macOS",
+  "controlled_comparison": {
+    "method": "Same Chrome document at /healthz; sequential initial snapshot fetches, with a concurrent cache-busted original logo transfer only in the middle trial. Each response body was fully read.",
+    "trials": [
+      {
+        "with_logo": false,
+        "ttfb_ms": 249,
+        "snapshot_total_ms": 252.7
+      },
+      {
+        "with_logo": true,
+        "ttfb_ms": 1947,
+        "snapshot_total_ms": 1950.4
+      },
+      {
+        "with_logo": false,
+        "ttfb_ms": 148.8,
+        "snapshot_total_ms": 153.6
+      }
+    ]
+  },
+  "normal_top_level_navigation_before": {
+    "shell_fcp_ms": 92,
+    "initial_response_end_ms": 5563.2,
+    "detail_response_end_ms": 8356.1,
+    "initial_server_duration_ms": 24.418,
+    "detail_server_duration_ms": 18.683,
+    "logo_transfer_duration_ms": 5202.7,
+    "grokbot_transfer_duration_ms": 7953.7
+  },
+  "interpretation": "Large concurrent image transfers compete with snapshot traffic over the shared SSH connection. A fresh tunnel also reproduced slow normal pages. Evidence does not isolate old tunnel state or IPQoS as the root cause; no user SSH process was changed.",
+  "derivatives": [
+    {
+      "source": "apps/dashboard/public/brand/admiralty-source.png",
+      "source_bytes": 909933,
+      "source_sha256": "86f3f016a3d2562cc82da3191ce472e77e81726a65f69ccb4a840145e89aaef9",
+      "output": "apps/dashboard/src/assets/admiralty-mark.webp",
+      "output_bytes": 27820,
+      "output_sha256": "120aa58989e2d86ff33bd2befa31c0cfeb6b290ca870aed30d197db04125654a",
+      "dimensions": [
+        192,
+        192
+      ],
+      "decoded_pixel_difference": "0 (0)"
+    },
+    {
+      "source": "apps/dashboard/public/brand/grokbot.png",
+      "source_bytes": 960632,
+      "source_sha256": "d0c1fb552fa44d28af99e4a8918ad43960e4b5c15db05d1ef4331dad66d206e2",
+      "output": "apps/dashboard/src/assets/grokbot-mark.webp",
+      "output_bytes": 14682,
+      "output_sha256": "dd4dc49a6ba573e565114953c3c92738c9003d0513788c4dd8abd6bc06bea051",
+      "dimensions": [
+        192,
+        192
+      ],
+      "decoded_pixel_difference": "0 (0)"
+    }
+  ],
+  "encoding": {
+    "imagemagick": "7.1.2-18 Q16-HDRI aarch64",
+    "libwebp": "1.6.0",
+    "resize_pixels": [
+      192,
+      192
+    ],
+    "webp": "lossless, exact alpha, q100, m6, ICC metadata",
+    "pixel_verification": "dwebp then ImageMagick compare -metric AE against each resized PNG: zero differences for both",
+    "lossless_scope": "Encoding of the resized image; resizing is not pixel-identical to the original1254px image."
+  },
+  "limits": [
+    "Local component tests and captured-source rendering do not qualify production latency. Repeat normal live browser navigation after the sole deployment owner cuts over.",
+    "General native coding execution and the full release remain unqualified."
+  ]
+}

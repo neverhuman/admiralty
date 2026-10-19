@@ -631,6 +631,7 @@ async fn asset(
             Some("css") => "text/css; charset=utf-8",
             Some("svg") => "image/svg+xml",
             Some("png") => "image/png",
+            Some("webp") => "image/webp",
             Some("json") => "application/json",
             _ => "application/octet-stream",
         };
@@ -639,17 +640,19 @@ async fn asset(
         let hashed_asset = requested.starts_with("assets/")
             && matches!(
                 path.extension().and_then(|v| v.to_str()),
-                Some("js" | "css")
+                Some("js" | "css" | "webp")
             )
             && path
                 .file_stem()
                 .and_then(|v| v.to_str())
-                .and_then(|v| v.rsplit_once('-'))
-                .is_some_and(|(_, hash)| {
-                    hash.len() == 8
-                        && hash
-                            .bytes()
-                            .all(|c| c.is_ascii_alphanumeric() || c == b'_' || c == b'-')
+                .is_some_and(|stem| {
+                    // Vite's eight-character URL-safe hash can itself contain '-'.
+                    let bytes = stem.as_bytes();
+                    bytes.len() > 9
+                        && bytes[bytes.len() - 9] == b'-'
+                        && bytes[bytes.len() - 8..]
+                            .iter()
+                            .all(|c| c.is_ascii_alphanumeric() || *c == b'_' || *c == b'-')
                 });
         response.headers_mut().insert(
             header::CACHE_CONTROL,
