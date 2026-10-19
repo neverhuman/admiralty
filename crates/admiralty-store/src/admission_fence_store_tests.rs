@@ -52,11 +52,15 @@ fn source(producer: &str, sequence: u64) -> SourceIdentity {
 }
 
 fn contract() -> TaskContract {
+    contract_for("task-fence")
+}
+
+fn contract_for(task: &str) -> TaskContract {
     TaskContract {
         schema_version: 1,
         project_id: ProjectId::new("project-fence").unwrap(),
         root_id: RootId::new("root-fence").unwrap(),
-        task_id: TaskId::new("task-fence").unwrap(),
+        task_id: TaskId::new(task).unwrap(),
         revision: 1,
         title: "Admission fence fixture".into(),
         objective: "Exercise paired policy through the Store writer".into(),
@@ -400,6 +404,37 @@ fn actual_store_holds_paired_cohort_lease_through_commit_and_old_proof_retry_den
     let store = Store::open_with_startup_authorities(&path, authorities).unwrap();
     let before = db_counts(&path);
 
+    let standalone_budget = store.record_reservation(fixture.budget.clone(), proofs.0.clone());
+    assert!(matches!(
+        standalone_budget,
+        Err(crate::StoreError::AdmissionFence(FenceError::Denied))
+    ));
+    let standalone_slot = store.record_inference_slot(fixture.slot.clone(), proofs.1.clone());
+    assert!(standalone_slot.is_err(), "standalone Hold must be rejected");
+    let budget_only = store.claim_with_reservation(
+        fixture.source.clone(),
+        fixture.event.clone(),
+        fixture.observed_utc.clone(),
+        fixture.intent.clone(),
+        fixture.budget.clone(),
+        proofs.0.clone(),
+    );
+    assert!(matches!(
+        budget_only,
+        Err(crate::StoreError::AdmissionFence(FenceError::Denied))
+    ));
+    let ordinary = store.append_with_intent(
+        fixture.source.clone(),
+        fixture.event.clone(),
+        fixture.observed_utc.clone(),
+        fixture.intent.clone(),
+    );
+    assert!(matches!(
+        ordinary,
+        Err(crate::StoreError::AdmissionFence(FenceError::Denied))
+    ));
+    assert_eq!(db_counts(&path), before);
+
     let mixed_proofs = (proofs.0.clone(), foreign_proofs.1.clone());
     let mixed = store.claim_with_budget_and_slot(
         fixture.source.clone(),
@@ -593,5 +628,169 @@ fn actual_store_denial_after_acquire_releases_cohort_lease_without_writes() {
         Err(crate::StoreError::Reservation(_))
     ));
     assert_eq!(db_counts(&path), before);
+    assert_eq!(cohort.try_revoke(epoch).unwrap(), epoch + 1);
+}
+
+#[test]
+fn stale_budget_cas_rolls_back_all_admission_records_and_releases_the_lease() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("stale-budget.sqlite");
+    let fixture = seed(&path);
+    let advance_policy = Arc::new(ReadCredential);
+    let advance_store = Store::open_with_startup_authorities(
+        &path,
+        StoreAuthorities {
+            reservations: Some(advance_policy.clone()),
+            inference_slots: Some(advance_policy),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let ledger = advance_store
+        .reservation_ledger(Arc::new(ReadCredential))
+        .unwrap();
+    advance_store
+        .record_reservation(
+            ReservationCommand {
+                schema_version: 1,
+                command_id: "advance-budget-after-proof-preparation".into(),
+                source: source("budget-advance", 1),
+                expected_ledger_revision: ledger.revision,
+                expected_ledger_digest: admission_reservations::ledger_digest(&ledger).unwrap(),
+                launch_intent_digest: None,
+                event: ReservationEvent::SetLimits {
+                    event_id: "advance-budget-after-proof-preparation".into(),
+                    account_id: AccountId::new("fence-account").unwrap(),
+                    limits: ScopeLimits {
+                        unit: CurrencyUnit::new("USD", 2).unwrap(),
+                        account: Some(MinorUnits::new(100)),
+                        project: Some(MinorUnits::new(100)),
+                        root: Some(MinorUnits::new(100)),
+                    },
+                },
+            },
+            Arc::new(ReadCredential),
+        )
+        .unwrap();
+    drop(advance_store);
+
+    let event_digest = crate::digest(&serde_json::to_string(&fixture.event).unwrap());
+    let payload = serde_json::to_string(&fixture.intent.payload).unwrap();
+    let payload_digest = crate::digest(&payload);
+    let intent_digest = outbox::intent_digest(&fixture.intent).unwrap();
+    let effect = crate::LifecycleEffect {
+        idempotency_key: &fixture.intent.idempotency_key,
+        payload: &payload,
+        payload_digest: &payload_digest,
+        intent_digest: &intent_digest,
+        not_before: fixture.intent.not_before.try_into().unwrap(),
+    };
+    let binding = binding(&fixture, &event_digest, effect);
+    let catalog = catalog_for_tests(std::slice::from_ref(&binding), false).unwrap();
+    let cohort = PairedAdmissionCohort::from_installed(catalog).unwrap();
+    let proofs = cohort.proofs_for(&binding).unwrap();
+    let adapters = cohort.adapters();
+    let epoch = cohort.epoch().unwrap();
+    let store = Store::open_with_startup_authorities(
+        &path,
+        StoreAuthorities {
+            reservations: Some(adapters.budget.clone()),
+            inference_slots: Some(adapters.slots.clone()),
+            admission_fence: Some(adapters.fence.clone()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let before = db_counts(&path);
+    let result = store.claim_with_budget_and_slot(
+        fixture.source.clone(),
+        fixture.event.clone(),
+        fixture.observed_utc.clone(),
+        fixture.intent.clone(),
+        admission(&fixture, &proofs),
+    );
+    assert!(matches!(result, Err(crate::StoreError::Reservation(_))));
+    assert_eq!(db_counts(&path), before);
+    assert_eq!(cohort.try_revoke(epoch).unwrap(), epoch + 1);
+}
+
+#[test]
+fn outbox_collision_incident_commit_keeps_admission_effects_absent_and_releases_lease() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("outbox-incident.sqlite");
+    let fixture = seed(&path);
+    let seed_policy = Arc::new(ReadCredential);
+    let seed_store = Store::open_with_startup_authorities(
+        &path,
+        StoreAuthorities {
+            reservations: Some(seed_policy.clone()),
+            inference_slots: Some(seed_policy),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let mut conflicting_intent = fixture.intent.clone();
+    conflicting_intent.payload = json!({"task":"different-payload"});
+    seed_store
+        .append_with_intent(
+            source("outbox-conflict-seed", 1),
+            DomainEvent::TaskSubmitted {
+                contract: contract_for("task-outbox-conflict"),
+            },
+            "outbox-conflict-seed-time".into(),
+            conflicting_intent,
+        )
+        .unwrap();
+    drop(seed_store);
+    let before = db_counts(&path);
+
+    let event_digest = crate::digest(&serde_json::to_string(&fixture.event).unwrap());
+    let payload = serde_json::to_string(&fixture.intent.payload).unwrap();
+    let payload_digest = crate::digest(&payload);
+    let intent_digest = outbox::intent_digest(&fixture.intent).unwrap();
+    let effect = crate::LifecycleEffect {
+        idempotency_key: &fixture.intent.idempotency_key,
+        payload: &payload,
+        payload_digest: &payload_digest,
+        intent_digest: &intent_digest,
+        not_before: fixture.intent.not_before.try_into().unwrap(),
+    };
+    let binding = binding(&fixture, &event_digest, effect);
+    let catalog = catalog_for_tests(std::slice::from_ref(&binding), false).unwrap();
+    let cohort = PairedAdmissionCohort::from_installed(catalog).unwrap();
+    let proofs = cohort.proofs_for(&binding).unwrap();
+    let adapters = cohort.adapters();
+    let epoch = cohort.epoch().unwrap();
+    let store = Store::open_with_startup_authorities(
+        &path,
+        StoreAuthorities {
+            reservations: Some(adapters.budget.clone()),
+            inference_slots: Some(adapters.slots.clone()),
+            admission_fence: Some(adapters.fence.clone()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let result = store.claim_with_budget_and_slot(
+        fixture.source.clone(),
+        fixture.event.clone(),
+        fixture.observed_utc.clone(),
+        fixture.intent.clone(),
+        admission(&fixture, &proofs),
+    );
+    assert!(matches!(
+        result,
+        Err(crate::StoreError::Outbox(
+            outbox::OutboxError::IdentityCollision
+        ))
+    ));
+    let after = db_counts(&path);
+    assert_eq!(after.0, before.0);
+    assert_eq!(after.1, before.1);
+    assert_eq!(after.2, before.2);
+    assert_eq!(after.3, before.3);
+    assert_eq!(after.4, before.4);
+    assert_eq!(after.5, before.5);
+    assert_eq!(after.6, before.6 + 1);
     assert_eq!(cohort.try_revoke(epoch).unwrap(), epoch + 1);
 }
