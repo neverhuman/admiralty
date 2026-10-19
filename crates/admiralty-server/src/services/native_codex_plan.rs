@@ -345,11 +345,14 @@ pub struct BoundNativeCodexPlan {
 impl BoundNativeCodexPlan {
     /// Pure data binding to the original preparation. This neither authenticates
     /// physical capacity nor installs an execution or admission authority.
-    /// Every rejection returns the original plan, inputs, and inference claim.
+    /// Every rejection returns the original plan, inputs, inference claim, and
+    /// read capabilities. Ledger reads retain their own explicit capabilities;
+    /// write proofs are never substituted for them.
     pub fn bind_inference_slot(
         self,
         inputs: BudgetAndSlotAdmission,
         inference: InferenceSlotClaim,
+        reads: NativeCodexAdmissionReadProofs,
     ) -> Result<SlotBoundNativeCodexPlan, CodexSlotBindingFailure> {
         if let Err(error) = self.validate_inference_slot(&inputs, &inference) {
             return Err(CodexSlotBindingFailure {
@@ -357,6 +360,7 @@ impl BoundNativeCodexPlan {
                 bound: Box::new(self),
                 inputs: Box::new(inputs),
                 inference: Box::new(inference),
+                reads: Box::new(reads),
             });
         }
         // Validation above bounded and checked these exact values. Capture before
@@ -369,12 +373,17 @@ impl BoundNativeCodexPlan {
                     bound: Box::new(self),
                     inputs: Box::new(inputs),
                     inference: Box::new(inference),
+                    reads: Box::new(reads),
                 });
             }
         };
         Ok(SlotBoundNativeCodexPlan {
             bound: self,
-            admission: NativeCodexSlotAdmission { inputs, expected },
+            admission: NativeCodexSlotAdmission {
+                inputs,
+                reads,
+                expected,
+            },
         })
     }
 
@@ -557,12 +566,21 @@ impl SlotBoundNativeCodexPlan {
     }
 }
 
-#[must_use = "retain the original plan, admission inputs, and inference claim on rejection"]
+/// Custody-only container for separately issued opaque ledger-read capabilities.
+/// Constructing this value authenticates nothing and issues no authority. It
+/// deliberately has no Clone, Deserialize, Default, or credential fallback.
+pub struct NativeCodexAdmissionReadProofs {
+    pub budget: admission_reservations::ReservationProof,
+    pub slot: inference_slots::SlotProof,
+}
+
+#[must_use = "retain the original plan, admission inputs, inference claim, and read capabilities on rejection"]
 pub struct CodexSlotBindingFailure {
     error: CodexPlanError,
     bound: Box<BoundNativeCodexPlan>,
     inputs: Box<BudgetAndSlotAdmission>,
     inference: Box<InferenceSlotClaim>,
+    reads: Box<NativeCodexAdmissionReadProofs>,
 }
 impl CodexSlotBindingFailure {
     pub fn into_parts(
@@ -572,8 +590,15 @@ impl CodexSlotBindingFailure {
         BoundNativeCodexPlan,
         BudgetAndSlotAdmission,
         InferenceSlotClaim,
+        NativeCodexAdmissionReadProofs,
     ) {
-        (self.error, *self.bound, *self.inputs, *self.inference)
+        (
+            self.error,
+            *self.bound,
+            *self.inputs,
+            *self.inference,
+            *self.reads,
+        )
     }
 }
 impl fmt::Debug for CodexSlotBindingFailure {
@@ -589,11 +614,20 @@ impl fmt::Debug for CodexSlotBindingFailure {
 /// Store policy/proofs and current ResourceGate authority remain necessary.
 pub struct NativeCodexSlotAdmission {
     inputs: BudgetAndSlotAdmission,
+    reads: NativeCodexAdmissionReadProofs,
     expected: FrozenSlotPlan,
 }
 impl NativeCodexSlotAdmission {
     pub fn inputs(&self) -> &BudgetAndSlotAdmission {
         &self.inputs
+    }
+
+    pub(crate) fn budget_read_proof(&self) -> &admission_reservations::ReservationProof {
+        &self.reads.budget
+    }
+
+    pub(crate) fn slot_read_proof(&self) -> &inference_slots::SlotProof {
+        &self.reads.slot
     }
 
     /// Bounded pure comparison against the exact originally bound preparation.
