@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "kind": "native_raw_intake_dashboard_composition",
+  "recorded_utc": "2026-10-19T06:28:28.887Z",
+  "source_revision": "3935fe3699617d6c57de6b836c03ed1d035c222e",
+  "base_main": "36aa0ebc98e378eb8de69e71016aef034544fafa",
+  "component_commits": [
+    "7a8b716eea01047f4829e5bea3c037ba25ba4e2d",
+    "f4cc5093d8cb0177c72b59ee0d304b5ad60da734",
+    "200b13037db47ed95966274f41a7313c0cfa520f"
+  ],
+  "source_manifest": [
+    {
+      "path": "apps/dashboard/src/ui/Intake.tsx",
+      "bytes": 31754,
+      "sha256": "fae68d2ce1e7e16846251b65b914588eda1badef9805437fda0685098813366b"
+    },
+    {
+      "path": "apps/dashboard/src/ui/intake.test.tsx",
+      "bytes": 11974,
+      "sha256": "66f33348e18a2a12858acdaa1e2bf23881ed1e0af626fb5fe142d74b2b97f360"
+    },
+    {
+      "path": "apps/dashboard/src/ui/App.tsx",
+      "bytes": 18156,
+      "sha256": "c2785be9d31876188edcc4afa584dddc33fb7dea34779ed8a6fd4025ac84a709"
+    },
+    {
+      "path": "apps/dashboard/src/router.ts",
+      "bytes": 1573,
+      "sha256": "9d67e68e659bf9c4eaf75a1890eb9f0b0b26d04628d1629c68d734d06904ec54"
+    },
+    {
+      "path": "docs/operators/work-order-intake.md",
+      "bytes": 11377,
+      "sha256": "cfa60643264f0ad82877c3b12affe2879badc86e48dd67a65929d06de9ba1567"
+    }
+  ],
+  "checks": {
+    "root_ui_unit_cases": 123,
+    "root_unit_files": 13,
+    "intake_cases_included_in_123": 9,
+    "typecheck_exit": 0,
+    "production_build_exit": 0,
+    "build_modules": 68,
+    "browser_qualification": false,
+    "tests_are_private_controlled_fixtures": true
+  },
+  "artifacts": [
+    {
+      "path": "target/quality/intake-ui-root-tests.log",
+      "bytes": 226,
+      "sha256": "bf0b2145757b71017a1563be9a2ed08642a2882d6d644615dbe92875e91f823f"
+    },
+    {
+      "path": "target/quality/intake-ui-root-typecheck.log",
+      "bytes": 24,
+      "sha256": "5cfb036289d819b2a87e947d65f4532031dd37753f3cf2def0f77d398eea1737"
+    },
+    {
+      "path": "target/quality/intake-ui-root-build.log",
+      "bytes": 685,
+      "sha256": "5a4e8283866e181b006c50bd6b6b595fbf42d5e47f30831780aa85c310b422d6"
+    },
+    {
+      "path": "apps/dashboard/dist/assets/Intake-BED-Thch.js",
+      "bytes": 100767,
+      "sha256": "480d7aa3ae6980e2261eb4d205c5d1bd2772062bea3636dd870f5ac4c21a0f93"
+    },
+    {
+      "path": "apps/dashboard/dist/assets/index-De49scVd.js",
+      "bytes": 498640,
+      "sha256": "5caa98f2f19cd4fa205967ade3026d1696e6002c9ebabe4f7693073b8c23d6cc"
+    }
+  ],
+  "independent_review": {
+    "verdict": "CLEAR",
+    "evidence": [
+      {
+        "path": "/private/tmp/adm-intake-ui-review-vl8o_4dk/review-7a8-hold.json",
+        "bytes": 4534,
+        "sha256": "2c1e311071e9a65651f8ee2ae0abcb0a23e1118c43469f474362043c1cad1b15"
+      },
+      {
+        "path": "/private/tmp/adm-intake-ui-review-vl8o_4dk/counterexample.json",
+        "bytes": 504,
+        "sha256": "4ddc2bcbf295e06092658856f35c047ca856bcbbae0bd987af9b0398b0733201"
+      },
+      {
+        "path": "/private/tmp/adm-intake-ui-review-vl8o_4dk/readback-counterexample.json",
+        "bytes": 442,
+        "sha256": "cda6f559878fd47eb8915188396bd90918ccaf4d4271fbe429133651be980c8a"
+      },
+      {
+        "path": "/private/tmp/adm-intake-ui-review-vl8o_4dk/review-final-200b.json",
+        "bytes": 4780,
+        "sha256": "aa6476f36e512222e6a79c8aad550e4ddf90c2ad7fe74d4222c25b58ffe849ef"
+      },
+      {
+        "path": "/private/tmp/adm-intake-ui-review-vl8o_4dk/review-root-3935.json",
+        "bytes": 3187,
+        "sha256": "7df00e74b4a021a57d8ade0ed92ebdae6f83374e317e9ac08044ea9f5742d8a5"
+      }
+    ],
+    "actual_old_counterexamples": [
+      "exactly1MiB preview grows oversized capture and called fetch",
+      "equal-length altered source passed old partial receipt readback"
+    ],
+    "repairs": [
+      "whole capture JSON UTF8 limit before pending/fetch",
+      "guarded construction and safe validation errors",
+      "full frozen request and full receipt comparison",
+      "pending draft freeze, explicit local abandon with unknown server outcome",
+      "secure UUID or visible capability refusal",
+      "confirmed-read retry",
+      "password uncontrolled to avoid React defaultValue HTML attribute reflection",
+      "same hidden mounted instance preserves pending across dashboard tabs"
+    ]
+  },
+  "behavior": {
+    "route": "#/intake",
+    "real_api": "/v2/intake",
+    "plain_text_preserves_one_request": true,
+    "main_and_intake_credentials_independent": true,
+    "credential_storage": "page memory only; no token in URL/storage/default HTML attribute",
+    "requester_attribution": "unknown",
+    "preview_generated_validator": true,
+    "response_authority_flags": false,
+    "exact_serialized_lost_reply_retry": true,
+    "no_automatic_network_retry": true,
+    "readback_revision": "exact recorded initial revision1",
+    "bounded_summary_history": 5,
+    "page_reload_or_close_loses_local_envelope": true,
+    "intake_skips_unrelated_fleet_poll": true
+  },
+  "qualification": {
+    "live_intake_issuer_created": false,
+    "production_token_created": false,
+    "actual_native_backend_browser_flow": "separate worker candidate in progress, not run at receipt time",
+    "enriched_record_ui": false,
+    "duplicate_query_ui": false,
+    "delivery_ui": false,
+    "task_dispatch": false,
+    "execution_granted": false,
+    "acceptance_granted": false,
+    "full_parent_acceptance": false,
+    "native_execution_qualified": false
+  },
+  "next": "Integrate actual native-child browser journey separately, preserve failures and exact-source proof; sole Commodore deploy writer handles primary. Complete enrichment/delivery and production admission/provider/accounting/recovery gates."
+}

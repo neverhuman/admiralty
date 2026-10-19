@@ -1,0 +1,393 @@
+{
+  "schema_version": 1,
+  "kind": "actual_linux_native_private_install_qualification",
+  "sealed_utc": "2026-10-19T06:17:30.377Z",
+  "source_commit": "9d4dbb0c497efe005520cec5b6b95f6bca7b3365",
+  "source_tree": "8bd03a3cd37183f0fa0ef6794833cd91cff51a68",
+  "source_archive": {
+    "sha256": "b596bf24eaf7da7a76c8e9ffd9a4efd8b5f0d72573cf4854552a319ce80f576b",
+    "bytes": 18626560
+  },
+  "source_before": {
+    "file_count": 954,
+    "entry_count": 1095,
+    "bytes": 17798888,
+    "all_expected_bytes_match": true
+  },
+  "source_after": {
+    "file_count": 954,
+    "entry_count": 1095,
+    "bytes": 17798888,
+    "all_expected_bytes_match": true
+  },
+  "one_compute_invocation": true,
+  "automatic_retry": false,
+  "wrapper": {
+    "started_utc": "2026-10-19T06:09:33.813Z",
+    "finished_utc": "2026-10-19T06:15:58.888Z",
+    "elapsed_seconds": 385.0669975659847,
+    "argv": [
+      "/usr/bin/timeout",
+      "--signal=TERM",
+      "--kill-after=5s",
+      "595s",
+      "/home/ubuntu/xbabe2_kicker/fleetcap/run-capped",
+      "--name",
+      "adm-install-qual-9d4",
+      "--",
+      "/usr/bin/node",
+      "/home/ubuntu/admiralty-v2-build/native-install-qualification-9d4dbb0/job-template.mjs"
+    ],
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "one_compute_invocation": true,
+    "automatic_retry": false,
+    "wrapper_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "job_pid": 1412459,
+  "actual_cgroup": "0::/jarambit.slice/jarambit-evo.slice/jr-adm-install-qual-9d4-1412403-1792390173.scope",
+  "proc_status": [
+    "Name:\tnode",
+    "Umask:\t0002",
+    "Pid:\t1412459",
+    "PPid:\t1412403",
+    "Uid:\t1000\t1000\t1000\t1000",
+    "Gid:\t1000\t1000\t1000\t1000"
+  ],
+  "check_environment": {
+    "PATH": "/home/ubuntu/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "CARGO_BUILD_JOBS": "1",
+    "RUST_TEST_THREADS": "1",
+    "TMPDIR": "/home/ubuntu/admiralty-v2-build/native-install-qualification-9d4dbb0/private-tmp",
+    "CARGO_TARGET_DIR": "/home/ubuntu/admiralty-v2-build/native-install-qualification-9d4dbb0/target-linux"
+  },
+  "inside_wrapper_gate": {
+    "utc": "2026-10-19T06:09:35.183Z",
+    "cpu_percent": 79.33223606865742,
+    "mem_available_bytes": 41653387264,
+    "fleetcapd": "active",
+    "cgroup_freeze": "0",
+    "admitted": true
+  },
+  "caller_gate": {
+    "at": "2026-10-19T06:09:33.808Z",
+    "cpu_percent": 80.82792080757493,
+    "mem_available_bytes": 41483821056,
+    "fleetcapd": "active",
+    "freeze": "0",
+    "admitted": true
+  },
+  "post_scope": {
+    "at": "2026-10-19T06:17:30.040Z",
+    "unit": "jr-adm-install-qual-9d4-1412403-1792390173.scope",
+    "show_exit": 0,
+    "show": "ControlGroup=\nLoadState=not-found\nActiveState=inactive\nSubState=dead",
+    "list_exit": 0,
+    "list": "",
+    "owned_cgroup_exists": false,
+    "job_pid_exists": false
+  },
+  "checks": [
+    {
+      "label": "cargo-version",
+      "argv": [
+        "/home/ubuntu/.cargo/bin/cargo",
+        "--version"
+      ],
+      "started_utc": "2026-10-19T06:09:35.453Z",
+      "log": "/home/ubuntu/admiralty-v2-build/native-install-qualification-9d4dbb0/receipts/cargo-version.log",
+      "child_pid": 1414742,
+      "child_proc_start": "57562914",
+      "child_cgroup": "0::/jarambit.slice/jarambit-evo.slice/jr-adm-install-qual-9d4-1412403-1792390173.scope",
+      "exit": 0,
+      "signal": null,
+      "finished_utc": "2026-10-19T06:09:35.615Z",
+      "sha256": "c10ec31b8c6e6e2693cf65fc1971b41edbc3da1ae7db6f9f3f36c4823f8dcab5",
+      "bytes": 36
+    },
+    {
+      "label": "rustc-version",
+      "argv": [
+        "/home/ubuntu/.cargo/bin/rustc",
+        "--version"
+      ],
+      "started_utc": "2026-10-19T06:09:35.631Z",
+      "log": "/home/ubuntu/admiralty-v2-build/native-install-qualification-9d4dbb0/receipts/rustc-version.log",
+      "child_pid": 1414964,
+      "child_proc_start": "57562930",
+      "child_cgroup": "0::/jarambit.slice/jarambit-evo.slice/jr-adm-install-qual-9d4-1412403-1792390173.scope",
+      "exit": 0,
+      "signal": null,
+      "finished_utc": "2026-10-19T06:09:35.774Z",
+      "sha256": "f4d034f5660bb49f22bfcba3f3445be67e25b704c193ff421b53863b4faee148",
+      "bytes": 36
+    },
+    {
+      "label": "install-unit",
+      "argv": [
+        "/home/ubuntu/.cargo/bin/cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "admiralty-cli",
+        "--bin",
+        "admiralty",
+        "native_install::tests",
+        "--",
+        "--nocapture"
+      ],
+      "started_utc": "2026-10-19T06:09:35.786Z",
+      "log": "/home/ubuntu/admiralty-v2-build/native-install-qualification-9d4dbb0/receipts/install-unit.log",
+      "child_pid": 1415145,
+      "child_proc_start": "57562945",
+      "child_cgroup": "0::/jarambit.slice/jarambit-evo.slice/jr-adm-install-qual-9d4-1412403-1792390173.scope",
+      "exit": 0,
+      "signal": null,
+      "finished_utc": "2026-10-19T06:15:24.093Z",
+      "sha256": "a23d980bf9d0efaaff0a7b83b9d02f86172f546008f0ee35c6c264d3624a4078",
+      "bytes": 7465,
+      "tests": {
+        "passed": 26,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 64
+      }
+    },
+    {
+      "label": "install-cli",
+      "argv": [
+        "/home/ubuntu/.cargo/bin/cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "admiralty-cli",
+        "--test",
+        "native_install_cli",
+        "--",
+        "--nocapture"
+      ],
+      "started_utc": "2026-10-19T06:15:24.143Z",
+      "log": "/home/ubuntu/admiralty-v2-build/native-install-qualification-9d4dbb0/receipts/install-cli.log",
+      "child_pid": 1782465,
+      "child_proc_start": "57597783",
+      "child_cgroup": "0::/jarambit.slice/jarambit-evo.slice/jr-adm-install-qual-9d4-1412403-1792390173.scope",
+      "exit": 0,
+      "signal": null,
+      "finished_utc": "2026-10-19T06:15:39.260Z",
+      "sha256": "9a7f54ac075d3418badad39e61a793a82d0e2384f252f8eb7885ed9bcd2f5ce8",
+      "bytes": 1075,
+      "tests": {
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      }
+    },
+    {
+      "label": "archive-cli",
+      "argv": [
+        "/home/ubuntu/.cargo/bin/cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "admiralty-cli",
+        "--test",
+        "native_archive_cli",
+        "--",
+        "--nocapture"
+      ],
+      "started_utc": "2026-10-19T06:15:39.285Z",
+      "log": "/home/ubuntu/admiralty-v2-build/native-install-qualification-9d4dbb0/receipts/archive-cli.log",
+      "child_pid": 1801321,
+      "child_proc_start": "57599295",
+      "child_cgroup": "0::/jarambit.slice/jarambit-evo.slice/jr-adm-install-qual-9d4-1412403-1792390173.scope",
+      "exit": 0,
+      "signal": null,
+      "finished_utc": "2026-10-19T06:15:42.922Z",
+      "sha256": "d11b466a971db8259258d96d5b226cea2123f513c4e91b727957e3fdce3db1cf",
+      "bytes": 1103,
+      "tests": {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      }
+    },
+    {
+      "label": "package-unit",
+      "argv": [
+        "/home/ubuntu/.cargo/bin/cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "admiralty-cli",
+        "--bin",
+        "admiralty",
+        "native_package::tests",
+        "--",
+        "--nocapture"
+      ],
+      "started_utc": "2026-10-19T06:15:42.945Z",
+      "log": "/home/ubuntu/admiralty-v2-build/native-install-qualification-9d4dbb0/receipts/package-unit.log",
+      "child_pid": 1806956,
+      "child_proc_start": "57599661",
+      "child_cgroup": "0::/jarambit.slice/jarambit-evo.slice/jr-adm-install-qual-9d4-1412403-1792390173.scope",
+      "exit": 0,
+      "signal": null,
+      "finished_utc": "2026-10-19T06:15:47.827Z",
+      "sha256": "547ca879a1d95baa5ab585aa8caa12d81ca69a2e97a6844e7109a8592a17aa5c",
+      "bytes": 3104,
+      "tests": {
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 80
+      }
+    },
+    {
+      "label": "archive-unit",
+      "argv": [
+        "/home/ubuntu/.cargo/bin/cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "admiralty-cli",
+        "--bin",
+        "admiralty",
+        "native_archive::tests",
+        "--",
+        "--nocapture"
+      ],
+      "started_utc": "2026-10-19T06:15:47.991Z",
+      "log": "/home/ubuntu/admiralty-v2-build/native-install-qualification-9d4dbb0/receipts/archive-unit.log",
+      "child_pid": 1811437,
+      "child_proc_start": "57600173",
+      "child_cgroup": "0::/jarambit.slice/jarambit-evo.slice/jr-adm-install-qual-9d4-1412403-1792390173.scope",
+      "exit": 0,
+      "signal": null,
+      "finished_utc": "2026-10-19T06:15:58.439Z",
+      "sha256": "b47cfbd245af07e992cc8d911f43c32f4af4a5af15b97a9d714c5fa09697a87d",
+      "bytes": 2524,
+      "tests": {
+        "passed": 20,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 70
+      }
+    }
+  ],
+  "total_passed": 68,
+  "total_failed": 0,
+  "total_ignored": 0,
+  "toolchain": {
+    "cargo": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)",
+    "rustc": "rustc 1.95.0 (59807616e 2026-04-14)"
+  },
+  "harness": {
+    "path": "/home/ubuntu/admiralty-v2-build/native-install-qualification-9d4dbb0/job-template.mjs",
+    "sha256": "3cb90ba2fda3ff51875f32e581259f9f66e0e4e721ddf908ce0dcdb08dce04f8",
+    "bytes": 7846,
+    "language": "Node and shell orchestration only; actual Rust tests/CLI children"
+  },
+  "configuration": {
+    "path": "/home/ubuntu/admiralty-v2-build/native-install-qualification-9d4dbb0/qualification-config.json",
+    "sha256": "9efdd74ed85830c61adc21256add88f56c3bbc836767e9b903fb9734e43db6be",
+    "bytes": 624
+  },
+  "inventory": {
+    "path": "/home/ubuntu/admiralty-v2-build/native-install-qualification-9d4dbb0/source-inventory.json",
+    "sha256": "bd7a9cbc276e7779cfb8b9495b55f58360b19ab4921181a4ffac308001fa1296",
+    "bytes": 259091
+  },
+  "actual_cli_binary": {
+    "path": "/home/ubuntu/admiralty-v2-build/native-install-qualification-9d4dbb0/target-linux/debug/admiralty",
+    "sha256": "2c54913ea2a41373840cac2e16661e00513516458b35050dc224bfd9923431ff",
+    "bytes": 81900840
+  },
+  "claim": {
+    "utc": "2026-10-19T06:08:37.177Z",
+    "claim": "/home/ubuntu/xbabe2_kicker/captains-20261017/CODEX_CLAIM_NATIVE_INSTALL_LINUX_9D4DBB0_20261019T060837Z.md",
+    "sha256": "ac32345e18bad95a10882f8d4c4f7de899a59a693fbf97bb4fc03960f5af54e6"
+  },
+  "manager_notification": {
+    "admiral": "quotaerror observed; no text injected",
+    "commodore": "busy/no empty input observed; no text injected",
+    "source_identity": "actually observed Gemini4Argon, no requested-label substitution"
+  },
+  "raw_receipts": {
+    "caller-gate.json": {
+      "sha256": "06fc1c870c65847ede26281dd845c69342ab8618d0d2c9ee769c9fd16eb9dd35",
+      "bytes": 175
+    },
+    "qualification.json": {
+      "sha256": "55eacf65ec339168e207da83e5ba0d555b1692b7fde8ecac5e1449e167ec1a7a",
+      "bytes": 8099
+    },
+    "wrapper-result.json": {
+      "sha256": "3db60b0ecea5fdd780df1a7b35f00af65fbde4630bf2207368b1ce636b3a87f0",
+      "bytes": 652
+    },
+    "post-scope.json": {
+      "sha256": "e0c2f47472499f0e6bfb722280ca7ff3e9e9420a2dfdb08fc0e2050f1355145a",
+      "bytes": 295
+    },
+    "wrapper.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cargo-version.log": {
+      "sha256": "c10ec31b8c6e6e2693cf65fc1971b41edbc3da1ae7db6f9f3f36c4823f8dcab5",
+      "bytes": 36
+    },
+    "rustc-version.log": {
+      "sha256": "f4d034f5660bb49f22bfcba3f3445be67e25b704c193ff421b53863b4faee148",
+      "bytes": 36
+    },
+    "install-unit.log": {
+      "sha256": "a23d980bf9d0efaaff0a7b83b9d02f86172f546008f0ee35c6c264d3624a4078",
+      "bytes": 7465
+    },
+    "install-cli.log": {
+      "sha256": "9a7f54ac075d3418badad39e61a793a82d0e2384f252f8eb7885ed9bcd2f5ce8",
+      "bytes": 1075
+    },
+    "archive-cli.log": {
+      "sha256": "d11b466a971db8259258d96d5b226cea2123f513c4e91b727957e3fdce3db1cf",
+      "bytes": 1103
+    },
+    "package-unit.log": {
+      "sha256": "547ca879a1d95baa5ab585aa8caa12d81ca69a2e97a6844e7109a8592a17aa5c",
+      "bytes": 3104
+    },
+    "archive-unit.log": {
+      "sha256": "b47cfbd245af07e992cc8d911f43c32f4af4a5af15b97a9d714c5fa09697a87d",
+      "bytes": 2524
+    }
+  },
+  "qualified_scope": "fixed owned synthetic Rust Stage/Archive/private-version-install tests on Linux; actual LinuxFIFO and isolated umask077/002/000 test matrix",
+  "limits": {
+    "production_install": false,
+    "daemon_or_services_started": false,
+    "autostart": false,
+    "profile_or_PATH_mutated": false,
+    "native_coding_provider_prepared_or_run": false,
+    "credentials_or_auth_copied": false,
+    "source_or_publisher_authenticated": false,
+    "real_kernel_EIO_induced": false,
+    "execution_granted": false,
+    "native_execution_qualified": false,
+    "parent_P30_accepted": false,
+    "global_install_or_update_qualified": false
+  },
+  "preserved_previous_evidence": {
+    "original_b864_failure": "/home/ubuntu/admiralty-v2-build/archive-qualification-b86439f",
+    "prior619_qualification": "/home/ubuntu/admiralty-v2-build/archive-qualification-619a005",
+    "installer_before_ancestor_failure": "Mac independent counterexample and author failed-before logs retained; not overwritten"
+  }
+}
