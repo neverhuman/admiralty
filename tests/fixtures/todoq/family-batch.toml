@@ -1,0 +1,14 @@
+[family]
+name = "atlas-suite"
+landing = "batch"
+batch_branch = "review/batch"
+worker_notes = """Observe this prose.
+$(touch SHOULD_NOT_RUN) remains inert."""
+deny_commands = ["destructive.*pattern"]
+
+[[repo]]
+name = "engine"
+url = "https://example.invalid/engine.git"
+order = 1
+gate = "printf gate-text-only"
+setup = "printf setup-text-only"
