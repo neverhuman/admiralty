@@ -63,19 +63,37 @@ overhead, with at most128captures and32revisions each. Capacity refuses new writ
 without eviction. Open/rebuild/backup validate complete lineage. Captures create
 no task, work-order, plan or outbox rows. Unverified artifact claims remain denied.
 
-The existing contract exporter now includes nine intake roots, bringing the
-public schema/TypeScript/runtime-guard inventory to22. Run `admiralty contracts
+The existing contract exporter includes nine intake roots, originally bringing
+the public inventory to22; the additive v2 coordination header brings it to23.
+Run `admiralty contracts
 check` and `node scripts/contracts/generate.mjs --check` to detect drift. The
 native packager explicitly includes every generated validator sibling and tests
 the staged entry with actual Node imports. Original public schemas and leaf
 validators retain their bytes. Structural guards do not authenticate scope,
 validate source custody or issue grants; Rust semantic checks remain required.
 
-`StoreAuthorities` composes optional lifecycle, enriched-intake, raw-capture and
-question policies through `open_with_startup_authorities`. Existing constructors
+`StoreAuthorities` composes optional lifecycle, enriched-intake, raw-capture,
+question, attention and native-usage policies through
+`open_with_startup_authorities`. Existing constructors
 retain their behavior; omitted policies deny their protected operations. The
 question journal retains original contract/provenance and immutable retries,
 while resolving current authority for every writer turn and read.
+
+`admiralty_server::services::work_order_intake::WorkOrderIntakeService` now
+composes scoped preview, capture, enriched recording and duplicate queries over
+these actual Store methods. Trusted startup must explicitly supply its current
+credential registry and independent policy, and install the paired
+`WorkOrderIntakeAdmissionBridge` in both intake authority slots. The service
+checks current grants before enqueueing; the bridge rechecks on the writer and
+after policy callbacks, including exact historical retries. Read-only inbox
+credentials, requester claims and matching hashes never authorize intake.
+
+Preview policy identity covers the complete bounded original source, format,
+provenance, scope and policy. Equal-length requests have distinct identities.
+Inflight mutation tickets are bounded, expire and retain nonce identity; a
+retired ticket cannot remove a replacement. Raw PlainText remains unresolved,
+and unverified artifact claims remain unavailable. This module registration
+does not install a production registry, HTTP route or enrichment UI.
 
 No production issuer, public intake/question route, enrichment UI, dispatch or
 delivery is installed here. The focused40 Store checks,10 package checks and13

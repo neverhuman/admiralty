@@ -1,0 +1,910 @@
+{
+  "schema_version": 1,
+  "kind": "native_intake_usage_manifest_integration",
+  "recorded_utc": "2026-10-19T05:22:17.720Z",
+  "qualified_code_commit": "619a00544475bb064899a296dfc3e5830baf1eec",
+  "base": "7e282c3c1df5f7c618a63679441d7054706f9ab5",
+  "candidate_commits": [
+    "843c22aac3e13d63a93b59e29303b46e7bdf9028",
+    "80f2054e163f4a91e6b1c0f3c38a777f84ed1dc8",
+    "236e647c60ac2bdb950d6e553d73bc6e813c8615"
+  ],
+  "source_sha256": {
+    "crates/admiralty-store/src/lib.rs": "2a7352a88e1c292f5d80c7291fc5cb2dd8a5b8783874cc5f88fc511f3bc8abd7",
+    "crates/admiralty-store/src/usage_observations.rs": "2e365c9271781f408fe6b252bc154580e939a993a45f896247564d774eb5783a",
+    "crates/admiralty-store/tests/usage_observations.rs": "4e73393715e3eec309845d700bae85fd85a9009768c1abe22761eac2b71a834e",
+    "crates/admiralty-store/migrations/0008_usage_observations.sql": "5ee852ed7c188ed3c27c77c623813d79ef44011fff0b0ffe498bf88652f67caf",
+    "crates/admiralty-server/src/services/mod.rs": "9c859e69add18df87f4b54459c2fecc763a30801f006564efd22dcc5128cd928",
+    "crates/admiralty-server/src/services/work_order_intake.rs": "8be6f8e862400d6b57f1be9c308307748f491eb1ea4f287faa87e4b1abea40fc",
+    "crates/admiralty-server/tests/work_order_intake_service.rs": "d02c0bb0ddcaff5e523ab6d6f84b086021f2f7fb1f01b367f721a3a30ad9756c",
+    "crates/admiralty-cli/src/native_package.rs": "ef35ef867bd753944e1e79f2fe21b699a02e534eb7b58f9c7d9f972dfd43ac40",
+    "crates/admiralty-cli/tests/native_archive_cli.rs": "9358a577924cf578e773d9e44571e840cbcff0d7c3a8f6b11b38bf1afa4d1c79"
+  },
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "rustc": "1.95.0 (59807616e 2026-04-14) (Homebrew)",
+    "cargo": "1.95.0 (f2d3ce0bd 2026-03-21) (Homebrew)",
+    "cwd": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+    "TMPDIR": "/private/tmp/adm-native-4pbrtc1l",
+    "store_server_target": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/context-integrated-final",
+    "cli_target": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/archive-integrated-final",
+    "CARGO_BUILD_JOBS": 1,
+    "RUST_TEST_THREADS": 1,
+    "cli_tests_owned_shell_umask": "077"
+  },
+  "checks": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-store",
+        "--test",
+        "usage_observations",
+        "--locked"
+      ],
+      "exit": 0,
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/native-usage-integrated-final.log",
+        "sha256": "7395add738893320d66956b356472cd100ff62516deadcde45ae3284e3422dfd"
+      }
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-server",
+        "--test",
+        "work_order_intake_service",
+        "--locked"
+      ],
+      "exit": 0,
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/native-intake-integrated-final.log",
+        "sha256": "2ad9069d643afbdcb8fe468fe3ed340111e18337448228f771f4215fb40468cf"
+      }
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-server",
+        "--lib",
+        "services::work_order_intake::tests",
+        "--locked"
+      ],
+      "exit": 0,
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 88,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/native-intake-unit-root-final.log",
+        "sha256": "3742864ab464aab492c54d60a2f9aaa77adaa61835024d62a00b5f1182a8910f"
+      }
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-cli",
+        "--bin",
+        "admiralty",
+        "native_archive::tests",
+        "--locked"
+      ],
+      "exit": 0,
+      "passed": 20,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 44,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/native-manifest-archive-root-final.log",
+        "sha256": "1753a1b65e26edaf574c17625134ddd0118b1a5d66e3f59a0012a73a77e56468"
+      }
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-cli",
+        "--test",
+        "native_archive_cli",
+        "--locked"
+      ],
+      "exit": 0,
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/native-manifest-cli-root-final.log",
+        "sha256": "1dd41a0fd04d968cb7f52eea216d53d0bb2aa289b1ec5c0710f18a9f2671c697"
+      }
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-cli",
+        "--bin",
+        "admiralty",
+        "native_package::tests",
+        "--locked"
+      ],
+      "exit": 0,
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 54,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/native-manifest-package-root-final.log",
+        "sha256": "598c94f49fc8d2110dde95708c2e5d0e64615aefdbfe3201d952e39b5c3bd9c8"
+      }
+    }
+  ],
+  "strict_checks": [
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "-p",
+        "admiralty-store",
+        "-p",
+        "admiralty-server",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/native-intake-usage-root-clippy.log",
+        "sha256": "1b1fceafa867476153a5bbf0e451cd7d68f67b1f015a808d7f24bf406af25155"
+      }
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "-p",
+        "admiralty-cli",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/native-manifest-cli-root-clippy.log",
+        "sha256": "eaebd26153d0e09676c55401c66d385d592447de5129a33ccd6d4517f6fce19b"
+      }
+    },
+    {
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit": 0
+    }
+  ],
+  "component_and_independent_evidence": [
+    {
+      "path": "/private/tmp/adm-native-usage-proof/receipt.json",
+      "sha256": "6688f194c387f657180af5a0434ca6bd3e8857da49bfc25b965436a0c721d529",
+      "receipt": {
+        "schema_version": 1,
+        "component": "provider-reported native usage observation journal",
+        "created_utc": "2026-10-19T05:06:11.154163+00:00",
+        "base": "586f8c91770bcd2f0da0b90e441c2be2ccb28141",
+        "commit": "843c22aac3e13d63a93b59e29303b46e7bdf9028",
+        "worktree": "/private/tmp/admiralty-native-usage-586f8c9",
+        "branch": "codex/native-usage-observation-journal",
+        "committed_paths": {
+          "crates/admiralty-store/src/usage_observations.rs": "2e365c9271781f408fe6b252bc154580e939a993a45f896247564d774eb5783a",
+          "crates/admiralty-store/tests/usage_observations.rs": "4e73393715e3eec309845d700bae85fd85a9009768c1abe22761eac2b71a834e"
+        },
+        "proof_artifacts": {
+          "0008_usage_observations.sql": "5ee852ed7c188ed3c27c77c623813d79ef44011fff0b0ffe498bf88652f67caf",
+          "registration.patch": "6ef0de1a410f670753d3b278a26c0ea3979327ec9607ff84268e49a82976a7f6",
+          "focused-tests.log": "fb7e79abcba3aef26c63952032c4c416593d469ee3a7f7231c0c6bbc3239e6f8",
+          "strict-clippy.log": "cb4b2a4fd030f6b74b3e6f5abec904ad096235d878802aac8c56b6f9490a341c",
+          "format-diffcheck.log": "1899fdef5fb0a460563159cb93f57cdc082f0313f3106ea7fb97582a5a8c8e28",
+          "initial-snapshot-generation-failure.log": "d2e61f0d8d4978cce6eec790a65d18790a6e5efc0405fe6f96da7fc6c66d7981",
+          "strict-clippy-initial-failure.log": "5ebb8421e6c957ea7d7e9020d50b1275b6f2b98c737050104c87e906e5f50bd5",
+          "focused-tests-before-final-wire-fields.log": "6965683399feeda8eb11202800f517ef62438993851b37c493a2cca7764466d0"
+        },
+        "registered_storelib_sha256": "2a7352a88e1c292f5d80c7291fc5cb2dd8a5b8783874cc5f88fc511f3bc8abd7",
+        "checks": {
+          "actual_store_integration": {
+            "passed": 10,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 0,
+            "log": "focused-tests.log"
+          },
+          "strict_clippy": {
+            "command": "cargo clippy -p admiralty-store --all-targets --locked --offline -- -D warnings",
+            "exit": 0
+          },
+          "format_diff": {
+            "exit": 0
+          }
+        },
+        "environment": {
+          "TMPDIR": "/private/tmp/adm-native-4pbrtc1l",
+          "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/native-usage-observations",
+          "CARGO_BUILD_JOBS": 1,
+          "RUST_TEST_THREADS": 1
+        },
+        "failed_evidence": [
+          "Initial 8/9 test result: test incorrectly compared pre-rebuild recovery generation against deliberately new rebuild generation. Reproduced in retained negative log; repaired test verifies unchanged projection/event position, changed recovery generation and actual backup usage retention.",
+          "Initial strict Clippy found three style diagnostics (two collapsible if and one unnecessary lazy bool.then); repaired without allows."
+        ],
+        "integration_required": [
+          "Root must add proposed migration0008 at crates/admiralty-store/migrations/0008_usage_observations.sql.",
+          "Root must apply/adapt exact registration.patch (module/error/StoreAuthorities/startup queue/writer methods/initialize/rebuild/backup).",
+          "Tests were executed with both temporary integration pieces actually applied; temporary pieces were removed before the two-file commit."
+        ],
+        "limits": {
+          "origins": 1024,
+          "revisions_per_observation": 32,
+          "global_revisions": 8192,
+          "aggregate_durable_text_bytes": 67108864,
+          "command_bytes": 65536,
+          "original_contract_bytes": 65536,
+          "receipt_bytes": 8192,
+          "categories_per_event": 8,
+          "page_rows": 32,
+          "page_bytes": 262144
+        },
+        "limitations": [
+          "Unregistered component commit requires paired root integration; no deployed startup issuer or provider ingestion is installed.",
+          "Provider/model/effort and all native identity labels are reported or unknown, never independently qualified or filled from requested values.",
+          "Core ObservedAmount::Known is only provider-reported in this journal; no verified billing meaning.",
+          "No source-watermark ACK, unit normalization, sums, valuation, UsageRecord fabrication, budget/reservation/settlement or execution authorization.",
+          "Genesis requires actual current TaskView contract; first late observation whose historical contract is unavailable is denied. Corrections retain original contract and require independently current authority.",
+          "Read scopes are exact task-contract scopes; no account-wide/rootless overhead or arbitrary historical contract import.",
+          "Record and history validation are bounded by aggregate caps, but byte limit is durable text only, not physical SQLite/WAL quota.",
+          "No fleet, provider/model, network, CI runner, service, deployment or live database mutation occurred."
+        ],
+        "full_packet_acceptance": false,
+        "native_execution_qualified": false,
+        "provider_identity_qualified": false,
+        "settlement_granted": false
+      }
+    },
+    {
+      "path": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/receipt.json",
+      "sha256": "f306ec9d6ecea724d089d3b32e4322e1627e6716ae3339f966d68b03891068eb",
+      "receipt": {
+        "actual_cli_archive_sha256": "335f146f430812879b2e9c6e9d6551ae41eb4ec16992c99c282bd3a26b439c89",
+        "actual_cli_manifest_raw_sha256": "1c0a19aef41fc8723f4c9ec86914f2479edf03a4fe8ff51a3e4c9239348223e2",
+        "actual_final_checks": [
+          {
+            "argv": [
+              "/opt/homebrew/bin/cargo",
+              "test",
+              "--offline",
+              "--locked",
+              "-p",
+              "admiralty-cli",
+              "--bin",
+              "admiralty",
+              "native_archive::tests",
+              "--",
+              "--nocapture"
+            ],
+            "exit": 0,
+            "finished_utc": "2026-10-19T05:07:15.090242+00:00",
+            "log": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/archive-unit-final.log",
+            "log_sha256": "918c38f8da777bd49548beac7613a3dd440e2fbe2752acfb8d44c62ad3183ece",
+            "name": "archive-unit-final",
+            "started_utc": "2026-10-19T05:07:12.275316+00:00"
+          },
+          {
+            "argv": [
+              "/opt/homebrew/bin/cargo",
+              "test",
+              "--offline",
+              "--locked",
+              "-p",
+              "admiralty-cli",
+              "--test",
+              "native_archive_cli",
+              "--",
+              "--nocapture"
+            ],
+            "exit": 0,
+            "finished_utc": "2026-10-19T05:07:18.281266+00:00",
+            "log": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/archive-cli-final.log",
+            "log_sha256": "b67090e7da1e46dd763306d54cd7b52d28904b7e045e63badd4ac24ca1a748bf",
+            "name": "archive-cli-final",
+            "started_utc": "2026-10-19T05:07:15.091038+00:00"
+          },
+          {
+            "argv": [
+              "/opt/homebrew/bin/cargo",
+              "test",
+              "--offline",
+              "--locked",
+              "-p",
+              "admiralty-cli",
+              "--bin",
+              "admiralty",
+              "native_package::tests",
+              "--",
+              "--nocapture"
+            ],
+            "exit": 0,
+            "finished_utc": "2026-10-19T05:07:20.048108+00:00",
+            "log": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/native-package-final.log",
+            "log_sha256": "779326e6a31ac1ca6bc621163fb0b72230da0b9cd8b9beeec22a21bb3f0c9062",
+            "name": "native-package-final",
+            "started_utc": "2026-10-19T05:07:18.281780+00:00"
+          },
+          {
+            "argv": [
+              "/opt/homebrew/bin/cargo",
+              "clippy",
+              "--offline",
+              "--locked",
+              "-p",
+              "admiralty-cli",
+              "--all-targets",
+              "--",
+              "-D",
+              "warnings"
+            ],
+            "exit": 0,
+            "finished_utc": "2026-10-19T05:07:46.748791+00:00",
+            "log": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/strict-clippy-final.log",
+            "log_sha256": "27180d513e506c35fdd48965f42c9732ce2ca2f68c358f23d1126ac43e7097ec",
+            "name": "strict-clippy-final",
+            "started_utc": "2026-10-19T05:07:20.048716+00:00"
+          },
+          {
+            "argv": [
+              "/opt/homebrew/bin/cargo",
+              "fmt",
+              "--all",
+              "--",
+              "--check"
+            ],
+            "exit": 0,
+            "finished_utc": "2026-10-19T05:07:47.888342+00:00",
+            "log": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/fmt-final.log",
+            "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "name": "fmt-final",
+            "started_utc": "2026-10-19T05:07:46.749332+00:00"
+          },
+          {
+            "argv": [
+              "git",
+              "diff",
+              "--check"
+            ],
+            "exit": 0,
+            "finished_utc": "2026-10-19T05:07:47.973229+00:00",
+            "log": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/diff-final.log",
+            "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "name": "diff-final",
+            "started_utc": "2026-10-19T05:07:47.888705+00:00"
+          }
+        ],
+        "base": "586f8c91770bcd2f0da0b90e441c2be2ccb28141",
+        "branch": "codex/native-package-manifest-mode",
+        "commit": "236e647c60ac2bdb950d6e553d73bc6e813c8615",
+        "determinism": {
+          "after_sha256": "067e3f9daaccea03a36f7dc9942b5d2d538388651862cf68e7e6eb504be20517",
+          "before_sha256": "067e3f9daaccea03a36f7dc9942b5d2d538388651862cf68e7e6eb504be20517",
+          "bytes": 2991
+        },
+        "final_environment": {
+          "CARGO_BUILD_JOBS": "1",
+          "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/native-manifest-mode",
+          "RUST_TEST_THREADS": "1",
+          "TMPDIR": "/private/tmp/amm-rs27k16y"
+        },
+        "installer_qualified": false,
+        "linux_retest_performed": false,
+        "logs": {
+          "archive-cli-final.log": {
+            "bytes": 1070,
+            "path": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/archive-cli-final.log",
+            "sha256": "b67090e7da1e46dd763306d54cd7b52d28904b7e045e63badd4ac24ca1a748bf"
+          },
+          "archive-unit-final.log": {
+            "bytes": 2515,
+            "path": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/archive-unit-final.log",
+            "sha256": "918c38f8da777bd49548beac7613a3dd440e2fbe2752acfb8d44c62ad3183ece"
+          },
+          "archive-unit.log": {
+            "bytes": 3557,
+            "path": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/archive-unit.log",
+            "sha256": "042cc2eb7f7d139659a57149bf7b971d0da8eae5c892893e734b859ae8fafb43"
+          },
+          "before-repair.log": {
+            "bytes": 5918,
+            "path": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/before-repair.log",
+            "sha256": "b216320379fc3af7131cb4220d835fe77e0d934e6eba36200a2b5c7e749d8a7c"
+          },
+          "diff-final.log": {
+            "bytes": 0,
+            "path": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/diff-final.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "fmt-final.log": {
+            "bytes": 0,
+            "path": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/fmt-final.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "native-package-final.log": {
+            "bytes": 3040,
+            "path": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/native-package-final.log",
+            "sha256": "779326e6a31ac1ca6bc621163fb0b72230da0b9cd8b9beeec22a21bb3f0c9062"
+          },
+          "strict-clippy-final.log": {
+            "bytes": 3741,
+            "path": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/strict-clippy-final.log",
+            "sha256": "27180d513e506c35fdd48965f42c9732ce2ca2f68c358f23d1126ac43e7097ec"
+          }
+        },
+        "matched_tests": {
+          "archive_cli": {
+            "failed": 0,
+            "filtered": 0,
+            "ignored": 0,
+            "passed": 5
+          },
+          "archive_unit": {
+            "failed": 0,
+            "filtered": 44,
+            "ignored": 0,
+            "passed": 20
+          },
+          "native_package": {
+            "failed": 0,
+            "filtered": 54,
+            "ignored": 0,
+            "passed": 10
+          }
+        },
+        "operator_child_umask": "077",
+        "original_linux_failure": {
+          "filtered": 44,
+          "receipt": "/home/ubuntu/admiralty-v2-build/archive-qualification-b86439f/receipts/linux-archive-outcome.json",
+          "receipt_sha256": "b9acd05d5a954d05415e29d18a7435c42913cdbeba5aa3de8676581ab750eb8d",
+          "source_commit": "b86439f248c3d70398f1757f3ec07676e1a54df6",
+          "tests_failed": 8,
+          "tests_passed": 12
+        },
+        "owned_source_sha256": {
+          "crates/admiralty-cli/src/native_package.rs": "ef35ef867bd753944e1e79f2fe21b699a02e534eb7b58f9c7d9f972dfd43ac40",
+          "crates/admiralty-cli/tests/native_archive_cli.rs": "9358a577924cf578e773d9e44571e840cbcff0d7c3a8f6b11b38bf1afa4d1c79"
+        },
+        "parent_P30_accepted": false,
+        "patch": {
+          "path": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/candidate.patch",
+          "sha256": "fb15bcc9aa12748c345a0a7302e1a7a7b9c6172664220318c5371407c0a893f2"
+        },
+        "postfix_initial_local_setup_failure": {
+          "cause": "Mac-only Unixsocket specialfixture exceededSUN_LEN underinitiallongTMPDIR. No sourcechange; rerunusesnewshortcanonicalprivateTMPDIR. Original8manifestfaultcasespassed.",
+          "failed": 2,
+          "log": {
+            "bytes": 3557,
+            "path": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/archive-unit.log",
+            "sha256": "042cc2eb7f7d139659a57149bf7b971d0da8eae5c892893e734b859ae8fafb43"
+          },
+          "passed": 18
+        },
+        "pre_fix_local": {
+          "actual_manifest_mode": "0600",
+          "exit": 101,
+          "expected_manifest_mode": "0644",
+          "filtered": 4,
+          "log": {
+            "bytes": 5918,
+            "path": "/private/tmp/adm-native-manifest-mode-proof-o0opqovg/before-repair.log",
+            "sha256": "b216320379fc3af7131cb4220d835fe77e0d934e6eba36200a2b5c7e749d8a7c"
+          },
+          "tests_failed": 1,
+          "tests_passed": 0
+        },
+        "production_change": "Normalize MANIFEST.json through its newly created retained FD to0644 before final sync_all inside unchanged private0700 staging tree; preserve all strict archive/input/payload/closure/authority guards. No input files or globalprocessumask changed.",
+        "provider_execution": false,
+        "publishing_qualified": false,
+        "regression": "Dedicated single-test child sets its own umask077, proves ordinary0644filecreation0600, executes actualRustCLIstage, checksactualmanifest0644+payloaddeclaredmodes, then actualRustCLIarchive, digests/extraction and unchangedfalseauthorityflags. Sharedtestparentumask unchanged.",
+        "remaining": "Rootreview/cherrypick and fresh-root-ACK Linuxretry after Productheavybuildexits; no Linuxqualification inferred fromMacrepairtests.",
+        "signing_qualified": false,
+        "utc": "2026-10-19T05:09:12.391246+00:00",
+        "worktree": "/private/tmp/admiralty-native-manifest-mode-586f8c9"
+      }
+    },
+    {
+      "path": "/private/tmp/adm-s2-readonly-fz0p47bg/review-receipt.json",
+      "sha256": "2feaa5fa9cb086325c248511b91c3dc0ebb76b2a2632f36f4db0cdf741b363bc",
+      "receipt": {
+        "schema_version": 1,
+        "reviewed_utc": "2026-10-19T05:10:13.681977+00:00",
+        "reviewer": "Codex audit_runtime independent source review",
+        "candidate": "80f2054e163f4a91e6b1c0f3c38a777f84ed1dc8",
+        "base": "b86439f248c3d70398f1757f3ec07676e1a54df6",
+        "branch": "codex/wo-service-adapter",
+        "remote_worktree": "/home/ubuntu/adm_surge/2",
+        "observed_clean": true,
+        "source_hashes": {
+          "work_order_intake.rs": "8be6f8e862400d6b57f1be9c308307748f491eb1ea4f287faa87e4b1abea40fc",
+          "work_order_intake_service.rs": "d02c0bb0ddcaff5e523ab6d6f84b086021f2f7fb1f01b367f721a3a30ad9756c"
+        },
+        "artifacts": {
+          "r6-verify.log": "69a5569bcf4bc5abe0b93c1c8e5dd0a584d2e33f48ef1af92e0fa6ebae627162",
+          "owner-receipt.json": "13d4c154a75d8d1a212cfe01a54273a6322461b6063d166252faf04410fc1567",
+          "registration.patch": "59d39530b88b328cc6b99660bb0c75482bc9429a10733a80d291d6a4d0db90a1",
+          "screen.txt": "2c9ac25b5ae19c877fb50dffd0932a2403445c807c0603e5a6c1d51c052cb675",
+          "freeze-state.txt": "ac3ad549a1747109d0fafef82d635442440fd89da2cf70315c942d447bde3291",
+          "repair.diff": "ee6fae399898a1308fcc640648f12f67c16a445c227963d7d06204db28b8afef",
+          "receipt-and-r6-log-observation.txt": "6a326fedc2e930e800e3b341429a07dd12179cf6800aaf913408cb213c76e7e5"
+        },
+        "outcome": "CLEAR for component integration; no blocking source finding",
+        "verified_evidence": {
+          "actual_unit_tests_passed": 1,
+          "unit_filtered": 82,
+          "actual_integration_passed": 11,
+          "integration_filtered": 0,
+          "fmt_pass": true,
+          "strict_server_all_targets_clippy_pass": true,
+          "prior_red_log_remote_sha256": "60e70f3b99b403fb08266370cc5c7b3f86338fb349748bddb8e7eeb53ebe81b6",
+          "prior_owner_receipt_remote_sha256": "0c2911343037bf76912fbdcd3a31a1610a6c1f1bbe5369290796c24774aaaeaf"
+        },
+        "static_review": [
+          {
+            "lines": "269-285,415-419,597-633,763-807",
+            "finding": "Current registry identity/grant resolution before and after independent callback, exact principal/project/root/authority-ref/generation/policy-revision/all4caps/digest equality; missing action/revoked credential/foreign registry incarnation deny. Registry guard returns before callback."
+          },
+          {
+            "lines": "658-668,810-966",
+            "finding": "Inflight ticket binds exact mutation/command/request digest/actual opaque actor/full prequeue grant; max64 capacity, monotonic expiry at consumption, checked nonce increments and nonce-checked Drop; table lock not held across callback or Store. Historical retries require new current service ticket. Direct Store without ticket denied."
+          },
+          {
+            "lines": "1283-1360",
+            "finding": "Preview digest includes exact source payload and raw bytes plus provenance/format/project/root/full scope and current policy identity after bounded validation; independently resolved grant must remain same. Bearer bytes are not part of digest binding."
+          },
+          {
+            "lines": "188-227,1-33",
+            "finding": "Best-effort clearing and source-loop timing claims are now accurately limited; no certified constant-time/zeroization or stronger external global linearization claim."
+          },
+          {
+            "test_lines": "552-742,1207-1375,1378-1649",
+            "finding": "Default-deny/direct-Store/revocation/generation/policy/read rotation, actual raw+enriched history and reopen, both original reviewer negatives, selection conflict rollback are real Store cases. StoreAuthorities uses default for unrelated slots including attention."
+          }
+        ],
+        "process_observation": {
+          "screen": "2529033.adm_surge_2",
+          "owner_pid": 2529035,
+          "owner_parent": 2529033,
+          "owner_program": "agy",
+          "current_screen": "Idle prompt and frozen handoff; observed footer Gemini 4 Argon high only",
+          "direct_child_pids": [],
+          "quota_failure_observed_in_s2_screen": false,
+          "no_claim_about_other_sessions": true
+        },
+        "limitations": [
+          "Static independent review, no duplicate tests/provider calls were run by reviewer.",
+          "Owner source tested on b86439f2, not root receiving latest aggregate; root must integrate exact module registration and rerun appropriate aggregate checks.",
+          "No startup issuer/router or general production intake activation proven. Current external issuer changes after final registry check require synchronization as documented. Read methods authorize service-local admission before existing trusted-scope Store read; no stronger network revocation linearization claimed.",
+          "Owner receipt contains stale proposed startup method/packet title text; root must use actual open_with_startup_authorities/StoreAuthorities composition, not infer nonexistent with_intake_authorities or parent acceptance from those notes.",
+          "No tracked remote file, source clone, branch, process, service, or original evidence was modified. Sole remote write was explicitly requested Screen hardcopy into own private /tmp capture directory; no Screen input or attach."
+        ],
+        "full_packet_acceptance": false,
+        "production_activation": false,
+        "reviewer_test_reruns": 0
+      }
+    },
+    {
+      "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/native-usage-independent-review.json",
+      "sha256": "d09115b79da1434397ce793e7d3610c0503270d40251c85b672506e178893c91",
+      "receipt": {
+        "schema_version": 1,
+        "kind": "independent-read-only-native-usage-component-review",
+        "observed_utc": "2026-10-19T05:07:38.895828+00:00",
+        "candidate_commit": "843c22aac3e13d63a93b59e29303b46e7bdf9028",
+        "files": {
+          "crates/admiralty-store/src/usage_observations.rs": {
+            "sha256": "2e365c9271781f408fe6b252bc154580e939a993a45f896247564d774eb5783a",
+            "bytes": 27136
+          },
+          "crates/admiralty-store/tests/usage_observations.rs": {
+            "sha256": "4e73393715e3eec309845d700bae85fd85a9009768c1abe22761eac2b71a834e",
+            "bytes": 21378
+          }
+        },
+        "companion_artifacts": {
+          "/private/tmp/adm-native-usage-proof/0008_usage_observations.sql": {
+            "sha256": "5ee852ed7c188ed3c27c77c623813d79ef44011fff0b0ffe498bf88652f67caf",
+            "bytes": 2463
+          },
+          "/private/tmp/adm-native-usage-proof/registration.patch": {
+            "sha256": "6ef0de1a410f670753d3b278a26c0ea3979327ec9607ff84268e49a82976a7f6",
+            "bytes": 7023
+          },
+          "/private/tmp/adm-native-usage-proof/focused-tests.log": {
+            "sha256": "fb7e79abcba3aef26c63952032c4c416593d469ee3a7f7231c0c6bbc3239e6f8",
+            "bytes": 1244
+          },
+          "/private/tmp/adm-native-usage-proof/strict-clippy.log": {
+            "sha256": "cb4b2a4fd030f6b74b3e6f5abec904ad096235d878802aac8c56b6f9490a341c",
+            "bytes": 177
+          },
+          "/private/tmp/adm-native-usage-proof/receipt.json": {
+            "sha256": "6688f194c387f657180af5a0434ca6bd3e8857da49bfc25b965436a0c721d529",
+            "bytes": 4699
+          }
+        },
+        "verdict": "CLEAR",
+        "findings": [],
+        "reviewed_invariants": [
+          "UsageProof is non-serialized Any and absent installed authority denies. Exact command and original/current Store-owned TaskView are passed to current callback before replay and immediately before commit.",
+          "Command/source retries preserve original receipts after later correction; exact source sequence or command identity conflicts fail closed.",
+          "Genesis pins the actual current contract; corrections preserve historical original contract and require current authority, without rejecting valid history on later revision.",
+          "Unknown provider/model/effort/units/opening/inclusion remain explicit; no requested identity substitution, sums, settlement or grant.",
+          "SQL mutation is transactional and immutable, bounded before decoding by global rows and durable text; stored variable text is size-checked before allocation.",
+          "Scope-keyed reads authorize before materialization and again before return; bounded cursor snapshots do not include later corrections.",
+          "Companion registration initializes and validates on open/rebuild/backup through the existing sole writer."
+        ],
+        "checks": "Author actual 10 registered Store tests and strict Clippy logs read and hashes verified. No duplicate suites or external effects performed by reviewer.",
+        "remaining_limits": [
+          "Root must apply/adapt supplied registration patch and migration0008 together; the component commit intentionally is not standalone registered.",
+          "No startup issuer, raw-capture ingestion or provider source qualification is installed. Public JSON labels/capture refs remain reported claims until an independent current authority authenticates opaque proof and exact source/capture/task binding.",
+          "Current authority decides whether historical-contract corrections remain admissible; default denies without policy. First late genesis cannot import an unavailable old contract.",
+          "Global text quota is not a physical SQLite/WAL or exact RAM quota; history materialization is finite within caps.",
+          "No account/rootless overhead, normalization, valuation, settlement, provider input/ACK or full P08 acceptance."
+        ]
+      }
+    },
+    {
+      "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/archive-manifest-independent-review.json",
+      "sha256": "f84ad892c7c2e6c73bee78b09c2bd728f912f4cdf3d7e0e7a7e3e4c8e84bf1f1",
+      "receipt": {
+        "schema_version": 1,
+        "kind": "independent-read-only-native-manifest-umask-fix-review",
+        "observed_utc": "2026-10-19T05:09:10.154811+00:00",
+        "base_commit": "586f8c91770bcd2f0da0b90e441c2be2ccb28141",
+        "files": {
+          "crates/admiralty-cli/src/native_package.rs": {
+            "sha256": "ef35ef867bd753944e1e79f2fe21b699a02e534eb7b58f9c7d9f972dfd43ac40",
+            "bytes": 56932
+          },
+          "crates/admiralty-cli/tests/native_archive_cli.rs": {
+            "sha256": "9358a577924cf578e773d9e44571e840cbcff0d7c3a8f6b11b38bf1afa4d1c79",
+            "bytes": 16100
+          }
+        },
+        "diff_sha256": "fb15bcc9aa12748c345a0a7302e1a7a7b9c6172664220318c5371407c0a893f2",
+        "verdict": "CLEAR",
+        "findings": [],
+        "checked": [
+          "New manifest file is opened create_new within private owned0700 staging.",
+          "File::set_permissions applies0644 through the retained newly created FD before final sync_all; source/input paths and production global umask are untouched.",
+          "Existing archive strict mode checks and no-overwrite output publication remain unchanged.",
+          "Regression re-execs exactly itself in a dedicated test child and sets umask077 there; no unsafe pre_exec callback is added.",
+          "Probe asserts ordinary mode0644 creation becomes0600, then actual stage payload/manifest declared modes are normalized.",
+          "Actual Rust CLI stage/archive children, digests, tar extraction and unchanged false authority flags are exercised in the child path."
+        ],
+        "tests": "No duplicate suites executed. Source-level review clear; author proof log paths requested for separate hash validation.",
+        "limits": [
+          "Owned synthetic fixture, not a real release installer or provider/runtime qualification.",
+          "Full Linux archive rerun result is not inferred from static review or Mac child regression.",
+          "Helper process execution is bounded by the existing15s/64KiB capture guard; no deadline increases or production guard relaxation."
+        ]
+      }
+    },
+    {
+      "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/archive-manifest-author-proof-observed.json",
+      "sha256": "adb218e3a2b5fbeff0e561443929cab80cec299d917d47d7d05101efae2b4991",
+      "receipt": {
+        "kind": "archive-manifest-repair-author-proof-observed",
+        "observed_utc": "2026-10-19T05:09:35.197823+00:00",
+        "commit": "236e647c60ac2bdb950d6e553d73bc6e813c8615",
+        "files": {
+          "crates/admiralty-cli/src/native_package.rs": "ef35ef867bd753944e1e79f2fe21b699a02e534eb7b58f9c7d9f972dfd43ac40",
+          "crates/admiralty-cli/tests/native_archive_cli.rs": "9358a577924cf578e773d9e44571e840cbcff0d7c3a8f6b11b38bf1afa4d1c79"
+        },
+        "author_receipt_sha256": "f306ec9d6ecea724d089d3b32e4322e1627e6716ae3339f966d68b03891068eb",
+        "logs": {
+          "archive-unit-final.log": {
+            "sha256": "918c38f8da777bd49548beac7613a3dd440e2fbe2752acfb8d44c62ad3183ece",
+            "bytes": 2515,
+            "tail": ".. ok\ntest native_archive::tests::replacement_temp_is_rejected_and_foreign_name_is_never_cleaned_up ... ok\ntest native_archive::tests::root_parent_links_unsafe_manifests_and_bounds_are_rejected ... ok\ntest native_archive::tests::source_mutation_after_preflight_and_after_append_is_never_acknowledged ... ok\ntest native_archive::tests::streaming_writer_and_exact_reader_bounds_propagate_failures ... ok\n\ntest result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 2.59s\n\n"
+          },
+          "archive-cli-final.log": {
+            "sha256": "b67090e7da1e46dd763306d54cd7b52d28904b7e045e63badd4ac24ca1a748bf",
+            "bytes": 1070,
+            "tail": "9aef41fc8723f4c9ec86914f2479edf03a4fe8ff51a3e4c9239348223e2\"\nok\ntest actual_archive_cli_preserves_existing_destination_and_reports_failure ... ok\ntest actual_archive_cli_requires_private_expected_manifest_and_absolute_paths ... ok\ntest actual_archive_cli_wrong_complete_hash_fails_before_creating_output ... ok\ntest actual_stage_and_archive_preserve_declared_modes_in_isolated_private_umask_child ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.86s\n\n"
+          },
+          "native-package-final.log": {
+            "sha256": "779326e6a31ac1ca6bc621163fb0b72230da0b9cd8b9beeec22a21bb3f0c9062",
+            "bytes": 3040,
+            "tail": "e_allowlisted ... ok\ntest native_package::tests::rejects_symlinks_and_preserves_existing_output ... ok\ntest native_package::tests::staged_real_generated_closure_imports_and_validates_all_public_roots ... ok\ntest native_package::tests::stages_explicit_v2_release_bundle_with_manifest_digest ... ok\ntest native_package::tests::unknown_generated_dependencies_and_loader_sources_fail_before_staging ... ok\n\ntest result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 54 filtered out; finished in 1.64s\n\n"
+          },
+          "strict-clippy-final.log": {
+            "sha256": "27180d513e506c35fdd48965f42c9732ce2ca2f68c358f23d1126ac43e7097ec",
+            "bytes": 3741,
+            "tail": "admiralty-native-manifest-mode-586f8c9/crates/admiralty-runtime)\n    Checking clap v4.6.7\n    Checking crc32fast v1.5.2\n    Checking filetime v0.2.29\n    Checking tar v0.4.46\n    Checking flate2 v1.1.10\n    Checking admiralty-server v0.1.0 (/private/tmp/admiralty-native-manifest-mode-586f8c9/crates/admiralty-server)\n    Checking admiralty-cli v0.1.0 (/private/tmp/admiralty-native-manifest-mode-586f8c9/crates/admiralty-cli)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 26.64s\n"
+          },
+          "fmt-final.log": {
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "bytes": 0,
+            "tail": ""
+          },
+          "diff-final.log": {
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "bytes": 0,
+            "tail": ""
+          },
+          "before-repair.log": {
+            "sha256": "b216320379fc3af7131cb4220d835fe77e0d934e6eba36200a2b5c7e749d8a7c",
+            "bytes": 5918,
+            "tail": "alize its new manifest FD\n  left: 384\n right: 420\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    actual_stage_and_archive_preserve_declared_modes_in_isolated_private_umask_child\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.38s\n\nerror: test failed, to rerun pass `-p admiralty-cli --test native_archive_cli`\n"
+          }
+        },
+        "reviewer_test_runs": 0,
+        "prior_static_clear_receipt_sha256": "f84ad892c7c2e6c73bee78b09c2bd728f912f4cdf3d7e0e7a7e3e4c8e84bf1f1",
+        "limits": "Actual author Mac final suites observed; no Linux rerun, provider, install or runtime qualification inferred."
+      }
+    },
+    {
+      "path": "/private/tmp/admiralty-delivery-review-4cac3ab/target/quality/pr109-shared-composition-independent-review.json",
+      "sha256": "1a470a9734d9a358d1330f2505519aeb5570656cfd43102a99d2558fd9dcd6f9",
+      "receipt": {
+        "schema_version": 1,
+        "kind": "independent-final-shared-intake-usage-package-composition-review",
+        "observed_utc": "2026-10-19T05:20:14.437461+00:00",
+        "source_commit": "619a00544475bb064899a296dfc3e5830baf1eec",
+        "verdict": "CLEAR",
+        "findings": [],
+        "shared_file_sha256": {
+          "crates/admiralty-store/src/lib.rs": "2a7352a88e1c292f5d80c7291fc5cb2dd8a5b8783874cc5f88fc511f3bc8abd7",
+          "crates/admiralty-store/migrations/0008_usage_observations.sql": "5ee852ed7c188ed3c27c77c623813d79ef44011fff0b0ffe498bf88652f67caf",
+          "crates/admiralty-server/src/services/mod.rs": "9c859e69add18df87f4b54459c2fecc763a30801f006564efd22dcc5128cd928"
+        },
+        "exact_module_equality": {
+          "crates/admiralty-store/src/usage_observations.rs": {
+            "matches_candidate": "843c22aac3e13d63a93b59e29303b46e7bdf9028",
+            "sha256": "2e365c9271781f408fe6b252bc154580e939a993a45f896247564d774eb5783a"
+          },
+          "crates/admiralty-store/tests/usage_observations.rs": {
+            "matches_candidate": "843c22aac3e13d63a93b59e29303b46e7bdf9028",
+            "sha256": "4e73393715e3eec309845d700bae85fd85a9009768c1abe22761eac2b71a834e"
+          },
+          "crates/admiralty-cli/src/native_package.rs": {
+            "matches_candidate": "236e647c60ac2bdb950d6e553d73bc6e813c8615",
+            "sha256": "ef35ef867bd753944e1e79f2fe21b699a02e534eb7b58f9c7d9f972dfd43ac40"
+          },
+          "crates/admiralty-cli/tests/native_archive_cli.rs": {
+            "matches_candidate": "236e647c60ac2bdb950d6e553d73bc6e813c8615",
+            "sha256": "9358a577924cf578e773d9e44571e840cbcff0d7c3a8f6b11b38bf1afa4d1c79"
+          },
+          "crates/admiralty-server/src/services/work_order_intake.rs": {
+            "matches_candidate": "80f2054",
+            "sha256": "8be6f8e862400d6b57f1be9c308307748f491eb1ea4f287faa87e4b1abea40fc"
+          },
+          "crates/admiralty-server/tests/work_order_intake_service.rs": {
+            "matches_candidate": "80f2054",
+            "sha256": "d02c0bb0ddcaff5e523ab6d6f84b086021f2f7fb1f01b367f721a3a30ad9756c"
+          },
+          "crates/admiralty-core/src/verification.rs": {
+            "matches_candidate": "39eb43d51f70ca5e84d1a5608ecc24e7e4586d2d",
+            "sha256": "87c7a0cd4373d906b37c18865c95f27267d3dc2cc4436a0bc9a529156c084d23"
+          },
+          "crates/admiralty-core/src/delivery.rs": {
+            "matches_candidate": "39eb43d51f70ca5e84d1a5608ecc24e7e4586d2d",
+            "sha256": "753fe71100bfab3d3958e93dca8d7dbc6ec68597f1117ee86cc35d9adb606790"
+          },
+          "crates/admiralty-core/tests/delivery_projection.rs": {
+            "matches_candidate": "39eb43d51f70ca5e84d1a5608ecc24e7e4586d2d",
+            "sha256": "bca22fe0f9e64c26f7e87ecbf9ad8ed24e6c1f7afce6012c7874eab1eb81e723"
+          },
+          "crates/admiralty-core/src/coordination/context.rs": {
+            "matches_candidate": "39eb43d51f70ca5e84d1a5608ecc24e7e4586d2d",
+            "sha256": "672fc9a0e8e310e6d0568609ce4da18fd243e101b2d08909caf8bf1b4638b888"
+          },
+          "crates/admiralty-store/src/context_renders.rs": {
+            "matches_candidate": "39eb43d51f70ca5e84d1a5608ecc24e7e4586d2d",
+            "sha256": "eb6f8f205606821377fcf0c72f6b5eadfecbb419dfb6ed9f906abbc6e2a0bf9f"
+          },
+          "crates/admiralty-store/src/attention.rs": {
+            "matches_candidate": "39eb43d51f70ca5e84d1a5608ecc24e7e4586d2d",
+            "sha256": "e2d57e69c4e5969a84971dc56d182f72cbbe0eaaf7cf236cf8c9dcba464dca4b"
+          },
+          "crates/admiralty-server/src/native_attention.rs": {
+            "matches_candidate": "39eb43d51f70ca5e84d1a5608ecc24e7e4586d2d",
+            "sha256": "c007855ccc177598b591b9dac56d2bc593e1fd96e0dc527bed1a43988b7f3f2e"
+          }
+        },
+        "store_registration_patch_sha256": "6ef0de1a410f670753d3b278a26c0ea3979327ec9607ff84268e49a82976a7f6",
+        "reviewed_invariants": [
+          "All specialized constructors preserve existing default-deny behavior; StoreAuthorities.usage defaults None, independent policies are installed separately once at startup.",
+          "Prequeue usage validation bounds data before enqueue; opaque Any proof travels only the internal request queue.",
+          "Only the existing sole writer obtains actual current TaskView from projection and passes it, the command and installed authority to usage record/read helpers.",
+          "Initialization executes the exact paired SQL then validates history before serving; rebuild/backup validate usage while preserving context, attention, questions and raw capture validation.",
+          "Server registration adds only pub mod work_order_intake; no route, setter, startup issuer, transport, provider or automatic ingestion is added.",
+          "Actual imported S2 module is byte-identical to local80f2054, not stalecb496c94. Usage, manifest and PR108 sources match cleared candidates; retained P06 modules are byte-identical to prior source."
+        ],
+        "checks": "Read-only exact commit source/diff/hash comparison. No duplicate suite, service, provider or remote mutation performed. Root owns current integration test results and pending strict/package outcomes.",
+        "remaining_limits": [
+          "Registration exposes components only; independently installed source/capture/current credential policies and actual route/startup composition remain separate.",
+          "No provider identity qualification, settlement, installer/runtime activation or parent packet acceptance is inferred."
+        ]
+      }
+    }
+  ],
+  "intake_source_custody": {
+    "actual_frozen_candidate": "80f2054e163f4a91e6b1c0f3c38a777f84ed1dc8",
+    "actual_parent": "b86439f248c3d70398f1757f3ec07676e1a54df6",
+    "github_branch_was_stale_at_import": "cb496c94d98501bf08d8d73a7212d881352f22ba",
+    "bundle": {
+      "path": "/private/tmp/adm-s2-bundle-3l7lngkd/candidate.bundle",
+      "sha256": "6a71ed0630b46a538186401ed95d9f2575f6f5ecb92a86a6059785c3730feec6"
+    },
+    "bundle_verified": true,
+    "original_clone_clean_unchanged": true,
+    "reason_for_stale_remote": "unknown; not inferred",
+    "import_ref": "refs/codex-candidates/s2-local-80f2054"
+  },
+  "preserved_root_command_failure": {
+    "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/native-manifest-invalid-library-target.log",
+    "sha256": "5aa6785b1d9b2613bfc42f073ab9db09ebbe4f490fabd490440cab6caf6595c9",
+    "outcome": "CLI has a binary, no lib; failed before tests. Corrected to actual --bin admiralty native_archive::tests; actual20 pass."
+  },
+  "conclusions": [
+    "Usage journal preserves immutable provider-reported native counters, unknown identities/units and amount-only correction lineage with current opaque read/write policies; no normalization/billing/settlement/qualified model identity.",
+    "Intake service resolves current full grant before and after policy callbacks on writer/retries; exact source preview bytes are bound and original two negative cases pass. Startup and HTTP activation remain absent.",
+    "Manifest creation normalizes only its retained new FD to0644 before sync in the private stage; strict archive/input guards remain unchanged. Actual owned-shell umask077 and isolated child exercise stage/archive.",
+    "Source, private independent policies, original custody and effectful activation remain distinct; Root alone registers existing sole-writer queue and migration0008."
+  ],
+  "limitations": [
+    "57 actual affected Mac cases and strict checks do not prove general autonomous coding, production issuance, public routes/UI integration or full P03/P10/P13/P30 acceptance.",
+    "Original b864 Linux12pass8fail archive result remains preserved. Exact619 Linux20+5+10 retest is prepared but final05:19:49Z caller refused CPU86.28%>85% (Mem21.35GiB/thaw0) BEFORE run-capped; zero wrapper/Cargo/test invocation. Prepared single invocation remains unused and waits real admission. No Linux pass/install/sign/publication inferred.",
+    "S2 source imported from verified frozen local Gitbundle; stale remote source was not substituted and no worker clone/ref/unique work was changed.",
+    "No provider metadata preparation, fresh grant, provider execution, deployed process control, cap changes or CI-runner control occurred."
+  ],
+  "accepted_parents": 2,
+  "total_parents": 32,
+  "full_packet_acceptance": false,
+  "native_execution_qualified": false,
+  "operator_gate_correction": {
+    "initial_agent_start_report": "premature; corrected before PR publication",
+    "actual_latest_result": "refused before wrapper",
+    "actual_observed_utc": "2026-10-19T05:19:49Z",
+    "actual_host_cpu_percent": 86.28,
+    "zero_wrapper_cargo_test_invocations": true
+  }
+}
