@@ -1,5 +1,16 @@
 # Admiralty execution ledger
 
+Receiving-main browser follow-up: PR156 merged to5512531 with all three reviewed
+head checks passing. Receiving-main Rust/contracts passed, but browser run39302569957
+failed21/23: a10s document-ready wait and a public-view30s whole-test override.
+Source9c36435 adds explicit bounded navigation readiness/error diagnostics,
+an actual Chromium navigation-denial control and awaited public-fixture cleanup
+after a deadline. Final actual Mac browser suite passes24/24; fresh hosted and
+receiving-main results remain separate. Full logs, failed invocation and exact
+pins: [browser-navigation-20261019.json](../../../receipts/integration/browser-navigation-20261019.json).
+The sole deployment owner rolled back the5512531 daemon launch; native supervisor
+adoption and full release remain open. This does not promote parent acceptance.
+
 Planning baseline: `1e8ed17eff27ed3ab80dc6860fc8eda301406aee`. Implementation started on 18 October 2026. PR #9 was merged by the owner at head `9debe5dd` on 18 October at 13:58 UTC. Subsequent main commits contain the offline workplan registry, controlled Codex harness and private scratch correction. The read-only dashboard still runs its separately pinned binary/assets; merging source does not deploy it. Existing coding projects retain their lanes and ownership. Native v2 execution remains disabled pending qualification.
 
 Read [MASTER_PLAN.md](MASTER_PLAN.md) and [WORK_PACKETS.md](WORK_PACKETS.md). Integrator assigns one current base/interface version and exact write scope per packet. Update this table from evidence; do not infer completion from agent messages.
