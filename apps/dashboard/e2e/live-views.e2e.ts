@@ -357,7 +357,7 @@ describe("built live views against the real Rust server", () => {
     await connect("atlas");
     await browser.waitForSelector(".atlas-agent");
     const before = await browser.evaluate<string>(
-      `document.querySelector('[aria-label^="WORKER worker_0"]')?.getAttribute('style')`,
+      `Array.from(document.querySelectorAll('.atlas-agent > strong')).find(name => name.textContent === 'worker_0')?.parentElement?.getAttribute('style')`,
     );
     expect(before).toBeTypeOf("string");
     const next = sourceFixture(500);
@@ -365,7 +365,7 @@ describe("built live views against the real Rust server", () => {
     server.writeLegacySnapshot(next);
     await browser.waitForText("503", 10_000);
     const after = await browser.evaluate<string>(
-      `document.querySelector('[aria-label^="WORKER worker_0"]')?.getAttribute('style')`,
+      `Array.from(document.querySelectorAll('.atlas-agent > strong')).find(name => name.textContent === 'worker_0')?.parentElement?.getAttribute('style')`,
     );
     expect(after).toBe(before);
     await browser.fillInputByLabel("Search all agents", "worker_499");
