@@ -2948,3 +2948,21 @@ stamp `ddcf09cf`, one native agent/task, zero configured routes/messages/ACKs an
 No primary service control or provider invocation occurred. Actual supervisor
 adoption, authenticated execution/pool policy, completion/settlement/recovery,
 distribution and full P02–P31 criteria remain open. P00/P01 alone stay accepted.
+
+PR156 first-head Linux qualification at `1760a782` passed contracts, all108server
+cases (two existing ignored helpers), and the new actual-binary runtime-thread
+bound case. Browser qualification passed23cases on retry; its first Chrome
+version-probe timeout remains a separate failure with unknown cause. Rust then
+exposed four admission-fence fixtures whose default temp directories were
+group-writable under the runner's umask0002. An exact local umask0002 reproduction
+failed the same four guards. Atomic0700 fixture creation repairs that setup.
+
+The full local umask0002 sweep at `8c5d94f0` then passed1689executions and failed13
+additional fixtures in three targets, with five existing helpers ignored. Source
+`36de63448c45cc4de698958c37a935634e69b0eb` applies the same private-at-creation
+rule to the reservation/atomic-claim and peer-inbox fixtures. All18affected target
+cases pass under umask0002; strict full-workspace Clippy passes. Counts across
+these runs are nonadditive. Production custody guards, authority/SQL/replay tests,
+byte limits and assertions remain unchanged. The [follow-up receipt](../../../receipts/integration/native-coordination-umask-20261019.json)
+preserves every failure and the exact profile/source. PR156 is held for fresh
+exact-head Linux checks and renewed review; no second repair PR is opened.
