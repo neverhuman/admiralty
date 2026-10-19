@@ -28,6 +28,7 @@ const PROBE_TIMEOUT: Duration = Duration::from_secs(2);
 const OUTPUT_LIMIT: usize = 64 * 1024;
 const OBSERVATION_TIMEOUT: Duration = Duration::from_secs(3);
 const RESOURCE_DIAGNOSTIC_FILE_LIMIT: usize = 4096;
+const RESOURCE_HISTORY_CAPACITY: usize = 8;
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct AdmissionIdentity {
@@ -316,6 +317,14 @@ pub enum ResourceUsageSample {
     },
 }
 
+/// One actual sampled diagnostic retained in bounded, advisory history.
+/// Entries are observed snapshots only; they are not a cause or authority.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct HistoricalResourceSample {
+    pub attempt_number: u32,
+    pub sample: ResourceUsageSample,
+}
+
 /// Fixed-size history. `latest` retains the last identity-bound snapshot when a
 /// later sampling attempt or final read fails. Individual unavailable metrics
 /// remain explicit inside a snapshot. Legacy absence decodes as empty data.
@@ -327,6 +336,8 @@ pub struct ResourceUsageDiagnostics {
     pub latest: Option<Box<CgroupResourceSnapshot>>,
     pub final_sample: Option<ResourceUsageSample>,
     pub last_sample_failure: Option<ResourceReadFailure>,
+    /// Last bounded sequence of useful dynamic observations, oldest first.
+    pub history: Box<[Option<HistoricalResourceSample>; RESOURCE_HISTORY_CAPACITY]>,
     /// Internal post-closure immutability fence, never decoded from JSON.
     #[serde(skip)]
     frozen: bool,
@@ -338,6 +349,7 @@ impl ResourceUsageDiagnostics {
             && self.latest.is_none()
             && self.final_sample.is_none()
             && self.last_sample_failure.is_none()
+            && self.history.iter().all(Option::is_none)
     }
     fn record(&mut self, sample: ResourceUsageSample, before: bool, final_sample: bool) {
         if self.frozen {
@@ -345,7 +357,12 @@ impl ResourceUsageDiagnostics {
         }
         self.sample_attempts = self.sample_attempts.saturating_add(1);
         match &sample {
-            ResourceUsageSample::Observed { snapshot } => self.latest = Some(snapshot.clone()),
+            ResourceUsageSample::Observed { snapshot } => {
+                self.latest = Some(snapshot.clone());
+                if snapshot.has_dynamic_observation() {
+                    self.record_history(sample.clone());
+                }
+            }
             ResourceUsageSample::Unavailable { reason } => {
                 self.last_sample_failure = Some(reason.clone())
             }
@@ -356,6 +373,38 @@ impl ResourceUsageDiagnostics {
         if final_sample {
             self.final_sample = Some(sample);
         }
+    }
+
+    fn record_history(&mut self, sample: ResourceUsageSample) {
+        let Some(index) = self.history.iter().position(Option::is_none) else {
+            for index in 1..RESOURCE_HISTORY_CAPACITY {
+                self.history[index - 1] = self.history[index].take();
+            }
+            self.history[RESOURCE_HISTORY_CAPACITY - 1] = None;
+            self.history[RESOURCE_HISTORY_CAPACITY - 1] = Some(HistoricalResourceSample {
+                attempt_number: self.sample_attempts,
+                sample,
+            });
+            return;
+        };
+        self.history[index] = Some(HistoricalResourceSample {
+            attempt_number: self.sample_attempts,
+            sample,
+        });
+    }
+}
+
+impl CgroupResourceSnapshot {
+    fn has_dynamic_observation(&self) -> bool {
+        matches!(&self.pids_current, ResourceReading::Observed { .. })
+            || matches!(&self.pids_peak, ResourceReading::Observed { .. })
+            || matches!(&self.pids_events, ResourceReading::Observed { .. })
+            || matches!(&self.pids_events_local, ResourceReading::Observed { .. })
+            || matches!(&self.memory_current, ResourceReading::Observed { .. })
+            || matches!(&self.memory_peak, ResourceReading::Observed { .. })
+            || matches!(&self.memory_events, ResourceReading::Observed { .. })
+            || matches!(&self.memory_events_local, ResourceReading::Observed { .. })
+            || matches!(&self.cgroup_events, ResourceReading::Observed { .. })
     }
 }
 

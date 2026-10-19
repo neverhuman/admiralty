@@ -54,6 +54,26 @@ fn observed(sample: ResourceUsageSample) -> Box<CgroupResourceSnapshot> {
     }
 }
 
+fn remove_dynamic_files(dir: &Path) {
+    for name in [
+        "pids.current",
+        "pids.peak",
+        "pids.events",
+        "pids.events.local",
+        "memory.current",
+        "memory.peak",
+        "memory.events",
+        "memory.events.local",
+        "cgroup.events",
+    ] {
+        match fs::remove_file(dir.join(name)) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => panic!("remove dynamic fixture metric: {error}"),
+        }
+    }
+}
+
 #[test]
 fn bounded_original_directory_reads_numeric_values_without_inferring_a_cause() {
     let (_dir, pin) = fixture();
@@ -252,6 +272,127 @@ fn identity_failure_and_gone_final_sample_preserve_last_observed_snapshot() {
         diagnostics.final_sample,
         Some(ResourceUsageSample::Unavailable { .. })
     ));
+}
+
+#[test]
+fn history_keeps_last_eight_readable_snapshots_across_unknown_final_observations() {
+    let (dir, mut pin) = fixture();
+    let mut diagnostics = ResourceUsageDiagnostics::default();
+    for value in 0..10 {
+        write(
+            &dir.path().join("pids.current"),
+            format!("{value}\n").as_bytes(),
+        );
+        diagnostics.record(pin.sample(), false, false);
+    }
+    // An unavailable attempt advances the sequence but does not erase history.
+    diagnostics.record(
+        ResourceUsageSample::Unavailable {
+            reason: ResourceReadFailure::IdentityChanged,
+        },
+        false,
+        false,
+    );
+    // Keep the descriptor's identity valid while every dynamic metric file is
+    // absent. The actual sample remains Observed, with all metrics unknown and
+    // the two limit-only files still present.
+    remove_dynamic_files(dir.path());
+    let all_missing = pin.sample();
+    assert!(
+        matches!(&all_missing, ResourceUsageSample::Observed { snapshot }
+        if matches!(&snapshot.pids_current, ResourceReading::Unavailable { .. })
+            && matches!(&snapshot.memory_current, ResourceReading::Unavailable { .. })
+            && matches!(&snapshot.pids_max, ResourceReading::Observed { .. })
+            && matches!(&snapshot.memory_max, ResourceReading::Observed { .. }))
+    );
+    diagnostics.record(all_missing.clone(), false, false);
+    pin.identity.inode = pin.identity.inode.saturating_add(1);
+    diagnostics.record(pin.sample(), false, true);
+
+    assert_eq!(diagnostics.sample_attempts, 13);
+    assert_eq!(
+        diagnostics
+            .history
+            .iter()
+            .map(|entry| entry.as_ref().expect("full bounded history").attempt_number)
+            .collect::<Vec<_>>(),
+        (3..=10).collect::<Vec<_>>()
+    );
+    for (entry, value) in diagnostics.history.iter().zip(2..10) {
+        let HistoricalResourceSample {
+            sample: ResourceUsageSample::Observed { snapshot },
+            ..
+        } = entry.as_ref().expect("chronological history")
+        else {
+            panic!("history contains only complete observed snapshots");
+        };
+        assert_eq!(snapshot.pids_current, ResourceReading::Observed { value });
+        assert_eq!(snapshot.pids_max, ResourceReading::Observed { value: 32 });
+    }
+    assert_eq!(
+        diagnostics.latest,
+        match all_missing {
+            ResourceUsageSample::Observed { snapshot } => Some(snapshot),
+            _ => unreachable!(),
+        }
+    );
+    assert!(matches!(
+        diagnostics.final_sample,
+        Some(ResourceUsageSample::Unavailable {
+            reason: ResourceReadFailure::IdentityChanged
+        })
+    ));
+}
+
+#[test]
+fn history_preserves_partial_unknowns_and_skips_limit_only_observations() {
+    let (dir, pin) = fixture();
+    fs::remove_file(dir.path().join("pids.peak")).expect("one dynamic metric unavailable");
+    let partial = pin.sample();
+    let mut diagnostics = ResourceUsageDiagnostics::default();
+    diagnostics.record(partial.clone(), false, false);
+    assert_eq!(
+        diagnostics.history[0]
+            .as_ref()
+            .expect("history sample")
+            .sample,
+        partial
+    );
+    assert!(matches!(
+        diagnostics.history[0].as_ref().expect("history sample").sample,
+        ResourceUsageSample::Observed { ref snapshot }
+            if matches!(&snapshot.pids_peak, ResourceReading::Unavailable { .. })
+                && matches!(&snapshot.memory_current, ResourceReading::Observed { .. })
+    ));
+
+    remove_dynamic_files(dir.path());
+    let limits_only = pin.sample();
+    diagnostics.record(limits_only.clone(), false, false);
+    assert_eq!(diagnostics.history.iter().flatten().count(), 1);
+    assert_eq!(
+        diagnostics.history[0]
+            .as_ref()
+            .expect("history sample")
+            .sample,
+        partial
+    );
+    assert_eq!(
+        diagnostics.latest,
+        match limits_only {
+            ResourceUsageSample::Observed { snapshot } => Some(snapshot),
+            _ => unreachable!(),
+        }
+    );
+}
+
+#[test]
+fn history_defaults_for_legacy_json_and_rejects_wrong_array_length() {
+    let legacy = serde_json::from_str::<ResourceUsageDiagnostics>("{}")
+        .expect("legacy history omission defaults empty");
+    assert!(legacy.history.iter().all(Option::is_none));
+    assert!(legacy.is_empty());
+    let wrong_length = r#"{"history":[null]}"#;
+    assert!(serde_json::from_str::<ResourceUsageDiagnostics>(wrong_length).is_err());
 }
 
 #[test]
