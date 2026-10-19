@@ -655,3 +655,68 @@ fn work_order_revisions_advance_by_cas_without_rewriting_original_source_or_rece
     assert_eq!(count(&path, "work_order_intake_sources"), 1);
     assert_eq!(count(&path, "work_order_intake_revisions"), 2);
 }
+
+#[test]
+fn duplicate_lookup_rejects_corrupted_binding_revision_before_returning_a_candidate() {
+    let d = private();
+    let path = d.path().join("store.db");
+    let store = open(&path, Arc::new(Authority::default()));
+    let r = request("wo", "source", "task", 0);
+    store.record_intake(r.clone()).expect("record");
+    let injection = Connection::open(&path).expect("fixture fault");
+    injection.execute_batch("DROP TRIGGER work_order_intake_binding_update;UPDATE work_order_intake_bindings SET binding_json=json_set(binding_json,'$.contract_revision',2);").expect("corrupt only binding revision");
+    // Query the already-open writer BEFORE rebuild/open/backup validation.
+    assert!(matches!(
+        store.find_duplicate_candidates(scope(), query(&r, 1)),
+        Err(StoreError::Intake(IntakeStoreError::Integrity))
+    ));
+}
+
+#[test]
+fn duplicate_lookup_rejects_corrupted_scope_metadata_before_returning_lineage() {
+    let d = private();
+    let path = d.path().join("store.db");
+    let store = open(&path, Arc::new(Authority::default()));
+    let r = request("wo", "source", "task", 0);
+    store.record_intake(r.clone()).expect("record");
+    let injection = Connection::open(&path).expect("fixture fault");
+    injection.execute_batch("DROP TRIGGER work_order_intake_revision_update;UPDATE work_order_intake_revisions SET principal_id='forged-principal';").expect("corrupt only denormalized principal");
+    let mut other = scope();
+    other.principal = PrincipalId::new("forged-principal").expect("independent read principal");
+    // SQL selects this row under the corrupted principal; the original request
+    // must still validate and authorize independently before any lineage leaves.
+    assert!(matches!(
+        store.find_duplicate_candidates(other, query(&r, 1)),
+        Err(StoreError::Intake(IntakeStoreError::Integrity))
+    ));
+}
+
+#[test]
+fn read_identifiers_and_scope_references_are_bounded_before_lookup_work() {
+    let d = private();
+    let path = d.path().join("store.db");
+    let store = open(&path, Arc::new(Authority::default()));
+    let r = request("wo", "source", "task", 0);
+    store.record_intake(r.clone()).expect("record");
+    assert!(matches!(
+        store.get_work_order(scope(), "x".repeat(4096), None),
+        Err(StoreError::Intake(IntakeStoreError::Selection))
+    ));
+    for reference in [
+        "x".repeat(1025),
+        "scope\nintake".into(),
+        "../scope".into(),
+        "\u{2003}".into(),
+    ] {
+        let mut bounded = scope();
+        bounded.authority_ref = reference;
+        assert!(matches!(
+            store.get_work_order(bounded.clone(), "wo".into(), None),
+            Err(StoreError::Intake(IntakeStoreError::Denied))
+        ));
+        assert!(matches!(
+            store.find_duplicate_candidates(bounded, query(&r, 1)),
+            Err(StoreError::Intake(IntakeStoreError::Denied))
+        ));
+    }
+}
