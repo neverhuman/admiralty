@@ -6,6 +6,30 @@ This additive update retains the full audit below at its original source/time.
 Only P00/P01 are fully accepted; all30 other parents remain open. Do not rebuild
 the following later integrated components or infer that they are live:
 
+**11:05Z component addendum:** source `feee6086b40f6125b8e76c0e86b01413df0daaab`
+implements an opt-in retained Store admission lease and private paired-cohort
+policy epoch. Both authorities own the same immutable rules/epoch and return
+private identity/role/binding proofs; successful revocation excludes held SQL
+operations. The same full 227 Store cases pass on Mac and capped Linux, eight
+new cases within 227, with strict Store/server all-target Clippy and independent
+review. Receipt `native-admission-fence-20261019T1105Z.json` scopes this component.
+An unrelated lock cannot fence arbitrary callbacks, external credential expiry
+or physical allocation/start. There is no production catalog loader/issuer or
+default activation. The admission-only profile denies standalone mutations;
+production mutation/settlement/recovery and full parent criteria remain open.
+
+**10:49Z primary correction:** Root independently verifies actual primary
+`e71e12f709a13f27ddbb235c30ad0ee29e77d866`, deployed by the sole SC156 backup
+at 10:41:26Z. All 14 manifest files and both executable/start identities match;
+health/UI/feed return 200, 18891 redirects 307, the Rust producer uses zero model
+turns, history is 256 displayed/562 retained, and retired owned Python and prior
+a9d0 PIDs are absent. Original first-history/browser controls were not remeasured.
+See `native-e71e12f7-independent-20261019T1050Z.json`; execution stays unqualified.
+Root's 10:55Z CAS reconciles source/production e71e at original observation time
+without changing any parent or producer clock. Exact e71e browser CI passed;
+the Rust job was cancelled at its annotated 15-minute deadline after contracts,
+fmt and strict Clippy passed. This is not an assertion/resource diagnosis or green.
+
 **10:25Z composition addendum:** source
 `a08d2e8d2bfc55121a0ce96532aa9c8fa822c65b` composes explicit slotted controller,
 original Codex model/preparation binding and protected native-loop admission,

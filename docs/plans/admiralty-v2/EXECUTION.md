@@ -2511,3 +2511,89 @@ provider completion, new provider grant, settlement/release, restart recovery or
 general execution qualification. SC155 remains consumed/unknown and is never
 retried. Next ready work is those production authority/custody and provider/
 context/closure/recovery gates plus remaining WO6 and release criteria.
+
+### 11:05Z — common local policy lease and independently verified e71e primary
+
+PR122 exact `60b53ff2854be6b44d730a48579d537ca2bc38c6` received actual
+neverhumanbot approval at 10:30:55Z and matched-head rebase merge at 10:31:08Z,
+receiving main `e71e12f709a13f27ddbb235c30ad0ee29e77d866`. Zero open PRs were
+observed at 10:31:44Z. The source/test hashes match the qualified a08 payload.
+Root's eight-pin 10:33:58Z rollout CAS/readback produced `ef6a5bcb...`, retaining
+all 32 packet objects and producer clocks/history. These operational results
+are recorded with the next real source packet rather than receipt-only churn.
+
+SC156's sole backup deployer actually built e71e, passed 15 isolated smoke
+checks and cut over at 10:41:26.512074Z. Independent Root inspection under fresh
+fleet gates at 10:49:10.466Z verifies all 14 manifest files, daemon 3873790/start
+59194048 and observer 3873358/start59194019 executable hashes. Manifest is
+`88649297...`; health/UI/feed return 200 and 18891 redirects 307. Rust producer
+model turns remain zero, history is 256 displayed/562 retained, and no retired
+owned Python or prior a9d0 processes remain. Original first-history/browser
+control count were not remeasured. [The independent proof](../../../receipts/integration/native-e71e12f7-independent-20261019T1050Z.json)
+keeps execution unqualified. Root performs no service control.
+
+The latest read watcher0410 still records actual Gemini4Argon quota failures
+and a stale 07:57Z manager file; its parent counter does not measure later source
+components. Other-project directives are outside this lane. Existing SC156
+deploy authority remains with backup885617. Root claimed the common-fence
+packet in `CODEX_CLAIM_COMMON_ADMISSION_FENCE_20261019T1048Z.md`, using a frozen
+API and disjoint source-module/Luna child-test scopes. Root owns shared Store
+integration/docs/rollout. No supervisor pending input was overwritten. Candidate
+branches/worktrees and the superseded committed test draft are preserved.
+
+Source `feee6086b40f6125b8e76c0e86b01413df0daaab` adds an optional startup
+lease, acquired before BEGIN and authority samples and retained through every
+protected success, replay, incident-only commit, rollback and error outcome.
+Both original policies and all ledger/CAS/source/effect checks remain mandatory.
+With this admission-only profile installed, every TaskClaimed event needs both
+budget and slot inputs and standalone journal mutations deny. The absent
+profile preserves ordinary/budget compatibility, without a weaker-path request
+flag. The private paired cohort owns all participating rules/epoch under one
+RwLock. Nonblocking read leases exclude successful exclusive rotation/revocation;
+Busy changes nothing, Applied checks/advances the epoch and invalidates old proofs.
+Distinct private proofs bind coordinator Arc identity, role and complete exact
+source/event/time/effect/command/scope data. Bounded same-cohort try_read samples
+are explicit; no blocking writer, Store reentry, external mutable callback or
+thread-local context is introduced. Contract serialization is bounded first.
+
+[The component receipt](../../../receipts/integration/native-admission-fence-20261019T1105Z.json)
+pins the same 227 full Store cases on Mac and actual Linux, zero failed/ignored/
+filtered. Eight new cases are a subset: four primitive units and four Store
+journeys. Fifteen nonempty targets plus an empty doctest target are recorded;
+worker/platform/revision repeats and nested scenarios are not additive. Linux
+uses one fresh capped invocation 10:59:25–11:03:13Z, jobs1/testthreads1/private
+TMP/unique copied target, workspace packages rebuilt and original cache intact.
+Archive `415fb9d5...`, raw `ae8f84e5...` and post-run code hashes match. Strict
+Store/server all-target Clippy and formatting pass. The real Store journey
+pauses a delegated actual paired policy and observes Busy, then commit/Applied/
+old-proof denial; current rotated replay retains original receipts. Other
+journeys prove weaker-path denial, late CAS rollback and incident-only commit
+with no admission effects and released lease. No provider is involved.
+
+The source worker's four primitive cases have raw logs; the test worker did not
+save its raw command/failure output. Its draft failures and focused success are
+explicitly author-reported only. They are not called archived raw evidence;
+canonical qualification is Root's and Linux's independently captured full suites.
+No logs/digests are invented or old failures rerun for reconstruction. Separate
+source/evidence reviews are transparently recorded, with no bot test-execution claim.
+
+Root's three-pin operational CAS at 10:55Z/readback produces `64b0ceb2...`,
+updating independently observed production to e71e at its original 10:49 time
+while preserving all parents and producer source/history. Exact e71e browser
+workflow39238035283 passed. Rust39238035073 was cancelled; annotation118011792853
+explicitly reports the maximum execution time of 15m0s. Contracts/dashboard
+tests/build and fmt/strict workspace Clippy passed, test compilation completed
+and CLI unit execution began, but no Rust suite completed in the retained raw
+output; later legacy/package/smoke steps were skipped. Raw SHA `8820a51d...`
+and annotations are archived. Root owns the single later CI cleanup list; no
+resource/actor/assertion cause is inferred and no CI rerun/cancel/runner control.
+
+This is a process-local participating-cohort component. Its opaque catalog has
+no public request/config constructor or authenticated loader/issuer; the default
+remains None. There is no physical allotment/credential-expiry or later dispatch/
+start fence, mutation/settlement route, provider completion or restart authority
+recovery. SC155 remains consumed and unknown, never reused. P00/P01 alone remain
+accepted; 30 parents stay open. Next ready work remains authentic installation
+and external resource/custody composition, source-pinned provider diagnostics
+with a separately fresh exact route authorization, context/closure/recovery and
+the remaining WO6/onboarding/release criteria.

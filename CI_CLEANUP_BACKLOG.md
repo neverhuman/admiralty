@@ -6,6 +6,18 @@ neverhumanbot approval and matched-head rebase. Red/queued CI is never green.
 One cleanup lane takes this list after remaining cutover implementation lands;
 build failures remain immediate work.
 
+Actual main e71e12f workflow39238035073 ended cancelled because check-run
+annotation118011792853 explicitly reports the maximum execution time of 15m0s.
+Contracts/dashboard build/tests passed, fmt and strict workspace all-target
+Clippy passed, then cargo test was cancelled; later legacy/package/smoke steps
+were skipped. This is a recorded job deadline, not an inferred external actor,
+resource cause, assertion failure or green result. Exact raw log
+`/private/tmp/adm-ci-e71e-rust-39238035073.log` SHA-256
+`8820a51dc540719438812e31aabcef5b5e2c530566025f2e2b8f2d912ba27384`
+is retained. E71e browser39238035283 passed. Root owns this single cleanup list
+after remaining implementation, without an extra CI lane or guard/deadline
+weakening, rerun, cancellation or runner control now.
+
 Actual maina9d0a002 workflow39232621495 failed its controlled capture case
 `services::native_executor::tests::actual_producer_capture_failure_cannot_yield_typed_transcript`
 at native_executor.rs2319 with `controlled child capture deadline`:95server

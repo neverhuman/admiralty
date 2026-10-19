@@ -260,6 +260,19 @@ reported usage is not billing or settlement.
 
 ### P14 — Atomic admission, fairness, cheap-capable routing and recovery
 
+**Participating-cohort fence component 2026-10-19:** source `feee6086` adds
+optional Store lease retention across every protected transaction outcome and
+a private paired budget/slot/fence cohort. Successful local epoch revocation
+cannot race an in-flight held lease; Busy changes no policy, and old proofs deny
+after Applied. Configured claims cannot downgrade to ordinary/budget-only paths.
+Actual Mac and capped Linux each pass the same full 227 Store cases, including
+eight new cases (four Store journeys, four primitive units). Strict Store/server
+all-target Clippy and separate review pass. See
+`receipts/integration/native-admission-fence-20261019T1105Z.json` and
+`docs/architecture/admission-fence.md`. Default remains None; no authenticated
+catalog loader/issuer, external credential/pool or physical-start fencing,
+provider, mutation/settlement route, recovery or full parent acceptance follows.
+
 **Slotted composition update 2026-10-19:** explicit `admit_one_slotted`,
 `BoundNativeCodexPlan::bind_inference_slot` and `NativeTaskLoop::admit_slotted`
 now retain the original prepared model mapping, commands/proofs and exact

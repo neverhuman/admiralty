@@ -82,6 +82,11 @@ global-ledger advances do not change the original receipts. The runtime repeats
 the same check after the final controller clock sample. Unknown dispatch retains
 all custody/occupancy/liability and cannot be reset by a retry.
 
+The optional [paired admission commit fence](admission-fence.md) can retain one
+cohort's own rules and epoch through the Store transaction. Its catalog has no
+public constructor or authenticated production loader. This is separate from
+external credential/physical-pool and dispatch/start fencing.
+
 These are explicit trusted-local composition APIs. They install no startup
 issuer, live registry/pool authentication, common policy fence, physical-start
 linearization or default scheduler/provider route. Provider completion, usage
