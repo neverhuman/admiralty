@@ -1,0 +1,6 @@
+[family]
+name = "sparse-suite"
+
+[[repo]]
+name = "unmapped"
+url = "https://example.invalid/sparse.git"

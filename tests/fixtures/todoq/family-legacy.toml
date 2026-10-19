@@ -1,0 +1,8 @@
+[family]
+name = "archive-suite"
+landing = "shifts"
+bulletshift_prefix = "legacy-prefix"
+
+[[repo]]
+name = "engine"
+url = "https://example.invalid/archive.git"

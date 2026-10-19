@@ -1,0 +1,17 @@
+[family]
+name = "lighthouse-suite"
+landing = "shifts"
+shift_tz = "UTC"
+dayshift_prefix = "day"
+nightshift_prefix = "night"
+auto_shift_pr = false
+
+[[repo]]
+name = "engine"
+url = "https://example.invalid/engine.git"
+order = 1
+
+[[repo]]
+name = "frontend"
+url = "https://example.invalid/frontend.git"
+order = 2
