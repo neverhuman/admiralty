@@ -287,7 +287,11 @@ pub fn stage_native_package(
 
     // Validate the exact captured guard closure before creating staging paths.
     // Later copy/hash/identity checks bind these inspected bytes to the output.
-    validate_guard_closure(&prepared, &mut sources)?;
+    let mut borrowed_sources: Vec<_> = sources
+        .iter_mut()
+        .map(|(file, before)| (file, *before))
+        .collect();
+    validate_guard_closure(&prepared, &mut borrowed_sources)?;
 
     let output_parent = output_dir
         .parent()
@@ -416,7 +420,7 @@ pub fn stage_native_package(
 
 fn validate_guard_closure(
     prepared: &[(&PackageInput, String)],
-    sources: &mut [(File, FileIdentity)],
+    sources: &mut [(&mut File, FileIdentity)],
 ) -> Result<(), PackageError> {
     let mut split_entry = false;
     for ((input, destination), (source, before)) in prepared.iter().zip(sources) {
@@ -810,6 +814,165 @@ fn hash_open_file(source: &mut File) -> Result<String, PackageError> {
         digest.update(&buffer[..count]);
     }
     Ok(format!("{:x}", digest.finalize()))
+}
+
+/// Revalidate staged guard bytes using the same exact source-bound dependency
+/// closure and conservative custom-guard rules as native staging. Files are the
+/// caller's original pinned handles in manifest-entry order, never reopened.
+/// Generated top-level filenames retain their reserved source-bound meaning;
+/// staging metadata does not record their original input aliases.
+pub(crate) fn validate_staged_guard_closure(
+    manifest: &PackageManifest,
+    files: &mut [&mut File],
+) -> Result<(), PackageError> {
+    validate_staged_manifest(manifest)?;
+    if files.len() != manifest.entries.len() {
+        return Err(PackageError::InvalidInput(
+            "staged guard handle count mismatch",
+        ));
+    }
+    let mut inputs = Vec::new();
+    let mut destinations = Vec::new();
+    let mut borrowed_sources = Vec::new();
+    for (entry, file) in manifest.entries.iter().zip(files.iter_mut()) {
+        let Some(name) = entry
+            .archive_path
+            .strip_prefix("share/admiralty/guards/v2/")
+        else {
+            continue;
+        };
+        let source = if name == "validators.mjs"
+            || GENERATED_GUARD_MODULES
+                .iter()
+                .any(|(allowed, _)| name == *allowed)
+        {
+            format!("{GENERATED_GUARD_PREFIX}{name}")
+        } else {
+            format!("schemas/guards/v2/{name}")
+        };
+        let metadata = file.metadata()?;
+        if !metadata.is_file()
+            || metadata.nlink() != 1
+            || metadata.len() != entry.size
+            || metadata.mode() & 0o7777 != entry.mode
+        {
+            return Err(PackageError::InvalidInput("staged guard metadata mismatch"));
+        }
+        let before = identity(&metadata);
+        inputs.push(PackageInput {
+            source,
+            expected_sha256: entry.sha256.clone(),
+            mode: entry.mode,
+        });
+        destinations.push(entry.archive_path.clone());
+        borrowed_sources.push((&mut **file, before));
+    }
+    let prepared: Vec<_> = inputs.iter().zip(destinations).collect();
+    validate_guard_closure(&prepared, &mut borrowed_sources)
+}
+
+/// Verify an explicitly supplied manifest against the existing native staging policy.
+/// This validates data, not operator approval, source provenance, or installation.
+pub(crate) fn validate_staged_manifest(manifest: &PackageManifest) -> Result<(), PackageError> {
+    validate_metadata(&manifest.version, &manifest.target, &manifest.source_commit)?;
+    if manifest.schema_version != 1
+        || manifest.entries.is_empty()
+        || manifest.entries.len() > MAX_FILES
+    {
+        return Err(PackageError::InvalidInput(
+            "manifest schema or entry count is invalid",
+        ));
+    }
+    let mut total = 0_u64;
+    let mut previous: Option<&str> = None;
+    let mut seen = BTreeSet::new();
+    let mut kinds = BTreeSet::new();
+    for entry in &manifest.entries {
+        if entry.archive_path.len() > MAX_PATH_BYTES || !valid_sha256(&entry.sha256) {
+            return Err(PackageError::InvalidInput("manifest entry field bound"));
+        }
+        if previous.is_some_and(|p| p >= entry.archive_path.as_str()) {
+            return Err(PackageError::InvalidInput(
+                "manifest entries must be strictly sorted",
+            ));
+        }
+        previous = Some(&entry.archive_path);
+        let source = if let Some(name) = entry.archive_path.strip_prefix("bin/") {
+            format!("target/release/{name}")
+        } else if let Some(name) = entry
+            .archive_path
+            .strip_prefix("share/admiralty/dashboard/")
+        {
+            format!("apps/dashboard/dist/{name}")
+        } else if entry.archive_path == "share/admiralty/schemas/domain-event-v2.schema.json" {
+            "schemas/domain-event-v2.schema.json".to_owned()
+        } else if let Some(name) = entry
+            .archive_path
+            .strip_prefix("share/admiralty/guards/v2/")
+        {
+            format!("schemas/guards/v2/{name}")
+        } else if let Some(name) = entry.archive_path.strip_prefix("share/doc/admiralty/") {
+            format!("docs/{name}")
+        } else {
+            return Err(PackageError::InvalidInput(
+                "manifest path is outside native staged shapes",
+            ));
+        };
+        let (destination, kind) = package_destination(&source)?;
+        if destination != entry.archive_path
+            || !valid_sha256(&entry.sha256)
+            || !matches!(entry.mode, 0o644 | 0o755)
+            || (kind == InputKind::Binary) != (entry.mode == 0o755)
+            || entry.size > MAX_FILE_BYTES
+        {
+            return Err(PackageError::InvalidInput(
+                "manifest entry differs from native staging policy",
+            ));
+        }
+        let folded = destination.to_ascii_lowercase();
+        if seen.iter().any(|p: &String| {
+            p == &folded
+                || p.starts_with(&(folded.clone() + "/"))
+                || folded.starts_with(&(p.clone() + "/"))
+        }) {
+            return Err(PackageError::InvalidInput("manifest paths collide"));
+        }
+        seen.insert(folded);
+        kinds.insert(kind);
+        total = total
+            .checked_add(entry.size)
+            .ok_or(PackageError::InvalidInput("manifest size overflow"))?;
+        if total > MAX_TOTAL_BYTES {
+            return Err(PackageError::InvalidInput("manifest exceeds 1 GiB"));
+        }
+    }
+    if [
+        InputKind::Binary,
+        InputKind::Dashboard,
+        InputKind::Schema,
+        InputKind::Guard,
+        InputKind::Documentation,
+    ]
+    .iter()
+    .any(|kind| !kinds.contains(kind))
+    {
+        return Err(PackageError::InvalidInput(
+            "manifest omits a native staged input kind",
+        ));
+    }
+    let unsigned = UnsignedManifest {
+        schema_version: manifest.schema_version,
+        version: manifest.version.clone(),
+        target: manifest.target.clone(),
+        source_commit: manifest.source_commit.clone(),
+        entries: manifest.entries.clone(),
+    };
+    if manifest.manifest_sha256 != content_digest(&unsigned)? {
+        return Err(PackageError::InvalidInput(
+            "manifest structured digest mismatch",
+        ));
+    }
+    Ok(())
 }
 
 #[cfg(test)]
