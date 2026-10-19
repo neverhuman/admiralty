@@ -12,7 +12,7 @@ import { validateTaskContract, validateCoordinationMessage, validateDomainEvent,
   validateConfigLayer, validateConfigPatch, validateConfigLayerReceipt, validateProvenanceContribution,
   validateIntakeBatch, validateSourceProvenance, validateIntakePreview, validateWorkOrderRevision,
   validateRecordIntakeRequest, validateRecordIntakeReceipt, validateDeliveryRequirement,
-  validateDuplicateQuery, validateDuplicatePage,
+  validateDuplicateQuery, validateDuplicatePage, validateCoordinationEnvelopeV2,
   SUPPORTED_SCHEMA_VERSION, CONTRACT_SCHEMA_FINGERPRINTS } from './generated/validators.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -112,8 +112,8 @@ test('standalone package entry has no compiler dependency and exports supported 
   assert.equal(publicApi.validateTaskContract, validateTaskContract);
   assert.equal(SUPPORTED_SCHEMA_VERSION, 1);
   const generated = path.join(root, 'packages/contracts/generated');
-  const runtimeModules = (await readdir(generated)).filter(name => /^validators(?:-[a-z-]+)?\.mjs$/.test(name));
-  assert.equal(runtimeModules.length, 20, 'compatibility entry, shared base and eighteen separate public roots');
+  const runtimeModules = (await readdir(generated)).filter(name => /^validators(?:-[a-z0-9-]+)?\.mjs$/.test(name));
+  assert.equal(runtimeModules.length, 21, 'compatibility entry, shared base and nineteen separate public roots');
   for (const name of runtimeModules) {
     const source = await readFile(path.join(generated, name), 'utf8');
     assert.doesNotMatch(source, /\brequire\s*\(|\bimport\s|\beval\s*\(|\bnew Function\s*\(/, name);
@@ -238,7 +238,33 @@ const publicValidators = { Workplan: validateWorkplan, VerificationReceipt: vali
   IntakeBatch: validateIntakeBatch, SourceProvenance: validateSourceProvenance, IntakePreview: validateIntakePreview,
   WorkOrderRevision: validateWorkOrderRevision, RecordIntakeRequest: validateRecordIntakeRequest,
   RecordIntakeReceipt: validateRecordIntakeReceipt, DeliveryRequirement: validateDeliveryRequirement,
-  DuplicateQuery: validateDuplicateQuery, DuplicatePage: validateDuplicatePage };
+  DuplicateQuery: validateDuplicateQuery, DuplicatePage: validateDuplicatePage,
+  CoordinationEnvelopeV2: validateCoordinationEnvelopeV2 };
+
+test('v2 coordination keeps full header identity and precise counters without importing authority', () => {
+  const value = structuredClone(publicFixtures.CoordinationEnvelopeV2);
+  assert.equal(validateCoordinationEnvelopeV2(value), true);
+  assert.equal(validateCoordinationMessage(value), false);
+  for (const protocol_version of [0, 1, 3, '2']) {
+    rejectUnchanged(validateCoordinationEnvelopeV2, { ...value, protocol_version });
+  }
+  for (const id of ['', '.', '..', 'x'.repeat(129), 'é', 'worker\n']) {
+    rejectUnchanged(validateCoordinationEnvelopeV2, { ...value, sender: id });
+  }
+  for (const reference of ['', 'x'.repeat(513), 'policy\n', 'é']) {
+    rejectUnchanged(validateCoordinationEnvelopeV2, { ...value, authority: { ...value.authority, reference } });
+  }
+  for (const generation of ['0', '01', '18446744073709551616', 9007199254740992]) {
+    rejectUnchanged(validateCoordinationEnvelopeV2, { ...value, authority: { ...value.authority, generation } });
+  }
+  for (const field of ['causation_id', 'context_epoch', 'baseline_digest', 'expires_at_unix_ms']) {
+    const missing = structuredClone(value); delete missing[field];
+    rejectUnchanged(validateCoordinationEnvelopeV2, missing);
+  }
+  assert.equal(value.source_cursor.event_seq, '18446744073709551615');
+  rejectUnchanged(validateCoordinationEnvelopeV2, { ...value, trusted: true });
+  // Shape checks do not authenticate the supplied authority or join scope digests.
+});
 
 function rejectUnchanged(validate, value) {
   const before = JSON.stringify(value);
@@ -248,7 +274,7 @@ function rejectUnchanged(validate, value) {
 
 test('public roots share Rust roundtrip fixtures and package guards', async () => {
   const publicApi = await import('@admiralty/contracts');
-  assert.equal(Object.keys(CONTRACT_SCHEMA_FINGERPRINTS).length, 22);
+  assert.equal(Object.keys(CONTRACT_SCHEMA_FINGERPRINTS).length, 23);
   assert.deepEqual(Object.keys(publicFixtures).sort(), Object.keys(publicValidators).sort());
   for (const [name, validate] of Object.entries(publicValidators)) {
     const fixture = structuredClone(publicFixtures[name]);

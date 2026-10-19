@@ -80,6 +80,9 @@
     },
     "./duplicate-page": {
       "types": "./generated/duplicate-page.ts"
+    },
+    "./coordination-envelope-v2": {
+      "types": "./generated/coordination-envelope-v2.ts"
     }
   },
   "sideEffects": false

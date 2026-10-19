@@ -730,5 +730,46 @@
       "kind": "incomplete",
       "reason": "bounded immutable intake lineage only"
     }
+  },
+  "CoordinationEnvelopeV2": {
+    "protocol_version": 2,
+    "message_id": "message-1",
+    "project_id": "project-1",
+    "root_id": "root-1",
+    "sender": "worker-1",
+    "recipient": {
+      "kind": "principal",
+      "principal_id": "commodore-1"
+    },
+    "topic": "task.failure",
+    "task_revision": {
+      "task_id": "task-1",
+      "revision": 2,
+      "contract_digest": "sha256:06acc749550acd623b921e8eff448d206c6256569b5efefa3b2a3ea35e774d16"
+    },
+    "causation_id": "message-0",
+    "correlation_id": "correlation-1",
+    "source_cursor": {
+      "recovery_generation": "3",
+      "event_seq": "18446744073709551615",
+      "projection_schema": 2,
+      "authorization_scope_digest": "sha256:900dee8c3df01ccc71413fecf1ec6bf41a59951b87d2c29d42df5138ca4e052d"
+    },
+    "authority": {
+      "reference": "policy:worker-1:root-1",
+      "generation": "4",
+      "policy_digest": "sha256:e35aeca3340dc9193dd72f2a651d05c8b49c4c0aabd995c3c24df4bd72f6abd8",
+      "scope_digest": "sha256:900dee8c3df01ccc71413fecf1ec6bf41a59951b87d2c29d42df5138ca4e052d"
+    },
+    "context_epoch": "epoch-1",
+    "baseline_digest": "sha256:8ba8496a2525ae171ffd104d632dede6ef418d9b95962a9d88e2fcdbc8d48d24",
+    "protected_facts_digest": "sha256:f50fb087e75ab7807770a3b934a4fc9c8cdc891984bdcae11cbbd05d163ae650",
+    "payload_ref": {
+      "sha256": "sha256:f50fb087e75ab7807770a3b934a4fc9c8cdc891984bdcae11cbbd05d163ae650",
+      "size_bytes": "78"
+    },
+    "kind": "verification_failed",
+    "priority": "decision",
+    "expires_at_unix_ms": "500"
   }
 }

@@ -82,3 +82,15 @@ import type { AuthorizedIntakeScope } from '@admiralty/contracts';
 import type { IntakePolicy } from '@admiralty/contracts';
 void [scopeSnapshot, numericGeneration];
 export type NestedIntakeTypes = [SourcePayload, ScopeSnapshot, RequesterAttribution, WorkOrderTaskBinding, SelectedTask];
+
+import { validateCoordinationEnvelopeV2 } from '@admiralty/contracts';
+import type { CoordinationEnvelopeV2 } from '@admiralty/contracts';
+import type { CoordinationEnvelopeV2 as EnvelopeSubpath } from '@admiralty/contracts/coordination-envelope-v2';
+if (validateCoordinationEnvelopeV2(input)) {
+  const envelope: CoordinationEnvelopeV2 & EnvelopeSubpath = input;
+  const version: 2 = envelope.protocol_version;
+  const eventSequence: string = envelope.source_cursor.event_seq;
+  void [version, eventSequence, envelope.authority.policy_digest, envelope.payload_ref.sha256];
+}
+// @ts-expect-error Comparison bindings are trusted in-process inputs, not public wire grants.
+import type { ExpectedBindings } from '@admiralty/contracts';

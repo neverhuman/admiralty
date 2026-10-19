@@ -534,13 +534,12 @@ fn schema_has_exact_v2_constant_closed_objects_and_canonical_counter() {
     );
     assert!(schema["properties"].get("schema_version").is_none());
     for field in ["message_id", "project_id", "root_id", "sender"] {
-        assert_eq!(schema["properties"][field]["maxLength"], 128);
-        assert_eq!(schema["properties"][field]["minLength"], 1);
+        assert_eq!(schema["properties"][field]["type"], "string");
         assert!(
             schema["properties"][field]["pattern"]
                 .as_str()
                 .expect("ID pattern")
-                .contains("A-Za-z0-9")
+                .contains("[A-Za-z0-9_.-]{1,128}")
         );
     }
 }
