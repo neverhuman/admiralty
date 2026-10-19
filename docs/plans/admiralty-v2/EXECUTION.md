@@ -1615,7 +1615,7 @@ shared registration/dependencies/source integration/rollout; Commodore alone
 deploys. Parent acceptance remains2/32 and native coding execution false. CI
 cleanup stays deferred; current hosted results never replace source-bound proof.
 
-### Writer attention and advisory resource composition — 2026-10-19T04:40Z
+### Writer attention and advisory resource composition — 2026-10-19T04:25Z
 
 Sourceee47a0b84b0fecb6f2afed36f97727cee4285089 composes current opaque actor/
 policy authorization on Store's sole attention writer with the paired native
@@ -1658,3 +1658,42 @@ context lane owns a bounded authorized original-wake/source read and protected
 batch compiler; no claimed digest substitutes for original journal custody.
 Actual hosted failures are retained on the single CI cleanup backlog, with no
 cleanup lane before implementation under the02:12 human ruling.
+
+### Native Rust archive integration — 2026-10-19T04:36Z
+
+PR105 merged04:27:34Z after exact aee74b5 approval; receivingmain is
+6e1c8f577bc7a4cf95251941a30f1ac701882423. Root has now consumed the queued
+[independent9c4 proof](../../../receipts/integration/native-9c4ba020-independent-20261019T0424Z.json):
+its actual observation time is04:24:18Z, all14 manifest files and both process
+paths/start ticks match, HTTP200/307/feed200, Rust producer/modelturns0, and no
+retired owned Python PID. First historical-row timestamp was not measured.
+The nominal0431 filename in the coordination directory does not change that
+observation time. Likewise attention receipt0440 records actual04:25:49Z.
+Commodore alone owns deployment of newer receivingmain; root controls no service.
+
+Source413aef4ef8bc745908ac4762f9b8986a14dd3820 registers
+`admiralty release archive` over explicit reviewed native stages. All34 actual
+cases pass:20 archive,4 CLI child and10 unchanged native-stage/real-Node guard
+tests. Strict CLI all-target Clippy and formatting pass. Prior157 dependency
+version/source/checksum tuples remain unchanged;7 new packages provide pinned
+Rust tar/miniz compression. Independent review verifies manifest hash domains,
+no-follow retained handles, bounded streaming/inventory, unchanged guard policy,
+deterministic metadata and atomic no-replace/uncertain outcomes. Root also adds
+pre/post publication private-parent checks with actual permission-change tests.
+[Integrated receipt](../../../receipts/integration/native-archive-20261019T0436Z.json)
+preserves three failing-before guard-bypass cases and the repaired source.
+README now points to the [Rust archive command](../../operators/native-archive.md).
+The historical Python packager remains compatibility reference; no supported
+Linux archive, real release payload, installer, signature, publication or full
+P30 qualification is inferred from local synthetic archives.
+
+S2 review reproduced two further component failures atcb496c9: credentials
+revoked inside writer policy still allowed a real capture commit, and different
+equal-length preview texts shared one policy digest. Both actual cases failed
+before repair; the existing S2 author owns corrections and current-main rebase.
+S1 retains its four failing-before delivery cases. Neither candidate is merged
+or accepted from earlier passing smoke tests. The new protected original-wake/
+source-read context componentb9e455f has9 actual tests and independent review;
+root registration/composition remains next, with no production read issuer or
+provider transport enabled. Parent acceptance2/32 and general coding false remain
+unchanged. Failed CI stays on the one cleanup backlog without delaying ready code.

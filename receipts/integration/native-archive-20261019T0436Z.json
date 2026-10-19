@@ -1,0 +1,603 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T04:36:29.716Z",
+  "code_source_git_revision": "413aef4ef8bc745908ac4762f9b8986a14dd3820",
+  "base_git_revision": "6e1c8f577bc7a4cf95251941a30f1ac701882423",
+  "scope": "Usable bounded native Rust package archive command",
+  "source_artifacts": [
+    {
+      "path": "crates/admiralty-cli/src/native_archive.rs",
+      "bytes": 61276,
+      "sha256": "d8b62fa03997654fdf4697a48b07422be37d2a02fabeb580f95513b2651fb8eb"
+    },
+    {
+      "path": "crates/admiralty-cli/src/native_package.rs",
+      "bytes": 56705,
+      "sha256": "79afced0ddb224ea07797855a1edfe39f6c84112304c3e7de0a531198ec0474e"
+    },
+    {
+      "path": "crates/admiralty-cli/src/main.rs",
+      "bytes": 55323,
+      "sha256": "e68a781f93f9284a6c011a52e99d05ed83584df3b8f136e9ec9f15665a4f457c"
+    },
+    {
+      "path": "crates/admiralty-cli/tests/native_archive_cli.rs",
+      "bytes": 13111,
+      "sha256": "8c3633775cbe7b7051f367f2d9cc089685a062d8503cba343e5f397628f16244"
+    },
+    {
+      "path": "crates/admiralty-cli/Cargo.toml",
+      "bytes": 743,
+      "sha256": "44a48baafea98866f932f31c345cb8990ce988139abb7979dedb827164149ca4"
+    },
+    {
+      "path": "Cargo.lock",
+      "bytes": 39378,
+      "sha256": "e8c7585e3af9607b01ebc52e88669f9792e9274cd00286b72d1d747c760134da"
+    }
+  ],
+  "checks": [
+    {
+      "name": "actual archive module",
+      "exit": 0,
+      "passed": 20,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 44,
+      "path": "target/quality/archive-module-custody-final.log",
+      "bytes": 2395,
+      "sha256": "4e39ce7eb7ce96c5052e4f412882f1e637c4ddbb6ff4e4ab72622dd3000551c0"
+    },
+    {
+      "name": "actual Rust CLI children",
+      "exit": 0,
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "path": "target/quality/archive-cli-custody-final.log",
+      "bytes": 741,
+      "sha256": "868f3d710c57773cfbd3ff9def9100837460674cacb186fc4e0400582ddaa9c2"
+    },
+    {
+      "name": "unchanged native stage and Node guard closure",
+      "exit": 0,
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 53,
+      "path": "target/quality/archive-package-integrated-final.log",
+      "bytes": 3006,
+      "sha256": "d473b6a9c444603247d0b0fcfe551c308103c5b4776f861e64d9f3c0d7269e0b"
+    }
+  ],
+  "strict_clippy": {
+    "exit": 0,
+    "path": "target/quality/archive-clippy-custody-final.log",
+    "bytes": 174,
+    "sha256": "a6a69294a22debeb5b1172177084f192369e3ce4daf25b2406844eb713858a64"
+  },
+  "format": {
+    "exit": 0,
+    "path": "target/quality/archive-fmt-custody-final.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "features": {
+    "path": "target/quality/archive-features-integrated-final.log",
+    "bytes": 49873,
+    "sha256": "b7abdbaf5fb7893ed8ba2c406d1fc77f28ec6d9b8f6387ab80e95d77cab3c408"
+  },
+  "qualified_actual_tests": 34,
+  "unchanged_stage_test_source": "f0f2a9e973fc396363fa36a1285f6f9ec9ad7e42 has identical native_package helper/stage and10case tests; only archive custody code subsequently changed",
+  "worker_receipts": [
+    {
+      "path": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/receipt.json",
+      "bytes": 7907,
+      "sha256": "9b7682432c24b4bc0eceb3266dc244d2c33c71f54599a5487985c8ed7212a86a",
+      "receipt": {
+        "packet": "P30 deterministic native staged-package archive component",
+        "created_utc": "2026-10-19T04:15:05.981446+00:00",
+        "base": "04d334650fda018ee7acc88980c5c3f143948a6d",
+        "commit": "de8c31dcf65b10df615b3b1cb0ddfdb6e0b8cf6a",
+        "worktree": "/private/tmp/admiralty-audit-b2b9e7a",
+        "branch": "codex/native-staged-archive",
+        "source": {
+          "path": "crates/admiralty-cli/src/native_archive.rs",
+          "bytes": 52683,
+          "sha256": "6008fdcefe8298c96319a8fe031b3b46d0890ea3025ec61871e8b36e063d52bc"
+        },
+        "clean_worktree": true,
+        "root_integration": {
+          "excluded_patch": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/root-archive-integration.patch",
+          "sha256": "a4dcbfee7a13c145e9d33f4c8c57746b82507634eba37c931d920deba7eed700",
+          "files": [
+            "Cargo.lock",
+            "crates/admiralty-cli/Cargo.toml",
+            "crates/admiralty-cli/src/main.rs",
+            "crates/admiralty-cli/src/native_package.rs"
+          ],
+          "registered_native_package_sha256": "3e823c3a8ad501986c6097f541d8fb11bf730bcb82354266b8da744487ac78e6",
+          "all_temporary_shared_changes_restored": true,
+          "helper": "pub(crate) native_package::validate_staged_manifest(&PackageManifest) -> Result<(), PackageError>",
+          "dependency_policy": "tar =0.4.46 defaults=false; flate2 =1.1.10 defaults=false features[miniz_oxide]. Only7 new packages and CLI dependency edges; no prior lock versions changed."
+        },
+        "checks": [
+          {
+            "argv": [
+              "cargo",
+              "test",
+              "-p",
+              "admiralty-cli",
+              "--bin",
+              "admiralty",
+              "native_archive::tests",
+              "--locked",
+              "--",
+              "--nocapture"
+            ],
+            "exit": 0,
+            "seconds": 2.9482425418682396,
+            "log": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/final-archive.log",
+            "log_sha256": "460e1f8be35143fd537a39801890187e9fa9146facced0c1bceeaad7b5f5666f",
+            "passed": 15,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 44
+          },
+          {
+            "argv": [
+              "cargo",
+              "clippy",
+              "-p",
+              "admiralty-cli",
+              "--all-targets",
+              "--locked",
+              "--",
+              "-D",
+              "warnings"
+            ],
+            "exit": 0,
+            "seconds": 1.3403801247477531,
+            "log": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/final-strict.log",
+            "log_sha256": "555b65d55d23b1e4720c9979f774ceb8f9c5227c69fa98fee2654e05e093e7ef"
+          },
+          {
+            "argv": [
+              "cargo",
+              "test",
+              "-p",
+              "admiralty-cli",
+              "--bin",
+              "admiralty",
+              "native_package::tests",
+              "--locked"
+            ],
+            "exit": 0,
+            "seconds": 1.809796541929245,
+            "log": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/frozen-package.log",
+            "log_sha256": "b1fde22a270f5e1646e899bdd6a38f9ae1157c91639887664c0a6dd6a0046752",
+            "passed": 10,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 49,
+            "source_limit": "Existing stage/helper source unchanged after this run; last archive-only cleanup was covered by final15 tests and strict all-target compile."
+          },
+          {
+            "argv": [
+              "cargo",
+              "fmt",
+              "--all",
+              "--",
+              "--check"
+            ],
+            "exit": 0,
+            "seconds": 1.1439289590343833,
+            "log": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/final-format.log",
+            "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "argv": [
+              "cargo",
+              "tree",
+              "-p",
+              "admiralty-cli",
+              "-e",
+              "features",
+              "--locked"
+            ],
+            "exit": 0,
+            "seconds": 0.062143499962985516,
+            "log": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/frozen-features.log",
+            "log_sha256": "62409024fdb49118d15f9b57ade0b2922cffd58591b7736401141bb3dc8fac3f"
+          }
+        ],
+        "environment": {
+          "TMPDIR": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/tmp",
+          "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/native-archive",
+          "CARGO_BUILD_JOBS": "1",
+          "RUST_TEST_THREADS": "1",
+          "host": "macOS local actual module tests; Linux FIFO path statically conditional and not executed here"
+        },
+        "determinism": {
+          "before_raw_archive_sha256": "067e3f9daaccea03a36f7dc9942b5d2d538388651862cf68e7e6eb504be20517",
+          "after_raw_archive_sha256": "067e3f9daaccea03a36f7dc9942b5d2d538388651862cf68e7e6eb504be20517",
+          "archive_bytes": 2991,
+          "identical": true,
+          "actual_stage_native_package": true,
+          "input_order_and_source_mtime_changed": true,
+          "python_invoked": false
+        },
+        "dependency_features": {
+          "flate2": [
+            "miniz_oxide",
+            "any_impl"
+          ],
+          "tar_default_xattr": false,
+          "system_zlib": false,
+          "runtime_backend_selection": false,
+          "source": "frozen-features.log"
+        },
+        "negative_proofs": [
+          "Exact complete and unsigned manifest digests required; same-length reordered disk JSON rejected.",
+          "Missing/extra file, directory and special inode rejected; unexpected entry content never becomes input.",
+          "Changed source bytes/modes/sizes, symlink/hardlink/nonregular sources and symlink roots/parents rejected.",
+          "Metadata/path/count/total/tree/serialization limits fail closed without eviction.",
+          "Source mutation after preflight and after append rejected; pinned source ancestor replaced by symlink never acknowledged.",
+          "Existing/dangling-link/race output preserved by actual no-replace rename.",
+          "Temporary-name replacement rejected and replacement left untouched by owned-temp cleanup.",
+          "Output-parent swap after precommit pin returns CommitUncertain and preserves actual committed artifact.",
+          "Injected pre-finish failure returns error and removes only owned temporary name; injected acknowledgement loss preserves published artifact and retry refuses overwrite.",
+          "Exact-length streaming reader and bounded compressed writer reject overflow."
+        ],
+        "preserved_failure_logs": [
+          {
+            "path": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/compile-first.log",
+            "sha256": "0d01c9e2cab998ddc2c292e467e16d2c7e018bb9975c825c47ca2b0a327b6314"
+          },
+          {
+            "path": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/archive-first.log",
+            "sha256": "d50a9dc8e15e6fbf089bd59c4ed2ae692eba5376138e404f1be66f6f503a0dcd"
+          },
+          {
+            "path": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/archive-strict-first.log",
+            "sha256": "fba0ef62875e94a88aa93e3fa68f2b7e7c8f71514c9f3c2f823299ab8694b7c2"
+          }
+        ],
+        "limits": [
+          "Archive operates on explicit operator-supplied PackageManifest plus independent expected full raw digest. Neither JSON nor checksums authenticate a publisher or Git source.",
+          "Full raw MANIFEST.json digest (64 hex, newline included) remains distinct from existing sha256:<hex> unsigned structured manifest digest.",
+          "1MiB manifest,1024files,512MiB/file,1GiB total,8192 projected nodes,portable ASCII paths4096bytes/component255/depth32,compressed output<=1GiB+16MiB.",
+          "File payloads are streamed; bounded manifest/projected-tree/identity metadata and<=1025 retained regular file handles remain resident. Host FD exhaustion fails closed.",
+          "macOS actual tests use Unix sockets for nonregular rejection; Linux-only FIFO fixture is compiled/run only on Linux. No Linux archive run or cross-platform support qualification claimed.",
+          "Pre-finish/acknowledgement failures are deterministic injected hooks, not actual disk/fsync device-fault qualification.",
+          "No guarantee against malicious concurrent same-uid/root changes beyond checked descriptor/name identities and hashes. Ambiguous committed outcomes are preserved and require reconciliation.",
+          "No Python invocation/deletion, new CLI command, install, signing, publishing, credentials, provider/fleet/CI/service action or P30 parent acceptance. Root owns production registration/CLI/docs/dependencies/lock and final exact integration checks."
+        ]
+      }
+    },
+    {
+      "path": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/guard-repair-receipt.json",
+      "bytes": 6240,
+      "sha256": "7167b83552140391b00065df4248bfd06fdf2fc1c0c5d2ae3857f0da6a44b8f5",
+      "receipt": {
+        "packet": "P30 native archive exact staged-guard closure repair",
+        "created_utc": "2026-10-19T04:22:47.929414+00:00",
+        "base_candidate": "de8c31dcf65b10df615b3b1cb0ddfdb6e0b8cf6a",
+        "commit": "2e4424db2d4e70e21dbd62d4776e189a62782b32",
+        "worktree": "/private/tmp/admiralty-audit-b2b9e7a",
+        "branch": "codex/native-staged-archive",
+        "source": {
+          "path": "crates/admiralty-cli/src/native_archive.rs",
+          "sha256": "0d0d93b2af533a630798acfa0e0af0f8e38290524826131901554b5c888c3795",
+          "bytes": 59538
+        },
+        "checks": [
+          {
+            "argv": [
+              "cargo",
+              "test",
+              "-p",
+              "admiralty-cli",
+              "--bin",
+              "admiralty",
+              "native_archive::tests",
+              "--locked",
+              "--",
+              "--nocapture"
+            ],
+            "exit": 0,
+            "seconds": 5.236479666084051,
+            "log": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/guard-repaired-archive.log",
+            "sha256": "518c4e35506f73539625f2fb409c2a6aea22a99bfc1a92dd80b0c70436cc9262",
+            "passed": 19,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 44
+          },
+          {
+            "argv": [
+              "cargo",
+              "test",
+              "-p",
+              "admiralty-cli",
+              "--bin",
+              "admiralty",
+              "native_package::tests",
+              "--locked"
+            ],
+            "exit": 0,
+            "seconds": 1.7557842079550028,
+            "log": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/guard-repaired-package.log",
+            "sha256": "1596885a335fb66daf8a7c8c514d23c8ecac7014ba753333a40efe670272012f",
+            "passed": 10,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 53
+          },
+          {
+            "argv": [
+              "cargo",
+              "clippy",
+              "-p",
+              "admiralty-cli",
+              "--all-targets",
+              "--locked",
+              "--",
+              "-D",
+              "warnings"
+            ],
+            "exit": 0,
+            "seconds": 1.665356708690524,
+            "log": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/guard-repaired-strict.log",
+            "sha256": "13706f2c6c560ee362d1d291c5f798afd5f57f52b627f5a37f0d41f96ba3692d"
+          },
+          {
+            "argv": [
+              "cargo",
+              "fmt",
+              "--all",
+              "--",
+              "--check"
+            ],
+            "exit": 0,
+            "seconds": 1.1116903750225902,
+            "log": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/guard-repaired-format.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "before_repair": {
+          "log": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/guard-before-repair.log",
+          "sha256": "59f0d726bc38d55195dfdfe8bfa2c2d942eb98906dfdeb18141473918602a82d",
+          "result": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/guard-before-repair-result.json",
+          "passed": 0,
+          "failed": 3,
+          "filtered": 60,
+          "candidate_preserved": true,
+          "old_module": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/guard-before-candidate.rs",
+          "old_module_sha256": "6008fdcefe8298c96319a8fe031b3b46d0890ea3025ec61871e8b36e063d52bc"
+        },
+        "root_integration": {
+          "excluded_patch": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/root-archive-guard-integration.patch",
+          "sha256": "64e0122c0a9c9c68ca8da30f226f561e1d18caa0a90545281d8e5d3789dda20d",
+          "files": [
+            "Cargo.lock",
+            "crates/admiralty-cli/Cargo.toml",
+            "crates/admiralty-cli/src/main.rs",
+            "crates/admiralty-cli/src/native_package.rs"
+          ],
+          "registered_native_package": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/guard-registered__crates__admiralty-cli__src__native_package.rs",
+          "registered_native_package_sha256": "79afced0ddb224ea07797855a1edfe39f6c84112304c3e7de0a531198ec0474e",
+          "all_shared_originals_restored": true,
+          "helpers": [
+            "validate_staged_manifest(&PackageManifest)",
+            "validate_staged_guard_closure(&PackageManifest,&mut[&mutFile])"
+          ],
+          "legacy_factor": "Existing validate_guard_closure body/policy unchanged; its sources are borrowed original File handles instead of moved File handles. Stage caller supplies borrowed references to its same actual files. No descriptor clones, source reopens, second parser, or new relaxed guard rules."
+        },
+        "proof": [
+          "Missing generated sibling consistently removed from manifest/disk and full hashes recomputed: old archive wrongly succeeded; repaired archive rejects.",
+          "Generated guard leaf changed to always-true bytes with new entry size/SHA and both manifest hashes: old archive wrongly succeeded; repaired archive rejects against existing exact source-bound module.",
+          "Custom dynamic guard export/import with consistent hashes: old archive wrongly succeeded; repaired archive rejects via existing conservative custom-guard checker.",
+          "All21 explicit current source-generated guard files pass actual native staging, guard-closure archive validation and Rust archive readback with exact byte hashes.",
+          "Guard closure is validated before temporary/output creation using original descriptor handles; all original source identities are checked again after inspection."
+        ],
+        "determinism": {
+          "before_sha256": "067e3f9daaccea03a36f7dc9942b5d2d538388651862cf68e7e6eb504be20517",
+          "after_sha256": "067e3f9daaccea03a36f7dc9942b5d2d538388651862cf68e7e6eb504be20517",
+          "bytes": 2991,
+          "unchanged_from_original_candidate": "067e3f9daaccea03a36f7dc9942b5d2d538388651862cf68e7e6eb504be20517"
+        },
+        "original_receipt": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/receipt.json",
+        "original_receipt_sha256": "9b7682432c24b4bc0eceb3266dc244d2c33c71f54599a5487985c8ed7212a86a",
+        "original_root_patch_preserved_sha256": "a4dcbfee7a13c145e9d33f4c8c57746b82507634eba37c931d920deba7eed700",
+        "clean_worktree": true,
+        "limits": [
+          "Generated top-level filenames are conservatively reserved to existing source-bound module identity because PackageEntry does not retain original input aliases. Ambiguous custom aliases using reserved generated filenames can be refused; no source origin is inferred from their name.",
+          "No new CLI command/activation/install/signing/publishing/provenance authentication/rights or Linux archive qualification.",
+          "Same original receipt resource/path/platform/fault limits still apply. Root owns final helper/main/dependencies/lock adaptation after PR104 and exact integrated checks."
+        ]
+      }
+    },
+    {
+      "path": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/cli-receipt.json",
+      "bytes": 6033,
+      "sha256": "0bb227d2571a408988cbc6d7705656fcbb7c89f86237afdc162fb04a42f63c3b",
+      "receipt": {
+        "packet": "P30 usable native archive CLI and actual child integration proof",
+        "created_utc": "2026-10-19T04:28:18.812295+00:00",
+        "commit": "e4292edd2b7a2770756def873825cd09cbf5294f",
+        "parent": "2e4424db2d4e70e21dbd62d4776e189a62782b32",
+        "worktree": "/private/tmp/admiralty-audit-b2b9e7a",
+        "branch": "codex/native-staged-archive",
+        "committed_files": [
+          {
+            "path": "crates/admiralty-cli/tests/native_archive_cli.rs",
+            "sha256": "8c3633775cbe7b7051f367f2d9cc089685a062d8503cba343e5f397628f16244",
+            "bytes": 13111
+          }
+        ],
+        "unchanged_archive_module_sha256": "0d0d93b2af533a630798acfa0e0af0f8e38290524826131901554b5c888c3795",
+        "command": "admiralty release archive --staged-dir ABS --manifest ABS --expected-manifest-sha256 RAW64 --output ABS",
+        "root_integration": {
+          "excluded_full_patch": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/root-archive-cli-integration.patch",
+          "sha256": "0cfbb55984615fa42b766ad0746c7648111256255eb0eae5d7ec4149c5ce07fe",
+          "files": [
+            "Cargo.lock",
+            "crates/admiralty-cli/Cargo.toml",
+            "crates/admiralty-cli/src/main.rs",
+            "crates/admiralty-cli/src/native_package.rs"
+          ],
+          "registered_main_sha256": "e68a781f93f9284a6c011a52e99d05ed83584df3b8f136e9ec9f15665a4f457c",
+          "registered_helper_sha256": "79afced0ddb224ea07797855a1edfe39f6c84112304c3e7de0a531198ec0474e",
+          "all_temporary_shared_files_restored": true,
+          "stage_command_unchanged": true
+        },
+        "checks": [
+          {
+            "argv": [
+              "cargo",
+              "test",
+              "-p",
+              "admiralty-cli",
+              "--test",
+              "native_archive_cli",
+              "--locked",
+              "--",
+              "--nocapture"
+            ],
+            "exit": 0,
+            "seconds": 2.9133864999748766,
+            "log": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/cli-final.log",
+            "sha256": "9b3f5fdc31307ec935099c6f5d2b4c9813e4a218838ae1f7822811123aad5c58",
+            "passed": 4,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 0
+          },
+          {
+            "argv": [
+              "cargo",
+              "clippy",
+              "-p",
+              "admiralty-cli",
+              "--all-targets",
+              "--locked",
+              "--",
+              "-D",
+              "warnings"
+            ],
+            "exit": 0,
+            "seconds": 1.4793076668865979,
+            "log": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/cli-final-strict.log",
+            "sha256": "e1ec176427801d3056bd7638531b3ca36dcce0c42bda7a7216d4def533093223"
+          },
+          {
+            "argv": [
+              "cargo",
+              "fmt",
+              "--all",
+              "--",
+              "--check"
+            ],
+            "exit": 0,
+            "seconds": 1.1765880002640188,
+            "log": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/cli-final-format.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "actual_cli": {
+          "binary": "CARGO_BIN_EXE_admiralty actual Rust binary built by Cargo",
+          "stage_created_by_actual_release_stage": true,
+          "expected_manifest_owner_mode": "0600, external private file, extracted from actual stage receipt.manifest",
+          "expected_hash": "complete raw staged MANIFEST.json including newline, intentionally differs from private expected pretty JSON bytes and existing unsigned structured digest",
+          "archive_sha256": "335f146f430812879b2e9c6e9d6551ae41eb4ec16992c99c282bd3a26b439c89",
+          "raw_manifest_sha256": "1c0a19aef41fc8723f4c9ec86914f2479edf03a4fe8ff51a3e4c9239348223e2",
+          "child_environment": "cleared, only private TMPDIR supplied; no shell/network/provider",
+          "child_bounds": "15 seconds per owned child,64KiB stdout/stderr retained in private files, owned child killed on deadline/overflow",
+          "receipt_assertions": [
+            "recorded_only true",
+            "archive_created true",
+            "installer_complete false",
+            "installed/signed/published/execution_granted/acceptance_granted/native_execution_qualified/activated/source_commit_verified false"
+          ],
+          "negative_proofs": [
+            "Existing destination is preserved byte-for-byte and command fails without a success receipt.",
+            "Wrong complete raw hash fails before output/temp creation.",
+            "Mode0644 expected manifest, symlink expected input and relative staged path rejected.",
+            "Malformed private expected JSON returns fixed parse error without reflecting private canary contents."
+          ],
+          "roundtrip": "Rust tar/flate2 enumerate exact manifest regular entries/hash/size, then extract into new owned private fixture and compare content hashes and modes."
+        },
+        "operator_doc_proposal": {
+          "path": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/operator-doc-proposal.md",
+          "sha256": "e40cfe77554f7e384ce6eb98f14c604fcc49eceb6febff008b3082b04fdc075f",
+          "tracked": false
+        },
+        "environment": {
+          "TMPDIR": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/tmp",
+          "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/native-archive",
+          "CARGO_BUILD_JOBS": "1",
+          "RUST_TEST_THREADS": "1",
+          "host": "local macOS"
+        },
+        "previous_receipts_preserved": [
+          {
+            "path": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/receipt.json",
+            "sha256": "9b7682432c24b4bc0eceb3266dc244d2c33c71f54599a5487985c8ed7212a86a"
+          },
+          {
+            "path": "/private/tmp/adm-native-archive-04d3346-lprl4lsb/guard-repair-receipt.json",
+            "sha256": "7167b83552140391b00065df4248bfd06fdf2fc1c0c5d2ae3857f0da6a44b8f5"
+          }
+        ],
+        "clean_worktree": true,
+        "limits": [
+          "Root must integrate/adapt excluded main/helper/dependency/lock patch before command/tests are available. No zero-test/unregistered acceptance claim.",
+          "Expected manifest JSON and checksums remain operator inputs until matching bytes/metadata are verified; no publisher/Git source authentication.",
+          "Synthetic payload, local macOS CLI proof only; no Linux archive run, real distribution payload, clean-machine install, signing, publication, rights/provider/fleet/CI action or P30 parent acceptance.",
+          "Previous archive component bounds/format/fault limitations remain unchanged. No Python execution or deletion."
+        ]
+      }
+    }
+  ],
+  "independent_review": {
+    "reviewer": "audit_runtime",
+    "source": "f0f2a9e reviewed all6 source/dependency files, exact guard validator body and pinned tar GNUlonglink metadata; root413aef4 adds explicit private output parent checks before and after atomic publication with real2point regression"
+  },
+  "dependency_identity": {
+    "prior157_package_version_source_checksum_tuples_unchanged": true,
+    "added_packages": 7,
+    "tar": "=0.4.46 default-features=false",
+    "flate2": "=1.1.10 default-features=false features=miniz_oxide",
+    "xattr_enabled": false,
+    "system_zlib": false
+  },
+  "repaired_before_merge": [
+    "Three retained failing-before cases: consistently re-signed manifests could omit generated dependency or alter generated/custom guard bytes. Reuse same staging validator body on original borrowed file handles;19 component cases pass before root custody addition.",
+    "Root added private-parent metadata rechecks before commit and after rename; precommit refuses without output, postcommit retains uncertain archive. Final20 component cases pass."
+  ],
+  "invariants": [
+    "Full raw canonical MANIFEST.json hash including newline is distinct from existing unsigned structured manifest SHA.",
+    "Private reviewed operator input remains data, not publisher/Git provenance. Explicit stages/allowlist only; bounded directory inventory rejects extras without reading them.",
+    "Streaming original no-follow file handles, bounded metadata/file/node/path/depth/total sizes, exact hashes/modes/identities, fixed tar/gzip metadata.",
+    "Atomic no-replace publication; ambiguous committed files are retained. Temp cleanup checks inode and leaves replacements untouched.",
+    "Actual CLI receipt reports archive_created only; installed/signed/published/source_commit_verified/execution/acceptance/activation/nativequalification false."
+  ],
+  "environment": {
+    "host": "actual local macOS",
+    "target": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/archive-integrated-final",
+    "jobs": 1,
+    "test_threads": 1,
+    "tmpdir": "/private/tmp/adm-native-4pbrtc1l"
+  },
+  "limits": [
+    "Synthetic owned payloads and localmacOS Rustarchive/extraction/CLI proof only; no supported-Linux archive run, clean-machine install, signed/public release, rights decision, general coding or P30 acceptance.",
+    "No reproduction-equivalence with historical Python/zlib bytes; pinned Rust backend/identical content is the determinism scope.",
+    "Historical Python source packager remains compatibility reference/test; native ingestion and this preferred archive path use no Python.",
+    "No provider/grants/fleet/services/CI/runners/GPU control, no real data deletion or overwrite.",
+    "Same-UID/root malicious race immunity and physical disk/fsync failure qualification are not claimed."
+  ],
+  "native_execution_qualified": false,
+  "parent_acceptance": false
+}

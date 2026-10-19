@@ -174,13 +174,13 @@ imported claims and setup commands remain inert. See the
 
 See the [source-pinned remaining-work audit](docs/plans/admiralty-v2/REMAINING_20261019.md), [release scope and remaining gates](docs/operators/release-status.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [master plan](docs/plans/admiralty-v2/MASTER_PLAN.md) and [work packets](docs/plans/admiralty-v2/WORK_PACKETS.md). Historical deployment information remains in [the compatibility inventory](docs/operators/legacy-inventory.md).
 
-Backups and isolated restore rehearsals are available through `admiralty recover`. Restart admission remains a proposal; it cannot reactivate an unknown session. `admiralty release stage` and [the deterministic packager](docs/operators/source-package.md) stage explicit inputs without installing, signing, publishing or qualifying a release.
+Backups and isolated restore rehearsals are available through `admiralty recover`. Restart admission remains a proposal; it cannot reactivate an unknown session. `admiralty release stage` and [`admiralty release archive`](docs/operators/native-archive.md) stage and archive explicit inputs entirely in Rust. Archives preserve reviewed hashes and validator dependencies and never replace an existing output. Installation, signing, publication and clean-machine qualification remain separate release work. The [older source packager](docs/operators/source-package.md) remains a compatibility reference.
 
 ## Develop and validate
 
 ```sh
 bash scripts/check/all.sh
-python3 scripts/release/package.py --self-test
+cargo test -p admiralty-cli --test native_archive_cli --locked
 python3 scripts/check/canary-smoke.py --self-test
 ```
 
