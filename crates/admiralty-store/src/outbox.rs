@@ -285,6 +285,51 @@ pub fn claim_due(
     owner: &str,
     lease_secs: u64,
 ) -> Result<Option<Claim>> {
+    claim_selected(connection, now, owner, lease_secs, None)
+}
+
+/// Claim only the exact independently authorized effect key. Expiry observation
+/// also applies only to that key; foreign pending/claimed rows remain untouched.
+/// The trusted clock watermark is still global. This is not an authority grant.
+pub fn claim_key_due(
+    connection: &mut Connection,
+    now: Option<u64>,
+    owner: &str,
+    lease_secs: u64,
+    idempotency_key: &str,
+) -> Result<Option<Claim>> {
+    validate_claim_key(idempotency_key)?;
+    claim_selected(connection, now, owner, lease_secs, Some(idempotency_key))
+}
+
+pub(crate) fn validate_claim_key(key: &str) -> Result<()> {
+    if !bounded_text(key, 256) {
+        return Err(OutboxError::Invalid(
+            "idempotency key requires 1..256 printable bytes".into(),
+        ));
+    }
+    Ok(())
+}
+
+type ClaimRow = (i64, String, String, String, i64);
+
+fn claim_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<ClaimRow> {
+    Ok((
+        row.get(0)?,
+        super::stored_text(row, 1, 256)?,
+        super::stored_text(row, 2, 71)?,
+        super::stored_text(row, 3, MAX_PAYLOAD_BYTES)?,
+        row.get(4)?,
+    ))
+}
+
+fn claim_selected(
+    connection: &mut Connection,
+    now: Option<u64>,
+    owner: &str,
+    lease_secs: u64,
+    key: Option<&str>,
+) -> Result<Option<Claim>> {
     let now = logical_now(now)?;
     if !bounded_text(owner, 128) || !(1..=MAX_LEASE_SECONDS).contains(&lease_secs) {
         return Err(OutboxError::Invalid(
@@ -296,10 +341,19 @@ pub fn claim_due(
         .ok_or(OutboxError::Overflow)?;
     let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
     observe_clock(&tx, now)?;
-    tx.execute("UPDATE outbox_intents SET state='unknown',unknown_reason='lease_expired' WHERE state='claimed' AND lease_deadline<=?1", [now])?;
-    let next: Option<(i64, String, String, String, i64)> = tx.query_row(
-        "SELECT id,idempotency_key,payload_digest,payload,fence FROM outbox_intents WHERE state='pending' AND not_before<=?1 ORDER BY id LIMIT 1", [now],
-        |row| Ok((row.get(0)?, super::stored_text(row,1,256)?, super::stored_text(row,2,71)?, super::stored_text(row,3,MAX_PAYLOAD_BYTES)?, row.get(4)?))).optional()?;
+    let next = if let Some(key) = key {
+        tx.execute("UPDATE outbox_intents SET state='unknown',unknown_reason='lease_expired' WHERE idempotency_key=?1 AND state='claimed' AND lease_deadline<=?2", params![key, now])?;
+        tx.query_row(
+            "SELECT id,idempotency_key,payload_digest,payload,fence FROM outbox_intents WHERE idempotency_key=?1 AND state='pending' AND not_before<=?2",
+            params![key, now], claim_row,
+        ).optional()?
+    } else {
+        tx.execute("UPDATE outbox_intents SET state='unknown',unknown_reason='lease_expired' WHERE state='claimed' AND lease_deadline<=?1", [now])?;
+        tx.query_row(
+            "SELECT id,idempotency_key,payload_digest,payload,fence FROM outbox_intents WHERE state='pending' AND not_before<=?1 ORDER BY id LIMIT 1",
+            [now], claim_row,
+        ).optional()?
+    };
     let Some((id, idempotency_key, payload_digest, payload, previous_fence)) = next else {
         tx.commit()?;
         return Ok(None);
@@ -445,6 +499,206 @@ mod tests {
         connection
             .query_row("SELECT COUNT(*) FROM outbox_intents", [], |row| row.get(0))
             .expect("row count")
+    }
+
+    fn retained_row(connection: &Connection, key: &str) -> String {
+        connection.query_row(
+            "SELECT json_object('id',id,'key',idempotency_key,'payload',payload,'digest',payload_digest,'due',not_before,'state',state,'fence',fence,'nonce',claim_nonce,'owner',claim_owner,'deadline',lease_deadline,'receipt',receipt_ref,'unknown',unknown_reason) FROM outbox_intents WHERE idempotency_key=?1",
+            [key], |row| row.get(0),
+        ).expect("retained row")
+    }
+
+    #[test]
+    fn exact_key_claim_preserves_earlier_foreign_pending_and_expired_claimed_rows() {
+        let mut connection = database();
+        enqueue(&mut connection, intent("other-project:expired", 0)).expect("expired fixture");
+        claim_key_due(
+            &mut connection,
+            Some(0),
+            "other",
+            1,
+            "other-project:expired",
+        )
+        .expect("first claim")
+        .expect("claimed");
+        enqueue(&mut connection, intent("other-project:pending", 0)).expect("earlier due fixture");
+        let id = enqueue(&mut connection, intent("our-project:launch", 2)).expect("our effect");
+        let foreign_expired = retained_row(&connection, "other-project:expired");
+        let foreign_pending = retained_row(&connection, "other-project:pending");
+        let claim = claim_key_due(&mut connection, Some(2), "ours", 5, "our-project:launch")
+            .expect("exact selection")
+            .expect("our claim");
+        assert_eq!(claim.id, id);
+        assert_eq!(claim.idempotency_key, "our-project:launch");
+        assert_eq!(claim.token.fence, "1");
+        assert_eq!(claim.lease_deadline, "7");
+        assert_eq!(
+            retained_row(&connection, "other-project:expired"),
+            foreign_expired
+        );
+        assert_eq!(
+            retained_row(&connection, "other-project:pending"),
+            foreign_pending
+        );
+        // A repeated claim never supplies another lease/token, even to the same owner.
+        assert!(
+            claim_key_due(&mut connection, Some(2), "ours", 5, "our-project:launch")
+                .expect("held claim")
+                .is_none()
+        );
+        let mut stale = claim.token.clone();
+        stale.fence = "2".into();
+        assert!(matches!(
+            complete(&mut connection, &stale, "receipt", Some(2)),
+            Err(OutboxError::StaleToken)
+        ));
+        complete(&mut connection, &claim.token, "receipt", Some(3)).expect("real token completes");
+        complete(&mut connection, &claim.token, "receipt", Some(3)).expect("same receipt replay");
+        assert!(
+            claim_key_due(&mut connection, Some(4), "ours", 5, "our-project:launch")
+                .expect("completed no redispatch")
+                .is_none()
+        );
+        assert_eq!(
+            retained_row(&connection, "other-project:expired"),
+            foreign_expired
+        );
+        assert_eq!(
+            retained_row(&connection, "other-project:pending"),
+            foreign_pending
+        );
+    }
+
+    #[test]
+    fn exact_key_not_due_missing_and_expired_unknown_never_select_another_effect() {
+        let mut connection = database();
+        enqueue(&mut connection, intent("foreign-ready", 0)).expect("foreign");
+        let future = enqueue(&mut connection, intent("ours-future", 20)).expect("ours");
+        let original = retained_row(&connection, "foreign-ready");
+        assert!(
+            claim_key_due(&mut connection, Some(19), "ours", 2, "ours-future")
+                .expect("not due")
+                .is_none()
+        );
+        assert!(
+            claim_key_due(&mut connection, Some(19), "ours", 2, "missing")
+                .expect("missing")
+                .is_none()
+        );
+        // SQL metacharacters are literal keys, never a selector expression.
+        assert!(
+            claim_key_due(&mut connection, Some(19), "ours", 2, "x' OR 1=1 --")
+                .expect("literal key")
+                .is_none()
+        );
+        let claim = claim_key_due(&mut connection, Some(20), "ours", 2, "ours-future")
+            .expect("due")
+            .expect("claim");
+        assert_eq!(claim.id, future);
+        assert!(
+            claim_key_due(&mut connection, Some(22), "ours", 2, "ours-future")
+                .expect("exact expiry")
+                .is_none()
+        );
+        assert_eq!(state(&connection, &future), "unknown");
+        assert!(
+            claim_key_due(&mut connection, Some(30), "new-owner", 2, "ours-future")
+                .expect("unknown retained")
+                .is_none()
+        );
+        assert!(matches!(
+            complete(&mut connection, &claim.token, "late", Some(30)),
+            Err(OutboxError::ReconciliationRequired)
+        ));
+        assert_eq!(retained_row(&connection, "foreign-ready"), original);
+    }
+
+    #[test]
+    fn invalid_exact_keys_clocks_and_durations_have_no_clock_or_row_effects() {
+        let mut connection = database();
+        enqueue(&mut connection, intent("ours", 0)).expect("ours");
+        let before = retained_row(&connection, "ours");
+        for key in [
+            String::new(),
+            "x".repeat(257),
+            "key\nforged".into(),
+            "key\0forged".into(),
+        ] {
+            assert!(matches!(
+                claim_key_due(&mut connection, Some(100), "ours", 1, &key),
+                Err(OutboxError::Invalid(_))
+            ));
+        }
+        for (now, owner, lease) in [
+            (None, "ours", 1),
+            (Some(100), "", 1),
+            (Some(100), "ours", 0),
+            (Some(i64::MAX as u64), "ours", 1),
+        ] {
+            assert!(claim_key_due(&mut connection, now, owner, lease, "ours").is_err());
+        }
+        assert_eq!(retained_row(&connection, "ours"), before);
+        let clocks: i64 = connection
+            .query_row("SELECT count(*) FROM outbox_clock", [], |r| r.get(0))
+            .expect("clock rows");
+        assert_eq!(clocks, 0);
+        assert!(
+            claim_key_due(&mut connection, Some(5), "ours", 1, "missing")
+                .expect("trusted clock")
+                .is_none()
+        );
+        assert!(matches!(
+            claim_key_due(&mut connection, Some(4), "ours", 1, "ours"),
+            Err(OutboxError::ClockRollback)
+        ));
+        assert_eq!(retained_row(&connection, "ours"), before);
+    }
+
+    #[test]
+    fn exact_claim_and_expiry_sql_failures_rollback_global_clock_and_local_state() {
+        let mut connection = database();
+        let id = enqueue(&mut connection, intent("ours", 0)).expect("ours");
+        let before = retained_row(&connection, "ours");
+        connection.execute_batch("CREATE TRIGGER reject_exact_claim BEFORE UPDATE ON outbox_intents WHEN NEW.idempotency_key='ours' AND NEW.state='claimed' BEGIN SELECT RAISE(ABORT,'owned claim fault'); END;").expect("own trigger");
+        assert!(matches!(
+            claim_key_due(&mut connection, Some(8), "ours", 2, "ours"),
+            Err(OutboxError::Sqlite(_))
+        ));
+        assert_eq!(retained_row(&connection, "ours"), before);
+        let clocks: i64 = connection
+            .query_row("SELECT count(*) FROM outbox_clock", [], |r| r.get(0))
+            .expect("clock rollback");
+        assert_eq!(clocks, 0);
+        connection
+            .execute_batch("DROP TRIGGER reject_exact_claim")
+            .expect("remove own fault");
+        claim_key_due(&mut connection, Some(0), "ours", 2, "ours")
+            .expect("original clock still valid")
+            .expect("claim");
+        let claimed = retained_row(&connection, "ours");
+        connection.execute_batch("CREATE TRIGGER reject_exact_expiry BEFORE UPDATE ON outbox_intents WHEN NEW.idempotency_key='ours' AND NEW.state='unknown' BEGIN SELECT RAISE(ABORT,'owned expiry fault'); END;").expect("own expiry fault");
+        assert!(matches!(
+            claim_key_due(&mut connection, Some(2), "ours", 2, "ours"),
+            Err(OutboxError::Sqlite(_))
+        ));
+        assert_eq!(retained_row(&connection, "ours"), claimed);
+        let clock: i64 = connection
+            .query_row(
+                "SELECT last_observed FROM outbox_clock WHERE singleton=1",
+                [],
+                |r| r.get(0),
+            )
+            .expect("clock after fault");
+        assert_eq!(clock, 0);
+        connection
+            .execute_batch("DROP TRIGGER reject_exact_expiry")
+            .expect("remove own expiry fault");
+        assert!(
+            claim_key_due(&mut connection, Some(2), "ours", 2, "ours")
+                .expect("observe expiry")
+                .is_none()
+        );
+        assert_eq!(state(&connection, &id), "unknown");
     }
 
     #[test]
