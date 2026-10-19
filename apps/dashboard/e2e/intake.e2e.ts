@@ -284,7 +284,7 @@ it('captures a real native Unicode source once and replays an identical browser 
     await browser.waitForSelector('article[aria-label="Intake preview"]', 8_000);
     await browser.waitForText('1 request', 5_000);
     await browser.clickButtonByText('Capture unresolved request');
-    await browser.waitForText('Capture response is unresolved', 8_000);
+    await browser.waitForText('No receipt is confirmed for this command.', 8_000);
     await waitForConfirmedReplyLoss(browser);
     // A real SPA navigation must retain the unknown command, not mint a new one.
     await browser.clickNav('Overview');
@@ -292,7 +292,7 @@ it('captures a real native Unicode source once and replays an identical browser 
     expect(await browser.evaluate<boolean>(`Boolean(document.querySelector('[aria-labelledby="intake-title"]')?.closest('[hidden]'))`, 2_500)).toBe(true);
     await browser.clickNav('Intake');
     await browser.waitForText('Preserve an original request, inspect unresolved facts', 5_000);
-    await browser.waitForText('Capture response is unresolved', 5_000);
+    await browser.waitForText('No receipt is confirmed for this command.', 5_000);
     expect(await browser.evaluate<boolean>(`Boolean(document.querySelector('[aria-labelledby="intake-title"]')?.closest('[hidden]'))`, 2_500)).toBe(false);
     await browser.clickButtonByText('Retry same capture request');
     await browser.waitForText('Original immutable capture receipt replayed.', 8_000);
