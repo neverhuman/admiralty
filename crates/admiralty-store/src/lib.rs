@@ -212,6 +212,11 @@ enum Request {
         request: Box<attention::AttentionDefinition>,
         reply: Reply<attention::AttentionRegistration>,
     },
+    AttentionDeliveryContext {
+        request: Box<attention::LoadDeliveryContext>,
+        proof: attention::AttentionProof,
+        reply: Reply<attention::AuthorizedDeliveryContext>,
+    },
     ApplyAttentionAuthorized {
         request: Box<attention::AuthorizedAttentionCommand>,
         proof: attention::AttentionProof,
@@ -652,6 +657,19 @@ impl Store {
     ) -> Result<attention::AttentionResult> {
         attention::validate_authorized_command(&request)?;
         self.ask(|reply| Request::ApplyAttentionAuthorized {
+            request: Box::new(request),
+            proof,
+            reply,
+        })
+    }
+    /// Trusted exact scoped source read; current writer read policy is required.
+    pub fn attention_delivery_context(
+        &self,
+        request: attention::LoadDeliveryContext,
+        proof: attention::AttentionProof,
+    ) -> Result<attention::AuthorizedDeliveryContext> {
+        attention::validate_load_delivery_context(&request)?;
+        self.ask(|reply| Request::AttentionDeliveryContext {
             request: Box::new(request),
             proof,
             reply,
@@ -1545,6 +1563,22 @@ impl Writer {
                             &mut self.connection,
                             *request,
                             self.attention_authority.as_deref(),
+                        )
+                        .map_err(StoreError::from),
+                    );
+                }
+                Request::AttentionDeliveryContext {
+                    request,
+                    proof,
+                    reply,
+                } => {
+                    let _ = reply.send(
+                        attention::load_authorized_delivery_context(
+                            &mut self.connection,
+                            &self.projection,
+                            *request,
+                            self.attention_authority.as_deref(),
+                            proof.as_ref(),
                         )
                         .map_err(StoreError::from),
                     );
