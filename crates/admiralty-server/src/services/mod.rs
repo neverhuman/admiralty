@@ -3,6 +3,7 @@ pub mod agent_tools;
 pub mod controller;
 pub mod coordination;
 pub mod native_commands;
+pub mod native_evidence_catalog;
 #[cfg(unix)]
 pub mod native_lifecycle;
 
