@@ -156,13 +156,21 @@ describe("built live views against the real Rust server", () => {
     await browser?.close();
     await server?.close();
   });
-  async function connect(route: string) {
-    await browser.goto(`${server.baseUrl}/#/${route}`);
-    await browser.waitForText("Connect session access");
-    await browser.clickButtonByText("Connect session access");
-    await browser.fillInputByLabel("Bearer token", server.ownerToken);
-    await browser.clickButtonByText("Apply token");
-    await browser.waitForText("Connected");
+  async function connect(route: string, source = server) {
+    await browser.goto(`${source.baseUrl}/#/${route}`);
+    await browser.waitForSelector(".lv-feed.is-connected, .lv-error button");
+    const openedAccess = await browser.evaluate(`(() => {
+      if (document.querySelector('.lv-feed.is-connected')) return false;
+      const button = document.querySelector('.lv-error button');
+      if (!(button instanceof HTMLButtonElement)) throw Error('Native access control unavailable');
+      button.click();
+      return true;
+    })()`);
+    if (openedAccess) {
+      await browser.fillInputByLabel("Bearer token", source.ownerToken);
+      await browser.clickButtonByText("Apply token");
+    }
+    await browser.waitForSelector(".lv-feed.is-connected");
   }
   it("joins all roles and projects, supports search/selection/cross-links and browser history", async () => {
     await connect("atlas");
@@ -423,11 +431,7 @@ describe("built live views against the real Rust server", () => {
           readFileSync(join(output, "status.json"), "utf8"),
         ),
       });
-      await browser.goto(`${realServer.baseUrl}/#/git`);
-      await browser.waitForText("Session access");
-      await browser.clickButtonByText("Session access");
-      await browser.fillInputByLabel("Bearer token", realServer.ownerToken);
-      await browser.clickButtonByText("Apply token");
+      await connect("git", realServer);
       await browser.waitForSelector(".git-canvas");
       await browser.clickButtonByText("Inventory");
       await browser.waitForText("Actual root");
