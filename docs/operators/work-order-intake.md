@@ -32,10 +32,24 @@ oversized collections fail closed before unbounded decode/hash/clone work.
 Duplicate pages distinguish complete, partial and incomplete coverage; matching
 content never automatically merges or rejects an intentional new request.
 
-This component defines previews, record/binding and delivery-requirement contracts
-outside unchanged TaskContractv1. It does not implement public schema export,
-the authenticated Store writer, enrichment UI, dispatch or actual delivery.
-The separate WO2 writer must re-preview exact original bytes/format, verify every
-selected outcome/contract/delivery/span and current authority/policy, then record
-lineage/tasks/plan atomically. Artifact claims alone are not verified custody.
-No parent packet is accepted by these nineteen component checks.
+These contracts remain outside unchanged TaskContractv1. The Store now provides
+`record_intake`, `get_work_order` and `find_duplicate_candidates` through its sole
+writer. Trusted startup must install an `IntakeAuthority` using
+`open_with_authorities`; default constructors install none and deny recording.
+The authority resolves current independent scope/policy inside every record
+writer turn, including historical retries. Public request snapshots are not grants.
+
+Recording re-previews exact original bytes/format and checks every selected
+outcome/contract/delivery/span plus work-order and plan CAS values. Original
+source/policy, lineage, task bindings, plan revision and immutable receipt commit
+in one transaction. Exact historical commands replay their original receipt;
+changed content collides. Query results validate original records and trusted
+scope before projecting lineage or pagination. Unknown historical coverage is
+explicit. Open/rebuild/backup validate the stored bindings.
+
+The first writer supports inline, explicitly enriched JsonBatch outcomes.
+Unenriched PlainText and unverified artifact claims fail without partial records;
+separate durable raw capture/enrichment remains work. No production issuer,
+public route/schema export, enrichment UI, dispatch or delivery is installed.
+Eighteen writer/plan checks and nineteen preview checks do not accept a parent
+packet or qualify autonomous execution.
