@@ -128,6 +128,7 @@ impl QualifiedEnvironment {
             "XDG_CONFIG_HOME",
             "CARGO_HOME",
             "RUSTUP_HOME",
+            "TOKIO_WORKER_THREADS",
         ];
         if values.len() > KEYS.len()
             || ["PATH", "HOME", "TMPDIR"]
@@ -143,6 +144,11 @@ impl QualifiedEnvironment {
             return Err(ResourceGateError::InvalidEnvironment);
         }
         for (key, value) in &values {
+            // Request a small child-local default async pool; an explicit
+            // provider builder setting may override it. Kernel fences remain.
+            if key == "TOKIO_WORKER_THREADS" && !matches!(value.as_str(), "1" | "2") {
+                return Err(ResourceGateError::InvalidEnvironment);
+            }
             if key == "PATH" {
                 if value.split(':').any(|p| !portable_absolute(Path::new(p))) {
                     return Err(ResourceGateError::InvalidEnvironment);
@@ -1888,6 +1894,22 @@ mod tests {
         let mut values = environment().0;
         values.insert("PATH".into(), ".:/usr/bin".into());
         assert!(QualifiedEnvironment::new(values).is_err());
+    }
+    #[test]
+    fn explicit_child_runtime_threads_are_tight_and_digest_bound() {
+        let original = environment().digest().expect("digest");
+        for value in ["1", "2"] {
+            let mut values = environment().0;
+            values.insert("TOKIO_WORKER_THREADS".into(), value.into());
+            let qualified = QualifiedEnvironment::new(values).expect("bounded pool");
+            assert_ne!(qualified.digest().expect("digest"), original);
+            assert_eq!(qualified.0["TOKIO_WORKER_THREADS"], value);
+        }
+        for value in ["0", "3", "32", "-1", "01", " 1", "2\n"] {
+            let mut values = environment().0;
+            values.insert("TOKIO_WORKER_THREADS".into(), value.into());
+            assert!(QualifiedEnvironment::new(values).is_err());
+        }
     }
     #[test]
     fn failed_or_incomplete_observations_never_mean_inactive() {
