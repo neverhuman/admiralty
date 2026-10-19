@@ -217,7 +217,36 @@ pub fn dispatch_one(
     runtime: &impl NativeRuntimeExecutor,
 ) -> Result<DispatchOutcome, ControllerError> {
     let now = dispatch_now(clock).ok_or(ControllerError::ClockUnavailable)?;
-    let Some(claim) = store.claim_outbox_due(Some(now), owner, lease_secs)? else {
+    let claim = store.claim_outbox_due(Some(now), owner, lease_secs)?;
+    dispatch_claim(store, clock, now, claim, admission, runtime)
+}
+
+/// Dispatch only the exact frozen effect key owned by the trusted coordinator.
+/// Foreign pending or expired claims are not selected or mutated by this call.
+/// All fencing, fresh-clock and runtime receipt checks match `dispatch_one`.
+pub fn dispatch_key(
+    store: &Store,
+    clock: &impl DispatchClock,
+    owner: String,
+    lease_secs: u64,
+    idempotency_key: String,
+    admission: &impl DispatchAdmission,
+    runtime: &impl NativeRuntimeExecutor,
+) -> Result<DispatchOutcome, ControllerError> {
+    let now = dispatch_now(clock).ok_or(ControllerError::ClockUnavailable)?;
+    let claim = store.claim_outbox_key(Some(now), owner, lease_secs, idempotency_key)?;
+    dispatch_claim(store, clock, now, claim, admission, runtime)
+}
+
+fn dispatch_claim(
+    store: &Store,
+    clock: &impl DispatchClock,
+    now: u64,
+    claim: Option<admiralty_store::outbox::Claim>,
+    admission: &impl DispatchAdmission,
+    runtime: &impl NativeRuntimeExecutor,
+) -> Result<DispatchOutcome, ControllerError> {
+    let Some(claim) = claim else {
         return Ok(DispatchOutcome::Idle);
     };
     let claimed_unknown = |reason: String| -> Result<DispatchOutcome, ControllerError> {
