@@ -73,6 +73,21 @@ enum RecoveryCommand {
         #[arg(long, value_parser = command_path)]
         scratch: PathBuf,
     },
+    /// Bind a recovery manifest to verified backup and artifact bytes; never activate it.
+    Preflight {
+        #[arg(long, value_parser = command_path)]
+        backup: PathBuf,
+        #[arg(long, value_parser = command_path)]
+        receipt: PathBuf,
+        #[arg(long, value_parser = command_path)]
+        objects: PathBuf,
+        #[arg(long, value_parser = command_path)]
+        manifest: PathBuf,
+        #[arg(long, value_parser = command_path)]
+        observation: PathBuf,
+        #[arg(long, value_parser = command_path)]
+        fence: PathBuf,
+    },
     /// Evaluate recorded recovery evidence; external authority stays unverified and sessions held.
     RestartAdmission {
         #[arg(long, value_parser = command_path)]
@@ -197,6 +212,35 @@ pub fn run(args: RecoveryArgs) -> RecoveryResult<Value> {
                 "unresolved_sessions":restored.unresolved_sessions,"session_disposition":restored.session_disposition,
                 "native_execution_qualified":false,"restore_authorized":restored.restore_authorized,
                 "effects_authorized":restored.effects_authorized}),
+            )
+        }
+        RecoveryCommand::Preflight {
+            backup,
+            receipt,
+            objects,
+            manifest,
+            observation,
+            fence,
+        } => {
+            let receipt: NativeBackupReceipt = read_command_json(&receipt)?;
+            let manifest: BackupManifest = read_command_json(&manifest)?;
+            let observation = read_command_json(&observation)?;
+            let fence = read_command_json(&fence)?;
+            validate_private_directory(&objects)?;
+            let objects = ArtifactStore::open(objects, MAX_CLOSURE_BYTES)?;
+            verify_recovery_manifest(&backup, &receipt, &objects, &manifest)?;
+            let (proposal, admission) = propose_native_restart_admission(
+                &manifest,
+                &observation,
+                &fence,
+                &UnverifiedExternalAuthority,
+                true,
+            )?;
+            Ok(
+                json!({"operation":"recovery_preflight","recorded_only":true,
+                "backup_verified":true,"source_cursor":receipt.source_cursor,
+                "manifest_digest":manifest.manifest_digest,"proposal":proposal,"admission":admission,
+                "native_execution_qualified":false,"restore_authorized":false,"effects_authorized":false}),
             )
         }
         RecoveryCommand::RestartAdmission {
@@ -365,6 +409,63 @@ pub fn verify_backup(
         ));
     }
     drop(reopened);
+    Ok(())
+}
+
+/// Bind the planner's metadata to an actual SQLite backup and its complete
+/// enumerated byte closure. External executor generations remain independent
+/// of the Store's opaque reader generation; neither grants restart authority.
+pub fn verify_recovery_manifest(
+    backup_path: &Path,
+    receipt: &NativeBackupReceipt,
+    objects: &ArtifactStore,
+    manifest: &BackupManifest,
+) -> RecoveryResult<()> {
+    // Check serialized/collection bounds before copying or sorting supplied data.
+    if admiralty_runtime::recovery::manifest_digest(manifest)? != manifest.manifest_digest {
+        return Err(invalid("recovery manifest digest mismatch"));
+    }
+    verify_backup(backup_path, receipt, objects)?;
+    if manifest.schema_version != receipt.schema_version
+        || manifest.snapshot_digest != receipt.database.sha256
+        || manifest.snapshot_size.get() != receipt.database.size_bytes
+        || manifest.snapshot_watermark.get() != canonical_counter(&receipt.source_cursor.event_seq)?
+    {
+        return Err(invalid(
+            "recovery manifest does not identify the verified backup",
+        ));
+    }
+    let expected: BTreeSet<_> = receipt
+        .artifact_closure
+        .iter()
+        .chain(std::iter::once(&receipt.database))
+        .map(|entry| (entry.sha256.as_str(), entry.size_bytes))
+        .collect();
+    let declared: BTreeSet<_> = manifest
+        .artifact_closure
+        .iter()
+        .map(|entry| (entry.digest.as_str(), entry.size.get()))
+        .collect();
+    if expected != declared || declared.len() != manifest.artifact_closure.len() {
+        return Err(invalid(
+            "recovery manifest differs from the verified artifact closure",
+        ));
+    }
+    // A manifest's `verified` booleans are metadata. Independently read every
+    // required member, including the snapshot's content-addressed copy.
+    for entry in &manifest.artifact_closure {
+        if !entry.verified
+            || admiralty_runtime::recovery::artifact_closure_id(entry)? != entry.closure_id
+        {
+            return Err(invalid(
+                "recovery manifest has an invalid artifact identity",
+            ));
+        }
+        objects.read_verified(&admiralty_store::artifacts::ArtifactRef {
+            sha256: entry.digest.clone(),
+            size_bytes: entry.size.get(),
+        })?;
+    }
     Ok(())
 }
 
@@ -827,6 +928,95 @@ mod tests {
         (store, object_store, receipt, backup_path)
     }
 
+    fn manifest_for_receipt(receipt: &NativeBackupReceipt) -> RecoveryResult<BackupManifest> {
+        use admiralty_runtime::recovery::{ArtifactRecord, DecimalU64, artifact_closure_id};
+        let mut artifacts = Vec::new();
+        for entry in receipt
+            .artifact_closure
+            .iter()
+            .chain(std::iter::once(&receipt.database))
+        {
+            let mut record = ArtifactRecord {
+                closure_id: String::new(),
+                digest: entry.sha256.clone(),
+                size: DecimalU64::new(entry.size_bytes),
+                verified: true,
+            };
+            record.closure_id = artifact_closure_id(&record)?;
+            artifacts.push(record);
+        }
+        let mut manifest: BackupManifest = serde_json::from_value(json!({
+            "scope":{"project_id":"recovery-project","root_id":"recovery-root",
+                "task_id":"recovery-task","store_id":"recovery-store","attempt_id":"attempt-one",
+                "owner":"recovery-owner","revision":1,"contract_digest":format!("sha256:{}", "a".repeat(64)),
+                "executor_incarnation":"backup-executor"},
+            "schema_version":receipt.schema_version,"snapshot_watermark":receipt.source_cursor.event_seq,
+            "snapshot_digest":receipt.database.sha256,"snapshot_size":receipt.database.size_bytes.to_string(),
+            "recovery_generation":"1","artifact_closure":artifacts,
+            "active_bundle_digests":[receipt.artifact_closure[0].sha256],"manifest_digest":""
+        }))?;
+        manifest.manifest_digest = admiralty_runtime::recovery::manifest_digest(&manifest)?;
+        Ok(manifest)
+    }
+
+    #[test]
+    fn recovery_preflight_binds_real_backup_watermark_schema_digest_and_complete_closure()
+    -> RecoveryResult<()> {
+        let root = private_tempdir();
+        let (store, objects, receipt, backup) = make_backup(root.path());
+        let original = store.snapshot()?;
+        let manifest = manifest_for_receipt(&receipt)?;
+        verify_recovery_manifest(&backup, &receipt, &objects, &manifest)?;
+        for mutation in 0..6 {
+            let mut changed = manifest.clone();
+            match mutation {
+                0 => changed.snapshot_watermark = admiralty_runtime::recovery::DecimalU64::new(99),
+                1 => changed.schema_version += 1,
+                2 => changed.snapshot_digest = format!("sha256:{}", "f".repeat(64)),
+                3 => changed.snapshot_size = admiralty_runtime::recovery::DecimalU64::new(1),
+                4 => {
+                    changed.artifact_closure.pop();
+                }
+                _ => changed
+                    .artifact_closure
+                    .push(changed.artifact_closure[0].clone()),
+            }
+            changed.manifest_digest = admiralty_runtime::recovery::manifest_digest(&changed)?;
+            assert!(
+                verify_recovery_manifest(&backup, &receipt, &objects, &changed).is_err(),
+                "mutation {mutation}"
+            );
+        }
+        assert_eq!(store.snapshot()?, original);
+        assert_eq!(fs::read(&backup)?.len() as u64, receipt.database.size_bytes);
+        Ok(())
+    }
+
+    #[test]
+    fn recovery_preflight_refuses_missing_artifact_despite_verified_metadata() -> RecoveryResult<()>
+    {
+        let root = private_tempdir();
+        let (_, objects, receipt, backup) = make_backup(root.path());
+        let manifest = manifest_for_receipt(&receipt)?;
+        // An independently located object store has the additional artifact,
+        // but no snapshot object. Metadata booleans alone cannot fill that gap.
+        let incomplete = private_artifact_store(&root.path().join("incomplete"));
+        for entry in &receipt.artifact_closure {
+            incomplete.publish_bytes(&objects.read_verified(&artifact_ref(entry))?)?;
+        }
+        // Backup verification republishes the snapshot from verified backup
+        // bytes. Missing additional bytes still fail before admission planning.
+        verify_recovery_manifest(&backup, &receipt, &incomplete, &manifest)?;
+        let empty = private_artifact_store(&root.path().join("empty"));
+        assert!(verify_recovery_manifest(&backup, &receipt, &empty, &manifest).is_err());
+        assert!(
+            empty
+                .read_verified(&artifact_ref(&receipt.artifact_closure[0]))
+                .is_err()
+        );
+        Ok(())
+    }
+
     #[tokio::test]
     async fn cli_backup_verify_and_rehearse_use_real_store_without_activation() -> RecoveryResult<()>
     {
@@ -881,6 +1071,49 @@ mod tests {
             content_digest(&original.projection)?
         );
         assert_eq!(receipt_file.metadata()?.permissions().mode() & 0o777, 0o600);
+        let manifest = manifest_for_receipt(&receipt)?;
+        let manifest_file = root.path().join("recovery-manifest.json");
+        let observation_file = root.path().join("recovery-observation.json");
+        let fence_file = root.path().join("recovery-fence.json");
+        let observation = json!({
+            "scope":manifest.scope,"manifest_digest":manifest.manifest_digest,
+            "snapshot_digest":manifest.snapshot_digest,"snapshot_size":manifest.snapshot_size,
+            "snapshot_watermark":manifest.snapshot_watermark,"backup_generation":"1","current_generation":"1",
+            "old_executor_incarnation":"backup-executor","observed_bundle_digests":manifest.active_bundle_digests,
+            "available_artifacts":manifest.artifact_closure,"compatibility":"compatible",
+            "unresolved_effects":"clear","session_custody":"reconciled"
+        });
+        let fence = json!({
+            "scope":manifest.scope,"manifest_digest":manifest.manifest_digest,
+            "old_executor_incarnation":"backup-executor","new_executor_incarnation":"new-executor",
+            "old_generation":"1","new_generation":"2",
+            "external_receipt_digest":format!("sha256:{}", "c".repeat(64)),"old_executor_fenced":true
+        });
+        for (path, value) in [
+            (&manifest_file, serde_json::to_value(&manifest)?),
+            (&observation_file, observation),
+            (&fence_file, fence),
+        ] {
+            write_new_private_file(path, &serde_json::to_vec(&value)?)?;
+        }
+        let preflight = run(RecoveryArgs {
+            command: RecoveryCommand::Preflight {
+                backup: output.clone(),
+                receipt: receipt_file.clone(),
+                objects: object_path.clone(),
+                manifest: manifest_file,
+                observation: observation_file,
+                fence: fence_file,
+            },
+        })?;
+        assert_eq!(preflight["backup_verified"], true);
+        assert_eq!(preflight["admission"]["proposed"], false);
+        assert_eq!(preflight["admission"]["externally_verified"], false);
+        assert_eq!(
+            preflight["admission"]["unknown_live_legacy_jobs_held"],
+            true
+        );
+        assert_eq!(preflight["effects_authorized"], false);
         for (operation, extra) in [
             ("verify", Vec::new()),
             ("rehearse", vec!["--scratch".into(), text(&scratch)?]),
