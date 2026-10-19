@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, routeHref } from "../../router";
 import { ModelBadge, modelFamily } from "../../ui/ModelBadge";
 import { ProfileAvatar } from "../../ui/Profile";
-import { useProfile } from "../../profile";
+import { useProfile, type UserProfile } from "../../profile";
 import { age, isStale, type ViewAgent, type ViewsSnapshot } from "./feed";
 import {
   fitCamera,
@@ -78,6 +78,7 @@ const AgentCard = memo(function AgentCard({
   compact,
   onSelect,
   now,
+  ownerProfile,
 }: {
   node: AtlasNode;
   selected: boolean;
@@ -85,6 +86,7 @@ const AgentCard = memo(function AgentCard({
   compact: boolean;
   onSelect: (a: ViewAgent) => void;
   now: number;
+  ownerProfile?: UserProfile;
 }) {
   const a = node.agent,
     roleLabel =
@@ -112,6 +114,11 @@ const AgentCard = memo(function AgentCard({
       aria-description={`${a.node ?? "Node unknown"} · ${a.presence} · ${a.state}`}
       title={`${a.name} · ${a.role} · ${a.state} · ${age(a.observed_utc, now)}`}
     >
+      {a.role === "owner" && !compact && ownerProfile && (
+        <div className="atlas-owner-avatar">
+          <ProfileAvatar name={a.name} profile={ownerProfile} />
+        </div>
+      )}
       {a.role === "watcher" && <img className="atlas-watcher-icon" src="/brand/grokbot.png" alt="" aria-hidden="true" />}
       <div className="atlas-agent-top">
         <span className="atlas-agent-role">{roleLabel}</span>
@@ -629,16 +636,8 @@ export default function FleetAtlas({
                 compact={camera.k < 0.35}
                 onSelect={select}
                 now={now}
+                ownerProfile={node.agent.role === "owner" ? profile : undefined}
               />
-            ))}
-            {camera.k >= 0.35 && rendered.filter((n) => n.agent.role === "owner").map((owner) => (
-              <div
-                key={owner.agent.id}
-                className="atlas-owner-avatar"
-                style={{ left: owner.x + 14, top: owner.y + owner.height / 2 - 17.5 }}
-              >
-                <ProfileAvatar name={owner.agent.name} profile={profile} />
-              </div>
             ))}
           </div>
           <div className="atlas-map-caption">
