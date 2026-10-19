@@ -172,7 +172,6 @@ export default function IntakeDuplicates({
     }
     const prior = append ? currentState : null;
     if (append && !prior) return;
-    controller.current?.abort();
     const activeController = new AbortController();
     controller.current = activeController;
     const requestGeneration = ++generation.current;

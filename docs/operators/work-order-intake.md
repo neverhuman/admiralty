@@ -173,8 +173,22 @@ revision and checks it against the frozen request and receipt.
 If a capture reply is lost, retry sends the same command ID and serialized
 request. Keep that pending request until its outcome is resolved. Abandoning a
 local retry envelope only resets the form: the server may already have captured
-the original request. It does not roll back or delete that record. Enrichment,
-duplicate search and delivery views remain separate work.
+the original request. It does not roll back or delete that record. Enrichment
+and delivery views remain separate work.
+
+After preview, **Find related work** uses the same scoped credentials to search
+content matches. It sends no command or source identity inferred from the capture
+form. Results show task ID, exact contract revision/digest, match reason,
+lifecycle, freshness and opaque evidence text. Lookup neither records nor merges
+intent. An empty page does not establish uniqueness: read the separate complete,
+partial or incomplete coverage. The current native lineage search can report
+incomplete coverage even after its bounded scan has ended.
+
+Partial pages offer **Load next page**, with at most five pages/100 displayed
+rows and a stop on repeated continuation cursors. A failed next-page request
+labels retained results as previous. Changing the preview, scope or credentials
+clears results and invalidates late replies; lookup never starts automatically.
+Credentials remain in request headers and page memory; redirects are rejected.
 
 Moving between dashboard tabs retains the form and pending retry in page memory.
 Reloading or closing the page loses that local envelope and credentials; keep the
