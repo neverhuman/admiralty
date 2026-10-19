@@ -937,7 +937,10 @@ mod probe {
                     == self.startup.expected.backend_config_digest
                 && checks.execution_digest() == self.execution_digest
                 && serde_json::to_vec(checks).ok().as_ref() == Some(&self.checks_bytes)
-                && serde_json::to_vec(closed).ok().as_ref() == Some(&self.closed_bytes))
+                && serde_json::to_vec(&closed.authoritative_binding())
+                    .ok()
+                    .as_ref()
+                    == Some(&self.closed_bytes))
             .then(|| self.custody_digest.clone())
         }
         fn remains_current(&self, b: &NativeDecisionBinding, custody: &str) -> bool {
@@ -1946,6 +1949,17 @@ mod probe {
         }
         let (runtime_receipt, original_preparation, closed, transcript, capture) =
             completion.into_completion_with_capture();
+        // Retain actual resource observations before source preflight can fail.
+        // Counters are advisory; no unavailable value becomes zero or a cause.
+        write_new(
+            &root.join("resource-observation.json"),
+            &serde_json::to_vec_pretty(&json!({
+                "schema_version": 1,
+                "advisory_only": true,
+                "closure_digest": closed.closure_digest(),
+                "resource_usage": closed.resource_usage_diagnostics(),
+            }))?,
+        )?;
         if !closed.success() {
             return Err("actual child did not close successfully".into());
         }
@@ -2008,7 +2022,7 @@ mod probe {
             .ok_or("original closed admission missing")?;
         let decision_evidence = candidate.decision_evidence(&checks, verifier.clone())?;
         let checks_bytes = serde_json::to_vec(&checks)?;
-        let closed_bytes = serde_json::to_vec(closed)?;
+        let closed_bytes = serde_json::to_vec(&closed.authoritative_binding())?;
         let checks_object = stored(&objects, &checks_bytes)?;
         let closed_object = stored(&objects, &closed_bytes)?;
         let receipt_object = stored(&objects, &serde_json::to_vec(checks.receipt())?)?;

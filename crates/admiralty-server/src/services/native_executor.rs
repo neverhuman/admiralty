@@ -14,7 +14,8 @@ use admiralty_runtime::{
     reservations::Reservation,
     resource_gate::{
         AdmissionIdentity, ClosedAdmission, RecoveryIdentity, ResourceGate,
-        ResourcePermitAuthority, ResourcePermitClaims, RunningAdmission, VerifiedResourcePermit,
+        ResourcePermitAuthority, ResourcePermitClaims, ResourceUsageDiagnostics, RunningAdmission,
+        VerifiedResourcePermit,
     },
     session::{CaptureState, LaunchSpec, OutputChunk, SessionHost, SessionStatus},
     workspace::{preparation::PreparedWorkspace, registry::WorkspaceSpec},
@@ -33,6 +34,7 @@ use std::{
 
 const MAX_RUN_ID_BYTES: usize = 128;
 const MAX_COMPLETED_CAPTURE_CHUNKS: usize = 16_384;
+const RESOURCE_SAMPLE_INTERVAL: Duration = Duration::from_millis(250);
 
 /// Trusted service-local persistence boundary. Called only with an actual
 /// resource observation whose recovery identity was durably journaled first.
@@ -146,6 +148,7 @@ struct PendingRun {
     started_persisted: bool,
     refresh_attempts: u32,
     refresh_failed: bool,
+    last_resource_sample: Option<Instant>,
 }
 
 /// Opaque, bounded, process-local evidence. Only actual owned service closure
@@ -244,13 +247,14 @@ pub struct PendingDiagnostics {
     pub refresh_failed: bool,
     pub observed_identity_persisted: bool,
     pub started_persisted: bool,
+    pub resource_usage: ResourceUsageDiagnostics,
 }
 
 #[derive(Serialize)]
-struct ClosedEvidence<'a> {
+struct ClosedEvidence<'a, C> {
     schema_version: u32,
     recovery: &'a RecoveryIdentity,
-    closure: &'a ClosedAdmission,
+    closure: C,
     closure_digest: &'a str,
     exit_code: Option<i32>,
     success: bool,
@@ -260,6 +264,29 @@ struct ClosedEvidence<'a> {
     model_declared: &'a str,
     provider_observed: Option<&'a str>,
     model_observed: Option<&'a str>,
+}
+
+/// V2 full-journal identity includes advisory observations. The legacy authority
+/// digest covers only the original v1 binding, never these resource counters.
+#[derive(Serialize)]
+struct ClosedEvidenceJournal<'a, C> {
+    schema_version: u32,
+    authority_evidence: C,
+    authority_digest: String,
+    resource_usage_advisory: &'a ResourceUsageDiagnostics,
+}
+
+fn closed_evidence_journal<C: Serialize>(
+    evidence: C,
+    diagnostics: &ResourceUsageDiagnostics,
+) -> Result<ClosedEvidenceJournal<'_, C>, NativeExecutorError> {
+    let authority_digest = content_digest(&evidence).map_err(|_| NativeExecutorError::Digest)?;
+    Ok(ClosedEvidenceJournal {
+        schema_version: 2,
+        authority_evidence: evidence,
+        authority_digest,
+        resource_usage_advisory: diagnostics,
+    })
 }
 
 impl NativeExecutor {
@@ -444,6 +471,11 @@ impl NativeExecutor {
                 refresh_failed: entry.refresh_failed,
                 observed_identity_persisted: entry.observed_persisted,
                 started_persisted: entry.started_persisted,
+                resource_usage: entry
+                    .running
+                    .observation_diagnostics()
+                    .resource_usage
+                    .clone(),
             })
     }
     /// Reconcile without launching or signalling. Unknown runs retain their own
@@ -473,6 +505,18 @@ impl NativeExecutor {
         if entry.running.observation().is_none() {
             entry.refresh_attempts = entry.refresh_attempts.saturating_add(1);
             entry.refresh_failed = entry.running.refresh_observation().is_err();
+        }
+        // This bounded advisory read cannot admit, signal, release or qualify
+        // anything. Keep samples while the owned cgroup still exists; a missing
+        // final sample preserves the last known counters without inventing zero.
+        let now = Instant::now();
+        if entry.running.observation().is_some()
+            && entry
+                .last_resource_sample
+                .is_none_or(|last| now.saturating_duration_since(last) >= RESOURCE_SAMPLE_INTERVAL)
+        {
+            entry.running.refresh_resource_diagnostics();
+            entry.last_resource_sample = Some(now);
         }
         if entry.running.observation().is_some() && !entry.observed_persisted {
             entry.recovery = entry.running.recovery_identity().clone();
@@ -787,6 +831,7 @@ impl NativeExecutor {
                 started_persisted: false,
                 refresh_attempts: 0,
                 refresh_failed: false,
+                last_resource_sample: None,
             },
         );
         let entry = pending
@@ -1261,7 +1306,7 @@ fn write_closed_evidence(
     let evidence = ClosedEvidence {
         schema_version: 1,
         recovery,
-        closure,
+        closure: closure.authoritative_binding(),
         closure_digest,
         exit_code,
         success,
@@ -1272,9 +1317,10 @@ fn write_closed_evidence(
         provider_observed: None,
         model_observed: None,
     };
-    let evidence_digest = content_digest(&evidence).map_err(|_| NativeExecutorError::Digest)?;
-    root.write_same_or_new(&journal_name(&recovery.run_id, "closed")?, &evidence)?;
-    Ok((format!("native-evidence:{evidence_digest}"), success))
+    let journal = closed_evidence_journal(evidence, closure.resource_usage_diagnostics())?;
+    let journal_digest = content_digest(&journal).map_err(|_| NativeExecutorError::Digest)?;
+    root.write_same_or_new(&journal_name(&recovery.run_id, "closed")?, &journal)?;
+    Ok((format!("native-evidence-v2:{journal_digest}"), success))
 }
 
 fn valid_run_id(value: &str) -> bool {
@@ -2196,6 +2242,53 @@ mod tests {
     }
     fn journal_fixture() -> PathBuf {
         private_fixture("native-journal-test")
+    }
+
+    #[test]
+    fn resource_journal_versions_full_bytes_without_changing_authority_binding() {
+        // Inert serialization fixture only; this cannot construct an opaque
+        // admission proof or qualify a Linux run.
+        let authority = serde_json::json!({"schema_version":1,"closure":{"identity":"fixture",
+            "observation":"fixture","exit_code":0,"success":true,"closure_digest":"fixed"}});
+        let before = ResourceUsageDiagnostics::default();
+        let after: ResourceUsageDiagnostics = serde_json::from_value(serde_json::json!({
+            "sample_attempts": 1,
+            "final_sample": {"state":"unavailable","reason":"missing"}
+        }))
+        .expect("inert advisory data cannot reconstruct closure");
+        let first = closed_evidence_journal(&authority, &before).expect("first record");
+        let last = closed_evidence_journal(&authority, &after).expect("last record");
+        assert_eq!(first.schema_version, 2);
+        assert_eq!(first.authority_digest, content_digest(&authority).unwrap());
+        assert_eq!(first.authority_digest, last.authority_digest);
+        assert_ne!(
+            content_digest(&first).unwrap(),
+            content_digest(&last).unwrap()
+        );
+        let root = journal_fixture();
+        let journal = PrivateJournal::open(&root).expect("actual private journal");
+        journal
+            .write_same_or_new("closed.json", &last)
+            .expect("actual write");
+        journal
+            .write_same_or_new("closed.json", &last)
+            .expect("exact retry");
+        assert!(matches!(
+            journal.write_same_or_new("closed.json", &first),
+            Err(NativeExecutorError::Journal)
+        ));
+        let actual: serde_json::Value =
+            serde_json::from_slice(&fs::read(root.join("closed.json")).unwrap()).unwrap();
+        assert_eq!(actual["authority_evidence"], authority);
+        assert_eq!(
+            actual["resource_usage_advisory"]["final_sample"]["state"],
+            "unavailable"
+        );
+        assert_eq!(
+            actual["resource_usage_advisory"]["final_sample"]["reason"],
+            "missing"
+        );
+        fs::remove_dir_all(root).expect("owned fixture cleanup");
     }
 
     fn capture_child(root: &Path, run: &str, script: &str) -> SessionHost {

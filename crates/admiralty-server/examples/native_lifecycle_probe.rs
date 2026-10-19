@@ -474,7 +474,10 @@ mod probe {
                     == self.startup.expected.backend_config_digest
                 && checks.execution_digest() == self.execution_digest
                 && serde_json::to_vec(checks).ok().as_ref() == Some(&self.checks_bytes)
-                && serde_json::to_vec(closed).ok().as_ref() == Some(&self.closed_bytes))
+                && serde_json::to_vec(&closed.authoritative_binding())
+                    .ok()
+                    .as_ref()
+                    == Some(&self.closed_bytes))
             .then(|| self.custody_digest.clone())
         }
         fn remains_current(&self, b: &NativeDecisionBinding, custody: &str) -> bool {
@@ -944,7 +947,7 @@ mod probe {
             "native-integration-verifier",
         )?;
         let checks_bytes = serde_json::to_vec(&checks)?;
-        let closed_bytes = serde_json::to_vec(&closed)?;
+        let closed_bytes = serde_json::to_vec(&closed.authoritative_binding())?;
         let checks_object = stored(&objects, &checks_bytes)?;
         let closed_object = stored(&objects, &closed_bytes)?;
         let receipt_object = stored(&objects, &serde_json::to_vec(checks.receipt())?)?;
