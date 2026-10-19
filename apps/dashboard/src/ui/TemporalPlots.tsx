@@ -164,15 +164,15 @@ function CiHistory({ rows }: { rows: CiRow[] }) {
     {rows.map((row, rowIndex) => <g key={row.id} data-project-id={row.id}><title>{row.label}</title>{row.points.map((point, index) => <rect key={index} x={index * 300 / row.points.length} width={300 / row.points.length + .1} y={rowIndex * height + 1} height={Math.max(1, height - 2)} fill={ciColor(point.state)}><title>{`${row.label}: ${point.state} · ${utc(point.time)}`}</title></rect>)}</g>)}
   </svg>;
 }
-function MetricCard({ metric, first, last }: { metric: TemporalMetric; first: string; last: string }) {
+function MetricCard({ metric, first, last, loadingHistory = false }: { metric: TemporalMetric; first: string; last: string; loadingHistory?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const legend = metric.kind === 'ci' ? metric.ci?.map(row => ({ id: row.id, label: row.label, color: row.color })) : metric.series;
   return <article className={`temporal-plot${expanded ? ' temporal-plot--expanded' : ''}`} data-metric={metric.id}>
     <button className="temporal-toggle" type="button" aria-expanded={expanded} onClick={() => setExpanded(value => !value)} title={`${metric.note}\nSource: ${metric.sourceTime || 'unknown'}\nHistory: ${first || 'unknown'} → ${last || 'unknown'}`}>
       <span className="temporal-title">{metric.title}<span className="temporal-expand" data-icon={expanded ? '−' : '+'} aria-hidden="true" /></span>
       <span className="temporal-values">{metric.values.length ? metric.values.map(value => <span key={value.label} title={value.label} style={{ color: value.color }}>{value.value}</span>) : <span>unknown</span>}</span>
-      <span className="temporal-chart">{metric.kind === 'bars' ? <Bars bars={metric.bars ?? []} title={metric.title} /> : metric.kind === 'stacked' ? <Stacked series={metric.series} title={metric.title} /> : metric.kind === 'ci' ? <CiHistory rows={metric.ci ?? []} /> : <Spark series={metric.series} title={metric.title} min={metric.min} max={metric.max} />}
-        {metric.secondary && <Spark series={metric.secondary} title="Luna first-pass percentage history" min={0} max={100} small />}</span>
+      <span className="temporal-chart">{loadingHistory ? <span className="temporal-empty">Loading history…</span> : metric.kind === 'bars' ? <Bars bars={metric.bars ?? []} title={metric.title} /> : metric.kind === 'stacked' ? <Stacked series={metric.series} title={metric.title} /> : metric.kind === 'ci' ? <CiHistory rows={metric.ci ?? []} /> : <Spark series={metric.series} title={metric.title} min={metric.min} max={metric.max} />}
+        {!loadingHistory && metric.secondary && <Spark series={metric.secondary} title="Luna first-pass percentage history" min={0} max={100} small />}</span>
       <span className="temporal-legend">{legend?.map(value => <span key={value.id}><i style={{ background: value.color }} />{value.label}</span>)}</span>
       <span className="temporal-source">as of {metric.sourceTime ? <time dateTime={metric.sourceTime} title={metric.sourceTime}>{metric.sourceTime.slice(11, 19)} UTC</time> : 'unknown'}</span>
     </button>
@@ -181,10 +181,11 @@ function MetricCard({ metric, first, last }: { metric: TemporalMetric; first: st
 }
 
 export function TemporalPlots({ snapshot }: { snapshot: LegacySnapshot }) {
+  const loadingHistory = snapshot.admiralty_delivery === 'initial';
   const { metrics, rows, note, omittedRows } = buildTemporalMetrics(snapshot);
   const first = sourceTime(rows[0] ?? {}), last = sourceTime(rows.at(-1) ?? {});
   return <section className="temporal-plots" aria-label="History and trends · fleet temporal metrics">
-    <div className="temporal-heading"><strong>Live trends</strong><span>{rows.length} historical samples · click a metric to expand · scroll for all {metrics.length}</span><span title={note}>History <time dateTime={first || undefined}>{first || 'unknown'}</time> → <time dateTime={last || undefined}>{last || 'unknown'}</time>{omittedRows ? ` · ${omittedRows} earlier rows outside display bound` : ''}</span></div>
-    <div className="temporal-strip" tabIndex={0} role="group" aria-label="Scrollable temporal metric cards">{metrics.map(metric => <MetricCard key={metric.id} metric={metric} first={first} last={last} />)}</div>
+    <div className="temporal-heading"><strong>Live trends</strong>{loadingHistory ? <span>Current source values · history is loading</span> : <><span>{rows.length} historical samples · click a metric to expand · scroll for all {metrics.length}</span><span title={note}>History <time dateTime={first || undefined}>{first || 'unknown'}</time> → <time dateTime={last || undefined}>{last || 'unknown'}</time>{omittedRows ? ` · ${omittedRows} earlier rows outside display bound` : ''}</span></>}</div>
+    <div className="temporal-strip" tabIndex={0} role="group" aria-label="Scrollable temporal metric cards">{metrics.map(metric => <MetricCard key={metric.id} metric={metric} first={first} last={last} loadingHistory={loadingHistory} />)}</div>
   </section>;
 }

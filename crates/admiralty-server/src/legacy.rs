@@ -67,12 +67,95 @@ pub async fn snapshot(
     }
 }
 
+#[derive(Clone, Copy)]
+pub(crate) enum SnapshotView {
+    Full,
+    Detail,
+    Initial,
+}
+
+fn detail_projection(mut value: serde_json::Value, initial: bool) -> serde_json::Value {
+    let root = value.as_object_mut().expect("validated snapshot object");
+    // Git Flow retains its independent full source; the detail UI never uses it.
+    root.remove("git");
+    root.insert(
+        "admiralty_delivery".into(),
+        if initial { "initial" } else { "complete" }.into(),
+    );
+    if !initial {
+        return value;
+    }
+    root.remove("history");
+    root.remove("remote_screens");
+    if let Some(projects) = root.get_mut("projects").and_then(|v| v.as_object_mut()) {
+        for project in projects.values_mut().filter_map(|v| v.as_object_mut()) {
+            project.retain(|key, _| {
+                matches!(
+                    key.as_str(),
+                    "name"
+                        | "ledger_source"
+                        | "ledger_updated_utc"
+                        | "observed_utc"
+                        | "total"
+                        | "stages"
+                        | "counts"
+                        | "stage_labels"
+                        | "done"
+                        | "ip"
+                        | "in_progress"
+                        | "in_pr"
+                        | "blocked"
+                        | "ready"
+                        | "stalled"
+                        | "flags"
+                        | "blockers"
+                        | "needs_jepson"
+                        | "blocked_detail"
+                        | "recent"
+                        | "captain"
+                        | "workers"
+                        | "pr"
+                )
+            });
+        }
+    }
+    if let Some(packets) = root
+        .get_mut("rollout")
+        .and_then(|v| v.get_mut("packets"))
+        .and_then(|v| v.as_array_mut())
+    {
+        for packet in packets.iter_mut().filter_map(|v| v.as_object_mut()) {
+            packet
+                .retain(|key, _| matches!(key.as_str(), "id" | "title" | "status" | "provenance"));
+            if let Some(provenance) = packet.get_mut("provenance").and_then(|v| v.as_object_mut()) {
+                provenance.retain(|key, _| key == "warnings");
+            }
+        }
+    }
+    value
+}
+
 pub(crate) async fn snapshot_encoded(
     config: LegacyConfig,
     gzip: bool,
+    view: SnapshotView,
 ) -> Result<Response, (StatusCode, Json<serde_json::Value>)> {
     let result = tokio::task::spawn_blocking(move || {
-        let (_, bytes) = read_snapshot(&config)?;
+        let (value, bytes) = read_snapshot(&config)?;
+        let bytes = match view {
+            SnapshotView::Full => {
+                drop(value);
+                bytes
+            }
+            SnapshotView::Detail | SnapshotView::Initial => {
+                drop(bytes);
+                serde_json::to_vec(&detail_projection(
+                    value,
+                    matches!(view, SnapshotView::Initial),
+                ))
+                .map_err(|_| "legacy projection encoding failed".to_owned())?
+            }
+        };
         // Preserve the source bytes and validation bounds; compression changes
         // transport only, never trims history or manufactures fresher data.
         crate::http_bytes::response("application/json", bytes, gzip)
@@ -108,5 +191,54 @@ pub async fn index(config: LegacyConfig) -> Response {
             "Legacy detailed view is unavailable",
         )
             .into_response(),
+    }
+}
+
+#[cfg(test)]
+mod delivery_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn initial_projection_keeps_current_facts_warnings_unknowns_and_source_age() {
+        let source = json!({"generated_utc":"2026-10-19T12:00:00Z","order":["fleet"],
+            "projects":{"fleet":{"name":"Fleet","total":null,"stages":{"verified":4,"done":1},
+                "flags":["source warning"],"captain":{"model":null},"workers":[],"coord_log":{"tail":["full evidence"]}}},
+            "rollout":{"counts":{"verified":4},"packets":[{"id":"P02","status":"verified","contract":"full contract",
+                "provenance":{"warnings":["not accepted"],"source_blob":"full source"}}]},
+            "history":{"rows":[{"observed":"history fact"}]},"git":{"fleet":{"commits":["git fact"]}},
+            "collector":{"implementation":"rust","model_turns":0},"token_efficiency":{"quota":{"used_percent":null}}});
+        let initial = detail_projection(source.clone(), true);
+        assert_eq!(initial["admiralty_delivery"], "initial");
+        assert_eq!(initial["generated_utc"], source["generated_utc"]);
+        assert_eq!(
+            initial["projects"]["fleet"]["stages"],
+            source["projects"]["fleet"]["stages"]
+        );
+        assert_eq!(
+            initial["projects"]["fleet"]["total"],
+            serde_json::Value::Null
+        );
+        assert_eq!(
+            initial["projects"]["fleet"]["flags"],
+            source["projects"]["fleet"]["flags"]
+        );
+        assert_eq!(
+            initial["rollout"]["packets"][0]["provenance"]["warnings"],
+            json!(["not accepted"])
+        );
+        assert!(initial.get("history").is_none() && initial.get("git").is_none());
+        assert!(initial["projects"]["fleet"].get("coord_log").is_none());
+        assert!(initial["rollout"]["packets"][0].get("contract").is_none());
+        let detail = detail_projection(source.clone(), false);
+        assert_eq!(detail["history"], source["history"]);
+        assert_eq!(detail["projects"], source["projects"]);
+        assert_eq!(detail["rollout"], source["rollout"]);
+        assert_eq!(detail["generated_utc"], source["generated_utc"]);
+        assert!(detail.get("git").is_none());
+        assert!(
+            source.get("git").is_some(),
+            "original full source remains independent"
+        );
     }
 }
