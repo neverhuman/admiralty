@@ -1697,3 +1697,36 @@ source-read context componentb9e455f has9 actual tests and independent review;
 root registration/composition remains next, with no production read issuer or
 provider transport enabled. Parent acceptance2/32 and general coding false remain
 unchanged. Failed CI stays on the one cleanup backlog without delaying ready code.
+
+### Protected pending-source context — 2026-10-19T04:52Z
+
+Sourceee2018d60fa9bdb74a5a00a03ac976b3fbb01049 composes the original-Wake
+reader and compiler with an independent current-reader native policy. Store's
+sole writer replay-validates the retained Wake and every first original Observe,
+the actual full source renders and current task contracts. Independent expected
+receipt, batch, ordering, epoch, render and explicit baseline pins must match.
+Complete queued contextA and request contextB survive together; missing custody,
+unknown baseline or bounds fail without truncation. Current read permission is
+separate from recording and is checked for each full namespace with the opaque
+current actor. A historical source credential cannot grant today's reader access.
+
+The [integrated receipt](../../../receipts/integration/safe-turn-context-20261019T0452Z.json)
+records actual root9 compiler tests and13 native bridge cases, strict Store/server
+all-target Clippy and formatting. Seven original mutation tests retain their
+bodies; six new bridge cases exercise independent read grants and actual registry
+revocation. Independent source review clears both components. The read policy
+defaults DENY; production startup/router issuers and provider transport remain
+uninstalled. Existing Wake recording permission is still separately required;
+denial does not mint another wake or reset attention budgets. No send, application
+ACK, baseline change, measured savings, provider run or parent promotion occurred.
+
+PR106 merged04:39:59Z into b86439f248c3d70398f1757f3ec07676e1a54df6.
+Commodore reports6e1c8f5 live04:35:19Z and is the only primary deploy writer;
+newer deployment qualification is recorded separately. Owned Linux instrumented
+probe build and synthetic archive tests obey actual fleetcap freeze/thaw and
+memory limits. Resource admission delays are not source failures or proven CI
+causes. An archive runner's first admitted attempt lacked Cargo on PATH and
+launched zero tests; evidence is retained for an absolute-toolchain retry.
+S1/S2 repairs remain with their existing owners; their earlier passing tests do
+not clear the independently failing counterexamples. Accepted parents remain2/32,
+general native coding false. Non-build CI remains on the single cleanup backlog.

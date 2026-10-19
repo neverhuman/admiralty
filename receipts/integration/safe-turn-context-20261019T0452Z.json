@@ -1,0 +1,356 @@
+{
+  "protocol_version": 1,
+  "kind": "admiralty_safe_turn_context_integration",
+  "recorded_utc": "2026-10-19T04:52:10.539Z",
+  "qualified_code_commit": "ee2018d60fa9bdb74a5a00a03ac976b3fbb01049",
+  "base_commit": "b86439f248c3d70398f1757f3ec07676e1a54df6",
+  "candidate_commits": [
+    "b9e455f789a2808d6e7fb622be54d7541fc7870a",
+    "d063217f09c8ef2ba16604f3fd31d0b66171a81f"
+  ],
+  "source_sha256": {
+    "crates/admiralty-store/src/attention.rs": "e2d57e69c4e5969a84971dc56d182f72cbbe0eaaf7cf236cf8c9dcba464dca4b",
+    "crates/admiralty-store/src/lib.rs": "914c5ba56d2831b0d36315f7da6603c7ac5d40c512ba6ca71ebd7134c34ca6d4",
+    "crates/admiralty-server/src/lib.rs": "4a1e6d4f6d660d46112776df22925a7bf9106aea303a55006f4d21563397f20e",
+    "crates/admiralty-server/src/native_attention_context.rs": "de0fdd6123c06adad2a450be7a6d0603caeeab52bb998156da5eac36083f6d59",
+    "crates/admiralty-server/tests/native_attention_context.rs": "cf2a0d891e059b5d21bff5abc8d392940d1548bd7923984aab225d7c56cc7dc1",
+    "crates/admiralty-server/src/native_attention.rs": "c007855ccc177598b591b9dac56d2bc593e1fd96e0dc527bed1a43988b7f3f2e"
+  },
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "rustc": "1.95.0 (59807616e 2026-04-14) (Homebrew)",
+    "cargo": "1.95.0 (f2d3ce0bd 2026-03-21) (Homebrew)",
+    "cwd": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+    "TMPDIR": "/private/tmp/adm-native-4pbrtc1l",
+    "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/context-integrated-final",
+    "CARGO_BUILD_JOBS": 1,
+    "RUST_TEST_THREADS": 1
+  },
+  "checks": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-server",
+        "--test",
+        "native_attention_context",
+        "--locked"
+      ],
+      "exit": 0,
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/root-context-tests.log",
+        "sha256": "c627807b6bc91dbe48f8bdd940ff154caf7317b3db02cd2d4b50595957c31573"
+      }
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-server",
+        "--lib",
+        "native_attention::tests",
+        "--locked"
+      ],
+      "exit": 0,
+      "passed": 13,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 75,
+      "old_mutation_cases": 7,
+      "new_read_cases": 6,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/root-current-read-tests.log",
+        "sha256": "d851b263af79d450c7771d3ebc5dbb7eddd7588e8e6e32b7a2bb3798e5d38ed0"
+      }
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "-p",
+        "admiralty-store",
+        "-p",
+        "admiralty-server",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "log": {
+        "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/root-current-read-clippy.log",
+        "sha256": "17e151785ff1d4ea9be9deaa3b10e3db3ac3e8d7b7b7595ce8dc91fe204a874e"
+      }
+    },
+    {
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit": 0
+    }
+  ],
+  "author_evidence": [
+    {
+      "path": "/private/tmp/adm-attention-context-proof/receipt.json",
+      "sha256": "7cf616e665bb1895bf337e4f7783ebdbd8b4bcfb28c8f28abea0963e946bdcfb",
+      "receipt": {
+        "packet": "P06 source-bound safe-turn context component",
+        "base": "ee47a0b84b0fecb6f2afed36f97727cee4285089",
+        "owned_source_sha256": {
+          "crates/admiralty-store/src/attention.rs": "e2d57e69c4e5969a84971dc56d182f72cbbe0eaaf7cf236cf8c9dcba464dca4b",
+          "crates/admiralty-server/src/native_attention_context.rs": "de0fdd6123c06adad2a450be7a6d0603caeeab52bb998156da5eac36083f6d59",
+          "crates/admiralty-server/tests/native_attention_context.rs": "cf2a0d891e059b5d21bff5abc8d392940d1548bd7923984aab225d7c56cc7dc1"
+        },
+        "registered_shared_file_sha256": {
+          "crates/admiralty-store/src/lib.rs": "914c5ba56d2831b0d36315f7da6603c7ac5d40c512ba6ca71ebd7134c34ca6d4",
+          "crates/admiralty-server/src/lib.rs": "4a1e6d4f6d660d46112776df22925a7bf9106aea303a55006f4d21563397f20e"
+        },
+        "root_registration_patch_sha256": "d4bf943eb8c997b3793e2ae08a24cedd4956b43492da3303d3f3c176f3f93782",
+        "checks": {
+          "actual_scoped_tests": {
+            "passed": 9,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 0,
+            "log": "focused-tests-frozen.log"
+          },
+          "strict_store_and_server_all_targets_clippy": "PASS; --locked --offline -D warnings",
+          "rustfmt_and_diffcheck": "PASS"
+        },
+        "log_sha256": {
+          "focused-tests-multiple-sources.log": "9b40082484f1eeae18cbe10e0e2a04cbb42adef484171dd5e19707570a99e882",
+          "strict-clippy-final.log": "4ecdbcba03d5c622a8ccb18833874927b73c1a125e65fdfe2178d6e59aab45f8",
+          "focused-tests-final.log": "46bd1a6c7c5c0ef45e03d921a2b8356934b17f11b4cb4e944ab3c50dbb811447",
+          "focused-tests-source-read.log": "66739706981dec0c602cb74f89112ca64ccf9a697db8ba5aef22eeb113a1ebe8",
+          "strict-clippy.log": "9a40cc82e68ccefa4bc40ad783c9b94091a5ea821b8d8aedad75a3406a668ba6",
+          "focused-tests-initial.log": "0cfc9bc47972212eeb124ec35f1e782539d4cd910ca1ee2dc172b20818e4bff8",
+          "focused-tests-frozen.log": "6203a3ede15bf8ac6ddd2c778f2339a05fc0f3299605643cbcd4541aa9b31be5",
+          "strict-clippy-frozen.log": "c17e83814324e2f627b906839d9304827f57d50888f23ce765ac4d4ad1a220f1",
+          "format-diff.log": "d8aa2b6b889426f5f20932e6462b9b796a41c83ad21636e574c84925908e4e9a"
+        },
+        "invariants_sha256": "9dda67cad2a988a31647c4eb4be60ef61b376b93ccaf93d52fbb463f1435ea2a",
+        "limits": [
+          "component only; no router or NativeAttentionWriterAuthority read issuer installed",
+          "current read policy must independently authorize original wake and EACH full historical source namespace",
+          "at most16 selected sources;1MiB Store evidence;64KiB final context;32KiB expected bindings/current individual contract",
+          "complete original source and request role renders retained; no inferred facts, truncation, delta memory or savings claim",
+          "focused actual Store tests use Commodore/project capsules; all role-specific live transport qualification remains separate",
+          "legacy unbound source/wake refused; historical reopening and original mutator bytes unchanged",
+          "no send, provider call, wake write, application ACK, baseline change, service/fleet activation or execution authority"
+        ],
+        "preserved_failures": [
+          "focused-tests-initial.log: transitional callback-count assertion during per-source read callback addition;6pass1fail",
+          "strict-clippy.log:48 test-only unwrap_used errors repaired with explicit fixture expectations",
+          "initial invariant script had a newline extraction assertion; corrected exact extraction proved original module unchanged except additive trait/tail"
+        ],
+        "full_packet_acceptance": false,
+        "candidate_commit": "b9e455f789a2808d6e7fb622be54d7541fc7870a"
+      }
+    },
+    {
+      "path": "/private/tmp/adm-attention-read-adapter-proof/receipt.json",
+      "sha256": "b005eb2572acfd2b4fb98d5b65f58d472ce380d03fd64f8b78b96bda9bd60448",
+      "receipt": {
+        "packet": "P06 independent current context-read policy adapter component",
+        "base": "2aada2527dd5d4b7efc78249a58d3b2b0b6ff598",
+        "source": {
+          "base": "2aada2527dd5d4b7efc78249a58d3b2b0b6ff598",
+          "production_prefix_change_is_insertions_only": true,
+          "old_seven_mutation_test_bodies_byte_identical": true,
+          "whole_file_sha256": "c007855ccc177598b591b9dac56d2bc593e1fd96e0dc527bed1a43988b7f3f2e",
+          "production_prefix_sha256": "06f40febdbff40c98096a081751a203dc4263d169807b9ad450a7a2d91af7fd4"
+        },
+        "checks": {
+          "focused_actual_server_library_tests": {
+            "passed": 13,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 75,
+            "old_unchanged": 7,
+            "new": 6
+          },
+          "strict_server_library_and_tests_clippy": "PASS --locked --offline -D warnings",
+          "rustfmt_and_diffcheck": "PASS"
+        },
+        "logs_sha256": {
+          "strict-clippy-final.log": "305227a97fbda2f11578bee679f5a64e4fe2bf38cb77ff1a0ed35272c1e5851d",
+          "strict-clippy-initial.log": "255bd7b4db2c71e28df9f0f18f9fd47dc4bdcdec08241a31e4b8d3691adbfbc8",
+          "focused-initial.log": "5aac08cbaddc149e6dd8f56559950c8ad186576b613077f8f461477de07e5bfa",
+          "focused-final.log": "a702b0ff818651178f748330b486fcdad1873434775376eb7f3c5dc0d844ff1b",
+          "format-diff.log": "94f15c135ca0645a5ff9dd9684c97e2c7e84ab95ee3728f067201524ea74860f"
+        },
+        "invariants_sha256": "06a97c81203009214b79586434e367e85694105ec46b88d8e160cb9118f1617a",
+        "scope": [
+          "crates/admiralty-server/src/native_attention.rs"
+        ],
+        "limits": [
+          "default context read policy remains DENY; independently installed policy must explicitly grant every original Wake and source",
+          "current authenticated reader is not historical source credential; complete actual stored render namespace reaches read policy",
+          "original Wake current recording permission remains separately required; policy changes may deny historical reads and do not reset budgets or create a replacement wake",
+          "tests use actual configured credential registry and Store journal/render/current-task fixtures, bounded private barriers for writer-time revocation; only compile-test helper registers domain task",
+          "no route/startup/production issuer activation or model/provider/transport/send/ACK/baseline/execution effects",
+          "full parent P06 and general native qualification remain open"
+        ],
+        "preserved_failed_evidence": [
+          "strict-clippy-initial.log: one nonminimal_bool in new testfixture only, equivalent boolean expression repaired; production prefix unchanged",
+          "one initial patch application failed exact text matching and made no source changes"
+        ],
+        "full_packet_acceptance": false,
+        "candidate_commit": "d063217f09c8ef2ba16604f3fd31d0b66171a81f"
+      }
+    }
+  ],
+  "independent_review": [
+    {
+      "path": "/private/tmp/adm-attention-context-review-b9e455f-ar7vy51d/receipt.json",
+      "sha256": "14ecd7f3caa784a32c03d8e3ac566a371f15c59ae32b1b79069df2e92fb4e9af",
+      "receipt": {
+        "review": "independent static P06 Store delivery-context custody and lossless compiler",
+        "created_utc": "2026-10-19T04:33:03.477483+00:00",
+        "commit": "b9e455f789a2808d6e7fb622be54d7541fc7870a",
+        "base": "ee47a0b84b0fecb6f2afed36f97727cee4285089",
+        "conclusion": "CLEAR for bounded inactive component, not full P06 acceptance",
+        "files": [
+          {
+            "path": "crates/admiralty-store/src/attention.rs",
+            "sha256": "e2d57e69c4e5969a84971dc56d182f72cbbe0eaaf7cf236cf8c9dcba464dca4b"
+          },
+          {
+            "path": "crates/admiralty-server/src/native_attention_context.rs",
+            "sha256": "de0fdd6123c06adad2a450be7a6d0603caeeab52bb998156da5eac36083f6d59"
+          },
+          {
+            "path": "crates/admiralty-server/tests/native_attention_context.rs",
+            "sha256": "cf2a0d891e059b5d21bff5abc8d392940d1548bd7923984aab225d7c56cc7dc1"
+          }
+        ],
+        "registration_patch": {
+          "path": "/private/tmp/adm-attention-context-proof/root-registration.patch",
+          "sha256": "d4bf943eb8c997b3793e2ae08a24cedd4956b43492da3303d3f3c176f3f93782"
+        },
+        "author_receipt": {
+          "path": "/private/tmp/adm-attention-context-proof/receipt.json",
+          "sha256": "7cf616e665bb1895bf337e4f7783ebdbd8b4bcfb28c8f28abea0963e946bdcfb"
+        },
+        "verified_logs": [
+          {
+            "path": "/private/tmp/adm-attention-context-proof/focused-tests-frozen.log",
+            "sha256": "6203a3ede15bf8ac6ddd2c778f2339a05fc0f3299605643cbcd4541aa9b31be5"
+          },
+          {
+            "path": "/private/tmp/adm-attention-context-proof/strict-clippy-frozen.log",
+            "sha256": "c17e83814324e2f627b906839d9304827f57d50888f23ce765ac4d4ad1a220f1"
+          },
+          {
+            "path": "/private/tmp/adm-attention-context-proof/format-diff.log",
+            "sha256": "d8aa2b6b889426f5f20932e6462b9b796a41c83ad21636e574c84925908e4e9a"
+          }
+        ],
+        "source_findings": [
+          "Default-deny additive context-read callback cannot turn prior recording permission or a JSON/digest into read permission; existing native issuer does not override it.",
+          "Wake read requires current recording/read policy, sources require independent read callback with actual reader proof and each full original namespace before/after; historical source credential is not reused as current reader proof.",
+          "One sole-writer Deferred transaction validates exact independently supplied scope and immutable original Wake receipt, full replay prefix/outbox association, bounded first original Observe source identity/order/update hash; legacy source custody denied.",
+          "Every selected task requires actual writer projection TaskContract and full equality within original decoded role facts, including project/root/revision/authority; no current task inferred from an old capsule.",
+          "Private fields and no Deserialize prevent caller JSON construction of source custody. SQL stored text/count, source count/aggregate bytes and per-contract bounds checked before unbounded projection copies.",
+          "Compiler checks independent receipt/batch/request render/baseline/source pins and ordered full contract digests; preserves all A/B source capsules and Observe payloads in bounded deterministic JSON. Oversized/unknown inputs reject rather than truncate or infer memory.",
+          "No Store mutator or source send/ACK/provider/baseline/outbox effect is introduced by snapshot/compiler."
+        ],
+        "observed_author_checks": {
+          "focused_tests": {
+            "passed": 9,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 0
+          },
+          "strict_store_server_all_target_clippy": "receipt/log hashes verified",
+          "format_diff": "receipt/log hashes verified",
+          "reviewer_repeated_suites": false
+        },
+        "limits": [
+          "Focused fixtures use Commodore/project capsules; broader Fleet namespace and all-role live transport qualification remain separate.",
+          "No NativeAttentionWriterAuthority read issuer is installed; actual service policy activation/current transport permission remains a future explicit integration gate.",
+          "Current read checks do not confer future delivery/ACK authority; sender must authorize its operation separately.",
+          "No provider/fleet/service/grant/source edits or full parent acceptance."
+        ]
+      }
+    },
+    {
+      "path": "/private/tmp/adm-attention-read-adapter-review-zb1z4abp/receipt.json",
+      "sha256": "ebac8b0fb677690c66a2c94e3332f549857319d5e3d3def9455d6b2e9449626d",
+      "receipt": {
+        "conclusions": [
+          "New read policy defaults false independently of recording authorization",
+          "Actual current opaque registry actor checked before and after policy; no lock retained across callback",
+          "Each original source supplies full actual stored render/namespace and whole historical authorized request to current read policy; historical credential never substituted for current reader",
+          "Definition/config/exactscope/requestdigest/recorddigest/epoch/facts binding validated before readpolicy",
+          "Wrapper delegates original Store custody and bounded complete context compiler without send/ACK/baseline mutations or issuance"
+        ],
+        "final_source_change": "Equivalent test-only boolean simplification; production prefix unchanged and review carries forward.",
+        "final_whole_file_sha256": "c007855ccc177598b591b9dac56d2bc593e1fd96e0dc527bed1a43988b7f3f2e",
+        "focused-final.log": {
+          "path": "/private/tmp/adm-attention-read-adapter-proof/focused-final.log",
+          "sha256": "a702b0ff818651178f748330b486fcdad1873434775376eb7f3c5dc0d844ff1b"
+        },
+        "limits": [
+          "No startup/router/issuer activation",
+          "Current issuer/policy must be supplied by reviewed trusted startup; labels/digests do not authenticate",
+          "Separate current Wake recording policy remains required and may deny a reader that did not record Wake",
+          "Currentness ends at checked callback/Store read; no later provider delivery or linearizable external policy grant",
+          "BroaderFleet/multi-role/live transport qualification not inferred from project fixture"
+        ],
+        "mode": "independent_read_only_source_and_existing_log_review",
+        "production_prefix_sha256": "06f40febdbff40c98096a081751a203dc4263d169807b9ad450a7a2d91af7fd4",
+        "review": "CLEAR: no material blocker in reviewed adapter source",
+        "source_path": "/private/tmp/admiralty-attention-journal-99f4e26/crates/admiralty-server/src/native_attention.rs",
+        "strict-clippy-final.log": {
+          "path": "/private/tmp/adm-attention-read-adapter-proof/strict-clippy-final.log",
+          "sha256": "305227a97fbda2f11578bee679f5a64e4fe2bf38cb77ff1a0ed35272c1e5851d"
+        },
+        "test_log": {
+          "path": "/private/tmp/adm-attention-read-adapter-proof/focused-initial.log",
+          "scope": "author focused13 actual tests,7existing+6new,75filtered; reviewer did not duplicate suites",
+          "sha256": "5aac08cbaddc149e6dd8f56559950c8ad186576b613077f8f461477de07e5bfa"
+        },
+        "utc": "2026-10-19T04:47:20.168612+00:00",
+        "whole_file_sha256": "5597857809a686e035cc0e387ad8660d6739f0118c35c92c1a2eb333d6aa3c7a"
+      }
+    }
+  ],
+  "conclusions": [
+    "Actual retained Wake and each first original Observe source are replay-validated and read in one bounded sole-writer transaction; no matching caller digest manufactures custody.",
+    "Current opaque reader identity and separately configured read permission apply to full original namespace/render before and after retrieval; historical source credentials are data, not reader grants.",
+    "Current source TaskContract and independently expected receipt/batch/order/render/epoch/baseline bindings must match; every selected source and complete A/B context survives or budget failure rejects without truncation.",
+    "Existing mutation bodies and all seven old native bridge test bodies are retained; old native policies default DENY for the new read callback."
+  ],
+  "limits": [
+    "Inactive API component; production startup/router/read policy issuers and safe-turn provider transport are not installed.",
+    "Existing Wake current recording policy remains separately required and can deny historical readers; no new Wake or retry budget is minted to evade denial.",
+    "Compiler output is a bounded complete-source document, not provider input/transport/application ACK, baseline update, authority, measured token savings or general execution qualification.",
+    "Currentness at checked Store read does not authorize later delivery; broader fleet/all-role live qualification and structured-result/retrieval/accounting criteria remain open.",
+    "No provider calls, grants, service control, cap changes, rollout state changes or full parent acceptance occurred."
+  ],
+  "parent_acceptance_changed": false,
+  "accepted_parents": 2,
+  "total_parents": 32,
+  "native_execution_qualified": false
+}

@@ -69,6 +69,19 @@ build failures remain immediate work.
    `9d12d61fd694656071641321f7ab32e5af2877496581f25a596ca8ac538c77f3`.
    Owner: final P12 cleanup after implementation; existing S3 coordination owns
    any already claimed UI repair. No additional CI cleanup worker is assigned.
+9. Receiving main6e1c8f5 run39199569102/job117889538550 again failed the
+   controlled capture deadline from item2:79server cases passed,1failed,2ignored.
+   The contract job passed. Log `/private/tmp/adm-ci-6e-checks-39199569102.log`
+   hashes `64fd88276458ea1b4cadbd50260142959fcd7c63ef536e8c3408c8edad62485d`.
+   Its browser run39199569058/job117889538488 instead records8passed,5failed,
+   6skipped: CDP/navigation and isolated-native readiness timeouts plus a
+   navigation assertion. Those failures are distinct from item8's axe result.
+   Browser log `/private/tmp/adm-ci-6e-browser-39199569058.log` hashes
+   `87bb2bac58203ed52d4250d39bb2def603dda8e50395a4a5a71c4b7ca1e1c591`.
+   Shared resource pressure is not established as their cause. Preserve original
+   deadlines, real backend and pinned axe; final cleanup owns these recurring
+   failures after implementation. Current b864 workflows were queued at the
+   subsequent snapshot, not passing. No rerun/cancellation/runner control here.
 
 Raw failures and computed hashes are retained in
 [the failure receipt](receipts/integration/ci-cleanup-evidence-20261019T0224Z.json).
