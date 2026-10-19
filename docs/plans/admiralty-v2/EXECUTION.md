@@ -2036,3 +2036,36 @@ from the broader36aa Rust run remains on the single backlog; archive/installer
 groups on that source passed. Neither this private journey nor its strict axe
 result qualifies a production intake grant, coding provider, general outbox,
 reload recovery or any complete parent. Accepted2/32; native execution false.
+
+### Merged browser proof and live rollout reconciliation — 06:53Z
+
+PR113 merged06:51:34Z to5822aac041f41a559efa5ce3d79ee8447e766f1a after
+actual neverhumanbot exacte3cc33ca32d868bcd037c2565eb01f59187eee88 approval
+at06:50:29Z. The new intake browser/axe proof, scoped contrast repair and fresh
+CI binary-pin registration are integrated. No open implementation PR was left.
+
+Root's [06:52 reconciliation](../../../receipts/integration/rollout-reconciliation-20261019T0653Z.json)
+verifies six transferred immutable receipts and archives the previous rollout.
+It records actual PR110–113 component results without changing any parent state,
+criterion, prior evidence, foundation packet or unrelated packet. It preserves
+the original source observations in history; it does not refresh producer time
+without an observation. Accepted parents remain P00/P01 only.
+
+Commodore deployed6395 at06:36:14Z. Root's
+[06:53 independent proof](../../../receipts/integration/native-6395f8c-independent-20261019T0655Z.json)
+checks all15manifest/file/proc executable hashes, daemon3152134/start57722577,
+observer3151000/start57722420, health/UI/feed200 and18891redirect307. Rust producer
+reports0model turns and256history rows; no retired owned Python PID is present.
+The actual Intake chunk matches the tested precontrast UI. Root does not infer
+that the newer5822contrast repair has deployed, recount controls or qualify a
+live browser. Root did not control primary services.
+
+The [production-reference CAS](../../../receipts/integration/rollout-production-6395-20261019T0655Z.json)
+then appends only P31 evidence and preserves every other packet byte-for-byte.
+Current rollout SHA is e919843111da6a654ea11b6c4aebe5f09e9fc504747409a04ab8a9236cf9998d.
+The sole Commodore receives the newer merged-source deploy request. General
+coding-provider admission, production intake activation, model/capacity/budget
+settlement, restart recovery, remaining work-order journeys and full final CI
+remain separate gates. No fresh provider grant/fixture/run is created; SC133's
+one route is consumed. The actual broader Rust capture-deadline failure remains
+on the single backlog, with no extra cleanup lane or unchanged passing-suite rerun.
