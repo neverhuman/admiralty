@@ -1,5 +1,6 @@
 //! Durable reservation journal tests through the Store's sole writer.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+mod support;
 use admiralty_core::{AttemptId, PrincipalId, ProjectId, RootId, TaskId};
 use admiralty_runtime::reservations::{
     AccountId, CurrencyUnit, MinorUnits, ReservationEvent, ReservationLedger, ReservationScope,
@@ -14,6 +15,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
     },
 };
+use support::private_tempdir;
 
 struct Credential;
 struct Policy {
@@ -75,7 +77,7 @@ fn open(path: &Path, policy: Arc<Policy>) -> Store {
 }
 #[test]
 fn journal_replays_exact_receipts_after_restart_and_later_commands() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = private_tempdir();
     let path = temp.path().join("store.sqlite");
     let policy = Arc::new(Policy {
         revoked: AtomicBool::new(false),
@@ -102,7 +104,7 @@ fn journal_replays_exact_receipts_after_restart_and_later_commands() {
 }
 #[test]
 fn source_content_reuse_and_revoked_policy_fail_closed() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = private_tempdir();
     let path = temp.path().join("store.sqlite");
     let policy = Arc::new(Policy {
         revoked: AtomicBool::new(false),
@@ -223,7 +225,7 @@ fn command_revision_json_is_canonical_decimal() {
 
 #[test]
 fn oversized_corrupt_ledger_is_rejected_before_deserialization() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = private_tempdir();
     let path = temp.path().join("store.sqlite");
     let policy = Arc::new(Policy {
         revoked: AtomicBool::new(false),

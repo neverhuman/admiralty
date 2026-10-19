@@ -246,6 +246,14 @@ async fn mcp_and_cli_use_authenticated_durable_peer_inbox_without_manager_relay(
     use std::sync::Arc;
     use tokio::sync::{RwLock, oneshot};
 
+    #[cfg(unix)]
+    let temporary = {
+        use std::os::unix::fs::PermissionsExt;
+        tempfile::Builder::new()
+            .permissions(std::fs::Permissions::from_mode(0o700))
+            .tempdir()?
+    };
+    #[cfg(not(unix))]
     let temporary = tempfile::tempdir()?;
     let store = Store::open(temporary.path().join("peers.sqlite"))?;
     let mut task = admiralty_testkit::task_fixture("producer-task");
