@@ -15,7 +15,8 @@ struct Cli {
     #[arg(long)]
     validate: bool,
 }
-#[tokio::main]
+// Fleet hosts can expose hundreds of CPUs; observation does not need one thread per CPU.
+#[tokio::main(worker_threads = 2)]
 async fn main() -> std::process::ExitCode {
     match execute().await {
         Ok(()) => std::process::ExitCode::SUCCESS,
