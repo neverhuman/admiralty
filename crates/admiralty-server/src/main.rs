@@ -23,6 +23,9 @@ struct Args {
     /// Private, owner-controlled native operator and exact agent grant configuration.
     #[arg(long)]
     native_config: Option<PathBuf>,
+    /// Optional private intake credentials, scoped grants, policies and local origins.
+    #[arg(long, requires = "native_config")]
+    intake_config: Option<PathBuf>,
     /// Optional old-port compatibility redirect served by this Rust binary.
     #[arg(long)]
     redirect_listen: Option<SocketAddr>,
@@ -31,13 +34,31 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let args = Args::parse();
     let token = admiralty_server::startup::read_private_token(&args.token_file)?;
-    let (store, native_routes) = match args.native_config {
+    // Validate the complete independent intake configuration before any Store
+    // opens. No grants are installed when this option is absent.
+    let intake = args
+        .intake_config
+        .as_deref()
+        .map(admiralty_server::intake_configuration::load_private_intake_configuration)
+        .transpose()?;
+    let (store, native_routes, intake_routes) = match args.native_config {
         Some(path) => {
-            let configured =
-                admiralty_server::startup::open_native_services(&args.database, &path, &token)?;
-            (configured.store, Some(configured.routes))
+            let configured = admiralty_server::startup::open_native_services_with_intake(
+                &args.database,
+                &path,
+                &token,
+                intake,
+            )?;
+            (
+                configured.native.store,
+                Some(configured.native.routes),
+                configured.intake,
+            )
         }
-        None => (admiralty_store::Store::open(args.database)?, None),
+        None if intake.is_some() => {
+            return Err("intake configuration requires native startup configuration".into());
+        }
+        None => (admiralty_store::Store::open(args.database)?, None, None),
     };
     let legacy =
         args.legacy_status_file
@@ -49,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     public_read: args.legacy_public_read,
                 },
             );
-    let primary = admiralty_server::serve_with_native_routes(
+    let primary = admiralty_server::serve_with_work_order_routes(
         store,
         admiralty_server::ServerConfig {
             listen: args.listen,
@@ -60,6 +81,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             models_file: args.models_file,
         },
         native_routes,
+        intake_routes,
     );
     match args.redirect_listen {
         Some(listen) => tokio::select! {

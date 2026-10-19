@@ -8,9 +8,14 @@ use crate::services::{
         MAX_COORDINATION_GRANTS_PER_CREDENTIAL,
     },
     native_commands::{NativeCommands, OperatorLifecycleAuthority},
+    work_order_intake::{
+        WorkOrderIntakeAdmissionBridge, WorkOrderIntakeAuthRegistry, WorkOrderIntakePolicy,
+        WorkOrderIntakeService,
+    },
+    work_order_routes::{ExactLoopbackOrigins, WorkOrderRouteState},
 };
 use admiralty_core::{MessageId, PrincipalId, ProjectId, SourceIdentity};
-use admiralty_store::{Store, inbox::InboxScope};
+use admiralty_store::{Store, StoreAuthorities, inbox::InboxScope};
 use axum::Router;
 use serde::Deserialize;
 use std::{
@@ -71,6 +76,20 @@ pub struct NativeServices {
     pub routes: Router,
 }
 
+/// Capabilities supplied by a trusted startup caller, independently of HTTP
+/// identity claims and of the operator/inbox grants in the configuration file.
+/// This type deliberately has no deserialization or credential fallback.
+pub struct TrustedIntakeComposition {
+    pub registry: Arc<WorkOrderIntakeAuthRegistry>,
+    pub policy: Arc<dyn WorkOrderIntakePolicy>,
+    pub origins: ExactLoopbackOrigins,
+}
+
+pub struct NativeServicesWithIntake {
+    pub native: NativeServices,
+    pub intake: Option<WorkOrderRouteState>,
+}
+
 /// No lifecycle execution or verifier authority is installed by this function.
 /// The operator can submit work and cancel/revise unstarted work only.
 pub fn open_native_services(
@@ -78,6 +97,19 @@ pub fn open_native_services(
     config_file: &Path,
     owner_token: &str,
 ) -> Result<NativeServices, Error> {
+    Ok(open_native_services_with_intake(database, config_file, owner_token, None)?.native)
+}
+
+/// Installs the SAME admission bridge in both raw-capture and enriched-record
+/// writer policies before opening the Store, then constructs the service from
+/// that Store and bridge. Existing lifecycle and inbox grants keep their scope.
+/// No intake policy is inferred from the owner credential or config file.
+pub fn open_native_services_with_intake(
+    database: &Path,
+    config_file: &Path,
+    owner_token: &str,
+    intake: Option<TrustedIntakeComposition>,
+) -> Result<NativeServicesWithIntake, Error> {
     let bytes = read_private_file(config_file, MAX_CONFIG_BYTES)?;
     let config: NativeConfiguration =
         serde_json::from_slice(&bytes).map_err(|_| "native startup configuration is invalid")?;
@@ -87,9 +119,15 @@ pub fn open_native_services(
             .operator
             .as_ref()
             .is_some_and(|grant| grant.projects.is_empty() || grant.projects.len() > 256)
-        || (config.operator.is_none() && config.agents.is_empty())
+        || (config.operator.is_none() && config.agents.is_empty() && intake.is_none())
     {
         return Err("native startup configuration exceeds admission bounds".into());
+    }
+    if intake
+        .as_ref()
+        .is_some_and(|composition| composition.registry.authenticate(owner_token).is_ok())
+    {
+        return Err("intake credentials must be distinct from other native credentials".into());
     }
     let mut credentials = Vec::with_capacity(config.agents.len());
     for agent in config.agents {
@@ -98,8 +136,12 @@ pub fn open_native_services(
         }
         let token = read_private_token(&agent.token_file)?;
         // Agent read/ACK credentials must never be the owner command credential.
-        if token == owner_token {
-            return Err("agent credentials must be distinct from the owner credential".into());
+        if token == owner_token
+            || intake
+                .as_ref()
+                .is_some_and(|composition| composition.registry.authenticate(&token).is_ok())
+        {
+            return Err("native credentials must be distinct across authority domains".into());
         }
         let grants = agent
             .grants
@@ -125,15 +167,42 @@ pub fn open_native_services(
     }
     let authority = CoordinationCredentialAuthority::new(credentials)
         .map_err(|_| "native coordination credential configuration is invalid")?;
-    let store = match &config.operator {
-        Some(operator) => Store::open_with_lifecycle_authority(
-            database,
-            Arc::new(OperatorLifecycleAuthority::new(
-                operator.principal.clone(),
-                operator.projects.clone(),
-            )?),
-        )?,
-        None => Store::open(database)?,
+    let lifecycle = config
+        .operator
+        .as_ref()
+        .map(|operator| {
+            OperatorLifecycleAuthority::new(operator.principal.clone(), operator.projects.clone())
+                .map(|authority| {
+                    Arc::new(authority) as Arc<dyn admiralty_store::LifecycleAuthority>
+                })
+        })
+        .transpose()?;
+    let bridge = intake.as_ref().map(|composition| {
+        Arc::new(WorkOrderIntakeAdmissionBridge::new(
+            composition.registry.clone(),
+            Some(composition.policy.clone()),
+        ))
+    });
+    let store = Store::open_with_startup_authorities(
+        database,
+        StoreAuthorities {
+            lifecycle,
+            intake: bridge
+                .as_ref()
+                .map(|bridge| bridge.clone() as Arc<dyn admiralty_store::intake::IntakeAuthority>),
+            intake_capture: bridge.as_ref().map(|bridge| {
+                bridge.clone() as Arc<dyn admiralty_store::intake_capture::IntakeCaptureAuthority>
+            }),
+            ..StoreAuthorities::default()
+        },
+    )?;
+    let intake_routes = match (intake, bridge) {
+        (Some(composition), Some(bridge)) => Some(WorkOrderRouteState::new(
+            Arc::new(WorkOrderIntakeService::new(store.clone(), bridge)),
+            composition.registry,
+            composition.origins,
+        )?),
+        _ => None,
     };
     let mut routes = Router::new().nest(
         "/v2/agents/inbox",
@@ -153,7 +222,10 @@ pub fn open_native_services(
             .router(),
         );
     }
-    Ok(NativeServices { store, routes })
+    Ok(NativeServicesWithIntake {
+        native: NativeServices { store, routes },
+        intake: intake_routes,
+    })
 }
 
 /// Bounded, no-follow reads from an owner-only parent directory. Ancestors are
@@ -164,7 +236,7 @@ pub fn open_native_services(
 /// one hard link. These checks detect ordinary concurrent mutation; they do not
 /// create an isolation boundary against root or another process with this UID.
 #[cfg(unix)]
-fn read_private_file(path: &Path, limit: u64) -> Result<Vec<u8>, Error> {
+pub(crate) fn read_private_file(path: &Path, limit: u64) -> Result<Vec<u8>, Error> {
     use rustix::{
         fs::{Mode, OFlags, fstat, open, openat},
         process::geteuid,
@@ -257,7 +329,7 @@ fn read_private_file(path: &Path, limit: u64) -> Result<Vec<u8>, Error> {
 }
 
 #[cfg(not(unix))]
-fn read_private_file(_: &Path, _: u64) -> Result<Vec<u8>, Error> {
+pub(crate) fn read_private_file(_: &Path, _: u64) -> Result<Vec<u8>, Error> {
     Err("private native startup is not qualified on this platform".into())
 }
 

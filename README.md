@@ -112,6 +112,12 @@ An optional `--redirect-listen 127.0.0.1:18891` serves an old-port HTTP 307 redi
 
 The private native configuration currently enables scoped operator task intake, pending cancellation and unstarted contract revision, plus scoped agent context/inbox reads and separately granted acknowledgments. It does **not** install a general provider executor or candidate-acceptance authority. Request payloads cannot install grants. See [the lifecycle contract](docs/architecture/native-lifecycle.md) for the exact state and authority boundaries.
 
+For request preview, durable raw capture, explicit enriched work orders and
+all-state duplicate queries, add a separate private `--intake-config` using the
+[intake template](configs/examples/intake.json) and [intake API guide](docs/operators/work-order-intake.md).
+Its scoped credentials and action rules are independent of owner and inbox access.
+Recording a work order does not launch agents or mark tasks accepted.
+
 ## Configure models and project work
 
 Create your model policy from [the example registry](configs/examples/models.json), then follow [model setup](docs/operators/models.md). The example names and endpoints are examples, not fleet constants. `--models-file /absolute/private/models.json` enables authenticated model settings on `admiraltyd`; the live launcher accepts `--models` for the same purpose.

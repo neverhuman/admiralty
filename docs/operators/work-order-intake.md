@@ -93,9 +93,65 @@ provenance, scope and policy. Equal-length requests have distinct identities.
 Inflight mutation tickets are bounded, expire and retain nonce identity; a
 retired ticket cannot remove a replacement. Raw PlainText remains unresolved,
 and unverified artifact claims remain unavailable. This module registration
-does not install a production registry, HTTP route or enrichment UI.
+alone does not install a production registry or enrichment UI.
 
-No production issuer, public intake/question route, enrichment UI, dispatch or
-delivery is installed here. The focused40 Store checks,10 package checks and13
-contract runtime checks do not accept a parent packet or qualify autonomous
-execution.
+## Enable the private intake API
+
+Use the [configuration template](../../configs/examples/intake.json), replacing
+the project/root, token-file path, principal, allowed actions and exact local
+origins. Save it as an owned0600 file in an owned0700 directory. The separate
+intake token must have32–4096 printable ASCII characters and differ from the
+owner token and every configured inbox credential. Tokens stay in private files,
+never in this template, request JSON, URLs or logs.
+
+Start `admiraltyd` with the existing `--native-config` and the additional
+`--intake-config /absolute/private/intake.json`. The loader validates the complete
+closed configuration before opening the database. Omit this option to leave
+intake unavailable. Public demo mode cannot enable it. The native executable
+composes the same admission bridge into both Store writer policies and the HTTP
+service; an owner credential by itself grants no intake action.
+
+The policy catalog names explicit caps/revisions. A credential scope grant and
+an independent action rule must both allow an operation, with exact principal,
+project, root, authority reference/generation and policy binding. Missing rules
+deny. Counters/caps are canonical positive decimal strings; `schema_version`
+remains numeric1. Startup configuration is a static snapshot: changing its file
+does not hot-reload or revoke a running grant. Existing in-process registry
+revocation is rechecked on service/writer/replay turns. This private-file trust
+boundary does not isolate root or other processes with the same UID.
+
+All requests require both `Authorization: Bearer <owner-token>` and
+`X-Admiralty-Intake-Authorization: Bearer <intake-token>`, plus
+`X-Admiralty-Requested-With: intake`. The Origin and Host must match one configured
+loopback pair exactly. No CORS permission, profile fallback or request-issued
+grant is installed. Browser clients send same-origin JSON POST requests; their
+Origin is supplied by the browser. Explicit-Origin GET reads remain available
+to configured nonbrowser clients. Ordinary same-origin GET can omit Origin
+under the [Fetch standard](https://fetch.spec.whatwg.org/#origin-header), so
+browser reads use the bounded POST variants.
+
+| Path under `/v2/intake` | Method and input |
+| --- | --- |
+| `/preview` | POST project/root, format, provenance and original source payload |
+| `/captures` | POST exact `CaptureIntakeRequest` built from the preview |
+| `/captures/{id}` | GET scope/revision query, or POST closed scope/revision JSON with no URL query |
+| `/duplicates/query` | POST project/root and bounded `DuplicateQuery` |
+| `/work-orders` | POST explicit enriched `RecordIntakeRequest` |
+| `/work-orders/{id}` | GET scope/revision query, or POST closed scope/revision JSON with no URL query |
+
+Successful replies contain `schema_version:1`, `data` with the actual typed result,
+`execution_granted:false` and `acceptance_granted:false`; an absent authorized
+read returns `data:null`. Authentication/unavailability is checked before body
+extraction. Body bytes are capped at1MiB with a five-second read deadline, queries
+at8KiB, and concurrent admitted requests at8. GET reads require no framed body.
+Responses have a separate16MiB bound; larger historical offline captures fail
+closed rather than changing Store/source limits. Unknown or stale authority,
+ambiguous headers, identity collisions, malformed input and unverified artifact
+claims produce fixed non-secret errors. Exact retries still recheck current
+policy and return the original receipt.
+
+HTTP preview/capture/recording invokes no tool, provider, verifier, publication or
+task dispatch. PlainText stays one unresolved request; enriched recording still
+requires explicit outcomes/contracts/checks and both current CAS values. The
+enrichment UI and complete request-to-delivery runtime qualification remain
+release work. Focused service/API tests do not accept a full parent packet.
