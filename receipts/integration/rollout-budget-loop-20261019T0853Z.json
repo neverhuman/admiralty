@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T08:52:50.738Z",
+  "before_sha256": "7a40edc0858d544a90c4c692a9499ea33de70e5ba45ccc246ee651b84d0fc0b3",
+  "after_sha256": "c8bbfb619105d6692a2ce74a9eceece10ca05086d4126e62699fc9de7daec002",
+  "archive": "/home/ubuntu/admiralty-v2-build/receipts/rollout-corrections/20261019T085250Z",
+  "verified_manifest": [
+    {
+      "name": "native-budget-task-loop-20261019T0841Z.json",
+      "bytes": 14672,
+      "sha256": "b3e1ff1e22edaabd87bf7fbdd069d78a3b6956c9ee9b6e38921725c580eeefe0"
+    },
+    {
+      "name": "native-sc155-spool-inspection-20261019T0840Z.json",
+      "bytes": 2699,
+      "sha256": "82d5074e3b36141de2a4ea6477c3c4d7caef6904260dd6582faf1f0af18e3d45"
+    },
+    {
+      "name": "admiralty-sc155-spool-inspection-20261019T0835Z.json",
+      "bytes": 5085,
+      "sha256": "782daf55e73495bbcf7b9f44cc94dffc9c4fb6dbfbb0f9d7db9b4ce3fe21aee3"
+    },
+    {
+      "name": "native-budget-loop-review-20261019T0844Z.json",
+      "bytes": 3018,
+      "sha256": "aa1dbd943fa7913ca5001e31665b697544959660428bd80a7cd13f02ac392751"
+    },
+    {
+      "name": "native-budget-loop-merge-20261019T0852Z.json",
+      "bytes": 4912,
+      "sha256": "2c15d555768de7b6b62d86d544543c66ada75afa694506030d1ccee0efdce55e"
+    },
+    {
+      "name": "adm-primary-budget-loop-heartbeat-20261019T0832Z.json",
+      "bytes": 491,
+      "sha256": "0b9105590655ac0f941b35db5fd5f0e62ab7c0ef4cff80c721de8ac00af0e71f"
+    },
+    {
+      "name": "adm-budget-loop-retired-python-20261019T0840Z.json",
+      "bytes": 101,
+      "sha256": "08d4ef07b71dd750ce7a69840a82b80ce200fa77dc2fd8bdfa08d797df66bc1a"
+    },
+    {
+      "name": "open-prs-post119-20261019T0856Z.json",
+      "bytes": 175,
+      "sha256": "eac1526e7a1aee1323e1cca8cae050e10581ab213a119fc073cb0b0e2af12259"
+    }
+  ],
+  "receiving_main": "18417d88def462e69d44bd6641d04109b373a67b",
+  "reviewed_head": "530db6ebf7d4f3c29b9735262f8969a0fd882706",
+  "production_observed_revision": "fcd35569ccfed7429e1bb4b22dfcb7dc142f9700",
+  "production_observed_utc": "2026-10-19T07:59:37.516Z",
+  "all32_parent_statuses_and_criteria_preserved": true,
+  "unrelated_packets_byte_identical": true,
+  "old_evidence_preserved": true,
+  "producer_source_and_history_byte_identical": true,
+  "accepted": [
+    "P00",
+    "P01"
+  ],
+  "remaining_parents": 30,
+  "native_execution_qualified": false,
+  "SC155_retried": false,
+  "service_control": false,
+  "provider_calls_by_reconciliation": 0
+}

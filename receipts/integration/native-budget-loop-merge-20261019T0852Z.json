@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T08:49:33.317Z",
+  "kind": "forge-merge-and-operational-reconciliation",
+  "prs": [
+    {
+      "number": 117,
+      "url": "https://github.com/neverhuman/admiralty/pull/117",
+      "head": "07c66f7db4d7f40b19259ceff1ab221b247e9a6d",
+      "base": "main",
+      "receiving_main": "749d9d299f23ef806f00c3893be484049616d9f5",
+      "merged_utc": "2026-10-19T08:09:40Z",
+      "forge_snapshot": {
+        "path": "/private/tmp/adm-pr117-merge-forge.json",
+        "bytes": 18545,
+        "sha256": "c7c89ed11c04dfb6f5572dc89eada4514a9d699e47c71119fb26ef455cc3eea3"
+      }
+    },
+    {
+      "number": 118,
+      "url": "https://github.com/neverhuman/admiralty/pull/118",
+      "head": "e8894636f48f4a13680aa5ef94fad7973e03c954",
+      "base": "main",
+      "receiving_main": "0970118ddc2a526538c209d2b2f9557fee162226",
+      "merged_utc": "2026-10-19T08:17:08Z",
+      "forge_snapshot": {
+        "path": "/private/tmp/adm-pr118-merge-forge.json",
+        "bytes": 17490,
+        "sha256": "bffc7a42246414dd4dacb8799d3715ae2bf4d31be981d6f1e81be7540b325157"
+      }
+    },
+    {
+      "number": 119,
+      "url": "https://github.com/neverhuman/admiralty/pull/119",
+      "head": "530db6ebf7d4f3c29b9735262f8969a0fd882706",
+      "base": "main",
+      "receiving_main": "18417d88def462e69d44bd6641d04109b373a67b",
+      "merged_utc": "2026-10-19T08:47:27Z",
+      "forge_snapshot": {
+        "path": "/private/tmp/adm-pr119-merge-forge.json",
+        "bytes": 18449,
+        "sha256": "757bcb912fe66b02a5d61d1841c490fd861bf0c2d1d8db1981c93cc6cdc190bc"
+      }
+    }
+  ],
+  "latest_source": "18417d88def462e69d44bd6641d04109b373a67b",
+  "exact_review": {
+    "login": "neverhumanbot",
+    "state": "APPROVED",
+    "head": "530db6ebf7d4f3c29b9735262f8969a0fd882706",
+    "submitted_utc": "2026-10-19T08:47:13Z",
+    "id": 5569006338,
+    "scope": "Root and separate Codex source/evidence review transparently registered; no claim neverhumanbot executed tests"
+  },
+  "review_source": {
+    "path": "/private/tmp/adm-pr119-exact-reviews-forge.json",
+    "bytes": 2683,
+    "sha256": "4ea1af51437c58a8c7c93bce4a6f07ffe06a85813356e2e5fe314432d432bd41"
+  },
+  "independent_review": {
+    "path": "/private/tmp/adm-native-budget-loop-final-review-20261019T0844Z.json",
+    "bytes": 3018,
+    "sha256": "aa1dbd943fa7913ca5001e31665b697544959660428bd80a7cd13f02ac392751"
+  },
+  "component": {
+    "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/receipts/integration/native-budget-task-loop-20261019T0841Z.json",
+    "bytes": 14672,
+    "sha256": "b3e1ff1e22edaabd87bf7fbdd069d78a3b6956c9ee9b6e38921725c580eeefe0"
+  },
+  "actual_distinct_cases": 16,
+  "new_cases_subset": 8,
+  "platforms": [
+    "Mac",
+    "Linux"
+  ],
+  "full_hosted_green": false,
+  "current_source_CI": "18417d8 workflows queued at08:47 snapshot; PR530 workflows in progress, no reruns or cancellations",
+  "later_097_CI": {
+    "source": "0970118ddc2a526538c209d2b2f9557fee162226",
+    "rust": {
+      "run": 39221684261,
+      "result": "failed",
+      "target": "native_codex_plan",
+      "passed": 0,
+      "failed": 5,
+      "diagnostic": "UnsafeSourceMetadata at native_codex_plan.rs:229",
+      "cause_unproven": true,
+      "raw": {
+        "path": "/private/tmp/adm-ci-097-rust-39221684261.log",
+        "bytes": 203133,
+        "sha256": "6ff692b681acd57d3e0298222c178346ee5d95f87b310519c4afed53a77d1ce0"
+      }
+    },
+    "browser": {
+      "run": 39221684219,
+      "result": "failed",
+      "passed": 19,
+      "failed": 1,
+      "diagnostic": "atlas dark pinned axe label-content-name-mismatch",
+      "raw": {
+        "path": "/private/tmp/adm-ci-097-browser-39221684219.log",
+        "bytes": 53943,
+        "sha256": "be43d011fd2a6cc7ae7f2847953355303fd9bcd97ca9fa57a94fdc193d55ab60"
+      }
+    },
+    "single_backlog": true,
+    "guards_unchanged": true
+  },
+  "production": {
+    "last_full_proof_source": "fcd35569ccfed7429e1bb4b22dfcb7dc142f9700",
+    "last_full_proof_utc": "2026-10-19T07:59:37.516Z",
+    "cheap_liveness": {
+      "path": "/private/tmp/adm-primary-budget-loop-heartbeat-20261019T0832Z.json",
+      "bytes": 491,
+      "sha256": "0b9105590655ac0f941b35db5fd5f0e62ab7c0ef4cff80c721de8ac00af0e71f"
+    },
+    "retired_owned_python_scan": {
+      "path": "/private/tmp/adm-budget-loop-retired-python-20261019T0840Z.json",
+      "bytes": 101,
+      "sha256": "08d4ef07b71dd750ce7a69840a82b80ce200fa77dc2fd8bdfa08d797df66bc1a"
+    },
+    "latest_source_independently_deployed": false,
+    "root_service_control": false,
+    "SC156_serial_backup": "885617.adm_p18a_conflicts plus Admiral; Root integration only"
+  },
+  "provider": {
+    "SC155_consumed_no_retry": true,
+    "partial_spool_is_not_complete_capture": true,
+    "model_usage_billing_closure_unknown": true
+  },
+  "parent_acceptance_unchanged": true,
+  "general_native_execution_qualified": false
+}

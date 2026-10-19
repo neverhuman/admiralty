@@ -1,0 +1,71 @@
+{
+  "kind": "independent-read-only-receipt-and-docs-review",
+  "recorded_utc": "2026-10-19T08:45:46.138800+00:00",
+  "reviewer": "audit_product",
+  "reviewed_head": "530db6ebf7d4f3c29b9735262f8969a0fd882706",
+  "qualified_source": "84cbf43e9d37c8b2fa4648a04de745fb05113126",
+  "verdict": "CLEAR",
+  "files": [
+    {
+      "path": "receipts/integration/native-budget-task-loop-20261019T0841Z.json",
+      "sha256": "b3e1ff1e22edaabd87bf7fbdd069d78a3b6956c9ee9b6e38921725c580eeefe0"
+    },
+    {
+      "path": "receipts/integration/native-sc155-spool-inspection-20261019T0840Z.json",
+      "sha256": "82d5074e3b36141de2a4ea6477c3c4d7caef6904260dd6582faf1f0af18e3d45"
+    },
+    {
+      "path": "docs/plans/admiralty-v2/EXECUTION.md",
+      "sha256": "4fea91e86a66d79ac50ff55092a65b150be8445f49d26789215e5482e1d5bb2b"
+    },
+    {
+      "path": "docs/plans/admiralty-v2/WORK_PACKETS.md",
+      "sha256": "34679d5c75f6d99180c46d22b0aa0a765bf9456e409cc2bb6bf279acd9dd8d09"
+    },
+    {
+      "path": "docs/plans/admiralty-v2/REMAINING_20261019.md",
+      "sha256": "b55011ec8f089ad03eb2c9b77be8f144df725edba74aa4d8d5688240192122aa"
+    },
+    {
+      "path": "README.md",
+      "sha256": "fba86068231cb6b5bd7baac6516e27fb3d5daa94edadc8950d4b66feae53f79a"
+    },
+    {
+      "path": "docs/architecture/durable-admission.md",
+      "sha256": "ed19eeb2241611bbc0cc2b9f7aaaaa8129bcfea01a8540c65c6bc3e1a7c71273"
+    },
+    {
+      "path": "crates/admiralty-server/src/services/native_task_loop.rs",
+      "sha256": "5d4084ba6ddaccd95701b3d90c2e5fa177eeef6de3ec391d9f7701312efdca91"
+    },
+    {
+      "path": "crates/admiralty-server/src/services/native_task_loop_budget_tests.rs",
+      "sha256": "cfb31bd3762b5fc3cd1ab024bce31a138f308f91585a54d3f91b3be3621efb5e"
+    }
+  ],
+  "evidence": {
+    "mac_raw_sha256": "061445ade7a4e224c474561f1dbfb6c899aa90bcd6df9668a96fbb11574158fd",
+    "linux_raw_sha256": "1ff1d8759f53cabccd39704bfd50b7de02e4692487b271d3a9e4a6242e868efa",
+    "same_exact_case_names": true,
+    "distinct_cases": 16,
+    "new_cases_subset": 8,
+    "mac_passed": 16,
+    "linux_passed": 16,
+    "mac_seconds": 8.7,
+    "linux_seconds": 15.28,
+    "linux_code": 0,
+    "linux_archive_metadata_sha256": "1ff50f54829d84c227d40e8a91c690514005673b7e4971cdee49b6960c8fd20f",
+    "archive_bytes_independently_rehashed_in_this_review": false,
+    "referenced_local_evidence_hashes_verified": true,
+    "fresh_outside_inside_after_gates_recorded": true,
+    "sc155_receipt_byte_identical": true
+  },
+  "limits": [
+    "No new suites, providers, grants, service controls, CI controls or source edits",
+    "ResourceGate remains unconfigured in these component cases; no child/provider qualification",
+    "No production issuer, global capacity, settlement, restart recovery, physical launch/revocation atomicity or full parent acceptance",
+    "Only P00/P01 accepted; 2/32 parents",
+    "Primary observations retain their own earlier timestamps; no fresh full deployment or browser qualification"
+  ],
+  "findings": []
+}

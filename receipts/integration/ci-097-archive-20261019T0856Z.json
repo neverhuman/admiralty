@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T08:56:30.118Z",
+  "archive": "/home/ubuntu/admiralty-v2-build/receipts/budget-loop-ops-20261019T0852Z",
+  "verified_logs": [
+    {
+      "name": "adm-ci-097-rust-39221684261.log",
+      "bytes": 203133,
+      "sha256": "6ff692b681acd57d3e0298222c178346ee5d95f87b310519c4afed53a77d1ce0"
+    },
+    {
+      "name": "adm-ci-097-browser-39221684219.log",
+      "bytes": 53943,
+      "sha256": "be43d011fd2a6cc7ae7f2847953355303fd9bcd97ca9fa57a94fdc193d55ab60"
+    }
+  ],
+  "source_revision": "0970118ddc2a526538c209d2b2f9557fee162226",
+  "workflows_remain_failed": true,
+  "no_CI_rerun_or_service_control": true
+}

@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "reviewed_utc": "2026-10-19T08:52:08.496Z",
+  "verdict": "CLEAR",
+  "review_scope": "Read-only static review of one-off sole-writer rollout update and exact source/evidence checks; not runtime ingestion qualification",
+  "script": {
+    "path": "/private/tmp/admiralty-reconcile-budget-loop.cjs",
+    "sha256": "bb0ca52aeb268073ce8c5e8143412066a2d897360318695da74befbfb6197817"
+  },
+  "manifest": {
+    "path": "/private/tmp/budget-loop-ops-20261019T0852Z/manifest.json",
+    "sha256": "f6b4c1f7607f5582bf113ec2647c59ede20ec8e9dfbd02072ec225124bd32904",
+    "verified_exact_distinct_artifacts": [
+      {
+        "name": "native-budget-task-loop-20261019T0841Z.json",
+        "bytes": 14672,
+        "sha256": "b3e1ff1e22edaabd87bf7fbdd069d78a3b6956c9ee9b6e38921725c580eeefe0"
+      },
+      {
+        "name": "native-sc155-spool-inspection-20261019T0840Z.json",
+        "bytes": 2699,
+        "sha256": "82d5074e3b36141de2a4ea6477c3c4d7caef6904260dd6582faf1f0af18e3d45"
+      },
+      {
+        "name": "admiralty-sc155-spool-inspection-20261019T0835Z.json",
+        "bytes": 5085,
+        "sha256": "782daf55e73495bbcf7b9f44cc94dffc9c4fb6dbfbb0f9d7db9b4ce3fe21aee3"
+      },
+      {
+        "name": "native-budget-loop-review-20261019T0844Z.json",
+        "bytes": 3018,
+        "sha256": "aa1dbd943fa7913ca5001e31665b697544959660428bd80a7cd13f02ac392751"
+      },
+      {
+        "name": "native-budget-loop-merge-20261019T0852Z.json",
+        "bytes": 4912,
+        "sha256": "2c15d555768de7b6b62d86d544543c66ada75afa694506030d1ccee0efdce55e"
+      },
+      {
+        "name": "adm-primary-budget-loop-heartbeat-20261019T0832Z.json",
+        "bytes": 491,
+        "sha256": "0b9105590655ac0f941b35db5fd5f0e62ab7c0ef4cff80c721de8ac00af0e71f"
+      },
+      {
+        "name": "adm-budget-loop-retired-python-20261019T0840Z.json",
+        "bytes": 101,
+        "sha256": "08d4ef07b71dd750ce7a69840a82b80ce200fa77dc2fd8bdfa08d797df66bc1a"
+      },
+      {
+        "name": "open-prs-post119-20261019T0856Z.json",
+        "bytes": 175,
+        "sha256": "eac1526e7a1aee1323e1cca8cae050e10581ab213a119fc073cb0b0e2af12259"
+      }
+    ]
+  },
+  "nested_local_evidence_hashes_verified": [
+    {
+      "path": "/private/tmp/adm-pr117-merge-forge.json",
+      "sha256": "c7c89ed11c04dfb6f5572dc89eada4514a9d699e47c71119fb26ef455cc3eea3",
+      "bytes": 18545
+    },
+    {
+      "path": "/private/tmp/adm-pr118-merge-forge.json",
+      "sha256": "bffc7a42246414dd4dacb8799d3715ae2bf4d31be981d6f1e81be7540b325157",
+      "bytes": 17490
+    },
+    {
+      "path": "/private/tmp/adm-pr119-merge-forge.json",
+      "sha256": "757bcb912fe66b02a5d61d1841c490fd861bf0c2d1d8db1981c93cc6cdc190bc",
+      "bytes": 18449
+    },
+    {
+      "path": "/private/tmp/adm-pr119-exact-reviews-forge.json",
+      "sha256": "4ea1af51437c58a8c7c93bce4a6f07ffe06a85813356e2e5fe314432d432bd41",
+      "bytes": 2683
+    },
+    {
+      "path": "/private/tmp/adm-native-budget-loop-final-review-20261019T0844Z.json",
+      "sha256": "aa1dbd943fa7913ca5001e31665b697544959660428bd80a7cd13f02ac392751",
+      "bytes": 3018
+    },
+    {
+      "path": "/private/tmp/adm-budget-loop-root-integrated.log",
+      "sha256": "061445ade7a4e224c474561f1dbfb6c899aa90bcd6df9668a96fbb11574158fd",
+      "bytes": 2393
+    },
+    {
+      "path": "/private/tmp/adm-budget-loop-linux-test.log",
+      "sha256": "1ff1d8759f53cabccd39704bfd50b7de02e4692487b271d3a9e4a6242e868efa",
+      "bytes": 3400
+    },
+    {
+      "path": "/private/tmp/adm-ci-097-rust-39221684261.log",
+      "sha256": "6ff692b681acd57d3e0298222c178346ee5d95f87b310519c4afed53a77d1ce0",
+      "bytes": 203133
+    },
+    {
+      "path": "/private/tmp/adm-ci-097-browser-39221684219.log",
+      "sha256": "be43d011fd2a6cc7ae7f2847953355303fd9bcd97ca9fa57a94fdc193d55ab60",
+      "bytes": 53943
+    }
+  ],
+  "expected_rollout_sha256": "7a40edc0858d544a90c4c692a9499ea33de70e5ba45ccc246ee651b84d0fc0b3",
+  "modified_packets": [
+    "P08",
+    "P14",
+    "P31"
+  ],
+  "checks": [
+    "Exact8 distinct name/byte/hash tuples match staged bytes and all fixed-name parses are included",
+    "Actual16 distinct Mac cases equal16 Linux cases;8 new cases are subset, no provider/backend/parent qualification",
+    "PR119 exact review head530 approved08:47:13 and merged08:47:27; receiving main18417 remains requested deployment",
+    "Open-PR clock comes from exact0850:55.821 observation;0856 filename does not become observation time",
+    "SC155 partial spool/agent-message is not completed turn, model/usage, final producer watermark, EOF or closure",
+    "Full primary proof remainsfcd07:59, cheap08:31 liveness/08:39 scan remain narrower",
+    "Current097 CI0pass5fail native_codex_plan and19pass1fail axe preserve original failures/cause unknown",
+    "All32 statuses/criteria/old evidence/source+history clocks checked; onlyP00/P01 accepted",
+    "Create-only fsynced preimage and archive+archive-parent precede rollout temp fsync/sole-writer recheck/rename/Bfsync; final proof fsynced"
+  ],
+  "open_prs_observed_utc": "2026-10-19T08:50:55.821Z",
+  "limits": {
+    "script_executed": false,
+    "source_edited": false,
+    "tests_run": false,
+    "provider_or_service_actions": false,
+    "remote_actions": false,
+    "concurrent_multiwriter_atomic_CAS_claim": false,
+    "after_rename_errors_require_readback_before_any_retry": true
+  }
+}

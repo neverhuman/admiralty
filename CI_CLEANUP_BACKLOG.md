@@ -6,6 +6,21 @@ neverhumanbot approval and matched-head rebase. Red/queued CI is never green.
 One cleanup lane takes this list after remaining cutover implementation lands;
 build failures remain immediate work.
 
+Main0970118's actual Rust workflow39221684261 passed contracts and reached the
+`native_codex_plan` integration target, which reported0passed/5failed at
+line229 with `UnsafeSourceMetadata`. This is the same diagnostic class as
+item7, separately observed on this source; its cause remains unproven. Raw
+`/private/tmp/adm-ci-097-rust-39221684261.log` SHA-256
+`6ff692b681acd57d3e0298222c178346ee5d95f87b310519c4afed53a77d1ce0`
+is preserved. Browser39221684219 reported19passed/1failed, actual Atlas dark
+`label-content-name-mismatch`; raw
+`/private/tmp/adm-ci-097-browser-39221684219.log` SHA-256
+`be43d011fd2a6cc7ae7f2847953355303fd9bcd97ca9fa57a94fdc193d55ab60`.
+Both logs are also archived in the owned `budget-loop-ops-20261019T0852Z`
+receipt directory. These workflows remain failed. PR119's16Mac/16Linux scoped
+loop cases do not establish full CI green; later18417 outcomes require a fresh
+read. No rerun, cancellation, deadline/guard weakening or extra cleanup lane.
+
 Latest749d9d29 browser workflow39220795727 completed with19passed/1failed:
 `atlas dark` reports actual pinned-axe `label-content-name-mismatch` on hierarchy
 cards, matching item8's rule but separately observed on this source. It is not
