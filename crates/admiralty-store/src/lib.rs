@@ -149,6 +149,13 @@ pub trait LifecycleAuthority: Send + Sync {
 }
 
 enum Request {
+    ClaimOutboxKey {
+        now: Option<u64>,
+        owner: String,
+        lease_secs: u64,
+        idempotency_key: String,
+        reply: Reply<Option<outbox::Claim>>,
+    },
     ClaimOutbox {
         now: Option<u64>,
         owner: String,
@@ -392,6 +399,29 @@ impl Store {
             now,
             owner,
             lease_secs,
+            reply,
+        })
+    }
+
+    /// Claim one independently authorized effect on the sole writer. Selection
+    /// and expiry affect only this exact key; no unrelated work is adopted.
+    /// The monotonic trusted clock remains global. This is not a caller grant.
+    pub fn claim_outbox_key(
+        &self,
+        now: Option<u64>,
+        owner: String,
+        lease_secs: u64,
+        idempotency_key: String,
+    ) -> Result<Option<outbox::Claim>> {
+        outbox::validate_claim_key(&idempotency_key)?;
+        if owner.is_empty() || owner.len() > 128 || owner.chars().any(char::is_control) {
+            return Err(StoreError::Invalid("outbox owner is outside bounds".into()));
+        }
+        self.ask(|reply| Request::ClaimOutboxKey {
+            now,
+            owner,
+            lease_secs,
+            idempotency_key,
             reply,
         })
     }
@@ -1058,6 +1088,23 @@ impl Writer {
     fn run(&mut self, receiver: mpsc::Receiver<Request>, changes: tokio::sync::watch::Sender<()>) {
         while let Ok(request) = receiver.recv() {
             match request {
+                Request::ClaimOutboxKey {
+                    now,
+                    owner,
+                    lease_secs,
+                    idempotency_key,
+                    reply,
+                } => {
+                    let result = outbox::claim_key_due(
+                        &mut self.connection,
+                        now,
+                        &owner,
+                        lease_secs,
+                        &idempotency_key,
+                    )
+                    .map_err(StoreError::from);
+                    let _ = reply.send(result);
+                }
                 Request::RegisterWorkplan { request, reply } => {
                     // Compare only incoming identities (core caps this at 1000),
                     // rather than copying/hashing an arbitrarily large unrelated
@@ -1667,6 +1714,128 @@ mod tests {
         for version in [3_044_005, 3_045_000, 3_050_006, 3_051_002] {
             assert!(!fixed_sqlite(version));
         }
+    }
+
+    #[test]
+    fn exact_key_writer_claims_only_owned_effect_and_reopen_preserves_foreign_rows() {
+        let directory = private_tempdir();
+        let path = directory.path().join("scoped-claims.sqlite");
+        let store = Store::open(&path).expect("actual sole writer");
+        for (sequence, task, key) in [
+            ("1", "foreign-expired", "project-b:expired"),
+            ("2", "foreign-pending", "project-b:pending"),
+            ("3", "ours", "project-a:ours"),
+        ] {
+            let mut event = submitted(task);
+            if let DomainEvent::TaskSubmitted { contract } = &mut event {
+                contract.project_id = admiralty_core::ProjectId::new(if task == "ours" {
+                    "project-a"
+                } else {
+                    "project-b"
+                })
+                .expect("project");
+            }
+            store
+                .append_with_intent(
+                    source(sequence),
+                    event,
+                    "recorded".into(),
+                    intent(key, json!({"task":task}), 0),
+                )
+                .expect("atomic event/effect");
+        }
+        let foreign_claim = store
+            .claim_outbox_key(
+                Some(0),
+                "project-b-owner".into(),
+                1,
+                "project-b:expired".into(),
+            )
+            .expect("foreign claim")
+            .expect("claim");
+        let owned = store
+            .claim_outbox_key(
+                Some(2),
+                "project-a-owner".into(),
+                5,
+                "project-a:ours".into(),
+            )
+            .expect("scoped writer claim")
+            .expect("ours");
+        assert_eq!(owned.idempotency_key, "project-a:ours");
+        assert!(
+            store
+                .claim_outbox_key(Some(2), "same-owner".into(), 5, "project-a:ours".into())
+                .expect("held claim")
+                .is_none()
+        );
+        assert!(
+            store
+                .claim_outbox_key(Some(2), "owner".into(), 5, "bad\nkey".into())
+                .is_err()
+        );
+        store
+            .complete_outbox(owned.token.clone(), "actual-receipt".into(), Some(3))
+            .expect("owned completion");
+        let before = store.snapshot().expect("domain unchanged by claims");
+        drop(store);
+        let connection = Connection::open(&path).expect("inspect closed writer");
+        let foreign_state: String = connection
+            .query_row(
+                "SELECT state FROM outbox_intents WHERE idempotency_key='project-b:expired'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("foreign expired state");
+        assert_eq!(
+            foreign_state, "claimed",
+            "exact-key polling never expires another project's handle"
+        );
+        let pending: String = connection
+            .query_row(
+                "SELECT state FROM outbox_intents WHERE idempotency_key='project-b:pending'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("foreign pending state");
+        assert_eq!(pending, "pending");
+        drop(connection);
+        let reopened = Store::open(&path).expect("reopen actual writer");
+        assert_eq!(reopened.snapshot().expect("same projection"), before);
+        reopened
+            .complete_outbox(owned.token, "actual-receipt".into(), Some(3))
+            .expect("exact completion replay after reopen");
+        assert!(
+            reopened
+                .claim_outbox_key(Some(3), "owner".into(), 5, "project-a:ours".into())
+                .expect("completed never redispatched")
+                .is_none()
+        );
+        assert!(
+            reopened
+                .claim_outbox_key(Some(3), "owner".into(), 5, "project-b:expired".into())
+                .expect("only explicitly selected foreign expiry")
+                .is_none()
+        );
+        assert!(matches!(
+            reopened.complete_outbox(foreign_claim.token, "late".into(), Some(3)),
+            Err(super::StoreError::Outbox(
+                outbox::OutboxError::ReconciliationRequired
+            ))
+        ));
+        assert_eq!(
+            reopened
+                .claim_outbox_key(
+                    Some(3),
+                    "project-b-owner".into(),
+                    5,
+                    "project-b:pending".into()
+                )
+                .expect("separate explicit effect")
+                .expect("foreign remains runnable")
+                .idempotency_key,
+            "project-b:pending"
+        );
     }
 
     #[test]
