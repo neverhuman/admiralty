@@ -22,6 +22,53 @@ const MAX_FILE_BYTES: u64 = 512 * 1024 * 1024;
 const MAX_TOTAL_BYTES: u64 = 1024 * 1024 * 1024;
 const BUFFER_SIZE: usize = 1024 * 1024;
 const MANIFEST_NAME: &str = "MANIFEST.json";
+const MAX_GUARD_BYTES: u64 = 1024 * 1024;
+const GENERATED_GUARD_PREFIX: &str = "packages/contracts/generated/";
+const GENERATED_GUARD_ENTRY: &[u8] =
+    include_bytes!("../../../packages/contracts/generated/validators.mjs");
+// This deliberately exact allowlist is reviewed with the public generator. A
+// release never discovers dependencies by traversing a source directory.
+const GENERATED_GUARD_MODULES: [(&str, &[u8]); 9] = [
+    (
+        "validators-base.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-base.mjs"),
+    ),
+    (
+        "validators-workplan.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-workplan.mjs"),
+    ),
+    (
+        "validators-verification-receipt.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-verification-receipt.mjs"),
+    ),
+    (
+        "validators-verification-policy.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-verification-policy.mjs"),
+    ),
+    (
+        "validators-interface-contract.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-interface-contract.mjs"),
+    ),
+    (
+        "validators-config-layer.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-config-layer.mjs"),
+    ),
+    (
+        "validators-config-patch.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-config-patch.mjs"),
+    ),
+    (
+        "validators-config-layer-receipt.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-config-layer-receipt.mjs"),
+    ),
+    (
+        "validators-provenance-contribution.mjs",
+        include_bytes!(
+            "../../../packages/contracts/generated/validators-provenance-contribution.mjs"
+        ),
+    ),
+];
+type FileIdentity = (u64, u64, u64, i64, i64, i64, i64, u64);
 
 /// One explicitly selected source file and its expected raw-byte SHA-256.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -188,6 +235,10 @@ pub fn stage_native_package(
         sources.push((file, identity(&metadata)));
     }
 
+    // Validate the exact captured guard closure before creating staging paths.
+    // Later copy/hash/identity checks bind these inspected bytes to the output.
+    validate_guard_closure(&prepared, &mut sources)?;
+
     let output_parent = output_dir
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
@@ -313,6 +364,147 @@ pub fn stage_native_package(
     })
 }
 
+fn validate_guard_closure(
+    prepared: &[(&PackageInput, String)],
+    sources: &mut [(File, FileIdentity)],
+) -> Result<(), PackageError> {
+    let mut split_entry = false;
+    for ((input, destination), (source, before)) in prepared.iter().zip(sources) {
+        if !destination.starts_with("share/admiralty/guards/v2/") {
+            continue;
+        }
+        source.seek(SeekFrom::Start(0))?;
+        let mut bytes = Vec::new();
+        (&mut *source)
+            .take(MAX_GUARD_BYTES + 1)
+            .read_to_end(&mut bytes)?;
+        if bytes.len() as u64 > MAX_GUARD_BYTES {
+            return Err(PackageError::InvalidInput(
+                "guard exceeds the 1 MiB source bound",
+            ));
+        }
+        if format!("{:x}", Sha256::digest(&bytes)) != input.expected_sha256 {
+            return Err(PackageError::InvalidInput("source SHA-256 mismatch"));
+        }
+        if identity(&source.metadata()?) != *before {
+            return Err(PackageError::InvalidInput(
+                "guard changed during closure inspection",
+            ));
+        }
+        let name = input.source.strip_prefix(GENERATED_GUARD_PREFIX);
+        if name == Some("validators.mjs") && bytes == GENERATED_GUARD_ENTRY {
+            validate_generated_entry_format(&bytes)?;
+            split_entry = true;
+        } else if let Some((_, expected)) = GENERATED_GUARD_MODULES
+            .iter()
+            .find(|(allowed, _)| name == Some(*allowed))
+        {
+            if bytes != *expected {
+                return Err(PackageError::InvalidInput(
+                    "generated guard differs from the source-bound module",
+                ));
+            }
+        } else {
+            validate_self_contained_guard(&bytes)?;
+        }
+    }
+    if split_entry {
+        for (name, _) in GENERATED_GUARD_MODULES {
+            let required = format!("{GENERATED_GUARD_PREFIX}{name}");
+            if !prepared.iter().any(|(input, _)| input.source == required) {
+                return Err(PackageError::InvalidInput(
+                    "generated guard dependency missing from explicit inputs",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_generated_entry_format(bytes: &[u8]) -> Result<(), PackageError> {
+    let invalid =
+        || PackageError::InvalidInput("generated guard has unknown entry dependency or source");
+    let source = std::str::from_utf8(bytes).map_err(|_| invalid())?;
+    if !source.is_ascii() {
+        return Err(invalid());
+    }
+    let (prefix, metadata) = source
+        .split_once("export const CONTRACT_SCHEMA_FINGERPRINTS = Object.freeze(")
+        .ok_or_else(invalid)?;
+    let actual: Vec<_> = prefix
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with("//"))
+        .collect();
+    let mut expected = Vec::new();
+    for (name, _) in GENERATED_GUARD_MODULES {
+        let exports = if name == "validators-base.mjs" {
+            "validateTaskContract, validateCoordinationMessage, validateDomainEvent, validateDomainEventV2".to_owned()
+        } else {
+            let stem = name
+                .strip_prefix("validators-")
+                .and_then(|stem| stem.strip_suffix(".mjs"))
+                .ok_or_else(invalid)?;
+            let mut function = "validate".to_owned();
+            for component in stem.split('-') {
+                let mut letters = component.chars();
+                function.extend(letters.next().ok_or_else(invalid)?.to_uppercase());
+                function.extend(letters);
+            }
+            function
+        };
+        expected.push(format!("export {{ {exports} }} from './{name}';"));
+    }
+    expected.push("export const SUPPORTED_SCHEMA_VERSION = 1;".to_owned());
+    if actual != expected {
+        return Err(invalid());
+    }
+    let metadata = metadata.trim_end().strip_suffix(");").ok_or_else(invalid)?;
+    let fingerprints: std::collections::BTreeMap<String, String> =
+        serde_json::from_str(metadata).map_err(|_| invalid())?;
+    if fingerprints.is_empty() || fingerprints.values().any(|value| !valid_sha256(value)) {
+        return Err(invalid());
+    }
+    Ok(())
+}
+
+fn validate_self_contained_guard(bytes: &[u8]) -> Result<(), PackageError> {
+    // Compatibility for simple custom self-contained guards. This is a
+    // conservative source subset, not a JavaScript parser or sandbox: escaped
+    // source, templates and all dependency/loader tokens (even in comments or
+    // strings) require an explicitly supported source-bound module instead.
+    let source = std::str::from_utf8(bytes)
+        .map_err(|_| PackageError::InvalidInput("custom guard requires supported UTF-8 source"))?;
+    if source.trim().is_empty()
+        || !source.is_ascii()
+        || source.bytes().any(|byte| matches!(byte, b'\\' | b'`'))
+        || source
+            .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_' || ch == '$'))
+            .any(|token| {
+                matches!(
+                    token,
+                    "import"
+                        | "from"
+                        | "require"
+                        | "createRequire"
+                        | "importScripts"
+                        | "eval"
+                        | "Function"
+                        | "constructor"
+                        | "globalThis"
+                        | "global"
+                        | "process"
+                        | "module"
+                )
+            })
+    {
+        return Err(PackageError::InvalidInput(
+            "custom guard has unsupported dependency or loader source",
+        ));
+    }
+    Ok(())
+}
+
 fn validate_metadata(version: &str, target: &str, source_commit: &str) -> Result<(), PackageError> {
     if !valid_metadata_token(version, b".+-", 128) || !valid_metadata_token(target, b"._+-", 128) {
         return Err(PackageError::InvalidInput(
@@ -382,10 +574,17 @@ fn package_destination(source: &str) -> Result<(String, InputKind), PackageError
             format!("share/admiralty/guards/v2/{}", rest.join("/")),
             InputKind::Guard,
         ),
-        ["packages", "contracts", "generated", "validators.mjs"] => (
-            "share/admiralty/guards/v2/validators.mjs".to_owned(),
-            InputKind::Guard,
-        ),
+        ["packages", "contracts", "generated", name]
+            if *name == "validators.mjs"
+                || GENERATED_GUARD_MODULES
+                    .iter()
+                    .any(|(allowed, _)| name == allowed) =>
+        {
+            (
+                format!("share/admiralty/guards/v2/{name}"),
+                InputKind::Guard,
+            )
+        }
         ["docs", rest @ ..] if !rest.is_empty() => (
             format!("share/doc/admiralty/{}", rest.join("/")),
             InputKind::Documentation,
@@ -507,7 +706,7 @@ fn open_source(root: &OwnedFd, source: &str) -> Result<File, PackageError> {
     Ok(File::from(fd))
 }
 
-fn identity(metadata: &fs::Metadata) -> (u64, u64, u64, i64, i64, i64, i64, u64) {
+fn identity(metadata: &fs::Metadata) -> FileIdentity {
     (
         metadata.dev(),
         metadata.ino(),
@@ -688,6 +887,263 @@ mod tests {
         );
         assert!(crate::run(crate::Cli::try_parse_from(args)?).await.is_err());
         assert_eq!(fs::read(output.join(MANIFEST_NAME))?, manifest);
+        Ok(())
+    }
+
+    fn generated_fixture() -> (tempfile::TempDir, Vec<PackageInput>) {
+        let (root, mut inputs) = fixture();
+        let entry = root
+            .path()
+            .join(format!("{GENERATED_GUARD_PREFIX}validators.mjs"));
+        fs::write(entry, GENERATED_GUARD_ENTRY).expect("generated entry");
+        inputs
+            .iter_mut()
+            .find(|input| input.source.ends_with("/validators.mjs"))
+            .expect("entry input")
+            .expected_sha256 = digest(GENERATED_GUARD_ENTRY);
+        for (name, bytes) in GENERATED_GUARD_MODULES {
+            let source = format!("{GENERATED_GUARD_PREFIX}{name}");
+            fs::write(root.path().join(&source), bytes).expect("generated sibling");
+            inputs.push(PackageInput {
+                source,
+                expected_sha256: digest(bytes),
+                mode: 0o644,
+            });
+        }
+        (root, inputs)
+    }
+
+    #[test]
+    fn generated_entry_requires_every_explicit_hash_bound_sibling_before_staging() {
+        let (root, inputs) = generated_fixture();
+        for (name, _) in GENERATED_GUARD_MODULES {
+            let mut missing = inputs.clone();
+            missing.retain(|input| input.source != format!("{GENERATED_GUARD_PREFIX}{name}"));
+            let output = root.path().join("missing-closure");
+            assert!(
+                matches!(
+                    stage(root.path(), &output, &missing),
+                    Err(PackageError::InvalidInput(
+                        "generated guard dependency missing from explicit inputs"
+                    ))
+                ),
+                "missing {name}"
+            );
+            assert!(!output.exists());
+            assert!(
+                !fs::read_dir(root.path())
+                    .expect("fixture entries")
+                    .any(|entry| entry
+                        .expect("entry")
+                        .file_name()
+                        .to_string_lossy()
+                        .starts_with(".admiralty-native-package-"))
+            );
+        }
+        let mut wrong = inputs.clone();
+        wrong.last_mut().expect("last sibling").expected_sha256 = "0".repeat(64);
+        assert!(matches!(
+            stage(
+                root.path(),
+                &root.path().join("wrong-sibling-digest"),
+                &wrong
+            ),
+            Err(PackageError::InvalidInput("source SHA-256 mismatch"))
+        ));
+    }
+
+    #[test]
+    fn unknown_generated_dependencies_and_loader_sources_fail_before_staging() {
+        validate_generated_entry_format(GENERATED_GUARD_ENTRY)
+            .expect("current known entry grammar");
+        let entry = std::str::from_utf8(GENERATED_GUARD_ENTRY).expect("generated UTF-8");
+        for changed in [
+            entry.replace("./validators-base.mjs", "./validators-unknown.mjs"),
+            format!("import './unknown.mjs';\n{entry}"),
+            format!("{entry}\nexport * from './unknown.mjs';\n"),
+        ] {
+            assert!(
+                validate_generated_entry_format(changed.as_bytes()).is_err(),
+                "the compiled entry cannot silently introduce new dependencies"
+            );
+        }
+        for (name, replacement) in [
+            (
+                "validators.mjs",
+                "export { validator } from './validators-unknown.mjs';",
+            ),
+            (
+                "validators-base.mjs",
+                "export { validator } from './validators-workplan.mjs';",
+            ),
+            (
+                "validators.mjs",
+                "export const validator = value => import('node:fs');",
+            ),
+            (
+                "validators.mjs",
+                "export const validator = value => require('node:fs');",
+            ),
+            (
+                "validators.mjs",
+                r"export const validator = value => requ\u0069re('node:fs');",
+            ),
+            (
+                "validators.mjs",
+                "export const validator = value => eval('value');",
+            ),
+        ] {
+            let (root, mut inputs) = generated_fixture();
+            let source = format!("{GENERATED_GUARD_PREFIX}{name}");
+            fs::write(root.path().join(&source), replacement).expect("changed guard");
+            inputs
+                .iter_mut()
+                .find(|input| input.source == source)
+                .expect("input")
+                .expected_sha256 = digest(replacement.as_bytes());
+            let output = root.path().join("unsupported-guard");
+            assert!(
+                stage(root.path(), &output, &inputs).is_err(),
+                "reject {replacement}"
+            );
+            assert!(!output.exists());
+        }
+        // A legacy source alias cannot evade closure inspection at the same
+        // archived guard path, even if every declared raw-byte hash is right.
+        let (root, mut inputs) = generated_fixture();
+        let source = "schemas/guards/v2/validators.mjs";
+        let path = root.path().join(source);
+        fs::create_dir_all(path.parent().expect("parent")).expect("guard parent");
+        fs::write(path, GENERATED_GUARD_ENTRY).expect("aliased entry");
+        inputs.retain(|input| !input.source.starts_with(GENERATED_GUARD_PREFIX));
+        inputs.push(PackageInput {
+            source: source.into(),
+            expected_sha256: digest(GENERATED_GUARD_ENTRY),
+            mode: 0o644,
+        });
+        assert!(stage(root.path(), &root.path().join("alias-closure"), &inputs).is_err());
+    }
+
+    #[test]
+    fn only_exact_generated_sibling_paths_are_allowlisted() {
+        for (name, _) in GENERATED_GUARD_MODULES {
+            assert_eq!(
+                package_destination(&format!("{GENERATED_GUARD_PREFIX}{name}"))
+                    .expect("exact sibling"),
+                (
+                    format!("share/admiralty/guards/v2/{name}"),
+                    InputKind::Guard
+                )
+            );
+        }
+        for name in [
+            "validators-unknown.mjs",
+            "validators-base.js",
+            "Validators-base.mjs",
+            "validators-base.mjs/extra",
+            "../validators-base.mjs",
+            "sub/../validators-base.mjs",
+            "validators-base.mjs?import",
+            "validators-base.mjs#fragment",
+        ] {
+            assert!(
+                package_destination(&format!("{GENERATED_GUARD_PREFIX}{name}")).is_err(),
+                "reject {name}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn staged_real_generated_closure_imports_and_validates_all_public_roots()
+    -> crate::CliResult<()> {
+        let (root, inputs) = generated_fixture();
+        let output = root.path().join("real-guard-bundle");
+        let receipt = stage(root.path(), &output, &inputs)?;
+        assert!(!receipt.archive_created && !receipt.installer_complete);
+        for entry in &receipt.manifest.entries {
+            let bytes = fs::read(output.join(&entry.archive_path))?;
+            assert_eq!(digest(&bytes), entry.sha256);
+            assert_eq!(bytes.len() as u64, entry.size);
+        }
+        let script = r#"
+import assert from 'node:assert/strict';
+import { pathToFileURL } from 'node:url';
+const guards = await import(pathToFileURL(process.argv[1]).href);
+const fixtures = JSON.parse(process.argv[2]);
+assert.equal(Object.keys(guards).filter(name => name.startsWith('validate')).length, 12);
+for (const [name, value] of Object.entries(fixtures)) assert.equal(guards[`validate${name}`](value), true, name);
+const task = fixtures.Workplan.tasks[0];
+assert.equal(guards.validateTaskContract(task), true);
+assert.equal(guards.validateDomainEvent({kind:'task_submitted',contract:task}), true);
+assert.equal(guards.validateDomainEventV2({kind:'task_submitted',contract:task}), true);
+assert.equal(guards.validateCoordinationMessage({schema_version:1,message_id:'message',project_id:'project',sender:'worker',recipient:'commodore',causation_id:null,context_epoch:'epoch',authority_ref:'policy:test',payload:{kind:'task_assigned',task_id:'task',revision:1,contract_digest:'sha256:claim'}}), true);
+assert.equal(guards.validateTaskContract({...task,trusted:true}), false);
+assert.equal(guards.validateDomainEvent({kind:'self_accepted'}), false);
+assert.equal(guards.validateVerificationReceipt({...fixtures.VerificationReceipt,acceptance_granted:true}), false);
+assert.equal(fixtures.VerificationReceipt.checks[0].exit_code, null);
+assert.equal(guards.validateInterfaceContract({...fixtures.InterfaceContract,revision:'18446744073709551616'}), false);
+assert.equal(guards.validateInterfaceContract({...fixtures.InterfaceContract,revision:9007199254740992}), false);
+console.log('all 12 staged public guards passed real import, closed-input and precision checks');
+"#;
+        let stdout_path = root.path().join("node-guard-stdout.log");
+        let stderr_path = root.path().join("node-guard-stderr.log");
+        let stdout = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&stdout_path)?;
+        let stderr = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&stderr_path)?;
+        let mut child = std::process::Command::new("node")
+            .env_clear()
+            .env(
+                "PATH",
+                std::env::var_os("PATH")
+                    .ok_or_else(|| crate::invalid("test requires Node on PATH"))?,
+            )
+            .arg("--input-type=module")
+            .arg("--eval")
+            .arg(script)
+            .arg(output.join("share/admiralty/guards/v2/validators.mjs"))
+            .arg(include_str!(
+                "../../../packages/contracts/fixtures/public-roots.json"
+            ))
+            .current_dir(root.path())
+            .stdin(std::process::Stdio::null())
+            .stdout(stdout)
+            .stderr(stderr)
+            .spawn()?;
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        let status = loop {
+            if let Some(status) = child.try_wait()? {
+                break status;
+            }
+            if std::time::Instant::now() >= deadline {
+                let _ = child.kill();
+                let cleanup_deadline =
+                    std::time::Instant::now() + std::time::Duration::from_secs(2);
+                while child.try_wait()?.is_none() && std::time::Instant::now() < cleanup_deadline {
+                    std::thread::sleep(std::time::Duration::from_millis(5));
+                }
+                return Err(crate::invalid("owned Node guard smoke exceeded deadline"));
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        };
+        let read_output = |path: &Path| -> crate::CliResult<String> {
+            let mut bytes = Vec::new();
+            File::open(path)?.take(65_537).read_to_end(&mut bytes)?;
+            assert!(bytes.len() <= 65_536, "bounded Node smoke output");
+            Ok(String::from_utf8(bytes)?)
+        };
+        assert!(
+            status.success(),
+            "real staged guard smoke failed: {}",
+            read_output(&stderr_path)?
+        );
+        assert!(read_output(&stdout_path)?.contains("all 12 staged public guards passed"));
         Ok(())
     }
 

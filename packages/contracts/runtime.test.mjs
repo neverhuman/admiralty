@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { readFile, mkdtemp, mkdir, cp, symlink, writeFile, rm } from 'node:fs/promises';
+import { readFile, readdir, mkdtemp, mkdir, cp, symlink, writeFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -49,8 +49,22 @@ test('standalone package entry has no compiler dependency and exports supported 
   const publicApi = await import('@admiralty/contracts');
   assert.equal(publicApi.validateTaskContract, validateTaskContract);
   assert.equal(SUPPORTED_SCHEMA_VERSION, 1);
-  const source = await readFile(path.join(root, 'packages/contracts/generated/validators.mjs'), 'utf8');
-  assert.doesNotMatch(source, /\brequire\s*\(|\bimport\s|\beval\s*\(|\bnew Function\s*\(/);
+  const generated = path.join(root, 'packages/contracts/generated');
+  const runtimeModules = (await readdir(generated)).filter(name => /^validators(?:-[a-z-]+)?\.mjs$/.test(name));
+  assert.equal(runtimeModules.length, 10, 'compatibility entry, shared base and eight separate public roots');
+  for (const name of runtimeModules) {
+    const source = await readFile(path.join(generated, name), 'utf8');
+    assert.doesNotMatch(source, /\brequire\s*\(|\bimport\s|\beval\s*\(|\bnew Function\s*\(/, name);
+  }
+  const manifest = JSON.parse(await readFile(path.join(root, 'packages/contracts/package.json'), 'utf8'));
+  assert.equal(manifest.sideEffects, false, 'generated modules have no externally observable initialization effects');
+  const base = await readFile(path.join(generated, 'validators-base.mjs'), 'utf8');
+  for (const name of ['validateTaskContract', 'validateCoordinationMessage', 'validateDomainEvent', 'validateDomainEventV2']) {
+    assert.match(base, new RegExp(`export const ${name} =`));
+  }
+  for (const name of ['validateWorkplan', 'validateVerificationReceipt', 'validateInterfaceContract', 'validateConfigPatch']) {
+    assert.doesNotMatch(base, new RegExp(`export const ${name} =`));
+  }
   for (const [stem, fingerprint] of Object.entries(CONTRACT_SCHEMA_FINGERPRINTS)) {
     const bytes = await readFile(path.join(root, `schemas/${stem}.schema.json`));
     assert.equal(createHash('sha256').update(bytes).digest('hex'), fingerprint);
@@ -123,12 +137,14 @@ test('generation and drift checks cover standalone code and declarations without
     assert.equal(invoke(['--check']).status, 0);
     const runtime = path.join(directory, 'packages/contracts/generated/validators.mjs');
     const declarations = path.join(directory, 'packages/contracts/generated/validators.d.mts');
-    await writeFile(runtime, '// drift\n'); await writeFile(declarations, '// drift\n');
+    const separateGuard = path.join(directory, 'packages/contracts/generated/validators-workplan.mjs');
+    await writeFile(runtime, '// drift\n'); await writeFile(declarations, '// drift\n'); await writeFile(separateGuard, '// drift\n');
     const checked = invoke(['--check']);
     assert.notEqual(checked.status, 0);
-    assert.match(checked.stderr, /validators\.mjs/); assert.match(checked.stderr, /validators\.d\.mts/);
+    assert.match(checked.stderr, /validators\.mjs/); assert.match(checked.stderr, /validators\.d\.mts/); assert.match(checked.stderr, /validators-workplan\.mjs/);
     assert.equal(await readFile(runtime, 'utf8'), '// drift\n');
     assert.equal(await readFile(declarations, 'utf8'), '// drift\n');
+    assert.equal(await readFile(separateGuard, 'utf8'), '// drift\n');
     assert.equal(invoke([]).status, 0);
     assert.equal(invoke(['--check']).status, 0);
     const schema = path.join(directory, 'schemas/task-contract.schema.json');
