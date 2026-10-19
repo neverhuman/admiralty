@@ -117,6 +117,10 @@ all-state duplicate queries, add a separate private `--intake-config` using the
 [intake template](configs/examples/intake.json) and [intake API guide](docs/operators/work-order-intake.md).
 Its scoped credentials and action rules are independent of owner and inbox access.
 Recording a work order does not launch agents or mark tasks accepted.
+The dashboard's **Intake** tab (`#/intake`) previews and captures original plain
+text, then reads its exact recorded revision. Lost-reply retries reuse the same
+command and body; credentials and pending drafts stay in page memory. Enrichment
+and delivery views remain separate work.
 
 ## Configure models and project work
 

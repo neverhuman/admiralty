@@ -1934,3 +1934,66 @@ navigation wiring remain; those component checks do not qualify production intak
 or autonomous coding. The installer likewise leaves full P30 activation, signed
 release publication, clean-machine bootstrap and runtime criteria open. Accepted
 parents remain2/32 and native execution false.
+
+### Private install merged and Linux qualification — 06:17Z
+
+PR111 merged06:14:13Z to36aa0ebc98e378eb8de69e71016aef034544fafa,
+after actual neverhumanbot approval06:13:59Z of exact
+52ea60ab050faf7e27b8a39e950c5dd8da8dd8e8. The source checked on Mac was9d4dbb0;
+the final commit added only its receipt and execution entry. No hosted queue wait.
+
+The separate [Linux receipt](../../../receipts/integration/native-install-linux-9d4dbb0-20261019T0617Z.json)
+records actual68passes at exact9d4dbb0:26installer,7actual installer CLI,
+5archive CLI,10package and20archive. One admitted capped invocation exited0
+at06:15:58.888Z after385.067seconds, with observed0002 mask. All954source files/
+1095entries match before and after. Final scope observation06:17:30Z shows
+inactive/dead, empty control group and absent owned job PID. No second invocation,
+provider, production installation/service activation, real EIO, Linux strict lint
+or full-workspace result is claimed.
+
+Commodore separately deployedb976b4f at06:05:27Z. Root's
+[independent observation](../../../receipts/integration/native-b976b4f-independent-20261019T0613Z.json)
+at06:13:05.712Z checks all14manifest/file/proc executable hashes, actual daemon
+1140458/start57537898 and observer1138335/start57537748, healthy public endpoints,
+Rust producer0turns and256history rows. No retired owned Python PID is present.
+The same React bundle hash preserves prior static control evidence; this observation
+does not count controls, original-history timestamp or qualify a browser anew.
+Root performed no primary service control and created no live intake issuer.
+
+A read-only hosted snapshot shows the exact36aa0eb dashboard E2E/accessibility
+workflow39208749754 passed, contracts passed and Rust workflow39208749813 still
+running. Earlier b976Rust and066 failures remain evidence; no full green claim,
+rerun, runner/service change or CI cleanup lane follows from that snapshot.
+
+### Dashboard raw request intake — 06:28Z
+
+Root source3935fe3699617d6c57de6b836c03ed1d035c222e wires the repaired Luna
+candidate200b13037db47ed95966274f41a7313c0cfa520f into a lazy Intake tab and
+direct `#/intake` route. The [composition receipt](../../../receipts/integration/native-intake-ui-20261019T0628Z.json)
+records123actual UI cases in13files, including9intake cases, typecheck and a
+production build with68modules and an actual Intake chunk. Independent final
+component and root wiring review is clear. The author build without App wiring
+is explicitly distinct from the integrated production build.
+
+The form uses actual preview/capture/exact-revision POST routes, separate
+in-memory credentials and generated preview validation. It preserves paragraphs
+as one unresolved original request. A lost reply retains the exact serialized
+command; source editing stays locked until retry or explicit local abandonment.
+The latter cannot undo a possibly committed server record. Confirmed receipts
+have a separate read-only recovery action. Pending state survives dashboard tab
+changes; reload/close still loses the local envelope, as the guide explains.
+
+Original independent counterexamples remain preserved: a1MiB preview became an
+oversized capture that still fetched; a same-length changed source passed partial
+readback checks. The final component bounds the complete capture before freezing
+or sending, guards construction/error handling and checks the full frozen request
+and receipt on readback. It also removes a controlled password value prop after
+review of installed React showed defaultValue reflecting it into an HTML attribute.
+Secure UUID absence is a visible refusal, never a weak-random fallback.
+
+No production issuer/token, task dispatch, enrichment, duplicate-query or delivery
+UI follows from this component. A separate worker owns only a new actual native
+child/browser journey; it is not run or counted as qualified here. Following the
+code-first ruling, that follow-up does not hold locally built/reviewed component
+integration. No additional CI cleanup lane or unchanged-suite rerun is started.
+All30open parents remain open and native autonomous execution remains false.
