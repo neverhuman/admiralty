@@ -15,9 +15,21 @@ covered by this pipeline:
 Each guard is named `validate<Type>`. The package also exports
 `SUPPORTED_SCHEMA_VERSION` and source schema fingerprints. Root and nested types
 are available from the package root, with type-only subpaths for each schema.
-Validators are generated with pinned AJV 8.20.0 in draft 2020-12 mode. The output
-has no runtime imports, AJV compiler, evaluation, network retrieval, coercion,
-default insertion, or removal of unknown properties. AJV remains a build tool.
+Validators are generated with pinned AJV 8.20.0 in draft 2020-12 mode. Each guard
+module has no runtime imports, AJV compiler, evaluation, network retrieval, coercion, default insertion, or removal of unknown properties. The
+compatibility entry statically re-exports the original four guards from one
+shared module and the eight additional roots from separate standalone modules.
+The package declares these modules free of initialization side effects, letting
+production bundlers omit unused roots while preserving the existing public API.
+AJV remains a build tool.
+
+Native release staging must explicitly select `generated/validators.mjs` and
+all nine `generated/validators-*.mjs` siblings with their individual SHA-256
+hashes. The CLI admits only the exact generated filenames and source-bound
+module bytes, verifies the fixed local export closure, and rejects missing or
+unknown dependencies before staging. Simple custom self-contained guards retain
+a conservative source subset; escaped/template/loader syntax is unsupported.
+This check stages artifacts and does not qualify an installer or grant authority.
 
 The pipeline explicitly supports schema version **1**, including nested task
 contracts and messages. Rust `uint16`, `uint32` and nullable `int32` format

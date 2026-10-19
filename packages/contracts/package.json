@@ -54,5 +54,6 @@
       "import": "./generated/validators.mjs",
       "default": "./generated/validators.mjs"
     }
-  }
+  },
+  "sideEffects": false
 }
