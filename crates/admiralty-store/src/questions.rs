@@ -6,7 +6,7 @@
 
 use crate::stored_text;
 use admiralty_core::{
-    MessageId, PrincipalId, ProjectId, RootId, TaskId,
+    MessageId, PrincipalId, ProjectId, RootId, SourceIdentity, TaskContract, TaskId, TaskView,
     coordination::questions::{
         EscalationProposal, MAX_QUESTION_EVENT_BYTES, MAX_QUESTION_EVENTS, QuestionError,
         QuestionEvent, QuestionScope, QuestionState, QuestionStatus, reduce_question,
@@ -22,6 +22,126 @@ const MAX_COMMANDS_PER_QUESTION: usize = MAX_HISTORY * 2;
 const MAX_SCOPE_BYTES: usize = 4096;
 const MAX_PROJECTION_BYTES: usize = 64 * 1024;
 const GENESIS: &str = "genesis";
+pub const MAX_QUESTION_COMMAND_BYTES: usize = 32 * 1024;
+const MAX_PROVENANCE_BYTES: usize = 8 * 1024;
+const MAX_CONTRACT_BYTES: usize = 64 * 1024;
+const MAX_TOTAL_QUESTIONS: i64 = 4096;
+const MAX_TOTAL_COMMANDS: i64 = 8192;
+const MAX_TOTAL_TEXT_BYTES: i64 = 32 * 1024 * 1024;
+const MAX_EVIDENCE_REFS: usize = 16;
+
+/// Claims are recorded inputs, never authentication. Only the independently
+/// installed writer authority can permit the exact command and current task.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct QuestionProvenance {
+    pub actor: PrincipalId,
+    pub source: SourceIdentity,
+    pub expected_contract_revision: u32,
+    pub expected_contract_digest: String,
+    pub policy_digest: String,
+    pub evidence_refs: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct QuestionCommand {
+    pub scope: JournalScope,
+    pub command_id: MessageId,
+    pub event: QuestionEvent,
+    pub binding: QuestionProvenance,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct QuestionRead {
+    pub scope: JournalScope,
+    pub actor: PrincipalId,
+}
+
+/// `current_task` is supplied by the Store's sole-writer projection, never by
+/// the request. Callbacks must be bounded, side-effect-free and perform no I/O
+/// or re-entrant Store calls. Returned permission records information only;
+/// answers and escalation proposals grant no decision or delivery authority.
+pub struct QuestionCommandBinding<'a> {
+    pub command: &'a QuestionCommand,
+    pub command_digest: &'a str,
+    pub current_task: &'a TaskView,
+}
+
+pub trait QuestionAuthority: Send + Sync {
+    fn authorize_command(&self, binding: &QuestionCommandBinding<'_>) -> bool;
+    fn authorize_read(&self, request: &QuestionRead, current_task: &TaskView) -> bool;
+}
+
+fn sha256_ref(value: &str) -> bool {
+    value.strip_prefix("sha256:").is_some_and(|hex| {
+        hex.len() == 64
+            && hex
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    })
+}
+
+fn actor(event: &QuestionEvent) -> &PrincipalId {
+    match event {
+        QuestionEvent::Open { asker, .. } => asker,
+        QuestionEvent::Route { actor, .. }
+        | QuestionEvent::Answer { actor, .. }
+        | QuestionEvent::Supersede { actor, .. }
+        | QuestionEvent::Cancel { actor, .. }
+        | QuestionEvent::EvaluateDeadline { actor, .. } => actor,
+    }
+}
+
+/// Streaming bounds must be checked before a Store request is cloned/queued.
+/// A digest is a stable request identity, not a credential or authority grant.
+pub fn validate_command(command: &QuestionCommand) -> Result<String> {
+    admiralty_core::limits::bounded_json_size(command, MAX_QUESTION_COMMAND_BYTES)
+        .map_err(|_| QuestionStoreError::EventTooLarge)?;
+    validate_scope(&command.scope)?;
+    validate_event_scope(&command.scope, &command.event)?;
+    admiralty_core::limits::bounded_json_size(&command.event, MAX_QUESTION_EVENT_BYTES)
+        .map_err(|_| QuestionStoreError::EventTooLarge)?;
+    let binding = &command.binding;
+    admiralty_core::limits::bounded_json_size(binding, MAX_PROVENANCE_BYTES)
+        .map_err(|_| QuestionStoreError::EventTooLarge)?;
+    if actor(&command.event) != &binding.actor
+        || binding.expected_contract_revision == 0
+        || !sha256_ref(&binding.expected_contract_digest)
+        || !sha256_ref(&binding.policy_digest)
+        || binding.evidence_refs.is_empty()
+        || binding.evidence_refs.len() > MAX_EVIDENCE_REFS
+        || binding.evidence_refs.iter().any(|r| {
+            r.is_empty() || r.len() > 512 || r.chars().any(|c| c.is_control() || c.is_whitespace())
+        })
+        || binding
+            .evidence_refs
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
+            != binding.evidence_refs.len()
+        || binding.source.validate().is_err()
+        || [&binding.source.producer_id, &binding.source.incarnation]
+            .iter()
+            .any(|s| {
+                s.is_empty()
+                    || s.len() > 128
+                    || s.chars().any(|c| c.is_control() || c.is_whitespace())
+            })
+    {
+        return Err(QuestionStoreError::Invalid(
+            "invalid exact question provenance".into(),
+        ));
+    }
+    admiralty_core::content_digest(command).map_err(Into::into)
+}
+
+pub fn validate_read_request(request: &QuestionRead) -> Result<()> {
+    admiralty_core::limits::bounded_json_size(request, MAX_SCOPE_BYTES + 256)
+        .map_err(|_| QuestionStoreError::ProjectionTooLarge)?;
+    validate_scope(&request.scope)
+}
 
 pub type Result<T> = std::result::Result<T, QuestionStoreError>;
 
@@ -51,6 +171,10 @@ pub enum QuestionStoreError {
     ProjectionTooLarge,
     #[error("question receipt counter overflow")]
     Overflow,
+    #[error("question action or read is not currently authorized")]
+    AccessDenied,
+    #[error("question belongs to a historical task contract; current action/read is stale")]
+    StaleContract,
 }
 
 /// Root is bound independently because the pure reducer scope has no root ID.
@@ -304,6 +428,17 @@ pub fn initialize(connection: &Connection) -> Result<()> {
              escalation_ref TEXT NOT NULL UNIQUE CHECK(length(CAST(escalation_ref AS BLOB))=71),
              proposal_json TEXT NOT NULL CHECK(length(CAST(proposal_json AS BLOB))<=65536),
              proposal_digest TEXT NOT NULL CHECK(length(CAST(proposal_digest AS BLOB))=71)
+         );
+         CREATE TABLE IF NOT EXISTS durable_question_authorizations (
+             command_id TEXT PRIMARY KEY REFERENCES durable_question_commands(command_id),
+             producer_id TEXT NOT NULL CHECK(length(CAST(producer_id AS BLOB)) BETWEEN 1 AND 128),
+             incarnation TEXT NOT NULL CHECK(length(CAST(incarnation AS BLOB)) BETWEEN 1 AND 128),
+             source_sequence TEXT NOT NULL CHECK(length(CAST(source_sequence AS BLOB)) BETWEEN 1 AND 20),
+             command_json TEXT NOT NULL CHECK(length(CAST(command_json AS BLOB))<=32768),
+             command_digest TEXT NOT NULL CHECK(length(CAST(command_digest AS BLOB))=71),
+             original_contract_json TEXT NOT NULL CHECK(length(CAST(original_contract_json AS BLOB))<=65536),
+             original_contract_digest TEXT NOT NULL CHECK(length(CAST(original_contract_digest AS BLOB))=71),
+             UNIQUE(producer_id,incarnation,source_sequence)
          );",
     )?;
     tx.commit()?;
@@ -386,9 +521,12 @@ fn read_escalation(
 fn reconstruct_inner(
     connection: &Connection,
     requested_scope: &JournalScope,
+    current_task_check: bool,
 ) -> Result<Option<DurableQuestion>> {
     validate_scope(requested_scope)?;
-    validate_store_task(connection, requested_scope)?;
+    if current_task_check {
+        validate_store_task(connection, requested_scope)?;
+    }
     let Some(stored_scope) =
         read_stored_scope(connection, requested_scope.question.question_id.as_str())?
     else {
@@ -642,7 +780,7 @@ pub fn reconstruct(
     scope: &JournalScope,
 ) -> Result<Option<DurableQuestion>> {
     let tx = Transaction::new_unchecked(connection, TransactionBehavior::Deferred)?;
-    let result = reconstruct_inner(&tx, scope)?;
+    let result = reconstruct_inner(&tx, scope, true)?;
     tx.commit()?;
     Ok(result)
 }
@@ -704,6 +842,20 @@ pub fn append(
     command_id: &MessageId,
     event: &QuestionEvent,
 ) -> Result<QuestionReceipt> {
+    let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    let receipt = append_inner(&tx, scope, command_id, event, true)?;
+    validate_global_bounds(&tx)?;
+    tx.commit()?;
+    Ok(receipt)
+}
+
+fn append_inner(
+    tx: &Transaction<'_>,
+    scope: &JournalScope,
+    command_id: &MessageId,
+    event: &QuestionEvent,
+    current_task_check: bool,
+) -> Result<QuestionReceipt> {
     validate_scope(scope)?;
     validate_event_scope(scope, event)?;
     let event_bytes = bounded_json(event, MAX_QUESTION_EVENT_BYTES)?;
@@ -713,20 +865,18 @@ pub fn append(
     let command_digest = command_digest(scope, event)?;
     let event_key = event_id(event).as_str();
     let scope_hash = scope_digest(scope)?;
-    let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    let cached = cached_receipt(&tx, command_id.as_str(), &command_digest)?;
-    let current = reconstruct_inner(&tx, scope)?;
+    let cached = cached_receipt(tx, command_id.as_str(), &command_digest)?;
+    let current = reconstruct_inner(tx, scope, current_task_check)?;
     if let Some(cached) = cached {
         if current.is_none() {
             return Err(QuestionStoreError::Integrity(
                 "cached receipt has no canonical question".into(),
             ));
         }
-        tx.commit()?;
         return Ok(cached);
     }
 
-    let existing_scope = read_stored_scope(&tx, scope.question.question_id.as_str())?;
+    let existing_scope = read_stored_scope(tx, scope.question.question_id.as_str())?;
     if existing_scope
         .as_ref()
         .is_some_and(|existing| existing != scope)
@@ -794,8 +944,7 @@ pub fn append(
                 None
             },
         };
-        insert_receipt_for_question(&tx, scope, &command_digest, &receipt)?;
-        tx.commit()?;
+        insert_receipt_for_question(tx, scope, &command_digest, &receipt)?;
         return Ok(receipt);
     }
     if existing_event.is_some() {
@@ -863,8 +1012,7 @@ pub fn append(
         duplicate: false,
         escalation_ref,
     };
-    insert_receipt_for_question(&tx, scope, &command_digest, &receipt)?;
-    tx.commit()?;
+    insert_receipt_for_question(tx, scope, &command_digest, &receipt)?;
     Ok(receipt)
 }
 
@@ -879,6 +1027,396 @@ fn insert_receipt_for_question(
         "INSERT INTO durable_question_commands(command_id,question_id,command_digest,receipt_json,receipt_digest) VALUES(?1,?2,?3,?4,?5)",
         params![receipt.command_id.as_str(),scope.question.question_id.as_str(),command_digest,json,digest],
     )?;
+    Ok(())
+}
+
+/// An independently installed authority is checked inside this writer turn on
+/// every call, including a historical exact retry. No request can install one.
+/// The supplied TaskView must come from the sole Store writer's projection.
+pub(crate) fn append_authorized(
+    connection: &mut Connection,
+    command: &QuestionCommand,
+    authority: Option<&dyn QuestionAuthority>,
+    current_task: Option<&TaskView>,
+) -> Result<QuestionReceipt> {
+    let full_digest = validate_command(command)?;
+    let authority = authority.ok_or(QuestionStoreError::AccessDenied)?;
+    let task = current_task.ok_or(QuestionStoreError::AccessDenied)?;
+    validate_task_namespace(&command.scope, &task.contract)?;
+    let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    if !authority.authorize_command(&QuestionCommandBinding {
+        command,
+        command_digest: &full_digest,
+        current_task: task,
+    }) {
+        return Err(QuestionStoreError::AccessDenied);
+    }
+    validate_global_bounds(&tx)?;
+    if let Some((recorded, _, digest)) = read_authorization(&tx, &command.command_id)? {
+        if recorded != *command || digest != full_digest {
+            return Err(QuestionStoreError::IdentityCollision);
+        }
+        // Check every protected command before returning an old receipt; a
+        // missing later authorization cannot downgrade the current history.
+        original_contract_digest(&tx, &command.scope)?
+            .ok_or_else(|| QuestionStoreError::Integrity("protected opening is absent".into()))?;
+        // Reconstruct original history without replacing it with today's task
+        // contract. An authorized old retry returns only its immutable receipt.
+        reconstruct_inner(&tx, &command.scope, false)?.ok_or_else(|| {
+            QuestionStoreError::Integrity("authorized receipt has no question".into())
+        })?;
+        let receipt = cached_receipt(
+            &tx,
+            command.command_id.as_str(),
+            &command_digest(&command.scope, &command.event)?,
+        )?
+        .ok_or_else(|| QuestionStoreError::Integrity("authorized receipt is absent".into()))?;
+        tx.commit()?;
+        return Ok(receipt);
+    }
+    let old_command: bool = tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM durable_question_commands WHERE command_id=?1)",
+        [command.command_id.as_str()],
+        |r| r.get(0),
+    )?;
+    let source_used: bool = tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM durable_question_authorizations WHERE producer_id=?1 AND incarnation=?2 AND source_sequence=?3)",
+        params![command.binding.source.producer_id,command.binding.source.incarnation,command.binding.source.sequence],
+        |r| r.get(0),
+    )?;
+    if old_command || source_used {
+        return Err(QuestionStoreError::IdentityCollision);
+    }
+    let contract_bytes = bounded_json(&task.contract, MAX_CONTRACT_BYTES)?;
+    let contract_digest = digest(&contract_bytes);
+    if task.contract.revision != command.binding.expected_contract_revision
+        || contract_digest != command.binding.expected_contract_digest
+        || task.contract.authority_ref != command.scope.authority_ref
+    {
+        return Err(QuestionStoreError::StaleContract);
+    }
+    if let Some(original) = original_contract_digest(&tx, &command.scope)? {
+        if original != contract_digest {
+            return Err(QuestionStoreError::StaleContract);
+        }
+    } else if !matches!(command.event, QuestionEvent::Open { .. }) {
+        // Legacy component history has no original protected Store provenance.
+        // It cannot silently acquire native authority on a later transition.
+        return Err(QuestionStoreError::AccessDenied);
+    }
+    let receipt = append_inner(
+        &tx,
+        &command.scope,
+        &command.command_id,
+        &command.event,
+        false,
+    )?;
+    let command_json = bounded_json(command, MAX_QUESTION_COMMAND_BYTES)?;
+    tx.execute(
+        "INSERT INTO durable_question_authorizations(command_id,producer_id,incarnation,source_sequence,command_json,command_digest,original_contract_json,original_contract_digest) VALUES(?1,?2,?3,?4,?5,?6,?7,?8)",
+        params![command.command_id.as_str(),command.binding.source.producer_id,command.binding.source.incarnation,command.binding.source.sequence,String::from_utf8(command_json).map_err(|e|QuestionStoreError::Invalid(e.to_string()))?,full_digest,String::from_utf8(contract_bytes).map_err(|e|QuestionStoreError::Invalid(e.to_string()))?,contract_digest],
+    )?;
+    validate_global_bounds(&tx)?;
+    tx.commit()?;
+    Ok(receipt)
+}
+
+/// Scoped current reads require their own current permission. Historical
+/// records survive contract changes; current reads report StaleContract rather
+/// than making the database unopenable or rewriting the retained question.
+pub(crate) fn read_authorized(
+    connection: &Connection,
+    request: &QuestionRead,
+    authority: Option<&dyn QuestionAuthority>,
+    current_task: Option<&TaskView>,
+) -> Result<Option<DurableQuestion>> {
+    validate_read_request(request)?;
+    let authority = authority.ok_or(QuestionStoreError::AccessDenied)?;
+    let task = current_task.ok_or(QuestionStoreError::AccessDenied)?;
+    validate_task_namespace(&request.scope, &task.contract)?;
+    let tx = Transaction::new_unchecked(connection, TransactionBehavior::Deferred)?;
+    if !authority.authorize_read(request, task) {
+        return Err(QuestionStoreError::AccessDenied);
+    }
+    validate_global_bounds(&tx)?;
+    let current = reconstruct_inner(&tx, &request.scope, false)?;
+    if current.is_some() {
+        let original = original_contract_digest(&tx, &request.scope)?
+            .ok_or(QuestionStoreError::AccessDenied)?;
+        let current_digest = digest(&bounded_json(&task.contract, MAX_CONTRACT_BYTES)?);
+        if original != current_digest {
+            return Err(QuestionStoreError::StaleContract);
+        }
+    }
+    tx.commit()?;
+    Ok(current)
+}
+
+fn validate_task_namespace(scope: &JournalScope, contract: &TaskContract) -> Result<()> {
+    if contract.project_id != scope.question.project_id
+        || contract.root_id != scope.root_id
+        || contract.task_id != scope.question.task_id
+    {
+        return Err(QuestionStoreError::ScopeMismatch);
+    }
+    Ok(())
+}
+
+fn read_authorization(
+    connection: &Connection,
+    id: &MessageId,
+) -> Result<Option<(QuestionCommand, TaskContract, String)>> {
+    let row = connection.query_row(
+        "SELECT command_json,command_digest,original_contract_json,original_contract_digest,producer_id,incarnation,source_sequence FROM durable_question_authorizations WHERE command_id=?1",
+        [id.as_str()],
+        |r| Ok((stored_text(r,0,MAX_QUESTION_COMMAND_BYTES)?,stored_text(r,1,71)?,stored_text(r,2,MAX_CONTRACT_BYTES)?,stored_text(r,3,71)?,stored_text(r,4,128)?,stored_text(r,5,128)?,stored_text(r,6,20)?)),
+    ).optional()?;
+    let Some((
+        text,
+        recorded_digest,
+        contract_text,
+        contract_digest,
+        producer,
+        incarnation,
+        sequence,
+    )) = row
+    else {
+        return Ok(None);
+    };
+    let command: QuestionCommand = serde_json::from_str(&text)?;
+    let contract: TaskContract = serde_json::from_str(&contract_text)?;
+    contract
+        .validate()
+        .map_err(|e| QuestionStoreError::Integrity(e.to_string()))?;
+    validate_task_namespace(&command.scope, &contract)?;
+    if &command.command_id != id
+        || validate_command(&command)? != recorded_digest
+        || bounded_json(&command, MAX_QUESTION_COMMAND_BYTES)? != text.as_bytes()
+        || digest(contract_text.as_bytes()) != contract_digest
+        || bounded_json(&contract, MAX_CONTRACT_BYTES)? != contract_text.as_bytes()
+        || contract_digest != command.binding.expected_contract_digest
+        || contract.revision != command.binding.expected_contract_revision
+        || contract.authority_ref != command.scope.authority_ref
+        || producer != command.binding.source.producer_id
+        || incarnation != command.binding.source.incarnation
+        || sequence != command.binding.source.sequence
+    {
+        return Err(QuestionStoreError::Integrity(
+            "question provenance differs from original writer binding".into(),
+        ));
+    }
+    let parent: Option<(String, String)> = connection
+        .query_row(
+            "SELECT question_id,command_digest FROM durable_question_commands WHERE command_id=?1",
+            [id.as_str()],
+            |r| Ok((stored_text(r, 0, 128)?, stored_text(r, 1, 71)?)),
+        )
+        .optional()?;
+    if parent
+        != Some((
+            command.scope.question.question_id.to_string(),
+            command_digest(&command.scope, &command.event)?,
+        ))
+    {
+        return Err(QuestionStoreError::Integrity(
+            "orphaned or mismatched protected question provenance".into(),
+        ));
+    }
+    Ok(Some((command, contract, recorded_digest)))
+}
+
+fn original_contract_digest(
+    connection: &Connection,
+    scope: &JournalScope,
+) -> Result<Option<String>> {
+    let mut query=connection.prepare("SELECT a.command_id FROM durable_question_authorizations a JOIN durable_question_commands c ON c.command_id=a.command_id WHERE c.question_id=?1 ORDER BY a.command_id LIMIT 67")?;
+    let mut rows = query.query([scope.question.question_id.as_str()])?;
+    let mut count = 0usize;
+    let mut original: Option<String> = None;
+    let mut opened = false;
+    while let Some(row) = rows.next()? {
+        count += 1;
+        if count > MAX_COMMANDS_PER_QUESTION {
+            return Err(QuestionStoreError::CapacityFull);
+        }
+        let id = MessageId::new(stored_text(row, 0, 128)?)
+            .map_err(|e| QuestionStoreError::Integrity(e.to_string()))?;
+        let (command, _, _) = read_authorization(connection, &id)?
+            .ok_or_else(|| QuestionStoreError::Integrity("missing question provenance".into()))?;
+        if command.scope != *scope {
+            return Err(QuestionStoreError::ScopeMismatch);
+        }
+        let expected = command.binding.expected_contract_digest;
+        if original.as_ref().is_some_and(|d| d != &expected) {
+            return Err(QuestionStoreError::Integrity(
+                "question changed its original task contract".into(),
+            ));
+        }
+        original = Some(expected);
+        opened |= matches!(command.event, QuestionEvent::Open { .. });
+    }
+    if count > 0 {
+        let commands: i64 = connection.query_row(
+            "SELECT count(*) FROM durable_question_commands WHERE question_id=?1",
+            [scope.question.question_id.as_str()],
+            |r| r.get(0),
+        )?;
+        if !opened || usize::try_from(commands).ok() != Some(count) {
+            return Err(QuestionStoreError::Integrity(
+                "protected question has incomplete command provenance".into(),
+            ));
+        }
+    }
+    Ok(original)
+}
+
+fn validate_global_bounds(connection: &Connection) -> Result<()> {
+    let mut total_bytes = 0_i64;
+    for (table, cap, columns) in [
+        (
+            "durable_questions",
+            MAX_TOTAL_QUESTIONS,
+            &[
+                "question_id",
+                "root_id",
+                "project_id",
+                "task_id",
+                "authority_ref",
+                "head_digest",
+                "revision",
+                "projection_json",
+                "projection_digest",
+            ][..],
+        ),
+        (
+            "durable_question_commands",
+            MAX_TOTAL_COMMANDS,
+            &[
+                "command_id",
+                "question_id",
+                "command_digest",
+                "receipt_json",
+                "receipt_digest",
+            ][..],
+        ),
+        (
+            "durable_question_events",
+            MAX_TOTAL_COMMANDS,
+            &[
+                "question_id",
+                "command_id",
+                "event_id",
+                "event_json",
+                "event_digest",
+                "scope_digest",
+                "previous_digest",
+                "chain_digest",
+                "revision",
+            ][..],
+        ),
+        (
+            "durable_question_escalations",
+            MAX_TOTAL_QUESTIONS,
+            &[
+                "question_id",
+                "escalation_ref",
+                "proposal_json",
+                "proposal_digest",
+            ][..],
+        ),
+        (
+            "durable_question_authorizations",
+            MAX_TOTAL_COMMANDS,
+            &[
+                "command_id",
+                "producer_id",
+                "incarnation",
+                "source_sequence",
+                "command_json",
+                "command_digest",
+                "original_contract_json",
+                "original_contract_digest",
+            ][..],
+        ),
+    ] {
+        // SQL identifiers are compile-time literals. Inspect at most cap+1
+        // records before any bounded text decode; even a corrupt overfull
+        // table cannot cause an unbounded history materialization.
+        let count: i64 = connection.query_row(
+            &format!("SELECT count(*) FROM (SELECT 1 FROM {table} LIMIT ?1)"),
+            [cap + 1],
+            |r| r.get(0),
+        )?;
+        if count < 0 || count > cap {
+            return Err(QuestionStoreError::CapacityFull);
+        }
+        let lengths = columns
+            .iter()
+            .map(|name| format!("length(CAST({name} AS BLOB))"))
+            .collect::<Vec<_>>()
+            .join("+");
+        let bytes: i64 = connection.query_row(
+            &format!("SELECT coalesce(sum({lengths}),0) FROM {table}"),
+            [],
+            |r| r.get(0),
+        )?;
+        total_bytes = total_bytes
+            .checked_add(bytes)
+            .ok_or(QuestionStoreError::CapacityFull)?;
+        if bytes < 0 || total_bytes > MAX_TOTAL_TEXT_BYTES {
+            return Err(QuestionStoreError::CapacityFull);
+        }
+    }
+    let over_root: bool = connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM durable_questions GROUP BY root_id HAVING count(*)>1024)",
+        [],
+        |r| r.get(0),
+    )?;
+    if over_root {
+        return Err(QuestionStoreError::CapacityFull);
+    }
+    Ok(())
+}
+
+/// Validate every retained question and authorization at startup/rebuild/backup.
+/// No current permission, current contract revision or host clock is substituted
+/// into original history. Legacy component rows remain observable history only;
+/// protected Store reads/actions still require original provenance+current grant.
+pub fn validate_all(connection: &Connection) -> Result<()> {
+    if connection.is_autocommit() {
+        let tx = Transaction::new_unchecked(connection, TransactionBehavior::Deferred)?;
+        validate_all_inner(&tx)?;
+        tx.commit()?;
+        Ok(())
+    } else {
+        validate_all_inner(connection)
+    }
+}
+fn validate_all_inner(connection: &Connection) -> Result<()> {
+    validate_global_bounds(connection)?;
+    let orphaned:bool=connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM durable_question_events e LEFT JOIN durable_questions q ON q.question_id=e.question_id WHERE q.question_id IS NULL) OR EXISTS(SELECT 1 FROM durable_question_commands c LEFT JOIN durable_questions q ON q.question_id=c.question_id WHERE q.question_id IS NULL) OR EXISTS(SELECT 1 FROM durable_question_escalations e LEFT JOIN durable_questions q ON q.question_id=e.question_id WHERE q.question_id IS NULL) OR EXISTS(SELECT 1 FROM durable_question_authorizations a LEFT JOIN durable_question_commands c ON c.command_id=a.command_id WHERE c.command_id IS NULL)",
+        [],|r|r.get(0),
+    )?;
+    if orphaned {
+        return Err(QuestionStoreError::Integrity(
+            "orphaned question history".into(),
+        ));
+    }
+    let mut query = connection
+        .prepare("SELECT question_id FROM durable_questions ORDER BY question_id LIMIT 4097")?;
+    let mut rows = query.query([])?;
+    while let Some(row) = rows.next()? {
+        let id = stored_text(row, 0, 128)?;
+        MessageId::new(&id).map_err(|e| QuestionStoreError::Integrity(e.to_string()))?;
+        let scope = read_stored_scope(connection, &id)?.ok_or_else(|| {
+            QuestionStoreError::Integrity("question disappeared during validation".into())
+        })?;
+        reconstruct_inner(connection, &scope, false)?.ok_or_else(|| {
+            QuestionStoreError::Integrity("question disappeared during replay".into())
+        })?;
+        original_contract_digest(connection, &scope)?;
+    }
     Ok(())
 }
 
