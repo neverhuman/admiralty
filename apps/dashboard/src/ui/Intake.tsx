@@ -14,6 +14,7 @@ const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const surface: CSSProperties = { background: '#050505', color: '#ddd', border: '1px solid #292929', padding: '1rem', fontFamily: 'inherit' };
 const field: CSSProperties = { display: 'grid', gap: '.25rem', minWidth: 0 };
 const control: CSSProperties = { background: '#0b0b0b', color: '#eee', border: '1px solid #444', padding: '.45rem', font: 'inherit', width: '100%', boxSizing: 'border-box' };
+const action: CSSProperties = { background: '#18212b', color: '#f0f6fc', border: '1px solid #526174', borderRadius: 4, padding: '.5rem .75rem', font: 'inherit', cursor: 'pointer' };
 
 type Draft = { projectId: string; rootId: string; sourceId: string; revision: string; capturedAt: string; text: string; captureId: string };
 type IntakeResult<T> = { schema_version: 1; data: T; execution_granted: false; acceptance_granted: false };
@@ -336,14 +337,14 @@ export default function Intake({ token = '', onAccess, fetcher = fetch }: Intake
       <p>{new TextEncoder().encode(draft.text).byteLength.toLocaleString()} / 1,048,576 UTF-8 bytes</p>
       <label style={{ ...field, maxWidth: '32rem' }}>Separate intake token<input aria-label="Separate intake token" type="password" autoComplete="new-password" disabled={busy} style={control} onChange={e => setIntakeToken(e.target.value)} /></label>
       <p>Requester attribution is unknown. A profile name does not authenticate or authorize intake.</p>
-      {onAccess && <button type="button" disabled={busy} onClick={onAccess}>Owner access</button>}{' '}
-      <button type="submit" disabled={busy || Boolean(pending) || !authorized}>Preview exact source</button>{' '}
-      <button type="button" disabled={busy || !authorized || !preview || Boolean(pending) || capture?.receipt.preview_manifest_digest === preview?.manifest_digest} onClick={() => void captureDraft()}>Capture unresolved request</button>
+      {onAccess && <button type="button" style={action} disabled={busy} onClick={onAccess}>Owner access</button>}{' '}
+      <button type="submit" style={action} disabled={busy || Boolean(pending) || !authorized}>Preview exact source</button>{' '}
+      <button type="button" style={action} disabled={busy || !authorized || !preview || Boolean(pending) || capture?.receipt.preview_manifest_digest === preview?.manifest_digest} onClick={() => void captureDraft()}>Capture unresolved request</button>
     </form>
     {pending && <aside style={{ marginTop: '1rem', borderTop: '1px solid #444', paddingTop: '.7rem' }}>
       <p>No receipt is confirmed for this command. Retry will resend the identical command ID and serialized request.</p>
-      <button type="button" disabled={busy || !authorized} onClick={() => void retryCapture()}>Retry same capture request</button>
-      {' '}<button type="button" disabled={busy} onClick={abandonPendingCapture}>Abandon local retry envelope and reset draft</button>
+      <button type="button" style={action} disabled={busy || !authorized} onClick={() => void retryCapture()}>Retry same capture request</button>
+      {' '}<button type="button" style={action} disabled={busy} onClick={abandonPendingCapture}>Abandon local retry envelope and reset draft</button>
     </aside>}
     {message && <p role="status" aria-live="polite">{message}</p>}
     {preview && <article aria-label="Intake preview" style={{ marginTop: '1rem', borderTop: '1px solid #444', paddingTop: '.7rem' }}>
@@ -360,7 +361,7 @@ export default function Intake({ token = '', onAccess, fetcher = fetch }: Intake
       <h3>Immutable capture receipt</h3><p>Receipt recorded; execution and acceptance remain false. Replayed: {String(capture.replayed)}.</p>
       <dl><dt>Capture ID / revision</dt><dd>{capture.receipt.capture_id} / {capture.receipt.revision}</dd><dt>Command ID</dt><dd>{capture.receipt.command_id}</dd><dt>Receipt digest</dt><dd><code>{capture.receipt_digest}</code></dd><dt>Request digest</dt><dd><code>{capture.receipt.request_digest}</code></dd></dl>
     </article>}
-    {readTarget && capture && !stored && <button type="button" disabled={busy || !authorized} onClick={() => void retryReadback()}>Read captured original again</button>}
+    {readTarget && capture && !stored && <button type="button" style={action} disabled={busy || !authorized} onClick={() => void retryReadback()}>Read captured original again</button>}
     {receiptHistory.length > 0 && <details><summary>Recent immutable receipt summaries ({receiptHistory.length}, kept in page memory)</summary>
       <ul>{receiptHistory.map(item => <li key={item.receipt_digest}>{item.receipt.capture_id} revision {item.receipt.revision} · command {item.receipt.command_id} · <code>{item.receipt_digest}</code></li>)}</ul>
     </details>}
