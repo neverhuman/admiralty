@@ -156,6 +156,9 @@ General coding-provider execution, production controller/issuer composition, ato
 
 New Rust [work-order intake contracts](docs/operators/work-order-intake.md)
 preserve request boundaries and exact source/policy bindings. The Store's
+raw-request capture saves original prose and unresolved previews before task
+enrichment; enriched task/plan recording is a separate atomic writer operation.
+Both require independently installed startup authority. The
 [durable attention journal](docs/operators/compact-attention.md) preserves budgets
 and atomically records compact wake intents across retries. Its authenticated
 recording bridge is default-deny; production delivery and autonomous execution

@@ -47,9 +47,23 @@ changed content collides. Query results validate original records and trusted
 scope before projecting lineage or pagination. Unknown historical coverage is
 explicit. Open/rebuild/backup validate the stored bindings.
 
-The first writer supports inline, explicitly enriched JsonBatch outcomes.
-Unenriched PlainText and unverified artifact claims fail without partial records;
-separate durable raw capture/enrichment remains work. No production issuer,
-public route/schema export, enrichment UI, dispatch or delivery is installed.
-Eighteen writer/plan checks and nineteen preview checks do not accept a parent
-packet or qualify autonomous execution.
+The enriched writer supports inline, explicitly enriched JsonBatch outcomes.
+Unenriched PlainText cannot become a task through that writer. A separate
+`capture_intake` operation now saves original PlainText or explicit JsonBatch,
+provenance and unresolved preview before enrichment. Trusted startup installs an
+`IntakeCaptureAuthority` through `open_with_intake_capture_authority`; it resolves
+current independent scope/policy on every writer turn, including exact retries.
+`captured_intake` takes a trusted read scope. Public snapshots grant no access.
+
+Capture revisions require the current revision and exact parent receipt digest;
+source identities and original receipts are immutable. Original UTF-8 is capped
+at1MiB; escaped request/preview JSON has separate8MiB bounds. All persisted JSON
+and UTF-8 lookup metadata count toward64MiB history, excluding SQLite page/index
+overhead, with at most128captures and32revisions each. Capacity refuses new writes
+without eviction. Open/rebuild/backup validate complete lineage. Captures create
+no task, work-order, plan or outbox rows. Unverified artifact claims remain denied.
+
+No production issuer, public route/schema export, enrichment UI, dispatch or
+delivery is installed here. Thirty capture/enriched-writer/plan checks and
+nineteen preview checks do not accept a parent packet or qualify autonomous
+execution.
