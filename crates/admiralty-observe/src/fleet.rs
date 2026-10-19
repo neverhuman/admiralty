@@ -185,7 +185,7 @@ pub async fn collect(config: &ObserveConfig) -> crate::Result<Value> {
                     continue;
                 }
                 let clean = safe_tail(&text);
-                if let Some((model, effort)) = observed_footer(&clean) {
+                if let Some((model, effort)) = observed_footer_for_family(&clean, before.family) {
                     let entry = ModelObservation {
                         pid: before.pid,
                         start: before.start.clone(),
@@ -570,6 +570,7 @@ impl ModelObservation {
         self.pid == process.pid
             && self.start == process.start
             && self.family == process.family
+            && model_matches_family(&self.model, process.family)
             && age.is_some_and(|seconds| (0..=MODEL_CACHE_TTL_SECONDS).contains(&seconds))
             && !self.model.is_empty()
             && self.model.len() <= 128
@@ -800,7 +801,13 @@ fn safe_tail(text: &str) -> String {
 }
 
 fn observed_footer(text: &str) -> Option<(String, Option<String>)> {
+    if text.len() > TAIL_BYTES {
+        return None;
+    }
     for line in text.lines().rev().take(16) {
+        if line.len() > 1024 {
+            continue;
+        }
         let lower = line.to_ascii_lowercase();
         let trimmed = line.trim_start();
         let cancel_footer = trimmed
@@ -810,8 +817,8 @@ fn observed_footer(text: &str) -> Option<(String, Option<String>)> {
                 .get(13..)
                 .is_some_and(|rest| rest.chars().next().is_some_and(char::is_whitespace));
         if !(lower.contains("context left")
-            || line.contains('│')
-            || line.contains('·')
+            || (trimmed.starts_with('│') && trimmed.trim_end().ends_with('│'))
+            || codex_path_footer(trimmed)
             || cancel_footer
             || lower.trim_start().starts_with("model:"))
             || lower.contains("withheld")
@@ -833,8 +840,11 @@ fn observed_footer(text: &str) -> Option<(String, Option<String>)> {
             {
                 continue;
             }
-            let (model, consumed) = if t.starts_with("gpt-") || t.starts_with("claude-") {
-                ((*t).to_owned(), 1)
+            let normalized = t.to_ascii_lowercase();
+            let (model, consumed) = if (normalized.starts_with("gpt-") && normalized.len() > 4)
+                || (normalized.starts_with("claude-") && normalized.len() > 7)
+            {
+                (normalized, 1)
             } else if matches!(
                 t.to_ascii_lowercase().as_str(),
                 "haiku" | "sonnet" | "opus" | "fable"
@@ -846,7 +856,7 @@ fn observed_footer(text: &str) -> Option<(String, Option<String>)> {
                     || ((*t).to_owned(), 1),
                     |version| (format!("{t} {version}"), 2),
                 )
-            } else if *t == "Gemini"
+            } else if t.eq_ignore_ascii_case("Gemini")
                 && tokens.get(i + 1).is_some_and(|s| {
                     s.chars().next().is_some_and(|c| c.is_ascii_digit())
                         && s.chars().all(|c| c.is_ascii_digit() || c == '.')
@@ -857,7 +867,7 @@ fn observed_footer(text: &str) -> Option<(String, Option<String>)> {
                 })
             {
                 (
-                    format!("{} {} {}", t, tokens.get(i + 1)?, tokens.get(i + 2)?),
+                    format!("Gemini {} {}", tokens.get(i + 1)?, tokens.get(i + 2)?),
                     3,
                 )
             } else if i == 1 && lower.trim_start().starts_with("model:") {
@@ -865,7 +875,7 @@ fn observed_footer(text: &str) -> Option<(String, Option<String>)> {
             } else {
                 continue;
             };
-            if model.len() > 128 || model.is_empty() || i > 2 {
+            if model.len() > 128 || !specific_model_label(&model) || i > 2 {
                 continue;
             }
             let effort = tokens
@@ -878,6 +888,71 @@ fn observed_footer(text: &str) -> Option<(String, Option<String>)> {
         }
     }
     None
+}
+
+fn specific_model_label(model: &str) -> bool {
+    !model.is_empty()
+        && !matches!(
+            model.to_ascii_lowercase().as_str(),
+            "codex"
+                | "claude"
+                | "gemini"
+                | "opencode"
+                | "agy"
+                | "unknown"
+                | "auto"
+                | "default"
+                | "none"
+                | "null"
+        )
+}
+
+// The observed Codex status row has model[/effort], a rendered separator,
+// then its workspace path. A replacement character alone in prose is not a
+// footer marker. Existing context/box/label formats are handled above.
+fn codex_path_footer(line: &str) -> bool {
+    let Some((left, right)) = line.split_once(['\u{fffd}', '·', '│']) else {
+        return false;
+    };
+    let mut tokens = left.split_whitespace();
+    let Some(model) = tokens.next() else {
+        return false;
+    };
+    if !model.to_ascii_lowercase().starts_with("gpt-") || model.len() <= 4 {
+        return false;
+    }
+    if let Some(effort) = tokens.next()
+        && !matches!(
+            effort,
+            "low" | "medium" | "high" | "xhigh" | "max" | "ultra"
+        )
+    {
+        return false;
+    }
+    tokens.next().is_none()
+        && (right.trim_start().starts_with("~/") || right.trim_start().starts_with('/'))
+}
+
+fn model_matches_family(model: &str, family: &str) -> bool {
+    let lower = model.to_ascii_lowercase();
+    match family {
+        "codex" => lower.starts_with("gpt-") && lower.len() > 4,
+        "claude" => {
+            (lower.starts_with("claude-") && lower.len() > 7)
+                || matches!(
+                    lower.split_whitespace().next(),
+                    Some("haiku" | "sonnet" | "opus" | "fable")
+                )
+        }
+        "agy" | "gemini" => lower.starts_with("gemini ") || lower.starts_with("gemini-"),
+        // OpenCode can display configured own models as well as hosted models.
+        "opencode" => specific_model_label(model),
+        _ => false,
+    }
+}
+
+fn observed_footer_for_family(text: &str, family: &str) -> Option<(String, Option<String>)> {
+    observed_footer(text).filter(|(model, _)| model_matches_family(model, family))
 }
 
 struct CaptureDirectory {
@@ -1091,6 +1166,101 @@ mod tests {
             assert_eq!(observed_footer(&safe_tail(prose)), None);
         }
     }
+
+    #[test]
+    fn actual_uppercase_codex_footer_survives_screen_replacement_separator() {
+        // Sanitized shape from an actual GNU Screen hardcopy; the path is synthetic.
+        let capture =
+            "unrelated output\n\0\u{1b}[32m  GPT-6.1-Sol xhigh � ~/owned-worktree\u{1b}[0m\0\n";
+        assert_eq!(
+            observed_footer(&safe_tail(capture)),
+            Some(("gpt-6.1-sol".into(), Some("xhigh".into())))
+        );
+    }
+
+    #[test]
+    fn footer_identity_is_bound_to_the_actual_process_family() {
+        let codex = safe_tail("GPT-6.1-Sol xhigh � ~/owned-worktree");
+        let gemini = safe_tail("esc to cancel  Gemini 4 Argon � high");
+        assert_eq!(
+            observed_footer_for_family(&codex, "codex"),
+            Some(("gpt-6.1-sol".into(), Some("xhigh".into())))
+        );
+        for family in ["gemini", "agy", "claude", "unknown"] {
+            assert!(observed_footer_for_family(&codex, family).is_none());
+        }
+        for family in ["gemini", "agy"] {
+            assert_eq!(
+                observed_footer_for_family(&gemini, family),
+                Some(("Gemini 4 Argon".into(), Some("high".into())))
+            );
+        }
+        assert!(observed_footer_for_family(&gemini, "codex").is_none());
+        // Preserve the existing explicit-model/boxed formats for other clients.
+        assert_eq!(
+            observed_footer_for_family("│ Sonnet 4.5 · ready │", "claude"),
+            Some(("Sonnet 4.5".into(), None))
+        );
+        assert_eq!(
+            observed_footer_for_family("Model: CLAUDE-SONNET-4-5", "claude"),
+            Some(("claude-sonnet-4-5".into(), None))
+        );
+        assert_eq!(
+            observed_footer_for_family("Model: Ornith-1.5-35B-A3B", "opencode"),
+            Some(("Ornith-1.5-35B-A3B".into(), None))
+        );
+        for family in ["codex", "claude", "gemini"] {
+            assert!(observed_footer_for_family("Model: Ornith-1.5-35B-A3B", family).is_none());
+        }
+    }
+
+    #[test]
+    fn footer_rejects_prose_inputs_private_lines_and_unspecific_family_labels() {
+        for text in [
+            "Please use GPT-6.1-Sol xhigh � ~/owned-worktree",
+            "Requested GPT-6.1-Sol xhigh · 80% context left",
+            "--model gpt-6-luna medium · 80% context left",
+            "GPT-6.1-Sol xhigh � requested ~/owned-worktree",
+            "GPT-6.1-Sol please xhigh � ~/owned-worktree",
+            "gpt-6-luna medium · requested for this task",
+            "> GPT-6.1-Sol xhigh � ~/owned-worktree",
+            "› \u{1b}[32mGPT-6.1-Sol xhigh � ~/owned-worktree",
+            "GPT-6.1-Sol xhigh � ~/owned/.private/worktree",
+            "GPT-6.1-Sol xhigh � ~/owned-worktree API_KEY=private-fixture",
+            "Model: Codex",
+            "Model: Claude",
+            "Model: Gemini",
+            "Model: OpenCode",
+            "Model: unknown",
+        ] {
+            assert_eq!(observed_footer(&safe_tail(text)), None, "{text}");
+        }
+        assert!(observed_footer(&"a".repeat(TAIL_BYTES + 1)).is_none());
+        assert!(observed_footer(&format!("Model: {}", "x".repeat(1024))).is_none());
+        let old = format!(
+            "GPT-6.1-Sol xhigh � ~/owned-worktree\n{}",
+            "ordinary output\n".repeat(16)
+        );
+        assert!(observed_footer(&old).is_none());
+    }
+
+    #[test]
+    fn codex_path_footer_keeps_separator_and_effort_semantics() {
+        for separator in ["�", "·", "│"] {
+            assert_eq!(
+                observed_footer(&format!("GPT-6.1-Sol xhigh {separator} ~/owned-worktree")),
+                Some(("gpt-6.1-sol".into(), Some("xhigh".into())))
+            );
+        }
+        assert_eq!(
+            observed_footer("GPT-6.1-Sol � /owned-worktree"),
+            Some(("gpt-6.1-sol".into(), None))
+        );
+        assert_eq!(
+            observed_footer("gpt-6-luna medium · 82% context left"),
+            Some(("gpt-6-luna".into(), Some("medium".into())))
+        );
+    }
     #[tokio::test]
     async fn invalid_target_and_unsupported_os_return_unknown_without_commands() {
         let mut n = node();
@@ -1138,6 +1308,20 @@ mod tests {
             observed_utc: (now - chrono::Duration::seconds(200)).to_rfc3339(),
         };
         assert!(entry.matches(&process, now));
+        assert!(
+            !ModelObservation {
+                model: "Gemini 4 Argon".into(),
+                ..entry.clone()
+            }
+            .matches(&process, now)
+        );
+        assert!(
+            !ModelObservation {
+                observed_utc: (now + chrono::Duration::seconds(1)).to_rfc3339(),
+                ..entry.clone()
+            }
+            .matches(&process, now)
+        );
         assert!(!entry.matches(
             &AgentProcess {
                 start: "boot:901".into(),
