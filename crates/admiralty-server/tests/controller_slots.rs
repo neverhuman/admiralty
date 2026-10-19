@@ -309,7 +309,7 @@ fn clone_admission(
         slot_proof: proof(),
     }
 }
-fn durable_counts(store: &Store) -> (usize, u64, usize, u64, usize) {
+fn durable_counts(store: &Store) -> (usize, u64, usize, u64, usize, usize) {
     let events = store.events_after(0, 8192).unwrap();
     let budget = store.reservation_ledger(proof()).unwrap();
     let slots = store.inference_slot_ledger(proof()).unwrap();
@@ -326,7 +326,8 @@ fn durable_counts(store: &Store) -> (usize, u64, usize, u64, usize) {
         budget.revision,
         budget.reservations.len(),
         slots.revision,
-        slots.holds.len() + claimed,
+        slots.holds.len(),
+        claimed,
     )
 }
 
@@ -343,7 +344,7 @@ fn slotted_controller_commits_claim_debit_hold_and_outbox_once_and_replays_origi
     let first = admit_one_slotted(&store, &Permit, &req, admission).unwrap();
     assert!(!first.intent.duplicate && !first.reservation.replayed && !first.slot.replayed);
     let before = durable_counts(&store);
-    assert_eq!(before, (2, 2, 1, 2, 2));
+    assert_eq!(before, (2, 2, 1, 2, 1, 1));
     assert!(admit_one_slotted(&store, &Deny, &req, clone_admission(&retry_admission)).is_err());
     assert_eq!(durable_counts(&store), before);
     let budget_ledger = store.reservation_ledger(proof()).unwrap();
@@ -377,7 +378,7 @@ fn slotted_controller_commits_claim_debit_hold_and_outbox_once_and_replays_origi
     assert!(retry.intent.duplicate && retry.reservation.replayed && retry.slot.replayed);
     assert_eq!(retry.reservation.receipt, first.reservation.receipt);
     assert_eq!(retry.slot.receipt, first.slot.receipt);
-    assert_eq!(durable_counts(&store), (2, 3, 1, 2, 2));
+    assert_eq!(durable_counts(&store), (2, 3, 1, 2, 1, 1));
     drop(store);
     let reopened = open(&path);
     assert_eq!(
