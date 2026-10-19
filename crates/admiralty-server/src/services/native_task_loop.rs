@@ -66,7 +66,10 @@ pub struct NativeTaskRuntimeConfig {
 /// construct its opaque proof or install a current Store authority.
 pub struct NativeBudgetAdmission {
     pub command: ReservationCommand,
+    /// Write authorization is not ledger-read authorization. Retain both roles
+    /// explicitly; a denied read never falls back to the admission proof.
     pub proof: ReservationProof,
+    pub read_proof: ReservationProof,
 }
 
 struct RetainedBudget {
@@ -287,6 +290,7 @@ impl NativeTaskLoop {
         let budget = NativeBudgetAdmission {
             command: inputs.budget_command.clone(),
             proof: Arc::clone(&inputs.budget_proof),
+            read_proof: Arc::clone(slot.budget_read_proof()),
         };
         let checked = self.preflight(&request, &plan).and_then(|revision| {
             if !slot.matches_plan(&request, &plan) {
@@ -298,7 +302,7 @@ impl NativeTaskLoop {
             };
             let ledger = self
                 .store
-                .inference_slot_ledger(Arc::clone(&inputs.slot_proof))
+                .inference_slot_ledger(Arc::clone(slot.slot_read_proof()))
                 .map_err(|_| LoopError::StoreUnavailable)?;
             let pool = ledger
                 .pools
@@ -784,7 +788,7 @@ impl NativeTaskLoop {
 
 fn budget_current(store: &Store, budget: &RetainedBudget) -> bool {
     store
-        .reservation_ledger(Arc::clone(&budget.admission.proof))
+        .reservation_ledger(Arc::clone(&budget.admission.read_proof))
         .is_ok_and(|ledger| ledger.reservations.get(&budget.expected.id) == Some(&budget.expected))
 }
 
@@ -800,7 +804,7 @@ fn clone_slot_inputs(slot: &RetainedSlot) -> admiralty_store::BudgetAndSlotAdmis
 
 fn slot_current(store: &Store, slot: &RetainedSlot) -> bool {
     store
-        .inference_slot_ledger(Arc::clone(&slot.admission.inputs().slot_proof))
+        .inference_slot_ledger(Arc::clone(slot.admission.slot_read_proof()))
         .is_ok_and(|ledger| {
             ledger.holds.get(&slot.expected.id) == Some(&slot.expected)
                 && ledger
