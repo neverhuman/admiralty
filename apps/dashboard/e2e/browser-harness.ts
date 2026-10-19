@@ -2154,6 +2154,7 @@ export async function startIsolatedNativeAdmiraltyServer(options?: {
   ownerToken?: string;
   allowedProjects?: string[];
   legacySnapshot?: unknown;
+  legacyPublicRead?: boolean;
 }): Promise<IsolatedNativeAdmiraltyServer> {
   await ensureBuiltDashboard();
 
@@ -2232,6 +2233,7 @@ export async function startIsolatedNativeAdmiraltyServer(options?: {
     binaryPath,
     [
       ...(options?.legacySnapshot ? ['--legacy-status-file', legacyStatus, '--legacy-index-file', legacyIndex] : []),
+      ...(options?.legacySnapshot && options.legacyPublicRead ? ['--legacy-public-read'] : []),
       '--database',
       dbPath,
       '--listen',

@@ -109,17 +109,11 @@ const AgentCard = memo(function AgentCard({
         } as React.CSSProperties
       }
       onClick={() => onSelect(a)}
-      aria-label={`${roleLabel} ${a.name} ${a.model ?? "Reported model unknown"} ${a.effort ?? ""} ${a.requested_model && a.model && a.requested_model !== a.model ? "mismatch" : ""} ${a.task ?? (a.presence === "unobserved" ? "Presence unknown" : a.state)} ${a.node ?? "Node unknown"} · ${a.presence} · ${a.state}`}
+      aria-description={`${a.node ?? "Node unknown"} · ${a.presence} · ${a.state}`}
       title={`${a.name} · ${a.role} · ${a.state} · ${age(a.observed_utc, now)}`}
     >
       <div className="atlas-agent-top">
-        <span className="atlas-agent-role">
-          {a.role === "commodore"
-            ? "COMMODORE / PROJECT CAPTAIN"
-            : a.role === "assignment"
-              ? "TASK ASSIGNMENT"
-              : a.role.toUpperCase()}
-        </span>
+        <span className="atlas-agent-role">{roleLabel}</span>
         <i
           className={`atlas-presence ${a.presence} ${attention ? "attention" : ""}`}
           aria-hidden="true"
@@ -636,15 +630,15 @@ export default function FleetAtlas({
                 now={now}
               />
             ))}
-            <div className="atlas-owner-avatar" style={{ left: 54, top: 65 }}>
-              <ProfileAvatar
-                name={
-                  snapshot.agents.find((a) => a.role === "owner")?.name ??
-                  "Owner"
-                }
-                profile={profile}
-              />
-            </div>
+            {camera.k >= 0.35 && rendered.filter((n) => n.agent.role === "owner").map((owner) => (
+              <div
+                key={owner.agent.id}
+                className="atlas-owner-avatar"
+                style={{ left: owner.x + 14, top: owner.y + owner.height / 2 - 17.5 }}
+              >
+                <ProfileAvatar name={owner.agent.name} profile={profile} />
+              </div>
+            ))}
           </div>
           <div className="atlas-map-caption">
             <span>COMMAND RELATIONSHIPS</span>

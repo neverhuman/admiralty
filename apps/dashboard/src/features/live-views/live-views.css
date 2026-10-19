@@ -640,9 +640,10 @@
   justify-content: center;
   gap: 7px;
   text-align: left;
-  padding: 12px 15px 12px 19px;
+  padding: 12px 15px 12px 16px;
   background: var(--lv-card);
   border: 1px solid var(--lv-line);
+  border-left: 4px solid var(--agent-color);
   border-radius: 7px;
   box-shadow: 0 5px 16px #0002;
   color: var(--lv-text);
@@ -651,16 +652,6 @@
   transition:
     border-color 0.18s,
     opacity 0.18s;
-}
-.atlas-agent:before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 14px;
-  bottom: 14px;
-  width: 3px;
-  background: var(--agent-color);
-  border-radius: 0 3px 3px 0;
 }
 .atlas-agent:hover {
   border-color: var(--agent-color);
@@ -748,7 +739,7 @@
 .atlas-agent.owner {
   padding-left: 60px;
   border-color: #48536a;
-  background: linear-gradient(100deg, #202b3e, var(--lv-card));
+  background: #202b3e;
 }
 .atlas-agent.owner .atlas-model,
 .atlas-agent.owner .atlas-agent-bottom {
@@ -766,10 +757,10 @@
 }
 .atlas-agent.admiral {
   border-color: #41688d;
-  background: linear-gradient(100deg, #172b43, var(--lv-card));
+  background: #172b43;
 }
 .atlas-agent.commodore {
-  background: linear-gradient(110deg, #1a2a3b, var(--lv-card));
+  background: #1a2a3b;
   border-color: #38526e;
   display: grid;
   grid-template-columns: 1fr 1fr;

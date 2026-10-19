@@ -195,3 +195,34 @@ populated/multi-page native browsing or full all-state operator journey. See
 `receipts/integration/native-intake-related-work-20261019T1208Z.json`.
 Enriched-record, duplicate decision/selection, attention/delivery views and full
 WO6/parent acceptance remain open. No live intake config/token/grant installed.
+
+## 7. Release regressions and stale asset audit — 19 October 2026
+
+The owner reports mostly unknown/gray hierarchy models and HTTP401 failures in
+Git Flow/Fleet Atlas. Treat these as release defects. The observer must retain
+actual model/effort footer observations across current terminal formats and
+matching process identities; never fill unknowns from a requested model or
+Screen name. Reproduce uppercase Codex labels and replacement-character status
+separators, keep bounded capture/cache behavior, then verify colorful badges
+against the actual live feed. A detected terminal label is not authenticated
+provider identity.
+
+Visual views must have a usable, explicit access path and recover after access
+changes. Diagnose the real401 rather than hiding errors or bypassing private
+native authorization. Preserve original source times, discard late results from
+prior access, and qualify both Git Flow and Fleet Atlas against the real native
+server. Any public legacy-only projection must use only already-public producer
+data and make unavailable native state explicit; it grants no command authority.
+
+Use disjoint observer and visual-client workers from main68bae1e. Root owns
+shared integration, contracts/routes and the workplan. Validate nonzero observer
+tests/strict checks, focused client tests/typecheck/build, and a real browser
+journey including missing access, authorized recovery and source preservation.
+
+Audit obsolete Admiralty Screens, worktrees, branches, candidates and receipts
+before retirement. Map each asset to its current owner, process/start, worktree
+status, source and landing state; preserve dirty/unlanded work and unknown
+effects. Idle is not proof of uselessness. Shared general CI runners, Admiral/
+ticker, unrelated projects and GPU jobs stay protected. Coordinate one deploy
+writer and do not retire it while active. Produce an actionable preservation and
+retirement list before any service or asset control.

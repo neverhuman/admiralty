@@ -114,7 +114,7 @@ export default function LiveViews({
   const snapshot = feed.snapshot,
     presented = mode === "git" ? (visiblePausedGit ?? snapshot) : snapshot,
     selection = presented ? resolveSelection(presented, route.params) : null;
-  const sources = snapshot?.sources ?? [],
+  const sources = presented?.sources ?? [],
     gaps = sources.filter(
       (s) =>
         ["error", "unavailable", "not_configured", "conflict"].includes(
@@ -204,7 +204,7 @@ export default function LiveViews({
           </button>
         </div>
       </header>
-      {snapshot?.simulated && (
+      {presented?.simulated && (
         <div className="lv-demo">
           SIMULATION · Every agent, repository and relationship in this
           demonstration is synthetic.
@@ -281,8 +281,8 @@ export default function LiveViews({
       <footer className="lv-status">
         <span>
           <i className={`lv-status-dot ${gaps.length ? "warn" : ""}`} />
-          {snapshot
-            ? `${snapshot.projects.length} projects · ${snapshot.agents.filter((a) => a.presence === "observed" && a.role !== "owner").length} observed agent identities`
+          {presented
+            ? `${presented.projects.length} projects · ${presented.agents.filter((a) => a.presence === "observed" && a.role !== "owner").length} observed agent identities`
             : "Awaiting first source cut"}
         </span>
         <details>

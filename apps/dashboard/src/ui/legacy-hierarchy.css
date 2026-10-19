@@ -1,5 +1,6 @@
 .model-badge{display:inline-block;max-width:100%;padding:0 5px;border-radius:4px;color:#081018;font-size:11.5px;font-weight:700;line-height:1.35;vertical-align:baseline;overflow-wrap:anywhere}
 .model-badge--local{background:#56d7e8}.model-badge--luna{background:#3fb950}.model-badge--sol{background:#d29922}.model-badge--astra{background:#f85149}.model-badge--gemini{background:#58a6ff}.model-badge--claude{background:#bc8cff}.model-badge--unknown{background:#8b949e}
+.model-badge--grok{background:#dbe8f8}
 .legacy-hierarchy{min-width:0;padding:14px;border:1px solid #2a313c;border-radius:10px;background:#161b22;color:#e6edf3;font-size:12px;line-height:1.45}
 .legacy-hierarchy .legacy-hierarchy-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-bottom:5px}
 .legacy-hierarchy .legacy-hierarchy-heading h2{margin:0;color:#e6edf3;font-size:17px;font-weight:700;line-height:1.3}
