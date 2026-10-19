@@ -1,0 +1,61 @@
+{
+  "packet": "P31",
+  "scope": "Release evidence preflight and actual isolated HTTP/CLI cutover qualification subset",
+  "source_revision": "b41cf9888a63badddc083d79fb86cee5db6635ca",
+  "native_build": "passed: lane-local target/debug admiraltyd and admiralty, locked dependencies, fleetcap, jobs=2",
+  "checks": {
+    "registered_release_smoke": 3,
+    "preflight_unit_tests": 7,
+    "canary_self_tests": 23,
+    "actual_isolated_http_cli_checks": 15
+  },
+  "binaries": {
+    "admiralty_sha256": "sha256:1a265754a72af9fd81c58ab9461c82bdc0c2f6038ed7bf31f3f7dc97bb8f0ed6",
+    "admiraltyd_sha256": "sha256:31b026bcc3aafc77e28be8c5028304643947f1b5a94f2f4256e43e5a349cae45"
+  },
+  "cleanup": {
+    "admiraltyd": "terminated",
+    "demo": "terminated"
+  },
+  "artifacts": [
+    {
+      "path": "/home/ubuntu/lanes/admiralty/accept-p26-p31/target/p31-evidence/build.log",
+      "sha256": "a5972faaba6e5af1e11347aefc9dfa0fa74ee14381daf07f12147a48ec039732"
+    },
+    {
+      "path": "/home/ubuntu/lanes/admiralty/accept-p26-p31/target/p31-evidence/release-smoke.log",
+      "sha256": "da892285f1e88ebbcb89871d060364d67daae6f9508ae59e6c6200a31b7136d7"
+    },
+    {
+      "path": "/home/ubuntu/lanes/admiralty/accept-p26-p31/target/p31-evidence/preflight-tests.log",
+      "sha256": "9990c8070665c08bb077b31bad1699be3129e59ef6b59e31cd8ca00977de5840"
+    },
+    {
+      "path": "/home/ubuntu/lanes/admiralty/accept-p26-p31/target/p31-evidence/canary-self-test.log",
+      "sha256": "f480f2e9cc3062583ff8c84b8af9f1aa1114277dc44e47df9de2da74365f1a2f"
+    },
+    {
+      "path": "/home/ubuntu/lanes/admiralty/accept-p26-p31/target/p31-evidence/actual-smoke.json",
+      "sha256": "f17c2337507dac5ffb2e4b2aea05fb49a0dd1d258346e9d55df9134bd7a5e3be"
+    },
+    {
+      "path": "/home/ubuntu/lanes/admiralty/accept-p26-p31/target/p31-evidence/actual-smoke-private-root.json",
+      "sha256": "965587fd7e33d22bf8e68e790c7604b8d31ded191411570ef21299fc7403637d"
+    },
+    {
+      "path": "/home/ubuntu/lanes/admiralty/accept-p26-p31/target/p31-evidence/preflight-incomplete.json",
+      "sha256": "51f1b70600779780e57c153192c764aee3788196a1407f80188f45c8f24a45f0"
+    }
+  ],
+  "retained_failure": "First actual smoke refused private configuration under group-writable lane ancestors. Retried under a new owned protected runtime fixture parent; no shared permissions or production guard changed.",
+  "remaining": [
+    "Actual coding-provider/task canary and fleet takeover",
+    "Restart/fleet/restore/rollback continuity matrix",
+    "Full invariant/load matrix and observed 24-hour soak",
+    "Prospective complete-cost and context-fidelity study",
+    "Independent evidence-content review and deployment owner handoff"
+  ],
+  "full_packet_acceptance": false,
+  "deployment_performed": false,
+  "savings_claim": false
+}
