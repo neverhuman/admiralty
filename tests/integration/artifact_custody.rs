@@ -302,6 +302,52 @@ fn verified_read_rejects_corrupted_bytes_at_the_content_address() {
 }
 
 #[test]
+fn range_reads_verify_unselected_bytes_and_reject_invalid_bounds() {
+    let fixture = private_fixture();
+    let artifact_root = fixture.path().join("objects");
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&artifact_root)
+        .expect("artifact range fixture succeeds");
+    let artifacts =
+        ArtifactStore::open(&artifact_root, 1024).expect("artifact range fixture succeeds");
+    let reference = artifacts
+        .publish_bytes(b"0123456789")
+        .expect("artifact range fixture succeeds");
+
+    assert_eq!(
+        artifacts
+            .read_verified_range(&reference, 2..5)
+            .expect("artifact range fixture succeeds"),
+        b"234"
+    );
+    assert_eq!(
+        artifacts
+            .read_verified_range(&reference, 10..10)
+            .expect("artifact range fixture succeeds"),
+        b""
+    );
+    assert!(artifacts.read_verified_range(&reference, 0..11).is_err());
+    let reversed = std::ops::Range { start: 5, end: 2 };
+    assert!(artifacts.read_verified_range(&reference, reversed).is_err());
+    assert!(
+        artifacts
+            .read_verified_range(&reference, 0..u64::MAX)
+            .is_err()
+    );
+
+    let path = artifact_root.join(
+        reference
+            .sha256
+            .strip_prefix("sha256:")
+            .expect("artifact range fixture succeeds"),
+    );
+    fs::write(path, b"012345678X").expect("artifact range fixture succeeds");
+    assert!(artifacts.read_verified_range(&reference, 2..5).is_err());
+    assert!(artifacts.read_verified_range(&reference, 10..10).is_err());
+}
+
+#[test]
 fn one_shot_prepublication_crash_preserves_clean_state_for_retry() {
     let fixture = private_fixture();
     let artifact_root = fixture.path().join("objects");
