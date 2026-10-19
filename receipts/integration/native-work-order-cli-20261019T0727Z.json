@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T07:25:37.472Z",
+  "component": "native scoped offline work-order intake CLI",
+  "source_commit": "9da94ab4d2d026d3fea78d61b8c51496a0c6202b",
+  "base_commit": "a9e0f55743af719d6d415801bf13a09abba1dff5",
+  "worker_candidate": "6727ac2130d2d1173e98d9e4ac511091843e6d24",
+  "files": {
+    "crates/admiralty-cli/src/work_order_intake.rs": "cbf87adbdc36bba853da9fa2b9e11b57917c5855ad77c93f7228db434ace98a8",
+    "crates/admiralty-cli/tests/work_order_intake_cli.rs": "133669cc5da0640c71340993208275b2aac4f0e88cb4e1bc911a6a0b75e7c874",
+    "crates/admiralty-cli/src/main.rs": "18b6dd14aa35c25a52b8daff3055dbc0a4abb80e8994b2289d85f63fcc0914ae",
+    "README.md": "5a5e6e1f2ca8f0d3631b376c5e60f8c48036fad5fc36a439d54c41070e609715",
+    "docs/operators/work-order-intake.md": "42c310d4638b9d28203c4ff684c427a31312660268c512a02e75eb7203c5b4a8"
+  },
+  "checks": [
+    {
+      "command": "cargo test -p admiralty-cli --test work_order_intake_cli --locked -- --test-threads=1",
+      "exit_code": 0,
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "log": "/private/tmp/adm-wo-cli-final.log",
+      "sha256": "73b0179886897688f30227de6816989e39243e6e5faa5f14104248b75930cfd7"
+    },
+    {
+      "command": "cargo clippy -p admiralty-cli --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "/private/tmp/adm-wo-cli-clippy-cleared.log",
+      "sha256": "6bb150a0785a456f0f651105b49eb81105b67a4d7d753599f310fa8cc559e427"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0
+    }
+  ],
+  "preserved_failure": {
+    "source": "84527d9 plus new canary test, before static error repair",
+    "command": "cargo test -p admiralty-cli --test work_order_intake_cli malformed_private_json --locked -- --test-threads=1",
+    "exit_code": 101,
+    "passed": 0,
+    "failed": 1,
+    "log": "/private/tmp/adm-wo-cli-canary-before.log",
+    "sha256": "6554428abd46cf2ac8fed94df45d20f6152a9e039f563747ae4583c288f36b96",
+    "repair": "static sanitized decode errors; no private serde diagnostic is printed"
+  },
+  "review": {
+    "reviewer": "independent Codex audit_evidence subagent; Root integration review",
+    "source_commit": "9da94ab4d2d026d3fea78d61b8c51496a0c6202b",
+    "status": "CLEAR no remaining P1/P2",
+    "performed_tests": false,
+    "reviewed_actual_logs": true,
+    "notes": "Repaired private parse reflection and create-on-read; fixture-only unwrap lint allowance matches existing test convention. No production lint or guard weakened."
+  },
+  "actual_coverage": [
+    "Unicode original preview/capture/identical retry/exact read",
+    "explicit enriched record/replay/show and duplicate index",
+    "current separate scope/policy; wrong scope/revoked credentials/stale authority generation deny",
+    "bounded private inputs and fixed nonsecret parse errors",
+    "read requires existing regular DB; live exclusive Store owner denies",
+    "capture creates zero tasks/messages/domain events and no due outbox"
+  ],
+  "limits": {
+    "offline_only": true,
+    "production_configuration_installed": false,
+    "provider_started": false,
+    "execution_qualified": false,
+    "complete_work_order_delivery_qualified": false,
+    "full_parent_acceptance": false,
+    "live_deployment_claimed": false
+  },
+  "environment": {
+    "host": "local Mac",
+    "jobs": 1,
+    "test_threads": 1,
+    "target": "/private/tmp/adm-work-order-cli-target",
+    "tmpdir": "/private/tmp/adm-native-4pbrtc1l"
+  }
+}

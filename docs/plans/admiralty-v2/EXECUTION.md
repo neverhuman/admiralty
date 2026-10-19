@@ -2069,3 +2069,7 @@ settlement, restart recovery, remaining work-order journeys and full final CI
 remain separate gates. No fresh provider grant/fixture/run is created; SC133's
 one route is consumed. The actual broader Rust capture-deadline failure remains
 on the single backlog, with no extra cleanup lane or unchanged passing-suite rerun.
+
+### 2026-10-19T07:25:37.472Z — native offline WorkOrder CLI component
+
+Root integrated Luna candidate6727ac2 and registered the actual CLI on code9da94ab4d2d026d3fea78d61b8c51496a0c6202b. Five actual binary cases, strict CLI all-target Clippy and fmt pass. Independent review found private serde errors reflected a synthetic secret key; the failing-before case is retained and static diagnostics repair it. Read commands now refuse missing databases, and actual lock/stale-generation/zero-task-message-event/outbox assertions pass. Scope is preview/capture/explicit record/exact reads/all-state duplicate query in an exclusively owned offline Store; no provider, live issuer, task dispatch, full WO6/parent acceptance or deployment claimed. Evidence: [native-work-order-cli-20261019T0727Z.json](../../../receipts/integration/native-work-order-cli-20261019T0727Z.json). Exact-head forge approval and receiving-main merge are still pending in this source snapshot.
