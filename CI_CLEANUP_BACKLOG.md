@@ -263,3 +263,22 @@ Test-only repair WIP is preserved at `/private/tmp/admiralty-linux-fixtures-32de
 readiness WIP at `/private/tmp/admiralty-native-readiness-32dea`. Neither unfinished
 candidate is installed or qualified. No runner, GPU job or unrelated service was
 stopped.
+
+### 19 October 13:48Z exact68bae1e evidence
+
+Main68bae1e browser39257300917/job118075697098 reports19passed/1failed:
+`live-views.e2e.ts` Atlas dark `label-content-name-mismatch`. Current model/visual
+regression source19baae2 repairs visible accessible names plus the subsequently
+reached decorative paint/light contrast defects. Actual local existing9surface
+axe case and new public-view native journey pass; hosted Linux success remains
+separate. This is a direct release-UX repair, not a new general CI cleanup lane.
+
+Rust39257300691/job118075696285 was cancelled with the exact check annotation
+`The job has exceeded the maximum execution time of 15m0s`. Contracts passed;
+workspace Clippy's API state was unfinished and Rust tests pending. Actual Rust
+job log was unavailable through gh and direct API404; contracts ZIP and failures
+are retained. Cancellation actor and resource cause remain unknown. Receipt
+`/private/tmp/adm-ci-main68bae1e-evidence.5earcR/ci-evidence-receipt.json`, SHA
+319a1286b1fe1fb60e2bca1a5345acb4499aba7d7999ab44dff9c40982835d6f,
+binds52hashed payloads in the model/visual packet archive. No rerun, cancellation
+or runner control was performed for this observation.

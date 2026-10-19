@@ -1,0 +1,291 @@
+{
+  "schema_version": 1,
+  "kind": "observed-model-and-public-visual-regression-repair",
+  "recorded_utc": "2026-10-19T13:45:38.842Z",
+  "base_sha": "68bae1e28cc19c0b799a9d5f3e7705ba77918d6c",
+  "source_commit": "19baae219c1780c43c22c3ceb13a813adb89fcae",
+  "source_sha256": {
+    "apps/dashboard/e2e/browser-harness.ts": "fabc7daa5a55c31e83fd4be788ca845c1c019ed6f9fdeb40258ca57919bd1928",
+    "apps/dashboard/e2e/live-views.e2e.ts": "8fd18064d9f81361802c6409409f76e359b731c059878ebfefd4b6eba1a1f437",
+    "apps/dashboard/e2e/public-views.e2e.ts": "73e53f265d38a3077f2bf9420cb5374b3726af9817669d7e2ff0d7078bb0c5ca",
+    "apps/dashboard/src/features/live-views/FleetAtlas.tsx": "93932252ce7a30248ae4d027246cb5a29ee46b0ede12deac961569a491634055",
+    "apps/dashboard/src/features/live-views/LiveViews.tsx": "7cf47a7500f5766e28ea849c7e68eac502426a11ff68ed2e954b51c6b5b82deb",
+    "apps/dashboard/src/features/live-views/feed.ts": "62fdb2c99d16199ee6fcc2586ee5367ce971bf36bdcc702612c0c60f3cfcfd70",
+    "apps/dashboard/src/features/live-views/live-views.css": "01c94177531158a7b376dbf98908e76e6c3ecde7d5cf045c765130b4b0beb9ee",
+    "apps/dashboard/src/features/live-views/live-views.test.ts": "aecdabc42ce2b0e283fea9ba0e79218350e0bcd5ccd1f6a3bf91e4e3bfc9ba9d",
+    "apps/dashboard/src/hierarchy.test.tsx": "94372a39397f8512ac5af82fadfeb2a1549fb857cb33dee5bd110ec2f405b8c0",
+    "apps/dashboard/src/ui/ModelBadge.tsx": "7463882706e41d614c2fa6ad66b77cc8c15daba1832e99c6532a19e167ada969",
+    "apps/dashboard/src/ui/legacy-hierarchy.css": "19bc2f0832425fa37fdb6b97566c1e0af7b6692331ffe0ab62b9c5c391f7c1e7",
+    "crates/admiralty-observe/src/fleet.rs": "b75bc403da839cf234bac38570506dd95fa9211d4b09507a61fa3bdde18f855a",
+    "docs/operators/live-views.md": "82d2f9160bd6e476591d02f9fd706fcf87684dae52ba73af72e1b00250d57f34",
+    "docs/plans/admiralty-v2/WORK_ORDER_REVIEW.md": "c0628c19086739b4249b49be42589046f2e1730d538ae682c43b284c327d3567"
+  },
+  "imports": [
+    {
+      "candidate": "d5834d828e971b39598f5dce9ae8fbde40b9b20b",
+      "integrated": "c5ffd6a26499cbee1e491e1f3b99ba1a3ec8b063"
+    },
+    {
+      "candidate": "ad4f9c7864f4ae3ba0af3233c7fa1dc273ab8232",
+      "integrated": "bed3c2f272ca1009ff801426b9fde1884d063300"
+    },
+    {
+      "candidate": "cb6072eab48d90da75ce70d9f5e5428db9291bff",
+      "integrated": "04745059a61b0375b2930edc642e47857ee07e28"
+    }
+  ],
+  "changes": [
+    "Recognize observed uppercase Codex and replacement-character TUI footer formats; keep client-family/PID/start/cache-age binding and unknowns. Never derive a model from requested argv or Screen name.",
+    "Color Claude short labels and Grok; explicit unknown model labels remain unknown. A TUI label is observational, not authenticated provider identity.",
+    "Native views remain private. On401/403 only the already explicitly public legacy endpoint may supply a bounded producer-only Git/Atlas projection without a bearer. Native assignments remain unavailable and source clocks preserved.",
+    "Exact configured identity/node binds manager roles. Preserve simulated=true, access epochs and paused-source provenance; discard private cuts on auth denial and late old-access replies.",
+    "Atlas accessible names derive visible text; descriptions supplement them. Owner avatar exists only for an actual rendered owner node. Actual colored borders/solid role surfaces and separate decorative Grok image permit reliable contrast. Light model text/project numbers meet actual axe checks."
+  ],
+  "validation": {
+    "platform": "local macOS; no Linux source tests or live new-source deployment in this receipt",
+    "observer": {
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 44,
+      "new_subset": 4,
+      "existing": 11,
+      "strict_all_target_clippy": true,
+      "worker_and_root_runs_are_same_cases": true,
+      "worker_receipt": {
+        "path": "/private/tmp/adm-model-footer-6ThjiY/receipt.json",
+        "bytes": 11779,
+        "sha256": "535ccab6db9c42f95b97de8f0b5ccfedee211f72816a2bfc634d7a4a840cd0ff"
+      }
+    },
+    "dashboard": {
+      "passed": 31,
+      "failed": 0,
+      "live_views_cases": 23,
+      "hierarchy_cases": 8,
+      "worker_counts_nonadditive": true,
+      "typecheck_and_production_build": true,
+      "e2e_typecheck": true
+    },
+    "native_browser": {
+      "passed": 2,
+      "failed": 0,
+      "filtered": 5,
+      "new_case_subset": 1,
+      "elapsed_seconds": 4.03,
+      "native_sha256": "9dfb630fe1c513c0aabea975a761a3a5222002844c5c92620f55504505068f1e",
+      "producer_data": "synthetic fixtures with actual isolated Rust and built production React",
+      "public_journey": {
+        "recorded_utc": "2026-10-19T13:44:08.105Z",
+        "native_binary": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/context-integrated-final/debug/admiraltyd",
+        "native_sha256": "9dfb630fe1c513c0aabea975a761a3a5222002844c5c92620f55504505068f1e",
+        "source_timestamp": "2026-10-18T12:00:00Z",
+        "private_without_bearer": 401,
+        "explicit_public_legacy": 200,
+        "modes": [
+          "git-public",
+          "atlas-public",
+          "authenticated-native"
+        ],
+        "colors": {
+          "gemini": "rgb(88, 166, 255)",
+          "sol": "rgb(210, 153, 34)",
+          "luna": "rgb(63, 185, 80)",
+          "claude": "rgb(188, 140, 255)"
+        },
+        "axes": [
+          {
+            "mode": "git-public",
+            "axe": {
+              "url": "http://127.0.0.1:53010/#/git?project=harbor&scope=harbor&focus=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "timestamp": "2026-10-19T13:44:07.965Z",
+              "testEngine": {
+                "name": "axe-core",
+                "version": "4.14.0"
+              },
+              "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+              "violations": [],
+              "incomplete": [],
+              "passesCount": 30,
+              "inapplicableCount": 33
+            }
+          },
+          {
+            "mode": "atlas-public",
+            "axe": {
+              "url": "http://127.0.0.1:53010/#/atlas",
+              "timestamp": "2026-10-19T13:44:08.054Z",
+              "testEngine": {
+                "name": "axe-core",
+                "version": "4.14.0"
+              },
+              "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+              "violations": [],
+              "incomplete": [],
+              "passesCount": 28,
+              "inapplicableCount": 35
+            }
+          }
+        ],
+        "source_time_seen_in_real_git_inspector": true,
+        "provider_turns": 0,
+        "scope": "Real isolated Rust service and production React bundle; synthetic producer observations, no live fleet/provider qualification"
+      },
+      "existing_axe_surfaces": [
+        {
+          "label": "atlas dark",
+          "violations": 0,
+          "incomplete": 0
+        },
+        {
+          "label": "roster dark",
+          "violations": 0,
+          "incomplete": 0
+        },
+        {
+          "label": "roster light",
+          "violations": 0,
+          "incomplete": 0
+        },
+        {
+          "label": "atlas light",
+          "violations": 0,
+          "incomplete": 0
+        },
+        {
+          "label": "git light",
+          "violations": 0,
+          "incomplete": 0
+        },
+        {
+          "label": "git inventory light",
+          "violations": 0,
+          "incomplete": 0
+        },
+        {
+          "label": "git inventory dark",
+          "violations": 0,
+          "incomplete": 0
+        },
+        {
+          "label": "git dark",
+          "violations": 0,
+          "incomplete": 0
+        },
+        {
+          "label": "mobile roster",
+          "violations": 0,
+          "incomplete": 0
+        }
+      ],
+      "cleanup": "helpers awaited close; public test additionally requires health request failure. No independent child PID census claimed."
+    },
+    "reviews": [
+      {
+        "path": "/private/tmp/adm-observed-footer-1315-static-review.json",
+        "bytes": 2294,
+        "sha256": "a3ad69c65b8af48ea39326b530799936e768f6a20876052678e7b06c0e6be55e"
+      },
+      {
+        "path": "/private/tmp/adm-public-live-views-review-ad4f9c7.json",
+        "bytes": 5611,
+        "sha256": "c16d3b5325c457ec1ffc8e2dea78a41dde4fa4b74aeb2008d0ab24bca5d0eaa3"
+      },
+      {
+        "path": "/private/tmp/adm-public-live-views-review-cb6072e.json",
+        "bytes": 3673,
+        "sha256": "fddc6f93366721eae009c876e36dcd899be7f0ceea332925b8a89fb0832e6cbc"
+      },
+      {
+        "path": "/private/tmp/adm-public-live-views-final-source-review.json",
+        "bytes": 3987,
+        "sha256": "f5d99725631c24f36b0372f8414a716ddd8f4bed76ae3ecb67c99daf17de0d52"
+      },
+      {
+        "path": "/private/tmp/adm-atlas-public-visual-static-review.json",
+        "bytes": 2217,
+        "sha256": "da69f3ffa6f9f643f9c23efbda898081099e9c7a18453b6187464c1cb96069ec"
+      },
+      {
+        "path": "/private/tmp/adm-atlas-public-visual-static-review-env-followup.json",
+        "bytes": 764,
+        "sha256": "b9486f219db9db2a44c21a031d6244771204140f84ed943a817e6cb072471a20"
+      },
+      {
+        "path": "/private/tmp/adm-atlas-public-visual-static-review-final-followup.json",
+        "bytes": 1554,
+        "sha256": "18f74c0bb755997024cb1399f8a8a28592ef01053e53d7838583149b7e8eb0f3"
+      }
+    ]
+  },
+  "negative_evidence": [
+    "Original uppercase-footer exact --lib case failed before parser change. Initial mistaken --bin zero-tests is excluded from qualification.",
+    "Worker draft typing/assertion failures retained. Review found and repaired simulated relabeling, hierarchy omission, stale private snapshots, same-token denial retention and late-abort callback mutations.",
+    "Native public browser first failed four Atlas label/name nodes, then contrast incomplete from decorative pseudo/background and fictitious avatar overlap. Actual fixes retained, no axe waiver.",
+    "CI env inspection caught noncanonical SHA variable; test now reads the actual workflow export and native recheck passes.",
+    "Existing nine-surface browser initially could not find renamed access control; helper now awaits the explicit access button. Subsequent actual watcher-image incomplete and light contrast failures were retained and repaired. All9 existing surfaces then pass; public journey rerun on that final bundle also passes."
+  ],
+  "coordination": {
+    "admiral_ack": "SC-DEC-167",
+    "ack": {
+      "path": "/private/tmp/SC_ACK_CODEX_LATEST_ADMIRALTY_REQUESTS_20261019T1321Z.md",
+      "bytes": 8346,
+      "sha256": "8b813c9cc48675b49ffffb0edd71f91a206f36fa3ec64e2a653633f52a7ad452"
+    },
+    "deploy_owner": "885617.adm_p18a_conflicts; Root performs no service control",
+    "rollout_expected_sha256": "4a26574d3d8351ed125bfc2af4229f69f4aae2da592d3e99dd2b8fd147f7e2d1",
+    "parent_acceptance": "P00/P01 only;30parents open"
+  },
+  "primary_before_this_source": {
+    "path": "/private/tmp/native-68bae1e-independent-20261019T1343Z.json",
+    "bytes": 15269,
+    "sha256": "87f008a478906b499f8922b2d6fe1ba0b22ac051d4b6ebda1af55b10ed6737ca"
+  },
+  "stale_assets": {
+    "receipt": {
+      "path": "/private/tmp/adm-stale-assets-audit.YcYynN/audit-receipt.json",
+      "bytes": 28919,
+      "sha256": "adcc5b91ce06e039f770e7030e954629d1f1348222855e88504732bf127fe1f9"
+    },
+    "screens": 15,
+    "worktrees": 60,
+    "branch_refs": 148,
+    "retirement": false,
+    "limitations": "14 old lanes require owner release/recoverability/equivalence proof. Two dirty worktrees protected. Repository runner0/org403 does not establish no shared runners."
+  },
+  "ci": {
+    "receipt": {
+      "path": "/private/tmp/adm-ci-main68bae1e-evidence.5earcR/ci-evidence-receipt.json",
+      "bytes": 30859,
+      "sha256": "319a1286b1fe1fb60e2bca1a5345acb4499aba7d7999ab44dff9c40982835d6f"
+    },
+    "source": "68bae1e28cc19c0b799a9d5f3e7705ba77918d6c",
+    "browser": "19pass1Atlaslabel/namefail",
+    "rust": "15min annotation;cancelled, contracts passed, workspaceClippy unfinished/tests pending; Rust job logs unavailable",
+    "cancellation_actor": null,
+    "resource_cause": null,
+    "new_source_hosted_success_claimed": false
+  },
+  "archive": {
+    "directory": "/home/ubuntu/admiralty-v2-build/receipts/native-model-public-views-20261019T1348Z",
+    "payload_manifest": {
+      "path": "/private/tmp/adm-model-visual-final/payloads.json",
+      "bytes": 71183,
+      "sha256": "51755365233e451919d72b7b737f6831e1ee3aac956669d1bfb0f37b69fdfd92"
+    },
+    "source_archive": {
+      "path": "/private/tmp/adm-model-visual-final/source.tar",
+      "bytes": 20060160,
+      "sha256": "d5b19f0c3a28bca13b1f5dc85ec0952a001280e84745393387221bb734c6127e"
+    },
+    "payloads": 271,
+    "remote_verification": "pending; separate followup required"
+  },
+  "limitations": [
+    "No new-source live fleet/model-color verification yet; no speculative model labels for remote/unobserved sessions. Capture scheduling bounds unchanged.",
+    "Existing safe_tail filter is not a general secret-redaction qualification. No secret leak established or expanded raw capture.",
+    "No production provider execution, issuer, capacity activation, settlement, recovery or full parent acceptance. Consumed bcf5 diagnostic is not reusable and current repaired probe is build-only.",
+    "Source simulation/browser observations and platform copies do not add independent acceptance or live process identity. Hosted CI remains separate."
+  ],
+  "next_action": "Independent final source/evidence review; exact-head neverhumanbot approval and matched-head merge; serialized deployment then fresh live proof. Preserve obsolete work until explicit owner release and archive verification."
+}

@@ -2,6 +2,22 @@
 
 ## Later component reconciliation
 
+**13:48Z regression/coordination addendum:** MIT and kernel timer/diagnostic work
+merged in PR126, receiving68bae1e. That primary is independently verified at
+13:42:48.155Z, including14files/process hashes and absence of retired ownedPython;
+general native execution remains false. The Admiral acknowledged current owner
+requests in SC-DEC-167 with one deploy writer and disjoint file scopes.
+Source19baae2 fixes actual observed-footer model labels/colors and public producer
+Git/Atlas access after private401, preserving private native auth and source clocks.
+Actual15observer/31UI cases and2native browser cases pass, including9existing
+dark/light/mobile axe surfaces and the new public-to-owner-access journey.
+These are component/source results, not new whole-parent acceptance or a new live
+deployment. See `native-model-public-views-20261019T1348Z.json`.
+The15Screen/60worktree/148ref audit preserves dirty/unlanded work; no retirement
+or shared-runner control occurred. Full execution, product and release groups
+below remain open. Current68bae browser CI fails its Atlas name check and Rust
+has an explicit15minute limit result; new-source hosted success is not inferred.
+
 **12:50Z release gates, not a bookkeeping hold:** PR125/e6e364e is the primary
 Rust dashboard/observer, independently verified at12:23:52.714Z. There were zero
 open PRs at12:50:19.167Z. Browser/accessibility39250210328 passed; main checks39250210472
