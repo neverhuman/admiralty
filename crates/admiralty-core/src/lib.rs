@@ -34,6 +34,7 @@ pub mod conflicts;
 pub mod coordination;
 pub mod delivery;
 pub mod economics;
+pub mod evaluation;
 pub mod excursions;
 pub mod governor;
 pub mod import;
