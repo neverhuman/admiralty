@@ -6,6 +6,19 @@ neverhumanbot approval and matched-head rebase. Red/queued CI is never green.
 One cleanup lane takes this list after remaining cutover implementation lands;
 build failures remain immediate work.
 
+Actual main65c1 Rust39246533041 ended cancelled; check annotation118039708355
+explicitly reports the maximum15minute job deadline. Browser39246532871 passed.
+No resource-pressure/cancellation-actor inference or green Rust claim.
+
+Actual PR124 exact99295f5f Rust39246319430 failed at
+`native_executor.rs:2319` with `controlled child capture deadline`:
+96serverpassed/1failed/2ignored; full later targets were not reached. Raw
+`/private/tmp/adm-ci-pr124-rust-39246319430.log` SHA-256
+`7c17dc06af1bc75f2bb252a15f161b049a686b5020a7ef1e5581ae3ddb4000b0`
+is preserved. This is an actual new-source same-class observation, not a
+resource-pressure diagnosis. PR124 browser39246319445 passed; main65c1
+browser39246532871 passed. No rerun/cancellation/runner control/new cleanup lane.
+
 Receiving mainbcf5 browser39242735139 later completed FAILURE. Its job
 118027201976 reports no failed step in the fetched API snapshot, and failed-log
 retrieval returned `log not found: 118027201976` with no log bytes. Exact cause

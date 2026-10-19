@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T12:08:42.300Z",
+  "payloads": 159,
+  "all_payloads_hash_verified": true,
+  "archive_sha256": "bcafeb266708d8973933f332f05397615a7efe1646c75294b3e381d801dbc5e0",
+  "manifest_sha256": "2a27ce2bc033a86041e38ccd14dd2747a5de730748171ec82fc312c6c6d1686b",
+  "source_commit": "013cd33680ce45c1fcaf6e7a4c80ab7cde0edceb",
+  "no_build_or_tests_or_provider": true,
+  "inside_gate": {
+    "observed_utc": "2026-10-19T12:08:42.247Z",
+    "cpu_percent": 16.999920967359515,
+    "mem_available_kib": 72248872,
+    "controller_active": true,
+    "freeze": "0",
+    "admitted": true,
+    "provider_started": false
+  }
+}

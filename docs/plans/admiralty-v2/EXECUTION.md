@@ -2688,3 +2688,51 @@ under SHA `e58e7321...`. The archive verifier first failed to parse a generated
 newline literal. The invalid verifier is preserved beside its corrected version
 in the owned receipt directory; the repaired verifier checks the same unchanged
 archive and every payload hash. No source test was rerun or guard weakened.
+
+
+### 12:09Z — Native related-work lookup composed; 65c1 primary independently verified
+
+Source013cd33680ce45c1fcaf6e7a4c80ab7cde0edceb adds the existing Rust
+duplicate-query API to Intake through two disjoint client/UI workers and Root
+integration. Lookup is explicit/read-only, independently scoped to the current
+preview/root/credentials, with typed Rust query identity, bounded escaped
+candidates and honest complete/partial/incomplete coverage. Pagination is
+manual, stops repeated cursors and caps five pages/100rows. No source/command
+identity is invented from the raw-capture form; no record/merge/dispatch action.
+
+Actual Root41scoped dashboard cases (28client+4UI+9existing intake), dashboard
+and E2E typechecks, actual Rust1golden integration case/twovectors, scoped strict
+core-test Clippy and fmt pass. Worker copies of the same cases are nonadditive.
+Actual final native browser1case passes in2.74s with immutable binary SHA
+3dfcd4fb393b092ea5d47f61385506bfb06692bf4f9b0c05785b3f75d0052a81,
+production source3f42f940/bundle1fd198d7, two empty/incomplete scoped queries,
+identical committed-reply-loss capture replay/readback, busy-state assertion and
+late ignored-abort reply discarded after credentials change. Tasks/messages stay
+zero; pinned axe4.14 reports0violations/0incomplete/29passes. Direct child78800
+SIGTERM/exit confirmed. Positive candidate/pagination views are unit coverage,
+not native browser qualification. All159payloads independently rehashed in the
+owned remote archive with fresh outside/inside fleetcap admission; no Linux
+build/test/provider job. Draft failures and the prior browser variant retained.
+
+Canonical receipt native-intake-related-work-20261019T1208Z.json and separate
+source review/archive receipts bind exact source/raw proofs. This bounded WO6
+journey does not complete WO6/P11/P13/P29/P30 or install live intake credentials,
+production provider admission, physical-pool/start fence, context/closure, budget
+settlement or restart recovery. P00/P01 alone accepted;30parents remain open.
+
+SC156sole backup885617 deployed65c1 at11:54:03Z. Root independently verified
+11:59:45.876Z all14manifest/file hashes and daemon1486257/start59629760 plus
+observer1486006/start59629754 executable hashes; health/UI/feed200/18891
+redirect307, Rust0turns/history256displayed598retained, oldbcf5PIDs absent and
+no retired owned Python processes. Exact independent receipt
+native-65c1bb11-independent-20261019T1202Z.json SHA
+bf12452e80bb475650a4b6037d5800b765c03ecfded80eaa8bda57a0a7c8a6ac.
+Original first-history/browser controls were not remeasured. Root no service
+control. The newer related-work source is not yet deployed.
+
+PR124exact992Rust39246319430 actually failed96serverpass/1controlled-capture
+deadline/2ignored; main65c1 Rust39246533041 was cancelled with actual15minute
+annotation118039708355. Browser runs for both passed. Red evidence remains in
+the one Root CI backlog; no cause inference, rerun, cancellation or runner control.
+Fresh exact bcf5 diagnostic question/request remains pending: no new provider
+fixture, CLI metadata, authorization/grant or provider turn. Never reuse SC155.

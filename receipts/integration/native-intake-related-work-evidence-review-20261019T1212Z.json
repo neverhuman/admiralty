@@ -1,0 +1,1153 @@
+{
+  "kind": "independent-related-work-evidence-audit",
+  "observed_utc": "2026-10-19T12:10:49.815Z",
+  "reviewer": "audit_evidence",
+  "verdict": "CLEAR",
+  "canonical_receipt": {
+    "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/receipts/integration/native-intake-related-work-20261019T1208Z.json",
+    "sha256": "5e41be21a75318c40da76e1dac78e0751213e5cb4087d5b78c769f22e5a9520e",
+    "bytes": 10071,
+    "unchanged_during_audit": true
+  },
+  "source_revision": "013cd33680ce45c1fcaf6e7a4c80ab7cde0edceb",
+  "source_files": [
+    {
+      "path": "apps/dashboard/src/intakeDuplicates.ts",
+      "bytes": 9914,
+      "sha256": "f7410e830d41f884f60991dfe5f6bcca067b919cb9b6cf0bbb5128b6c00988f0"
+    },
+    {
+      "path": "apps/dashboard/src/intakeDuplicates.test.ts",
+      "bytes": 16078,
+      "sha256": "664847a54b61b92cb8913c931cb67f9267d3db408415635f31d3301f04851557"
+    },
+    {
+      "path": "apps/dashboard/src/ui/IntakeDuplicates.tsx",
+      "bytes": 10731,
+      "sha256": "2dddf66eac3423a47be36492f573fd10dc7ca637275fc058f541bd8bf0282ab8"
+    },
+    {
+      "path": "apps/dashboard/src/ui/intakeDuplicates.test.tsx",
+      "bytes": 2964,
+      "sha256": "17743104a32f1bfbba48253bd7efe535c1b5b78b470064c89c76c7d70877546c"
+    },
+    {
+      "path": "apps/dashboard/src/ui/Intake.tsx",
+      "bytes": 32189,
+      "sha256": "20c4f87c0854528056ef280d148f2412d3763cb859299570b11958043d8a65ef"
+    },
+    {
+      "path": "apps/dashboard/src/ui/intake.test.tsx",
+      "bytes": 11956,
+      "sha256": "d108bfdd02640abb05cb2d5cec5047c1ecb67b4e432fbdbb8751ddec0d0523c7"
+    },
+    {
+      "path": "apps/dashboard/e2e/intake.e2e.ts",
+      "bytes": 27147,
+      "sha256": "4a81dd3dd8aeac5a7f378344b666305b15ebf043ee4924b063950046c0360ee1"
+    },
+    {
+      "path": "crates/admiralty-core/tests/duplicate_query_golden.rs",
+      "bytes": 859,
+      "sha256": "38a224442759920493ea6d3f742d4bd20fb20d92a9d140eb85b8c57e62541c55"
+    },
+    {
+      "path": "packages/contracts/fixtures/intake-duplicate-query-golden.json",
+      "bytes": 1064,
+      "sha256": "753425808498ac379af8bb921aeba905acf4e31b7391d82130801baf609f6818"
+    }
+  ],
+  "source_archive": {
+    "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/source-013cd33.tar",
+    "sha256": "20ded73e8d5c1b324669c3317ce88fe90229ef349c425f408f7c420019032480",
+    "bytes": 19752960,
+    "matches_actual_git_archive_of_source": true
+  },
+  "manifest": {
+    "path": "/private/tmp/adm-related-work-root-20261019T1204Z/manifest.json",
+    "sha256": "2a27ce2bc033a86041e38ccd14dd2747a5de730748171ec82fc312c6c6d1686b",
+    "bytes": 26243,
+    "payloads": 159
+  },
+  "verified_payloads": [
+    {
+      "name": "browser-final-browser-proof.json",
+      "bytes": 13310,
+      "sha256": "42af04cfd39f3ddaca6283240eaa42ebfebbc15555301810dbcf6b874a8a54f4",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/browser-final-browser-proof.json"
+    },
+    {
+      "name": "browser-final-native-exit.json",
+      "bytes": 247,
+      "sha256": "cd1bd93539e9f34451e0172367ea09abc64787ca8ed75884d210b71fe22e37a2",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/browser-final-native-exit.json"
+    },
+    {
+      "name": "browser-pre-busy-assert-browser-proof.json",
+      "bytes": 13310,
+      "sha256": "3c31782b613e1132de77814579830ad65b70045ee61192c601af8d93af45a265",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/browser-pre-busy-assert-browser-proof.json"
+    },
+    {
+      "name": "browser-pre-busy-assert-native-exit.json",
+      "bytes": 247,
+      "sha256": "cca8b424172b7b1e0aa2d8df1c6d60d2aa93025a78bc02cb681b492fade23a1d",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/browser-pre-busy-assert-native-exit.json"
+    },
+    {
+      "name": "client-ref-1-intakeDuplicates.ts",
+      "bytes": 9914,
+      "sha256": "f7410e830d41f884f60991dfe5f6bcca067b919cb9b6cf0bbb5128b6c00988f0",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-1-intakeDuplicates.ts"
+    },
+    {
+      "name": "client-ref-10-03-dependencies.stdout",
+      "bytes": 234,
+      "sha256": "2e7921a15dd737514c30b3e7ee1922e24327b230c59a0e2146bde59d336079b8",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-10-03-dependencies.stdout"
+    },
+    {
+      "name": "client-ref-11-03-dependencies.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-11-03-dependencies.stderr"
+    },
+    {
+      "name": "client-ref-12-03-dependencies.json",
+      "bytes": 458,
+      "sha256": "73b8185a5df8b0899af3d40beb753a97393c3a661ac8d38d56958835eb83c08f",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-12-03-dependencies.json"
+    },
+    {
+      "name": "client-ref-13-04-tsconfig.stdout",
+      "bytes": 532,
+      "sha256": "d21dd9148330758646c6a1c605f83a88ecd9224126ff49c205e8d105525cc03b",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-13-04-tsconfig.stdout"
+    },
+    {
+      "name": "client-ref-14-04-tsconfig.stderr",
+      "bytes": 65,
+      "sha256": "37e9f2c5e96c111f7dac20da8a2b43375f0b4a637dac6827b79583b981cea0eb",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-14-04-tsconfig.stderr"
+    },
+    {
+      "name": "client-ref-15-04-tsconfig.json",
+      "bytes": 427,
+      "sha256": "7a194333b5b6639c66fef940359e6d0ca6d14497bc87c829673f7ae3847bb063",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-15-04-tsconfig.json"
+    },
+    {
+      "name": "client-ref-16-05-static-inputs.stdout",
+      "bytes": 5377,
+      "sha256": "69b52e939e22e0ee7e2e596c9a9cb1d0848ba0e25271e8c4f37aa17c6ff11b67",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-16-05-static-inputs.stdout"
+    },
+    {
+      "name": "client-ref-17-05-static-inputs.stderr",
+      "bytes": 1463,
+      "sha256": "1917c0bbc667af2d6a9531f303ad7eba64c0fc85d3eff32832da9546b05d20f7",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-17-05-static-inputs.stderr"
+    },
+    {
+      "name": "client-ref-18-05-static-inputs.json",
+      "bytes": 819,
+      "sha256": "fa2511078658b1b1c8494e198c8d2e73f37667908fa2bfde31ad3d61b0f0223e",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-18-05-static-inputs.json"
+    },
+    {
+      "name": "client-ref-19-06-contract-paths.stdout",
+      "bytes": 2740,
+      "sha256": "7f0b5c572b45cd2e75cdcdd57417b2728e546dad803ae6ec93a1bbc943aa9156",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-19-06-contract-paths.stdout"
+    },
+    {
+      "name": "client-ref-2-intakeDuplicates.test.ts",
+      "bytes": 16078,
+      "sha256": "664847a54b61b92cb8913c931cb67f9267d3db408415635f31d3301f04851557",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-2-intakeDuplicates.test.ts"
+    },
+    {
+      "name": "client-ref-20-06-contract-paths.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-20-06-contract-paths.stderr"
+    },
+    {
+      "name": "client-ref-21-06-contract-paths.json",
+      "bytes": 403,
+      "sha256": "23f6a7ded9094c0bab0771b217cc6f81a6752666f4512c3c58a562981a8520d5",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-21-06-contract-paths.json"
+    },
+    {
+      "name": "client-ref-22-07-contract-inputs.stdout",
+      "bytes": 19459,
+      "sha256": "6516c13f009e8bf7c436aa033defdf4e3a12206cfe4d7611e4be860f8f44aacb",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-22-07-contract-inputs.stdout"
+    },
+    {
+      "name": "client-ref-23-07-contract-inputs.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-23-07-contract-inputs.stderr"
+    },
+    {
+      "name": "client-ref-24-07-contract-inputs.json",
+      "bytes": 606,
+      "sha256": "73dfde13c0af7e4a605adbbadc5c6458955334662dc783d4ea17cc84a0892b15",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-24-07-contract-inputs.json"
+    },
+    {
+      "name": "client-ref-25-08-local-overlays.stdout",
+      "bytes": 90,
+      "sha256": "c1bf605aac5c0a981f4ba282bb2526726662ea88a160ebc37c81275d814f5929",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-25-08-local-overlays.stdout"
+    },
+    {
+      "name": "client-ref-26-08-local-overlays.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-26-08-local-overlays.stderr"
+    },
+    {
+      "name": "client-ref-27-08-local-overlays.json",
+      "bytes": 918,
+      "sha256": "5f2bf6846ccd9386ca34bd3ee6cf3b216001e5c022623b15ecacb5a8e1a5c8f4",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-27-08-local-overlays.json"
+    },
+    {
+      "name": "client-ref-28-09-preview-existing-fixtures.stdout",
+      "bytes": 12048,
+      "sha256": "2f55038cceee28fa77231acdada284d56f70bb1c8af456d4ac76daddc64fc980",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-28-09-preview-existing-fixtures.stdout"
+    },
+    {
+      "name": "client-ref-29-09-preview-existing-fixtures.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-29-09-preview-existing-fixtures.stderr"
+    },
+    {
+      "name": "client-ref-3-intake-duplicate-query-golden.json",
+      "bytes": 1064,
+      "sha256": "753425808498ac379af8bb921aeba905acf4e31b7391d82130801baf609f6818",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-3-intake-duplicate-query-golden.json"
+    },
+    {
+      "name": "client-ref-30-09-preview-existing-fixtures.json",
+      "bytes": 712,
+      "sha256": "0ef5912cd61e26f2c349c4128f8740b1e37791a0bb124059ca38ded0c3fb891a",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-30-09-preview-existing-fixtures.json"
+    },
+    {
+      "name": "client-ref-31-10-client-tests.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-31-10-client-tests.stdout"
+    },
+    {
+      "name": "client-ref-32-10-client-tests.stderr",
+      "bytes": 1236,
+      "sha256": "107f6e4e5682ab86702f6e14bdf13aa97524a05a5f709470559d1ee599d15a06",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-32-10-client-tests.stderr"
+    },
+    {
+      "name": "client-ref-33-10-client-tests.json",
+      "bytes": 565,
+      "sha256": "b41a4fbde6893d6d920bd73551f7993264149eb53950543bb49cd62c30e1c28c",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-33-10-client-tests.json"
+    },
+    {
+      "name": "client-ref-34-11-client-tests.stdout",
+      "bytes": 235,
+      "sha256": "b6c9c946af55342e08f0f9ed1acbd0299b5a5def77256bc709a9eb6ae96b887f",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-34-11-client-tests.stdout"
+    },
+    {
+      "name": "client-ref-35-11-client-tests.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-35-11-client-tests.stderr"
+    },
+    {
+      "name": "client-ref-36-11-client-tests.json",
+      "bytes": 542,
+      "sha256": "b775c35ca681e239c1023fb5e0ae9d1559487f2fd31357ca069b2bffa229d31e",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-36-11-client-tests.json"
+    },
+    {
+      "name": "client-ref-37-12-dashboard-typecheck.stdout",
+      "bytes": 1310,
+      "sha256": "e051db02afe25d7a681570abdf1a03060821bc48736932faf976993542295831",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-37-12-dashboard-typecheck.stdout"
+    },
+    {
+      "name": "client-ref-38-12-dashboard-typecheck.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-38-12-dashboard-typecheck.stderr"
+    },
+    {
+      "name": "client-ref-39-12-dashboard-typecheck.json",
+      "bytes": 524,
+      "sha256": "fd553f9e291a1e3aeb4a5b029d7b504ab47f4788e0af3854fb2046c8800a27a3",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-39-12-dashboard-typecheck.json"
+    },
+    {
+      "name": "client-ref-4-01-mkdir.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-4-01-mkdir.stdout"
+    },
+    {
+      "name": "client-ref-40-13-typecheck-inputs.stdout",
+      "bytes": 30049,
+      "sha256": "f07dc152cd0551d440d89ade4e7bc47a8ab906eea156ed89866cb64be1bfb2f0",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-40-13-typecheck-inputs.stdout"
+    },
+    {
+      "name": "client-ref-41-13-typecheck-inputs.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-41-13-typecheck-inputs.stderr"
+    },
+    {
+      "name": "client-ref-42-13-typecheck-inputs.json",
+      "bytes": 486,
+      "sha256": "a75b614f6ca14b273ec4c89a1a7de98053638d2ffbabe7452d4fe6ed834a4701",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-42-13-typecheck-inputs.json"
+    },
+    {
+      "name": "client-ref-43-14-client-tests.stdout",
+      "bytes": 235,
+      "sha256": "17aba945f49bee66d8ed2a5a688c3532d78f3808a3294c7ed8d6fe4dbb72e6be",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-43-14-client-tests.stdout"
+    },
+    {
+      "name": "client-ref-44-14-client-tests.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-44-14-client-tests.stderr"
+    },
+    {
+      "name": "client-ref-45-14-client-tests.json",
+      "bytes": 542,
+      "sha256": "fc7317952d7d0e8701444f4a27fbd387c1201d67c2353636d8a24ef76113b373",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-45-14-client-tests.json"
+    },
+    {
+      "name": "client-ref-46-15-dashboard-typecheck.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-46-15-dashboard-typecheck.stdout"
+    },
+    {
+      "name": "client-ref-47-15-dashboard-typecheck.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-47-15-dashboard-typecheck.stderr"
+    },
+    {
+      "name": "client-ref-48-15-dashboard-typecheck.json",
+      "bytes": 543,
+      "sha256": "549c5e7cb3c116dc5063016f919f3c9ab89db6994ea7a43568a009f533a70dde",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-48-15-dashboard-typecheck.json"
+    },
+    {
+      "name": "client-ref-49-16-core-review.stdout",
+      "bytes": 466,
+      "sha256": "40452eabaaa05e0a09a01434aa879e05b5155021a1111ca15f9262194a1d7945",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-49-16-core-review.stdout"
+    },
+    {
+      "name": "client-ref-5-01-mkdir.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-5-01-mkdir.stderr"
+    },
+    {
+      "name": "client-ref-50-16-core-review.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-50-16-core-review.stderr"
+    },
+    {
+      "name": "client-ref-51-16-core-review.json",
+      "bytes": 595,
+      "sha256": "b1a71c80e6059c0da3c16cd6493ce8a9231e830327afcba3a4e5074cf30d5fb3",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-51-16-core-review.json"
+    },
+    {
+      "name": "client-ref-52-17-source-review.stdout",
+      "bytes": 202,
+      "sha256": "23ae5fd5c15d4dcb38470311e756bf64f9f7eb73338962f56ee8805daeb4d066",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-52-17-source-review.stdout"
+    },
+    {
+      "name": "client-ref-53-17-source-review.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-53-17-source-review.stderr"
+    },
+    {
+      "name": "client-ref-54-17-source-review.json",
+      "bytes": 388,
+      "sha256": "a9d6679a1d21145fef463c17b64bd50217138b38759f305b93bc339424672217",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-54-17-source-review.json"
+    },
+    {
+      "name": "client-ref-55-18-domain-review.stdout",
+      "bytes": 14152,
+      "sha256": "69a18ac059c607486930169aa55515cf4b4040f05cca2c6f680d0a31769fd668",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-55-18-domain-review.stdout"
+    },
+    {
+      "name": "client-ref-56-18-domain-review.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-56-18-domain-review.stderr"
+    },
+    {
+      "name": "client-ref-57-18-domain-review.json",
+      "bytes": 836,
+      "sha256": "d6260467efe51aa6ed462674522aa1f455448555e678b7caa9fa4689049e9983",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-57-18-domain-review.json"
+    },
+    {
+      "name": "client-ref-58-19-reference-review.stdout",
+      "bytes": 3663,
+      "sha256": "ec7d6459c0452585d7b53d01f6a7d1f7f680c2c3febcbb740d376a5ac0dbcfab",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-58-19-reference-review.stdout"
+    },
+    {
+      "name": "client-ref-59-19-reference-review.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-59-19-reference-review.stderr"
+    },
+    {
+      "name": "client-ref-6-01-mkdir.json",
+      "bytes": 480,
+      "sha256": "30d536fbd794efa8a044edca189d3aaee0563dbc9df72c26074ac281b6860572",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-6-01-mkdir.json"
+    },
+    {
+      "name": "client-ref-60-19-reference-review.json",
+      "bytes": 578,
+      "sha256": "a38ccb9a4dfc3a01a22610c814444f1a6d1a0e5ff74eb4c0c9dec203bd8e2964",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-60-19-reference-review.json"
+    },
+    {
+      "name": "client-ref-61-20-client-tests-final.stdout",
+      "bytes": 235,
+      "sha256": "2322a41e8e4acb08d01cffcfc7f0888280f10e579a854a80ac35ab91cc8881ca",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-61-20-client-tests-final.stdout"
+    },
+    {
+      "name": "client-ref-62-20-client-tests-final.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-62-20-client-tests-final.stderr"
+    },
+    {
+      "name": "client-ref-63-20-client-tests-final.json",
+      "bytes": 554,
+      "sha256": "c7fbc947f6355bb2db1df5af12ad88e35e9200610639c14f3628d8d0df21cd0d",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-63-20-client-tests-final.json"
+    },
+    {
+      "name": "client-ref-64-21-dashboard-typecheck-final.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-64-21-dashboard-typecheck-final.stdout"
+    },
+    {
+      "name": "client-ref-65-21-dashboard-typecheck-final.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-65-21-dashboard-typecheck-final.stderr"
+    },
+    {
+      "name": "client-ref-66-21-dashboard-typecheck-final.json",
+      "bytes": 554,
+      "sha256": "ffb03ec46a51a62b0b301d8969b7e9a1b2d8c78ff88324903bf460ad822f96b5",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-66-21-dashboard-typecheck-final.json"
+    },
+    {
+      "name": "client-ref-67-22-stage-owned.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-67-22-stage-owned.stdout"
+    },
+    {
+      "name": "client-ref-68-22-stage-owned.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-68-22-stage-owned.stderr"
+    },
+    {
+      "name": "client-ref-69-22-stage-owned.json",
+      "bytes": 475,
+      "sha256": "b33bf909ea731bf5b8e10fa1732a56cb60ae567eb72b97d8cc82b037fd5b1bb2",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-69-22-stage-owned.json"
+    },
+    {
+      "name": "client-ref-7-02-worktree.stdout",
+      "bytes": 87,
+      "sha256": "2debac360afc7ae123ee660ed1bd2a04cbda78a54ca1bfa015fe169cf33718ae",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-7-02-worktree.stdout"
+    },
+    {
+      "name": "client-ref-70-23-diff-check.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-70-23-diff-check.stdout"
+    },
+    {
+      "name": "client-ref-71-23-diff-check.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-71-23-diff-check.stderr"
+    },
+    {
+      "name": "client-ref-72-23-diff-check.json",
+      "bytes": 396,
+      "sha256": "b82e9de15b363f8a106d38f9f09e1b9b9666e7ba2c30074cba4bb0b385126f80",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-72-23-diff-check.json"
+    },
+    {
+      "name": "client-ref-73-24-commit.stdout",
+      "bytes": 249,
+      "sha256": "d326f1913ce62c2cabe79fbc322707e300a8d469dad286daa249e6aa085aa6da",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-73-24-commit.stdout"
+    },
+    {
+      "name": "client-ref-74-24-commit.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-74-24-commit.stderr"
+    },
+    {
+      "name": "client-ref-75-24-commit.json",
+      "bytes": 534,
+      "sha256": "269cd0089cec52301f6c67a45df339f90966e43fd741c7969709658d21c6cd3e",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-75-24-commit.json"
+    },
+    {
+      "name": "client-ref-76-25-candidate-hashes.stdout",
+      "bytes": 697,
+      "sha256": "2cc092fff6f615f6e40dd3da20a996737e0806fa03b85b8d5bd607c184d5db5d",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-76-25-candidate-hashes.stdout"
+    },
+    {
+      "name": "client-ref-77-25-candidate-hashes.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-77-25-candidate-hashes.stderr"
+    },
+    {
+      "name": "client-ref-78-25-candidate-hashes.json",
+      "bytes": 963,
+      "sha256": "ec1f6bc161d81752393c82893ac348d707b50b9e93e5aa6df78a492b7e3b0a20",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-78-25-candidate-hashes.json"
+    },
+    {
+      "name": "client-ref-79-26-client-tests-redirect.stdout",
+      "bytes": 235,
+      "sha256": "b21f1786e0ea6a71ad404b95ad6f82a2d114b3cde43ed78b54f0b0fae9328014",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-79-26-client-tests-redirect.stdout"
+    },
+    {
+      "name": "client-ref-8-02-worktree.stderr",
+      "bytes": 65,
+      "sha256": "95bd3c477626137623ff2452cf2a25432f9d537cdc2f089b9394ad95ef189f65",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-8-02-worktree.stderr"
+    },
+    {
+      "name": "client-ref-80-26-client-tests-redirect.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-80-26-client-tests-redirect.stderr"
+    },
+    {
+      "name": "client-ref-81-26-client-tests-redirect.json",
+      "bytes": 560,
+      "sha256": "3c1b6d8096a8f7cd7912e3e9c7109807790c077f2911b0f794cad6818b0d8e83",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-81-26-client-tests-redirect.json"
+    },
+    {
+      "name": "client-ref-82-27-redirect-diff-check.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-82-27-redirect-diff-check.stdout"
+    },
+    {
+      "name": "client-ref-83-27-redirect-diff-check.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-83-27-redirect-diff-check.stderr"
+    },
+    {
+      "name": "client-ref-84-27-redirect-diff-check.json",
+      "bytes": 400,
+      "sha256": "2b7c54dad26e32eb0b5111614dfb01c415cb3a41d0046d42ec3a92c5fac712be",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-84-27-redirect-diff-check.json"
+    },
+    {
+      "name": "client-ref-85-28-redirect-commit.stdout",
+      "bytes": 132,
+      "sha256": "59725681a2d70bd9790a10414e4622194283f8bd75b6821718ab98966cfee12d",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-85-28-redirect-commit.stdout"
+    },
+    {
+      "name": "client-ref-86-28-redirect-commit.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-86-28-redirect-commit.stderr"
+    },
+    {
+      "name": "client-ref-87-28-redirect-commit.json",
+      "bytes": 560,
+      "sha256": "898cb9b039f6d2d981da5bf3132d0ccc8684742eae0d1ba9467d30e087e2415f",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-87-28-redirect-commit.json"
+    },
+    {
+      "name": "client-ref-88-29-final-hashes.stdout",
+      "bytes": 400,
+      "sha256": "9424292d2f581d308783ba2e58905c30f2dcf02422537630177d9eb0f06fafbb",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-88-29-final-hashes.stdout"
+    },
+    {
+      "name": "client-ref-89-29-final-hashes.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-89-29-final-hashes.stderr"
+    },
+    {
+      "name": "client-ref-9-02-worktree.json",
+      "bytes": 524,
+      "sha256": "2f262d2daa2a51b72f26d9bf865b4ecffb7ab1909ba6ee85794b6d7227d2a2a9",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-9-02-worktree.json"
+    },
+    {
+      "name": "client-ref-90-29-final-hashes.json",
+      "bytes": 795,
+      "sha256": "c3d2b1c1a8116d8c4977850c64d013f4fdc201c5bc20617880a28b0526241c53",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-ref-90-29-final-hashes.json"
+    },
+    {
+      "name": "client-worker-receipt.json",
+      "bytes": 43751,
+      "sha256": "742a77c5d1d244a541f570b638a2e5864b709542ff7ecf45a20c977c4ce6f31d",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/client-worker-receipt.json"
+    },
+    {
+      "name": "freeze.md",
+      "bytes": 4532,
+      "sha256": "ae5ecaceb915e47038d92d0697cc4b3b8af8664ce1f703da5ed2c36021a5a472",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/freeze.md"
+    },
+    {
+      "name": "golden-fixtures-final.json",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-fixtures-final.json"
+    },
+    {
+      "name": "golden-fixtures-valid.json",
+      "bytes": 1064,
+      "sha256": "753425808498ac379af8bb921aeba905acf4e31b7391d82130801baf609f6818",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-fixtures-valid.json"
+    },
+    {
+      "name": "golden-fixtures.json",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-fixtures.json"
+    },
+    {
+      "name": "golden-generator-final.exit",
+      "bytes": 4,
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-generator-final.exit"
+    },
+    {
+      "name": "golden-generator-final.log",
+      "bytes": 507,
+      "sha256": "d148e6cbeb29dfa2c9b38ac8e3b625a5e94c45cbdb18b6eaea34cf497b58e052",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-generator-final.log"
+    },
+    {
+      "name": "golden-generator-final.rs",
+      "bytes": 978,
+      "sha256": "a6ee1757186fa81d162470b245e51842b4096ba568207f60b5850b57c6c101b2",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-generator-final.rs"
+    },
+    {
+      "name": "golden-generator-local.exit",
+      "bytes": 4,
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-generator-local.exit"
+    },
+    {
+      "name": "golden-generator-local.log",
+      "bytes": 1127,
+      "sha256": "c9649135cdc8f24ae510099ebac855058e9afade883e249016e53f0d84de16ed",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-generator-local.log"
+    },
+    {
+      "name": "golden-generator-valid.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-generator-valid.exit"
+    },
+    {
+      "name": "golden-generator-valid.log",
+      "bytes": 261,
+      "sha256": "96447ca7a1e8ed274d2565b5cac5e7c98360d2e1e87aba473aaa174a9afab564",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-generator-valid.log"
+    },
+    {
+      "name": "golden-generator-valid.rs",
+      "bytes": 976,
+      "sha256": "7d9de4ea54c8850f5545de28da8c4514f20b8a18a17cf6448d68b3787e3c4f01",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-generator-valid.rs"
+    },
+    {
+      "name": "golden-generator.exit",
+      "bytes": 4,
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-generator.exit"
+    },
+    {
+      "name": "golden-generator.log",
+      "bytes": 95,
+      "sha256": "cf553b29cdc83973da325209a9fb6774c3cd469df1f7bc3626727b6a82f762cc",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-generator.log"
+    },
+    {
+      "name": "golden-generator.rs",
+      "bytes": 984,
+      "sha256": "c94a0a26e80da96ae78d4943624083630dde596b1041697e3acbd43ec3537d9e",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-generator.rs"
+    },
+    {
+      "name": "golden-native-build.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-native-build.exit"
+    },
+    {
+      "name": "golden-native-build.log",
+      "bytes": 287,
+      "sha256": "7f2f1c7094f5e14d1690d43e8e0f22a257ba0b89004af5ef52b9be42685e3b00",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-native-build.log"
+    },
+    {
+      "name": "golden-test.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-test.exit"
+    },
+    {
+      "name": "golden-test.log",
+      "bytes": 490,
+      "sha256": "4a873f961abaff351b6320962e10dc462f80da5f02ed5488904d8a2f1a3e4983",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/golden-test.log"
+    },
+    {
+      "name": "root-browser-before-busy-assert.json",
+      "bytes": 455,
+      "sha256": "16a627aa30782c59e18181c7dcf80dcbb28f7dd0f433dd84637083a7e5998610",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-browser-before-busy-assert.json"
+    },
+    {
+      "name": "root-browser-before-busy-assert.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-browser-before-busy-assert.stderr"
+    },
+    {
+      "name": "root-browser-before-busy-assert.stdout",
+      "bytes": 207,
+      "sha256": "4e22cc415f0e2a1209a45540ad3681ee9d2f47a07048b9c80e5496ae69f2b685",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-browser-before-busy-assert.stdout"
+    },
+    {
+      "name": "root-browser.json",
+      "bytes": 455,
+      "sha256": "bafd646e44f5d14884244689e32c1291a72481c98b6788f9cbca2751aa139a84",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-browser.json"
+    },
+    {
+      "name": "root-browser.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-browser.stderr"
+    },
+    {
+      "name": "root-browser.stdout",
+      "bytes": 207,
+      "sha256": "a4507b63507e6f3becaa03c8ce079ebc8b29c99ebbfe6d04e37f07585d5626c0",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-browser.stdout"
+    },
+    {
+      "name": "root-clippy.json",
+      "bytes": 362,
+      "sha256": "f8ec1979990360d6e203d45aba67f6ef04bf695cac8cdbfcd43fb56abcb7fc3d",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-clippy.json"
+    },
+    {
+      "name": "root-clippy.stderr",
+      "bytes": 380,
+      "sha256": "4e8db5fcb6c77925cf8991af0bd7279a11eebfe6a3c1141046fbcce5e3729264",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-clippy.stderr"
+    },
+    {
+      "name": "root-clippy.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-clippy.stdout"
+    },
+    {
+      "name": "root-e2etypes.json",
+      "bytes": 330,
+      "sha256": "a0b07e92ed7260d28ac2777f8e44855d8af450ebde8e631602ec25fb299453c7",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-e2etypes.json"
+    },
+    {
+      "name": "root-e2etypes.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-e2etypes.stderr"
+    },
+    {
+      "name": "root-e2etypes.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-e2etypes.stdout"
+    },
+    {
+      "name": "root-fmt.json",
+      "bytes": 266,
+      "sha256": "b8277a94e4f3254145fbe9256e636b31622d00a0b216430801fd803655bb5d7a",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-fmt.json"
+    },
+    {
+      "name": "root-fmt.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-fmt.stderr"
+    },
+    {
+      "name": "root-fmt.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-fmt.stdout"
+    },
+    {
+      "name": "root-run.cjs",
+      "bytes": 1860,
+      "sha256": "38c761cd76a9a279dce48e9251af97235a3fb0320afc0ae733143b060ecd320a",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-run.cjs"
+    },
+    {
+      "name": "root-types-draft-flow-narrowing.json",
+      "bytes": 270,
+      "sha256": "926e83317f13def3aa107f73856e481daf00bd588db22fe8785eaabb13515aa2",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-types-draft-flow-narrowing.json"
+    },
+    {
+      "name": "root-types-draft-flow-narrowing.stderr",
+      "bytes": 24,
+      "sha256": "5cfb036289d819b2a87e947d65f4532031dd37753f3cf2def0f77d398eea1737",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-types-draft-flow-narrowing.stderr"
+    },
+    {
+      "name": "root-types-draft-flow-narrowing.stdout",
+      "bytes": 146,
+      "sha256": "6a8eaf99cfe37060d637284eeb0c15bfa6b9e65284c646839d6c170895fe6e10",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-types-draft-flow-narrowing.stdout"
+    },
+    {
+      "name": "root-types.json",
+      "bytes": 270,
+      "sha256": "2701b85dc9c811483a2c04a832f0e42c303c4e612554fa96a70ddb98f62c35c3",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-types.json"
+    },
+    {
+      "name": "root-types.stderr",
+      "bytes": 24,
+      "sha256": "5cfb036289d819b2a87e947d65f4532031dd37753f3cf2def0f77d398eea1737",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-types.stderr"
+    },
+    {
+      "name": "root-types.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-types.stdout"
+    },
+    {
+      "name": "root-units-draft-footnote.json",
+      "bytes": 396,
+      "sha256": "eea863f537951ef0fbe4c3a346ff3bee586cdcd234700a231037d07139eeaf20",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-units-draft-footnote.json"
+    },
+    {
+      "name": "root-units-draft-footnote.stderr",
+      "bytes": 3964,
+      "sha256": "4cfce6eb60968cb41bd0f507c5e2f058d5f92c13e3fcdeb2ec8e8c6e54d7cc6c",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-units-draft-footnote.stderr"
+    },
+    {
+      "name": "root-units-draft-footnote.stdout",
+      "bytes": 428,
+      "sha256": "fd9962654a6380697ad7131a48507a2f22d1375bb701b8c1d6101eebbca15009",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-units-draft-footnote.stdout"
+    },
+    {
+      "name": "root-units.json",
+      "bytes": 396,
+      "sha256": "aa90cbe915a6917f06bc26a5a8389864e2c25007c24949af072d7fa6600362ed",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-units.json"
+    },
+    {
+      "name": "root-units.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-units.stderr"
+    },
+    {
+      "name": "root-units.stdout",
+      "bytes": 222,
+      "sha256": "b757549064d383f33bc03e4a09dec6d1ad8593a15776ac0b3e6c95beef3e8198",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/root-units.stdout"
+    },
+    {
+      "name": "source-013cd33.tar",
+      "bytes": 19752960,
+      "sha256": "20ded73e8d5c1b324669c3317ce88fe90229ef349c425f408f7c420019032480",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/source-013cd33.tar"
+    },
+    {
+      "name": "ui-diff_check.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-diff_check.exit"
+    },
+    {
+      "name": "ui-diff_check.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-diff_check.stderr"
+    },
+    {
+      "name": "ui-diff_check.stdout",
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-diff_check.stdout"
+    },
+    {
+      "name": "ui-followup_diff_check.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-followup_diff_check.exit"
+    },
+    {
+      "name": "ui-followup_diff_check.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-followup_diff_check.stderr"
+    },
+    {
+      "name": "ui-followup_diff_check.stdout",
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-followup_diff_check.stdout"
+    },
+    {
+      "name": "ui-followup_ui_tests.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-followup_ui_tests.exit"
+    },
+    {
+      "name": "ui-followup_ui_tests.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-followup_ui_tests.stderr"
+    },
+    {
+      "name": "ui-followup_ui_tests.stdout",
+      "bytes": 304,
+      "sha256": "0c3b605605b2c987bc811767815e394e3e0babd7cab31e3d72d2b8881fca2157",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-followup_ui_tests.stdout"
+    },
+    {
+      "name": "ui-ui_tests.exit",
+      "bytes": 4,
+      "sha256": "743c7850cccfba5e53a9002663ec1ddd1079315a98bdbfdde10e6044f56abefe",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-ui_tests.exit"
+    },
+    {
+      "name": "ui-ui_tests.stderr",
+      "bytes": 30,
+      "sha256": "42711f60be299a05a3cc74b79f2d8ab99710e4fcf66b1b26f932c45e02fab79d",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-ui_tests.stderr"
+    },
+    {
+      "name": "ui-ui_tests.stdout",
+      "bytes": 84,
+      "sha256": "9109030c8833911e74864a749fac314e0ff49087df2f6d78fd9ecb55e20d072a",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-ui_tests.stdout"
+    },
+    {
+      "name": "ui-ui_tests_retry.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-ui_tests_retry.exit"
+    },
+    {
+      "name": "ui-ui_tests_retry.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-ui_tests_retry.stderr"
+    },
+    {
+      "name": "ui-ui_tests_retry.stdout",
+      "bytes": 304,
+      "sha256": "ec453a64d9e8458ee6214433136749cfff0dbc2d4488413f895c6beb42773416",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-ui_tests_retry.stdout"
+    },
+    {
+      "name": "ui-worker-receipt.json",
+      "bytes": 5974,
+      "sha256": "ce69f4b1ae71730c5c93f160437578a71212f3e5df8510b46e7163a313c08733",
+      "path": "/private/tmp/adm-related-work-root-20261019T1204Z/payloads/ui-worker-receipt.json"
+    }
+  ],
+  "root_runs": [
+    {
+      "name": "types",
+      "metadata": {
+        "path": "/private/tmp/adm-related-work-root-20261019T1204Z/types.json",
+        "bytes": 270,
+        "sha256": "2701b85dc9c811483a2c04a832f0e42c303c4e612554fa96a70ddb98f62c35c3"
+      },
+      "stdout": "/private/tmp/adm-related-work-root-20261019T1204Z/types.stdout",
+      "stderr": "/private/tmp/adm-related-work-root-20261019T1204Z/types.stderr"
+    },
+    {
+      "name": "e2etypes",
+      "metadata": {
+        "path": "/private/tmp/adm-related-work-root-20261019T1204Z/e2etypes.json",
+        "bytes": 330,
+        "sha256": "a0b07e92ed7260d28ac2777f8e44855d8af450ebde8e631602ec25fb299453c7"
+      },
+      "stdout": "/private/tmp/adm-related-work-root-20261019T1204Z/e2etypes.stdout",
+      "stderr": "/private/tmp/adm-related-work-root-20261019T1204Z/e2etypes.stderr"
+    },
+    {
+      "name": "units",
+      "metadata": {
+        "path": "/private/tmp/adm-related-work-root-20261019T1204Z/units.json",
+        "bytes": 396,
+        "sha256": "aa90cbe915a6917f06bc26a5a8389864e2c25007c24949af072d7fa6600362ed"
+      },
+      "stdout": "/private/tmp/adm-related-work-root-20261019T1204Z/units.stdout",
+      "stderr": "/private/tmp/adm-related-work-root-20261019T1204Z/units.stderr"
+    },
+    {
+      "name": "fmt",
+      "metadata": {
+        "path": "/private/tmp/adm-related-work-root-20261019T1204Z/fmt.json",
+        "bytes": 266,
+        "sha256": "b8277a94e4f3254145fbe9256e636b31622d00a0b216430801fd803655bb5d7a"
+      },
+      "stdout": "/private/tmp/adm-related-work-root-20261019T1204Z/fmt.stdout",
+      "stderr": "/private/tmp/adm-related-work-root-20261019T1204Z/fmt.stderr"
+    },
+    {
+      "name": "clippy",
+      "metadata": {
+        "path": "/private/tmp/adm-related-work-root-20261019T1204Z/clippy.json",
+        "bytes": 362,
+        "sha256": "f8ec1979990360d6e203d45aba67f6ef04bf695cac8cdbfcd43fb56abcb7fc3d"
+      },
+      "stdout": "/private/tmp/adm-related-work-root-20261019T1204Z/clippy.stdout",
+      "stderr": "/private/tmp/adm-related-work-root-20261019T1204Z/clippy.stderr"
+    },
+    {
+      "name": "browser",
+      "metadata": {
+        "path": "/private/tmp/adm-related-work-root-20261019T1204Z/browser.json",
+        "bytes": 455,
+        "sha256": "bafd646e44f5d14884244689e32c1291a72481c98b6788f9cbca2751aa139a84"
+      },
+      "stdout": "/private/tmp/adm-related-work-root-20261019T1204Z/browser.stdout",
+      "stderr": "/private/tmp/adm-related-work-root-20261019T1204Z/browser.stderr"
+    }
+  ],
+  "actual_counts": {
+    "scoped_unit_cases": 41,
+    "new_unit_subset": 32,
+    "Rust_golden_cases": 1,
+    "golden_vectors": 2,
+    "browser_cases": 1,
+    "worker_repeats_not_additive": true,
+    "whole_workspace_or_CI": false
+  },
+  "browser_scope": {
+    "actual_native_queries": 2,
+    "queries_return_empty_incomplete_only": true,
+    "post_trace": 6,
+    "committed_capture_loss_retried_same_body": true,
+    "late_ignored_abort_credential_change_discarded": true,
+    "busy_disabled_assertion_in_exact_source": true,
+    "native_tasks_before": 0,
+    "native_tasks_after": 0,
+    "coordination_messages_before_after": 0,
+    "child_pid": 78800,
+    "child_SIGTERM_confirmed": true,
+    "axe": {
+      "version": "4.14.0",
+      "violations": 0,
+      "incomplete": 0,
+      "passes": 29
+    },
+    "production_source_digest": "sha256:3f42f94028716ff4823c37efb30df3aa61952318735528116d8ffaeb982d6510",
+    "production_bundle_digest": "sha256:1fd198d7ee36bd99577b15a54a27b2d62b5209011ebb4cd8eaac30111ec3f089",
+    "native_binary_sha256": "3dfcd4fb393b092ea5d47f61385506bfb06692bf4f9b0c05785b3f75d0052a81"
+  },
+  "source_review": {
+    "path": "receipts/integration/native-intake-related-work-review-20261019T1208Z.json",
+    "sha256": "9846b0149d34c898a388184fc6c57c623f9a59c50831745bdcc14490fe2b9197",
+    "verified": true
+  },
+  "archive_proof": {
+    "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/receipts/integration/native-intake-related-work-archive-20261019T1208Z.json",
+    "sha256": "12b84a8477890fc8727f3482e7747273e61a88523482ac20a08b0aa6a724cea4",
+    "recorded_utc": "2026-10-19T12:08:42.300Z",
+    "payloads": 159,
+    "all_remote_hashes_reported_verified": true,
+    "inside_gate": {
+      "observed_utc": "2026-10-19T12:08:42.247Z",
+      "cpu_percent": 16.999920967359515,
+      "mem_available_kib": 72248872,
+      "controller_active": true,
+      "freeze": "0",
+      "admitted": true,
+      "provider_started": false
+    },
+    "reviewer_fresh_remote_observation": false
+  },
+  "preserved_failure_scope": "Manifest retains original setup/generator/client/UI/type/unit draft outputs and pre-busy browser result separately. They are not reconstructed or counted as additional passing tests.",
+  "findings": [],
+  "limits": [
+    "Actual browser scope is empty/incomplete lineage only; no populated/multipage native browser result inferred from table/unit fixtures",
+    "Native executable hash/source scope is Root-built unchanged Rust production code; no source-stamped binary or deployed release qualification inferred",
+    "No token/config/credential fixture files read; only explicit evidence manifest payloads and token-free browser-proof/native-exit",
+    "Remote archive verification is audited as recorded pinned proof, not reexecuted remotely",
+    "No tests/builds/remote/service/forge/provider actions or source edits by reviewer",
+    "No new production credentials/grant, task/record/enrichment/merge/dispatch/acceptance, general runtime or parent acceptance/CI promotion"
+  ]
+}

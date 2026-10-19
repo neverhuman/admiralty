@@ -1,0 +1,268 @@
+{
+  "schema_version": 1,
+  "component": "WO6 scoped native related-work lookup in existing intake",
+  "recorded_utc": "2026-10-19T12:07:48.229Z",
+  "base_revision": "65c1bb1150b3fc68f34cdfc0b3606e131a50ce83",
+  "source_revision": "013cd33680ce45c1fcaf6e7a4c80ab7cde0edceb",
+  "source_files": [
+    {
+      "path": "apps/dashboard/src/intakeDuplicates.ts",
+      "bytes": 9914,
+      "sha256": "f7410e830d41f884f60991dfe5f6bcca067b919cb9b6cf0bbb5128b6c00988f0"
+    },
+    {
+      "path": "apps/dashboard/src/intakeDuplicates.test.ts",
+      "bytes": 16078,
+      "sha256": "664847a54b61b92cb8913c931cb67f9267d3db408415635f31d3301f04851557"
+    },
+    {
+      "path": "apps/dashboard/src/ui/IntakeDuplicates.tsx",
+      "bytes": 10731,
+      "sha256": "2dddf66eac3423a47be36492f573fd10dc7ca637275fc058f541bd8bf0282ab8"
+    },
+    {
+      "path": "apps/dashboard/src/ui/intakeDuplicates.test.tsx",
+      "bytes": 2964,
+      "sha256": "17743104a32f1bfbba48253bd7efe535c1b5b78b470064c89c76c7d70877546c"
+    },
+    {
+      "path": "apps/dashboard/src/ui/Intake.tsx",
+      "bytes": 32189,
+      "sha256": "20c4f87c0854528056ef280d148f2412d3763cb859299570b11958043d8a65ef"
+    },
+    {
+      "path": "apps/dashboard/src/ui/intake.test.tsx",
+      "bytes": 11956,
+      "sha256": "d108bfdd02640abb05cb2d5cec5047c1ecb67b4e432fbdbb8751ddec0d0523c7"
+    },
+    {
+      "path": "apps/dashboard/e2e/intake.e2e.ts",
+      "bytes": 27147,
+      "sha256": "4a81dd3dd8aeac5a7f378344b666305b15ebf043ee4924b063950046c0360ee1"
+    },
+    {
+      "path": "crates/admiralty-core/tests/duplicate_query_golden.rs",
+      "bytes": 859,
+      "sha256": "38a224442759920493ea6d3f742d4bd20fb20d92a9d140eb85b8c57e62541c55"
+    },
+    {
+      "path": "packages/contracts/fixtures/intake-duplicate-query-golden.json",
+      "bytes": 1064,
+      "sha256": "753425808498ac379af8bb921aeba905acf4e31b7391d82130801baf609f6818"
+    }
+  ],
+  "worker_candidates": {
+    "client": [
+      "6b3f9fecb5a4a4590b3f38e966cba4aefe3b9457",
+      "2393265b32ce7bedd56098638cfa5f9778f99d33"
+    ],
+    "ui": [
+      "d092ee6cef9d0fedca8c49b1ecca8b171f3a6eb1",
+      "b72b8671f5a49a83b2371c06b2c49096f735e856"
+    ]
+  },
+  "validation": {
+    "runs": {
+      "types": {
+        "name": "types",
+        "command": [
+          "rtk",
+          "proxy",
+          "pnpm",
+          "--dir",
+          "apps/dashboard",
+          "typecheck"
+        ],
+        "started_utc": "2026-10-19T12:04:41.989Z",
+        "finished_utc": "2026-10-19T12:04:42.486Z",
+        "status": 0,
+        "signal": null,
+        "error": null
+      },
+      "e2etypes": {
+        "name": "e2etypes",
+        "command": [
+          "rtk",
+          "proxy",
+          "pnpm",
+          "--dir",
+          "apps/dashboard",
+          "exec",
+          "tsc",
+          "-p",
+          "e2e/tsconfig.json",
+          "--noEmit"
+        ],
+        "started_utc": "2026-10-19T12:07:09.659Z",
+        "finished_utc": "2026-10-19T12:07:10.097Z",
+        "status": 0,
+        "signal": null,
+        "error": null
+      },
+      "units": {
+        "name": "units",
+        "command": [
+          "rtk",
+          "proxy",
+          "pnpm",
+          "--dir",
+          "apps/dashboard",
+          "exec",
+          "vitest",
+          "run",
+          "src/intakeDuplicates.test.ts",
+          "src/ui/intakeDuplicates.test.tsx",
+          "src/ui/intake.test.tsx"
+        ],
+        "started_utc": "2026-10-19T12:04:50.368Z",
+        "finished_utc": "2026-10-19T12:04:51.071Z",
+        "status": 0,
+        "signal": null,
+        "error": null
+      },
+      "fmt": {
+        "name": "fmt",
+        "command": [
+          "rtk",
+          "proxy",
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "started_utc": "2026-10-19T12:03:20.573Z",
+        "finished_utc": "2026-10-19T12:03:22.197Z",
+        "status": 0,
+        "signal": null,
+        "error": null
+      },
+      "clippy": {
+        "name": "clippy",
+        "command": [
+          "rtk",
+          "proxy",
+          "cargo",
+          "clippy",
+          "-p",
+          "admiralty-core",
+          "--test",
+          "duplicate_query_golden",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "started_utc": "2026-10-19T12:03:21.693Z",
+        "finished_utc": "2026-10-19T12:03:28.626Z",
+        "status": 0,
+        "signal": null,
+        "error": null
+      },
+      "browser": {
+        "name": "browser",
+        "command": [
+          "rtk",
+          "proxy",
+          "pnpm",
+          "--dir",
+          "apps/dashboard",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "e2e/vitest.config.ts",
+          "e2e/intake.e2e.ts"
+        ],
+        "started_utc": "2026-10-19T12:05:46.813Z",
+        "finished_utc": "2026-10-19T12:05:49.558Z",
+        "status": 0,
+        "signal": null,
+        "error": null,
+        "native_binary_sha256": "3dfcd4fb393b092ea5d47f61385506bfb06692bf4f9b0c05785b3f75d0052a81"
+      }
+    },
+    "unit_cases": 41,
+    "new_unit_subset": 32,
+    "rust_golden_cases": 1,
+    "golden_vectors_in_that_case": 2,
+    "platform": "Mac",
+    "rust_golden_result": "actual cargo test -p admiralty-core --test duplicate_query_golden --locked: 1passed/0failed; real typed Rust-generated null and Unicode-origin/cursor identities",
+    "strict_clippy_scope": "admiralty-core duplicate_query_golden integration test, not workspace/server",
+    "browser": {
+      "cases": 1,
+      "source_digest": "sha256:3f42f94028716ff4823c37efb30df3aa61952318735528116d8ffaeb982d6510",
+      "bundle_digest": "sha256:1fd198d7ee36bd99577b15a54a27b2d62b5209011ebb4cd8eaac30111ec3f089",
+      "native_binary_sha256": "3dfcd4fb393b092ea5d47f61385506bfb06692bf4f9b0c05785b3f75d0052a81",
+      "native_binary_source_scope": "Built from actual unchanged 65c1 Rust production sources in Root checkout; this packet changes only Rust integration tests plus TS/docs/fixture, no Rust runtime. Build log retained; no source-stamp/production build qualification inferred.",
+      "actual_queries": 2,
+      "coverage": "empty/incomplete",
+      "capture": "actual Unicode source committed once, identical command/body replay after controlled committed reply loss; exact revision read",
+      "stale_reply": "stable transport one-shot hold AFTER actual native response; UI busy/disabled observed, credential change clears results and late response remains discarded",
+      "tasks_before": [],
+      "tasks_after": [],
+      "coordination_messages_before_after": 0,
+      "axe": {
+        "url": "http://127.0.0.1:57989/#/intake",
+        "timestamp": "2026-10-19T12:05:49.475Z",
+        "testEngine": {
+          "name": "axe-core",
+          "version": "4.14.0"
+        },
+        "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+        "violations": [],
+        "incomplete": [],
+        "passesCount": 29,
+        "inapplicableCount": 34
+      },
+      "child": {
+        "code": null,
+        "signal": "SIGTERM",
+        "owned_child_pid": 78800,
+        "confirmed": true,
+        "stderrOverflow": false,
+        "stderr": "Admiralty listening on http://127.0.0.1:57989 (native commands enabled; execution requires admitted controller)\n"
+      }
+    }
+  },
+  "evidence": {
+    "manifest_path": "/private/tmp/adm-related-work-root-20261019T1204Z/manifest.json",
+    "manifest_sha256": "2a27ce2bc033a86041e38ccd14dd2747a5de730748171ec82fc312c6c6d1686b",
+    "payload_count": 159,
+    "remote_archive": {
+      "path": "/home/ubuntu/admiralty-v2-build/receipts/native-intake-related-work-20261019T1208Z/evidence.tar.gz",
+      "sha256": "bcafeb266708d8973933f332f05397615a7efe1646c75294b3e381d801dbc5e0",
+      "all159payloads_independently_rehashed_under_fleetcap": true,
+      "proof": {
+        "path": "receipts/integration/native-intake-related-work-archive-20261019T1208Z.json",
+        "sha256": "12b84a8477890fc8727f3482e7747273e61a88523482ac20a08b0aa6a724cea4"
+      }
+    },
+    "raw_root": "/private/tmp/adm-related-work-root-20261019T1204Z",
+    "final_browser_fixture": "/private/tmp/adm-intake-browser-QNydKU",
+    "token_and_config_files": "Private owned fixture retained but deliberately excluded from evidence archive; no production credentials used"
+  },
+  "preserved_failures": [
+    "default Cargo target resolved inaccessible /Volumes/MOE: setup failure before build",
+    "golden generator type/invalid identifier drafts before successful typed generation",
+    "worker Vitest missing dependency overlay/unsupported flag/test-only TypeScript failures; raw attempts retained",
+    "Root UI TS never-narrowing redundant abort repaired; original failed typecheck retained",
+    "Root original footnote assertion expected obsolete copy, repaired; original40pass1fail retained",
+    "earlier positive browser without new busy assertion retained separately; final current-source browser passes; no counts added"
+  ],
+  "limits": [
+    "No production intake credential/config/grant installed",
+    "No record/enrichment/task/merge/dispatch/provider/acceptance action from lookup",
+    "Native browser proves only actual empty/incomplete result journey, not populated or multi-page native browser journey",
+    "Populated table/coverage/escaping unit cases do not prove all-state live browser coverage",
+    "No general provider issuer/external physical-pool/resource/start fence/context/closure/settlement/recovery qualification",
+    "No parent acceptance promotion; P00/P01 alone accepted; no full workspace or hosted CI green",
+    "No Linux compute this packet; worker and Root same scoped tests are nonadditive"
+  ],
+  "review": {
+    "path": "receipts/integration/native-intake-related-work-review-20261019T1208Z.json",
+    "sha256": "9846b0149d34c898a388184fc6c57c623f9a59c50831745bdcc14490fe2b9197",
+    "verdict": "CLEAR",
+    "reviewer_execution": "Independent source/evidence inspection only, no reviewer test execution; Root/worker test runs transparently attributed"
+  }
+}
