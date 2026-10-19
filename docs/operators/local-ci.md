@@ -17,9 +17,16 @@ built daemon and observer, hash-pin the daemon and verify the pinned axe bundle.
 Local qualification does not claim a remote Linux run or platform-gated cases
 that did not execute on this host.
 
-The separate pinned Linux Jankurai workflow audits conformance. Its standard
-policy remains85with critical/high failures; passing the application matrix
-does not clear that gate. Its current source-bound
+The separate pinned Linux Jankurai workflow reports the onboarding baseline in
+advisory mode under explicit Admiral decision SC-DEC-186J. Tool/provisioning and
+missing-report errors still fail. The original standard-policy score39 and
+56blockers remain unresolved in the
+[owned cleanup backlog](../../JANKURAI_CLEANUP_BACKLOG.md); an advisory pass is
+not strict conformance. The Rust `python_policy` integration target runs in both
+this local matrix and hosted Rust CI, rejecting net-new Python, missing/stale or
+duplicate exceptions and incorrect migration counts. Its reviewed 40-path
+ceiling requires an explicit maintainer exception before expansion. The
+source-bound
 [85-finding triage tracker](../../receipts/integration/jankurai-triage-20261019.json)
 records owners, next actions, evidence-backed detector reviews and checkpoint
 ETAs. Reviewed false positives are not silently removed from audit results.

@@ -16,56 +16,56 @@
     ],
     "mode": "standard"
   },
-  "eta_scope": "ETAs are concrete triage/repair-scope checkpoints, not assertions that every underlying release criterion will be implemented then. Admiral must confirm external owner acceptance and final implementation dates.",
+  "eta_scope": "Updated triage checkpoints supersede the missed 20:30/20:35/20:45 checkpoints. Implementation targets are the Commodore schedule in JANKURAI_CLEANUP_BACKLOG.md; no completion inferred.",
   "groups": {
     "routing": {
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy."
     },
     "ci_trust": {
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Fence all LAN jobs against untrusted fork code and disable checkout credential persistence; actionlint and local application matrix."
     },
     "security_supply_chain": {
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Return an executable pinned secret/dependency/provenance scan proposal and proof scope; no blanket exclusions or new credentials."
     },
     "test_detector_review": {
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition."
     },
     "typescript_boundaries": {
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Trace actual JSON/validator data flow and repair genuine unvalidated inputs with existing generated schemas; retain malformed-input tests."
     },
     "legacy_python": {
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone."
     },
     "rust_shape_and_semantics": {
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks."
     },
     "generated_contracts": {
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Document generator-owned zones and verify regenerate/check ownership from actual generator inputs; generated outputs remain read-only."
     },
     "release_and_observability": {
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate release/architecture/testing docs and classify missing operational evidence separately; do not fabricate provider/install/recovery/signing qualification."
     },
     "history_export": {
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Review retired-owned-job status and the explicitly scoped data/history staging/cleanup. Do not run the cron or remove private/custody-held data."
     }
   },
@@ -82,7 +82,7 @@
       "problem": "`Code shape and semantic surface` scored 0 below the standard floor of 85",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -99,7 +99,7 @@
       "problem": "no one-command setup or validation lane was detected",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "repair_in_working_tree_pending_validation",
       "audit_resolved": false
@@ -116,7 +116,7 @@
       "problem": "reference-profile cell `ops` is detected at a noncanonical path",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -133,7 +133,7 @@
       "problem": "high-risk repo has no explicit security lane",
       "group": "security_supply_chain",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Return an executable pinned secret/dependency/provenance scan proposal and proof scope; no blanket exclusions or new credentials.",
       "status": "triage_required",
       "audit_resolved": false
@@ -150,7 +150,7 @@
       "problem": "no secret or dependency scanning was found in CI",
       "group": "security_supply_chain",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Return an executable pinned secret/dependency/provenance scan proposal and proof scope; no blanket exclusions or new credentials.",
       "status": "triage_required",
       "audit_resolved": false
@@ -167,7 +167,7 @@
       "problem": "no workflow delegates to a versioned `ops/ci/*.sh` script, so CI cannot be reproduced locally before push",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -184,7 +184,7 @@
       "problem": "ops/ci/lib.sh is missing",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -201,7 +201,7 @@
       "problem": "ops/git-hooks/pre-push is missing",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -218,7 +218,7 @@
       "problem": "scripts/ci-doctor.sh is missing",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -235,7 +235,7 @@
       "problem": "scripts/ci-local.sh is missing",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -252,7 +252,7 @@
       "problem": "workflow inlines CI commands instead of delegating to ops/ci/*.sh",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -269,7 +269,7 @@
       "problem": "workflow inlines CI commands instead of delegating to ops/ci/*.sh",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -286,7 +286,7 @@
       "problem": "untrusted CI job runs with privileged Docker access",
       "group": "ci_trust",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Fence all LAN jobs against untrusted fork code and disable checkout credential persistence; actionlint and local application matrix.",
       "status": "repair_in_working_tree_pending_validation",
       "audit_resolved": false
@@ -303,7 +303,7 @@
       "problem": "workflow inlines CI commands instead of delegating to ops/ci/*.sh",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -320,7 +320,7 @@
       "problem": "untrusted CI job runs with privileged Docker access",
       "group": "ci_trust",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Fence all LAN jobs against untrusted fork code and disable checkout credential persistence; actionlint and local application matrix.",
       "status": "repair_in_working_tree_pending_validation",
       "audit_resolved": false
@@ -337,7 +337,7 @@
       "problem": "`Security and supply-chain posture` scored 50 below the standard floor of 85",
       "group": "security_supply_chain",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Return an executable pinned secret/dependency/provenance scan proposal and proof scope; no blanket exclusions or new credentials.",
       "status": "triage_required",
       "audit_resolved": false
@@ -354,7 +354,7 @@
       "problem": "workflow inlines CI commands instead of delegating to ops/ci/*.sh",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -371,7 +371,7 @@
       "problem": "`Context economy and agent instructions` scored 2 below the standard floor of 85",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "repair_in_working_tree_pending_validation",
       "audit_resolved": false
@@ -388,7 +388,7 @@
       "problem": "no root agent/developer instruction file routes contributors at the repository root",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "repair_in_working_tree_pending_validation",
       "audit_resolved": false
@@ -405,7 +405,7 @@
       "problem": "`Build speed signals` scored 80 below the standard floor of 85",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -422,7 +422,7 @@
       "problem": "README has no status or score badge, so build/audit health is not visible at a glance",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -439,7 +439,7 @@
       "problem": "`Contract and boundary integrity` scored 73 below the standard floor of 85",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -456,7 +456,7 @@
       "problem": "`Ownership and navigation surface` scored 24 below the standard floor of 85",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -473,7 +473,7 @@
       "problem": "`Proof lanes and test routing` scored 57 below the standard floor of 85",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -490,7 +490,7 @@
       "problem": "sensitive token or session material is stored in browser-accessible storage",
       "group": "test_detector_review",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition.",
       "status": "source_reviewed_detector_false_positive",
       "audit_resolved": false,
@@ -509,7 +509,7 @@
       "problem": "sensitive token or session material is stored in browser-accessible storage",
       "group": "test_detector_review",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition.",
       "status": "triage_required",
       "audit_resolved": false
@@ -526,7 +526,7 @@
       "problem": "sensitive token or session material is stored in browser-accessible storage",
       "group": "test_detector_review",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition.",
       "status": "source_reviewed_detector_false_positive",
       "audit_resolved": false,
@@ -545,7 +545,7 @@
       "problem": "unchecked boundary cast or parse result crosses a trust boundary",
       "group": "test_detector_review",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition.",
       "status": "triage_required",
       "audit_resolved": false
@@ -562,7 +562,7 @@
       "problem": "unchecked boundary cast or parse result crosses a trust boundary",
       "group": "test_detector_review",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition.",
       "status": "triage_required",
       "audit_resolved": false
@@ -579,7 +579,7 @@
       "problem": "unchecked boundary cast or parse result crosses a trust boundary",
       "group": "test_detector_review",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition.",
       "status": "triage_required",
       "audit_resolved": false
@@ -596,7 +596,7 @@
       "problem": "unchecked boundary cast or parse result crosses a trust boundary",
       "group": "typescript_boundaries",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Trace actual JSON/validator data flow and repair genuine unvalidated inputs with existing generated schemas; retain malformed-input tests.",
       "status": "triage_required",
       "audit_resolved": false
@@ -613,7 +613,7 @@
       "problem": "dynamic code or raw HTML sink appears in product TypeScript",
       "group": "test_detector_review",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition.",
       "status": "triage_required",
       "audit_resolved": false
@@ -630,7 +630,7 @@
       "problem": "unsafe or unvalidated input boundary marker appears in product code",
       "group": "test_detector_review",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition.",
       "status": "source_reviewed_detector_false_positive",
       "audit_resolved": false,
@@ -649,7 +649,7 @@
       "problem": "secret-like value or credential material appears in repository text",
       "group": "test_detector_review",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition.",
       "status": "source_reviewed_detector_false_positive",
       "audit_resolved": false,
@@ -668,7 +668,7 @@
       "problem": "dynamic code or raw HTML sink appears in product TypeScript",
       "group": "test_detector_review",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition.",
       "status": "triage_required",
       "audit_resolved": false
@@ -685,7 +685,7 @@
       "problem": "unchecked boundary cast or parse result crosses a trust boundary",
       "group": "typescript_boundaries",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Trace actual JSON/validator data flow and repair genuine unvalidated inputs with existing generated schemas; retain malformed-input tests.",
       "status": "triage_required",
       "audit_resolved": false
@@ -702,7 +702,7 @@
       "problem": "unchecked boundary cast or parse result crosses a trust boundary",
       "group": "typescript_boundaries",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Trace actual JSON/validator data flow and repair genuine unvalidated inputs with existing generated schemas; retain malformed-input tests.",
       "status": "triage_required",
       "audit_resolved": false
@@ -719,7 +719,7 @@
       "problem": "unchecked boundary cast or parse result crosses a trust boundary",
       "group": "typescript_boundaries",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Trace actual JSON/validator data flow and repair genuine unvalidated inputs with existing generated schemas; retain malformed-input tests.",
       "status": "triage_required",
       "audit_resolved": false
@@ -736,7 +736,7 @@
       "problem": "unchecked boundary cast or parse result crosses a trust boundary",
       "group": "typescript_boundaries",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Trace actual JSON/validator data flow and repair genuine unvalidated inputs with existing generated schemas; retain malformed-input tests.",
       "status": "triage_required",
       "audit_resolved": false
@@ -753,7 +753,7 @@
       "problem": "unchecked boundary cast or parse result crosses a trust boundary",
       "group": "typescript_boundaries",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Trace actual JSON/validator data flow and repair genuine unvalidated inputs with existing generated schemas; retain malformed-input tests.",
       "status": "triage_required",
       "audit_resolved": false
@@ -770,7 +770,7 @@
       "problem": "unchecked boundary cast or parse result crosses a trust boundary",
       "group": "test_detector_review",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition.",
       "status": "triage_required",
       "audit_resolved": false
@@ -787,7 +787,7 @@
       "problem": "web surface lacks layered rendered UX QA evidence",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -804,7 +804,7 @@
       "problem": "Rust surface lacks required property and/or integration tests",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -821,7 +821,7 @@
       "problem": "enum `Knowledge` has 2 divergent definitions across modules where one consistent definition is expected",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -838,7 +838,7 @@
       "problem": "future-hostile/dead-language term `temporary` appears in product/runtime code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -855,7 +855,7 @@
       "problem": "future-hostile/dead-language term `temporary` appears in product/runtime code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -872,7 +872,7 @@
       "problem": "enum `ResponsibleRole` has 2 divergent definitions across modules where one consistent definition is expected",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -889,7 +889,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -906,7 +906,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -923,7 +923,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -940,7 +940,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -957,7 +957,7 @@
       "problem": "human review or proof claim lacks reproducible evidence",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -974,7 +974,7 @@
       "problem": "fallback soup detected in product code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -991,7 +991,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1008,7 +1008,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1025,7 +1025,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1042,7 +1042,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1059,7 +1059,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1076,7 +1076,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1093,7 +1093,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1110,7 +1110,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1127,7 +1127,7 @@
       "problem": "enum `UsageError` has 2 divergent definitions across modules where one consistent definition is expected",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1144,7 +1144,7 @@
       "problem": "active source path looks like an old, backup, copied, or parked implementation",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1161,7 +1161,7 @@
       "problem": "no agent-friendly exception/error pattern was detected",
       "group": "rust_shape_and_semantics",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Separate semantic todoq/provider fixture fields and filesystem scratch from unimplemented markers; scope real module decomposition and property/invariant coverage without renaming to evade checks.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1178,7 +1178,7 @@
       "problem": "runtime code uses a language outside the chosen optimal stack",
       "group": "legacy_python",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1195,7 +1195,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "legacy_python",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1212,7 +1212,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "legacy_python",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1229,7 +1229,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "legacy_python",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1246,7 +1246,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "legacy_python",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1263,7 +1263,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "legacy_python",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1280,7 +1280,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "legacy_python",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1297,7 +1297,7 @@
       "problem": "future-hostile/dead-language term `todo` appears in product/runtime code",
       "group": "legacy_python",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1314,7 +1314,7 @@
       "problem": "string-built SQL reaches a database sink without parameter binding",
       "group": "test_detector_review",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition.",
       "status": "source_reviewed_detector_false_positive",
       "audit_resolved": false,
@@ -1333,7 +1333,7 @@
       "problem": "string-built SQL reaches a database sink without parameter binding",
       "group": "test_detector_review",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition.",
       "status": "source_reviewed_detector_false_positive",
       "audit_resolved": false,
@@ -1352,7 +1352,7 @@
       "problem": "string-built SQL reaches a database sink without parameter binding",
       "group": "test_detector_review",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:35:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind each negative fixture/parameterized SQL report to source and regression proof; preserve tests and request narrow detector correction or documented reviewed disposition.",
       "status": "source_reviewed_detector_false_positive",
       "audit_resolved": false,
@@ -1371,7 +1371,7 @@
       "problem": "agent-readable documentation is incomplete",
       "group": "release_and_observability",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate release/architecture/testing docs and classify missing operational evidence separately; do not fabricate provider/install/recovery/signing qualification.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1388,7 +1388,7 @@
       "problem": "release management structure is incomplete",
       "group": "release_and_observability",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate release/architecture/testing docs and classify missing operational evidence separately; do not fabricate provider/install/recovery/signing qualification.",
       "status": "repair_in_working_tree_pending_validation",
       "audit_resolved": false
@@ -1405,7 +1405,7 @@
       "problem": "`Observability and repair evidence` scored 48 below the standard floor of 85",
       "group": "release_and_observability",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate release/architecture/testing docs and classify missing operational evidence separately; do not fabricate provider/install/recovery/signing qualification.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1422,7 +1422,7 @@
       "problem": "cost or spend-risk surface lacks budget proof",
       "group": "release_and_observability",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate release/architecture/testing docs and classify missing operational evidence separately; do not fabricate provider/install/recovery/signing qualification.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1439,7 +1439,7 @@
       "problem": "reference-profile cell `ops` lacks local AGENTS.md guidance",
       "group": "routing",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:30:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Validate canonical pnpm check, root contributor routing and docs; rerun audit without changing its policy.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1456,7 +1456,7 @@
       "problem": "generated zone is not protected strongly enough against hand edits",
       "group": "generated_contracts",
       "owner": "Codex Root (current integration task)",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Document generator-owned zones and verify regenerate/check ownership from actual generator inputs; generated outputs remain read-only.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1473,7 +1473,7 @@
       "problem": "Python appears without a rare advanced-ML/data exception or owns product truth",
       "group": "legacy_python",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1490,7 +1490,7 @@
       "problem": "`Python containment and polyglot hygiene` scored 0 below the standard floor of 85",
       "group": "legacy_python",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Bind these findings to ADM-PY01..06, current retirement proof and parity/consumer dependencies; no deletion or production reactivation from the inventory alone.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1507,7 +1507,7 @@
       "problem": "script performs a destructive git clean",
       "group": "history_export",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Review retired-owned-job status and the explicitly scoped data/history staging/cleanup. Do not run the cron or remove private/custody-held data.",
       "status": "triage_required",
       "audit_resolved": false
@@ -1524,12 +1524,15 @@
       "problem": "script stages the entire tree or skips verification",
       "group": "history_export",
       "owner": "2062267.agy_captain_admiralty via Admiral",
-      "triage_eta_utc": "2026-10-19T20:45:00Z",
+      "triage_eta_utc": "2026-10-19T21:57:11.619118+00:00",
       "next_action": "Review retired-owned-job status and the explicitly scoped data/history staging/cleanup. Do not run the cron or remove private/custody-held data.",
       "status": "triage_required",
       "audit_resolved": false
     }
   ],
   "full_release_qualified": false,
-  "general_native_execution_qualified": false
+  "general_native_execution_qualified": false,
+  "updated_at_utc": "2026-10-19T20:57:11.619118+00:00",
+  "onboarding_decision": "SC-DEC-186J: advisory reporting, original strict baseline retained unresolved",
+  "schedule_source": "JANKURAI_CLEANUP_BACKLOG.md: Commodore-owned phased targets, not accepted completion"
 }

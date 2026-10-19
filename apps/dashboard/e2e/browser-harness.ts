@@ -1812,7 +1812,7 @@ async function launchBrowserHarnessAttempt(
     return new Promise((resolveCmd, rejectCmd) => {
       const timer = setTimeout(() => {
         pending.delete(id);
-        rejectCmd(new Error(`CDP command timed out after ${timeoutMs}ms: ${method}`));
+        rejectCmd(new Error(`CDP command timed out after ${timeoutMs}ms: ${method} [${formatDiagnosticContext()}]`));
       }, timeoutMs);
       pending.set(id, { resolve: resolveCmd, reject: rejectCmd, timer });
       const payload = sessionId ? { id, method, params, sessionId } : { id, method, params };

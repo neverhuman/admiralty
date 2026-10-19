@@ -64,6 +64,24 @@ jobs:
         run: |
           set -euo pipefail
           browser_bin=""
+          # Executability alone does not qualify a wrapper or installed browser.
+          # Preserve each failed probe and try the remaining actual candidates.
+          probe_browser() {
+            local candidate="$1" version_out probe_exit
+            if version_out=$(timeout 10s "$candidate" --version 2>&1); then
+              case "$version_out" in
+                *Chrome*|*Chromium*)
+                  printf 'verified_browser=%s version=%s\n' "$candidate" "$version_out"
+                  browser_bin="$candidate"
+                  return 0 ;;
+              esac
+              printf 'rejected_browser=%s unexpected_version=%s\n' "$candidate" "$version_out" >&2
+            else
+              probe_exit=$?
+              printf 'rejected_browser=%s probe_exit=%s diagnostic=%s\n' "$candidate" "$probe_exit" "$version_out" >&2
+            fi
+            return 1
+          }
           for candidate in \
             "${ADMIRALTY_BROWSER_BINARY:-}" \
             /opt/google/chrome/chrome \
@@ -74,8 +92,7 @@ jobs:
             "$HOME"/.cache/ms-playwright/chromium-*/chrome-linux64/chrome \
             "$HOME"/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell; do
             if [ -n "$candidate" ] && [ -x "$candidate" ]; then
-              browser_bin="$candidate"
-              break
+              if probe_browser "$candidate"; then break; fi
             fi
           done
           if [ -z "$browser_bin" ]; then
@@ -83,8 +100,7 @@ jobs:
             npx --yes @puppeteer/browsers@2.5.0 install chrome@stable --path "$RUNNER_TEMP/adm-chrome"
             for candidate in "$RUNNER_TEMP"/adm-chrome/chrome/*/chrome-linux64/chrome; do
               if [ -x "$candidate" ]; then
-                browser_bin="$candidate"
-                break
+                if probe_browser "$candidate"; then break; fi
               fi
             done
           fi
@@ -92,15 +108,6 @@ jobs:
             echo "ERROR: No qualified Chromium/Chrome binary available on runner $RUNNER_NAME" >&2
             exit 1
           fi
-          version_out=$(timeout 10s "$browser_bin" --version)
-          printf 'verified_browser=%s version=%s\n' "$browser_bin" "$version_out"
-          case "$version_out" in
-            *Chrome*|*Chromium*) ;;
-            *)
-              echo "ERROR: Unexpected browser version output: $version_out" >&2
-              exit 1
-              ;;
-          esac
           for sandbox_candidate in \
             "$(dirname "$browser_bin")/chrome_sandbox" \
             "$(dirname "$browser_bin")/chrome-sandbox" \

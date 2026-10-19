@@ -1,0 +1,13 @@
+{
+  "decision_id": "SC-DEC-186J",
+  "issued_at_utc": "2026-10-19T20:18:45Z",
+  "authority": "4060655.super_captain; maintainer proxy per captains/COMMON.md",
+  "source": "SC_ORDER_ADMIRALTY_SC186J_PR158_7291122E_85_FINDINGS_56_BLOCKERS_CLEANUP_DECISION_AND_MAIN_FREEZE_20261019T2018Z.md",
+  "decision": "onboarding advisory baseline reporting, retain all85findings56blockers with owner/phased ETAs, fail net-newPython/exceptionregressions",
+  "actual_auditor_version": "1.7.5",
+  "source_version_typo": "order says1.7.1; actual installed binary, reports and release proof show1.7.5",
+  "owner_backlog_sha256": "d5b03baa2ae676b13a4ddb7ce5459c53ce9c449e326e86981d97703ffb35421e",
+  "main_merge_freeze": "d858a9a Admiralty checks green and PR158 complete local20plus exact-head review required",
+  "original_strict_findings_resolved": false,
+  "full_release_qualified": false
+}

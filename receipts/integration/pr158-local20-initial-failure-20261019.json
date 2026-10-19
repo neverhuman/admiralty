@@ -1,0 +1,28 @@
+{
+  "head": "319de541d5572d19bd274712340d10e2705fe90c",
+  "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty",
+  "command": [
+    "rtk",
+    "proxy",
+    "pnpm",
+    "check"
+  ],
+  "started_at_utc": "2026-10-19T20:47:16.027535+00:00",
+  "status": "failed",
+  "exit_code": 1,
+  "finished_at_utc": "2026-10-19T20:51:29.029749+00:00",
+  "ending_head": "319de541d5572d19bd274712340d10e2705fe90c",
+  "ending_status": "",
+  "output_sha256": "d2163f24f398ba79de30ccb4322b7d2580427a30016d266ddbe2cff0ab3b3528",
+  "qualification": "failed; first19stages pass, native intake CDP timeout23/24browserpass",
+  "preserved_output": "logs/pr158-local20-first-browser-failure.log.gz",
+  "focused_reproduction": {
+    "same_source_head": "319de541d5572d19bd274712340d10e2705fe90c",
+    "command": "pnpm --dir apps/dashboard test --run --config e2e/vitest.config.ts e2e/intake.e2e.ts",
+    "exit": 0,
+    "test_files": 1,
+    "tests": 1,
+    "duration_seconds": 2.0,
+    "log_sha256": "66a5a25593203e1a2237fbc30afaad1160a25ff796e84f9a59a542e843923395"
+  }
+}

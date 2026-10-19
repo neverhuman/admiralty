@@ -13,6 +13,10 @@
   package harnesses, frontend type/tests/build and real browser accessibility.
 - Pinned read-only Jankurai auditing exposes conformance findings for review;
   temporary Python compatibility/port inventories preserve retirement criteria.
+- Onboarding reports the retained Jankurai baseline under SC-DEC-186J; Rust CI
+  enforces the 40-file Python ceiling and complete exception/migration records.
+  Session qualification retries only read-only Busy observations under the
+  original deadline, and browser provisioning qualifies each candidate.
 
 The complete native major release is not yet accepted or published. See
 [release status](docs/operators/release-status.md) for remaining gates.

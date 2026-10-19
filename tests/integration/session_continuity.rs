@@ -130,10 +130,66 @@ fn exchange(socket: &Path, request: &Value) -> io::Result<Value> {
     exchange_until(socket, request, Instant::now() + WAIT)
 }
 
+// Status and tail deliberately return Busy rather than wait behind capture/input
+// locks. Retry only those read-only observations, under the original deadline.
+// Never replay launch/input or turn any other error into a successful response.
+fn observe_until(socket: &Path, request: &Value, deadline: Instant) -> io::Result<Value> {
+    assert!(matches!(
+        request["command"].as_str(),
+        Some("status" | "tail")
+    ));
+    retry_busy_observation(deadline, || exchange_until(socket, request, deadline))
+}
+
+fn retry_busy_observation(
+    deadline: Instant,
+    mut read: impl FnMut() -> io::Result<Value>,
+) -> io::Result<Value> {
+    loop {
+        remaining(deadline)?;
+        let response = read()?;
+        if response["result"]["kind"] != "error" || response["result"]["code"] != "busy" {
+            return Ok(response);
+        }
+        thread::sleep(Duration::from_millis(5).min(remaining(deadline)?));
+    }
+}
+
+#[test]
+fn busy_observations_remain_bounded_and_other_errors_are_preserved() {
+    let busy = json!({"result":{"kind":"error","code":"busy"}});
+    assert!(
+        busy["result"]["status"]["input_epoch"].is_null(),
+        "blind indexing Busy reproduces the hosted null-epoch assertion"
+    );
+    let ready = json!({"result":{"kind":"status","status":{"input_epoch":"1"}}});
+    let mut calls = 0;
+    let observed = retry_busy_observation(Instant::now() + WAIT, || {
+        calls += 1;
+        Ok(if calls == 1 {
+            busy.clone()
+        } else {
+            ready.clone()
+        })
+    })
+    .expect("bounded Busy reconciliation");
+    assert_eq!(calls, 2);
+    assert_eq!(observed, ready);
+    let denied = json!({"result":{"kind":"error","code":"invalid_request"}});
+    let observed = retry_busy_observation(Instant::now() + WAIT, || Ok(denied.clone()))
+        .expect("non-Busy denial returned without retry");
+    assert_eq!(observed, denied);
+    let timeout = retry_busy_observation(Instant::now() + Duration::from_millis(20), || {
+        Ok(busy.clone())
+    })
+    .expect_err("Busy cannot extend the observation deadline");
+    assert_eq!(timeout.kind(), io::ErrorKind::TimedOut);
+}
+
 fn await_offset(socket: &Path, run_id: &str, offset: &str) -> Value {
     let deadline = Instant::now() + WAIT;
     loop {
-        let response = exchange_until(
+        let response = observe_until(
             socket,
             &json!({"command":"status","run_id":run_id}),
             deadline,
@@ -150,7 +206,7 @@ fn await_offset(socket: &Path, run_id: &str, offset: &str) -> Value {
 fn await_exit(socket: &Path, run_id: &str, final_offset: &str) {
     let deadline = Instant::now() + WAIT;
     loop {
-        let response = exchange_until(
+        let response = observe_until(
             socket,
             &json!({"command":"status","run_id":run_id}),
             deadline,
@@ -243,9 +299,10 @@ fn daemon_client_reconnect_keeps_child_and_output_offsets_continuous() {
     let initial = await_offset(&socket, "continuous", "1");
     let initial_pid = initial["result"]["status"]["pid"].clone();
     let initial_identity = initial["result"]["status"]["start_identity"].clone();
-    let prefix = exchange(
+    let prefix = observe_until(
         &socket,
         &json!({"command":"tail","run_id":"continuous","from":"0","max_bytes":1}),
+        Instant::now() + WAIT,
     )
     .expect("read first output range");
     assert_eq!(tail_bytes(&prefix), b"A");
@@ -276,8 +333,12 @@ fn daemon_client_reconnect_keeps_child_and_output_offsets_continuous() {
     assert_eq!(overflow_epoch["result"]["kind"], "error");
     assert_eq!(overflow_epoch["result"]["code"], "invalid_request");
     assert_eq!(
-        exchange(&socket, &json!({"command":"status","run_id":"continuous"}))
-            .expect("status after rejected overflow epoch")["result"]["status"]["input_epoch"],
+        observe_until(
+            &socket,
+            &json!({"command":"status","run_id":"continuous"}),
+            Instant::now() + WAIT
+        )
+        .expect("status after rejected overflow epoch")["result"]["status"]["input_epoch"],
         "1",
         "overflowing epoch must not advance session input state"
     );
@@ -288,9 +349,10 @@ fn daemon_client_reconnect_keeps_child_and_output_offsets_continuous() {
         continued["result"]["status"]["start_identity"],
         initial_identity
     );
-    let suffix = exchange(
+    let suffix = observe_until(
         &socket,
         &json!({"command":"tail","run_id":"continuous","from":"1","max_bytes":8}),
+        Instant::now() + WAIT,
     )
     .expect("read output after reconnect");
     assert_eq!(tail_bytes(&suffix), b"B");
