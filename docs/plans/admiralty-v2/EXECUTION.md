@@ -1493,3 +1493,46 @@ CLI OAuth refresh can write the external authfile, so credential/network
 isolation is not claimed. Written Fleet Admiral scope ACK is requested before
 any fresh one-run qualification with this profile. Accepted parents2/32 and
 native_execution_qualified=false remain unchanged.
+
+### Raw intake integration and live reconciliation — 2026-10-19T03:23Z
+
+PR100 merged at03:08:21Z receiving90e76d881689d36226c176a9493c1b8736cce071.
+PR101 merged at03:14:50Z receiving1d00b08f07b53bf32c6d2e513185b6a741da726f,
+repairing a strict Clippy failure in the attention test policy. All5affected
+attention cases, strict server all-target Clippy and formatting pass. The
+original failure and receiving-main browser diagnostic mismatch are retained
+on the canonical CI cleanup backlog; no cleanup worker was assigned.
+
+Root independently checked the live f590837a deployment at03:10:25Z: all14
+manifest hashes, both actual native process executables, health/UI/feed200,
+18891redirect307 and Rust producer. No retired owned Python producer was found.
+The Mac SSH tunnel had no listener; root restored owned loopback18890/18891
+forwarding without service control. Fresh browser observation confirms13plots,
+profile and Git/Atlas navigation. Anonymous native Git feed401 is expected;
+no authenticated live-browser qualification is inferred. Source evidence is in
+[the deployment receipt](../../../receipts/integration/native-f590837-independent-20261019T0310Z.json).
+
+Sole-writer rolloutCAS at03:17:04.915Z advanced91a64729 to4971756c from actual
+new merged source and hash-checked receipts, retaining every parent state,
+byte-identical foundation packets and original source/history timestamps.
+[Reconciliation proof](../../../receipts/integration/rollout-reconciliation-20261019T0317Z.json)
+records2/32accepted and30open, not a clock-only freshness change.
+
+The raw-capture Store module is registered at98a8ada4a0aa362d1594f074f40625aff0a14c24.
+It saves original inline source and unresolved preview before enrichment,
+requires startup-only current authority on every command/replay, retains exact
+immutable receipts, and enforces parent-receipt revisionCAS, independently trusted
+read scope and complete bounded lineage integrity at read/open/rebuild/backup.
+It creates no task, work-order, plan or outbox effect. Root read the complete
+source/registration; actual12capture+14enriched-intake+4workplan tests pass with
+zero failures/ignored/filtered. Worker strict Store Clippy and all original
+failures remain in [the source-bound receipt](../../../receipts/integration/raw-intake-capture-20261019T0320Z.json).
+No public route, production issuer, artifact pin or enrichment is activated.
+
+Parallel implementation now exports the frozen intake contracts through the
+existing generator and adapts the already-existing question journal to the sole
+Store writer; no duplicate question journal/migration is being introduced.
+Production coding execution remains false. Both previous provider grants are
+consumed. Minimal auth-profile metadata passes, but no new provider grant was
+issued while coordinating its existing dedicated slice with the newly observed
+fleetcap wrapper requirement. Other implementation continues independently.

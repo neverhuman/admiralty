@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T03:20:12.668Z",
+  "base_revision": "1d00b08f07b53bf32c6d2e513185b6a741da726f",
+  "qualified_source": "98a8ada4a0aa362d1594f074f40625aff0a14c24",
+  "worker_candidate": "1d0cd44f63fa95bc34d1f140a56e192a031fc692",
+  "scope": "Registered default-deny raw request custody before enrichment",
+  "sha256": {
+    "crates/admiralty-store/src/intake_capture.rs": "1e0b838d680d6953a6db1ef10147c5b635cc846bcec729d2649ff4519f8eab6b",
+    "crates/admiralty-store/migrations/0007_intake_capture.sql": "05ff43818ca45b547f5247baae5e9eb72595806d9f61c9d389dd7ab364de5858",
+    "crates/admiralty-store/src/lib.rs": "5ce58f51be04d161e869b0622b38db4ec01aa495d94bbb2939d61c89321d139f",
+    "crates/admiralty-store/tests/intake_capture.rs": "156c18db7515e5af06997390b96ff7521b9aacda76994cc915295bf51b515b91",
+    "target/quality/raw-capture-integrated.log": "88c0f095047c0ab6fb8b547028b808d8673ff533268fd2d073430cc06cab63a5",
+    "target/quality/raw-capture-integrated-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "root_check": {
+    "command": "cargo test -p admiralty-store --test intake_capture --test work_order_intake --test workplan_registry --locked",
+    "exit_code": 0,
+    "capture": 12,
+    "enriched_intake": 14,
+    "workplan": 4,
+    "failed": 0,
+    "ignored": 0,
+    "filtered": 0,
+    "fmt_exit_code": 0
+  },
+  "root_review": {
+    "result": "clear",
+    "basis": "Root read complete production source, schema and excluded sole-writer registration; immutable CAS/replay, independently trusted scope/current policy, bounded source/aggregate history, full lineage/corruption validation; no task/plan/outbox effect"
+  },
+  "worker_receipt": {
+    "sha256": "15194b5bebdd7df972725864416e7fb3059b54eaa9932d347842fddee8fc468d",
+    "contents": {
+      "packet": "P13 durable original request capture before enrichment",
+      "base": "90e76d881689d36226c176a9493c1b8736cce071",
+      "worktree": "/private/tmp/admiralty-attention-journal-99f4e26",
+      "branch": "codex/raw-intake-capture",
+      "owned_paths": [
+        "crates/admiralty-store/src/intake_capture.rs",
+        "crates/admiralty-store/migrations/0007_intake_capture.sql",
+        "crates/admiralty-store/tests/intake_capture.rs"
+      ],
+      "source_sha256": {
+        "crates/admiralty-store/src/intake_capture.rs": "1e0b838d680d6953a6db1ef10147c5b635cc846bcec729d2649ff4519f8eab6b",
+        "crates/admiralty-store/migrations/0007_intake_capture.sql": "05ff43818ca45b547f5247baae5e9eb72595806d9f61c9d389dd7ab364de5858",
+        "crates/admiralty-store/tests/intake_capture.rs": "156c18db7515e5af06997390b96ff7521b9aacda76994cc915295bf51b515b91"
+      },
+      "checks": {
+        "actual_capture_tests": {
+          "passed": 12,
+          "failed": 0,
+          "ignored": 0
+        },
+        "existing_wo2_tests": {
+          "passed": 14,
+          "failed": 0,
+          "ignored": 0
+        },
+        "existing_workplan_registry_tests": {
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0
+        },
+        "strict_store_all_targets_clippy_exit": 0,
+        "format_check_exit": 0,
+        "diff_check_exit": 0
+      },
+      "actual_registration": "Tests ran through temporary real Storelib startup-only authority + sole writer + reopen/rebuild/backup registration, proposed root patch excluded from candidate commit.",
+      "registration_patch": "/private/tmp/adm-raw-intake-proof-54z8r9xl/store-registration.patch",
+      "registration_patch_sha256": "438ca77a496f39b8c46f4a08fa4a8324634a064323182dc39589612fedfb96f2",
+      "logs_sha256": {
+        "first-tests.log": "7d0685441a6464fbb9617a64c8efd02ecbd63636d266b396957f1ce9ce19e004",
+        "second-tests.log": "d6996ffa38c2fd38618c34b4f02ce0017d0aadc93a3c899d0e149c6456cf61e7",
+        "first-clippy.log": "ad2e19bb5a237bf72754751e757d33073ba1c28bcd75ffa545daee985621cfa1",
+        "first-check.log": "80aec9848c45ef1b14031a75a4e3dcd9d7866cd71923ebea8088d73f87b05b60",
+        "final-clippy.log": "e4a9ac6eaf276134f12c413fd187c7adba1bbb47913c37038eee20e21341b773",
+        "final-format.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "final-tests.log": "d9c472d6680fdee0afc590329f431109b1517ec9edaff659d8c624f34630b8f5"
+      },
+      "environment": {
+        "TMPDIR": "/private/tmp/adm-native-4pbrtc1l",
+        "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/wo2-intake",
+        "CARGO_BUILD_JOBS": "1",
+        "RUST_TEST_THREADS": "1"
+      },
+      "scope": "Original inline UTF8/provenance/explicit format preview custody + current independently installed scope/policy. Unresolved outcomes stay unresolved.",
+      "limits": [
+        "Only inline UTF8; unverified ArtifactClaim denied.",
+        "No task/workorder/plan/outbox records, provider turns, execution grants or acceptance generated.",
+        "No CLI/HTTP/UI adapter or production startup issuer is installed by this module. Root owns shared Store registration.",
+        "No current general runtime activation or full P13/parent packet acceptance claimed.",
+        "1MiB source cap remains; explicit serialized request/preview caps8MiB each accommodate escaping; aggregate64MiB includes all persisted JSON and UTF8 lookup metadata, excluding SQLite page/index overhead.128 captures/32 revisions each.",
+        "Original provenance/capture time/requester are recorded source assertions, never silently promoted to independently observed facts."
+      ],
+      "prior_failure": "First test compilation used wrong ArtifactClaim fixture field names; repaired to actual frozen core fields. first-tests.log retains exact compiler evidence, production source had compiled successfully.",
+      "candidate_commit": "1d0cd44f63fa95bc34d1f140a56e192a031fc692",
+      "clean_after_temporary_shared_registration_removed": true
+    }
+  },
+  "native_execution_qualified": false,
+  "parent_acceptance": false,
+  "provider_turns": 0,
+  "limitations": [
+    "No production startup issuer, public HTTP/CLI/UI adapter or enrichment",
+    "No verified artifact claim/pin composition",
+    "Original provenance/requester/time remain recorded source claims, not independently observed facts",
+    "Existing constructors preserve default denial; raw capture does not produce a TaskContract"
+  ]
+}
