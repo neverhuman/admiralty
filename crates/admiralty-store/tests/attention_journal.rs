@@ -8,10 +8,277 @@ use admiralty_core::{
         QuestionFacts, QuestionState, Recipient, Role, UpdateKind, WakeReason,
     },
 };
-use admiralty_store::{Store, StoreError, attention::*, outbox};
+use admiralty_store::{Store as ActualStore, StoreAuthorities, StoreError, attention::*, outbox};
 use rusqlite::Connection;
 use serde_json::json;
 use std::path::Path;
+
+// Explicit private test issuer. These tests still exercise the actual sole
+// Store writer, CAS, journal and outbox. No production permissive policy exists.
+use admiralty_core::{
+    AcceptanceCriterion, CheckSpec, TaskContract,
+    coordination::context::{
+        BudgetObservation, CheckObservation, FactObservation, ProjectExceptionFacts,
+        ProtectedTaskFacts, RecipientRole, compile_project_exceptions,
+    },
+};
+use admiralty_store::context_renders::{
+    ContextNamespace, ContextScope, RecordContextRender, RenderKey,
+};
+use std::{
+    any::Any,
+    collections::BTreeSet,
+    ops::Deref,
+    sync::{Arc, Mutex},
+};
+#[derive(Clone)]
+struct FixtureProof {
+    principal: PrincipalId,
+    nonce: Arc<()>,
+}
+struct FixtureAuthority {
+    nonce: Arc<()>,
+    definitions: Mutex<std::collections::BTreeMap<String, AttentionDefinition>>,
+    requests: Mutex<BTreeSet<String>>,
+    policy_digest: String,
+}
+impl AttentionAuthority for FixtureAuthority {
+    fn authorize_definition(&self, b: &AttentionDefinitionBinding<'_>) -> bool {
+        content_digest(b.definition).is_ok_and(|d| {
+            d == b.definition_digest
+                && self
+                    .definitions
+                    .lock()
+                    .expect("explicit definitions")
+                    .contains_key(&d)
+        }) && content_digest(&b.definition.config).is_ok_and(|d| d == b.config_digest)
+    }
+    fn authorize_command(
+        &self,
+        b: &AttentionCommandBinding<'_>,
+        proof: &(dyn Any + Send + Sync),
+    ) -> bool {
+        let Some(proof) = proof.downcast_ref::<FixtureProof>() else {
+            return false;
+        };
+        Arc::ptr_eq(&proof.nonce, &self.nonce)
+            && proof.principal == b.request.binding.actor
+            && b.request.binding.credential_ref == "private-fixture-credential"
+            && b.request.binding.policy_digest == self.policy_digest
+            && b.definition
+                .scope
+                .recipients
+                .iter()
+                .any(|r| r.principal_id == proof.principal)
+            && self
+                .requests
+                .lock()
+                .expect("exact admitted requests")
+                .contains(b.request_digest)
+            && authorized_request_digest(b.definition_digest, b.request)
+                .is_ok_and(|d| d == b.request_digest)
+            && content_digest(b.stored_context)
+                .is_ok_and(|d| d == b.request.binding.context.render.record_digest)
+    }
+}
+struct Store {
+    inner: ActualStore,
+    authority: Arc<FixtureAuthority>,
+}
+impl Deref for Store {
+    type Target = ActualStore;
+    fn deref(&self) -> &ActualStore {
+        &self.inner
+    }
+}
+impl Store {
+    fn open(path: &Path) -> Result<Self, StoreError> {
+        let authority = Arc::new(FixtureAuthority {
+            nonce: Arc::new(()),
+            definitions: Mutex::new(std::collections::BTreeMap::from([(
+                content_digest(&definition()).expect("explicit original definition"),
+                definition(),
+            )])),
+            requests: Mutex::new(BTreeSet::new()),
+            policy_digest: content_digest(&(
+                "private-explicit-journal-test-policy",
+                "scoped-current-private-proof",
+                "exact-request-digest",
+            ))
+            .expect("fixture policy identity"),
+        });
+        let inner = ActualStore::open_with_startup_authorities(
+            path,
+            StoreAuthorities {
+                attention: Some(authority.clone()),
+                ..StoreAuthorities::default()
+            },
+        )?;
+        Ok(Self { inner, authority })
+    }
+    fn register_attention(
+        &self,
+        definition: AttentionDefinition,
+    ) -> Result<AttentionRegistration, StoreError> {
+        self.authority
+            .definitions
+            .lock()
+            .expect("explicit test definition admission")
+            .insert(content_digest(&definition)?, definition.clone());
+        self.inner.register_attention(definition)
+    }
+    fn pin(
+        &self,
+        scope: &AttentionScope,
+        recipient: &Recipient,
+    ) -> Result<AttentionContextPin, StoreError> {
+        let role = match recipient.role {
+            Role::TaskWorker => RecipientRole::Worker,
+            Role::Captain => RecipientRole::Commodore,
+            Role::SuperCaptain => RecipientRole::Admiral,
+        };
+        if role != RecipientRole::Commodore {
+            return Err(StoreError::Attention(AttentionError::Invalid));
+        }
+        let contract = TaskContract {
+            schema_version: 1,
+            project_id: scope.project_id.clone(),
+            root_id: scope.root_id.clone(),
+            task_id: TaskId::new("task-a").expect("task"),
+            revision: 1,
+            title: "Retained journal fixture task".into(),
+            objective: "Inspect bounded state".into(),
+            non_goals: vec!["Do NOT publish".into()],
+            owned_paths: vec!["src".into()],
+            forbidden_paths: vec!["private".into()],
+            read_first: vec![],
+            dependencies: vec![],
+            criteria: vec![AcceptanceCriterion {
+                id: "scope".into(),
+                text: "Preserve constraints".into(),
+                check_ids: vec!["unit".into()],
+            }],
+            checks: vec![CheckSpec {
+                id: "unit".into(),
+                program: "cargo".into(),
+                args: vec!["test".into()],
+                cwd: ".".into(),
+                timeout_secs: 30,
+            }],
+            authority_ref: "grant:caller-must-authenticate".into(),
+            max_attempts: 1,
+            simulated: true,
+        };
+        let facts = ProjectExceptionFacts {
+            project_id: scope.project_id.clone(),
+            revision: 1,
+            authority_ref: "fixture:project".into(),
+            source_ref: "fixture:source".into(),
+            exceptions: vec![ProtectedTaskFacts {
+                contract,
+                immutable_refs: vec![],
+                candidate: FactObservation::Unknown {
+                    reason: "Not observed".into(),
+                },
+                check: CheckObservation::NotRun {
+                    reason: "Not executed".into(),
+                },
+                evidence: vec![],
+                uncertainty: vec!["Outcome unknown".into()],
+                budget: BudgetObservation::Unknown {
+                    reason: "Not measured".into(),
+                },
+                next_action: "Inspect current state".into(),
+            }],
+            uncertainty: vec![],
+            next_action: "Inspect current state".into(),
+        };
+        let capsule = compile_project_exceptions(&facts, &scope.epoch, 8192)
+            .expect("actual deterministic capsule");
+        let context_scope = ContextScope {
+            recipient: recipient.principal_id.clone(),
+            role,
+            namespace: ContextNamespace::Project {
+                project_id: scope.project_id.clone(),
+                root_id: scope.root_id.clone(),
+            },
+        };
+        let record = self.inner.record_context_render(RecordContextRender {
+            scope: context_scope.clone(),
+            key: RenderKey {
+                render_id: "actual-journal-fixture-capsule".into(),
+                version: 1,
+            },
+            expected_epoch: scope.epoch.clone(),
+            expected_facts_digest: capsule.facts_digest.clone(),
+            capsule: capsule.clone(),
+        })?;
+        Ok(AttentionContextPin {
+            scope: context_scope,
+            render: record.render,
+            facts_digest: capsule.facts_digest,
+        })
+    }
+    fn apply_attention(
+        &self,
+        mut command: AttentionCommand,
+    ) -> Result<AttentionResult, StoreError> {
+        let recipient = match &command.operation {
+            AttentionOperation::Observe { update } => update.recipient.clone(),
+            AttentionOperation::TakeDelivery { recipient, .. } => recipient.clone(),
+        };
+        let pin = self.pin(&command.scope, &recipient)?;
+        if let AttentionOperation::Observe { update } = &mut command.operation
+            && update.evidence_ref == "fixture:actual-context"
+        {
+            update.evidence_ref = pin.render.record_digest.clone();
+        }
+        let request = AuthorizedAttentionCommand {
+            command,
+            binding: AttentionRequestBinding {
+                actor: recipient.principal_id.clone(),
+                credential_ref: "private-fixture-credential".into(),
+                policy_digest: self.authority.policy_digest.clone(),
+                context: pin,
+            },
+        };
+        // Every allowed request is an explicit in-process test invocation,
+        // pinned before queuing; JSON labels alone cannot construct this proof.
+        let digest = authorized_request_digest(
+            &content_digest(&AttentionDefinition {
+                scope: request.command.scope.clone(),
+                config: self.definition_config(&request.command)?,
+            })?,
+            &request,
+        )?;
+        self.authority
+            .requests
+            .lock()
+            .expect("explicit exact request admission")
+            .insert(digest);
+        self.inner.apply_attention_authorized(
+            request,
+            Arc::new(FixtureProof {
+                principal: recipient.principal_id,
+                nonce: self.authority.nonce.clone(),
+            }),
+        )
+    }
+    fn definition_config(&self, command: &AttentionCommand) -> Result<GovernorConfig, StoreError> {
+        let defs = self
+            .authority
+            .definitions
+            .lock()
+            .expect("explicit definitions");
+        defs.values()
+            .find(|definition| {
+                definition.scope == command.scope
+                    && content_digest(&definition.config).is_ok_and(|d| d == command.config_digest)
+            })
+            .map(|definition| definition.config.clone())
+            .ok_or(StoreError::Attention(AttentionError::Collision))
+    }
+}
 
 fn private_dir() -> tempfile::TempDir {
     let dir = tempfile::Builder::new()
@@ -61,7 +328,7 @@ fn update(def: &AttentionDefinition, n: u64, who: &str, kind: UpdateKind) -> Att
         },
         recipient: recipient(who),
         authority_ref: "grant:caller-must-authenticate".into(),
-        evidence_ref: format!("event:{n}"),
+        evidence_ref: "fixture:actual-context".into(),
         update: kind,
     }
 }
@@ -328,7 +595,10 @@ fn exact_cas_concurrency_source_collision_and_independent_scope_fail_closed() {
     } else {
         unreachable!()
     };
-    source.evidence_ref = "event:conflicting".into();
+    source.update = UpdateKind::Candidate {
+        candidate_ref: "candidate:conflicting".into(),
+        state: CandidateState::Submitted,
+    };
     let cmd = command(
         &store,
         &def,
@@ -777,7 +1047,7 @@ fn corrupted_history_oversized_and_wrong_type_fields_fail_open_rebuild_and_backu
         take(&store, &def, "wake", 1, "captain-a");
         let injection = Connection::open(&path).expect("injector");
         match corruption {
-            "command"=>injection.execute_batch("DROP TRIGGER attention_command_immutable_update;UPDATE attention_commands SET command_json=json_set(command_json,'$.logical_tick',2) WHERE command_id='observe';"),
+            "command"=>injection.execute_batch("DROP TRIGGER attention_command_immutable_update;UPDATE attention_commands SET command_json=json_set(command_json,'$.request.command.logical_tick',2) WHERE command_id='observe';"),
             "receipt"=>injection.execute_batch("DROP TRIGGER attention_command_immutable_update;UPDATE attention_commands SET receipt_json=json_set(receipt_json,'$.delivered',json('true')) WHERE command_id='wake';"),
             "head"=>injection.execute_batch("UPDATE attention_journals SET head_sequence=1;"),
             "outbox"=>injection.execute_batch("DROP TRIGGER outbox_immutable_intent;UPDATE outbox_intents SET not_before=2;"),
