@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-10-19T19:39:25.857136+00:00",
+  "base_head": "3a8de44cb9233691e29ba7025c5be741f8d4ba46",
+  "source_sha256": {
+    "crates/admiralty-server/src/services/coordination_routing_tests.rs": "eec48925115ef3d750c5b31e7d2fe394400004e8bba71bd65934bb32794017bd"
+  },
+  "scope": "Test-only HTTP framing fix, no production authorization, response limits, service deadlines or execution authority changed.",
+  "original_failures": [
+    {
+      "cause": "Root chose a long private TMPDIR exceeding macOS Unix socket pathname limit; setup corrected with short private /private/tmp/adm.* scratch.",
+      "source_change_required": false
+    },
+    {
+      "observed": "Full Rust run failed one native authorization test on ConnectionReset during read_to_string after sending a POST.",
+      "source_change_required": true,
+      "limits": "20 standalone repeats with diagnostic-only instrumentation all passed; no original reset response bytes were captured. Full-suite failure is preserved. The existing native_commands test helper already uses framed completion."
+    }
+  ],
+  "regression": "A complete Content-Length denial followed by ConnectionReset deterministically fails the former EOF-based read and succeeds through framed completion. Truncated header/body, duplicate or missing Content-Length, transfer encoding, signed and overflow lengths remain failures.",
+  "qualification": {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "admiralty-server",
+      "--lib",
+      "coordination_routing::tests",
+      "--locked"
+    ],
+    "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty",
+    "environment": {
+      "CARGO_TARGET_DIR": "/private/tmp/admiralty-native-dogfood-target",
+      "CARGO_BUILD_JOBS": "2",
+      "CARGO_PROFILE_DEV_DEBUG": "0",
+      "CARGO_PROFILE_TEST_DEBUG": "0",
+      "RUST_TEST_THREADS": "1",
+      "TMPDIR": "/private/tmp/adm.dcq8dqqh"
+    },
+    "exit_code": 0,
+    "passed": 7,
+    "failed": 0,
+    "ignored": 0,
+    "filtered": 104,
+    "full_local_matrix": "Runs after the repaired source is committed; scoped pass does not claim full or hosted CI success."
+  },
+  "logs": [
+    {
+      "label": "setup-path-failure",
+      "path": "receipts/integration/logs/pr157-setup-path-failure-20261019.log.gz",
+      "sha256": "58d2f1a6745914a30f797ae0b2fb5b569bca823a1c90cea5b1068b64ba8bb4e9",
+      "uncompressed_sha256": "b8469ee83d0e1b769ee02c5bb600f334dda28a804638c78a1be9473c27954b7a",
+      "uncompressed_bytes": 16653
+    },
+    {
+      "label": "full-local-native-reset-failure",
+      "path": "receipts/integration/logs/pr157-full-local-native-reset-failure-20261019.log.gz",
+      "sha256": "fdb8b168aa2c8d854d544f16cf010f54ced3c71b7738bbd5aca9de12d787e392",
+      "uncompressed_sha256": "0985441e592c184486a766edb0e23093c8dc8ddb5536bb5c7c2b982d3f7d42f6",
+      "uncompressed_bytes": 92151
+    },
+    {
+      "label": "coordination-framing-pass",
+      "path": "receipts/integration/logs/pr157-coordination-framing-pass-20261019.log.gz",
+      "sha256": "accfb15ede8f569bfebed8af5d9baf06ec8a5450d5f172f73bde848ae56076d4",
+      "uncompressed_sha256": "3d471acbea656360ec91b87125d9d2e67517e9eafc1a2996cfd39912e9aa5556",
+      "uncompressed_bytes": 1305
+    }
+  ],
+  "native_execution_qualified": false,
+  "full_release_qualified": false
+}

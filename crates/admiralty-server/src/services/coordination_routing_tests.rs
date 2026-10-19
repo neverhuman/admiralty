@@ -5,7 +5,7 @@ use admiralty_runtime::agent_tools::{AgentClient, ToolCall};
 use serde_json::{Value, json};
 use std::{
     fs,
-    io::{Read, Write},
+    io::{BufRead, BufReader, Read, Write},
     net::{SocketAddr, TcpStream},
     os::unix::fs::{OpenOptionsExt, PermissionsExt},
     path::PathBuf,
@@ -162,11 +162,108 @@ impl Running {
             stream.set_write_timeout(Some(Duration::from_secs(5))).expect("write deadline");
             write!(stream, "POST {endpoint} HTTP/1.1\r\nHost: {address}\r\n{bearer}Content-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len()).expect("write header");
             stream.write_all(&body).expect("write body");
-            let mut response = String::new();
-            stream.take(128 * 1024).read_to_string(&mut response).expect("bounded response");
-            let status = response.split_whitespace().nth(1).expect("status").parse().expect("numeric status");
-            (status,response)
+            read_framed_response(BufReader::new(stream)).expect("complete bounded response")
         }).await.expect("request thread")
+    }
+}
+
+// Rejecting an unread POST body can reset TCP after the full denial was sent.
+// HTTP completion is the declared body length; a later FIN is not required.
+fn read_framed_response(reader: impl BufRead) -> std::io::Result<(u16, String)> {
+    let invalid = || std::io::Error::from(std::io::ErrorKind::InvalidData);
+    let mut reader = reader.take(128 * 1024);
+    let mut response = String::new();
+    loop {
+        let mut line = String::new();
+        if reader.read_line(&mut line)? == 0 || !line.ends_with("\r\n") {
+            return Err(invalid());
+        }
+        response.push_str(&line);
+        if response.len() > 16 * 1024 {
+            return Err(invalid());
+        }
+        if line == "\r\n" {
+            break;
+        }
+    }
+    let status = response
+        .lines()
+        .next()
+        .and_then(|line| line.strip_prefix("HTTP/1.1 "))
+        .and_then(|line| line.split_whitespace().next())
+        .and_then(|status| status.parse::<u16>().ok())
+        .filter(|status| (100..=599).contains(status))
+        .ok_or_else(invalid)?;
+    let mut length = None;
+    for line in response.lines().skip(1).filter(|line| !line.is_empty()) {
+        let (name, value) = line.split_once(':').ok_or_else(invalid)?;
+        if name.eq_ignore_ascii_case("transfer-encoding") {
+            return Err(invalid());
+        }
+        if name.eq_ignore_ascii_case("content-length") {
+            let value = value.trim();
+            if length.is_some()
+                || value.is_empty()
+                || !value.bytes().all(|byte| byte.is_ascii_digit())
+            {
+                return Err(invalid());
+            }
+            length = Some(value.parse::<usize>().map_err(|_| invalid())?);
+        }
+    }
+    let length = length
+        .filter(|length| *length <= 128 * 1024 - response.len())
+        .ok_or_else(invalid)?;
+    let mut body = vec![0; length];
+    reader.read_exact(&mut body)?;
+    response.push_str(std::str::from_utf8(&body).map_err(|_| invalid())?);
+    Ok((status, response))
+}
+
+#[test]
+fn denial_response_completes_before_reset_but_incomplete_or_ambiguous_frames_fail() {
+    struct Reset;
+    impl Read for Reset {
+        fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+            Err(std::io::ErrorKind::ConnectionReset.into())
+        }
+    }
+    let wire = b"HTTP/1.1 401 Unauthorized\r\nContent-Length: 6\r\n\r\ndenied";
+    let mut previous_reader = std::io::Cursor::new(wire).chain(Reset);
+    assert_eq!(
+        previous_reader
+            .read_to_string(&mut String::new())
+            .expect_err("EOF-based reader reproduces the failure")
+            .kind(),
+        std::io::ErrorKind::ConnectionReset
+    );
+    let (status, response) =
+        read_framed_response(BufReader::new(std::io::Cursor::new(wire).chain(Reset)))
+            .expect("complete denial before reset");
+    assert_eq!(status, 401);
+    assert!(response.ends_with("denied"));
+    for truncated in [&wire[..wire.len() - 1], &wire[..24]] {
+        assert!(
+            read_framed_response(BufReader::new(std::io::Cursor::new(truncated).chain(Reset)))
+                .is_err()
+        );
+    }
+    for headers in [
+        "Content-Length: 131072",
+        "Content-Length: 6\r\nContent-Length: 6",
+        "Content-Length: 6\r\nTransfer-Encoding: chunked",
+        "Transfer-Encoding: chunked",
+        "Content-Length: +6",
+        "Content-Length: 18446744073709551616",
+        "Content-Length:",
+        "X-Missing-Length: 6",
+    ] {
+        assert!(
+            read_framed_response(std::io::Cursor::new(format!(
+                "HTTP/1.1 401 Unauthorized\r\n{headers}\r\n\r\ndenied"
+            )))
+            .is_err()
+        );
     }
 }
 
