@@ -1,0 +1,24 @@
+[[lane]]
+name = "fast"
+command = "pnpm contracts:check"
+purpose = "deterministic local contract and policy proof"
+
+[[lane]]
+name = "audit"
+command = "jankurai audit . --read-only --no-badge --no-score-history --mode advisory"
+purpose = "write jankurai score artifacts"
+
+[[lane]]
+name = "contract-drift"
+command = "pnpm contracts:check"
+purpose = "generated TypeScript/Rust schema drift check (does not itself prove all agent boundary manifests)"
+
+[[lane]]
+name = "security"
+command = "bash tools/security-lane.sh"
+purpose = "fail-closed actionlint, gitleaks, and lockfile/workflow digest proof (full 6-scanner suite remains open)"
+
+[[lane]]
+name = "release"
+command = "pnpm check"
+purpose = "full merge gate"

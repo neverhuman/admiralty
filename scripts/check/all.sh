@@ -17,10 +17,15 @@ if [[ "$(pnpm --version)" != 11.15.1 ]]; then
 fi
 
 # Short canonical scratch avoids Unix-socket path limits and shared ancestors.
+# If /tmp/.git exists on a shared host, use /var/tmp so scratch stays outside Git.
 # Restore the caller's umask so private-at-creation fixtures remain exercised.
 caller_umask="$(umask)"
 umask 077
-check_scratch="$(mktemp -d /tmp/adm.XXXXXX)"
+scratch_base="/tmp"
+if [[ -e /tmp/.git ]] && [[ -d /var/tmp ]] && [[ ! -e /var/tmp/.git ]]; then
+  scratch_base="/var/tmp"
+fi
+check_scratch="$(mktemp -d "${scratch_base}/adm.XXXXXX")"
 check_scratch="$(cd "$check_scratch" && pwd -P)"
 mkdir "$check_scratch/logs" "$check_scratch/canary"
 umask "$caller_umask"
