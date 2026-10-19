@@ -1,4 +1,5 @@
 #![cfg(unix)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use admiralty_core::{
     CommandId, TaskContract, content_digest,
@@ -94,8 +95,28 @@ fn invoke(args: &[&str]) -> Output {
         .unwrap()
 }
 
-fn intake_args<'a>(
-    f: &'a Fixture,
+#[test]
+fn malformed_private_json_never_echoes_source_or_credentials() {
+    let f = Fixture::new();
+    f.config("allowed", TOKEN);
+    let request = f.write(
+        "malformed.json",
+        serde_json::to_string(&json!({TOKEN:"private source text"}))
+            .unwrap()
+            .as_bytes(),
+    );
+    let args = intake_args(&f, "preview", None, &request);
+    let output = invoke(&args.iter().map(String::as_str).collect::<Vec<_>>());
+    assert!(!output.status.success());
+    assert!(
+        !String::from_utf8_lossy(&output.stderr).contains(TOKEN),
+        "private JSON key was exposed"
+    );
+    assert!(!String::from_utf8_lossy(&output.stdout).contains(TOKEN));
+}
+
+fn intake_args(
+    f: &Fixture,
     operation: &str,
     database: Option<&Path>,
     request: &Path,
@@ -304,6 +325,28 @@ fn preview_capture_replay_and_scoped_show_preserve_unicode_without_dispatch() {
     assert_eq!(shown["request"]["source_payload"]["text"], source);
     assert_eq!(shown["request"]["scope"], preview["authorized_scope"]);
     assert_eq!(shown["preview"]["requests"].as_array().unwrap().len(), 1);
+    let observed = admiralty_store::Store::open(&database).unwrap();
+    let snapshot = observed.snapshot().unwrap();
+    assert!(snapshot.projection.tasks.is_empty() && snapshot.projection.messages.is_empty());
+    assert_eq!(snapshot.cursor.event_seq, "0");
+    assert!(
+        observed
+            .claim_outbox_due(Some(100), "test-observer".into(), 10)
+            .unwrap()
+            .is_none()
+    );
+    drop(observed);
+    let config_path = f.path("intake-config.json");
+    let mut config: Value = serde_json::from_slice(&fs::read(&config_path).unwrap()).unwrap();
+    config["credentials"][0]["grants"][0]["authority_generation"] = json!("9007199254740994");
+    config["action_rules"][0]["authority_generation"] = json!("9007199254740994");
+    fs::write(config_path, serde_json::to_vec(&config).unwrap()).unwrap();
+    let stale_args = intake_args(&f, "show-capture", Some(&database), &read_file);
+    assert!(
+        !invoke(&stale_args.iter().map(String::as_str).collect::<Vec<_>>())
+            .status
+            .success()
+    );
 }
 
 #[test]
@@ -439,4 +482,20 @@ fn duplicate_command_uses_service_query_and_returns_bounded_coverage() {
     ));
     assert_eq!(output["candidates"].as_array().unwrap().len(), 0);
     assert!(output.get("coverage").is_some());
+    let missing = f.path("missing.sqlite");
+    let missing_args = intake_args(&f, "duplicates", Some(&missing), &duplicate_file);
+    assert!(
+        !invoke(&missing_args.iter().map(String::as_str).collect::<Vec<_>>())
+            .status
+            .success()
+    );
+    assert!(!missing.exists());
+    let owner = admiralty_store::Store::open(&database).unwrap();
+    let locked_args = intake_args(&f, "duplicates", Some(&database), &duplicate_file);
+    assert!(
+        !invoke(&locked_args.iter().map(String::as_str).collect::<Vec<_>>())
+            .status
+            .success()
+    );
+    drop(owner);
 }

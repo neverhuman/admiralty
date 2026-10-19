@@ -133,9 +133,10 @@ struct DuplicateFile {
 type CliResult<T> = crate::CliResult<T>;
 
 fn decode<T: for<'de> Deserialize<'de>>(path: &std::path::Path) -> CliResult<T> {
-    Ok(serde_json::from_slice(&crate::read_private_command_input(
-        path,
-    )?)?)
+    let bytes = crate::read_private_command_input(path)?;
+    // Serde's diagnostic can echo an unknown key or invalid string value from
+    // private source material before authentication. Do not send it to stderr.
+    serde_json::from_slice(&bytes).map_err(|_| crate::invalid("intake request JSON is invalid"))
 }
 
 struct Runtime {
@@ -201,6 +202,15 @@ fn preview(authority: &AuthorityArgs, path: &std::path::Path) -> CliResult<()> {
     crate::print_json(serde_json::to_value(result)?)
 }
 
+fn read_runtime(database: &std::path::Path, authority: &AuthorityArgs) -> CliResult<Runtime> {
+    if !std::fs::symlink_metadata(database).is_ok_and(|metadata| metadata.file_type().is_file()) {
+        return Err(crate::invalid(
+            "intake read requires an existing regular database",
+        ));
+    }
+    runtime(Some(database), authority)
+}
+
 fn scope_ids(scope: &ScopeSnapshot) -> CliResult<(ProjectId, RootId)> {
     let project = scope
         .project_id
@@ -243,7 +253,7 @@ pub fn run(args: IntakeArgs) -> CliResult<()> {
         } => {
             let input: CaptureReadFile = decode(&request)?;
             let (project, root) = scope_ids(&input.scope)?;
-            let runtime = runtime(Some(&database), &authority)?;
+            let runtime = read_runtime(&database, &authority)?;
             let result = runtime
                 .service
                 .get_captured_intake(
@@ -268,7 +278,7 @@ pub fn run(args: IntakeArgs) -> CliResult<()> {
         } => {
             let input: WorkOrderReadFile = decode(&request)?;
             let (project, root) = scope_ids(&input.scope)?;
-            let runtime = runtime(Some(&database), &authority)?;
+            let runtime = read_runtime(&database, &authority)?;
             let result = runtime
                 .service
                 .get_work_order(
@@ -297,7 +307,7 @@ pub fn run(args: IntakeArgs) -> CliResult<()> {
                     "duplicate query project differs from request project",
                 ));
             }
-            let runtime = runtime(Some(&database), &authority)?;
+            let runtime = read_runtime(&database, &authority)?;
             let result = runtime.service.find_duplicate_candidates(
                 &runtime.actor,
                 &input.project_id,
