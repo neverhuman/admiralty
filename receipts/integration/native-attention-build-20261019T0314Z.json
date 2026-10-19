@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T03:14:16.198Z",
+  "base_revision": "90e76d881689d36226c176a9493c1b8736cce071",
+  "qualified_source": "7c502aecc9ee58b2298d60f7914772f6e994e435",
+  "scope": "Equivalent cfg(test) native attention policy expression; strict source build repair only",
+  "source_sha256": {
+    "crates/admiralty-server/src/native_attention.rs": "b58e190a1d7fdcf1a789ab000b106041138d8e1411dbe75808c840a8c7fe3326"
+  },
+  "checks": [
+    {
+      "command": "cargo clippy -p admiralty-server --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "target/quality/native-attention-current-clippy.log",
+      "sha256": "9dad8332b4bd2ca1c6af979d9c7268ab23faa55b7126cf0a5790dac545c9afd8"
+    },
+    {
+      "command": "cargo test -p admiralty-server --lib native_attention::tests --locked",
+      "exit_code": 0,
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 74,
+      "log": "target/quality/native-attention-current-smoke.log",
+      "sha256": "b0ecef1bccbda60b4619293e837cc5d5e0acc8acc5249c0222c40df18f8464e5"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "review": {
+    "independent": "audit_evidence",
+    "result": "clear; equivalent De Morgan expression and identical short circuit load order/counter/scope checks"
+  },
+  "failure": {
+    "run": 39193205311,
+    "job": 117870271726,
+    "sha256": "7b1c3270f4b1fecadc7a279addb7da7cce5b0b4e62c76fcaadc371359f6819a6"
+  },
+  "native_execution_qualified": false,
+  "parent_acceptance": false
+}
