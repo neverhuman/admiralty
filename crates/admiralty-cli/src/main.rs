@@ -31,7 +31,7 @@ use std::{
 
 type CliResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 const MAX_JSON_BYTES: u64 = 1024 * 1024;
-const SCHEMA_FILES: [&str; 12] = [
+const SCHEMA_FILES: [&str; 13] = [
     "task-contract.schema.json",
     "coordination-message.schema.json",
     "domain-event.schema.json",
@@ -44,6 +44,7 @@ const SCHEMA_FILES: [&str; 12] = [
     "config-patch.schema.json",
     "config-layer-receipt.schema.json",
     "provenance-contribution.schema.json",
+    "views-snapshot.schema.json",
 ];
 
 #[derive(Parser)]
@@ -487,6 +488,7 @@ fn schema_documents() -> CliResult<Vec<(&'static str, Vec<u8>)>> {
         serde_json::to_value(schemars::schema_for!(ConfigPatch))?,
         serde_json::to_value(schemars::schema_for!(ConfigLayerReceipt))?,
         serde_json::to_value(schemars::schema_for!(ProvenanceContribution))?,
+        serde_json::to_value(schemars::schema_for!(admiralty_core::views::ViewsSnapshot))?,
     ];
     SCHEMA_FILES
         .into_iter()

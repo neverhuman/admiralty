@@ -44,4 +44,5 @@ pub mod retirement;
 pub mod scheduler;
 pub mod trials;
 pub mod verification;
+pub mod views;
 pub mod workplans;

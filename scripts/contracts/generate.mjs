@@ -25,6 +25,7 @@ const specifications = [
   ['config-patch', 'ConfigPatch'],
   ['config-layer-receipt', 'ConfigLayerReceipt'],
   ['provenance-contribution', 'ProvenanceContribution'],
+  ['views-snapshot', 'ViewsSnapshot'],
 ];
 const check = process.argv.length === 3 && process.argv[2] === '--check';
 if (process.argv.length > 2 && !check) {

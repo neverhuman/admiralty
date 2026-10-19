@@ -7,6 +7,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -1149,6 +1150,7 @@ export function discoverChromiumBinary(): string {
   }
 
   for (const candidate of [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/opt/google/chrome/chrome',
     '/usr/bin/google-chrome-stable',
     '/usr/bin/google-chrome',
@@ -1222,6 +1224,7 @@ export interface BrowserHarness {
   setViewportSize(width: number, height: number): Promise<void>;
   emulateReducedMotion(reduce: boolean): Promise<void>;
   evaluate<T>(expression: string, timeoutMs?: number): Promise<T>;
+  captureScreenshot(path: string): Promise<void>;
   waitForText(expectedText: string, timeoutMs?: number): Promise<void>;
   waitForSelector(selector: string, timeoutMs?: number): Promise<void>;
   clickNav(viewLabel: string): Promise<void>;
@@ -1830,6 +1833,10 @@ async function launchBrowserHarnessAttempt(
       );
     },
     evaluate,
+    async captureScreenshot(path: string) {
+      const result = await sendCdp('Page.captureScreenshot', { format: 'png' }, sessionId) as { data: string };
+      writeFileSync(path, Buffer.from(result.data, 'base64'));
+    },
     async waitForText(expectedText: string, timeoutMs = 10_000) {
       const escaped = JSON.stringify(expectedText);
       await waitForCondition(
@@ -1992,12 +1999,14 @@ export interface IsolatedNativeAdmiraltyServer {
   ownerToken: string;
   allowedProject: string;
   binaryPath: string;
+  writeLegacySnapshot(value: unknown): void;
   close(): Promise<void>;
 }
 
 export async function startIsolatedNativeAdmiraltyServer(options?: {
   ownerToken?: string;
   allowedProjects?: string[];
+  legacySnapshot?: unknown;
 }): Promise<IsolatedNativeAdmiraltyServer> {
   await ensureBuiltDashboard();
 
@@ -2017,7 +2026,7 @@ export async function startIsolatedNativeAdmiraltyServer(options?: {
   }
 
   // Use /tmp directly so all ancestor directories (/ and /tmp sticky 1777) satisfy startup::read_private_file
-  const privateDir = mkdtempSync('/tmp/adm-e2e-native-srv-');
+  const privateDir = mkdtempSync(join(realpathSync('/tmp'), 'adm-e2e-native-srv-'));
   chmodSync(privateDir, 0o700);
 
   const ownerToken = options?.ownerToken ?? 'adm-isolated-native-owner-token-0123456789abcdef';
@@ -2042,6 +2051,12 @@ export async function startIsolatedNativeAdmiraltyServer(options?: {
   );
   chmodSync(nativeConfigFile, 0o600);
 
+  const legacyStatus = join(privateDir, 'status.json');
+  const legacyIndex = join(privateDir, 'index.html');
+  if (options?.legacySnapshot) {
+    writeFileSync(legacyStatus, JSON.stringify(options.legacySnapshot), { mode: 0o600 });
+    writeFileSync(legacyIndex, '<p>Isolated browser fixture</p>', { mode: 0o600 });
+  }
   const dbPath = join(privateDir, 'native.sqlite');
 
   // Reserve an ephemeral loopback port
@@ -2069,6 +2084,7 @@ export async function startIsolatedNativeAdmiraltyServer(options?: {
   const child = spawn(
     binaryPath,
     [
+      ...(options?.legacySnapshot ? ['--legacy-status-file', legacyStatus, '--legacy-index-file', legacyIndex] : []),
       '--database',
       dbPath,
       '--listen',
@@ -2124,6 +2140,7 @@ export async function startIsolatedNativeAdmiraltyServer(options?: {
     ownerToken,
     allowedProject: allowedProjects[0] ?? 'proj-001',
     binaryPath,
+    writeLegacySnapshot(value: unknown) { writeFileSync(legacyStatus, JSON.stringify(value), { mode: 0o600 }); },
     async close() {
       child.kill('SIGTERM');
       await new Promise<void>((resolveExit) => {

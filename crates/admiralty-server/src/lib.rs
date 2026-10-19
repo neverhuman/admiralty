@@ -4,6 +4,7 @@ pub mod model_selection;
 pub mod models;
 pub mod services;
 pub mod startup;
+mod views;
 use admiralty_core::{Projection, SchedulingState, TaskView};
 use admiralty_store::{Cursor, Store};
 use axum::{
@@ -50,6 +51,7 @@ struct AppState {
     reads: Arc<Semaphore>,
     streams: Arc<Semaphore>,
     models: Option<admiralty_runtime::models::RegistryFile>,
+    views: Arc<views::ViewsHub>,
 }
 
 #[derive(Serialize)]
@@ -639,6 +641,7 @@ pub fn app_with_native_routes(
         reads: Arc::new(Semaphore::new(8)),
         streams: Arc::new(Semaphore::new(MAX_EVENT_STREAMS)),
         models,
+        views: views::ViewsHub::new(),
     };
     let model_routes = Router::new()
         .route("/v1/models", get(model_list).put(model_update))
@@ -653,6 +656,8 @@ pub fn app_with_native_routes(
         .route("/v1/fleet", get(fleet))
         .route("/v2/fleet", get(fleet_v2))
         .route("/v2/events", get(events_v2))
+        .route("/v2/views", get(views::snapshot))
+        .route("/v2/views/events", get(views::events))
         .route("/v2/{*path}", get(|| async { StatusCode::NOT_FOUND }))
         .route("/v1/legacy", get(legacy_snapshot))
         .route("/legacy/", get(legacy_index))

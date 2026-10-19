@@ -50,6 +50,7 @@ dependencies = [
 name = "admiralty-observe"
 version = "0.1.0"
 dependencies = [
+ "admiralty-core",
  "chrono",
  "clap",
  "rustix",
@@ -96,11 +97,13 @@ dependencies = [
  "admiralty-runtime",
  "admiralty-store",
  "axum",
+ "chrono",
  "clap",
  "futures-util",
  "rustix",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
  "uuid",
 ]
