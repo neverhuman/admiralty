@@ -171,6 +171,7 @@ pub struct StoreAuthorities {
     pub intake: Option<Arc<dyn intake::IntakeAuthority>>,
     pub intake_capture: Option<Arc<dyn intake_capture::IntakeCaptureAuthority>>,
     pub questions: Option<Arc<dyn questions::QuestionAuthority>>,
+    pub attention: Option<Arc<dyn attention::AttentionAuthority>>,
 }
 
 enum Request {
@@ -210,6 +211,11 @@ enum Request {
     RegisterAttention {
         request: Box<attention::AttentionDefinition>,
         reply: Reply<attention::AttentionRegistration>,
+    },
+    ApplyAttentionAuthorized {
+        request: Box<attention::AuthorizedAttentionCommand>,
+        proof: attention::AttentionProof,
+        reply: Reply<attention::AttentionResult>,
     },
     ApplyAttention {
         request: Box<attention::AttentionCommand>,
@@ -477,6 +483,7 @@ impl Store {
                     writer.intake_authority = authorities.intake;
                     writer.intake_capture_authority = authorities.intake_capture;
                     writer.question_authority = authorities.questions;
+                    writer.attention_authority = authorities.attention;
                     if ready_tx.send(Ok(())).is_ok() {
                         writer.run(receiver, writer_changes);
                     }
@@ -635,6 +642,18 @@ impl Store {
         attention::validate_command(&request)?;
         self.ask(|reply| Request::ApplyAttention {
             request: Box::new(request),
+            reply,
+        })
+    }
+    pub fn apply_attention_authorized(
+        &self,
+        request: attention::AuthorizedAttentionCommand,
+        proof: attention::AttentionProof,
+    ) -> Result<attention::AttentionResult> {
+        attention::validate_authorized_command(&request)?;
+        self.ask(|reply| Request::ApplyAttentionAuthorized {
+            request: Box::new(request),
+            proof,
             reply,
         })
     }
@@ -1338,6 +1357,7 @@ struct Writer {
     intake_authority: Option<Arc<dyn intake::IntakeAuthority>>,
     intake_capture_authority: Option<Arc<dyn intake_capture::IntakeCaptureAuthority>>,
     question_authority: Option<Arc<dyn questions::QuestionAuthority>>,
+    attention_authority: Option<Arc<dyn attention::AttentionAuthority>>,
     _lock: File,
 }
 
@@ -1416,6 +1436,7 @@ impl Writer {
             intake_authority: None,
             intake_capture_authority: None,
             question_authority: None,
+            attention_authority: None,
             _lock: lock,
         })
     }
@@ -1520,18 +1541,43 @@ impl Writer {
                 }
                 Request::RegisterAttention { request, reply } => {
                     let _ = reply.send(
-                        attention::register(&mut self.connection, *request)
-                            .map_err(StoreError::from),
+                        attention::register_authorized(
+                            &mut self.connection,
+                            *request,
+                            self.attention_authority.as_deref(),
+                        )
+                        .map_err(StoreError::from),
+                    );
+                }
+                Request::ApplyAttentionAuthorized {
+                    request,
+                    proof,
+                    reply,
+                } => {
+                    let _ = reply.send(
+                        attention::apply_authorized(
+                            &mut self.connection,
+                            *request,
+                            proof.as_ref(),
+                            self.attention_authority.as_deref(),
+                        )
+                        .map_err(StoreError::from),
                     );
                 }
                 Request::ApplyAttention { request, reply } => {
-                    let _ = reply.send(
-                        attention::apply(&mut self.connection, *request).map_err(StoreError::from),
-                    );
+                    let _ = request;
+                    let _ = reply.send(Err(StoreError::Attention(
+                        attention::AttentionError::AccessDenied,
+                    )));
                 }
                 Request::AttentionStatus { scope, reply } => {
                     let _ = reply.send(
-                        attention::status(&self.connection, &scope).map_err(StoreError::from),
+                        attention::status_authorized(
+                            &self.connection,
+                            &scope,
+                            self.attention_authority.as_deref(),
+                        )
+                        .map_err(StoreError::from),
                     );
                 }
                 Request::RecordContextRender { request, reply } => {

@@ -134,6 +134,12 @@ impl PartialEq for AuthenticatedCoordinationActor {
 impl Eq for AuthenticatedCoordinationActor {}
 
 impl AuthenticatedCoordinationActor {
+    /// Opaque credential identity for independently installed action policies.
+    /// This label alone is never proof of authentication or an access grant.
+    pub fn credential_id(&self) -> &str {
+        &self.credential_id
+    }
+
     pub fn principal(&self) -> &PrincipalId {
         &self.principal
     }
@@ -153,6 +159,17 @@ fn valid_credential_id(id: &str) -> bool {
 }
 
 impl CoordinationCredentialAuthority {
+    /// Recheck the original opaque actor against this registry incarnation and
+    /// its current revocation state. No action or scope permission is implied.
+    pub fn is_active_actor(&self, actor: &AuthenticatedCoordinationActor) -> bool {
+        Arc::ptr_eq(&self.incarnation, &actor.incarnation)
+            && self.credentials.iter().any(|credential| {
+                credential.credential_id == actor.credential_id
+                    && credential.actor == actor.principal
+                    && !credential.revoked
+            })
+    }
+
     pub fn new(
         credentials: Vec<CoordinationCredential>,
     ) -> Result<Self, CoordinationCredentialError> {
