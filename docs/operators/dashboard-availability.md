@@ -32,8 +32,15 @@ failed attempt. A health response or status200 headers alone cannot verify that
 the entire feed arrived and rendered. Verify a completed `/v1/legacy` request,
 visible project data and advancing producer time in the actual browser.
 
-Open availability work (Root integration with the Commodore as sole deployer):
-qualify bounded snapshot transfer/compression and clearer initial connection
-failure visibility on a slow tunnel, preserving byte/validation limits,
-authentication, source provenance and the existing request deadline. No such
-runtime repair or availability acceptance is claimed by the CI onboarding PR.
+An instrumented browser load at21:07UTC reproduced first-contentful-paint at
+5.6seconds, followed by a12second snapshot abort and no populated project tabs
+after32seconds. That failure is retained alongside successful retries.
+
+The repair negotiates lossless gzip on snapshots and text assets, gives Vite's
+versioned JavaScript/CSS immutable caching and replaces the generic abort text
+with a clear timeout explanation. Compression runs in the blocking read task
+under the shared read semaphore. Authentication, decompressed source bounds,
+source age and the12second request deadline remain enforced. Identity clients
+and explicit `gzip;q=0` remain supported. Local tests do not establish production
+availability: repeat the rendered browser timing through the same localhost
+connection after the sole Commodore's qualified cutover.

@@ -37,23 +37,25 @@ pub(crate) fn read_bounded(path: &PathBuf, limit: u64) -> Result<Vec<u8>, String
     Ok(bytes)
 }
 
+fn read_snapshot(config: &LegacyConfig) -> Result<(serde_json::Value, Vec<u8>), String> {
+    let bytes = read_bounded(&config.status_file, MAX_STATUS_BYTES)?;
+    let value: serde_json::Value =
+        serde_json::from_slice(&bytes).map_err(|_| "legacy source is not valid JSON")?;
+    if !value.is_object()
+        || !value["projects"].is_object()
+        || !value["order"].is_array()
+        || !value["generated_utc"].is_string()
+    {
+        return Err("legacy snapshot is missing required source fields".to_string());
+    }
+    Ok((value, bytes))
+}
+
 pub async fn snapshot(
     config: LegacyConfig,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
-    let result = tokio::task::spawn_blocking(move || {
-        let bytes = read_bounded(&config.status_file, MAX_STATUS_BYTES)?;
-        let value: serde_json::Value =
-            serde_json::from_slice(&bytes).map_err(|_| "legacy source is not valid JSON")?;
-        if !value.is_object()
-            || !value["projects"].is_object()
-            || !value["order"].is_array()
-            || !value["generated_utc"].is_string()
-        {
-            return Err("legacy snapshot is missing required source fields".to_string());
-        }
-        Ok(value)
-    })
-    .await;
+    let result =
+        tokio::task::spawn_blocking(move || read_snapshot(&config).map(|(value, _)| value)).await;
     match result {
         Ok(Ok(value)) => Ok(Json(value)),
         _ => Err((
@@ -61,6 +63,29 @@ pub async fn snapshot(
             Json(
                 serde_json::json!({"error":"Legacy snapshot unavailable, malformed or outside bounds; source facts were not fabricated."}),
             ),
+        )),
+    }
+}
+
+pub(crate) async fn snapshot_encoded(
+    config: LegacyConfig,
+    gzip: bool,
+) -> Result<Response, (StatusCode, Json<serde_json::Value>)> {
+    let result = tokio::task::spawn_blocking(move || {
+        let (_, bytes) = read_snapshot(&config)?;
+        // Preserve the source bytes and validation bounds; compression changes
+        // transport only, never trims history or manufactures fresher data.
+        crate::http_bytes::response("application/json", bytes, gzip)
+            .map_err(|_| "legacy response encoding failed".to_owned())
+    })
+    .await;
+    match result {
+        Ok(Ok(response)) => Ok(response),
+        _ => Err((
+            StatusCode::BAD_GATEWAY,
+            Json(serde_json::json!({
+                "error":"Legacy snapshot unavailable, malformed or outside bounds; source facts were not fabricated."
+            })),
         )),
     }
 }

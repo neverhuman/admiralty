@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Negotiate lossless gzip for live snapshots and text assets, cache Vite's
+  versioned JavaScript/CSS, and explain timed-out snapshot requests clearly.
+  Existing source bounds, authentication and request deadlines remain enforced.
+
 - Rust serves the real production observation feed, native HTTP service and
   React dashboard. Owned legacy Python production services are retired.
 - Scoped native Admiral/captain messages and separate application receipts are

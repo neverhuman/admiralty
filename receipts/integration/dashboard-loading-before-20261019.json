@@ -1,0 +1,46 @@
+{
+  "production_head": "d858a9a292a9e458d5851531e1e548f817908520",
+  "measurement": "real Chrome iframe navigating production localhost origin; parent health page avoids a second React poller",
+  "checked_utc": "2026-10-19T21:08:12.014Z",
+  "origin": "http://localhost:18890",
+  "ok": false,
+  "navigation_to_visible_snapshot_ms": 32004.4,
+  "first_contentful_paint_ms": 5600,
+  "project_tabs": 1,
+  "dom_elements": 96,
+  "error": "signal is aborted without reason. Existing snapshot remains visible when available; source age is preserved.",
+  "resources": [
+    {
+      "path": "/assets/index-BZ1KE9jM.css",
+      "start_ms": 3710.5,
+      "duration_ms": 194,
+      "transfer_bytes": 61654,
+      "decoded_bytes": 61354
+    },
+    {
+      "path": "/assets/index-CL0kehL7.js",
+      "start_ms": 3710.5,
+      "duration_ms": 1823.5,
+      "transfer_bytes": 509811,
+      "decoded_bytes": 509511
+    },
+    {
+      "path": "/v1/legacy",
+      "start_ms": 5579.2,
+      "duration_ms": 12002,
+      "transfer_bytes": 300,
+      "decoded_bytes": 0
+    }
+  ],
+  "server_independent_measurement": {
+    "snapshot_uncompressed_bytes": 1588745,
+    "snapshot_server_seconds": 0.0491,
+    "gzip1_bytes": 329903,
+    "gzip_seconds": 0.0091,
+    "javascript_bytes": 509511,
+    "javascript_gzip1_bytes": 143482,
+    "css_bytes": 61354,
+    "css_gzip1_bytes": 16606
+  },
+  "production_repair_verified": false
+}

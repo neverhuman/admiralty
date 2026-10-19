@@ -219,4 +219,21 @@ describe('read-only detailed snapshot transport', () => {
     const stop = watchLegacy({ fetcher, onSnapshot: vi.fn(), onError: vi.fn() });
     await vi.advanceTimersByTimeAsync(60_000); expect(fetcher).toHaveBeenCalledTimes(1); stop();
   });
+  it('reports the bounded timeout clearly and recovers on the next sequential poll', async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn<typeof fetch>().mockImplementationOnce((_url, options) =>
+      new Promise((_resolve, reject) => options?.signal?.addEventListener('abort', () =>
+        reject(new DOMException('signal is aborted without reason', 'AbortError')))))
+      .mockResolvedValue(Response.json(snapshot()));
+    const onError = vi.fn(), onSnapshot = vi.fn();
+    const stop = watchLegacy({ fetcher, onError, onSnapshot });
+    await vi.advanceTimersByTimeAsync(12_000);
+    expect(onError).toHaveBeenLastCalledWith(expect.stringContaining('within 12 seconds'));
+    expect(onSnapshot).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(onSnapshot).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenLastCalledWith('');
+    stop();
+  });
 });
