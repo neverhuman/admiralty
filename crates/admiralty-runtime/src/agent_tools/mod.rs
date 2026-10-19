@@ -11,6 +11,13 @@ pub const MAX_REQUEST_BYTES: usize = 16 * 1024;
 const MAX_REPLY_BYTES: usize = 128 * 1024;
 const DEADLINE: Duration = Duration::from_secs(2);
 const PROTOCOL: &str = "2025-06-18";
+const TOOL_NAMES: &[&str] = &[
+    "task_context_get",
+    "inbox_pending",
+    "inbox_application_ack",
+    "message_send",
+    "inbox_ack_pending",
+];
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -63,15 +70,32 @@ fn fields(
             ],
             &[],
         )),
+        "message_send" => Some((
+            "send",
+            &["request_id", "route_id", "payload"],
+            &["causation_id"],
+        )),
+        "inbox_ack_pending" => Some((
+            "ack-pending",
+            &[
+                "request_id",
+                "project_id",
+                "recipient",
+                "context_epoch",
+                "message_id",
+            ],
+            &[],
+        )),
         _ => None,
     }
 }
 
 pub fn tool_catalog() -> Value {
-    let tools: Vec<_> = ["task_context_get", "inbox_pending", "inbox_application_ack"].into_iter().map(|name| {
+    let tools: Vec<_> = TOOL_NAMES.iter().copied().map(|name| {
         let (_, required, optional) = fields(name).expect("fixed catalog");
         let properties: serde_json::Map<String, Value> = required.iter().chain(optional).map(|key| {
             let schema = match *key {
+                "payload" => json!({"type":"object","description":"The versioned CoordinationMessage payload; validated by the native Rust contract.","required":["kind"],"properties":{"kind":{"enum":["task_assigned","question","answer","artifact_ready","handoff"]}}}),
                 "limit" => json!({"type":"integer","minimum":1,"maximum":16}),
                 "max_estimated_tokens" => json!({"type":"integer","minimum":1,"maximum":4096}),
                 _ => json!({"type":"string","minLength":1,"maxLength":4096}),
@@ -81,6 +105,8 @@ pub fn tool_catalog() -> Value {
         json!({"name":name,"description":match name {
             "task_context_get" => "Read the authorized task capsule and current pending questions at this context epoch.",
             "inbox_pending" => "Read a bounded authorized inbox page; retrieve the next page using its exact cursor.",
+            "message_send" => "Send a typed message through a preinstalled exact task/recipient route. Preserve request_id for an exact retry; this cannot start or accept a task.",
+            "inbox_ack_pending" => "Acknowledge application receipt in your separately granted own inbox. Preserve request_id for exact retries; this does not answer or accept work.",
             _ => "Record application receipt only; this does not answer a question or grant execution authority."
         },"inputSchema":{"type":"object","properties":properties,"required":required,"additionalProperties":false}})
     }).collect();
@@ -109,6 +135,9 @@ impl ToolCall {
                 return Err(invalid("unknown tool argument"));
             }
             let valid = match key.as_str() {
+                "payload" => {
+                    serde_json::from_value::<admiralty_core::MessagePayload>(value.clone()).is_ok()
+                }
                 "limit" => value.as_u64().is_some_and(|n| (1..=16).contains(&n)),
                 "max_estimated_tokens" => value.as_u64().is_some_and(|n| (1..=4096).contains(&n)),
                 _ => value
@@ -142,13 +171,13 @@ impl AgentClient {
     }
     pub fn call(&self, call: &ToolCall) -> io::Result<Value> {
         let endpoint = call.endpoint()?;
-        let ack = endpoint == "application-ack";
-        let body = if ack {
+        let mutation = matches!(endpoint, "application-ack" | "send" | "ack-pending");
+        let body = if mutation {
             serde_json::to_vec(&call.arguments)?
         } else {
             Vec::new()
         };
-        let query = if ack {
+        let query = if mutation {
             String::new()
         } else {
             let args = call
@@ -173,7 +202,7 @@ impl AgentClient {
         let mut stream = TcpStream::connect_timeout(&self.server, DEADLINE)?;
         let request = format!(
             "{} /v2/agents/inbox/{endpoint}{query} HTTP/1.1\r\nHost: {}\r\nAuthorization: Bearer {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-            if ack { "POST" } else { "GET" },
+            if mutation { "POST" } else { "GET" },
             self.server,
             self.token,
             body.len()
@@ -235,7 +264,7 @@ fn decode_reply(reply: &[u8]) -> io::Result<Value> {
     if lines.next().and_then(|line| line.split_whitespace().nth(1)) != Some("200") {
         return Err(io::Error::new(
             io::ErrorKind::PermissionDenied,
-            "agent API rejected the request; reconcile before retrying an ACK",
+            "agent API rejected the request; reconcile before retrying a mutation",
         ));
     }
     let mut length = None;
@@ -339,7 +368,7 @@ impl McpSession {
                         json!({"content":[{"type":"text","text":value.to_string()}],"structuredContent":value,"isError":false})
                     }
                     Err(_) => {
-                        json!({"content":[{"type":"text","text":"Agent operation failed; refresh context and reconcile any application ACK before retrying."}],"isError":true})
+                        json!({"content":[{"type":"text","text":"Agent operation failed; refresh context and reconcile any message or application ACK before retrying."}],"isError":true})
                     }
                 }
             }
@@ -439,10 +468,7 @@ mod tests {
             .iter()
             .map(|tool| tool["name"].as_str().expect("name"))
             .collect();
-        assert_eq!(
-            names,
-            ["task_context_get", "inbox_pending", "inbox_application_ack"]
-        );
+        assert_eq!(names, TOOL_NAMES);
         for arguments in [
             json!({"project_id":"project","task_id":"task","context_epoch":"epoch","sql":"SELECT *"}),
             json!({"project_id":"project","task_id":"task","context_epoch":"epoch","limit":17}),
@@ -527,6 +553,69 @@ mod tests {
         assert!(decode_reply(b"HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\n{}").is_err());
         assert!(decode_reply(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n{}").is_err());
         assert!(decode_reply(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 2\r\n\r\n{}").is_err());
+    }
+    #[test]
+    fn native_message_tools_preserve_structured_payloads_and_use_post_without_query_strings() {
+        for (name, endpoint, arguments) in [
+            (
+                "message_send",
+                "send",
+                json!({"request_id":"4ab239fa-ef42-4ef8-8724-4859d4db7822","route_id":"captain-route","payload":{"kind":"handoff","task_id":"task","candidate_ref":"commit:abc","next_action":"Do NOT merge until CI passes"}}),
+            ),
+            (
+                "inbox_ack_pending",
+                "ack-pending",
+                json!({"request_id":"d474212d-c8de-4b71-9699-a949ae4b187c","project_id":"project","recipient":"captain","context_epoch":"epoch-1","message_id":"native-message"}),
+            ),
+        ] {
+            let listener = TcpListener::bind("127.0.0.1:0").expect("owned listener");
+            let address = listener.local_addr().expect("address");
+            let expected = arguments.clone();
+            let server = thread::spawn(move || {
+                let (mut stream, _) = listener.accept().expect("client connect");
+                stream.set_read_timeout(Some(DEADLINE)).expect("timeout");
+                let mut header = Vec::new();
+                let mut byte = [0];
+                while !header.ends_with(b"\r\n\r\n") {
+                    assert!(header.len() < MAX_REQUEST_BYTES);
+                    stream.read_exact(&mut byte).expect("request header");
+                    header.push(byte[0]);
+                }
+                let header = String::from_utf8(header).expect("HTTP headers");
+                assert!(
+                    header.starts_with(&format!("POST /v2/agents/inbox/{endpoint} HTTP/1.1\r\n"))
+                );
+                let length = header
+                    .lines()
+                    .find_map(|line| line.strip_prefix("Content-Length: "))
+                    .expect("length")
+                    .parse::<usize>()
+                    .expect("body size");
+                assert!(length <= MAX_REQUEST_BYTES);
+                let mut body = vec![0; length];
+                stream.read_exact(&mut body).expect("complete body");
+                assert_eq!(
+                    serde_json::from_slice::<Value>(&body).expect("typed payload"),
+                    expected
+                );
+                stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 18\r\nConnection: close\r\n\r\n{\"duplicate\":true}").expect("receipt");
+            });
+            let client = AgentClient::new(address, "test-token-with-sufficient-entropy".into())
+                .expect("client");
+            let response = ready().handle(json!({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":name,"arguments":arguments}}),|tool| client.call(tool)).expect("MCP reply");
+            assert_eq!(
+                response["result"]["structuredContent"],
+                json!({"duplicate":true})
+            );
+            server.join().expect("server done");
+        }
+        for arguments in [
+            json!({"request_id":"request","route_id":"route","sender":"owner","payload":{"kind":"handoff","task_id":"task","candidate_ref":"candidate","next_action":"review"}}),
+            json!({"request_id":"request","route_id":"route","payload":{"kind":"execute","shell":"command"}}),
+        ] {
+            let rejected = ready().handle(json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"message_send","arguments":arguments}}), |_| panic!("invalid commands must not access the server")).expect("rejection");
+            assert_eq!(rejected["error"]["code"], -32602);
+        }
     }
     #[test]
     fn stdio_rejects_oversized_frames_before_backend_access() {
