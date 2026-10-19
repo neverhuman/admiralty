@@ -1,5 +1,6 @@
 //! Actual sole-writer admission transactions; no provider is configured.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+mod support;
 use admiralty_core::{DomainEvent, SourceIdentity, TaskContract, content_digest};
 use admiralty_runtime::reservations::{
     AccountId, CurrencyUnit, MinorUnits, ReservationEvent, ReservationLedger, ReservationScope,
@@ -19,6 +20,7 @@ use std::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
     },
 };
+use support::private_tempdir;
 
 struct Credential;
 #[derive(Default)]
@@ -165,7 +167,7 @@ fn counts(path: &Path) -> (i64, i64, i64) {
 
 #[test]
 fn atomic_claim_exact_retry_after_later_commands_restart_and_backup() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = private_tempdir();
     let path = tmp.path().join("db.sqlite");
     let policy = Arc::new(Policy::default());
     let store = open(&path, policy.clone());
@@ -258,7 +260,7 @@ fn atomic_claim_exact_retry_after_later_commands_restart_and_backup() {
 
 #[test]
 fn late_sql_failure_rolls_back_reservation_claim_and_outbox() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = private_tempdir();
     let path = tmp.path().join("db.sqlite");
     let store = open(&path, Arc::new(Policy::default()));
     configure(&store);
@@ -301,7 +303,7 @@ fn late_sql_failure_rolls_back_reservation_claim_and_outbox() {
 
 #[test]
 fn final_authority_revocation_and_revoked_retry_have_no_effects() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = private_tempdir();
     let path = tmp.path().join("db.sqlite");
     let policy = Arc::new(Policy::default());
     let store = open(&path, policy.clone());
@@ -352,7 +354,7 @@ fn final_authority_revocation_and_revoked_retry_have_no_effects() {
 
 #[test]
 fn ordinary_claim_cannot_be_upgraded_or_bypass_protected_retry() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = private_tempdir();
     let path = tmp.path().join("db.sqlite");
     let store = open(&path, Arc::new(Policy::default()));
     configure(&store);
@@ -401,7 +403,7 @@ fn ordinary_claim_cannot_be_upgraded_or_bypass_protected_retry() {
 
 #[test]
 fn conflicting_outbox_commits_incident_without_debit() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = private_tempdir();
     let path = tmp.path().join("db.sqlite");
     let policy = Arc::new(Policy::default());
     let store = open(&path, policy.clone());
@@ -490,7 +492,7 @@ fn conflicting_outbox_commits_incident_without_debit() {
 
 #[test]
 fn racing_ready_claims_cannot_overspend_one_current_ledger() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = private_tempdir();
     let path = tmp.path().join("db.sqlite");
     let store = open(&path, Arc::new(Policy::default()));
     configure(&store);
@@ -541,7 +543,7 @@ fn racing_ready_claims_cannot_overspend_one_current_ledger() {
 
 #[test]
 fn missing_reverse_binding_is_corruption_on_reopen() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = private_tempdir();
     let path = tmp.path().join("db.sqlite");
     let policy = Arc::new(Policy::default());
     let store = open(&path, policy.clone());
@@ -580,7 +582,7 @@ fn missing_reverse_binding_is_corruption_on_reopen() {
 
 #[test]
 fn corrupted_active_binding_cannot_be_replayed_as_ordinary() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = private_tempdir();
     let path = tmp.path().join("db.sqlite");
     let store = open(&path, Arc::new(Policy::default()));
     configure(&store);
@@ -618,7 +620,7 @@ fn corrupted_active_binding_cannot_be_replayed_as_ordinary() {
 
 #[test]
 fn wrong_contract_scope_unit_account_and_effect_deny_without_partial_writes() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = private_tempdir();
     let path = tmp.path().join("db.sqlite");
     let store = open(&path, Arc::new(Policy::default()));
     configure(&store);
