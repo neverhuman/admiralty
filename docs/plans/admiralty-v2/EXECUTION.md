@@ -2873,3 +2873,30 @@ not a new authorization. These new model/UI fixes are separately packaged source
 not yet a live deployment in this receipt. MIT is merged; P00/P01 alone accepted.
 Current68bae browser CI failed19pass1Atlasname mismatch; Rust hit its explicit
 15minute limit with missing job logs. No full-green/resource-cause claim.
+
+### 14:06Z — Full browser sequence repaired after exact Linux failures
+
+PR127 merged13:50:07Z into6709bf51a39ab51938852da4719a5a9061a3329f after
+exact9d5d189 neverhumanbot approval13:49:44Z;0openPRs observed13:50:34.677Z,
+all14qualified hashes match. Remote custody independently verifies271payloads
+13:53:01.434Z (8d4a5662), preserving the first rejected AppleDouble/PAX archive.
+Sole deployer885617 ACKed exact6709 at13:54:16Z; merged is not deployed.
+
+Actual6709 Linux browser39263549713 reports16pass/5fail: retained-access helpers,
+old real-Git access label, owner contrast incomplete/partial overlap and new
+fixture128MiB binary bound. These are separately retained, not the old68bae name
+failure. Source22cb3ca336135841ca8ecda203730f27aed7d5ab repairs actual UI access
+reuse, visible identity selectors, owned-card avatar layout and bounded streaming
+fixture fingerprint; step-local dev debug metadata is disabled. Production
+ArtifactStore/runtime128MiB guards, assertions, overflow and deadlines unchanged.
+
+Actual full Mac browser suite now21pass/0fail/0skip across4files in29.70s,
+including native temporary-Git, private/public access, nine dark/light/mobile
+axe surfaces and mock command fixtures as declared. Earlier20pass1obsolete-selector
+failure is retained. All11audited surfaces0violations/0incomplete are not11tests.
+Typechecks/build/actionlint pass; exact Linux binary size/result and actual CI
+owner occluder remain unestablished. See native-browser-session-20261019T1406Z.json.
+No new case definitions, live-new-source proof, provider authority, settlement,
+recovery or whole-parent acceptance follow. Prior reviewe110d8f6 called20c09...
+a production-bundle hash; it is the pinned axe script hash. Actual UI provenance
+uses source/dist/deployment hashes. Immutable prior review remains preserved.
