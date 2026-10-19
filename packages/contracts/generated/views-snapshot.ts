@@ -1,6 +1,6 @@
 /**
  * Generated from schemas/views-snapshot.schema.json by json-schema-to-typescript@16.0.0.
- * Source SHA-256: 56e65a94e54997604f91dfdac0344f3eb25a77e377e94c500395fecd4eaa27a7
+ * Source SHA-256: ad1eb2064f042c268fb0c983540730bf8ad5a7df743b5a9278971273dedff270
  * Do not edit. Rust domain validation still applies at runtime.
  */
 
@@ -33,6 +33,7 @@ export interface ViewAgent {
   effort?: string | null;
   id: string;
   model?: string | null;
+  model_observed_utc?: string | null;
   model_source: string;
   name: string;
   node?: string | null;

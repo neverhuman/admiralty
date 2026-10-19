@@ -131,50 +131,37 @@ async fn update(hub: &ViewsHub, store: &Store, config: &ServerConfig) {
             coverage: "Last successful observations retained. Check observer status source.".into(),
         });
         if let Some(previous) = &previous {
-            for project in &previous.snapshot.projects {
-                if !snapshot.projects.iter().any(|p| p.id == project.id) {
-                    snapshot.projects.push(project.clone());
+            for prior in &previous.snapshot.projects {
+                if let Some(current) = snapshot.projects.iter_mut().find(|p| p.id == prior.id) {
+                    current.git = current.git.take().or_else(|| prior.git.clone());
+                    current.name = prior.name.clone();
+                    current.task_count = current.task_count.or(prior.task_count);
+                } else {
+                    snapshot.projects.push(prior.clone());
                 }
             }
+            snapshot.projects.sort_by_key(|p| {
+                previous
+                    .snapshot
+                    .projects
+                    .iter()
+                    .position(|old| old.id == p.id)
+                    .unwrap_or(usize::MAX)
+            });
             for agent in &previous.snapshot.agents {
-                if !snapshot.agents.iter().any(|a| a.id == agent.id) {
-                    snapshot.agents.push(agent.clone());
+                if agent.role != ViewRole::Assignment {
+                    retain_agent(&mut snapshot, agent);
                 }
             }
         }
     } else if let (Some(source), Some(previous)) = (&source, &previous) {
-        // An unavailable host inventory cannot establish that its agents exited.
         let failed = items(&source["global_resources"]["hosts"])
             .filter(|h| h["reachable"] == false || h["screen_inventory_available"] == false)
             .filter_map(|h| s(&h["host"]))
             .collect::<BTreeSet<_>>();
         for agent in &previous.snapshot.agents {
             if agent.node.as_ref().is_some_and(|n| failed.contains(n)) {
-                let replacements = snapshot
-                    .agents
-                    .iter()
-                    .filter(|a| {
-                        a.id != agent.id
-                            && a.role == agent.role
-                            && a.project_id == agent.project_id
-                            && a.node == agent.node
-                            && a.presence == ViewPresence::Unobserved
-                            && matches!(a.role, ViewRole::Admiral | ViewRole::Commodore)
-                    })
-                    .map(|a| a.id.clone())
-                    .collect::<BTreeSet<_>>();
-                snapshot
-                    .agents
-                    .retain(|a| a.id != agent.id && !replacements.contains(&a.id));
-                for a in &mut snapshot.agents {
-                    if a.parent_id
-                        .as_ref()
-                        .is_some_and(|p| replacements.contains(p))
-                    {
-                        a.parent_id = Some(agent.id.clone());
-                    }
-                }
-                snapshot.agents.push(agent.clone());
+                retain_agent(&mut snapshot, agent);
             }
         }
     }
@@ -219,6 +206,81 @@ async fn update(hub: &ViewsHub, store: &Store, config: &ServerConfig) {
     if !wire.is_empty() && wire.len() <= MAX_FRAME {
         hub.current
             .send_replace(Some(Arc::new(Cut { snapshot, wire })));
+    }
+}
+
+fn retain_agent(snapshot: &mut ViewsSnapshot, agent: &ViewAgent) {
+    let replacements = snapshot
+        .agents
+        .iter()
+        .filter(|a| {
+            a.id != agent.id
+                && a.role == agent.role
+                && a.project_id == agent.project_id
+                && a.presence == ViewPresence::Unobserved
+                && matches!(
+                    a.role,
+                    ViewRole::Owner | ViewRole::Watcher | ViewRole::Admiral | ViewRole::Commodore
+                )
+        })
+        .map(|a| a.id.clone())
+        .collect::<BTreeSet<_>>();
+    snapshot
+        .agents
+        .retain(|a| a.id != agent.id && !replacements.contains(&a.id));
+    for a in &mut snapshot.agents {
+        if a.parent_id
+            .as_ref()
+            .is_some_and(|p| replacements.contains(p))
+        {
+            a.parent_id = Some(agent.id.clone());
+        }
+    }
+    snapshot.agents.push(agent.clone());
+}
+enum Binding {
+    Found(String),
+    Missing,
+    Ambiguous,
+}
+fn full_identity(node: &str, raw: &Value) -> Option<String> {
+    let full = ["id", "screen"]
+        .iter()
+        .filter_map(|key| s(&raw[*key]))
+        .find(|id| {
+            id.starts_with("screen:")
+                || id.split_once('.').is_some_and(|(pid, _)| {
+                    !pid.is_empty() && pid.bytes().all(|b| b.is_ascii_digit())
+                })
+        });
+    full.and_then(|full| {
+        if full.starts_with("screen:") {
+            full.starts_with(&format!("screen:{node}:")).then_some(full)
+        } else {
+            Some(format!("screen:{node}:{full}"))
+        }
+    })
+}
+fn binding(agents: &BTreeMap<String, ViewAgent>, node: &str, raw: &Value) -> Binding {
+    if let Some(canonical) = full_identity(node, raw) {
+        return agents
+            .get(&canonical)
+            .filter(|a| a.node.as_deref() == Some(node))
+            .map_or(Binding::Missing, |a| Binding::Found(a.id.clone()));
+    }
+    let Some(name) = field(raw, &["screen", "name", "id"]) else {
+        return Binding::Missing;
+    };
+    let mut matches = agents
+        .values()
+        .filter(|a| a.node.as_deref() == Some(node) && a.name == name);
+    let Some(first) = matches.next() else {
+        return Binding::Missing;
+    };
+    if matches.next().is_some() {
+        Binding::Ambiguous
+    } else {
+        Binding::Found(first.id.clone())
     }
 }
 
@@ -329,6 +391,7 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
                     state,
                     model,
                     requested_model: field(raw, &["requested_model", "configured_model"]),
+                    model_observed_utc: s(&raw["model_observed_utc"]),
                     model_source: s(&raw["model_source"]).unwrap_or_else(|| {
                         "producer report; provider confirmation unavailable".into()
                     }),
@@ -374,14 +437,10 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
     }
     // Explicit lane mappings join observed screens by node/name; assignments do not add runs.
     for lane in items(&rollout["lanes"]) {
-        let name = field(lane, &["screen"]);
         let node = field(lane, &["node", "host"]).unwrap_or_else(|| host.clone());
-        for a in agents.values_mut().filter(|a| {
-            a.node.as_ref() == Some(&node)
-                && name
-                    .as_ref()
-                    .is_some_and(|n| a.name == *n || a.id.ends_with(&format!(":{n}")))
-        }) {
+        if let Binding::Found(id) = binding(&agents, &node, lane)
+            && let Some(a) = agents.get_mut(&id)
+        {
             a.project_id = s(&rollout["project"]["id"]);
             a.task = field(lane, &["packet_id", "task"]);
             a.branch = s(&lane["branch"]);
@@ -395,31 +454,35 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
      -> String {
         let node = field(raw, &["host", "node"]).unwrap_or_else(|| host.clone());
         let screen = field(raw, &["screen", "id", "name"]);
-        let matches = agents
-            .values()
-            .filter(|a| {
-                if matches!(role, ViewRole::Owner | ViewRole::Watcher)
-                    && field(raw, &["id", "screen"]).is_none()
-                {
-                    return false;
-                }
-                a.node.as_ref() == Some(&node)
-                    && screen
-                        .as_ref()
-                        .is_some_and(|n| a.name == *n || a.id.ends_with(&format!(":{n}")))
-            })
-            .map(|a| a.id.clone())
-            .collect::<Vec<_>>();
-        let id = if matches.len() == 1 {
-            matches[0].clone()
+        let joined = if matches!(role, ViewRole::Owner | ViewRole::Watcher)
+            && field(raw, &["id", "screen"]).is_none()
+        {
+            Binding::Missing
         } else {
-            format!("role:{fallback}:{}", project.as_deref().unwrap_or("fleet"))
+            binding(agents, &node, raw)
+        };
+        let ambiguous = matches!(joined, Binding::Ambiguous);
+        let fallback_id = format!("role:{fallback}:{}", project.as_deref().unwrap_or("fleet"));
+        let id = match joined {
+            Binding::Found(id) => id,
+            Binding::Missing if raw["agent_running"] == true => {
+                full_identity(&node, raw).unwrap_or(fallback_id)
+            }
+            _ => fallback_id,
         };
         if let Some(agent) = agents.get_mut(&id) {
             agent.role = role;
             agent.project_id = project;
+            if raw["agent_running"] == true && agent.model.is_none() {
+                agent.model = s(&raw["model"]);
+                agent.model_observed_utc = s(&raw["model_observed_utc"]);
+                if agent.model.is_some() {
+                    agent.model_source =
+                        s(&raw["model_source"]).unwrap_or_else(|| "Producer model report".into());
+                }
+            }
         } else {
-            let running = raw["agent_running"] == true;
+            let running = raw["agent_running"] == true && !ambiguous;
             agents.insert(
                 id.clone(),
                 ViewAgent {
@@ -441,6 +504,7 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
                     },
                     model: s(&raw["model"]),
                     requested_model: s(&raw["requested_model"]),
+                    model_observed_utc: s(&raw["model_observed_utc"]),
                     model_source: s(&raw["model_source"]).unwrap_or_else(|| {
                         "Configured role; model report may be unavailable".into()
                     }),
@@ -464,9 +528,19 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
         None,
         "owner",
     );
+    let mut watcher_raw = source["hierarchy"]["watcher"].as_object().map_or_else(
+        || source["hierarchy"]["grokbot"].clone(),
+        |v| Value::Object(v.clone()),
+    );
+    if !watcher_raw.is_object() {
+        watcher_raw = json!({"name":"Grokbot"});
+    }
+    if field(&watcher_raw, &["name", "screen", "id"]).is_none() {
+        watcher_raw["name"] = json!("Grokbot");
+    }
     let watcher = configure(
         &mut agents,
-        &json!({"name":field(&source["hierarchy"]["grokbot"],&["name"]).unwrap_or_else(||"Grokbot".into())}),
+        &watcher_raw,
         ViewRole::Watcher,
         None,
         "watcher",
@@ -493,15 +567,11 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
         for raw in items(&captain["workers"]) {
             let node = field(raw, &["host", "node"]).unwrap_or_else(|| host.clone());
             let name = field(raw, &["screen", "name", "id"]);
-            let existing = agents
-                .values()
-                .find(|a| {
-                    a.node.as_ref() == Some(&node)
-                        && name
-                            .as_ref()
-                            .is_some_and(|n| a.name == *n || a.id.ends_with(&format!(":{n}")))
-                })
-                .map(|a| a.id.clone());
+            let existing = match binding(&agents, &node, raw) {
+                Binding::Found(id) => Some(id),
+                Binding::Missing => None,
+                Binding::Ambiguous => continue,
+            };
             if let Some(id) = existing {
                 if let Some(a) = agents.get_mut(&id) {
                     a.project_id = Some(project_id.clone());
@@ -532,6 +602,7 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
                         state: field(raw, &["state", "status"]).unwrap_or_else(|| "unknown".into()),
                         model: s(&raw["model"]),
                         requested_model: s(&raw["requested_model"]),
+                        model_observed_utc: s(&raw["model_observed_utc"]),
                         model_source: s(&raw["model_source"])
                             .unwrap_or_else(|| "Producer report".into()),
                         effort: s(&raw["effort"]),
@@ -574,6 +645,7 @@ fn project(native: &Snapshot, source: Option<&Value>, simulated: bool) -> ViewsS
                     model: None,
                     requested_model: None,
                     model_source: "Not exposed by task projection".into(),
+                    model_observed_utc: None,
                     effort: None,
                     task: Some(task.contract.task_id.to_string()),
                     branch: None,
@@ -781,6 +853,7 @@ fn seed_demo(snapshot: &mut ViewsSnapshot) {
                 model: Some(models[(index + n) % models.len()].into()),
                 requested_model: None,
                 model_source: "Synthetic fixture".into(),
+                model_observed_utc: None,
                 effort: Some("high".into()),
                 task: Some(format!("{}-task-{}", p.id, n + 1)),
                 branch: (n == 0).then(|| "worker/ui".into()),
@@ -872,6 +945,51 @@ pub(crate) async fn events(
 mod tests {
     use super::*;
     #[test]
+    fn ambiguous_short_screen_names_do_not_bind_lanes_or_managers() {
+        let dir = tempfile::tempdir().expect("fixture");
+        let store = Store::open(dir.path().join("db")).expect("store");
+        let mut source = json!({"generated_utc":"2026-10-18T12:00:00Z","host":"n","projects":{"p":{}},
+            "agents":[{"id":"1.same","screen":"same","host":"n","project":"unassigned","model":"model","model_source":"cached footer","model_observed_utc":"2026-10-18T10:00:00Z"},{"id":"2.same","screen":"same","host":"n","project":"unassigned"}],
+            "hierarchy":{"captains":[{"key":"p","screen":"same","host":"n","agent_running":true,"workers":[{"screen":"same","host":"n"}]}]},
+            "rollout":{"project":{"id":"p"},"lanes":[{"id":"lane","screen":"same","node":"n","branch":"branch","packet_id":"task"}]}});
+        let observed = project(&store.snapshot().expect("snapshot"), Some(&source), false);
+        let workers = observed
+            .agents
+            .iter()
+            .filter(|a| a.role == ViewRole::Worker)
+            .collect::<Vec<_>>();
+        assert_eq!(workers.len(), 2);
+        assert!(
+            workers
+                .iter()
+                .all(|a| a.project_id.is_none() && a.task.is_none())
+        );
+        assert_eq!(
+            workers
+                .iter()
+                .find(|a| a.id == "screen:n:1.same")
+                .expect("worker")
+                .model_observed_utc
+                .as_deref(),
+            Some("2026-10-18T10:00:00Z")
+        );
+        source["rollout"]["lanes"][0]["screen"] = json!("1.same");
+        source["hierarchy"]["captains"][0]["screen"] = json!("2.same");
+        let exact = project(&store.snapshot().expect("snapshot"), Some(&source), false);
+        assert!(
+            exact
+                .agents
+                .iter()
+                .any(|a| a.id == "screen:n:1.same" && a.task.as_deref() == Some("task"))
+        );
+        assert!(
+            exact
+                .agents
+                .iter()
+                .any(|a| a.id == "screen:n:2.same" && a.role == ViewRole::Commodore)
+        );
+    }
+    #[test]
     fn unknown_project_and_owner_named_worker_remain_discoverable() {
         let dir = tempfile::tempdir().expect("fixture");
         let store = Store::open(dir.path().join("store.sqlite")).expect("store");
@@ -887,6 +1005,27 @@ mod tests {
                 .agents
                 .iter()
                 .any(|a| a.role == ViewRole::Owner && a.presence == ViewPresence::Unobserved)
+        );
+    }
+    #[test]
+    fn explicit_watcher_observation_retains_identity_and_reported_model() {
+        let dir = tempfile::tempdir().expect("fixture");
+        let store = Store::open(dir.path().join("store.sqlite")).expect("store");
+        let source = json!({"generated_utc":"2026-10-18T12:00:00Z","host":"node","projects":{},
+            "hierarchy":{"grokbot":{"id":"22.grokbot","host":"node","model":"grok-4","model_source":"heartbeat","agent_running":true}},
+            "agents":[{"id":"22.grokbot","screen":"grokbot","host":"node"}]});
+        let result = project(&store.snapshot().expect("snapshot"), Some(&source), false);
+        let watcher = result
+            .agents
+            .iter()
+            .find(|a| a.role == ViewRole::Watcher)
+            .expect("watcher");
+        assert_eq!(watcher.id, "screen:node:22.grokbot");
+        assert_eq!(watcher.presence, ViewPresence::Observed);
+        assert_eq!(watcher.model.as_deref(), Some("grok-4"));
+        assert_eq!(
+            result.agents.iter().filter(|a| a.id == watcher.id).count(),
+            1
         );
     }
     #[test]

@@ -195,6 +195,52 @@ export default function FleetAtlas({
       moved: boolean;
     } | null>(null);
   const viewport = useSize<HTMLDivElement>();
+  useEffect(() => {
+    const element = viewport.element;
+    if (!element) return;
+    const wheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const unit =
+        event.deltaMode === 1
+          ? 16
+          : event.deltaMode === 2
+            ? element.clientHeight
+            : 1;
+      const dx = event.deltaX * unit,
+        dy = event.deltaY * unit;
+      if (event.ctrlKey || event.metaKey) {
+        const r = element.getBoundingClientRect();
+        setCamera((c) =>
+          zoomAt(
+            c,
+            { x: event.clientX - r.left, y: event.clientY - r.top },
+            Math.exp(-Math.max(-100, Math.min(100, dy)) * 0.008),
+          ),
+        );
+      } else setCamera((c) => ({ ...c, x: c.x - dx, y: c.y - dy }));
+    };
+    element.addEventListener("wheel", wheel, { passive: false });
+    return () => element.removeEventListener("wheel", wheel);
+  }, [viewport.element]);
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => {
+      if (
+        event.key === "/" &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !(
+          event.target instanceof HTMLElement &&
+          event.target.closest("input,textarea,select,[contenteditable=true]")
+        )
+      ) {
+        event.preventDefault();
+        search.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, []);
   const profile = useProfile();
   const layout = useMemo(() => layoutAtlas(snapshot, slots), [snapshot, slots]);
   const matching = useMemo(
@@ -465,24 +511,6 @@ export default function FleetAtlas({
                   (e.key === "ArrowUp" ? 64 : e.key === "ArrowDown" ? -64 : 0),
               }));
             }
-          }}
-          onWheel={(e) => {
-            if (e.ctrlKey || e.metaKey) {
-              e.preventDefault();
-              const r = e.currentTarget.getBoundingClientRect();
-              setCamera((c) =>
-                zoomAt(
-                  c,
-                  { x: e.clientX - r.left, y: e.clientY - r.top },
-                  Math.exp(-Math.max(-100, Math.min(100, e.deltaY)) * 0.008),
-                ),
-              );
-            } else
-              setCamera((c) => ({
-                ...c,
-                x: c.x - e.deltaX,
-                y: c.y - e.deltaY,
-              }));
           }}
           onPointerDown={(e) => {
             if ((e.target as HTMLElement).closest("button,a,input,select"))

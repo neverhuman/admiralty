@@ -19,6 +19,12 @@ export type {
   GitCheckout,
 } from "../../../../../packages/contracts/generated/views-snapshot";
 export function parseViews(value: unknown): ViewsSnapshot {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    (value as { schema_version?: unknown }).schema_version !== 1
+  )
+    throw new Error("Unsupported visual snapshot version");
   assertBoundedJson(value, {
     ...API_VALIDATION_LIMITS,
     nodes: 500_000,
@@ -70,6 +76,7 @@ export function watchViews(options: Options): () => void {
   async function run() {
     let failures = 0;
     while (!lifetime.signal.aborted) {
+      let opened = 0;
       try {
         options.onState(failures ? "reconnecting" : "connecting");
         request = new AbortController();
@@ -95,6 +102,7 @@ export function watchViews(options: Options): () => void {
           !response.headers.get("content-type")?.includes("text/event-stream")
         )
           throw new Error("Unsupported visual feed");
+        opened = Date.now();
         const parser = createSseParser(
           (frame) => {
             if (frame.event === "unavailable")
@@ -109,7 +117,6 @@ export function watchViews(options: Options): () => void {
             options.onSnapshot(snapshot);
             options.onState("connected");
             options.onError("");
-            failures = 0;
           },
           8 * 1024 * 1024,
         );
@@ -133,6 +140,7 @@ export function watchViews(options: Options): () => void {
         if (lifetime.signal.aborted) return;
         const message =
           error instanceof Error ? error.message : "Visual feed unavailable";
+        if (opened && Date.now() - opened >= 30_000) failures = 0;
         options.onError(message);
         if (
           (error instanceof ApiError && [401, 403].includes(error.status)) ||

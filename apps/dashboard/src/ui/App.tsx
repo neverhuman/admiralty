@@ -56,7 +56,7 @@ function App() {
       <div className="workspace"><span className="workspace-dot" /> Fleet overview <span className="chevron" data-icon="⌄" aria-hidden="true" /></div>
       <nav aria-label="Main navigation">
         <div className="nav-label">MONITOR</div>
-        {(['Legacy detailed view', 'Git Flow', 'Fleet Atlas', 'Overview', 'Workplans', 'Coordination', 'Commands', 'Models'] as View[]).map((item, index) => <button key={item} className={`nav-item ${view === item ? 'active' : ''}`} title={item} aria-label={item === 'Overview' && fleet?.simulated ? 'Demo overview' : item} aria-current={view === item ? 'page' : undefined} onClick={() => setView(item)}>
+        {(['Legacy detailed view', 'Git Flow', 'Fleet Atlas', 'Overview', 'Workplans', 'Coordination', 'Commands', 'Models'] as View[]).map((item, index) => <button key={item} className={`nav-item ${view === item ? 'active' : ''}`} title={item} aria-current={view === item ? 'page' : undefined} onClick={() => setView(item)}>
           <span className="nav-icon" data-icon={['▦', '⑂', '✦', '◫', '≡', '◉', '⌘', '⚙'][index]} aria-hidden="true" />{item === 'Overview' && fleet?.simulated ? 'Demo overview' : item}
           {item === 'Coordination' && fleet && <span className="nav-count">{fleet.coordination.queued_messages}</span>}
         </button>)}

@@ -169,6 +169,12 @@ describe("built live views against the real Rust server", () => {
     await browser.waitForSelector(".atlas-agent");
     expect(
       await browser.evaluate(
+        `(()=>{const el=document.querySelector('.atlas-viewport');const r=el.getBoundingClientRect();const event=new WheelEvent('wheel',{ctrlKey:true,deltaY:20,clientX:r.left+r.width/2,clientY:r.top+r.height/2,bubbles:true,cancelable:true});el.dispatchEvent(event);return event.defaultPrevented;})()`,
+      ),
+    ).toBe(true);
+
+    expect(
+      await browser.evaluate(
         `document.querySelector('.atlas-summary')?.textContent`,
       ),
     ).toContain("2projects");
@@ -219,9 +225,23 @@ describe("built live views against the real Rust server", () => {
     await browser.clickButtonByText("harbor-worker");
     await browser.waitForSelector(".lv-inspector");
     await browser.waitForText("1 staged · 2 unstaged");
+    expect(
+      await browser.evaluate(
+        "document.querySelectorAll('.git-inventory-checkouts section').length",
+      ),
+    ).toBe(2);
     await browser.clickButtonByAriaLabel("Close inspector");
     await browser.clickButtonByText("Pause");
     await browser.waitForText("Historical inspection paused");
+    const changed = sourceFixture();
+    changed.git.harbor.checkouts = [];
+    changed.git.harbor.commits = [];
+    server.writeLegacySnapshot(changed);
+    await browser.waitForText("new source cuts", 10_000);
+    await browser.clickButtonByText("harbor-worker");
+    await browser.waitForSelector(".lv-inspector");
+    await browser.waitForText("1 staged · 2 unstaged");
+    await browser.clickButtonByAriaLabel("Close inspector");
     await browser.clickButtonByText("Resume live");
     await browser.clickButtonByAriaLabel("Enter fullscreen");
     expect(
@@ -302,7 +322,7 @@ describe("built live views against the real Rust server", () => {
       );
       const observer =
         process.env.ADMIRALTY_E2E_OBSERVER_BIN ??
-        join(REPO_ROOT, "target", "live-views-bin", "admiralty-observe");
+        join(REPO_ROOT, "target", "debug", "admiralty-observe");
       run(observer, ["--config", config, "--once"]);
       realServer = await startIsolatedNativeAdmiraltyServer({
         legacySnapshot: JSON.parse(

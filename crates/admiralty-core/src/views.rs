@@ -37,6 +37,7 @@ pub struct ViewAgent {
     pub model: Option<String>,
     pub requested_model: Option<String>,
     pub model_source: String,
+    pub model_observed_utc: Option<String>,
     pub effort: Option<String>,
     pub task: Option<String>,
     pub branch: Option<String>,

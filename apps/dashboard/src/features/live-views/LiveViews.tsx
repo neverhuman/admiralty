@@ -46,7 +46,7 @@ export function useSize<T extends HTMLElement>() {
     setSize({ width: element.clientWidth, height: element.clientHeight });
     return () => observer.disconnect();
   }, [element]);
-  return { ref, ...size };
+  return { ref, element, ...size };
 }
 export default function LiveViews({
   mode,
@@ -63,6 +63,10 @@ export default function LiveViews({
     slots = useRef<SlotRegistry>(new Map());
   useEffect(() => {
     slots.current.clear();
+  }, [token]);
+  const [pausedGit, setPausedGit] = useState<ViewsSnapshot | null>(null);
+  useEffect(() => {
+    setPausedGit(null);
   }, [token]);
   const [fullscreen, setFullscreen] = useState(false),
     [now, setNow] = useState(Date.now());
@@ -85,7 +89,8 @@ export default function LiveViews({
     return () => document.removeEventListener("fullscreenchange", sync);
   }, []);
   const snapshot = feed.snapshot,
-    selection = snapshot ? resolveSelection(snapshot, route.params) : null;
+    presented = mode === "git" ? (pausedGit ?? snapshot) : snapshot,
+    selection = presented ? resolveSelection(presented, route.params) : null;
   const sources = snapshot?.sources ?? [],
     gaps = sources.filter(
       (s) =>
@@ -95,6 +100,13 @@ export default function LiveViews({
   const select = (value: Selection | null) => {
     const params = new URLSearchParams(window.location.hash.split("?")[1]);
     if (value) {
+      if (
+        mode === "git" &&
+        !params.has("focus") &&
+        params.get("project") &&
+        !params.has("scope")
+      )
+        params.set("scope", params.get("project")!);
       params.set(
         "focus",
         value.kind === "agent"
@@ -107,7 +119,10 @@ export default function LiveViews({
         value.kind === "agent" ? value.agent.project_id : value.project.id;
       if (project) params.set("project", project);
       else params.delete("project");
-    } else params.delete("focus");
+    } else {
+      params.delete("focus");
+      if (mode === "git" && !params.has("scope")) params.delete("project");
+    }
     window.location.hash = routeHref(mode, Object.fromEntries(params));
   };
   const toggleFullscreen = () => {
@@ -206,6 +221,8 @@ export default function LiveViews({
           ) : (
             <GitFlow
               snapshot={snapshot}
+              paused={pausedGit}
+              onPause={setPausedGit}
               selection={selection}
               onSelect={select}
               now={now}
@@ -214,7 +231,7 @@ export default function LiveViews({
           {selection && (
             <Inspector
               selection={selection}
-              snapshot={snapshot}
+              snapshot={presented!}
               onClose={() => select(null)}
               now={now}
             />
@@ -293,6 +310,9 @@ function Inspector({
       "Reported model": a.model ?? "Unknown",
       "Requested model": a.requested_model ?? "Unknown",
       "Model evidence": a.model_source,
+      "Model observation time": a.model_observed_utc
+        ? `${a.model_observed_utc} · ${age(a.model_observed_utc, now)}`
+        : "Unknown; separate from source snapshot time",
       Effort: a.effort ?? "Unknown",
       Task: a.task ?? "Not bound",
       Branch: a.branch ?? "Not bound",

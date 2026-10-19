@@ -218,6 +218,12 @@
             "null"
           ]
         },
+        "model_observed_utc": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "model_source": {
           "type": "string"
         },

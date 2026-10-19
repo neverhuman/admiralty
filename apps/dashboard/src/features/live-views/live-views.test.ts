@@ -262,4 +262,20 @@ describe("atomic authenticated visual feed", () => {
     stop();
     expect(onSnapshot).not.toHaveBeenCalled();
   });
+  it("bounds reconnect storms even when each short connection sends a valid snapshot", async () => {
+    const server = service();
+    await vi.advanceTimersByTimeAsync(0);
+    for (let attempt = 0; attempt < 7; attempt++) {
+      server.send(fixture());
+      await vi.advanceTimersByTimeAsync(0);
+      server.channels.at(-1)!.close();
+      await vi.advanceTimersByTimeAsync(0);
+      if (attempt < 6)
+        await vi.advanceTimersByTimeAsync(Math.min(30_000, 500 * 2 ** attempt));
+    }
+    expect(server.fetcher).toHaveBeenCalledTimes(7);
+    expect(server.onState).toHaveBeenLastCalledWith("paused");
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(server.fetcher).toHaveBeenCalledTimes(7);
+  });
 });

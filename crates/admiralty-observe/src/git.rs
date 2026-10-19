@@ -30,6 +30,8 @@ async fn invoke(path: &Path, args: &[&str]) -> crate::Result<crate::io::CommandO
         "-c",
         "core.fsmonitor=false",
         "-c",
+        "color.ui=false",
+        "-c",
         "core.hooksPath=/dev/null",
         "-c",
         "core.untrackedCache=false",
@@ -47,6 +49,9 @@ async fn read(path: &Path, args: &[&str]) -> crate::Result<String> {
     let output = invoke(path, args).await?;
     if output.status != 0 {
         return Err("Git read unavailable".into());
+    }
+    if output.stdout.contains('\u{fffd}') {
+        return Err("Git output cannot be represented as exact UTF-8 metadata".into());
     }
     Ok(output.stdout)
 }
@@ -264,44 +269,46 @@ async fn scan(path: &Path, node: &str) -> crate::Result<GitRepository> {
     graph.truncate(MAX_COMMITS);
     // A configured clean filter can execute arbitrary code during status refresh.
     // Its presence makes working-state unknown; refs and immutable graph still work.
-    let filters = !matches!(invoke(path, &["config", "--get-regexp", "^filter\\."]).await, Ok(output) if output.status == 1);
     let status_deadline = tokio::time::Instant::now() + Duration::from_secs(4);
-    if !filters {
-        for tree in &mut trees {
-            if tokio::time::Instant::now() >= status_deadline {
-                break;
-            }
-            if tree.value.kind == "bare" || tree.value.prunable {
-                continue;
-            }
-            let identity = read(
-                &tree.path,
-                &["rev-parse", "--path-format=absolute", "--git-common-dir"],
-            )
-            .await;
-            if identity
-                .ok()
-                .and_then(|s| std::fs::canonicalize(s.trim()).ok())
-                .is_none_or(|p| p != common)
-            {
-                continue;
-            }
-            tree.value.status = match read(
-                &tree.path,
-                &[
-                    "status",
-                    "--porcelain=v1",
-                    "-z",
-                    "--untracked-files=normal",
-                    "--ignore-submodules=all",
-                ],
-            )
-            .await
-            {
-                Ok(raw) => working(&raw).ok(),
-                Err(_) => None,
-            };
+    for tree in &mut trees {
+        if tokio::time::Instant::now() >= status_deadline {
+            break;
         }
+        if tree.value.kind == "bare" || tree.value.prunable {
+            continue;
+        }
+        let identity = read(
+            &tree.path,
+            &["rev-parse", "--path-format=absolute", "--git-common-dir"],
+        )
+        .await;
+        if identity
+            .ok()
+            .and_then(|s| std::fs::canonicalize(s.trim()).ok())
+            .is_none_or(|p| p != common)
+        {
+            continue;
+        }
+        // Effective configuration is worktree-specific (including includeIf/config.worktree).
+        if !matches!(invoke(&tree.path, &["config", "--includes", "--get-regexp", "^filter\\."]).await, Ok(output) if output.status == 1)
+        {
+            continue;
+        }
+        tree.value.status = match read(
+            &tree.path,
+            &[
+                "status",
+                "--porcelain=v1",
+                "-z",
+                "--untracked-files=normal",
+                "--ignore-submodules=all",
+            ],
+        )
+        .await
+        {
+            Ok(raw) => working(&raw).ok(),
+            Err(_) => None,
+        };
     }
     if before_refs != read(path, REFS_ARGS).await?
         || before_checkouts != read(path, &["worktree", "list", "--porcelain", "-z"]).await?
@@ -386,6 +393,66 @@ mod tests {
             String::from_utf8_lossy(&out.stderr)
         );
         String::from_utf8_lossy(&out.stdout).trim().into()
+    }
+    #[tokio::test]
+    async fn linked_worktree_effective_filter_config_never_executes_during_observation() {
+        let dir = tempfile::tempdir().expect("fixture");
+        let root = dir.path();
+        git(root, &["init", "-b", "main"]);
+        git(root, &["config", "user.email", "fixture@example.invalid"]);
+        git(root, &["config", "user.name", "Fixture"]);
+        std::fs::write(root.join("tracked.txt"), "original\n").expect("tracked");
+        git(root, &["add", "tracked.txt"]);
+        git(root, &["commit", "-m", "root"]);
+        let linked = root.join("linked");
+        git(
+            root,
+            &[
+                "worktree",
+                "add",
+                "--detach",
+                linked.to_str().expect("path"),
+                "HEAD",
+            ],
+        );
+        git(root, &["config", "extensions.worktreeConfig", "true"]);
+        let marker = root.join("filter-marker");
+        git(
+            &linked,
+            &[
+                "config",
+                "--worktree",
+                "filter.fixture.clean",
+                &format!("touch {}; cat", marker.display()),
+            ],
+        );
+        std::fs::write(
+            linked.join(".gitattributes"),
+            "tracked.txt filter=fixture\n",
+        )
+        .expect("attributes");
+        std::fs::write(linked.join("tracked.txt"), "changed!\n").expect("dirty");
+        std::fs::File::options()
+            .write(true)
+            .open(linked.join("tracked.txt"))
+            .expect("file")
+            .set_times(
+                std::fs::FileTimes::new()
+                    .set_modified(std::time::UNIX_EPOCH + Duration::from_secs(1)),
+            )
+            .expect("old mtime");
+        let observed = scan(root, "node").await.expect("observe");
+        assert!(observed.checkouts[0].status.is_some());
+        assert!(observed.checkouts[1].status.is_none());
+        assert!(
+            !marker.exists(),
+            "observer must not run the linked checkout's clean filter"
+        );
+        git(&linked, &["status", "--porcelain"]);
+        assert!(
+            marker.exists(),
+            "negative control proves ordinary status would execute this filter"
+        );
     }
     #[test]
     fn nul_paths_renames_and_conflicts_are_not_extra_files() {

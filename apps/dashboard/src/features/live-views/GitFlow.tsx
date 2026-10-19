@@ -281,17 +281,23 @@ function GitCanvas({
 }
 export default function GitFlow({
   snapshot,
+  paused,
+  onPause: setPaused,
   selection,
   onSelect,
   now,
 }: {
   snapshot: ViewsSnapshot;
+  paused: ViewsSnapshot | null;
+  onPause: (value: ViewsSnapshot | null) => void;
   selection: Selection | null;
   onSelect: (s: Selection | null) => void;
   now: number;
 }) {
   const route = useRoute(),
-    filter = route.params.get("project") ?? "",
+    filter =
+      route.params.get("scope") ??
+      (route.params.has("focus") ? "" : (route.params.get("project") ?? "")),
     query = route.params.get("q") ?? "";
   const [zoom, setZoom] = useState(viewMemory.zoom),
     [scroll, setScroll] = useState({
@@ -300,8 +306,7 @@ export default function GitFlow({
     }),
     [inventory, setInventory] = useState(viewMemory.inventory),
     [shown, setShown] = useState(100),
-    [follow, setFollow] = useState(viewMemory.follow),
-    [paused, setPaused] = useState<ViewsSnapshot | null>(null);
+    [follow, setFollow] = useState(viewMemory.follow);
   const frozen = paused ?? snapshot,
     viewport = useSize<HTMLDivElement>(),
     scrollRef = useRef<HTMLDivElement>(null),
@@ -407,11 +412,11 @@ export default function GitFlow({
       })),
     )
     .reverse();
-  const allCommits = frozen.projects.reduce(
+  const allCommits = projects.reduce(
       (n, p) => n + (p.git?.commits.length ?? 0),
       0,
     ),
-    checkouts = frozen.projects.reduce(
+    checkouts = projects.reduce(
       (n, p) => n + (p.git?.checkouts.length ?? 0),
       0,
     );
@@ -436,6 +441,7 @@ export default function GitFlow({
           onChange={(e) =>
             changeParams({
               project: e.target.value,
+              scope: e.target.value,
               focus: undefined,
               branch: undefined,
             })

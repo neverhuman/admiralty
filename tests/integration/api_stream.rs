@@ -931,9 +931,13 @@ async fn visual_producer_failure_keeps_last_known_inventory_and_public_legacy_fl
  {
     let directory = store_directory();
     let status = directory.path().join("status.json");
-    let source = serde_json::json!({"generated_utc":"2026-10-18T12:00:00Z","host":"node","order":["taskless"],"projects":{},"project_catalog":[{"id":"taskless","name":"Taskless"}],"agents":[{"id":"12.worker","screen":"worker","host":"node","project":"taskless","model":null}]});
+    let source = serde_json::json!({"generated_utc":"2026-10-18T12:00:00Z","host":"node","order":["demo-harbor"],"projects":{},"project_catalog":[{"id":"demo-harbor","name":"Producer project"}],
+        "hierarchy":{"captains":[{"key":"demo-harbor","screen":"77.manager","host":"node","agent_running":true}]},
+        "agents":[{"id":"12.worker","screen":"worker","host":"node","demo-harbor":"demo-harbor","model":null},{"id":"77.manager","screen":"manager","host":"node","demo-harbor":"demo-harbor","model":null}],
+        "git":{"demo-harbor":{"instance_id":"retained-instance","node":"node","observed_utc":"2026-10-18T11:00:00Z","error":null,"shallow":false,"truncated":false,"commits":[],"refs":[],"checkouts":[]}}});
     std::fs::write(&status, source.to_string()).expect("source");
     let store = Store::open(directory.path().join("fleet.sqlite")).expect("store");
+    append_real_task(&store, 1, "native-and-git");
     let mut settings = config(false, None);
     settings.legacy = Some(admiralty_server::legacy::LegacyConfig {
         status_file: status.clone(),
@@ -951,7 +955,24 @@ async fn visual_producer_failure_keeps_last_known_inventory_and_public_legacy_fl
     std::fs::write(&status, "malformed").expect("failure");
     tokio::time::sleep(Duration::from_millis(2200)).await;
     let stale = json(request(&router, "GET", "/v2/views", Some(TOKEN)).await).await;
-    assert_eq!(stale["projects"][0]["id"], "taskless");
+    assert_eq!(stale["projects"][0]["id"], "demo-harbor");
+    assert_eq!(
+        stale["projects"][0]["git"]["instance_id"],
+        "retained-instance"
+    );
+    assert_eq!(
+        stale["projects"][0]["git"]["observed_utc"],
+        "2026-10-18T11:00:00Z"
+    );
+    let managers = stale["agents"]
+        .as_array()
+        .expect("agents")
+        .iter()
+        .filter(|a| a["role"] == "commodore")
+        .collect::<Vec<_>>();
+    assert_eq!(managers.len(), 1);
+    assert_eq!(managers[0]["presence"], "observed");
+    assert_eq!(managers[0]["id"], "screen:node:77.manager");
     let original = first["agents"]
         .as_array()
         .expect("agents")

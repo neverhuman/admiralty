@@ -44,7 +44,7 @@ function PullRequest({ value }: { value: unknown }) {
 export function ProjectDetail({ project, compact = false }: { project: ProjectDetailModel; compact?: boolean }) {
   const total = project.total, entries = Object.entries(project.stages);
   return <article className={`legacy-project panel ${compact ? 'compact' : ''}`} data-project-id={project.id}>
-    <header className="legacy-project-heading"><h2>{project.name}</h2><a href={routeHref('git', { project: project.id })}>Git Flow ↗</a><span>{total === null ? 'Unknown total' : `${total} tasks`}</span></header>
+    <header className="legacy-project-heading"><h2>{project.name}</h2><a className="legacy-live-link" href={routeHref('git', { project: project.id })}>Git Flow ↗</a><span>{total === null ? 'Unknown total' : `${total} tasks`}</span></header>
     <p className="legacy-provenance">{project.source}</p>
     <div className="legacy-stage-bar" role="img" aria-label={`${project.name} reported task stages`}>{entries.map(([stage, count]) => <span key={stage} className={stageClass(stage)} style={{ width: `${total && total > 0 ? Math.min(100, count / total * 100) : 0}%` }} title={`${stageLabel(stage, project.labels)}: ${count}`} />)}</div>
     <div className="legacy-stage-counts">{entries.map(([stage, count]) => <span key={stage}><i className={stageClass(stage)} /><b>{count}</b> {stageLabel(stage, project.labels)}</span>)}</div>

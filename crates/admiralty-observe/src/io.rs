@@ -174,6 +174,7 @@ pub async fn run(
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
             .env("GIT_NO_REPLACE_OBJECTS", "1")
             .env("GIT_NO_LAZY_FETCH", "1")
+            .env("GIT_ALLOW_PROTOCOL", "")
             .env("GIT_TERMINAL_PROMPT", "0");
         for (key, _) in std::env::vars_os() {
             if key.to_string_lossy().starts_with("GIT_")
@@ -185,6 +186,7 @@ pub async fn run(
                             | "GIT_CONFIG_GLOBAL"
                             | "GIT_NO_REPLACE_OBJECTS"
                             | "GIT_NO_LAZY_FETCH"
+                            | "GIT_ALLOW_PROTOCOL"
                             | "GIT_TERMINAL_PROMPT"
                     )
                 )
