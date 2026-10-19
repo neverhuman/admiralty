@@ -98,7 +98,7 @@ const AgentCard = memo(function AgentCard({
     attention = /blocked|quota|error|waiting/i.test(a.state);
   return (
     <button
-      className={`atlas-agent family-${family} ${selected ? "selected" : ""} ${dim ? "dim" : ""} ${compact ? "compact-mark" : ""} ${!compact && node.width < 300 ? "worker-card" : ""} ${a.role} ${stale ? "stale" : ""}`}
+      className={`atlas-agent family-${family} ${selected ? "selected" : ""} ${dim ? "dim" : ""} ${compact ? "compact-mark" : ""} ${!compact && node.width < 300 ? "small-card" : ""} ${a.role} ${stale ? "stale" : ""}`}
       style={
         {
           left: node.x,
@@ -539,7 +539,7 @@ export default function FleetAtlas({
           }}
         >
           <div
-            className={`atlas-world ${camera.k < 0.65 ? "summary-cards" : ""}`}
+            className={`atlas-world ${camera.k < 0.85 ? "summary-cards" : ""}`}
             style={
               {
                 width: layout.width,

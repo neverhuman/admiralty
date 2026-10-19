@@ -181,6 +181,16 @@ describe("built live views against the real Rust server", () => {
         `document.querySelector('.atlas-summary')?.textContent`,
       ),
     ).toContain("2projects");
+    expect(
+      await browser.evaluate(
+        `Array.from(document.querySelectorAll('.atlas-agent:not(.compact-mark) > strong')).filter(name => {
+          const card = name.parentElement, box = name.getBoundingClientRect();
+          const scale = card.getBoundingClientRect().width / card.offsetWidth;
+          return box.height < parseFloat(getComputedStyle(name).fontSize) * scale * 0.95;
+        }).map(name => name.textContent)`,
+      ),
+      "Agent names must retain their full text height at the fitted camera scale",
+    ).toEqual([]);
     await browser.captureScreenshot(join(evidence, "fleet-atlas.png"));
     await browser.fillInputByLabel("Search all agents", "worker_0");
     await browser.clickButtonByText("Roster");

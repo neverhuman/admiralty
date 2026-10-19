@@ -1530,6 +1530,7 @@
 }
 .atlas-agent > strong {
   font-size: calc(12px * var(--atlas-text-scale, 1));
+  flex-shrink: 0;
 }
 .atlas-agent-role {
   font-size: calc(11px * var(--atlas-text-scale, 1));
@@ -1545,8 +1546,9 @@
 .atlas-agent.owner > strong {
   font-size: calc(16px * var(--atlas-text-scale, 1));
 }
-.atlas-world.summary-cards .atlas-agent.worker-card .atlas-agent-top,
-.atlas-world.summary-cards .atlas-agent.worker-card .atlas-agent-bottom {
+.atlas-world.summary-cards .atlas-agent.small-card.worker .atlas-agent-top,
+.atlas-world.summary-cards .atlas-agent.small-card.assignment .atlas-agent-top,
+.atlas-world.summary-cards .atlas-agent.small-card .atlas-agent-bottom {
   display: none;
 }
 .atlas-board > header button {
