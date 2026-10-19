@@ -48,6 +48,9 @@ export const BUILD_IDENTITY_FILE = join(DIST_DIR, '.admiralty-build-identity.jso
 
 const CDP_COMMAND_TIMEOUT_MS = 20_000;
 const BROWSER_STARTUP_TIMEOUT_MS = 15_000;
+const MAX_BROWSER_STARTUP_ATTEMPTS = 2;
+const GOTO_NAVIGATE_TIMEOUT_MS = 8_000;
+const STOP_LOADING_TIMEOUT_MS = 2_000;
 
 export const MAX_HTTP_BODY_BYTES = 256 * 1024;
 export const MAX_RECORDED_REQUESTS = 512;
@@ -1218,7 +1221,7 @@ export interface BrowserHarness {
   goto(url: string): Promise<void>;
   setViewportSize(width: number, height: number): Promise<void>;
   emulateReducedMotion(reduce: boolean): Promise<void>;
-  evaluate<T>(expression: string): Promise<T>;
+  evaluate<T>(expression: string, timeoutMs?: number): Promise<T>;
   waitForText(expectedText: string, timeoutMs?: number): Promise<void>;
   waitForSelector(selector: string, timeoutMs?: number): Promise<void>;
   clickNav(viewLabel: string): Promise<void>;
@@ -1232,7 +1235,111 @@ export interface BrowserHarness {
   close(): Promise<void>;
 }
 
-export async function launchBrowserHarness(): Promise<BrowserHarness> {
+export interface LaunchBrowserHarnessOptions {
+  startupTimeoutMs?: number;
+  maxStartupAttempts?: number;
+  /** Test-only hook to simulate a stalled CDP pipe on specific 1-based attempt numbers */
+  _testStallAttempts?: ReadonlyArray<number>;
+  /** Test-only timeout override applied only to stalled attempts in _testStallAttempts */
+  _testStallTimeoutMs?: number;
+  /** Test-only hook to inject a fatal malformed CDP frame during startup on specific 1-based attempt numbers */
+  _testFatalFrameAttempts?: ReadonlyArray<number>;
+  /** Test-only callback invoked with each attempt's pid and profileDir */
+  _testOnAttemptSpawn?: (attempt: number, info: { pid: number | undefined; profileDir: string }) => void;
+}
+
+export function isProcessAlive(pid: number): boolean {
+  const proc = process as unknown as { kill?: (targetPid: number, signal?: string | number) => boolean };
+  if (typeof proc.kill !== 'function') return false;
+  try {
+    proc.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getChildPid(child: ChildProcess): number | undefined {
+  return (child as unknown as { pid?: number }).pid;
+}
+
+function signalBrowserProcessGroup(child: ChildProcess, signal: 'SIGTERM' | 'SIGKILL'): void {
+  const pid = getChildPid(child);
+  const proc = process as unknown as { kill?: (targetPid: number, sig?: string | number) => boolean };
+  if (process.platform !== 'win32' && typeof pid === 'number' && pid > 0 && typeof proc.kill === 'function') {
+    try {
+      proc.kill(-pid, signal);
+      return;
+    } catch {
+      // Fall back to direct child signal if process group already exited
+    }
+  }
+  try {
+    child.kill(signal);
+  } catch {
+    // Process already exited
+  }
+}
+
+export async function launchBrowserHarness(
+  options?: LaunchBrowserHarnessOptions,
+): Promise<BrowserHarness> {
+  const rawStartupTimeoutMs = options?.startupTimeoutMs ?? BROWSER_STARTUP_TIMEOUT_MS;
+  if (
+    typeof rawStartupTimeoutMs !== 'number' ||
+    !Number.isFinite(rawStartupTimeoutMs) ||
+    !Number.isInteger(rawStartupTimeoutMs) ||
+    rawStartupTimeoutMs < 1
+  ) {
+    throw new Error(
+      `Invalid startupTimeoutMs: expected positive finite integer, got ${String(rawStartupTimeoutMs)}`,
+    );
+  }
+  const startupTimeoutMs = rawStartupTimeoutMs;
+
+  const rawMaxStartupAttempts = options?.maxStartupAttempts ?? MAX_BROWSER_STARTUP_ATTEMPTS;
+  if (
+    typeof rawMaxStartupAttempts !== 'number' ||
+    !Number.isFinite(rawMaxStartupAttempts) ||
+    !Number.isInteger(rawMaxStartupAttempts) ||
+    rawMaxStartupAttempts < 1 ||
+    rawMaxStartupAttempts > MAX_BROWSER_STARTUP_ATTEMPTS
+  ) {
+    throw new Error(
+      `Invalid maxStartupAttempts: expected finite integer in 1..${MAX_BROWSER_STARTUP_ATTEMPTS}, got ${String(rawMaxStartupAttempts)}`,
+    );
+  }
+  const maxStartupAttempts = rawMaxStartupAttempts;
+  const attemptDiagnostics: string[] = [];
+
+  for (let attempt = 1; attempt <= maxStartupAttempts; attempt++) {
+    try {
+      return await launchBrowserHarnessAttempt(attempt, startupTimeoutMs, options);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      attemptDiagnostics.push(`attempt ${attempt}/${maxStartupAttempts}: ${msg}`);
+      // Do not retry if the host explicitly lacks a usable normal-user sandbox configuration
+      if (
+        msg.includes('Unsupported runner browser sandbox configuration') ||
+        attempt >= maxStartupAttempts
+      ) {
+        throw new Error(
+          attemptDiagnostics.length === 1
+            ? msg
+            : `Browser startup failed after ${attemptDiagnostics.length} attempts (${attemptDiagnostics.join(' || ')})`,
+        );
+      }
+    }
+  }
+
+  throw new Error(`Browser startup failed (${attemptDiagnostics.join(' || ')})`);
+}
+
+async function launchBrowserHarnessAttempt(
+  attempt: number,
+  startupTimeoutMs: number,
+  options?: LaunchBrowserHarnessOptions,
+): Promise<BrowserHarness> {
   const binaryPath = discoverChromiumBinary();
   const setuidSandboxPath = discoverNormalUserSetuidSandbox(binaryPath);
   const apparmorRestrictUserns = readSysctlDiagnostic(
@@ -1244,6 +1351,9 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
 
   const childEnv: Record<string, string | undefined> = {
     ...process.env,
+    // Prevent headless Chromium from stalling on absent desktop/UPower D-Bus activation on Linux runners
+    DBUS_SESSION_BUS_ADDRESS: 'unix:path=/dev/null',
+    DBUS_SYSTEM_BUS_ADDRESS: 'unix:path=/dev/null',
     ...(setuidSandboxPath ? { CHROME_DEVEL_SANDBOX: setuidSandboxPath } : {}),
   };
 
@@ -1252,10 +1362,15 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
     '--disable-gpu',
     '--disable-dev-shm-usage',
     '--disable-background-networking',
+    '--disable-component-update',
     '--disable-default-apps',
     '--disable-extensions',
     '--disable-sync',
+    '--metrics-recording-only',
+    '--no-default-browser-check',
     '--no-first-run',
+    '--no-proxy-server',
+    '--no-service-autorun',
     `--user-data-dir=${profileDir}`,
     '--window-size=1440,900',
     '--remote-debugging-pipe',
@@ -1290,11 +1405,19 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
     }
   }
 
-  // Launch with OS sandbox intact (never pass --no-sandbox or --disable-setuid-sandbox)
-  const child: ChildProcess = spawn(spawnCommand, spawnArgs, {
-    stdio: ['ignore', 'pipe', 'pipe', 'pipe', 'pipe'],
+  // Launch with OS sandbox intact (never pass --no-sandbox or --disable-setuid-sandbox).
+  // Spawn detached on POSIX so the browser and its crashpad/zygote helpers form an isolated process group
+  // that can be terminated atomically without leaking orphan chrome_crashpad_handler processes.
+  const spawnOpts = {
+    stdio: ['ignore', 'pipe', 'pipe', 'pipe', 'pipe'] as ('ignore' | 'pipe')[],
     env: childEnv,
-  });
+    detached: process.platform !== 'win32',
+  };
+  const child: ChildProcess = spawn(spawnCommand, spawnArgs, spawnOpts);
+
+  options?._testOnAttemptSpawn?.(attempt, { pid: getChildPid(child), profileDir });
+  const stallThisAttempt = Boolean(options?._testStallAttempts?.includes(attempt));
+  const fatalFrameThisAttempt = Boolean(options?._testFatalFrameAttempts?.includes(attempt));
 
   const cdpWrite = child.stdio[3] as Writable;
   const cdpRead = child.stdio[4] as Readable | Duplex;
@@ -1336,7 +1459,7 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
       ? 'Unsupported runner browser sandbox configuration (normal-user Chromium sandbox failed closed without --no-sandbox bypass): '
       : '';
     return (
-      `${prefix}binary=${binaryPath} aa_exec_profile=${aaExecProfile ?? 'none'} exitCode=${String(exitCode)} signal=${String(exitSignal)} ` +
+      `${prefix}binary=${binaryPath} aa_exec_profile=${aaExecProfile ?? 'none'} attempt=${attempt} exitCode=${String(exitCode)} signal=${String(exitSignal)} ` +
       `apparmor_restrict_unprivileged_userns=${apparmorUserns} ` +
       `unprivileged_userns_clone=${unprivUsernsClone} ` +
       `setuid_sandbox=${setuidSandboxPath ?? 'none'} ` +
@@ -1389,6 +1512,49 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
     rejectAllPending(`CDP write pipe error: ${err.message}`);
   });
 
+  let initialDiagnosticBeforeSignal: string | null = null;
+  let terminatePromise: Promise<void> | null = null;
+  function terminateBrowserProcessTree(reason: string): Promise<void> {
+    if (terminatePromise) return terminatePromise;
+    terminatePromise = (async () => {
+      if (initialDiagnosticBeforeSignal === null) {
+        initialDiagnosticBeforeSignal = formatDiagnosticContext();
+      }
+      rejectAllPending(reason);
+      try {
+        (cdpWrite as unknown as { destroy?: () => void }).destroy?.();
+      } catch {
+        // Ignore pipe destroy error
+      }
+      try {
+        (cdpRead as unknown as { destroy?: () => void }).destroy?.();
+      } catch {
+        // Ignore pipe destroy error
+      }
+      if (exitCode === undefined && exitSignal === undefined) {
+        signalBrowserProcessGroup(child, 'SIGTERM');
+        await Promise.race([
+          exitDrainPromise,
+          new Promise<void>((resolve) => setTimeout(resolve, 400)),
+        ]);
+      }
+      // Always send SIGKILL to the process group so any surviving helper (e.g. chrome_crashpad_handler) is reaped
+      signalBrowserProcessGroup(child, 'SIGKILL');
+      await Promise.race([
+        exitDrainPromise,
+        new Promise<void>((resolve) => setTimeout(resolve, 1_000)),
+      ]);
+      try {
+        (child as unknown as { stdout?: { destroy?: () => void } }).stdout?.destroy?.();
+        (child.stderr as unknown as { destroy?: () => void } | null)?.destroy?.();
+      } catch {
+        // Ignore stream destroy error
+      }
+      rmSync(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    })();
+    return terminatePromise;
+  }
+
   const frameReader = createBoundedCdpFrameReader({
     maxFrameBytes: MAX_CDP_FRAME_BYTES,
     maxBufferBytes: MAX_CDP_BUFFER_BYTES,
@@ -1405,14 +1571,14 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
       }
     },
     onFatalError(err) {
-      rejectAllPending(err.message);
-      child.kill('SIGKILL');
-      rmSync(profileDir, { recursive: true, force: true });
+      void terminateBrowserProcessTree(err.message);
     },
   });
 
   cdpRead.on('data', (chunk: Buffer) => {
-    frameReader.push(chunk);
+    if (!stallThisAttempt && !fatalFrameThisAttempt) {
+      frameReader.push(chunk);
+    }
   });
 
   function sendCdp(
@@ -1439,15 +1605,25 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
       }, timeoutMs);
       pending.set(id, { resolve: resolveCmd, reject: rejectCmd, timer });
       const payload = sessionId ? { id, method, params, sessionId } : { id, method, params };
-      cdpWrite.write(`${JSON.stringify(payload)}\0`);
+      if (fatalFrameThisAttempt) {
+        setTimeout(() => {
+          frameReader.push('{malformed-fatal-cdp-frame\0');
+        }, 10);
+      } else if (!stallThisAttempt) {
+        cdpWrite.write(`${JSON.stringify(payload)}\0`);
+      }
     });
   }
+
+  const attemptTimeoutMs = stallThisAttempt
+    ? (options?._testStallTimeoutMs ?? startupTimeoutMs)
+    : startupTimeoutMs;
 
   let browserVersion = { product: '', revision: '', protocolVersion: '' };
   let sessionId = '';
 
   const startupPromise = (async () => {
-    const versionInfo = await sendCdp('Browser.getVersion');
+    const versionInfo = await sendCdp('Browser.getVersion', {}, undefined, attemptTimeoutMs);
     browserVersion = {
       product: String(versionInfo.product ?? ''),
       revision: String(versionInfo.revision ?? ''),
@@ -1457,35 +1633,54 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
       throw new Error(`Qualified browser check failed: empty Browser.getVersion product from ${binaryPath}`);
     }
 
-    const existingTargets = await sendCdp('Target.getTargets');
+    const existingTargets = await sendCdp('Target.getTargets', {}, undefined, attemptTimeoutMs);
     const initialTargetIds = Array.isArray(existingTargets.targetInfos)
       ? (existingTargets.targetInfos as Array<{ targetId?: string; type?: string }>)
           .filter((t) => t.type === 'page' && t.targetId)
           .map((t) => String(t.targetId))
       : [];
 
-    const created = await sendCdp('Target.createTarget', { url: 'about:blank' });
+    const created = await sendCdp('Target.createTarget', { url: 'about:blank' }, undefined, attemptTimeoutMs);
     const targetId = String(created.targetId);
-    const attached = await sendCdp('Target.attachToTarget', { targetId, flatten: true });
+    const attached = await sendCdp(
+      'Target.attachToTarget',
+      { targetId, flatten: true },
+      undefined,
+      attemptTimeoutMs,
+    );
     sessionId = String(attached.sessionId);
 
     // Close any inherited initial pages so only the isolated fixture page target remains
     for (const inheritedId of initialTargetIds) {
       if (inheritedId !== targetId) {
-        await sendCdp('Target.closeTarget', { targetId: inheritedId }).catch(() => undefined);
+        await sendCdp('Target.closeTarget', { targetId: inheritedId }, undefined, attemptTimeoutMs).catch(
+          () => undefined,
+        );
       }
     }
 
-    await sendCdp('Page.enable', {}, sessionId);
-    await sendCdp('Runtime.enable', {}, sessionId);
-    await sendCdp('DOM.enable', {}, sessionId);
-    await sendCdp('Accessibility.enable', {}, sessionId);
+    await Promise.all([
+      sendCdp('Page.enable', {}, sessionId, attemptTimeoutMs),
+      sendCdp('Runtime.enable', {}, sessionId, attemptTimeoutMs),
+      sendCdp('DOM.enable', {}, sessionId, attemptTimeoutMs),
+      sendCdp(
+        'Emulation.setDeviceMetricsOverride',
+        { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false },
+        sessionId,
+        attemptTimeoutMs,
+      ),
+    ]);
+
+    // Verify the initial page target's renderer execution context is live before completing startup
     await sendCdp(
-      'Emulation.setDeviceMetricsOverride',
-      { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false },
+      'Runtime.evaluate',
+      { expression: 'document.readyState', returnByValue: true },
       sessionId,
+      attemptTimeoutMs,
     );
   })();
+  // Prevent late unhandled rejection if startupTimer wins the race and rejectAllPending rejects startupPromise
+  startupPromise.catch(() => undefined);
 
   let startupTimer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -1493,26 +1688,28 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
       startupPromise,
       new Promise<never>((_, rejectStartup) => {
         startupTimer = setTimeout(
-          () => rejectStartup(new Error(`Browser startup timed out after ${BROWSER_STARTUP_TIMEOUT_MS}ms`)),
-          BROWSER_STARTUP_TIMEOUT_MS,
+          () => rejectStartup(new Error(`Browser startup timed out after ${attemptTimeoutMs}ms`)),
+          attemptTimeoutMs,
         );
       }),
     ]);
   } catch (err) {
-    // Allow brief drain so child exit code/signal and stderr head/tail are captured before throwing
-    await Promise.race([
-      exitDrainPromise,
-      new Promise<void>((resolve) => setTimeout(resolve, 250)),
-    ]);
-    child.kill('SIGKILL');
-    rmSync(profileDir, { recursive: true, force: true });
+    // Allow brief drain if termination has not started yet so spontaneous child exit code/signal and stderr are captured
+    if (!terminatePromise && exitCode === undefined && exitSignal === undefined) {
+      await Promise.race([
+        exitDrainPromise,
+        new Promise<void>((resolve) => setTimeout(resolve, 150)),
+      ]);
+    }
     const baseMsg = err instanceof Error ? err.message : String(err);
-    throw new Error(`${baseMsg} | ${formatDiagnosticContext()}`);
+    const diagBeforeKill = initialDiagnosticBeforeSignal ?? formatDiagnosticContext();
+    await terminateBrowserProcessTree(baseMsg);
+    throw new Error(baseMsg.includes(diagBeforeKill) ? baseMsg : `${baseMsg} | ${diagBeforeKill}`);
   } finally {
     clearTimeout(startupTimer);
   }
 
-  async function evaluate<T>(expression: string): Promise<T> {
+  async function evaluate<T>(expression: string, timeoutMs = CDP_COMMAND_TIMEOUT_MS): Promise<T> {
     const res = await sendCdp(
       'Runtime.evaluate',
       {
@@ -1521,6 +1718,7 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
         awaitPromise: true,
       },
       sessionId,
+      timeoutMs,
     );
     const exceptionDetails = res.exceptionDetails as { text?: string; exception?: { description?: string } } | undefined;
     if (exceptionDetails) {
@@ -1538,15 +1736,30 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
     timeoutMs = 10_000,
   ): Promise<void> {
     const deadline = Date.now() + timeoutMs;
+    let lastEvalError: string | null = null;
     while (Date.now() < deadline) {
-      const ok = await evaluate<boolean>(`Boolean(${predicateExpr})`);
-      if (ok) return;
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) break;
+      const evalTimeoutMs = Math.max(250, Math.min(2_500, remainingMs));
+      try {
+        const ok = await evaluate<boolean>(`Boolean(${predicateExpr})`, evalTimeoutMs);
+        if (ok) return;
+        lastEvalError = null;
+      } catch (err) {
+        lastEvalError = err instanceof Error ? err.message : String(err);
+      }
       await new Promise((r) => setTimeout(r, 40));
     }
-    const bodySnippet = await evaluate<string>(`(document.body?.innerText || '').slice(0, 600)`).catch(
-      () => '<unavailable>',
+    // Use textContent (not layout-reflowing innerText) with a strict 1,000ms bound so waitForCondition
+    // never hangs an extra 20,000ms on CDP_COMMAND_TIMEOUT_MS into the outer Vitest test timeout.
+    const bodySnippet = await evaluate<string>(
+      `(document.body?.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 600)`,
+      1_000,
+    ).catch(() => '<unavailable>');
+    const errSuffix = lastEvalError ? ` (lastEvalError: ${lastEvalError})` : '';
+    throw new Error(
+      `Timed out waiting for ${description} after ${timeoutMs}ms${errSuffix}. Current page text: ${bodySnippet}`,
     );
-    throw new Error(`Timed out waiting for ${description}. Current page text: ${bodySnippet}`);
   }
 
   return {
@@ -1555,14 +1768,16 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
     async resetPage() {
       const alreadyBlank = await evaluate<boolean>(
         `window.location.href === 'about:blank' && document.readyState === 'complete'`,
+        2_500,
       ).catch(() => false);
       if (alreadyBlank) return;
-      await evaluate(`window.stop?.()`).catch(() => undefined);
-      await sendCdp('Page.stopLoading', {}, sessionId).catch(() => undefined);
-      await sendCdp('Page.navigate', { url: 'about:blank' }, sessionId);
+      await evaluate(`window.stop?.()`, STOP_LOADING_TIMEOUT_MS).catch(() => undefined);
+      await sendCdp('Page.stopLoading', {}, sessionId, STOP_LOADING_TIMEOUT_MS).catch(() => undefined);
+      await sendCdp('Page.navigate', { url: 'about:blank' }, sessionId, GOTO_NAVIGATE_TIMEOUT_MS);
       await waitForCondition(
         `window.location.href === 'about:blank' && document.readyState === 'complete'`,
         'reset to about:blank',
+        5_000,
       );
     },
     async goto(url: string) {
@@ -1570,17 +1785,33 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
       if (parsed.hostname !== '127.0.0.1' && parsed.hostname !== 'localhost') {
         throw new Error(`Refusing non-loopback navigation in E2E harness: ${url}`);
       }
-      await sendCdp('Page.stopLoading', {}, sessionId).catch(() => undefined);
+      await sendCdp('Page.stopLoading', {}, sessionId, STOP_LOADING_TIMEOUT_MS).catch(() => undefined);
+      let firstNavError: string | null = null;
       try {
-        await sendCdp('Page.navigate', { url }, sessionId);
-      } catch {
-        await sendCdp('Page.stopLoading', {}, sessionId).catch(() => undefined);
-        await sendCdp('Page.navigate', { url }, sessionId);
+        await sendCdp('Page.navigate', { url }, sessionId, GOTO_NAVIGATE_TIMEOUT_MS);
+      } catch (err) {
+        firstNavError = err instanceof Error ? err.message : String(err);
+        await sendCdp('Page.stopLoading', {}, sessionId, STOP_LOADING_TIMEOUT_MS).catch(() => undefined);
+        try {
+          await sendCdp('Page.navigate', { url }, sessionId, GOTO_NAVIGATE_TIMEOUT_MS);
+        } catch (retryErr) {
+          const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
+          throw new Error(
+            `Navigation to ${url} failed after 2 attempts (attempt 1: ${firstNavError} || attempt 2: ${retryMsg})`,
+          );
+        }
       }
-      await waitForCondition(
-        `document.readyState === 'complete' && document.querySelector('#root')?.children.length > 0`,
-        `navigation to ${url}`,
-      );
+      try {
+        await waitForCondition(
+          `document.readyState === 'complete' && document.querySelector('#root')?.children.length > 0`,
+          `navigation to ${url}`,
+        );
+      } catch (condErr) {
+        const condMsg = condErr instanceof Error ? condErr.message : String(condErr);
+        throw new Error(
+          firstNavError ? `${condMsg} (after initial Page.navigate retry: ${firstNavError})` : condMsg,
+        );
+      }
     },
     async setViewportSize(width: number, height: number) {
       await sendCdp(
@@ -1653,43 +1884,56 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
     async fillInputByLabel(labelText: string, value: string) {
       const labelEsc = JSON.stringify(labelText);
       const valEsc = JSON.stringify(value);
-      const filled = await evaluate<boolean>(`(() => {
-        const byAria = [...document.querySelectorAll('input[aria-label], textarea[aria-label]')].find(
-          el => el.getAttribute('aria-label') === ${labelEsc}
-        );
-        let input = byAria;
-        if (!input) {
-          const labels = [...document.querySelectorAll('label')];
-          const match = labels.find(l => (l.textContent || '').includes(${labelEsc}));
-          if (match) {
-            const forId = match.getAttribute('for');
-            input = forId ? document.getElementById(forId) : match.querySelector('input, textarea');
+      const deadline = Date.now() + 5_000;
+      while (Date.now() < deadline) {
+        const filled = await evaluate<boolean>(`(() => {
+          const byAria = [...document.querySelectorAll('input[aria-label], textarea[aria-label]')].find(
+            el => el.getAttribute('aria-label') === ${labelEsc}
+          );
+          let input = byAria;
+          if (!input) {
+            const labels = [...document.querySelectorAll('label')];
+            const match = labels.find(l => (l.textContent || '').includes(${labelEsc}));
+            if (match) {
+              const forId = match.getAttribute('for');
+              input = forId ? document.getElementById(forId) : match.querySelector('input, textarea');
+            }
           }
-        }
-        if (!input) return false;
-        const proto = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-        const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
-        setter?.call(input, ${valEsc});
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        return true;
-      })()`);
-      if (!filled) throw new Error(`Input for label not found: ${labelText}`);
+          if (!input) return false;
+          const proto = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+          const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+          setter?.call(input, ${valEsc});
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          return true;
+        })()`);
+        if (filled) return;
+        await new Promise((r) => setTimeout(r, 40));
+      }
+      throw new Error(`Input for label not found: ${labelText}`);
     },
     async selectByLabel(labelText: string, value: string) {
       const labelEsc = JSON.stringify(labelText);
       const valEsc = JSON.stringify(value);
-      const selected = await evaluate<boolean>(`(() => {
-        const labels = [...document.querySelectorAll('label')];
-        const match = labels.find(l => (l.textContent || '').includes(${labelEsc}));
-        const select = match?.querySelector('select');
-        if (!select) return false;
-        const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
-        setter?.call(select, ${valEsc});
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-        return true;
-      })()`);
-      if (!selected) throw new Error(`Select for label not found: ${labelText}`);
+      const deadline = Date.now() + 5_000;
+      while (Date.now() < deadline) {
+        const selected = await evaluate<boolean>(`(() => {
+          const labels = [...document.querySelectorAll('label')];
+          const match = labels.find(l => (l.textContent || '').includes(${labelEsc}));
+          const select = match?.querySelector('select');
+          if (!select) return false;
+          const hasOption = Array.from(select.options).some(opt => opt.value === ${valEsc});
+          if (!hasOption) return false;
+          const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+          setter?.call(select, ${valEsc});
+          if (select.value !== ${valEsc}) return false;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          return true;
+        })()`);
+        if (selected) return;
+        await new Promise((r) => setTimeout(r, 40));
+      }
+      throw new Error(`Select for label not found: ${labelText} (option ${value})`);
     },
     async pressKey(key: string) {
       await sendCdp('Input.dispatchKeyEvent', { type: 'keyDown', key }, sessionId);
@@ -1707,45 +1951,38 @@ export async function launchBrowserHarness(): Promise<BrowserHarness> {
       return report;
     },
     async runCustomAxTreeSmokeChecks(): Promise<CustomAxTreeSmokeSummary> {
-      const axTree = await sendCdp('Accessibility.getFullAXTree', {}, sessionId);
-      const nodes = Array.isArray(axTree.nodes)
-        ? (axTree.nodes as Array<{
-            ignored?: boolean;
-            role?: { value?: string };
-            name?: { value?: string };
-          }>)
-        : [];
-      const unlabeledButtons: string[] = [];
-      const unlabeledInputs: string[] = [];
-      for (const node of nodes) {
-        if (node.ignored) continue;
-        const role = node.role?.value ?? '';
-        const name = (node.name?.value ?? '').trim();
-        if (role === 'button' && !name) unlabeledButtons.push(role);
-        if ((role === 'textbox' || role === 'combobox' || role === 'searchbox') && !name) {
-          unlabeledInputs.push(role);
+      await sendCdp('Accessibility.enable', {}, sessionId);
+      try {
+        const axTree = await sendCdp('Accessibility.getFullAXTree', {}, sessionId);
+        const nodes = Array.isArray(axTree.nodes)
+          ? (axTree.nodes as Array<{
+              ignored?: boolean;
+              role?: { value?: string };
+              name?: { value?: string };
+            }>)
+          : [];
+        const unlabeledButtons: string[] = [];
+        const unlabeledInputs: string[] = [];
+        for (const node of nodes) {
+          if (node.ignored) continue;
+          const role = node.role?.value ?? '';
+          const name = (node.name?.value ?? '').trim();
+          if (role === 'button' && !name) unlabeledButtons.push(role);
+          if ((role === 'textbox' || role === 'combobox' || role === 'searchbox') && !name) {
+            unlabeledInputs.push(role);
+          }
         }
+        return {
+          totalNodes: nodes.length,
+          unlabeledButtons,
+          unlabeledInputs,
+        };
+      } finally {
+        await sendCdp('Accessibility.disable', {}, sessionId).catch(() => undefined);
       }
-      return {
-        totalNodes: nodes.length,
-        unlabeledButtons,
-        unlabeledInputs,
-      };
     },
     async close() {
-      rejectAllPending('Browser harness closing');
-      child.kill('SIGTERM');
-      await new Promise<void>((resolveExit) => {
-        const timer = setTimeout(() => {
-          child.kill('SIGKILL');
-          resolveExit();
-        }, 2_000);
-        child.once('exit', () => {
-          clearTimeout(timer);
-          resolveExit();
-        });
-      });
-      rmSync(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+      await terminateBrowserProcessTree('Browser harness closing');
     },
   };
 }
