@@ -749,11 +749,16 @@
   font-size: 19px;
 }
 .atlas-agent.watcher {
-  background-image: url("/brand/grokbot.png");
-  background-size: 42px;
-  background-repeat: no-repeat;
-  background-position: right 16px center;
   padding-right: 62px;
+}
+.atlas-watcher-icon {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  pointer-events: none;
 }
 .atlas-agent.admiral {
   border-color: #41688d;
@@ -1301,7 +1306,10 @@
   color: #8a2630;
 }
 .theme-light .atlas-model .model-badge {
-  color: #263b58;
+  color: #081018;
+}
+.theme-light .atlas-project-number {
+  color: #41688d;
 }
 .theme-light .git-checkout-list b {
   color: #205d9e;
