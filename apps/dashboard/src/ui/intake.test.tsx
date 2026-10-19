@@ -169,6 +169,7 @@ describe('raw request intake', () => {
     for (const label of ['Project ID', 'Root ID', 'Source ID', 'Source revision', 'Observed draft time', 'Original raw request', 'Separate intake token']) expect(html).toContain(label);
     expect(html).not.toContain('owner-secret');
     expect(html).toContain('type="password"');
+    expect(html).not.toMatch(/type="password"[^>]*\svalue=/);
     expect(html).toContain('Requester attribution is unknown');
     expect(html).toContain('Enriched-record, duplicate-query, and delivery views are not part');
   });
