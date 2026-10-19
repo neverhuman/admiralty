@@ -51,6 +51,8 @@ const BROWSER_STARTUP_TIMEOUT_MS = 15_000;
 const MAX_BROWSER_STARTUP_ATTEMPTS = 2;
 const GOTO_NAVIGATE_TIMEOUT_MS = 8_000;
 const STOP_LOADING_TIMEOUT_MS = 2_000;
+export const FORM_CONTROL_STAGE_TIMEOUT_MS = 5_000;
+export const MAX_STAGE_EVALUATE_BUDGET_MS = 2_500;
 
 export const MAX_HTTP_BODY_BYTES = 256 * 1024;
 export const MAX_RECORDED_REQUESTS = 512;
@@ -1214,6 +1216,188 @@ function readSysctlDiagnostic(path: string): string {
   }
 }
 
+export type StageEvaluateFn = <T>(expression: string, timeoutMs: number) => Promise<T>;
+
+function validateStageTimeoutMs(rawTimeoutMs: number, name: string): number {
+  if (
+    typeof rawTimeoutMs !== 'number' ||
+    !Number.isFinite(rawTimeoutMs) ||
+    !Number.isInteger(rawTimeoutMs) ||
+    rawTimeoutMs < 1
+  ) {
+    throw new Error(`Invalid ${name}: expected positive finite integer, got ${String(rawTimeoutMs)}`);
+  }
+  return rawTimeoutMs;
+}
+
+export async function fillInputByLabelStage(
+  evaluateFn: StageEvaluateFn,
+  labelText: string,
+  value: string,
+  timeoutMs = FORM_CONTROL_STAGE_TIMEOUT_MS,
+): Promise<void> {
+  const stageTimeoutMs = validateStageTimeoutMs(timeoutMs, 'fillInputByLabel timeoutMs');
+  const labelEsc = JSON.stringify(labelText);
+  const valEsc = JSON.stringify(value);
+  const deadline = Date.now() + stageTimeoutMs;
+  let lastFailureDetail = 'matching <input> or <textarea> not mounted';
+  let lastEvalError: string | null = null;
+
+  while (Date.now() < deadline) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) break;
+    const evalTimeoutMs = Math.min(MAX_STAGE_EVALUATE_BUDGET_MS, remainingMs);
+    try {
+      const outcome = await evaluateFn<{ ok: boolean; reason?: string }>(
+        `(() => {
+          const byAria = [...document.querySelectorAll('input[aria-label], textarea[aria-label]')].find(
+            el => el.getAttribute('aria-label') === ${labelEsc}
+          );
+          let input = byAria;
+          if (!input) {
+            const labels = [...document.querySelectorAll('label')];
+            const match = labels.find(l => (l.textContent || '').includes(${labelEsc}));
+            if (!match) {
+              const knownLabels = labels
+                .map(l => (l.textContent || '').replace(/\\s+/g, ' ').trim())
+                .filter(Boolean)
+                .slice(0, 8);
+              return {
+                ok: false,
+                reason: \`label or aria-label \${${labelEsc}} not found (visible labels: [\${knownLabels.join(', ')}])\`
+              };
+            }
+            const forId = match.getAttribute('for');
+            input = forId ? document.getElementById(forId) : match.querySelector('input, textarea');
+            if (!input) {
+              return {
+                ok: false,
+                reason: \`label \${${labelEsc}} found but associated input/textarea is missing (for=\${JSON.stringify(forId)})\`
+              };
+            }
+          }
+          if (!(input instanceof HTMLInputElement) && !(input instanceof HTMLTextAreaElement)) {
+            return {
+              ok: false,
+              reason: \`matched element for \${${labelEsc}} is <\${input.tagName.toLowerCase()}>, not input/textarea\`
+            };
+          }
+          const proto = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+          const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+          setter?.call(input, ${valEsc});
+          if (input.value !== ${valEsc}) {
+            return {
+              ok: false,
+              reason: \`input.value mismatch after setter (expected \${${valEsc}}, actual \${JSON.stringify(input.value)})\`
+            };
+          }
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          return { ok: true };
+        })()`,
+        evalTimeoutMs,
+      );
+      if (outcome?.ok) return;
+      if (outcome?.reason) {
+        lastFailureDetail = outcome.reason;
+      }
+    } catch (err) {
+      lastEvalError = err instanceof Error ? err.message : String(err);
+    }
+    const sleepRemainingMs = deadline - Date.now();
+    if (sleepRemainingMs <= 0) break;
+    await new Promise((r) => setTimeout(r, Math.min(40, sleepRemainingMs)));
+  }
+
+  const details = [
+    `reason: ${lastFailureDetail}`,
+    ...(lastEvalError ? [`lastEvalError: ${lastEvalError}`] : []),
+  ].join('; ');
+  throw new Error(`Input for label not found: ${labelText} after ${stageTimeoutMs}ms (${details})`);
+}
+
+export async function selectByLabelStage(
+  evaluateFn: StageEvaluateFn,
+  labelText: string,
+  value: string,
+  timeoutMs = FORM_CONTROL_STAGE_TIMEOUT_MS,
+): Promise<void> {
+  const stageTimeoutMs = validateStageTimeoutMs(timeoutMs, 'selectByLabel timeoutMs');
+  const labelEsc = JSON.stringify(labelText);
+  const valEsc = JSON.stringify(value);
+  const deadline = Date.now() + stageTimeoutMs;
+  let lastFailureDetail = 'matching <select> or <option> not mounted';
+  let lastEvalError: string | null = null;
+
+  while (Date.now() < deadline) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) break;
+    const evalTimeoutMs = Math.min(MAX_STAGE_EVALUATE_BUDGET_MS, remainingMs);
+    try {
+      const outcome = await evaluateFn<{ ok: boolean; reason?: string }>(
+        `(() => {
+          const labels = [...document.querySelectorAll('label')];
+          const match = labels.find(l => (l.textContent || '').includes(${labelEsc}));
+          if (!match) {
+            const knownLabels = labels
+              .map(l => (l.textContent || '').replace(/\\s+/g, ' ').trim())
+              .filter(Boolean)
+              .slice(0, 8);
+            return {
+              ok: false,
+              reason: \`label \${${labelEsc}} not found (visible labels: [\${knownLabels.join(', ')}])\`
+            };
+          }
+          const forId = match.getAttribute('for');
+          const candidate = forId ? document.getElementById(forId) : match.querySelector('select');
+          const select = candidate instanceof HTMLSelectElement ? candidate : match.querySelector('select');
+          if (!select) {
+            return {
+              ok: false,
+              reason: \`label \${${labelEsc}} found but <select> element is missing\`
+            };
+          }
+          const optionValues = Array.from(select.options).map(opt => opt.value);
+          if (!optionValues.includes(${valEsc})) {
+            return {
+              ok: false,
+              reason: \`option \${${valEsc}} not present in <select> (available options: [\${optionValues.slice(0, 12).join(', ')}])\`
+            };
+          }
+          const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+          setter?.call(select, ${valEsc});
+          if (select.value !== ${valEsc}) {
+            return {
+              ok: false,
+              reason: \`select.value mismatch after setter (expected \${${valEsc}}, actual \${JSON.stringify(select.value)})\`
+            };
+          }
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          return { ok: true };
+        })()`,
+        evalTimeoutMs,
+      );
+      if (outcome?.ok) return;
+      if (outcome?.reason) {
+        lastFailureDetail = outcome.reason;
+      }
+    } catch (err) {
+      lastEvalError = err instanceof Error ? err.message : String(err);
+    }
+    const sleepRemainingMs = deadline - Date.now();
+    if (sleepRemainingMs <= 0) break;
+    await new Promise((r) => setTimeout(r, Math.min(40, sleepRemainingMs)));
+  }
+
+  const details = [
+    `reason: ${lastFailureDetail}`,
+    ...(lastEvalError ? [`lastEvalError: ${lastEvalError}`] : []),
+  ].join('; ');
+  throw new Error(
+    `Select for label not found: ${labelText} (option ${value}) after ${stageTimeoutMs}ms (${details})`,
+  );
+}
+
 export interface BrowserHarness {
   binaryPath: string;
   browserVersion: { product: string; revision: string; protocolVersion: string };
@@ -1227,8 +1411,8 @@ export interface BrowserHarness {
   clickNav(viewLabel: string): Promise<void>;
   clickButtonByText(labelText: string): Promise<void>;
   clickButtonByAriaLabel(ariaLabel: string): Promise<void>;
-  fillInputByLabel(labelText: string, value: string): Promise<void>;
-  selectByLabel(labelText: string, value: string): Promise<void>;
+  fillInputByLabel(labelText: string, value: string, timeoutMs?: number): Promise<void>;
+  selectByLabel(labelText: string, value: string, timeoutMs?: number): Promise<void>;
   pressKey(key: string): Promise<void>;
   runAxeAudit(): Promise<AxeAuditReport>;
   runCustomAxTreeSmokeChecks(): Promise<CustomAxTreeSmokeSummary>;
@@ -1735,20 +1919,22 @@ async function launchBrowserHarnessAttempt(
     description: string,
     timeoutMs = 10_000,
   ): Promise<void> {
-    const deadline = Date.now() + timeoutMs;
+    const stageTimeoutMs = validateStageTimeoutMs(timeoutMs, 'waitForCondition timeoutMs');
+    const deadline = Date.now() + stageTimeoutMs;
     let lastEvalError: string | null = null;
     while (Date.now() < deadline) {
       const remainingMs = deadline - Date.now();
       if (remainingMs <= 0) break;
-      const evalTimeoutMs = Math.max(250, Math.min(2_500, remainingMs));
+      const evalTimeoutMs = Math.min(MAX_STAGE_EVALUATE_BUDGET_MS, remainingMs);
       try {
         const ok = await evaluate<boolean>(`Boolean(${predicateExpr})`, evalTimeoutMs);
         if (ok) return;
-        lastEvalError = null;
       } catch (err) {
         lastEvalError = err instanceof Error ? err.message : String(err);
       }
-      await new Promise((r) => setTimeout(r, 40));
+      const sleepRemainingMs = deadline - Date.now();
+      if (sleepRemainingMs <= 0) break;
+      await new Promise((r) => setTimeout(r, Math.min(40, sleepRemainingMs)));
     }
     // Use textContent (not layout-reflowing innerText) with a strict 1,000ms bound so waitForCondition
     // never hangs an extra 20,000ms on CDP_COMMAND_TIMEOUT_MS into the outer Vitest test timeout.
@@ -1758,7 +1944,7 @@ async function launchBrowserHarnessAttempt(
     ).catch(() => '<unavailable>');
     const errSuffix = lastEvalError ? ` (lastEvalError: ${lastEvalError})` : '';
     throw new Error(
-      `Timed out waiting for ${description} after ${timeoutMs}ms${errSuffix}. Current page text: ${bodySnippet}`,
+      `Timed out waiting for ${description} after ${stageTimeoutMs}ms${errSuffix}. Current page text: ${bodySnippet}`,
     );
   }
 
@@ -1848,29 +2034,36 @@ async function launchBrowserHarnessAttempt(
     },
     async clickNav(viewLabel: string) {
       const escaped = JSON.stringify(viewLabel);
-      const clicked = await evaluate<boolean>(`(() => {
+      const clicked = await evaluate<boolean>(
+        `(() => {
         const buttons = [...document.querySelectorAll('nav button.nav-item')];
         const target = buttons.find(b => (b.textContent || '').includes(${escaped}));
         if (!target) return false;
         target.click();
         return true;
-      })()`);
+      })()`,
+        MAX_STAGE_EVALUATE_BUDGET_MS,
+      );
       if (!clicked) throw new Error(`Navigation button not found: ${viewLabel}`);
     },
     async clickButtonByText(labelText: string) {
       const escaped = JSON.stringify(labelText);
-      const clicked = await evaluate<boolean>(`(() => {
+      const clicked = await evaluate<boolean>(
+        `(() => {
         const buttons = [...document.querySelectorAll('button, [role="tab"], summary')];
         const target = buttons.find(b => (b.textContent || '').replace(/\\s+/g, ' ').trim().includes(${escaped}));
         if (!target) return false;
         target.click();
         return true;
-      })()`);
+      })()`,
+        MAX_STAGE_EVALUATE_BUDGET_MS,
+      );
       if (!clicked) throw new Error(`Button with text not found: ${labelText}`);
     },
     async clickButtonByAriaLabel(ariaLabel: string) {
       const escaped = JSON.stringify(ariaLabel);
-      const clicked = await evaluate<boolean>(`(() => {
+      const clicked = await evaluate<boolean>(
+        `(() => {
         const all = [...document.querySelectorAll('[aria-label], button[title]')];
         const target =
           all.find(el => el.getAttribute('aria-label') === ${escaped} || el.getAttribute('title') === ${escaped}) ??
@@ -1878,62 +2071,16 @@ async function launchBrowserHarnessAttempt(
         if (!target || !(target instanceof HTMLElement)) return false;
         target.click();
         return true;
-      })()`);
+      })()`,
+        MAX_STAGE_EVALUATE_BUDGET_MS,
+      );
       if (!clicked) throw new Error(`Control with aria-label not found: ${ariaLabel}`);
     },
-    async fillInputByLabel(labelText: string, value: string) {
-      const labelEsc = JSON.stringify(labelText);
-      const valEsc = JSON.stringify(value);
-      const deadline = Date.now() + 5_000;
-      while (Date.now() < deadline) {
-        const filled = await evaluate<boolean>(`(() => {
-          const byAria = [...document.querySelectorAll('input[aria-label], textarea[aria-label]')].find(
-            el => el.getAttribute('aria-label') === ${labelEsc}
-          );
-          let input = byAria;
-          if (!input) {
-            const labels = [...document.querySelectorAll('label')];
-            const match = labels.find(l => (l.textContent || '').includes(${labelEsc}));
-            if (match) {
-              const forId = match.getAttribute('for');
-              input = forId ? document.getElementById(forId) : match.querySelector('input, textarea');
-            }
-          }
-          if (!input) return false;
-          const proto = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-          const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
-          setter?.call(input, ${valEsc});
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.dispatchEvent(new Event('change', { bubbles: true }));
-          return true;
-        })()`);
-        if (filled) return;
-        await new Promise((r) => setTimeout(r, 40));
-      }
-      throw new Error(`Input for label not found: ${labelText}`);
+    async fillInputByLabel(labelText: string, value: string, timeoutMs = FORM_CONTROL_STAGE_TIMEOUT_MS) {
+      await fillInputByLabelStage(evaluate, labelText, value, timeoutMs);
     },
-    async selectByLabel(labelText: string, value: string) {
-      const labelEsc = JSON.stringify(labelText);
-      const valEsc = JSON.stringify(value);
-      const deadline = Date.now() + 5_000;
-      while (Date.now() < deadline) {
-        const selected = await evaluate<boolean>(`(() => {
-          const labels = [...document.querySelectorAll('label')];
-          const match = labels.find(l => (l.textContent || '').includes(${labelEsc}));
-          const select = match?.querySelector('select');
-          if (!select) return false;
-          const hasOption = Array.from(select.options).some(opt => opt.value === ${valEsc});
-          if (!hasOption) return false;
-          const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
-          setter?.call(select, ${valEsc});
-          if (select.value !== ${valEsc}) return false;
-          select.dispatchEvent(new Event('change', { bubbles: true }));
-          return true;
-        })()`);
-        if (selected) return;
-        await new Promise((r) => setTimeout(r, 40));
-      }
-      throw new Error(`Select for label not found: ${labelText} (option ${value})`);
+    async selectByLabel(labelText: string, value: string, timeoutMs = FORM_CONTROL_STAGE_TIMEOUT_MS) {
+      await selectByLabelStage(evaluate, labelText, value, timeoutMs);
     },
     async pressKey(key: string) {
       await sendCdp('Input.dispatchKeyEvent', { type: 'keyDown', key }, sessionId);
