@@ -1,0 +1,390 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T09:08:29.850Z",
+  "scope": "Repair blocking deployment-validation line framing; no production runtime or ingestion change",
+  "source_commit": "53bc56d8a6232225302f54127e5030d4e4530961",
+  "base_commit": "18417d88def462e69d44bd6641d04109b373a67b",
+  "changed_file": {
+    "repo_path": "scripts/check/canary-smoke.py",
+    "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/scripts/check/canary-smoke.py",
+    "bytes": 49434,
+    "sha256": "7f04107e3f6ceb0271ed57891e4934ee8286a40ea77835ad170f0daabc66d617"
+  },
+  "fix": "Consume only complete LF records; incomplete tail remains pending. CRLF works; unchanged strict announcement/loopback/protected-port/output/deadline/HTTP/owned-child guards.",
+  "language_scope": "Narrow required repair to existing deployment-only Python validation; no new Python daemon, collector, runtime or ingestion path",
+  "checks": {
+    "mac_self_test": {
+      "passed": 23,
+      "new_methods_subset": 5,
+      "raw": {
+        "path": "/private/tmp/adm-canary-framing-selftest.log",
+        "bytes": 3820,
+        "sha256": "1de2abde19466386b1938f0da77f7edf94db66a6c3670aefcb355e8505e442d2"
+      }
+    },
+    "linux_self_test": {
+      "passed": 23,
+      "same_methods": true,
+      "raw": {
+        "path": "/private/tmp/adm-canary-evidence-20261019T0908Z/linux-self-test.log",
+        "bytes": 3820,
+        "sha256": "937694494c8084f8ac8fde2ac8b0f0d8eeb152512f558df7554b07f1cb52d02e"
+      }
+    },
+    "old_predicate_regression": {
+      "result": {
+        "started_utc": "2026-10-19T09:06:40.313Z",
+        "finished_utc": "2026-10-19T09:06:40.432Z",
+        "code": 1,
+        "error": null,
+        "fixture": "/private/tmp/adm-canary-framing-before.py",
+        "fixture_sha256": "ae232b89a7b23f91b431a85968d713c7921cf6110ae9753648107b51752906c7",
+        "fixed_sha256": "7f04107e3f6ceb0271ed57891e4934ee8286a40ea77835ad170f0daabc66d617",
+        "substitution": "Only find_listener iteration restored to old splitlines predicate; new regression tests retained. This synthetic fixture is not an exact full old Git revision.",
+        "new_methods": [
+          "test_listener_waits_for_every_split_and_crlf_record",
+          "test_listener_unterminated_eof_is_not_a_record",
+          "test_listener_complete_malformed_record_still_fails",
+          "test_listener_ignores_only_complete_unrelated_records",
+          "test_listener_actual_pipe_can_pause_between_prefix_and_suffix"
+        ],
+        "methods_subset_of_23": true,
+        "log_sha256": "2e65b41629298e08f622ab26cdb6c85cb8c6ffa13e4ece056fabfd1726a14023",
+        "synthetic": true,
+        "provider_calls": 0,
+        "service_control": false
+      },
+      "raw": {
+        "path": "/private/tmp/adm-canary-framing-before.log",
+        "bytes": 161010,
+        "sha256": "2e65b41629298e08f622ab26cdb6c85cb8c6ffa13e4ece056fabfd1726a14023"
+      },
+      "interpretation": "Five new regression methods on a synthetic current-script fixture with only the old splitlines predicate restored: actual failed,4 assertions/111 subtest errors. Not an exact complete old Git revision or115 independent test cases."
+    },
+    "real_linux_smoke": {
+      "passed": 15,
+      "seconds": 3.039,
+      "actual_native_binaries": true,
+      "synthetic": false,
+      "binary_source": "18417d88def462e69d44bd6641d04109b373a67b",
+      "invocation": {
+        "schema_version": 1,
+        "started_utc": "2026-10-19T09:07:33.601Z",
+        "finished_utc": "2026-10-19T09:07:38.450Z",
+        "code": 0,
+        "signal": null,
+        "error": null,
+        "harness_source": "53bc56d",
+        "harness": {
+          "path": "/home/ubuntu/admiralty-v2-build/private-config/native-canary-framing-53bc56d-20261019T0908Z/canary-smoke.py",
+          "bytes": 49434,
+          "sha256": "7f04107e3f6ceb0271ed57891e4934ee8286a40ea77835ad170f0daabc66d617"
+        },
+        "binary_source": "18417d88def462e69d44bd6641d04109b373a67b",
+        "verified_binaries": [
+          {
+            "name": "admiralty",
+            "sha256": "6045d6fd8ad6a2cbd2c566a31726942080b29089c0115fea0cef5358bc0224b1"
+          },
+          {
+            "name": "admiraltyd",
+            "sha256": "b68d738ba135c86ca99ae6ff64c4e2f08ecbeeebdf33c8fb14f86993024e43a1"
+          }
+        ],
+        "directory": "/home/ubuntu/admiralty-v2-build/private-config/native-canary-framing-53bc56d-20261019T0908Z",
+        "outer": {
+          "observed_utc": "2026-10-19T09:07:33.220Z",
+          "cpu_percent": 65.90053341700659,
+          "mem_available_kib": 27475468,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        },
+        "inside_gates_in_wrapper": true,
+        "wrapper": {
+          "path": "/home/ubuntu/admiralty-v2-build/private-config/native-canary-framing-53bc56d-20261019T0908Z/wrapper.log",
+          "bytes": 184,
+          "sha256": "63ec63687b073d55e1e85dd1eb40b041e55401f155cb2fa4c2318a899b12ebf1"
+        },
+        "files": [
+          {
+            "path": "/home/ubuntu/admiralty-v2-build/private-config/native-canary-framing-53bc56d-20261019T0908Z/smoke.json",
+            "bytes": 1566,
+            "sha256": "2e37b5c525a30430aa240cf3f623cd5622bb02740743bc85726b77786db04057"
+          },
+          {
+            "path": "/home/ubuntu/admiralty-v2-build/private-config/native-canary-framing-53bc56d-20261019T0908Z/smoke.stderr",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "fresh_owned_scratch": true,
+        "provider_calls": 0,
+        "service_control": false,
+        "after": {
+          "observed_utc": "2026-10-19T09:07:39.648Z",
+          "cpu_percent": 67.83974862529459,
+          "mem_available_kib": 29281944,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        },
+        "smoke": {
+          "acceptance": false,
+          "binaries": {
+            "admiralty_sha256": "sha256:6045d6fd8ad6a2cbd2c566a31726942080b29089c0115fea0cef5358bc0224b1",
+            "admiraltyd_sha256": "sha256:b68d738ba135c86ca99ae6ff64c4e2f08ecbeeebdf33c8fb14f86993024e43a1"
+          },
+          "checks": [
+            {
+              "duration_ms": 1892,
+              "name": "real_server_startup",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 4,
+              "name": "real_health_native_unqualified",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "unauthorized_real_fleet_rejected",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "unauthorized_real_models_rejected",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "model_auth_precedes_body_validation",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 3,
+              "name": "authorized_real_fleet",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "authorized_models_policy",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "model_selection_proposal_only",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 965,
+              "name": "demo_startup",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 4,
+              "name": "demo_fleet_simulated",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "demo_no_models",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "demo_no_model_policy_write",
+              "state": "pass"
+            },
+            {
+              "duration_ms": 1,
+              "name": "demo_no_legacy_policy",
+              "state": "pass"
+            },
+            {
+              "name": "doctor_read_only_capability",
+              "state": "pass"
+            },
+            {
+              "name": "demo_cli_has_no_real_policy_flags",
+              "state": "pass"
+            }
+          ],
+          "cleanup": {
+            "admiraltyd": "terminated",
+            "demo": "terminated"
+          },
+          "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+          "duration_ms": 3039,
+          "fleet_rollout_closure": false,
+          "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+          "started_at_utc": "2026-10-19T09:07:35.293117+00:00",
+          "status": "pass",
+          "synthetic": false
+        }
+      },
+      "result": {
+        "path": "/private/tmp/adm-linux-canary-protected-result.json",
+        "bytes": 3455,
+        "sha256": "a7a6010ae85fab68cf7265b32f8846bfd4f7dcb3b9333b0318a8a9b5377956d1"
+      },
+      "raw": {
+        "path": "/private/tmp/adm-canary-evidence-20261019T0908Z/protected-smoke.json",
+        "bytes": 1566,
+        "sha256": "2e37b5c525a30430aa240cf3f623cd5622bb02740743bc85726b77786db04057"
+      },
+      "wrapper": {
+        "path": "/private/tmp/adm-canary-evidence-20261019T0908Z/protected-wrapper.log",
+        "bytes": 184,
+        "sha256": "63ec63687b073d55e1e85dd1eb40b041e55401f155cb2fa4c2318a899b12ebf1"
+      }
+    }
+  },
+  "preserved_failures": {
+    "deployer_original": {
+      "receipt": {
+        "path": "/private/tmp/adm-canary-evidence-20261019T0908Z/deployer-blocked.json",
+        "bytes": 4165,
+        "sha256": "ec158edb5dff784a4b127210e894a2c3ca97944fb6369f4c7a7e27154093dd8d"
+      },
+      "smoke": {
+        "path": "/private/tmp/adm-canary-evidence-20261019T0908Z/deployer-failed-smoke.json",
+        "bytes": 823,
+        "sha256": "9814a94f63b8e4ee351ec5063512cddc825553584f71b662efa01b6c36e97135"
+      },
+      "phase": "isolated_binary_smoke",
+      "production_cutovers": 0,
+      "live_source_unchanged": "fcd35569ccfed7429e1bb4b22dfcb7dc142f9700"
+    },
+    "root_first_isolated_fixture": {
+      "result": {
+        "schema_version": 1,
+        "started_utc": "2026-10-19T09:06:04.086Z",
+        "finished_utc": "2026-10-19T09:06:10.674Z",
+        "code": 1,
+        "signal": null,
+        "error": null,
+        "harness_source": "53bc56d",
+        "harness": {
+          "path": "/home/ubuntu/admiralty-v2-build/receipts/canary-framing-53bc56d-20261019T0906Z/canary-smoke.py",
+          "bytes": 49434,
+          "sha256": "7f04107e3f6ceb0271ed57891e4934ee8286a40ea77835ad170f0daabc66d617"
+        },
+        "binary_source": "18417d88def462e69d44bd6641d04109b373a67b",
+        "verified_binaries": [
+          {
+            "name": "admiralty",
+            "sha256": "6045d6fd8ad6a2cbd2c566a31726942080b29089c0115fea0cef5358bc0224b1"
+          },
+          {
+            "name": "admiraltyd",
+            "sha256": "b68d738ba135c86ca99ae6ff64c4e2f08ecbeeebdf33c8fb14f86993024e43a1"
+          }
+        ],
+        "directory": "/home/ubuntu/admiralty-v2-build/receipts/canary-framing-53bc56d-20261019T0906Z",
+        "outer": {
+          "observed_utc": "2026-10-19T09:06:03.926Z",
+          "cpu_percent": 70.81302091523824,
+          "mem_available_kib": 27226700,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        },
+        "inside_gates_in_wrapper": true,
+        "wrapper": {
+          "path": "/home/ubuntu/admiralty-v2-build/receipts/canary-framing-53bc56d-20261019T0906Z/wrapper.log",
+          "bytes": 367,
+          "sha256": "ff8a79829707c9ec927f57eb3716e9dcb9db2d17ab07151bc1bc8cd2d7564a8a"
+        },
+        "files": [
+          {
+            "path": "/home/ubuntu/admiralty-v2-build/receipts/canary-framing-53bc56d-20261019T0906Z/self-test.log",
+            "bytes": 3820,
+            "sha256": "937694494c8084f8ac8fde2ac8b0f0d8eeb152512f558df7554b07f1cb52d02e"
+          },
+          {
+            "path": "/home/ubuntu/admiralty-v2-build/receipts/canary-framing-53bc56d-20261019T0906Z/smoke.json",
+            "bytes": 895,
+            "sha256": "077ad3f3afee86980d9634d8dfad50ca3b4f2232682f076fbb1529e743f34eea"
+          },
+          {
+            "path": "/home/ubuntu/admiralty-v2-build/receipts/canary-framing-53bc56d-20261019T0906Z/smoke.stderr",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "fresh_owned_scratch": true,
+        "provider_calls": 0,
+        "service_control": false,
+        "after": {
+          "observed_utc": "2026-10-19T09:06:11.881Z",
+          "cpu_percent": 60.125835627211956,
+          "mem_available_kib": 28103904,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        },
+        "smoke": {
+          "acceptance": false,
+          "binaries": {
+            "admiralty_sha256": "sha256:6045d6fd8ad6a2cbd2c566a31726942080b29089c0115fea0cef5358bc0224b1",
+            "admiraltyd_sha256": "sha256:b68d738ba135c86ca99ae6ff64c4e2f08ecbeeebdf33c8fb14f86993024e43a1"
+          },
+          "checks": [
+            {
+              "diagnostic": "child exited before listener announcement (exit 1); child_stderr=Error: \"private configuration ancestor is not protected\"",
+              "duration_ms": 20,
+              "name": "real_server_startup",
+              "state": "fail"
+            }
+          ],
+          "cleanup": {
+            "admiraltyd": "already_exited"
+          },
+          "clock": "UTC start timestamp plus monotonic elapsed/deadline measurements",
+          "diagnostic": "child exited before listener announcement (exit 1); child_stderr=Error: \"private configuration ancestor is not protected\"",
+          "duration_ms": 41,
+          "fleet_rollout_closure": false,
+          "randomness": "ephemeral token from OS CSPRNG; token value not recorded",
+          "started_at_utc": "2026-10-19T09:06:10.522654+00:00",
+          "status": "fail",
+          "synthetic": false
+        }
+      },
+      "raw": {
+        "path": "/private/tmp/adm-canary-evidence-20261019T0908Z/first-smoke.json",
+        "bytes": 895,
+        "sha256": "077ad3f3afee86980d9634d8dfad50ca3b4f2232682f076fbb1529e743f34eea"
+      },
+      "wrapper": {
+        "path": "/private/tmp/adm-canary-evidence-20261019T0908Z/first-wrapper.log",
+        "bytes": 367,
+        "sha256": "ff8a79829707c9ec927f57eb3716e9dcb9db2d17ab07151bc1bc8cd2d7564a8a"
+      },
+      "reason": "Root used receipts ancestor0775; native private-config guard correctly denied. Fresh fixture moved under existing0700private-config; no shared chmod/guard weakening and no repeated passing selftests."
+    }
+  },
+  "review": {
+    "separate_source_review": "CLEAR exact7f04107e, no tests rerun by reviewer",
+    "root_source_and_evidence_review": true,
+    "neverhumanbot_did_not_execute_tests": true
+  },
+  "evidence_directory": "/private/tmp/adm-canary-evidence-20261019T0908Z",
+  "limits": {
+    "production_service_control": false,
+    "production_cutover": false,
+    "provider_calls": 0,
+    "new_provider_authorization": false,
+    "SC155_reused": false,
+    "production_issuer": false,
+    "general_native_execution_qualified": false,
+    "parent_acceptance": false,
+    "full_hosted_CI_green": false,
+    "output_and_deadline_limits_unchanged": true,
+    "all_original_deployment_failures_retained": true
+  }
+}

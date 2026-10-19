@@ -2309,3 +2309,43 @@ cover last-slot races across projects, current-policy denial, replay/upgrade
 rejection, identity/capacity reduction, rollback, corruption and reopen. No worker
 is reported running on that packet yet; no issuer/release/settlement/provider or
 whole-parent qualification is implied by this next-step review.
+
+### 09:08Z — repair the actual deployment-blocking smoke parser
+
+SC156 owner885617's18417 release build completed, but its single isolated smoke
+failed before cutover: the parser validated the unterminated stderr fragment
+`Admiralty listening on http://`. The original09:01 blocked receipt and failed
+smoke remain immutable; fcd primary stayed healthy and unchanged. Root read the
+newest08:48 watcher note and actual blocked result, claimed only the harness and
+inline tests, and sent a file pointer only after09:04 hardcopy showed blank ready
+input. The deploy owner retains service control; Root performs no live cutover.
+
+Source53bc56d8a6232225302f54127e5030d4e4530961 changes one parser iteration to
+consume only LF-complete records. Pipe reads have no line-boundary guarantee;
+an incomplete tail must await more bytes. The unchanged strict listener suffix,
+literal loopback/protected-port validation,64KiB capture, HTTP/startup/whole
+deadlines and owned-child cleanup remain. Five new inline methods cover every
+byte split/CRLF, EOF tails, complete malformed/protected listeners, non-LF
+controls and an actual staged pipe. Separate source review is clear.
+
+The [framing receipt](../../../receipts/integration/canary-listener-framing-20261019T0908Z.json)
+pins23Mac and23sameLinux self-tests, including the5new methods. A synthetic
+current-script fixture restoring only the old predicate actually fails those
+5methods with4assertion failures/111subtest errors; it is not an exact old Git
+revision or115independent cases. The original source failure is also preserved.
+
+Root's first gated Linux smoke fixture was incorrectly placed below the shared
+0775receipt ancestor. The native private-config guard correctly denied it.
+Root retained that typed failure, then created a completely fresh0700fixture
+under existing protected `private-config`; shared permissions/guards stayed
+unchanged and the passing23self-tests were not repeated. Exact immutable18417
+binary hashes with fixed53bc harness then pass all15real startup/HTTP/auth/model-
+proposal/demo/doctor checks in3.039seconds. Fresh outer/inside/after fleetcap
+gates and wrapper/raw hashes are pinned. Owned smoke children were terminated;
+no provider/grant/SC155retry, live ports, service control or parent acceptance.
+
+This is the narrow required fix to the existing deployment-only Python test
+harness. It adds no Python runtime/collector/ingestion/service. Root packages it
+with the pending merge/rollout receipts rather than advancing main solely for
+another receipt. The failed production-deploy attempt remains failed; the new
+isolated pass is a separately sourced qualification for the serialized deployer.
