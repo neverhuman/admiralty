@@ -143,6 +143,13 @@ reservation stops or changes block dispatch; unknown liabilities remain reserved
 Production budget issuance, global model
 capacity, real provider execution and settlement remain separate rollout work.
 
+The optional [durable inference-slot Store path](docs/architecture/inference-slots.md)
+adds a managed hold to that same claim/budget/intent transaction. Exact retries
+preserve original receipts, and prior-generation holds keep consuming capacity.
+This requires independently installed observational policy and activates no
+physical pool, provider or scheduler. Shared authorization fencing, production
+issuance, settlement/release and runtime recovery remain separate gates.
+
 Workplans can be previewed and registered as immutable revisions in an exclusively owned offline database:
 
 ```sh

@@ -54,9 +54,14 @@ retried through the ordinary append path. A historical attempt may match actual
 Store lifecycle lineage only for exact immutable replay, with current policy
 still required. Contract changes can revoke that scope.
 
-The writer authenticates before writes and immediately before commit, including
-incident-only commits. An outbox collision preserves its incident only when
-currently authorized and stages no reservation. Subsequent journal, policy or
+The writer samples authorization before writes and at final precommit validation
+points, including incident-only commits. Independent policies are sampled
+sequentially. Their callbacks must be observational and must not mutate or revoke
+any admission authority. These Boolean interfaces do not supply joint
+authorization or asynchronous revocation linearizability through COMMIT;
+production needs a common retained snapshot, epoch or lease fence. An outbox
+collision preserves its incident only after those validation points and stages
+no reservation. Subsequent journal, policy or
 SQL failures roll back the new outbox, debit, claim and associations together.
 In-memory task projections are published only after commit.
 

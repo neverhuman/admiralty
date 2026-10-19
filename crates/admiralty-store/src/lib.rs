@@ -5,6 +5,7 @@ pub mod attention;
 pub mod context_renders;
 pub mod custody;
 pub mod inbox;
+pub mod inference_slots;
 pub mod intake;
 pub mod intake_capture;
 pub mod outbox;
@@ -86,6 +87,59 @@ fn validate_reserved_claim(
     Ok(())
 }
 
+fn slot_task_id(command: &inference_slots::SlotCommand) -> Option<&TaskId> {
+    match &command.event {
+        inference_slots::SlotEvent::Hold { claim, .. } => Some(&claim.scope.task_id),
+        _ => None,
+    }
+}
+
+fn validate_slot_claim(
+    source: &SourceIdentity,
+    budget: &admission_reservations::ReservationCommand,
+    slot: &inference_slots::SlotCommand,
+) -> Result<()> {
+    let admiralty_runtime::reservations::ReservationEvent::Reserve {
+        reservation_id,
+        scope,
+        ..
+    } = &budget.event
+    else {
+        return Err(StoreError::Invalid(
+            "slot admission requires a budget reserve".into(),
+        ));
+    };
+    let inference_slots::SlotEvent::Hold { claim, .. } = &slot.event else {
+        return Err(StoreError::Invalid("slot admission requires a hold".into()));
+    };
+    if &slot.source != source
+        || &budget.source != source
+        || &claim.scope != scope
+        || &claim.budget_reservation_id != reservation_id
+        || claim.budget_command_digest != admission_reservations::validate_command(budget)?
+        || claim.kernel_claims_digest != scope.resource_claims_digest
+        || Some(claim.launch_intent_digest.as_str()) != budget.launch_intent_digest.as_deref()
+    {
+        return Err(StoreError::Invalid(
+            "budget and slot admission bindings differ".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn reauthorize_slot(
+    tx: &Transaction<'_>,
+    slot: Option<(&inference_slots::SlotCommand, &inference_slots::SlotProof)>,
+    authority: Option<&dyn inference_slots::InferenceSlotAuthority>,
+    projection: &Projection,
+) -> Result<()> {
+    if let Some((command, proof)) = slot {
+        let task = slot_task_id(command).and_then(|id| projection.tasks.get(id));
+        inference_slots::reauthorize_in_transaction(tx, command, authority, proof.as_ref(), task)?;
+    }
+    Ok(())
+}
+
 fn validate_outbox_token_envelope(token: &outbox::ClaimToken) -> Result<()> {
     if [&token.intent_id, &token.fence]
         .iter()
@@ -129,6 +183,8 @@ pub enum StoreError {
     Usage(#[from] usage_observations::UsageError),
     #[error(transparent)]
     Reservation(#[from] admission_reservations::ReservationStoreError),
+    #[error(transparent)]
+    InferenceSlot(#[from] inference_slots::SlotStoreError),
     #[error(transparent)]
     Inbox(#[from] inbox::InboxError),
     #[error("store already has an owner")]
@@ -177,6 +233,22 @@ pub struct AppendReceipt {
 pub struct ReservedClaimReceipt {
     pub claim: AppendReceipt,
     pub reservation: admission_reservations::ReservationResult,
+}
+
+/// Opaque independently authorized inputs, never constructed from request JSON.
+pub struct BudgetAndSlotAdmission {
+    pub budget_command: admission_reservations::ReservationCommand,
+    pub budget_proof: admission_reservations::ReservationProof,
+    pub slot_command: inference_slots::SlotCommand,
+    pub slot_proof: inference_slots::SlotProof,
+}
+
+/// Durable managed occupancy only, not provider execution or physical capacity attestation.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SlottedClaimReceipt {
+    pub claim: AppendReceipt,
+    pub reservation: admission_reservations::ReservationResult,
+    pub slot: inference_slots::SlotResult,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -232,9 +304,24 @@ pub struct StoreAuthorities {
     pub usage: Option<Arc<dyn usage_observations::UsageAuthority>>,
     pub attention: Option<Arc<dyn attention::AttentionAuthority>>,
     pub reservations: Option<Arc<dyn admission_reservations::ReservationAuthority>>,
+    pub inference_slots: Option<Arc<dyn inference_slots::InferenceSlotAuthority>>,
 }
 
 enum Request {
+    RecordInferenceSlot {
+        command: Box<inference_slots::SlotCommand>,
+        proof: inference_slots::SlotProof,
+        reply: Reply<inference_slots::SlotResult>,
+    },
+    ReadInferenceSlotLedger {
+        proof: inference_slots::SlotProof,
+        reply: Reply<inference_slots::SlotLedger>,
+    },
+    ClaimWithBudgetAndSlot {
+        input: Box<AppendInput>,
+        admission: Box<BudgetAndSlotAdmission>,
+        reply: Reply<SlottedClaimReceipt>,
+    },
     RecordReservation {
         command: Box<admission_reservations::ReservationCommand>,
         proof: admission_reservations::ReservationProof,
@@ -600,6 +687,7 @@ impl Store {
                     writer.usage_authority = authorities.usage;
                     writer.attention_authority = authorities.attention;
                     writer.reservation_authority = authorities.reservations;
+                    writer.inference_slot_authority = authorities.inference_slots;
                     if ready_tx.send(Ok(())).is_ok() {
                         writer.run(receiver, writer_changes);
                     }
@@ -745,6 +833,59 @@ impl Store {
             proof,
             reply,
         })
+    }
+
+    /// Claim, budget debit, managed inference hold and exact launch intent commit
+    /// together. Ordinary/budget-only claims cannot be upgraded by replay.
+    pub fn claim_with_budget_and_slot(
+        &self,
+        source: SourceIdentity,
+        event: DomainEvent,
+        observed_utc: String,
+        intent: outbox::OutboxIntent,
+        admission: BudgetAndSlotAdmission,
+    ) -> Result<SlottedClaimReceipt> {
+        admission_reservations::validate_command(&admission.budget_command)?;
+        inference_slots::validate_command(&admission.slot_command)?;
+        validate_reserved_claim(&source, &event, &admission.budget_command)?;
+        validate_slot_claim(&source, &admission.budget_command, &admission.slot_command)?;
+        let input = Self::prepare_append(
+            source,
+            event,
+            observed_utc,
+            Some(outbox::prepare_intent(&intent)?),
+        )?;
+        self.ask(|reply| Request::ClaimWithBudgetAndSlot {
+            input: Box::new(input),
+            admission: Box::new(admission),
+            reply,
+        })
+    }
+
+    /// Independently authorize a managed allotment. Holds require atomic admission.
+    pub fn record_inference_slot(
+        &self,
+        command: inference_slots::SlotCommand,
+        proof: inference_slots::SlotProof,
+    ) -> Result<inference_slots::SlotResult> {
+        inference_slots::validate_command(&command)?;
+        if !matches!(command.event, inference_slots::SlotEvent::SetPool { .. }) {
+            return Err(StoreError::Invalid(
+                "inference holds require atomic admission".into(),
+            ));
+        }
+        self.ask(|reply| Request::RecordInferenceSlot {
+            command: Box::new(command),
+            proof,
+            reply,
+        })
+    }
+
+    pub fn inference_slot_ledger(
+        &self,
+        proof: inference_slots::SlotProof,
+    ) -> Result<inference_slots::SlotLedger> {
+        self.ask(|reply| Request::ReadInferenceSlotLedger { proof, reply })
     }
 
     /// Protected reservation journal operation. This never queues a launch;
@@ -1543,7 +1684,14 @@ struct Writer {
     usage_authority: Option<Arc<dyn usage_observations::UsageAuthority>>,
     attention_authority: Option<Arc<dyn attention::AttentionAuthority>>,
     reservation_authority: Option<Arc<dyn admission_reservations::ReservationAuthority>>,
+    inference_slot_authority: Option<Arc<dyn inference_slots::InferenceSlotAuthority>>,
     _lock: File,
+}
+
+struct AdmissionAppendReceipt {
+    claim: AppendReceipt,
+    reservation: Option<admission_reservations::ReservationResult>,
+    slot: Option<inference_slots::SlotResult>,
 }
 
 impl Writer {
@@ -1589,6 +1737,7 @@ impl Writer {
         questions::initialize(&connection)?;
         usage_observations::initialize(&connection)?;
         admission_reservations::initialize(&connection)?;
+        inference_slots::initialize(&connection)?;
         let generation = connection
             .query_row(
                 "SELECT value FROM metadata WHERE key='recovery_generation'",
@@ -1626,6 +1775,7 @@ impl Writer {
             usage_authority: None,
             attention_authority: None,
             reservation_authority: None,
+            inference_slot_authority: None,
             _lock: lock,
         })
     }
@@ -1633,6 +1783,82 @@ impl Writer {
     fn run(&mut self, receiver: mpsc::Receiver<Request>, changes: tokio::sync::watch::Sender<()>) {
         while let Ok(request) = receiver.recv() {
             match request {
+                Request::ReadInferenceSlotLedger { proof, reply } => {
+                    let result = (|| {
+                        validate_slot_associations(&self.connection)?;
+                        let authority = self
+                            .inference_slot_authority
+                            .as_deref()
+                            .ok_or(inference_slots::SlotStoreError::Denied)?;
+                        Ok(inference_slots::read_authorized(
+                            &self.connection,
+                            authority,
+                            proof.as_ref(),
+                        )?)
+                    })();
+                    let _ = reply.send(result);
+                }
+                Request::RecordInferenceSlot {
+                    command,
+                    proof,
+                    reply,
+                } => {
+                    let result = (|| {
+                        if !matches!(command.event, inference_slots::SlotEvent::SetPool { .. }) {
+                            return Err(StoreError::Invalid(
+                                "inference holds require atomic admission".into(),
+                            ));
+                        }
+                        validate_slot_associations(&self.connection)?;
+                        let tx = self
+                            .connection
+                            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+                        let result = inference_slots::apply_in_transaction(
+                            &tx,
+                            &command,
+                            self.inference_slot_authority.as_deref(),
+                            proof.as_ref(),
+                            None,
+                        )?;
+                        inference_slots::reauthorize_in_transaction(
+                            &tx,
+                            &command,
+                            self.inference_slot_authority.as_deref(),
+                            proof.as_ref(),
+                            None,
+                        )?;
+                        tx.commit()?;
+                        Ok(result)
+                    })();
+                    let _ = reply.send(result);
+                }
+                Request::ClaimWithBudgetAndSlot {
+                    input,
+                    admission,
+                    reply,
+                } => {
+                    let result = self
+                        .append_admission_transaction(
+                            *input,
+                            Some((&admission.budget_command, &admission.budget_proof)),
+                            Some((&admission.slot_command, &admission.slot_proof)),
+                        )
+                        .and_then(|r| {
+                            Ok(SlottedClaimReceipt {
+                                claim: r.claim,
+                                reservation: r.reservation.ok_or_else(|| {
+                                    StoreError::Invalid("missing budget receipt".into())
+                                })?,
+                                slot: r.slot.ok_or_else(|| {
+                                    StoreError::Invalid("missing slot receipt".into())
+                                })?,
+                            })
+                        });
+                    if result.as_ref().is_ok_and(|r| !r.claim.duplicate) {
+                        changes.send_modify(|_| ());
+                    }
+                    let _ = reply.send(result);
+                }
                 Request::ReadReservationLedger { proof, reply } => {
                     let _ = reply.send(
                         self.reservation_authority
@@ -2200,6 +2426,25 @@ impl Writer {
         AppendReceipt,
         Option<admission_reservations::ReservationResult>,
     )> {
+        self.append_admission_transaction(input, reservation, None)
+            .map(|r| (r.claim, r.reservation))
+    }
+
+    fn append_admission_transaction(
+        &mut self,
+        input: AppendInput,
+        reservation: Option<(
+            &admission_reservations::ReservationCommand,
+            &admission_reservations::ReservationProof,
+        )>,
+        slot: Option<(&inference_slots::SlotCommand, &inference_slots::SlotProof)>,
+    ) -> Result<AdmissionAppendReceipt> {
+        if let Some((slot, _)) = slot {
+            let (budget, _) = reservation
+                .ok_or_else(|| StoreError::Invalid("slot admission requires budget".into()))?;
+            validate_slot_claim(&input.source, budget, slot)?;
+        }
+        validate_slot_associations(&self.connection)?;
         let AppendInput {
             source,
             source_seq,
@@ -2232,6 +2477,12 @@ impl Writer {
                 task,
             )?;
         }
+        reauthorize_slot(
+            &tx,
+            slot,
+            self.inference_slot_authority.as_deref(),
+            &self.projection,
+        )?;
         let existing: Option<i64> = tx.query_row(
             "SELECT seq FROM domain_events WHERE producer_id=?1 AND incarnation=?2 AND producer_seq=?3",
             params![source.producer_id, source.incarnation, source_seq], |row| row.get(0)).optional()?;
@@ -2285,6 +2536,12 @@ impl Writer {
                         task,
                     )?;
                 }
+                reauthorize_slot(
+                    &tx,
+                    slot,
+                    self.inference_slot_authority.as_deref(),
+                    &self.projection,
+                )?;
                 tx.commit()?;
                 return Err(source_collision(&source));
             }
@@ -2350,14 +2607,22 @@ impl Writer {
             };
             let contiguous: i64 = tx.query_row("SELECT contiguous_seq FROM producer_watermarks WHERE producer_id=?1 AND incarnation=?2",
                 params![source.producer_id, source.incarnation], |row| row.get(0)).optional()?.unwrap_or(0);
-            return Ok((
-                AppendReceipt {
+            let slot_result = replay_slot_admission(
+                &tx,
+                seq,
+                slot,
+                self.inference_slot_authority.as_deref(),
+                &self.projection,
+            )?;
+            return Ok(AdmissionAppendReceipt {
+                claim: AppendReceipt {
                     event_seq: seq.to_string(),
                     source_contiguous_seq: contiguous.to_string(),
                     duplicate: true,
                 },
-                reservation_result,
-            ));
+                reservation: reservation_result,
+                slot: slot_result,
+            });
         }
         if let DomainEvent::TaskSubmitted { contract } = &event {
             workplans::validate_task_contract_in_transaction(&tx, contract)?;
@@ -2386,6 +2651,12 @@ impl Writer {
                             task,
                         )?;
                     }
+                    reauthorize_slot(
+                        &tx,
+                        slot,
+                        self.inference_slot_authority.as_deref(),
+                        &self.projection,
+                    )?;
                     tx.commit()?;
                     return Err(StoreError::Outbox(outbox::OutboxError::IdentityCollision));
                 }
@@ -2401,6 +2672,12 @@ impl Writer {
                             task,
                         )?;
                     }
+                    reauthorize_slot(
+                        &tx,
+                        slot,
+                        self.inference_slot_authority.as_deref(),
+                        &self.projection,
+                    )?;
                     tx.commit()?;
                     return Err(StoreError::Outbox(outbox::OutboxError::IdentityCollision));
                 }
@@ -2427,12 +2704,34 @@ impl Writer {
         } else {
             None
         };
+        let slot_result = if let Some((command, proof)) = slot {
+            let task = slot_task_id(command).and_then(|id| self.projection.tasks.get(id));
+            let result = inference_slots::apply_in_transaction(
+                &tx,
+                command,
+                self.inference_slot_authority.as_deref(),
+                proof.as_ref(),
+                task,
+            )?;
+            if result.replayed {
+                return Err(StoreError::Invalid(
+                    "standalone slot cannot attach to a new claim".into(),
+                ));
+            }
+            Some(result)
+        } else {
+            None
+        };
         tx.execute("INSERT INTO domain_events(producer_id,incarnation,producer_seq,digest,observed_utc,payload) VALUES(?1,?2,?3,?4,?5,?6)",
             params![source.producer_id, source.incarnation, source_seq, incoming_digest, observed_utc, payload])?;
         let seq = tx.last_insert_rowid();
         if let (Some((command, _)), Some(result)) = (reservation, &reservation_result) {
             tx.execute("INSERT INTO event_reservation_associations(event_seq,command_id,command_digest,receipt_digest) VALUES(?1,?2,?3,?4)",
                 params![seq, command.command_id, admission_reservations::validate_command(command)?, result.receipt_digest])?;
+        }
+        if let (Some((command, _)), Some(result)) = (slot, &slot_result) {
+            tx.execute("INSERT INTO event_inference_slot_associations(event_seq,command_id,command_digest,receipt_digest) VALUES(?1,?2,?3,?4)",
+                params![seq, command.command_id, inference_slots::validate_command(command)?, result.receipt_digest])?;
         }
         if let Some((intent_id, intent)) = associated_intent {
             tx.execute("INSERT INTO event_outbox_associations(event_seq,outbox_intent_id,idempotency_key,payload_digest,not_before,intent_digest) VALUES(?1,?2,?3,?4,?5,?6)",
@@ -2462,17 +2761,25 @@ impl Writer {
                 task,
             )?;
         }
+        // The final slot policy sees the actual staged claim, not the old Ready view.
+        reauthorize_slot(
+            &tx,
+            slot,
+            self.inference_slot_authority.as_deref(),
+            &next_projection,
+        )?;
         tx.commit()?;
         self.projection = next_projection;
         self.pending_inbox.apply_prepared(pending_update);
-        Ok((
-            AppendReceipt {
+        Ok(AdmissionAppendReceipt {
+            claim: AppendReceipt {
                 event_seq: seq.to_string(),
                 source_contiguous_seq: contiguous.to_string(),
                 duplicate: false,
             },
-            reservation_result,
-        ))
+            reservation: reservation_result,
+            slot: slot_result,
+        })
     }
 
     fn snapshot(&self) -> Result<Snapshot> {
@@ -2643,6 +2950,7 @@ fn replay(connection: &Connection) -> Result<Projection> {
 }
 
 fn replay_inner(connection: &Connection) -> Result<Projection> {
+    validate_slot_associations(connection)?;
     let orphaned: bool = connection.query_row("SELECT EXISTS(SELECT 1 FROM event_outbox_associations a LEFT JOIN domain_events d ON d.seq=a.event_seq LEFT JOIN outbox_intents o ON o.id=a.outbox_intent_id WHERE d.seq IS NULL OR o.id IS NULL) OR EXISTS(SELECT 1 FROM event_request_bindings b LEFT JOIN domain_events d ON d.seq=b.event_seq WHERE d.seq IS NULL)",[],|row|row.get(0))?;
     if orphaned {
         return Err(StoreError::Replay {
@@ -2748,6 +3056,112 @@ fn reserved_claim_bindings(
         }
     }
     Ok(result)
+}
+
+fn replay_slot_admission(
+    tx: &Transaction<'_>,
+    sequence: i64,
+    slot: Option<(&inference_slots::SlotCommand, &inference_slots::SlotProof)>,
+    authority: Option<&dyn inference_slots::InferenceSlotAuthority>,
+    projection: &Projection,
+) -> Result<Option<inference_slots::SlotResult>> {
+    let association: Option<(String, String, String)> = tx.query_row(
+        "SELECT command_id,command_digest,receipt_digest FROM event_inference_slot_associations WHERE event_seq=?1",
+        [sequence], |row| Ok((stored_text(row,0,128)?,stored_text(row,1,71)?,stored_text(row,2,71)?)),
+    ).optional()?;
+    match (slot, association) {
+        (None, None) => Ok(None),
+        (Some((command, proof)), Some((id, digest, receipt))) => {
+            if command.command_id != id || inference_slots::validate_command(command)? != digest {
+                return Err(StoreError::Invalid(
+                    "atomic slot admission identity collision".into(),
+                ));
+            }
+            let task = slot_task_id(command).and_then(|id| projection.tasks.get(id));
+            let result = inference_slots::apply_in_transaction(
+                tx,
+                command,
+                authority,
+                proof.as_ref(),
+                task,
+            )?;
+            if !result.replayed || result.receipt_digest != receipt {
+                return Err(StoreError::Invalid(
+                    "atomic slot admission receipt mismatch".into(),
+                ));
+            }
+            reauthorize_slot(tx, slot, authority, projection)?;
+            Ok(Some(result))
+        }
+        _ => Err(StoreError::Invalid(
+            "slot-protected and other claims cannot be interchanged".into(),
+        )),
+    }
+}
+
+/// Both directions are required: an erased association cannot downgrade a hold,
+/// and a standalone/configuration command cannot become a protected launch.
+fn validate_slot_associations(connection: &Connection) -> Result<()> {
+    inference_slots::validate_all(connection)?;
+    admission_reservations::validate_all(connection)?;
+    let orphaned: bool = connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM event_inference_slot_associations a LEFT JOIN inference_slot_commands c ON c.command_id=a.command_id LEFT JOIN domain_events e ON e.seq=a.event_seq WHERE c.command_id IS NULL OR e.seq IS NULL)",
+        [], |row| row.get(0),
+    )?;
+    if orphaned {
+        return Err(StoreError::Invalid(
+            "orphaned inference slot association".into(),
+        ));
+    }
+    let budgets = reserved_claim_bindings(connection)?;
+    let mut query = connection.prepare("SELECT c.command_json,c.command_digest,c.receipt_digest,a.event_seq,a.command_digest,a.receipt_digest FROM inference_slot_commands c LEFT JOIN event_inference_slot_associations a ON a.command_id=c.command_id ORDER BY c.seq LIMIT 8193")?;
+    let mut rows = query.query([])?;
+    let mut count = 0usize;
+    while let Some(row) = rows.next()? {
+        count += 1;
+        if count > 8192 {
+            return Err(StoreError::Invalid(
+                "slot association bound exceeded".into(),
+            ));
+        }
+        let json = stored_text(row, 0, 64 * 1024)?;
+        let command: inference_slots::SlotCommand = serde_json::from_str(&json)?;
+        let cd = stored_text(row, 1, 71)?;
+        let rd = stored_text(row, 2, 71)?;
+        let seq: Option<i64> = row.get(3)?;
+        match (&command.event, seq) {
+            (inference_slots::SlotEvent::SetPool { .. }, None) => {}
+            (inference_slots::SlotEvent::Hold { claim, .. }, Some(seq)) if seq > 0 => {
+                if inference_slots::validate_command(&command)? != cd
+                    || stored_text(row, 4, 71)? != cd
+                    || stored_text(row, 5, 71)? != rd
+                {
+                    return Err(StoreError::Invalid(
+                        "slot association digest mismatch".into(),
+                    ));
+                }
+                let checked = checked_event(connection, seq)?;
+                let budget = budgets.get(&seq).ok_or_else(|| {
+                    StoreError::Invalid("slot hold missing budget association".into())
+                })?;
+                validate_reserved_claim(&checked.source, &checked.event, budget)?;
+                validate_slot_claim(&checked.source, budget, &command)?;
+                if Some(claim.launch_intent_digest.as_str())
+                    != checked.intent.as_ref().map(|i| i.intent_digest.as_str())
+                {
+                    return Err(StoreError::Invalid(
+                        "slot hold launch intent mismatch".into(),
+                    ));
+                }
+            }
+            _ => {
+                return Err(StoreError::Invalid(
+                    "missing or unexpected slot association".into(),
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
