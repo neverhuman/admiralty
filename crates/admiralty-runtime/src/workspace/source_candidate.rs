@@ -104,7 +104,21 @@ const DETERMINISTIC_AUTHOR_EMAIL: &str = "source-candidate@admiralty.invalid";
 const DETERMINISTIC_COMMIT_DATE: &str = "1970-01-01T00:00:00Z";
 
 mod sealed {
-    pub trait Sealed {}
+    use super::ClosedAdmission;
+
+    #[derive(Debug)]
+    pub struct RetainedClosureProof(pub(super) RetainedClosureProofInner);
+
+    #[derive(Debug)]
+    pub(super) enum RetainedClosureProofInner {
+        Production(ClosedAdmission),
+        #[cfg(test)]
+        SyntheticTestFixture(super::tests::FixtureClosedAdmission),
+    }
+
+    pub trait Sealed {
+        fn into_retained_proof(self) -> RetainedClosureProof;
+    }
 }
 
 /// Sealed proof trait implemented only for [`ClosedAdmission`] (and in-module unit test fixtures).
@@ -118,7 +132,11 @@ pub trait ClosedAdmissionProof: sealed::Sealed {
     fn into_closed_admission(self) -> Option<ClosedAdmission>;
 }
 
-impl sealed::Sealed for ClosedAdmission {}
+impl sealed::Sealed for ClosedAdmission {
+    fn into_retained_proof(self) -> sealed::RetainedClosureProof {
+        sealed::RetainedClosureProof(sealed::RetainedClosureProofInner::Production(self))
+    }
+}
 
 impl ClosedAdmissionProof for ClosedAdmission {
     fn identity(&self) -> &RecoveryIdentity {
@@ -168,6 +186,10 @@ pub enum SourceCandidateError {
     NoSourceChanges,
     #[error("post-execution HEAD does not descend from pinned base commit")]
     InvalidBaseAncestry,
+    #[error(
+        "source working tree was frozen by an earlier failed materialization attempt and requires explicit reconciliation before retry"
+    )]
+    SourceReconciliationRequired,
     #[error("changed path violates contract write scope: {path}")]
     ScopeViolation { path: String },
     #[error("candidate diff failed conflict model validation: {0}")]
@@ -177,6 +199,168 @@ pub enum SourceCandidateError {
     #[error("canonical content digest could not be computed")]
     Digest,
 }
+
+/// Observation recorded on [`ClosedWorkspaceExecution`] when a materialization
+/// attempt froze dirty working-tree changes into a commit on top of
+/// `prepared.head_oid()` before a subsequent step failed.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FrozenSourceObservation {
+    pub base_commit_sha: String,
+    pub frozen_commit_sha: String,
+    pub frozen_tree_sha: String,
+    pub acknowledged_for_retry: bool,
+}
+
+/// Stage at which [`try_materialize_source_candidate`] failed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MaterializationFailureStage {
+    /// Failed while validating the closed execution workspace, `.git` metadata,
+    /// working tree, or base commit closure before any source freeze or
+    /// destination creation.
+    SourcePreflight,
+    /// Failed while validating `candidate_parent` or `destination_name` (including
+    /// when `destination_name` already exists beneath `candidate_parent`) before
+    /// any source freeze or new destination creation.
+    DestinationPreflight,
+    /// Failed while staging or committing dirty working-tree changes in the
+    /// execution workspace before creating the destination directory.
+    SourceFreeze,
+    /// Failed while validating the frozen/post-execution source commit, tree
+    /// closure, or path scope (`owned_paths` / `forbidden_paths`) before creating
+    /// the destination directory.
+    SourceValidation,
+    /// Failed after creating the destination directory beneath `candidate_parent`
+    /// while initializing, fetching, checking out, or validating the detached
+    /// candidate checkout.
+    DestinationCheckout,
+    /// Failed during final candidate conflict-model or custody revalidation after
+    /// the destination checkout was materialized.
+    PostMaterializationValidation,
+}
+
+/// Truthful observation of any side effects or required reconciliation when
+/// [`try_materialize_source_candidate`] fails.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MaterializationReconciliation {
+    /// Stage at which candidate materialization failed.
+    pub stage: MaterializationFailureStage,
+    /// Whether `freeze_dirty_working_tree` mutated the execution workspace index
+    /// or `HEAD` during this or an earlier unreconciled attempt.
+    pub source_working_tree_frozen: bool,
+    /// Observed `HEAD` commit OID in the execution workspace after failure, if
+    /// readable.
+    pub observed_source_head_oid: Option<String>,
+    /// Observed `HEAD^{tree}` OID in the execution workspace after failure, if
+    /// readable.
+    pub observed_source_tree_oid: Option<String>,
+    /// Pre-existing destination path when `destination_name` was already occupied
+    /// before this attempt (`DestinationPreflight`). Never deleted or overwritten.
+    pub occupied_destination_path: Option<PathBuf>,
+    /// Newly created partial destination directory path when `mkdirat` succeeded
+    /// during this attempt before a subsequent step failed. Preserved on disk for
+    /// inspection; callers must use a fresh `destination_name` or explicitly
+    /// reconcile before retrying.
+    pub partial_destination_path: Option<PathBuf>,
+    /// Device and inode identity `(dev, ino)` of `partial_destination_path` if
+    /// created during this attempt.
+    pub partial_destination_identity: Option<(u64, u64)>,
+    /// Whether retrying requires explicit caller reconciliation or a fresh
+    /// create-only `destination_name`.
+    pub requires_reconciliation: bool,
+}
+
+/// Error returned by [`try_prove_closed_workspace`] preserving the caller's
+/// original [`PreparedWorkspace`] and generic sealed [`ClosedAdmissionProof`]
+/// handles without dropping or recreating them.
+#[derive(Debug, Error)]
+#[error("{error}")]
+pub struct ProveClosedWorkspaceError<C> {
+    pub prepared: PreparedWorkspace,
+    pub closure: C,
+    #[source]
+    pub error: SourceCandidateError,
+}
+
+impl<C> ProveClosedWorkspaceError<C> {
+    pub fn into_parts(self) -> (PreparedWorkspace, C, SourceCandidateError) {
+        (self.prepared, self.closure, self.error)
+    }
+
+    pub fn prepared(&self) -> &PreparedWorkspace {
+        &self.prepared
+    }
+
+    pub fn closure(&self) -> &C {
+        &self.closure
+    }
+
+    pub fn error(&self) -> &SourceCandidateError {
+        &self.error
+    }
+}
+
+/// Error returned by [`try_materialize_source_candidate`] preserving the caller's
+/// original [`ClosedWorkspaceExecution`] (including its original [`PreparedWorkspace`]
+/// and retained closure proof handles) alongside explicit stage and partial-destination
+/// reconciliation metadata.
+#[derive(Debug, Error)]
+#[error("{error} (stage: {stage:?})", stage = self.reconciliation.stage)]
+pub struct MaterializeSourceCandidateError {
+    pub execution: ClosedWorkspaceExecution,
+    #[source]
+    pub error: SourceCandidateError,
+    pub reconciliation: MaterializationReconciliation,
+}
+
+impl MaterializeSourceCandidateError {
+    pub fn into_parts(
+        self,
+    ) -> (
+        ClosedWorkspaceExecution,
+        SourceCandidateError,
+        MaterializationReconciliation,
+    ) {
+        (self.execution, self.error, self.reconciliation)
+    }
+
+    pub fn execution(&self) -> &ClosedWorkspaceExecution {
+        &self.execution
+    }
+
+    pub fn into_execution(self) -> ClosedWorkspaceExecution {
+        self.execution
+    }
+
+    pub fn error(&self) -> &SourceCandidateError {
+        &self.error
+    }
+
+    pub fn reconciliation(&self) -> &MaterializationReconciliation {
+        &self.reconciliation
+    }
+
+    pub fn stage(&self) -> MaterializationFailureStage {
+        self.reconciliation.stage
+    }
+
+    pub fn partial_destination_path(&self) -> Option<&Path> {
+        self.reconciliation.partial_destination_path.as_deref()
+    }
+
+    pub fn occupied_destination_path(&self) -> Option<&Path> {
+        self.reconciliation.occupied_destination_path.as_deref()
+    }
+
+    pub fn requires_reconciliation(&self) -> bool {
+        self.reconciliation.requires_reconciliation
+    }
+}
+
+/// Type alias for [`ProveClosedWorkspaceError`].
+pub type ProveClosedWorkspaceFailure<C> = ProveClosedWorkspaceError<C>;
+
+/// Type alias for [`MaterializeSourceCandidateError`].
+pub type MaterializeSourceCandidateFailure = MaterializeSourceCandidateError;
 
 /// Canonical digest of a validated workspace specification.
 pub fn workspace_spec_digest(
@@ -213,12 +397,22 @@ pub struct ClosedWorkspaceExecution {
     success: bool,
     closure_digest: String,
     workspace_digest: String,
-    closed_admission: Option<ClosedAdmission>,
+    retained_closure: sealed::RetainedClosureProof,
+    freeze_fence_active: bool,
+    frozen_source: Option<FrozenSourceObservation>,
 }
 
 impl ClosedWorkspaceExecution {
     pub fn prepared(&self) -> &PreparedWorkspace {
         &self.prepared
+    }
+
+    pub fn parent_descriptor_identity(&self) -> (u64, u64) {
+        self.parent_identity
+    }
+
+    pub fn workspace_descriptor_identity(&self) -> (u64, u64) {
+        self.workspace_identity
     }
 
     pub fn identity(&self) -> &RecoveryIdentity {
@@ -246,7 +440,99 @@ impl ClosedWorkspaceExecution {
     }
 
     pub fn closed_admission(&self) -> Option<&ClosedAdmission> {
-        self.closed_admission.as_ref()
+        match &self.retained_closure.0 {
+            sealed::RetainedClosureProofInner::Production(admission) => Some(admission),
+            #[cfg(test)]
+            sealed::RetainedClosureProofInner::SyntheticTestFixture(_) => None,
+        }
+    }
+
+    pub fn closure_proof(&self) -> &dyn ClosedAdmissionProof {
+        match &self.retained_closure.0 {
+            sealed::RetainedClosureProofInner::Production(admission) => admission,
+            #[cfg(test)]
+            sealed::RetainedClosureProofInner::SyntheticTestFixture(fixture) => fixture,
+        }
+    }
+
+    #[cfg(test)]
+    fn synthetic_test_closure_proof(&self) -> Option<&tests::FixtureClosedAdmission> {
+        match &self.retained_closure.0 {
+            sealed::RetainedClosureProofInner::Production(_) => None,
+            sealed::RetainedClosureProofInner::SyntheticTestFixture(fixture) => Some(fixture),
+        }
+    }
+
+    /// Returns `true` if a mutating `SourceFreeze` was initiated on this
+    /// execution workspace during this or an earlier materialization attempt.
+    /// Once set, this fence remains active across every subsequent failure even
+    /// if post-freeze diagnostic observations were unavailable.
+    pub fn freeze_fence_active(&self) -> bool {
+        self.freeze_fence_active
+    }
+
+    pub fn frozen_source(&self) -> Option<&FrozenSourceObservation> {
+        self.frozen_source.as_ref()
+    }
+
+    /// Explicitly acknowledge and reconcile a dirty source workspace that was
+    /// frozen into `(expected_frozen_commit_sha, expected_frozen_tree_sha)` during
+    /// an earlier failed materialization attempt, allowing a subsequent
+    /// [`try_materialize_source_candidate`] call into a fresh `destination_name`
+    /// without re-freezing under a new identity.
+    ///
+    /// If an earlier `SourceFreeze` failed before producing a verified
+    /// [`FrozenSourceObservation`] (`freeze_fence_active == true` and
+    /// `frozen_source.is_none()`), the unknown freeze state is conservatively
+    /// held and cannot be cleared through a new call or fake hash.
+    pub fn acknowledge_frozen_source_reconciliation(
+        &mut self,
+        expected_frozen_commit_sha: &str,
+        expected_frozen_tree_sha: &str,
+    ) -> Result<(), SourceCandidateError> {
+        self.revalidate_custody()?;
+        if !self.freeze_fence_active {
+            return Err(SourceCandidateError::SourceReconciliationRequired);
+        }
+        let Some(frozen) = self.frozen_source.as_ref() else {
+            return Err(SourceCandidateError::SourceReconciliationRequired);
+        };
+        if frozen.frozen_commit_sha != expected_frozen_commit_sha
+            || frozen.frozen_tree_sha != expected_frozen_tree_sha
+            || !valid_sha1_oid(expected_frozen_commit_sha)
+            || !valid_sha1_oid(expected_frozen_tree_sha)
+        {
+            return Err(SourceCandidateError::SourceReconciliationRequired);
+        }
+        let git = trusted_git()?;
+        let workspace_cwd = PinnedGitDirectory::from_prepared(&self.prepared)?;
+        validate_workspace_git_metadata(&git, &workspace_cwd, self.prepared.workspace_dir_fd())?;
+        validate_working_tree_entries(&workspace_cwd)?;
+        let status = git_status_porcelain(&git, &workspace_cwd)?;
+        let current_head = git_text(
+            &git,
+            Some(&workspace_cwd),
+            &["rev-parse", "--verify", "HEAD"],
+        )?
+        .trim()
+        .to_owned();
+        let current_tree = git_text(
+            &git,
+            Some(&workspace_cwd),
+            &["rev-parse", "--verify", "HEAD^{tree}"],
+        )?
+        .trim()
+        .to_owned();
+        if !status.trim().is_empty()
+            || current_head != expected_frozen_commit_sha
+            || current_tree != expected_frozen_tree_sha
+        {
+            return Err(SourceCandidateError::SourceReconciliationRequired);
+        }
+        if let Some(frozen_mut) = self.frozen_source.as_mut() {
+            frozen_mut.acknowledged_for_retry = true;
+        }
+        Ok(())
     }
 
     /// Re-verify that the [`PreparedWorkspace`] and its parent directory on disk
@@ -270,11 +556,75 @@ impl ClosedWorkspaceExecution {
 
 /// Verify that a closed service admission succeeded and matches the exact
 /// task, attempt, project, root, node, and original retained descriptor custody
-/// of `prepared`.
+/// of `prepared`, returning both original handles in [`ProveClosedWorkspaceError`]
+/// on any validation failure.
+#[allow(clippy::result_large_err)]
+pub fn try_prove_closed_workspace<C: ClosedAdmissionProof>(
+    prepared: PreparedWorkspace,
+    closure: C,
+) -> Result<ClosedWorkspaceExecution, ProveClosedWorkspaceError<C>> {
+    match validate_closed_workspace_proof(&prepared, &closure) {
+        Ok((
+            parent_identity,
+            workspace_identity,
+            identity,
+            observation,
+            exit_code,
+            success,
+            closure_digest,
+            workspace_digest,
+        )) => {
+            let retained_closure = closure.into_retained_proof();
+            Ok(ClosedWorkspaceExecution {
+                prepared,
+                parent_identity,
+                workspace_identity,
+                identity,
+                observation,
+                exit_code,
+                success,
+                closure_digest,
+                workspace_digest,
+                retained_closure,
+                freeze_fence_active: false,
+                frozen_source: None,
+            })
+        }
+        Err(error) => Err(ProveClosedWorkspaceError {
+            prepared,
+            closure,
+            error,
+        }),
+    }
+}
+
+/// Compatibility wrapper around [`try_prove_closed_workspace`] that discards
+/// the returned handles on error. New native composition must call
+/// [`try_prove_closed_workspace`] to retain custody of `prepared` and `closure`.
 pub fn prove_closed_workspace<C: ClosedAdmissionProof>(
     prepared: PreparedWorkspace,
     closure: C,
 ) -> Result<ClosedWorkspaceExecution, SourceCandidateError> {
+    try_prove_closed_workspace(prepared, closure).map_err(|failure| failure.error)
+}
+
+#[allow(clippy::type_complexity)]
+fn validate_closed_workspace_proof<C: ClosedAdmissionProof>(
+    prepared: &PreparedWorkspace,
+    closure: &C,
+) -> Result<
+    (
+        (u64, u64),
+        (u64, u64),
+        RecoveryIdentity,
+        EnforcementObservation,
+        Option<i32>,
+        bool,
+        String,
+        String,
+    ),
+    SourceCandidateError,
+> {
     if !closure.success() || closure.exit_code() != Some(0) {
         return Err(SourceCandidateError::ExecutionNotSucceeded);
     }
@@ -291,7 +641,7 @@ pub fn prove_closed_workspace<C: ClosedAdmissionProof>(
     }
     let parent_identity = fd_identity(prepared.managed_parent_fd())?;
     let workspace_identity = fd_identity(prepared.workspace_dir_fd())?;
-    let pinned = PinnedGitDirectory::from_prepared(&prepared)?;
+    let pinned = PinnedGitDirectory::from_prepared(prepared)?;
     pinned.check()?;
 
     let workspace_digest = workspace_spec_digest(ws)?;
@@ -309,21 +659,16 @@ pub fn prove_closed_workspace<C: ClosedAdmissionProof>(
     {
         return Err(SourceCandidateError::ClosureIdentityMismatch);
     }
-    let exit_code = closure.exit_code();
-    let success = closure.success();
-    let closed_admission = closure.into_closed_admission();
-    Ok(ClosedWorkspaceExecution {
-        prepared,
+    Ok((
         parent_identity,
         workspace_identity,
         identity,
         observation,
-        exit_code,
-        success,
+        closure.exit_code(),
+        closure.success(),
         closure_digest,
         workspace_digest,
-        closed_admission,
-    })
+    ))
 }
 
 /// Opaque, non-deserializable changed-source candidate holding a detached,
@@ -600,113 +945,443 @@ impl SourceCandidate {
 
 /// Inspect a closed execution workspace, freeze or validate changed Git source
 /// relative to `prepared.head_oid()`, enforce path scope, and materialize a
-/// clean, detached mode-`0700` checkout beneath `candidate_parent`.
+/// clean, detached mode-`0700` checkout beneath `candidate_parent`, returning
+/// the original [`ClosedWorkspaceExecution`] and explicit reconciliation
+/// observations in [`MaterializeSourceCandidateError`] on any failure.
+#[allow(clippy::result_large_err)]
+pub fn try_materialize_source_candidate(
+    execution: ClosedWorkspaceExecution,
+    candidate_parent: &Path,
+    destination_name: &str,
+) -> Result<SourceCandidate, MaterializeSourceCandidateError> {
+    try_materialize_source_candidate_with_hook(execution, candidate_parent, destination_name, None)
+}
+
+/// Compatibility wrapper around [`try_materialize_source_candidate`] that
+/// discards the returned [`ClosedWorkspaceExecution`] and reconciliation details
+/// on error. New native composition must call [`try_materialize_source_candidate`].
 pub fn materialize_source_candidate(
     execution: ClosedWorkspaceExecution,
     candidate_parent: &Path,
     destination_name: &str,
 ) -> Result<SourceCandidate, SourceCandidateError> {
-    let git = trusted_git()?;
-    execution.revalidate_custody()?;
-    let workspace_fd = execution.prepared.workspace_dir_fd();
-    let workspace_cwd = PinnedGitDirectory::from_prepared(&execution.prepared)?;
-    validate_workspace_git_metadata(&git, &workspace_cwd, workspace_fd)?;
-    validate_working_tree_entries(&workspace_cwd)?;
+    try_materialize_source_candidate(execution, candidate_parent, destination_name)
+        .map_err(|failure| failure.error)
+}
 
-    let base_commit_sha = execution.prepared.head_oid().to_owned();
-    let base_tree_sha = execution.prepared.tree_oid().to_owned();
-    if !valid_sha1_oid(&base_commit_sha) || !valid_sha1_oid(&base_tree_sha) {
-        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
-    }
-    let base_kind = git_text(
-        &git,
-        Some(&workspace_cwd),
-        &["cat-file", "-t", &base_commit_sha],
-    )?;
-    if base_kind.trim() != "commit" {
-        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
-    }
-    let resolved_base_tree = git_text(
-        &git,
-        Some(&workspace_cwd),
-        &[
-            "rev-parse",
-            "--verify",
-            &format!("{base_commit_sha}^{{tree}}"),
-        ],
-    )?;
-    if resolved_base_tree.trim() != base_tree_sha {
-        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
-    }
-    let base_closure =
-        validate_commit_tree_entries(&git, &workspace_cwd, &base_commit_sha, &base_tree_sha)?;
+type PostDestinationInitHook<'a> = Option<&'a dyn Fn(&Path)>;
 
-    let status_before = git_status_porcelain(&git, &workspace_cwd)?;
-    let current_head = git_text(
-        &git,
-        Some(&workspace_cwd),
-        &["rev-parse", "--verify", "HEAD"],
-    )?
-    .trim()
-    .to_owned();
-    if !valid_sha1_oid(&current_head) {
-        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
-    }
-    if current_head != base_commit_sha {
-        verify_commit_ancestry(&git, &workspace_cwd, &base_commit_sha, &current_head)?;
+#[allow(clippy::result_large_err)]
+fn try_materialize_source_candidate_with_hook(
+    mut execution: ClosedWorkspaceExecution,
+    candidate_parent: &Path,
+    destination_name: &str,
+    post_destination_init_hook: PostDestinationInitHook<'_>,
+) -> Result<SourceCandidate, MaterializeSourceCandidateError> {
+    let mut source_working_tree_frozen =
+        execution.freeze_fence_active || execution.frozen_source.is_some();
+    let fail = |mut execution: ClosedWorkspaceExecution,
+                error: SourceCandidateError,
+                stage: MaterializationFailureStage,
+                source_frozen: bool,
+                observed_head: Option<String>,
+                observed_tree: Option<String>,
+                occupied_destination_path: Option<PathBuf>,
+                partial_destination_path: Option<PathBuf>,
+                partial_destination_identity: Option<(u64, u64)>,
+                requires_reconciliation: bool|
+     -> MaterializeSourceCandidateError {
+        if source_frozen {
+            execution.freeze_fence_active = true;
+        }
+        MaterializeSourceCandidateError {
+            execution,
+            error,
+            reconciliation: MaterializationReconciliation {
+                stage,
+                source_working_tree_frozen: source_frozen,
+                observed_source_head_oid: observed_head,
+                observed_source_tree_oid: observed_tree,
+                occupied_destination_path,
+                partial_destination_path,
+                partial_destination_identity,
+                requires_reconciliation,
+            },
+        }
+    };
+
+    let git = match trusted_git() {
+        Ok(git) => git,
+        Err(error) => {
+            return Err(fail(
+                execution,
+                error,
+                MaterializationFailureStage::SourcePreflight,
+                source_working_tree_frozen,
+                None,
+                None,
+                None,
+                None,
+                None,
+                source_working_tree_frozen,
+            ));
+        }
+    };
+
+    let mut preflight_validated_observation: Option<(String, String)> = None;
+    let preflight_result: Result<
+        (String, String, PreflightTreeClosure, String, String, String),
+        SourceCandidateError,
+    > = (|| {
+        execution.revalidate_custody()?;
+        if execution.freeze_fence_active && execution.frozen_source.is_none() {
+            return Err(SourceCandidateError::SourceReconciliationRequired);
+        }
+        let workspace_fd = execution.prepared.workspace_dir_fd();
+        let workspace_cwd = PinnedGitDirectory::from_prepared(&execution.prepared)?;
+        validate_workspace_git_metadata(&git, &workspace_cwd, workspace_fd)?;
+        validate_working_tree_entries(&workspace_cwd)?;
+
+        let base_commit_sha = execution.prepared.head_oid().to_owned();
+        let base_tree_sha = execution.prepared.tree_oid().to_owned();
+        if !valid_sha1_oid(&base_commit_sha) || !valid_sha1_oid(&base_tree_sha) {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        let base_kind = git_text(
+            &git,
+            Some(&workspace_cwd),
+            &["cat-file", "-t", &base_commit_sha],
+        )?;
+        if base_kind.trim() != "commit" {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        let resolved_base_tree = git_text(
+            &git,
+            Some(&workspace_cwd),
+            &[
+                "rev-parse",
+                "--verify",
+                &format!("{base_commit_sha}^{{tree}}"),
+            ],
+        )?;
+        if resolved_base_tree.trim() != base_tree_sha {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        let base_closure =
+            validate_commit_tree_entries(&git, &workspace_cwd, &base_commit_sha, &base_tree_sha)?;
+
+        let status_before = git_status_porcelain(&git, &workspace_cwd)?;
+        let current_head = git_text(
+            &git,
+            Some(&workspace_cwd),
+            &["rev-parse", "--verify", "HEAD"],
+        )?
+        .trim()
+        .to_owned();
+        let current_tree = git_text(
+            &git,
+            Some(&workspace_cwd),
+            &["rev-parse", "--verify", "HEAD^{tree}"],
+        )?
+        .trim()
+        .to_owned();
+        if !valid_sha1_oid(&current_head) || !valid_sha1_oid(&current_tree) {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        preflight_validated_observation = Some((current_head.clone(), current_tree.clone()));
+        if execution.freeze_fence_active {
+            let Some(frozen) = execution.frozen_source.as_ref() else {
+                return Err(SourceCandidateError::SourceReconciliationRequired);
+            };
+            if !frozen.acknowledged_for_retry
+                || !status_before.trim().is_empty()
+                || current_head != frozen.frozen_commit_sha
+                || current_tree != frozen.frozen_tree_sha
+            {
+                return Err(SourceCandidateError::SourceReconciliationRequired);
+            }
+        }
+        if current_head != base_commit_sha {
+            verify_commit_ancestry(&git, &workspace_cwd, &base_commit_sha, &current_head)?;
+        }
+        if status_before.trim().is_empty() && current_head == base_commit_sha {
+            return Err(SourceCandidateError::NoSourceChanges);
+        }
+        Ok((
+            base_commit_sha,
+            base_tree_sha,
+            base_closure,
+            status_before,
+            current_head,
+            current_tree,
+        ))
+    })();
+
+    let (base_commit_sha, base_tree_sha, base_closure, status_before, current_head, current_tree) =
+        match preflight_result {
+            Ok(values) => values,
+            Err(error) => {
+                let (obs_head, obs_tree) = match preflight_validated_observation {
+                    Some((head, tree)) => (Some(head), Some(tree)),
+                    None => (None, None),
+                };
+                return Err(fail(
+                    execution,
+                    error,
+                    MaterializationFailureStage::SourcePreflight,
+                    source_working_tree_frozen,
+                    obs_head,
+                    obs_tree,
+                    None,
+                    None,
+                    None,
+                    source_working_tree_frozen,
+                ));
+            }
+        };
+
+    // Validate candidate_parent and destination_name (including occupied-destination check)
+    // BEFORE freezing any dirty working-tree edits or creating a destination directory.
+    if let Err((error, occupied_path)) = preflight_candidate_destination(
+        execution.prepared.workspace(),
+        candidate_parent,
+        destination_name,
+    ) {
+        let requires_reconciliation = source_working_tree_frozen || occupied_path.is_some();
+        return Err(fail(
+            execution,
+            error,
+            MaterializationFailureStage::DestinationPreflight,
+            source_working_tree_frozen,
+            Some(current_head),
+            Some(current_tree),
+            occupied_path,
+            None,
+            None,
+            requires_reconciliation,
+        ));
     }
 
     if !status_before.trim().is_empty() {
-        freeze_dirty_working_tree(&git, &workspace_cwd)?;
-    } else if current_head == base_commit_sha {
-        return Err(SourceCandidateError::NoSourceChanges);
+        execution.freeze_fence_active = true;
+        source_working_tree_frozen = true;
+        let freeze_res = (|| {
+            let workspace_cwd = PinnedGitDirectory::from_prepared(&execution.prepared)?;
+            freeze_dirty_working_tree(&git, &workspace_cwd)
+        })();
+        if let Err(error) = freeze_res {
+            return Err(fail(
+                execution,
+                error,
+                MaterializationFailureStage::SourceFreeze,
+                true,
+                None,
+                None,
+                None,
+                None,
+                None,
+                true,
+            ));
+        }
     }
 
-    execution.revalidate_custody()?;
-    validate_workspace_git_metadata(&git, &workspace_cwd, workspace_fd)?;
-    validate_working_tree_entries(&workspace_cwd)?;
-    let status_after = git_status_porcelain(&git, &workspace_cwd)?;
-    if !status_after.trim().is_empty() {
-        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
-    }
+    let mut validated_source_observation: Option<(String, String)> = None;
+    let source_validation_result: Result<
+        (String, String, PreflightTreeClosure, Vec<FileChange>),
+        SourceCandidateError,
+    > = (|| {
+        execution.revalidate_custody()?;
+        let workspace_fd = execution.prepared.workspace_dir_fd();
+        let workspace_cwd = PinnedGitDirectory::from_prepared(&execution.prepared)?;
+        validate_workspace_git_metadata(&git, &workspace_cwd, workspace_fd)?;
+        validate_working_tree_entries(&workspace_cwd)?;
+        let status_after = git_status_porcelain(&git, &workspace_cwd)?;
+        if !status_after.trim().is_empty() {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
 
-    let source_commit_sha = git_text(
-        &git,
-        Some(&workspace_cwd),
-        &["rev-parse", "--verify", "HEAD"],
-    )?
-    .trim()
-    .to_owned();
-    let source_tree_sha = git_text(
-        &git,
-        Some(&workspace_cwd),
-        &["rev-parse", "--verify", "HEAD^{tree}"],
-    )?
-    .trim()
-    .to_owned();
-    if !valid_sha1_oid(&source_commit_sha)
-        || !valid_sha1_oid(&source_tree_sha)
-        || source_commit_sha == source_tree_sha
+        let source_commit_sha = git_text(
+            &git,
+            Some(&workspace_cwd),
+            &["rev-parse", "--verify", "HEAD"],
+        )?
+        .trim()
+        .to_owned();
+        let source_tree_sha = git_text(
+            &git,
+            Some(&workspace_cwd),
+            &["rev-parse", "--verify", "HEAD^{tree}"],
+        )?
+        .trim()
+        .to_owned();
+        if !valid_sha1_oid(&source_commit_sha)
+            || !valid_sha1_oid(&source_tree_sha)
+            || source_commit_sha == source_tree_sha
+        {
+            return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
+        }
+        validated_source_observation = Some((source_commit_sha.clone(), source_tree_sha.clone()));
+        if source_commit_sha == base_commit_sha || source_tree_sha == base_tree_sha {
+            return Err(SourceCandidateError::NoSourceChanges);
+        }
+        verify_commit_ancestry(&git, &workspace_cwd, &base_commit_sha, &source_commit_sha)?;
+        let source_closure = validate_commit_tree_entries(
+            &git,
+            &workspace_cwd,
+            &source_commit_sha,
+            &source_tree_sha,
+        )?;
+        let files = extract_and_validate_changed_files(
+            &git,
+            &workspace_cwd,
+            execution.prepared.workspace(),
+            &base_commit_sha,
+            &source_commit_sha,
+        )?;
+        if files.is_empty() {
+            return Err(SourceCandidateError::NoSourceChanges);
+        }
+        Ok((source_commit_sha, source_tree_sha, source_closure, files))
+    })();
+
+    let (source_commit_sha, source_tree_sha, source_closure, files) = match source_validation_result
     {
-        return Err(SourceCandidateError::UnsafeWorkspaceMetadata);
-    }
-    if source_commit_sha == base_commit_sha || source_tree_sha == base_tree_sha {
-        return Err(SourceCandidateError::NoSourceChanges);
-    }
-    verify_commit_ancestry(&git, &workspace_cwd, &base_commit_sha, &source_commit_sha)?;
-    let source_closure =
-        validate_commit_tree_entries(&git, &workspace_cwd, &source_commit_sha, &source_tree_sha)?;
+        Ok(values) => values,
+        Err(error) => {
+            let (obs_head, obs_tree) = match validated_source_observation {
+                Some((head, tree)) => (Some(head), Some(tree)),
+                None => (None, None),
+            };
+            return Err(fail(
+                execution,
+                error,
+                MaterializationFailureStage::SourceValidation,
+                source_working_tree_frozen,
+                obs_head,
+                obs_tree,
+                None,
+                None,
+                None,
+                source_working_tree_frozen,
+            ));
+        }
+    };
 
-    let files = extract_and_validate_changed_files(
-        &git,
-        &workspace_cwd,
-        execution.prepared.workspace(),
-        &base_commit_sha,
-        &source_commit_sha,
-    )?;
-    if files.is_empty() {
-        return Err(SourceCandidateError::NoSourceChanges);
+    if source_working_tree_frozen {
+        execution.freeze_fence_active = true;
+        execution.frozen_source = Some(FrozenSourceObservation {
+            base_commit_sha: base_commit_sha.clone(),
+            frozen_commit_sha: source_commit_sha.clone(),
+            frozen_tree_sha: source_tree_sha.clone(),
+            acknowledged_for_retry: false,
+        });
     }
+
+    let pre_artifacts: Result<(String, String, String, CandidateChange), SourceCandidateError> =
+        (|| {
+            let source_artifact_digest = compute_source_artifact_digest(
+                &base_commit_sha,
+                &source_commit_sha,
+                &source_tree_sha,
+                &files,
+            )?;
+            let custody_digest = content_digest(&(
+                "source-candidate-custody-v1",
+                execution.prepared.project_id(),
+                execution.prepared.root_id(),
+                execution.prepared.task_id(),
+                execution.prepared.attempt_id(),
+                execution.workspace_digest(),
+                execution.closure_digest(),
+                &base_commit_sha,
+                &source_commit_sha,
+                &source_tree_sha,
+                &source_artifact_digest,
+            ))
+            .map_err(|_| SourceCandidateError::Digest)?;
+            let raw_candidate_digest = content_digest(&(
+                "source-candidate-ref-v1",
+                execution.prepared.task_id(),
+                execution.prepared.attempt_id(),
+                &source_commit_sha,
+                &source_tree_sha,
+                &custody_digest,
+            ))
+            .map_err(|_| SourceCandidateError::Digest)?;
+            let candidate_hex = raw_candidate_digest
+                .strip_prefix("sha256:")
+                .ok_or(SourceCandidateError::Digest)?;
+            let candidate_ref = format!("candidate-{candidate_hex}");
+            let ancestry_digest = content_digest(&(
+                "source-candidate-ancestry-v1",
+                &base_commit_sha,
+                &source_commit_sha,
+            ))
+            .map_err(|_| SourceCandidateError::Digest)?;
+            let candidate_change = CandidateChange {
+                project_id: execution.prepared.project_id().clone(),
+                root_id: execution.prepared.root_id().clone(),
+                task_id: execution.prepared.task_id().clone(),
+                candidate_id: candidate_ref.clone(),
+                base_sha: base_commit_sha.clone(),
+                head_sha: source_commit_sha.clone(),
+                tree_sha: source_tree_sha.clone(),
+                ancestry_digest: Some(ancestry_digest),
+                files: files.clone(),
+                constraints: None,
+            };
+            validate_candidate_change(&candidate_change)?;
+            Ok((
+                source_artifact_digest,
+                custody_digest,
+                candidate_ref,
+                candidate_change,
+            ))
+        })();
+
+    let (source_artifact_digest, custody_digest, candidate_ref, candidate_change) =
+        match pre_artifacts {
+            Ok(values) => values,
+            Err(error) => {
+                return Err(fail(
+                    execution,
+                    error,
+                    MaterializationFailureStage::SourceValidation,
+                    source_working_tree_frozen,
+                    Some(source_commit_sha),
+                    Some(source_tree_sha),
+                    None,
+                    None,
+                    None,
+                    source_working_tree_frozen,
+                ));
+            }
+        };
+
+    let checkout_result = (|| -> Result<MaterializedCheckout, DestinationCheckoutFailure> {
+        let workspace_cwd =
+            PinnedGitDirectory::from_prepared(&execution.prepared).map_err(|error| {
+                DestinationCheckoutFailure {
+                    error,
+                    occupied_destination_path: None,
+                    partial_destination_path: None,
+                    partial_destination_identity: None,
+                }
+            })?;
+        materialize_detached_checkout(
+            &git,
+            &workspace_cwd,
+            execution.prepared.workspace(),
+            candidate_parent,
+            destination_name,
+            &base_commit_sha,
+            &source_commit_sha,
+            &source_tree_sha,
+            base_closure,
+            source_closure,
+            post_destination_init_hook,
+        )
+    })();
 
     let MaterializedCheckout {
         checkout_workspace,
@@ -717,77 +1392,31 @@ pub fn materialize_source_candidate(
         working_tree_digest,
         candidate_parent_fd,
         candidate_checkout_fd,
-    } = materialize_detached_checkout(
-        &git,
-        &workspace_cwd,
-        execution.prepared.workspace(),
-        candidate_parent,
-        destination_name,
-        &base_commit_sha,
-        &source_commit_sha,
-        &source_tree_sha,
-        base_closure,
-        source_closure,
-    )?;
-
-    execution.revalidate_custody()?;
-
-    let source_artifact_digest = compute_source_artifact_digest(
-        &base_commit_sha,
-        &source_commit_sha,
-        &source_tree_sha,
-        &files,
-    )?;
-
-    let custody_digest = content_digest(&(
-        "source-candidate-custody-v1",
-        execution.prepared.project_id(),
-        execution.prepared.root_id(),
-        execution.prepared.task_id(),
-        execution.prepared.attempt_id(),
-        execution.workspace_digest(),
-        execution.closure_digest(),
-        &base_commit_sha,
-        &source_commit_sha,
-        &source_tree_sha,
-        &source_artifact_digest,
-    ))
-    .map_err(|_| SourceCandidateError::Digest)?;
-
-    let raw_candidate_digest = content_digest(&(
-        "source-candidate-ref-v1",
-        execution.prepared.task_id(),
-        execution.prepared.attempt_id(),
-        &source_commit_sha,
-        &source_tree_sha,
-        &custody_digest,
-    ))
-    .map_err(|_| SourceCandidateError::Digest)?;
-    let candidate_hex = raw_candidate_digest
-        .strip_prefix("sha256:")
-        .ok_or(SourceCandidateError::Digest)?;
-    let candidate_ref = format!("candidate-{candidate_hex}");
-
-    let ancestry_digest = content_digest(&(
-        "source-candidate-ancestry-v1",
-        &base_commit_sha,
-        &source_commit_sha,
-    ))
-    .map_err(|_| SourceCandidateError::Digest)?;
-
-    let candidate_change = CandidateChange {
-        project_id: execution.prepared.project_id().clone(),
-        root_id: execution.prepared.root_id().clone(),
-        task_id: execution.prepared.task_id().clone(),
-        candidate_id: candidate_ref.clone(),
-        base_sha: base_commit_sha.clone(),
-        head_sha: source_commit_sha.clone(),
-        tree_sha: source_tree_sha.clone(),
-        ancestry_digest: Some(ancestry_digest),
-        files: files.clone(),
-        constraints: None,
+    } = match checkout_result {
+        Ok(checkout) => checkout,
+        Err(checkout_failure) => {
+            let stage = if checkout_failure.partial_destination_path.is_some() {
+                MaterializationFailureStage::DestinationCheckout
+            } else {
+                MaterializationFailureStage::DestinationPreflight
+            };
+            let requires_reconciliation = source_working_tree_frozen
+                || checkout_failure.occupied_destination_path.is_some()
+                || checkout_failure.partial_destination_path.is_some();
+            return Err(fail(
+                execution,
+                checkout_failure.error,
+                stage,
+                source_working_tree_frozen,
+                Some(source_commit_sha),
+                Some(source_tree_sha),
+                checkout_failure.occupied_destination_path,
+                checkout_failure.partial_destination_path,
+                checkout_failure.partial_destination_identity,
+                requires_reconciliation,
+            ));
+        }
     };
-    validate_candidate_change(&candidate_change)?;
 
     let candidate = SourceCandidate {
         execution,
@@ -801,8 +1430,8 @@ pub fn materialize_source_candidate(
         candidate_ref,
         base_commit_sha,
         base_tree_sha,
-        source_commit_sha,
-        source_tree_sha,
+        source_commit_sha: source_commit_sha.clone(),
+        source_tree_sha: source_tree_sha.clone(),
         source_artifact_digest,
         custody_digest,
         files,
@@ -810,7 +1439,23 @@ pub fn materialize_source_candidate(
         _candidate_parent_fd: candidate_parent_fd,
         _candidate_checkout_fd: candidate_checkout_fd,
     };
-    candidate.revalidate_custody()?;
+    if let Err(error) = candidate.revalidate_custody() {
+        let partial_path = candidate.checkout_workspace.workspace.clone();
+        let partial_identity = candidate.candidate_checkout_identity;
+        let recovered_execution = candidate.execution;
+        return Err(fail(
+            recovered_execution,
+            error,
+            MaterializationFailureStage::PostMaterializationValidation,
+            source_working_tree_frozen,
+            Some(source_commit_sha),
+            Some(source_tree_sha),
+            None,
+            Some(partial_path),
+            Some(partial_identity),
+            true,
+        ));
+    }
     Ok(candidate)
 }
 
@@ -838,6 +1483,22 @@ fn validate_candidate_change(change: &CandidateChange) -> Result<(), SourceCandi
         .map_err(|error| SourceCandidateError::ConflictValidation(error.to_string()))
 }
 
+#[cfg(test)]
+type AfterFreezeAddHook = Box<dyn FnOnce(&Path)>;
+
+#[cfg(test)]
+std::thread_local! {
+    static TEST_AFTER_FREEZE_ADD_HOOK: std::cell::RefCell<Option<AfterFreezeAddHook>> =
+        std::cell::RefCell::new(None);
+}
+
+#[cfg(test)]
+fn set_test_after_freeze_add_hook(hook: impl FnOnce(&Path) + 'static) {
+    TEST_AFTER_FREEZE_ADD_HOOK.with(|slot| {
+        *slot.borrow_mut() = Some(Box::new(hook));
+    });
+}
+
 fn freeze_dirty_working_tree(
     git: &Path,
     workspace_cwd: &PinnedGitDirectory<'_>,
@@ -860,6 +1521,10 @@ fn freeze_dirty_working_tree(
             ".",
         ],
     )?;
+    #[cfg(test)]
+    if let Some(hook) = TEST_AFTER_FREEZE_ADD_HOOK.with(|slot| slot.borrow_mut().take()) {
+        hook(&workspace_cwd.access_path());
+    }
     let staged = run_git_with_options(
         git,
         Some(workspace_cwd),
@@ -1352,6 +2017,61 @@ struct MaterializedCheckout {
     candidate_checkout_fd: OwnedFd,
 }
 
+struct DestinationCheckoutFailure {
+    error: SourceCandidateError,
+    occupied_destination_path: Option<PathBuf>,
+    partial_destination_path: Option<PathBuf>,
+    partial_destination_identity: Option<(u64, u64)>,
+}
+
+fn preflight_candidate_destination(
+    source_workspace: &ValidatedWorkspace,
+    candidate_parent: &Path,
+    destination_name: &str,
+) -> Result<(PathBuf, OwnedFd), (SourceCandidateError, Option<PathBuf>)> {
+    validate_destination_name(destination_name).map_err(|error| (error, None))?;
+    if !candidate_parent.is_absolute() {
+        return Err((SourceCandidateError::InvalidCandidateDestination, None));
+    }
+    let parent_spec = WorkspaceSpec {
+        node_id: source_workspace.node_id.clone(),
+        root_id: source_workspace.root_id.clone(),
+        project_id: source_workspace.project_id.clone(),
+        workspace: candidate_parent.to_path_buf(),
+        owned_paths: Vec::new(),
+        forbidden_paths: Vec::new(),
+    }
+    .validate()
+    .map_err(|_| (SourceCandidateError::InvalidCandidateDestination, None))?;
+    if parent_spec.custody != Custody::RegisteredOnly {
+        return Err((SourceCandidateError::InvalidCandidateDestination, None));
+    }
+    let canonical_parent = parent_spec.workspace;
+    if canonical_parent != candidate_parent
+        || source_workspace.workspace.starts_with(&canonical_parent)
+        || canonical_parent.starts_with(&source_workspace.workspace)
+    {
+        return Err((SourceCandidateError::InvalidCandidateDestination, None));
+    }
+    let parent_fd = open_directory_chain(&canonical_parent)
+        .map_err(|_| (SourceCandidateError::InvalidCandidateDestination, None))?;
+    ensure_private_fd(parent_fd.as_fd())
+        .map_err(|_| (SourceCandidateError::InvalidCandidateDestination, None))?;
+    ensure_path_points_to_fd(&canonical_parent, parent_fd.as_fd())
+        .map_err(|_| (SourceCandidateError::InvalidCandidateDestination, None))?;
+    match statat(&parent_fd, destination_name, AtFlags::SYMLINK_NOFOLLOW) {
+        Ok(_) => {
+            return Err((
+                SourceCandidateError::InvalidCandidateDestination,
+                Some(canonical_parent.join(destination_name)),
+            ));
+        }
+        Err(error) if error == rustix::io::Errno::NOENT => {}
+        Err(_) => return Err((SourceCandidateError::InvalidCandidateDestination, None)),
+    }
+    Ok((canonical_parent, parent_fd))
+}
+
 #[allow(clippy::too_many_arguments)]
 fn materialize_detached_checkout(
     git: &Path,
@@ -1364,27 +2084,44 @@ fn materialize_detached_checkout(
     source_tree_sha: &str,
     base_closure: PreflightTreeClosure,
     source_closure: PreflightTreeClosure,
-) -> Result<MaterializedCheckout, SourceCandidateError> {
-    validate_destination_name(destination_name)?;
-    if !candidate_parent.is_absolute() {
-        return Err(SourceCandidateError::InvalidCandidateDestination);
-    }
-    let parent_fd = open_directory_chain(candidate_parent)
-        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    ensure_private_fd(parent_fd.as_fd())
-        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    let canonical_parent = fs::canonicalize(candidate_parent)
-        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    if canonical_parent != candidate_parent {
-        return Err(SourceCandidateError::InvalidCandidateDestination);
-    }
-    ensure_path_points_to_fd(&canonical_parent, parent_fd.as_fd())
-        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    ensure_admitted_capacity(parent_fd.as_fd(), base_closure, source_closure)?;
+    post_destination_init_hook: PostDestinationInitHook<'_>,
+) -> Result<MaterializedCheckout, DestinationCheckoutFailure> {
+    let (canonical_parent, parent_fd) =
+        preflight_candidate_destination(source_workspace, candidate_parent, destination_name)
+            .map_err(
+                |(error, occupied_destination_path)| DestinationCheckoutFailure {
+                    error,
+                    occupied_destination_path,
+                    partial_destination_path: None,
+                    partial_destination_identity: None,
+                },
+            )?;
+    ensure_admitted_capacity(parent_fd.as_fd(), base_closure, source_closure).map_err(|error| {
+        DestinationCheckoutFailure {
+            error,
+            occupied_destination_path: None,
+            partial_destination_path: None,
+            partial_destination_identity: None,
+        }
+    })?;
     match statat(&parent_fd, destination_name, AtFlags::SYMLINK_NOFOLLOW) {
-        Ok(_) => return Err(SourceCandidateError::InvalidCandidateDestination),
+        Ok(_) => {
+            return Err(DestinationCheckoutFailure {
+                error: SourceCandidateError::InvalidCandidateDestination,
+                occupied_destination_path: Some(canonical_parent.join(destination_name)),
+                partial_destination_path: None,
+                partial_destination_identity: None,
+            });
+        }
         Err(error) if error == rustix::io::Errno::NOENT => {}
-        Err(_) => return Err(SourceCandidateError::InvalidCandidateDestination),
+        Err(_) => {
+            return Err(DestinationCheckoutFailure {
+                error: SourceCandidateError::InvalidCandidateDestination,
+                occupied_destination_path: None,
+                partial_destination_path: None,
+                partial_destination_identity: None,
+            });
+        }
     }
 
     mkdirat(
@@ -1392,155 +2129,174 @@ fn materialize_detached_checkout(
         destination_name,
         Mode::from_bits_truncate(0o700),
     )
-    .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    let destination_fd = openat(
-        &parent_fd,
-        destination_name,
-        OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
-        Mode::empty(),
-    )
-    .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+    .map_err(|_| DestinationCheckoutFailure {
+        error: SourceCandidateError::InvalidCandidateDestination,
+        occupied_destination_path: None,
+        partial_destination_path: None,
+        partial_destination_identity: None,
+    })?;
     let destination_path = canonical_parent.join(destination_name);
-    fchmod(&destination_fd, Mode::from_bits_truncate(0o700))
+    let mut partial_identity = None;
+    let post_mkdir_result: Result<MaterializedCheckout, SourceCandidateError> = (|| {
+        let destination_fd = openat(
+            &parent_fd,
+            destination_name,
+            OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+            Mode::empty(),
+        )
         .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    ensure_private_fd(destination_fd.as_fd())
+        partial_identity = fd_identity(destination_fd.as_fd()).ok();
+        fchmod(&destination_fd, Mode::from_bits_truncate(0o700))
+            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+        ensure_private_fd(destination_fd.as_fd())
+            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+        ensure_same_directory_borrowed(parent_fd.as_fd(), destination_name, destination_fd.as_fd())
+            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+        let destination_cwd = PinnedGitDirectory::with_parent(
+            &destination_path,
+            destination_fd.as_fd(),
+            &canonical_parent,
+            parent_fd.as_fd(),
+            destination_name,
+        )
         .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    ensure_same_directory_borrowed(parent_fd.as_fd(), destination_name, destination_fd.as_fd())
-        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    let destination_cwd = PinnedGitDirectory::with_parent(
-        &destination_path,
-        destination_fd.as_fd(),
-        &canonical_parent,
-        parent_fd.as_fd(),
-        destination_name,
-    )
-    .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    run_git(
-        git,
-        Some(&destination_cwd),
-        &[
-            "-c",
-            "core.hooksPath=/dev/null",
-            "-c",
-            "core.attributesFile=/dev/null",
-            "-c",
-            "core.fsmonitor=false",
-            "init",
-            "--quiet",
-            "--template=",
-            "--object-format=sha1",
-        ],
-    )?;
-    make_git_dir_private(&destination_cwd.access_path().join(".git"))?;
-    let initial_config = read_safe_config(&destination_cwd.access_path().join(".git/config"))?;
-    source_cwd.check()?;
-    let source_path_text = source_cwd
-        .canonical_path()
-        .to_str()
-        .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?
-        .to_owned();
-    run_git_with_options(
-        git,
-        Some(&destination_cwd),
-        &[
-            "-c",
-            "core.hooksPath=/dev/null",
-            "-c",
-            "core.attributesFile=/dev/null",
-            "-c",
-            "core.fsmonitor=false",
-            "-c",
-            "protocol.file.allow=always",
-            "fetch",
-            "--quiet",
-            "--depth=1",
-            "--no-tags",
-            "--no-recurse-submodules",
-            &source_path_text,
-            base_commit_sha,
-            source_commit_sha,
-        ],
-        None,
-        GIT_TRANSFER_TIMEOUT,
-        MAX_GIT_OUTPUT,
-    )?;
-    source_cwd.check()?;
-    run_git(
-        git,
-        Some(&destination_cwd),
-        &[
-            "-c",
-            "core.hooksPath=/dev/null",
-            "-c",
-            "core.attributesFile=/dev/null",
-            "-c",
-            "core.fsmonitor=false",
-            "checkout",
-            "--quiet",
-            "--detach",
-            "--no-recurse-submodules",
-            source_commit_sha,
-        ],
-    )?;
-    make_git_dir_private(&destination_cwd.access_path().join(".git"))?;
-    fchmod(&destination_fd, Mode::from_bits_truncate(0o700))
-        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    ensure_private_fd(destination_fd.as_fd())
-        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    if git_text(
-        git,
-        Some(&destination_cwd),
-        &["rev-parse", "--is-shallow-repository"],
-    )?
-    .trim()
-        != "true"
-    {
-        return Err(SourceCandidateError::InvalidCandidateDestination);
-    }
-    let object_stats = git_text(git, Some(&destination_cwd), &["count-objects", "-v"])?;
-    validate_object_store_stats(&object_stats, base_closure, source_closure)?;
-    let candidate_config =
-        validate_workspace_git_metadata(git, &destination_cwd, destination_fd.as_fd())?;
-    if candidate_config != initial_config {
-        return Err(SourceCandidateError::InvalidCandidateDestination);
-    }
-    validate_working_tree_entries(&destination_cwd)?;
-    verify_clean_detached_checkout(git, &destination_cwd, source_commit_sha, source_tree_sha)?;
-    validate_commit_tree_entries(git, &destination_cwd, source_commit_sha, source_tree_sha)?;
-    let working_tree_digest =
-        compute_working_tree_content_digest(git, &destination_cwd, source_tree_sha)?;
+        run_git(
+            git,
+            Some(&destination_cwd),
+            &[
+                "-c",
+                "core.hooksPath=/dev/null",
+                "-c",
+                "core.attributesFile=/dev/null",
+                "-c",
+                "core.fsmonitor=false",
+                "init",
+                "--quiet",
+                "--template=",
+                "--object-format=sha1",
+            ],
+        )?;
+        make_git_dir_private(&destination_cwd.access_path().join(".git"))?;
+        if let Some(hook) = post_destination_init_hook {
+            hook(&destination_path);
+        }
+        let initial_config = read_safe_config(&destination_cwd.access_path().join(".git/config"))?;
+        source_cwd.check()?;
+        let source_path_text = source_cwd
+            .canonical_path()
+            .to_str()
+            .ok_or(SourceCandidateError::UnsafeWorkspaceMetadata)?
+            .to_owned();
+        run_git_with_options(
+            git,
+            Some(&destination_cwd),
+            &[
+                "-c",
+                "core.hooksPath=/dev/null",
+                "-c",
+                "core.attributesFile=/dev/null",
+                "-c",
+                "core.fsmonitor=false",
+                "-c",
+                "protocol.file.allow=always",
+                "fetch",
+                "--quiet",
+                "--depth=1",
+                "--no-tags",
+                "--no-recurse-submodules",
+                &source_path_text,
+                base_commit_sha,
+                source_commit_sha,
+            ],
+            None,
+            GIT_TRANSFER_TIMEOUT,
+            MAX_GIT_OUTPUT,
+        )?;
+        source_cwd.check()?;
+        run_git(
+            git,
+            Some(&destination_cwd),
+            &[
+                "-c",
+                "core.hooksPath=/dev/null",
+                "-c",
+                "core.attributesFile=/dev/null",
+                "-c",
+                "core.fsmonitor=false",
+                "checkout",
+                "--quiet",
+                "--detach",
+                "--no-recurse-submodules",
+                source_commit_sha,
+            ],
+        )?;
+        make_git_dir_private(&destination_cwd.access_path().join(".git"))?;
+        fchmod(&destination_fd, Mode::from_bits_truncate(0o700))
+            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+        ensure_private_fd(destination_fd.as_fd())
+            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+        if git_text(
+            git,
+            Some(&destination_cwd),
+            &["rev-parse", "--is-shallow-repository"],
+        )?
+        .trim()
+            != "true"
+        {
+            return Err(SourceCandidateError::InvalidCandidateDestination);
+        }
+        let object_stats = git_text(git, Some(&destination_cwd), &["count-objects", "-v"])?;
+        validate_object_store_stats(&object_stats, base_closure, source_closure)?;
+        let candidate_config =
+            validate_workspace_git_metadata(git, &destination_cwd, destination_fd.as_fd())?;
+        if candidate_config != initial_config {
+            return Err(SourceCandidateError::InvalidCandidateDestination);
+        }
+        validate_working_tree_entries(&destination_cwd)?;
+        verify_clean_detached_checkout(git, &destination_cwd, source_commit_sha, source_tree_sha)?;
+        validate_commit_tree_entries(git, &destination_cwd, source_commit_sha, source_tree_sha)?;
+        let working_tree_digest =
+            compute_working_tree_content_digest(git, &destination_cwd, source_tree_sha)?;
 
-    let validated = WorkspaceSpec {
-        node_id: source_workspace.node_id.clone(),
-        root_id: source_workspace.root_id.clone(),
-        project_id: source_workspace.project_id.clone(),
-        workspace: destination_path.clone(),
-        owned_paths: source_workspace.owned_paths.clone(),
-        forbidden_paths: source_workspace.forbidden_paths.clone(),
-    }
-    .validate()
-    .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    if validated.custody != Custody::RegisteredOnly
-        || validated.git_metadata != GitMetadata::Directory
-    {
-        return Err(SourceCandidateError::InvalidCandidateDestination);
-    }
-    destination_cwd
-        .check()
+        let validated = WorkspaceSpec {
+            node_id: source_workspace.node_id.clone(),
+            root_id: source_workspace.root_id.clone(),
+            project_id: source_workspace.project_id.clone(),
+            workspace: destination_path.clone(),
+            owned_paths: source_workspace.owned_paths.clone(),
+            forbidden_paths: source_workspace.forbidden_paths.clone(),
+        }
+        .validate()
         .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    let candidate_parent_identity = fd_identity(parent_fd.as_fd())
-        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    let candidate_checkout_identity = fd_identity(destination_fd.as_fd())
-        .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
-    Ok(MaterializedCheckout {
-        checkout_workspace: validated,
-        candidate_parent_path: canonical_parent,
-        candidate_parent_identity,
-        candidate_checkout_identity,
-        candidate_config,
-        working_tree_digest,
-        candidate_parent_fd: parent_fd,
-        candidate_checkout_fd: destination_fd,
+        if validated.custody != Custody::RegisteredOnly
+            || validated.git_metadata != GitMetadata::Directory
+        {
+            return Err(SourceCandidateError::InvalidCandidateDestination);
+        }
+        destination_cwd
+            .check()
+            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+        let candidate_parent_identity = fd_identity(parent_fd.as_fd())
+            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+        let candidate_checkout_identity = fd_identity(destination_fd.as_fd())
+            .map_err(|_| SourceCandidateError::InvalidCandidateDestination)?;
+        Ok(MaterializedCheckout {
+            checkout_workspace: validated,
+            candidate_parent_path: canonical_parent,
+            candidate_parent_identity,
+            candidate_checkout_identity,
+            candidate_config,
+            working_tree_digest,
+            candidate_parent_fd: parent_fd,
+            candidate_checkout_fd: destination_fd,
+        })
+    })();
+
+    post_mkdir_result.map_err(|error| DestinationCheckoutFailure {
+        error,
+        occupied_destination_path: None,
+        partial_destination_path: Some(destination_path),
+        partial_destination_identity: partial_identity,
     })
 }
 
@@ -2503,6 +3259,21 @@ fn run_git(
     run_git_with_options(git, cwd, args, None, GIT_TIMEOUT, MAX_GIT_OUTPUT)
 }
 
+#[cfg(test)]
+std::thread_local! {
+    static TEST_GIT_INVOCATIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+fn reset_test_git_invocations() {
+    TEST_GIT_INVOCATIONS.with(|count| count.set(0));
+}
+
+#[cfg(test)]
+fn test_git_invocations() -> usize {
+    TEST_GIT_INVOCATIONS.with(std::cell::Cell::get)
+}
+
 fn run_git_with_options(
     git: &Path,
     cwd: Option<&PinnedGitDirectory<'_>>,
@@ -2511,6 +3282,8 @@ fn run_git_with_options(
     timeout: Duration,
     output_limit: usize,
 ) -> Result<Output, SourceCandidateError> {
+    #[cfg(test)]
+    TEST_GIT_INVOCATIONS.with(|count| count.set(count.get().saturating_add(1)));
     if let Some(directory) = cwd {
         directory.check()?;
     }
@@ -2819,9 +3592,13 @@ mod tests {
     };
 
     static FIXTURE_SEQ: AtomicU64 = AtomicU64::new(1);
+    static SYNTHETIC_CLOSURE_SEQ: AtomicU64 = AtomicU64::new(1000);
 
+    /// Explicitly synthetic in-module unit test fixture proof implementing
+    /// [`ClosedAdmissionProof`] without claiming real Linux systemd unit closure.
     #[derive(Clone, Debug)]
-    struct FixtureClosedAdmission {
+    pub(super) struct FixtureClosedAdmission {
+        synthetic_handle_id: u64,
         identity: RecoveryIdentity,
         observation: EnforcementObservation,
         exit_code: Option<i32>,
@@ -2829,7 +3606,13 @@ mod tests {
         closure_digest: String,
     }
 
-    impl sealed::Sealed for FixtureClosedAdmission {}
+    impl sealed::Sealed for FixtureClosedAdmission {
+        fn into_retained_proof(self) -> sealed::RetainedClosureProof {
+            sealed::RetainedClosureProof(sealed::RetainedClosureProofInner::SyntheticTestFixture(
+                self,
+            ))
+        }
+    }
 
     impl ClosedAdmissionProof for FixtureClosedAdmission {
         fn identity(&self) -> &RecoveryIdentity {
@@ -2987,6 +3770,7 @@ mod tests {
         ))
         .expect("closure digest");
         let closure = FixtureClosedAdmission {
+            synthetic_handle_id: SYNTHETIC_CLOSURE_SEQ.fetch_add(1, Ordering::Relaxed),
             identity,
             observation,
             exit_code: Some(0),
@@ -3993,6 +4777,676 @@ mod tests {
                 .contains(&ConflictRisk::OverlappingHunks),
             "shared-base hunk coordinates must preserve OverlappingHunks across earlier insertions: {:?}",
             graph.edges[0].risks
+        );
+    }
+
+    #[test]
+    fn retained_custody_apis_preserve_original_handles_and_reconciliation_state_across_failures() {
+        use std::os::fd::AsRawFd;
+
+        // Note: FixtureClosedAdmission is an explicitly synthetic in-module test fixture proof
+        // used to exercise custody retention and error recovery in unit tests; it does not claim
+        // real Linux systemd unit execution qualification.
+        let mut fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        let prepared = fixture.take_prepared();
+        let original_head = prepared.head_oid().to_owned();
+        let original_tree = prepared.tree_oid().to_owned();
+        let original_parent_ino =
+            fd_identity(prepared.managed_parent_fd()).expect("original parent fd identity");
+        let original_workspace_ino =
+            fd_identity(prepared.workspace_dir_fd()).expect("original workspace fd identity");
+        let original_parent_raw_fd = prepared.managed_parent_fd().as_raw_fd();
+        let original_workspace_raw_fd = prepared.workspace_dir_fd().as_raw_fd();
+        let original_closure_handle_id = fixture.closure.synthetic_handle_id;
+
+        // 1. Wrong closure (failed exit code and mismatched task identity) returns original
+        // PreparedWorkspace and generic synthetic closure proof without dropping or recreating them.
+        let mut failed_closure = fixture.closure.clone();
+        failed_closure.exit_code = Some(1);
+        failed_closure.success = false;
+        let prove_err =
+            try_prove_closed_workspace(prepared, failed_closure).expect_err("failed exit rejected");
+        assert_eq!(
+            prove_err.error(),
+            &SourceCandidateError::ExecutionNotSucceeded
+        );
+        let (prepared, returned_failed_closure, _) = prove_err.into_parts();
+        assert_eq!(
+            returned_failed_closure.synthetic_handle_id,
+            original_closure_handle_id
+        );
+        assert_eq!(prepared.head_oid(), original_head);
+        assert_eq!(prepared.tree_oid(), original_tree);
+        assert_eq!(
+            prepared.managed_parent_fd().as_raw_fd(),
+            original_parent_raw_fd
+        );
+        assert_eq!(
+            prepared.workspace_dir_fd().as_raw_fd(),
+            original_workspace_raw_fd
+        );
+        assert_eq!(
+            fd_identity(prepared.managed_parent_fd()).expect("parent fd identity"),
+            original_parent_ino
+        );
+        assert_eq!(
+            fd_identity(prepared.workspace_dir_fd()).expect("workspace fd identity"),
+            original_workspace_ino
+        );
+        prepared
+            .validate_current_custody()
+            .expect("retained PreparedWorkspace custody remains valid");
+
+        let mut mismatched_closure = fixture.closure.clone();
+        mismatched_closure.identity.identity.task_id =
+            TaskId::new("TASK-MISMATCHED").expect("task id");
+        let prove_err = try_prove_closed_workspace(prepared, mismatched_closure)
+            .expect_err("mismatched task rejected");
+        assert_eq!(
+            prove_err.error(),
+            &SourceCandidateError::ClosureIdentityMismatch
+        );
+        let (prepared, returned_mismatched_closure, _) = prove_err.into_parts();
+        assert_eq!(
+            returned_mismatched_closure.synthetic_handle_id,
+            original_closure_handle_id
+        );
+        assert_eq!(
+            prepared.managed_parent_fd().as_raw_fd(),
+            original_parent_raw_fd
+        );
+        assert_eq!(
+            prepared.workspace_dir_fd().as_raw_fd(),
+            original_workspace_raw_fd
+        );
+
+        let closed = try_prove_closed_workspace(prepared, fixture.closure.clone())
+            .expect("valid closure proof succeeds");
+        assert_eq!(
+            closed
+                .synthetic_test_closure_proof()
+                .expect("retained synthetic closure proof")
+                .synthetic_handle_id,
+            original_closure_handle_id
+        );
+
+        // 2. No-change error returns original ClosedWorkspaceExecution with untouched head/tree/inode/custody.
+        let no_change_err = try_materialize_source_candidate(
+            closed,
+            &fixture.candidate_parent,
+            "candidate-no-change",
+        )
+        .expect_err("no source changes rejected");
+        assert_eq!(
+            no_change_err.error(),
+            &SourceCandidateError::NoSourceChanges
+        );
+        assert_eq!(
+            no_change_err.stage(),
+            MaterializationFailureStage::SourcePreflight
+        );
+        assert!(!no_change_err.reconciliation().source_working_tree_frozen);
+        assert_eq!(
+            no_change_err
+                .reconciliation()
+                .observed_source_head_oid
+                .as_deref(),
+            Some(original_head.as_str())
+        );
+        assert_eq!(
+            no_change_err
+                .reconciliation()
+                .observed_source_tree_oid
+                .as_deref(),
+            Some(original_tree.as_str())
+        );
+        assert!(no_change_err.partial_destination_path().is_none());
+        assert!(no_change_err.occupied_destination_path().is_none());
+        assert!(!no_change_err.requires_reconciliation());
+        let closed = no_change_err.into_execution();
+        closed
+            .revalidate_custody()
+            .expect("custody valid after no-change error");
+        assert_eq!(
+            closed.prepared().managed_parent_fd().as_raw_fd(),
+            original_parent_raw_fd
+        );
+        assert_eq!(
+            closed.prepared().workspace_dir_fd().as_raw_fd(),
+            original_workspace_raw_fd
+        );
+        assert_eq!(
+            closed
+                .synthetic_test_closure_proof()
+                .expect("retained synthetic closure proof")
+                .synthetic_handle_id,
+            original_closure_handle_id
+        );
+
+        // Write a dirty source edit inside owned_paths ("src/lib.rs") for subsequent error tests.
+        fs::write(
+            fixture.workspace_path.join("src/lib.rs"),
+            b"pub fn answer() -> u32 {\n    42\n}\n",
+        )
+        .expect("write dirty edit to src/lib.rs");
+
+        // 3. Unsafe .git/config error rejects in SourcePreflight before freezing dirty edits,
+        // never invokes diagnostic Git, and preserves original head/tree/inode/custody and synthetic closure handle.
+        let config_path = fixture.workspace_path.join(".git/config");
+        let saved_config = fs::read(&config_path).expect("read original .git/config");
+        let mut unsafe_config = saved_config.clone();
+        unsafe_config.extend_from_slice(b"\n[filter \"evil\"]\n\tsmudge = /bin/true\n");
+        fs::write(&config_path, &unsafe_config).expect("write unsafe .git/config");
+        fs::set_permissions(&config_path, fs::Permissions::from_mode(0o600))
+            .expect("chmod 0600 .git/config");
+
+        reset_test_git_invocations();
+        let unsafe_cfg_err = try_materialize_source_candidate(
+            closed,
+            &fixture.candidate_parent,
+            "candidate-unsafe-cfg",
+        )
+        .expect_err("unsafe .git/config rejected");
+        assert_eq!(
+            test_git_invocations(),
+            0,
+            "rejected .git/config must never invoke Git or diagnostic Git"
+        );
+        assert_eq!(
+            unsafe_cfg_err.error(),
+            &SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        assert_eq!(
+            unsafe_cfg_err.stage(),
+            MaterializationFailureStage::SourcePreflight
+        );
+        assert!(!unsafe_cfg_err.reconciliation().source_working_tree_frozen);
+        assert!(
+            unsafe_cfg_err
+                .reconciliation()
+                .observed_source_head_oid
+                .is_none()
+        );
+        assert!(
+            unsafe_cfg_err
+                .reconciliation()
+                .observed_source_tree_oid
+                .is_none()
+        );
+        assert!(unsafe_cfg_err.partial_destination_path().is_none());
+        let closed = unsafe_cfg_err.into_execution();
+        fs::write(&config_path, &saved_config).expect("restore safe .git/config");
+        fs::set_permissions(&config_path, fs::Permissions::from_mode(0o600))
+            .expect("chmod 0600 restored .git/config");
+        closed
+            .revalidate_custody()
+            .expect("custody valid after restoring .git/config");
+        assert_eq!(
+            run_fixture_git(&fixture.workspace_path, &["rev-parse", "HEAD"]),
+            original_head,
+            "dirty working tree must not be frozen when SourcePreflight fails"
+        );
+
+        // 4. Invalid/missing candidate_parent error rejects in DestinationPreflight BEFORE freezing
+        // dirty working tree, preserving original head/tree/inode/custody and closure handle.
+        let missing_parent = fixture.root.join("missing-candidate-parent");
+        let missing_parent_err =
+            try_materialize_source_candidate(closed, &missing_parent, "candidate-missing-parent")
+                .expect_err("missing candidate_parent rejected");
+        assert_eq!(
+            missing_parent_err.error(),
+            &SourceCandidateError::InvalidCandidateDestination
+        );
+        assert_eq!(
+            missing_parent_err.stage(),
+            MaterializationFailureStage::DestinationPreflight
+        );
+        assert!(
+            !missing_parent_err
+                .reconciliation()
+                .source_working_tree_frozen
+        );
+        assert_eq!(
+            missing_parent_err
+                .reconciliation()
+                .observed_source_head_oid
+                .as_deref(),
+            Some(original_head.as_str())
+        );
+        assert_eq!(
+            missing_parent_err
+                .reconciliation()
+                .observed_source_tree_oid
+                .as_deref(),
+            Some(original_tree.as_str())
+        );
+        assert!(missing_parent_err.partial_destination_path().is_none());
+        assert!(missing_parent_err.occupied_destination_path().is_none());
+        assert!(!missing_parent_err.requires_reconciliation());
+        let closed = missing_parent_err.into_execution();
+
+        // 5. Occupied destination error rejects in DestinationPreflight BEFORE freezing dirty working
+        // tree, preserves the existing directory untouched, and reports occupied_destination_path.
+        let occupied_name = "candidate-already-occupied";
+        let occupied_path = fixture.candidate_parent.join(occupied_name);
+        fs::create_dir(&occupied_path).expect("create pre-existing occupied destination");
+        fs::set_permissions(&occupied_path, fs::Permissions::from_mode(0o700))
+            .expect("chmod 0700 occupied destination");
+        let sentinel = occupied_path.join("keep.txt");
+        fs::write(&sentinel, b"do-not-overwrite\n").expect("write sentinel in occupied dir");
+
+        let occupied_err =
+            try_materialize_source_candidate(closed, &fixture.candidate_parent, occupied_name)
+                .expect_err("occupied destination rejected");
+        assert_eq!(
+            occupied_err.error(),
+            &SourceCandidateError::InvalidCandidateDestination
+        );
+        assert_eq!(
+            occupied_err.stage(),
+            MaterializationFailureStage::DestinationPreflight
+        );
+        assert!(!occupied_err.reconciliation().source_working_tree_frozen);
+        assert_eq!(
+            occupied_err.occupied_destination_path(),
+            Some(occupied_path.as_path())
+        );
+        assert!(occupied_err.partial_destination_path().is_none());
+        assert!(occupied_err.requires_reconciliation());
+        assert_eq!(
+            fs::read(&sentinel).expect("sentinel preserved"),
+            b"do-not-overwrite\n"
+        );
+        assert_eq!(
+            run_fixture_git(&fixture.workspace_path, &["rev-parse", "HEAD"]),
+            original_head,
+            "occupied destination preflight must not freeze dirty source"
+        );
+        let closed = occupied_err.into_execution();
+
+        // 6. Partial destination creation + frozen source failure during DestinationCheckout:
+        //    - Freezes dirty source into frozen_sha
+        //    - Creates partial destination directory via mkdirat/git init
+        //    - Fails when post-init config validation sees injected unsafe config in destination
+        //    - Preserves partial destination on disk (not deleted or overwritten)
+        //    - Records frozen source observation and requires explicit reconciliation + fresh destination
+        let partial_name = "candidate-partial-checkout";
+        let partial_expected_path = fixture.candidate_parent.join(partial_name);
+        let inject_bad_dest_config = |dest_path: &Path| {
+            let dest_cfg = dest_path.join(".git/config");
+            let mut bytes = fs::read(&dest_cfg).expect("read dest .git/config");
+            bytes.extend_from_slice(b"\n[include]\n\tpath = /etc/passwd\n");
+            fs::write(&dest_cfg, bytes).expect("inject unsafe dest .git/config");
+            fs::set_permissions(&dest_cfg, fs::Permissions::from_mode(0o600))
+                .expect("chmod 0600 dest .git/config");
+        };
+        let partial_err = try_materialize_source_candidate_with_hook(
+            closed,
+            &fixture.candidate_parent,
+            partial_name,
+            Some(&inject_bad_dest_config),
+        )
+        .expect_err("post-mkdir checkout failure rejected");
+        assert_eq!(
+            partial_err.error(),
+            &SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        assert_eq!(
+            partial_err.stage(),
+            MaterializationFailureStage::DestinationCheckout
+        );
+        assert!(partial_err.reconciliation().source_working_tree_frozen);
+        assert_eq!(
+            partial_err.partial_destination_path(),
+            Some(partial_expected_path.as_path())
+        );
+        assert!(
+            partial_err
+                .reconciliation()
+                .partial_destination_identity
+                .is_some()
+        );
+        assert!(partial_err.requires_reconciliation());
+        assert!(
+            partial_expected_path.is_dir(),
+            "partially created destination directory must be preserved for inspection"
+        );
+        let frozen_sha = partial_err
+            .reconciliation()
+            .observed_source_head_oid
+            .clone()
+            .expect("observed frozen head sha");
+        let frozen_tree_sha = partial_err
+            .reconciliation()
+            .observed_source_tree_oid
+            .clone()
+            .expect("observed frozen tree sha");
+        assert_ne!(frozen_sha, original_head);
+        assert_ne!(frozen_tree_sha, original_tree);
+
+        let closed = partial_err.into_execution();
+        // Original PreparedWorkspace base commit, raw fds, and synthetic closure handle are still intact!
+        assert_eq!(closed.prepared().head_oid(), original_head);
+        assert_eq!(closed.prepared().tree_oid(), original_tree);
+        assert_eq!(
+            closed.prepared().managed_parent_fd().as_raw_fd(),
+            original_parent_raw_fd
+        );
+        assert_eq!(
+            closed.prepared().workspace_dir_fd().as_raw_fd(),
+            original_workspace_raw_fd
+        );
+        assert_eq!(
+            closed
+                .synthetic_test_closure_proof()
+                .expect("retained synthetic closure proof")
+                .synthetic_handle_id,
+            original_closure_handle_id
+        );
+
+        // Blind retry without acknowledging frozen source reconciliation is rejected in SourcePreflight.
+        let unreconciled_err = try_materialize_source_candidate(
+            closed,
+            &fixture.candidate_parent,
+            "candidate-after-partial-unreconciled",
+        )
+        .expect_err("unreconciled frozen source retry must be rejected");
+        assert_eq!(
+            unreconciled_err.error(),
+            &SourceCandidateError::SourceReconciliationRequired
+        );
+        assert_eq!(
+            unreconciled_err.stage(),
+            MaterializationFailureStage::SourcePreflight
+        );
+        assert!(unreconciled_err.requires_reconciliation());
+        let mut closed = unreconciled_err.into_execution();
+
+        // Acknowledge frozen source reconciliation, then verify retrying into the SAME partial_name
+        // still fails as occupied (never overwriting or claiming idempotent success).
+        closed
+            .acknowledge_frozen_source_reconciliation(&frozen_sha, &frozen_tree_sha)
+            .expect("acknowledge frozen source commit and tree");
+        let retry_same_dest_err =
+            try_materialize_source_candidate(closed, &fixture.candidate_parent, partial_name)
+                .expect_err("retrying into partial destination path must fail as occupied");
+        assert_eq!(
+            retry_same_dest_err.error(),
+            &SourceCandidateError::InvalidCandidateDestination
+        );
+        assert_eq!(
+            retry_same_dest_err.stage(),
+            MaterializationFailureStage::DestinationPreflight
+        );
+        assert_eq!(
+            retry_same_dest_err.occupied_destination_path(),
+            Some(partial_expected_path.as_path())
+        );
+        let closed = retry_same_dest_err.into_execution();
+
+        // Retrying with the reconciled ClosedWorkspaceExecution into a fresh create-only destination
+        // succeeds without re-freezing under a new commit identity.
+        let candidate = try_materialize_source_candidate(
+            closed,
+            &fixture.candidate_parent,
+            "candidate-reconciled-fresh",
+        )
+        .expect("reconciled materialization into fresh destination succeeds");
+        assert_eq!(candidate.base_commit_sha(), original_head);
+        assert_eq!(candidate.base_tree_sha(), original_tree);
+        assert_eq!(candidate.source_commit_sha(), frozen_sha);
+        assert_eq!(candidate.source_tree_sha(), frozen_tree_sha);
+        assert_eq!(
+            candidate
+                .execution()
+                .prepared()
+                .managed_parent_fd()
+                .as_raw_fd(),
+            original_parent_raw_fd
+        );
+        assert_eq!(
+            candidate
+                .execution()
+                .prepared()
+                .workspace_dir_fd()
+                .as_raw_fd(),
+            original_workspace_raw_fd
+        );
+        assert_eq!(
+            candidate
+                .execution()
+                .synthetic_test_closure_proof()
+                .expect("retained synthetic closure proof on candidate")
+                .synthetic_handle_id,
+            original_closure_handle_id
+        );
+    }
+
+    #[test]
+    fn unknown_freeze_fence_and_rejected_config_never_allow_blind_retry_or_diagnostic_git() {
+        use std::os::fd::AsRawFd;
+
+        let mut fixture = setup_fixture(vec!["src"], vec!["src/secret"]);
+        let prepared = fixture.take_prepared();
+        let original_head = prepared.head_oid().to_owned();
+        let original_tree = prepared.tree_oid().to_owned();
+        let original_parent_raw_fd = prepared.managed_parent_fd().as_raw_fd();
+        let original_workspace_raw_fd = prepared.workspace_dir_fd().as_raw_fd();
+        let original_parent_id =
+            fd_identity(prepared.managed_parent_fd()).expect("original parent fd identity");
+        let original_workspace_id =
+            fd_identity(prepared.workspace_dir_fd()).expect("original workspace fd identity");
+        let original_closure_handle_id = fixture.closure.synthetic_handle_id;
+
+        let closed = try_prove_closed_workspace(prepared, fixture.closure.clone())
+            .expect("prove closed workspace");
+        assert!(!closed.freeze_fence_active());
+        assert!(closed.frozen_source().is_none());
+
+        fs::write(
+            fixture.workspace_path.join("src/lib.rs"),
+            b"pub fn answer() -> u32 {\n    77\n}\n",
+        )
+        .expect("write dirty source edit");
+
+        // 1. Rejected .git/config with [include] and core.fsmonitor must fail in SourcePreflight
+        // with zero Git invocations (no diagnostic Git rev-parse) and no observations.
+        let config_path = fixture.workspace_path.join(".git/config");
+        let saved_config = fs::read(&config_path).expect("read original .git/config");
+        let marker_path = fixture.root.join("diagnostic-git-marker");
+        let external_include_path = fixture.root.join("external-include.gitconfig");
+        fs::write(
+            &external_include_path,
+            format!("[core]\n\tfsmonitor = touch {}\n", marker_path.display()),
+        )
+        .expect("write external include config");
+        let mut rejected_include_config = saved_config.clone();
+        rejected_include_config.extend_from_slice(
+            format!(
+                "\n[include]\n\tpath = {}\n[core]\n\tfsmonitor = touch {}\n",
+                external_include_path.display(),
+                marker_path.display()
+            )
+            .as_bytes(),
+        );
+        fs::write(&config_path, &rejected_include_config).expect("write rejected .git/config");
+        fs::set_permissions(&config_path, fs::Permissions::from_mode(0o600))
+            .expect("chmod 0600 rejected .git/config");
+
+        reset_test_git_invocations();
+        let cfg_err = try_materialize_source_candidate(
+            closed,
+            &fixture.candidate_parent,
+            "candidate-rejected-include-cfg",
+        )
+        .expect_err("rejected [include] .git/config must fail");
+        assert_eq!(
+            test_git_invocations(),
+            0,
+            "rejected .git/config must never invoke diagnostic Git"
+        );
+        assert!(
+            !marker_path.exists(),
+            "rejected .git/config must never execute fsmonitor or included config"
+        );
+        assert_eq!(
+            cfg_err.error(),
+            &SourceCandidateError::UnsafeWorkspaceMetadata
+        );
+        assert_eq!(
+            cfg_err.stage(),
+            MaterializationFailureStage::SourcePreflight
+        );
+        assert!(!cfg_err.reconciliation().source_working_tree_frozen);
+        assert!(cfg_err.reconciliation().observed_source_head_oid.is_none());
+        assert!(cfg_err.reconciliation().observed_source_tree_oid.is_none());
+        assert!(!cfg_err.requires_reconciliation());
+
+        let closed = cfg_err.into_execution();
+        assert!(!closed.freeze_fence_active());
+        assert!(closed.frozen_source().is_none());
+        fs::write(&config_path, &saved_config).expect("restore safe .git/config");
+        fs::set_permissions(&config_path, fs::Permissions::from_mode(0o600))
+            .expect("chmod 0600 restored .git/config");
+
+        // 2. Inject a SourceFreeze failure after `git add` stages into .git/index by making
+        // `.git/HEAD` unreadable (`0000`) before `git commit`, leaving an unverified/unknown
+        // freeze state with unavailable post-freeze observations (None, None).
+        let head_file = fixture.workspace_path.join(".git/HEAD");
+        set_test_after_freeze_add_hook(|workspace_path| {
+            let head = workspace_path.join(".git/HEAD");
+            fs::set_permissions(&head, fs::Permissions::from_mode(0o000))
+                .expect("chmod 0000 .git/HEAD during SourceFreeze");
+        });
+
+        let freeze_err = try_materialize_source_candidate(
+            closed,
+            &fixture.candidate_parent,
+            "candidate-source-freeze-fail",
+        )
+        .expect_err("SourceFreeze commit failure must be rejected");
+        assert_eq!(
+            freeze_err.stage(),
+            MaterializationFailureStage::SourceFreeze
+        );
+        assert!(freeze_err.reconciliation().source_working_tree_frozen);
+        assert!(freeze_err.requires_reconciliation());
+        assert!(
+            freeze_err
+                .reconciliation()
+                .observed_source_head_oid
+                .is_none(),
+            "failed SourceFreeze must not return unvalidated diagnostic head observation"
+        );
+        assert!(
+            freeze_err
+                .reconciliation()
+                .observed_source_tree_oid
+                .is_none(),
+            "failed SourceFreeze must not return unvalidated diagnostic tree observation"
+        );
+        assert!(
+            !fixture
+                .candidate_parent
+                .join("candidate-source-freeze-fail")
+                .exists(),
+            "failed SourceFreeze must not create destination directory"
+        );
+
+        let mut closed = freeze_err.into_execution();
+        assert!(
+            closed.freeze_fence_active(),
+            "independent freeze fence must remain active on original execution after SourceFreeze failure"
+        );
+        assert!(
+            closed.frozen_source().is_none(),
+            "unverified SourceFreeze failure must keep frozen_source as None"
+        );
+
+        // Restore readable .git/HEAD metadata and verify the unknown freeze fence STILL blocks
+        // both fake/base reconciliation and blind retry without spawning Git or creating a destination.
+        fs::set_permissions(&head_file, fs::Permissions::from_mode(0o600))
+            .expect("restore 0600 .git/HEAD");
+        assert_eq!(
+            closed.acknowledge_frozen_source_reconciliation(&original_head, &original_tree),
+            Err(SourceCandidateError::SourceReconciliationRequired),
+            "unknown freeze fence must not be cleared by passing base or fake hashes"
+        );
+
+        reset_test_git_invocations();
+        let retry_err = try_materialize_source_candidate(
+            closed,
+            &fixture.candidate_parent,
+            "candidate-retry-after-unknown-freeze",
+        )
+        .expect_err("blind retry after unknown SourceFreeze failure must be rejected");
+        assert_eq!(
+            test_git_invocations(),
+            0,
+            "held unknown freeze fence must reject in SourcePreflight before invoking Git"
+        );
+        assert_eq!(
+            retry_err.error(),
+            &SourceCandidateError::SourceReconciliationRequired
+        );
+        assert_eq!(
+            retry_err.stage(),
+            MaterializationFailureStage::SourcePreflight
+        );
+        assert!(retry_err.reconciliation().source_working_tree_frozen);
+        assert!(retry_err.requires_reconciliation());
+        assert!(
+            retry_err
+                .reconciliation()
+                .observed_source_head_oid
+                .is_none()
+        );
+        assert!(
+            retry_err
+                .reconciliation()
+                .observed_source_tree_oid
+                .is_none()
+        );
+        assert!(
+            !fixture
+                .candidate_parent
+                .join("candidate-retry-after-unknown-freeze")
+                .exists(),
+            "blocked retry must not create destination directory"
+        );
+
+        let closed = retry_err.into_execution();
+        assert!(closed.freeze_fence_active());
+        assert!(closed.frozen_source().is_none());
+        closed
+            .revalidate_custody()
+            .expect("original descriptor custody preserved across held unknown-freeze retry");
+        assert_eq!(closed.prepared().head_oid(), original_head);
+        assert_eq!(closed.prepared().tree_oid(), original_tree);
+        assert_eq!(closed.parent_descriptor_identity(), original_parent_id);
+        assert_eq!(
+            closed.workspace_descriptor_identity(),
+            original_workspace_id
+        );
+        assert_eq!(
+            closed.prepared().managed_parent_fd().as_raw_fd(),
+            original_parent_raw_fd
+        );
+        assert_eq!(
+            closed.prepared().workspace_dir_fd().as_raw_fd(),
+            original_workspace_raw_fd
+        );
+        assert_eq!(
+            closed
+                .synthetic_test_closure_proof()
+                .expect("retained synthetic closure proof")
+                .synthetic_handle_id,
+            original_closure_handle_id
+        );
+        assert_eq!(
+            run_fixture_git(&fixture.workspace_path, &["rev-parse", "HEAD"]),
+            original_head,
+            "no second freeze commit may be created after unknown SourceFreeze failure"
         );
     }
 }
