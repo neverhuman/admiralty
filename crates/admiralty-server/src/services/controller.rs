@@ -571,6 +571,16 @@ pub fn admit_one_slotted(
     inputs: admiralty_store::BudgetAndSlotAdmission,
 ) -> Result<SlottedDurableIntent, ControllerError> {
     validate_request(request)?;
+    // Even this declared-only path must bind the held registry identity to the
+    // exact outbox declaration. The private Codex factory separately proves
+    // its mapping to the actual prepared provider tuple and configuration.
+    if !matches!(
+        &inputs.slot_command.event,
+        admiralty_store::inference_slots::SlotEvent::Hold { claim, .. }
+            if claim.model_id == request.model
+    ) {
+        return Err(ControllerError::InvalidRequest);
+    }
     let snapshot = store.snapshot()?;
     let task = snapshot
         .projection
