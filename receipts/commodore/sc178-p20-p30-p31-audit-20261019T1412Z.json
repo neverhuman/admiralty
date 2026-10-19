@@ -1,0 +1,781 @@
+{
+  "author": {
+    "model": "Gemini 4 Argon High",
+    "role": "Admiralty Commodore",
+    "session": "2062267.agy_captain_admiralty"
+  },
+  "baseline_audit_1333z": {
+    "accepted_foundation_packets": [
+      {
+        "full_packet_acceptance": true,
+        "id": "P00",
+        "receipt": "/home/ubuntu/admiralty-v2-build/receipts/foundation-acceptance/20261018T2340Z/P00.json",
+        "receipt_sha256": "4f878b9f3a03bd2fe8af29c24ad6728724242760fcc5d343bcd9cc27671cdffc",
+        "rollout_status": "integrated",
+        "title": "Pin sources and establish regression fixtures"
+      },
+      {
+        "full_packet_acceptance": true,
+        "id": "P01",
+        "receipt": "/home/ubuntu/admiralty-v2-build/receipts/foundation-acceptance/20261018T2340Z/P01.json",
+        "receipt_sha256": "d252f0fe021ee65dfcd5b2ac4adcc9b529bc8360f042fcd5711b9755a4272f81",
+        "rollout_status": "integrated",
+        "title": "Bootstrap workspace, fake processes and CI"
+      }
+    ],
+    "auditor": "2062267.agy_captain_admiralty (Commodore, Gemini 4 Argon High)",
+    "generated_utc": "2026-10-19T13:37:43.615Z",
+    "in_reply_to": [
+      "/home/ubuntu/xbabe2_kicker/captains-20261017/SC_ACK_CODEX_LATEST_ADMIRALTY_REQUESTS_20261019T1321Z.md",
+      "/home/ubuntu/xbabe2_kicker/captains-20261017/SC_ACK_CODEX_RELEASE_UI_REGRESSIONS_20261019T1325Z.md",
+      "/home/ubuntu/xbabe2_kicker/captains-20261017/CODEX_TO_ADMIRAL_LATEST_REQUESTS_20261019T1320Z.md",
+      "/home/ubuntu/xbabe2_kicker/captains-20261017/CODEX_DONE_SC156_PR126_DEPLOY_AND_BUILD_ONLY_PROBE_20261019T132730Z.md"
+    ],
+    "live_deployment_and_deploy_writer_boundary": {
+      "last_root_independently_verified_primary": {
+        "commit": "e6e364eee1207ead506de37ae57c750937d4be48",
+        "receipt": "receipts/integration/native-e6e364ee-independent-20261019T1225Z.json",
+        "verified_utc": "2026-10-19T12:23:52.714Z"
+      },
+      "latest_sc156_deployer_cutover_on_18890": {
+        "admiralty_observe_exe_sha256": "5c2c902a1e23a4171e00da85a02131f1490e6a5db9fc371821449714f72ae1c7",
+        "admiralty_observe_pid": 1287827,
+        "admiraltyd_exe_sha256": "e7e5b949ecd56604bcf66a63db8fc9c3ef1a043c059a58fb1cad834f6aa52419",
+        "admiraltyd_pid": 1288213,
+        "commit": "68bae1e28cc19c0b799a9d5f3e7705ba77918d6c",
+        "completion_receipt_sha256": "d66603477338d2bc94e210cfea595ca0a6a1dd0d028f2045def44e3e82893c6c",
+        "cutover_utc": "2026-10-19T13:23:38.653270+00:00",
+        "deployer": "885617.adm_p18a_conflicts",
+        "deployment_receipt": "/home/ubuntu/admiralty-v2-build/receipts/DEPLOYMENT-VERIFICATION/68bae1e28cc19c0b799a9d5f3e7705ba77918d6c/sc156-p18a-pr126/deployment-receipt.json",
+        "deployment_receipt_sha256": "0d3fe1232bfacbb609918e36c7e1767ece4100948358e99695fa7692bf830897",
+        "post_deployment_readback_sha256": "720589af93c8a83a35142d55742d00241872d0a5f7eab9a1fd17ff3bfb0df706",
+        "repaired_build_only_probe_binary": "/home/ubuntu/admiralty-v2-build/diagnostics-builds/68bae1e28cc19c0b799a9d5f3e7705ba77918d6c/sc156-native-task-loop-probe-pr126/bin/native_task_loop_probe",
+        "repaired_build_only_probe_sha256": "f588627c51892c151ef65902fdb68785fd5857ab3a683e5b6f03e04ec57a4668",
+        "repaired_probe_invoked": false
+      },
+      "service_controls_or_builds_by_commodore": false,
+      "sole_sc156_deploy_writer": "885617.adm_p18a_conflicts (SC-DEC-156 / SC-DEC-167)"
+    },
+    "open_parent_packets_p02_to_p31": [
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/p02-criterion-audit-20261019T0330Z.json",
+          "receipts/integration/p02-criterion-followup-20261019T1253Z.json",
+          "/tmp/adm_p02_contract_gap_check_20261019T1255Z.json (SHA-256: d171927b6a10d555634f3a2baa2270e9a59ce5c672405df46907f696a3e654a5)",
+          "receipts/integration/core-contracts-20261019T0405Z.json",
+          "receipts/integration/delivery-projection-20261019T0507Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P02",
+        "implemented_components_at_68bae1e2": "Core/reducer (crates/admiralty-core/src/reducer.rs), public intake roots, v2 scoped envelope/cursor (CoordinationEnvelopeV2, Cursor, AuthorityRef, TaskRevisionRef), SchedulingProfile (scheduling_profile.rs), DeliveryProjection/Observation (delivery.rs, PR #108), opaque validated-input binding (verification.rs), and 23 registered JSONSchema -> TS -> runtime validator roots.",
+        "remaining_criteria_gaps": [
+          "attempt_outcome: freeze independent serialized per-attempt outcome dimension (SchedulingState currently combines scheduling and terminal outcomes; retry clears current closure fields).",
+          "task_revision_compat: freeze broader planned InterfaceContract consumer-task revision compatibility policy, checks, and status closure beyond principal-based representation.",
+          "execution_requirements: freeze canonical TaskContract binding for base commit, environment/runner requirements, env allowlist, deadline, and responsible role without mutating closed v1.",
+          "export_coverage: generate shared schema/TS/validator artifacts for TaskView/TaskLifecycleView/FleetResponse, SchedulingProfile, DeliveryObservation, AttemptOutcome, and ExecutionRequirements (replacing handwritten DTOs/parsers in apps/dashboard/src/api.ts and validation.ts; resolve ./views-snapshot subpath).",
+          "no_production_host_constants: resolve or explicitly scope the 28 retained legacy host constants across 7 legacy dashboard/*.py and run.sh files (native Rust/TS sources have 0 hits)."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Freeze domain, coordination and configuration contracts",
+        "work_packets_acceptance_criterion": "deterministic reducer hash, no production host constants, consumers agree on one versioned contract."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/native-intake-usage-package-20261019T0520Z.json",
+          "receipts/integration/native-durable-admission-20261019T0730Z.json",
+          "receipts/integration/native-inference-slots-20261019T0945Z.json",
+          "receipts/integration/native-admission-fence-20261019T1105Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P03",
+        "implemented_components_at_68bae1e2": "Authoritative SQLite writer (crates/admiralty-store/src/lib.rs), replay/outbox/exact-key claims, capture/intake/question/context/attention/usage journals (PR #109), durable budget reservation journal (PR #116), reserve-only managed inference-slot journal (PR #121), and opt-in paired-cohort admission lease + epoch (PR #123, 227 Mac/Linux Store cases).",
+        "remaining_criteria_gaps": [
+          "Complete crash-point and fsync matrix across all acknowledged control/usage facts.",
+          "Source-watermark/collision quarantine and writer-depth/latency/WAL health metrics.",
+          "Disk-pressure and artifact-closure boundaries plus production startup catalog/issuer activation."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Authoritative writer, replay, outbox and read projections",
+        "work_packets_acceptance_criterion": "crash-point matrix loses no acknowledged control/usage fact, identical replay preserves projection hash, changed-payload ID reuse is rejected."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "crates/admiralty-store/src/artifacts.rs",
+          "crates/admiralty-store/src/custody.rs"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P04",
+        "implemented_components_at_68bae1e2": "Transactional artifact object catalog (crates/admiralty-store/src/artifacts.rs) and pin/retirement interlock (crates/admiralty-store/src/custody.rs) with observation binding and fixed clock policy.",
+        "remaining_criteria_gaps": [
+          "Compose independently verified filesystem availability/lifetime pins with authoritative Store.",
+          "Add scoped byte ranges, orphan/missing reconciliation, and retention/emergency reserve accounting.",
+          "Prove crash between each publication boundary and concurrent pin/retirement cannot lose acknowledged evidence or delete a live reference."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Durable artifacts, pins and asset registration",
+        "work_packets_acceptance_criterion": "crash between each publication boundary and concurrent pin/retirement cannot produce missing acknowledged evidence or delete a live reference."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/question-intake-package-20261019T0340Z.json",
+          "receipts/integration/attention-resource-20261019T0440Z.json",
+          "receipts/integration/safe-turn-context-20261019T0452Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P05",
+        "implemented_components_at_68bae1e2": "Durable inbox (crates/admiralty-store/src/inbox.rs), current-authorized question journal (PR #103), immutable attention/wake intents (PR #105), and protected original-source reader (PR #107).",
+        "remaining_criteria_gaps": [
+          "Persist routing/subscriptions and question/decision delivery.",
+          "Compose safe-turn transport with explicit expiry/unknown outcomes and distinct transport/provider/application ACKs.",
+          "Qualify loss/reorder/duplicate/storm/restart convergence without cross-project leakage or broadcast storms."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Durable mailboxes, subscriptions, questions and decisions",
+        "work_packets_acceptance_criterion": "loss/reorder/duplicate/storm/restart scenarios converge or visibly require resnapshot; no cross-project leakage, silent decision or broadcast storm."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/safe-turn-context-20261019T0452Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P06",
+        "implemented_components_at_68bae1e2": "Five role compilers (crates/admiralty-core/src/coordination/context.rs), durable context renders/baselines (context_renders.rs), attention governor, and protected pending-source compiler (PR #107, 22 cases).",
+        "remaining_criteria_gaps": [
+          "Implement structured tool/test result summaries and failed-approach memory (proposed Packet C: tool_results.rs + structured_results.rs).",
+          "Connect compiled context to independently authorized safe-turn delivery and exact ACK/baseline handling plus scoped retrieval.",
+          "Implement role/purpose/harness-floor/token/rotation accounting and measured fidelity/savings qualification."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Context compiler, structured results and context governor",
+        "work_packets_acceptance_criterion": "render/parse fact round-trip and mutation suite; missing negation/unit/authority/revision fails; compaction/lost-baseline requests fresh capsule; no savings claim from bytes alone."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/native-tagged-capture-20261019T0134Z.json",
+          "receipts/integration/native-recovery-diagnostics-20261019T1252Z.json",
+          "receipts/integration/native-kernel-deadline-final-20261019T1302Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P07",
+        "implemented_components_at_68bae1e2": "Independent session daemon (crates/admiralty-runtime/src/session/daemon.rs), tagged stdout/stderr capture (PR #91), bounded existing-run journal metadata inspection (inspect_run_journal, PR #126), and kernel launch RuntimeMaxSec clamped to min(executor_deadline, permit_remainder) (PR #126).",
+        "remaining_criteria_gaps": [
+          "Qualify the same physical child and continuous output offsets surviving actual supported control-service restart under independent supervision.",
+          "Finish daemon adoption, PTY/input-lease continuity, and incompatible-upgrade behavior.",
+          "Qualify actual runtime timeout and stop-grace enforcement (unit/argv tests alone do not qualify runtime timeout enforcement)."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Independent session host and durable launch/input journal",
+        "work_packets_acceptance_criterion": "same physical child and continuous output offsets survive supported control-service restarts; unreconciled launch cannot spawn duplicate ordinary work."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/native-sc155-diagnostic-failure-20261019T0759Z.json",
+          "receipts/integration/native-human-bcf5-diagnostic-20261019T1245Z.json",
+          "receipts/integration/native-kernel-deadline-final-20261019T1302Z.json",
+          "/home/ubuntu/admiralty-v2-build/diagnostics-builds/68bae1e28cc19c0b799a9d5f3e7705ba77918d6c/sc156-native-task-loop-probe-pr126/build-receipt.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P08",
+        "implemented_components_at_68bae1e2": "Codex preparation/parser (crates/admiralty-runtime/src/providers/codex.rs), authentic tagged capture, native task loop, consumed SC-DEC-155 and human bcf5 1-run diagnostics, and PR #126 kernel deadline clamp + build-only repaired probe binary (SHA-256: f588627c51892c151ef65902fdb68785fd5857ab3a683e5b6f03e04ec57a4668).",
+        "remaining_criteria_gaps": [
+          "Resolve child-shell EAGAIN / code-mode host handshake failure under unchanged caps/grants without guessing cause.",
+          "Obtain a separately authorized fresh exact 1-run grant and registered resource permit before any new provider execution.",
+          "Qualify changed coding source -> independent checks -> Store acceptance plus liveness/resume/model-identity reporting (observed_model was null in bcf5 run)."
+        ],
+        "rollout_status": "in_progress",
+        "title": "First qualified real provider and liveness detector",
+        "work_packets_acceptance_criterion": "supported tuple declared precisely; quiet compiler, spinner, quoted permission and provider wait classify conservatively; no silent model fallback."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/attention-resource-20261019T0440Z.json",
+          "receipts/integration/native-recovery-diagnostics-20261019T1252Z.json",
+          "receipts/integration/native-kernel-deadline-final-20261019T1302Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P09",
+        "implemented_components_at_68bae1e2": "ResourceGate (crates/admiralty-runtime/src/resource_gate.rs), workspace/source-candidate custody, fixed-slice Linux proof, 8-element bounded history of dynamic observed cgroup metrics snapshots (PR #126, 14 runtime diagnostics cases), and kernel RuntimeMaxSec deadline clamp (PR #126, 4 wrapper cases).",
+        "remaining_criteria_gaps": [
+          "Implement and qualify rootless mount/network/credential isolation, disk/GPU/cache controls, and arbitrary/exclusive CPU allocation.",
+          "Observe actual OOM/throttling and resource diagnostics on an admitted real execution without treating advisory counters as authority."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Private runners, managed workspaces and resource permits",
+        "work_packets_acceptance_criterion": "sibling refs/hooks/secrets/host mounts cannot be changed under isolated mode; actual OOM/throttling and private CPU exclusions observed."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/native-intake-usage-package-20261019T0520Z.json",
+          "receipts/integration/native-durable-admission-20261019T0730Z.json",
+          "receipts/integration/native-inference-slots-20261019T0945Z.json",
+          "receipts/integration/native-admission-read-proofs-20261019T1135Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P10",
+        "implemented_components_at_68bae1e2": "Decimal-unit economics (crates/admiralty-core/src/economics.rs), reservation reducer (reservations.rs), durable native usage/corrections journal (PR #109), durable budget reservation journal (PR #116), reserve-only inference slots (PR #121), and explicit read-capability custody (PR #124).",
+        "remaining_criteria_gaps": [
+          "Add independently authenticated capture-to-usage ingestion, overlap/reset/opening normalization, versioned prices, and role/purpose/account attribution.",
+          "Compose durable reserve -> dispatch -> settle/refund lifecycle while retaining unknown liabilities, failed roots, late corrections, and fixed cohorts."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Usage, valuation, reservations and cohorts",
+        "work_packets_acceptance_criterion": "allocation sums and reservation conservation across duplicate/reset/model-change/late-correction/zero-success/tiny-price fixtures; no unknown becomes zero."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/native-intake-http-20261019T0553Z.json",
+          "receipts/integration/native-work-order-cli-20261019T0727Z.json",
+          "receipts/integration/native-intake-related-work-20261019T1208Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P11",
+        "implemented_components_at_68bae1e2": "Protected startup (crates/admiralty-server/src/startup.rs), authenticated snapshots/SSE, private scoped intake HTTP (PR #110), offline work-order CLI (PR #115), and bounded scoped duplicate-query client (PR #125).",
+        "remaining_criteria_gaps": [
+          "Add live command envelopes, terminal WS/input leases, remaining scoped agent tools, and durable jobs/actions.",
+          "Compose production credential/issuer activation (default absence continues to deny on :18890)."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Authenticated API, snapshots, SSE and CLI scaffold",
+        "work_packets_acceptance_criterion": "no gap between snapshot and subscription; stale cursor/access revocation resyncs; slow viewer cannot block capture or DB checkpoints; auth failures deny artifacts."
+      },
+      {
+        "active_disjoint_lane": "codex/visual-feed-access-fix (apps/dashboard/src/features/live-views/**) & codex/native-model-footer-fix (crates/admiralty-observe/src/fleet.rs)",
+        "committed_evidence_receipts": [
+          "docs/plans/admiralty-v2/receipts/LV/a21532a3147e7a30d47caf02f18d27fa05fb5545.json",
+          "/home/ubuntu/admiralty-v2-build/receipts/DEPLOYMENT-VERIFICATION/68bae1e28cc19c0b799a9d5f3e7705ba77918d6c/sc156-p18a-pr126/deployment-receipt.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P12",
+        "implemented_components_at_68bae1e2": "Dense React shell (apps/dashboard/src/ui/App.tsx), 13 temporal plots, profile/hierarchy, Git Flow and Fleet Atlas views (PR #95/#96), and live 68bae1e2 primary deployment.",
+        "remaining_criteria_gaps": [
+          "Resolve Git Flow / Fleet Atlas 'Visual feed failed (401). Source times preserved.' in public legacy mode without bypassing /v2/views/events auth (active worker codex/visual-feed-access-fix).",
+          "Repair missing model labels/colors in observer public feed (28/32 unknown due to uppercase GPT footer / replacement UI separator; active worker codex/native-model-footer-fix).",
+          "Replace whole detailed-snapshot polling (apps/dashboard/src/legacy.ts) with lossless scoped deltas and prove 4-, 20-, and 100-project readability/interactivity and latency/load bounds."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Fast React shell and read-only dashboard parity",
+        "work_packets_acceptance_criterion": "4, 20 and 100 project fixtures remain readable/interactive; source meanings match legacy or show explicit changed definition; no polling full status every 15 seconds."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/question-intake-package-20261019T0340Z.json",
+          "receipts/integration/native-intake-ui-20261019T0628Z.json",
+          "receipts/integration/native-intake-browser-axe-20261019T0648Z.json",
+          "receipts/integration/native-work-order-cli-20261019T0727Z.json",
+          "receipts/integration/native-intake-related-work-20261019T1208Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P13",
+        "implemented_components_at_68bae1e2": "Workplan registry (crates/admiralty-store/src/workplans.rs), raw capture + explicit enriched record + offline CLI (PR #103/#109/#110/#112/#113/#115), inert todoq parser (PR #104), and bounded related-work lookup UI/client (PR #125, 41 dashboard cases + 1 Rust golden + 1 native browser axe-clean case).",
+        "remaining_criteria_gaps": [
+          "Complete populated/multi-page browser qualification for related-work lookup and build enriched-record/selection/ambiguity/revision/DAG React journeys.",
+          "Add configured read-only todoq snapshot acquisition and live admission wiring without treating imported done text as acceptance."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Workplan registry, legacy adapters and project UX",
+        "work_packets_acceptance_criterion": "repeated import is idempotent, checkboxes/legacy PASS cannot become trusted acceptance, ambiguous scope is reviewable before admission."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/native-durable-admission-20261019T0730Z.json",
+          "receipts/integration/native-budget-task-loop-20261019T0841Z.json",
+          "receipts/integration/native-slotted-loop-20261019T1025Z.json",
+          "receipts/integration/native-admission-fence-20261019T1105Z.json",
+          "receipts/integration/native-admission-read-proofs-20261019T1135Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P14",
+        "implemented_components_at_68bae1e2": "Scoped NativeTaskLoop (crates/admiralty-server/src/services/native_task_loop.rs) composed with durable budget admission (PR #116/#119), managed inference-slot admission (PR #121/#122), paired-cohort admission lease (PR #123), and explicit read-capability custody (PR #124, 32 Mac/Linux cases).",
+        "remaining_criteria_gaps": [
+          "Install authenticated production paired-cohort startup issuer/catalog loader and configured ResourceGate in server-loop journeys.",
+          "Implement weighted fairness/aging, critical-path scheduling, finishing reserves/mode, and failure-specific recovery qualification."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Atomic admission, fairness, cheap-capable routing and recovery",
+        "work_packets_acceptance_criterion": "racing admissions cannot overspend/double-claim; unknown process holds ownership; env/scope failure does not blindly escalate; project starvation and blocked-integration fixtures pass."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/eb62f5f635bea46e98c76e91499b56b4c7673849.json",
+          "receipts/integration/delivery-projection-20261019T0507Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P15",
+        "implemented_components_at_68bae1e2": "Source candidate extraction (crates/admiralty-runtime/src/workspace/source_candidate.rs), deterministic Linux acceptance, process-local evidence catalog (PR #85), and opaque validated-input binding (PR #108).",
+        "remaining_criteria_gaps": [
+          "Install independent current verifier/custody policy with reserved check resources.",
+          "Qualify real coding candidates, protected-oracle change detection, restart custody, and revocation."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Immutable candidate, oracle and trusted verifier",
+        "work_packets_acceptance_criterion": "self-report, forged issuer, wrong checkout, stale policy/env and changed oracle fail; correct fixture produces reproducible receipt."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "crates/admiralty-runtime/src/audits.rs"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P16",
+        "implemented_components_at_68bae1e2": "Staged-gate predicates (crates/admiralty-runtime/src/audits.rs) and negative worktree/index fixtures.",
+        "remaining_criteria_gaps": [
+          "Qualify actual Jankurai executable/profile against Rust/SQLite/React.",
+          "Prove partial stage, alternate index, unborn HEAD, linked tree, hooksPath, rename/binary, and oracle-change matrix plus enrollment/ratchet and quality projections."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Jankurai profile, staged gate and quality projections",
+        "work_packets_acceptance_criterion": "partial stage, alternate index, unborn HEAD, linked tree, hooksPath, rename/binary and oracle-change matrix passes."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "crates/admiralty-core/src/interfaces.rs",
+          "crates/admiralty-server/src/services/agent_tools.rs"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P17",
+        "implemented_components_at_68bae1e2": "Scoped interface reducer (crates/admiralty-core/src/interfaces.rs), v2 coordination header, and bounded agent tools (crates/admiralty-server/src/services/agent_tools.rs).",
+        "remaining_criteria_gaps": [
+          "Persist interface/claim/dependency invalidation in Store and connect safe-turn tool delivery with qualified MCP/CLI fallback.",
+          "Prove peer API producer -> UI consumer schema exchange without manager relay, stale-dependency invalidation, and access/storm/compaction fixtures."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Peer interface coordination and agent tool integration",
+        "work_packets_acceptance_criterion": "API producer/UI consumer exchange immutable schema without manager relay; stale dependency invalidates; access/storm/compaction fixtures pass; no broad shell/SQL tools exposed for status."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "crates/admiralty-core/src/conflicts.rs"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P18",
+        "implemented_components_at_68bae1e2": "Bounded conservative conflict/common-base/hunk analysis (crates/admiralty-core/src/conflicts.rs) and real candidate extraction.",
+        "remaining_criteria_gaps": [
+          "Implement bounded real Git merge probes and durable exclusive integration train generations.",
+          "Qualify same-tree/different-ancestry, 3-candidate interaction, hot lockfile, culprit isolation/reserves, and stale-base invalidation without concurrent target writers."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Conflict analysis and frozen integration generations",
+        "work_packets_acceptance_criterion": "same-tree/different-ancestry, three-candidate interaction, hot lockfile and stale-base cases do not reuse invalid proof; no concurrent target writer."
+      },
+      {
+        "active_disjoint_lane": "dirty worktree accept-p19 preserved under read-only 60-worktree asset inventory",
+        "committed_evidence_receipts": [
+          "receipts/integration/delivery-projection-20261019T0507Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P19",
+        "implemented_components_at_68bae1e2": "Publication reducer (crates/admiralty-core/src/publication.rs), exact-head operator policy, and dimensional delivery projection (PR #108, 40 cases).",
+        "remaining_criteria_gaps": [
+          "Compose independently admitted delivery evidence with credential-isolated durable publication executor/target slots and real forge lost-response reconciliation.",
+          "Retain per-target partial/unknown outcome and rescue custody (preserve dirty worktree accept-p19 with 2 Rust test files per SC-DEC-167)."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Exclusive publication gateway and forge reconciliation",
+        "work_packets_acceptance_criterion": "wrong/dismissed reviewer, new head, pending check, stale executor and ambiguous merge produce no unauthorized/duplicate effect."
+      },
+      {
+        "active_disjoint_lane": "Read-only asset audit worker inventorying 60 worktrees/screens/branches/runners (SC-DEC-167A)",
+        "committed_evidence_receipts": [
+          "crates/admiralty-core/src/retirement.rs",
+          "crates/admiralty-store/src/custody.rs"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P20",
+        "implemented_components_at_68bae1e2": "Retirement state machine (crates/admiralty-core/src/retirement.rs), durable asset pins (custody.rs), and active read-only 60-worktree/screen/runner inventory (SC-DEC-167/167A).",
+        "remaining_criteria_gaps": [
+          "Complete read-only inventory of 60 worktrees, 14 non-ancestor screen cwd heads, dirty accept-p19, and dirty /home/ubuntu/admiralty before any retirement.",
+          "Implement registered preview -> claim -> identity recheck -> quarantine/delete executor with pin-race/mount-swap/symlink/active-PID/ignored-data/foreign-root disposable-root proofs."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Safe retirement executor and captain asset accountability",
+        "work_packets_acceptance_criterion": "pin race/mount swap/symlink/active PID/ignored data/foreign root fixtures preserve unique work. Tests use disposable roots only."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "crates/admiralty-runtime/src/providers/claude.rs"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P21",
+        "implemented_components_at_68bae1e2": "Claude provider adapter (crates/admiralty-runtime/src/providers/claude.rs) and 22 offline strict decoder/counterexample tests (PR #26).",
+        "remaining_criteria_gaps": [
+          "Qualify admitted launch/input/resume continuity, native nested/cache usage capture, coordination tool fallback, and account attribution on one bounded real second-provider run."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Second provider and native nested-usage qualification",
+        "work_packets_acceptance_criterion": "capability and economic matrix honest; coordination tools work or have declared fallback; same core invariants pass as first adapter."
+      },
+      {
+        "active_disjoint_lane": "codex/native-model-footer-fix (crates/admiralty-observe/src/fleet.rs)",
+        "committed_evidence_receipts": [
+          "crates/admiralty-runtime/src/providers/agy.rs",
+          "crates/admiralty-runtime/src/providers/grok.rs",
+          "crates/admiralty-observe/src/fleet.rs"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P22",
+        "implemented_components_at_68bae1e2": "Gemini/agy (providers/agy.rs), Grok (providers/grok.rs), generic/OpenCode components, 12 portable matrix tests, one historical Ornith/OpenCode helper run (8 methods / 80 seeded cases), and active observer footer parser fix (codex/native-model-footer-fix).",
+        "remaining_criteria_gaps": [
+          "Land codex/native-model-footer-fix in crates/admiralty-observe/src/fleet.rs (uppercase GPT footers + replacement UI separator) and Root shared badge classification while preserving genuine unknowns.",
+          "Qualify advertised executable/version/transport and own-model eligibility/escalation through real native admission with explicit unsupported statuses when auth/usage/resume is unavailable."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Existing agy/Gemini, Grok and generic process pathways",
+        "work_packets_acceptance_criterion": "each claimed feature has evidence; missing auth/usage/resume yields specific unsupported status. Unavailable real qualification blocks that capability claim, not the offline demo or qualified providers."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "crates/admiralty-runtime/src/bin/admiralty-node.rs"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P23",
+        "implemented_components_at_68bae1e2": "Node enrollment/transport contracts and explicitly disabled admiralty-node entrypoint (crates/admiralty-runtime/src/bin/admiralty-node.rs).",
+        "remaining_criteria_gaps": [
+          "Implement persistent UUID/keys/certificates, one-use expiring enrollment tokens, mTLS/revocation/rotation, incarnations, contiguous ACK/replay/backpressure, and resumable digest-checked transfer across node reboot/gap fixtures."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Node enrollment, authenticated transport and durable transfer",
+        "work_packets_acceptance_criterion": "duplicate enrollment, replay, partial transfer, certificate revoke, node reboot and sequence-gap fixtures fail closed or reconcile without lost acknowledged events."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "crates/admiralty-core/src/placement.rs"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P24",
+        "implemented_components_at_68bae1e2": "Freshness-aware placement proposals (crates/admiralty-core/src/placement.rs) and Fleet Atlas topology observation (PR #95/#96).",
+        "remaining_criteria_gaps": [
+          "Compose authenticated multi-node topology and reservation-backed placement/partition policy.",
+          "Qualify no-duplicate-writer, no-stale-publication, no-lost-contiguous-ACK, and retained-unknown-liability under partitions, clock skew, and controller disconnect."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Fleet placement, partitions and arbitrary node topology",
+        "work_packets_acceptance_criterion": "no duplicate writer, stale publication, lost contiguous ACK or released unknown liability under partitions/clock skew/controller disconnect."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/native-private-install-20261019T0608Z.json",
+          "receipts/integration/native-install-linux-9d4dbb0-20261019T0617Z.json",
+          "receipts/integration/native-recovery-diagnostics-20261019T1252Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P25",
+        "implemented_components_at_68bae1e2": "Backup/recovery rehearsal (crates/admiralty-cli/src/native_recovery.rs), stage/archive (PR #106/#109), private integrity-pinned installer (PR #111, 68 Linux cases), and PR #126 bounded run journal inspection + 8-element resource history.",
+        "remaining_criteria_gaps": [
+          "Finish signed complete release bundles/compatibility matrix, independent old-executor fencing, session-preserving drain/handoff/rollback where long structured/PTY jobs survive upgrades, and artifact-closure restore.",
+          "Compose merged dimensional delivery projection with actual install/running observations."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Release bundles, maintenance handoff and disaster recovery",
+        "work_packets_acceptance_criterion": "long structured/PTY fixture jobs survive supported ordinary upgrades; missing blob, old publisher or incompatible matrix blocks activation/effects honestly."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/native-intake-usage-package-20261019T0520Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P26",
+        "implemented_components_at_68bae1e2": "Token/cost UI (apps/dashboard/src/ui/TokenEfficiency.tsx), Rust usage observer (crates/admiralty-observe/src/usage.rs), and durable native usage/corrections journal (PR #109).",
+        "remaining_criteria_gaps": [
+          "Build normalized role/purpose/cohort/maturity/harness-floor/rotation economics explorer, definitions/provenance, and bounded export.",
+          "Preserve exact huge counters, missing-cost unavailability, explicit all-in vs coordination-overhead savings, and visibly distinct legacy series."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Economics and coordination-overhead explorer",
+        "work_packets_acceptance_criterion": "huge counters exact, missing costs unavailable, all-in versus coordination savings explicit, legacy series visibly distinct."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "crates/admiralty-core/src/excursions.rs"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P27",
+        "implemented_components_at_68bae1e2": "Pure bounded excursion/family/cause reducer (crates/admiralty-core/src/excursions.rs).",
+        "remaining_criteria_gaps": [
+          "Persist episode/family/cause/evidence lifecycle in Store, bounded deterministic inquiry, tried-approach context, secret-bearing evidence sanitization, and local improvement proposal loop."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Excursions, bounded inquiry and local improvement proposals",
+        "work_packets_acceptance_criterion": "duplicates, recurrence, unknown attribution, secret-bearing evidence and ambiguous publication handled without leaking or fabricating root cause."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "crates/admiralty-core/src/trials.rs"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P28",
+        "implemented_components_at_68bae1e2": "Pure fixed-cohort/seed/oracle trial analysis reducer (crates/admiralty-core/src/trials.rs).",
+        "remaining_criteria_gaps": [
+          "Add immutable prompt/policy/dataset registry, actual replay/held-out trial execution, leakage/propensity/peeking/shared-manager/immature-label safeguards, and bounded candidate promotion/rejection/new-work-only rollback + UI."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Prompt bundles, trials, feature datasets and promotion",
+        "work_packets_acceptance_criterion": "leakage/invalid propensity/repeated peeking/shared-manager/immature-label fixtures cannot auto-promote; one bounded candidate can be honestly accepted or rejected and rolled back."
+      },
+      {
+        "active_disjoint_lane": "codex/visual-feed-access-fix & codex/native-model-footer-fix + Root Section 7 browser composition",
+        "committed_evidence_receipts": [
+          "receipts/integration/native-intake-ui-20261019T0628Z.json",
+          "receipts/integration/native-intake-browser-axe-20261019T0648Z.json",
+          "receipts/integration/native-intake-related-work-20261019T1208Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P29",
+        "implemented_components_at_68bae1e2": "Command journeys (apps/dashboard/src/ui/CommandJourneys.tsx), Git Flow / Fleet Atlas (PR #95/#96), raw intake UI + browser axe (PR #112/#113), offline CLI (PR #115), and related-work lookup UI (PR #125).",
+        "remaining_criteria_gaps": [
+          "Integrate codex/visual-feed-access-fix (Git Flow / Fleet Atlas 401 public legacy fallback / Connect Access path) and codex/native-model-footer-fix + shared badge classification, verified by Root native/browser Section 7 composition tests.",
+          "Finish WO6 enrichment/Needs-attention/delivery drill-down views on scoped APIs, train/quality/assets/enrollment/drain/update actions with durable job states, and populated accessibility/E2E qualification."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Integration, quality, assets and fleet UX polish",
+        "work_packets_acceptance_criterion": "user can find blocker/evidence and resolve an authorized action without reading terminals."
+      },
+      {
+        "active_disjoint_lane": null,
+        "committed_evidence_receipts": [
+          "receipts/integration/native-private-install-20261019T0608Z.json",
+          "receipts/integration/native-install-linux-9d4dbb0-20261019T0617Z.json",
+          "receipts/integration/contributor-security-docs-20261019T1252Z.json",
+          "receipts/integration/mit-license-choice-20261019T1253Z.json",
+          "receipts/integration/native-recovery-docs-license-review-20261019T1258Z.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P30",
+        "implemented_components_at_68bae1e2": "Stage/archive (PR #106/#109, 35 Linux cases), private installer (PR #111, 68 Linux cases), offline CLI operator path (PR #115), and PR #126 MIT LICENSE + 9 Rust / 3 JS package declarations + CONTRIBUTING.md + SECURITY.md.",
+        "remaining_criteria_gaps": [
+          "Prove real-payload clean-machine archive installation, first-run setup, and isolated useful demo.",
+          "Finish signed provenance/SBOM, dependency/asset license clearance, truthful support/conformance matrix, and published GitHub major release (0 releases at 12:50:19.167Z snapshot)."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Distribution, brand, documentation and contributor path",
+        "work_packets_acceptance_criterion": "no mandatory account/telemetry/Node server, useful demo, truthful support matrix."
+      },
+      {
+        "active_disjoint_lane": "885617.adm_p18a_conflicts completed SC156 68bae1e2 deploy + build-only probe at 13:27:30Z; awaiting Root independent readback",
+        "committed_evidence_receipts": [
+          "/home/ubuntu/admiralty-v2-build/receipts/DEPLOYMENT-VERIFICATION/68bae1e28cc19c0b799a9d5f3e7705ba77918d6c/sc156-p18a-pr126/deployment-receipt.json",
+          "/home/ubuntu/admiralty-v2-build/receipts/DEPLOYMENT-VERIFICATION/68bae1e28cc19c0b799a9d5f3e7705ba77918d6c/sc156-p18a-pr126/post-deployment-readback.json",
+          "/home/ubuntu/admiralty-v2-build/receipts/DEPLOYMENT-VERIFICATION/68bae1e28cc19c0b799a9d5f3e7705ba77918d6c/sc156-p18a-pr126/completion.json",
+          "/home/ubuntu/admiralty-v2-build/diagnostics-builds/68bae1e28cc19c0b799a9d5f3e7705ba77918d6c/sc156-native-task-loop-probe-pr126/build-receipt.json"
+        ],
+        "full_packet_acceptance": false,
+        "id": "P31",
+        "implemented_components_at_68bae1e2": "Serialized SC-DEC-156 primary deployment of 68bae1e28cc19c0b799a9d5f3e7705ba77918d6c (PR #126) on :18890/:18891 + admiralty-observe by 885617.adm_p18a_conflicts at 13:23:38.653270Z, plus build-only repaired probe binary (SHA-256: f588627c51892c151ef65902fdb68785fd5857ab3a683e5b6f03e04ec57a4668).",
+        "remaining_criteria_gaps": [
+          "Independent Root verification of live 68bae1e28cc19c0b799a9d5f3e7705ba77918d6c primary deployment (following 885617's 13:23:38Z cutover receipt).",
+          "Resolve the single Root-owned hosted CI cleanup backlog (CI_CLEANUP_BACKLOG.md: rust-and-legacy controlled-capture deadline / 15m timeout + PR #123 Atlas dark axe mismatch).",
+          "Complete real coding provider qualification (P08/P21/P22), restart/fleet/restore/rollback continuity, full invariant/load matrix, 24-hour soak, and prospective complete-cost/context savings trial."
+        ],
+        "rollout_status": "in_progress",
+        "title": "Qualification, prospective savings and actual fleet rollout",
+        "work_packets_acceptance_criterion": "full completion contract, all core capabilities evidenced, no protected live job interrupted, no unowned scope adopted. Economic target misses prevent a savings claim; invariant misses block affected rollout."
+      }
+    ],
+    "remaining_release_work_groups": [
+      {
+        "group": 1,
+        "name": "Execution and authentic production admission",
+        "summary": "Install authenticated budget/model/physical-pool/resource policy and prove actual admitted source changes, trusted checks, Store acceptance, and context delivery while keeping registry/requested/observed model identities distinct."
+      },
+      {
+        "group": 2,
+        "name": "Completion and recovery",
+        "summary": "Compose independent closure, conservative unknown effects, settlement/release, and restart/restore beyond bounded journal metadata inspection and 8-sample resource history."
+      },
+      {
+        "group": 3,
+        "name": "Product and contracts",
+        "summary": "Close P02 static contract gaps (attempt_outcome, task_revision_compat, execution_requirements, export_coverage, legacy host constants), land observer footer + visual feed 401 fixes, and finish WO6 enriched intake/selection/attention/delivery UI."
+      },
+      {
+        "group": 4,
+        "name": "Final qualification",
+        "summary": "Resolve the single Root-owned CI cleanup backlog (CI_CLEANUP_BACKLOG.md), run source-bound supported provider/fleet/recovery/installation journeys, and publish honest support limits."
+      },
+      {
+        "group": 5,
+        "name": "Distribution",
+        "summary": "Build/install-test release archives on clean targets, generate manifest/checksums and SBOM/provenance, complete dependency/asset rights checks (building on merged MIT LICENSE + CONTRIBUTING.md + SECURITY.md in PR #126), and publish the GitHub major release."
+      }
+    ],
+    "rollout_cas_boundary": {
+      "accepted_parents": [
+        "P00",
+        "P01"
+      ],
+      "accepted_parents_count": 2,
+      "open_parents_count": 30,
+      "open_parents_range": "P02..P31",
+      "path": "/home/ubuntu/admiralty-v2-build/rollout.json",
+      "rollout_modified_by_commodore": false,
+      "sha256_after_audit": "4a26574d3d8351ed125bfc2af4229f69f4aae2da592d3e99dd2b8fd147f7e2d1",
+      "sha256_before_audit": "4a26574d3d8351ed125bfc2af4229f69f4aae2da592d3e99dd2b8fd147f7e2d1",
+      "sole_writer": "Root Codex (01a14e4e-03c0-79a2-91b9-db60fde954e6) under SC-DEC-156 / SC-DEC-167"
+    },
+    "sc_dec_167_and_167a_fenced_scopes": {
+      "observer_footer_worker": {
+        "branch": "codex/native-model-footer-fix",
+        "commodore_hands_off": true,
+        "exclusive_paths": [
+          "crates/admiralty-observe/src/fleet.rs"
+        ]
+      },
+      "read_only_asset_audit_worker": {
+        "commodore_hands_off": true,
+        "destructive_retirement_actions_authorized": false,
+        "scope": "60 worktrees, 14 non-ancestor screen cwd heads, dirty accept-p19, dirty /home/ubuntu/admiralty, active 885617 accept-p12-p18, general CI runners"
+      },
+      "visual_feed_worker": {
+        "branch": "codex/visual-feed-access-fix",
+        "commodore_hands_off": true,
+        "exclusive_paths": [
+          "apps/dashboard/src/features/live-views/**"
+        ]
+      }
+    },
+    "schema": "admiralty.commodore_p02_p31_parent_criteria_audit/v1",
+    "source_basis": {
+      "clone": "/home/ubuntu/.admiralty-captain",
+      "files_sha256": {
+        "CONTRIBUTING.md": "49c28e2961160480222aafc48a0a8ada963ac4e8d0fcc564f481dd7c69efd2f5",
+        "LICENSE": "26857af5468e70d056dc1cb952314c0a7b2efc4aa00b54f9a087c2317c31bb65",
+        "SECURITY.md": "d2dc6dcd65460d0019452e79498cff27a6efc955abcd9e9b3865825cc9221d35",
+        "docs/plans/admiralty-v2/EXECUTION.md": "d180a3f1487d3d4514a7ca51b3d3816968357c0f365c93bb83181de29e6e2dfb",
+        "docs/plans/admiralty-v2/REMAINING_20261019.md": "091697192d78eb3e16ce3619d4360562bb3042aa2df9e4dff010801123d7da59",
+        "docs/plans/admiralty-v2/WORK_PACKETS.md": "5e737873f663c1a99d1d7d6324e403aaa39c0a6afc7ba2a7ada05fef14f47383"
+      },
+      "latest_merged_pr": 126,
+      "origin_main_commit": "68bae1e28cc19c0b799a9d5f3e7705ba77918d6c"
+    }
+  },
+  "cas_handoff_target": {
+    "commodore_touched_port_18890": false,
+    "commodore_touched_rollout_json": false,
+    "rollout_json_path": "/home/ubuntu/admiralty-v2-build/rollout.json",
+    "rollout_json_sha256_untouched": "4a26574d3d8351ed125bfc2af4229f69f4aae2da592d3e99dd2b8fd147f7e2d1",
+    "sole_rollout_writer": "01a14e4e-03c0-79a2-91b9-db60fde954e6"
+  },
+  "directive_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/SC_ORDER_ADMIRALTY_STALL_PLAN_1406Z.md",
+  "directive_id": "SC-DEC-178",
+  "generated_at": "2026-10-19T14:15:05Z",
+  "latest_origin_main": {
+    "axe_surfaces_passed": "11/11 (0 violations, 0 incomplete)",
+    "git_sha": "c58a67c095248ab3a3c7dd5ba9568422575ad751",
+    "mac_browser_cases_passed": "21/21",
+    "merged_at": "2026-10-19T14:08:53Z",
+    "pr": 128,
+    "receipt_path": "receipts/integration/native-browser-session-20261019T1406Z.json",
+    "receipt_sha256": "0dc6a64f8a42702960e7b1fd9ff7d0c4fd7be6bb37799fa4dbbb591ba0fb1ff9"
+  },
+  "live_deployment_verification": {
+    "admiralty_observe_exe_sha256": "15d34aa950ff958fee0a10ff14f4b148633eef77857df25328423ad1b46060b6",
+    "admiralty_observe_pid": 472212,
+    "admiraltyd_exe_sha256": "6e218136fb74bc67908733518916199142c93223ab421edc92761361af8601a0",
+    "admiraltyd_pid": 472635,
+    "completed_at": "2026-10-19T14:02:40.651693Z",
+    "completion_json_sha256": "c61ec4fbd74aaa385e9a0e1fcb9a8cde2092ca2f8ae4292beabe965c7e6bc067",
+    "deployed_by": "885617.adm_p18a_conflicts",
+    "deployment_manifest_sha256": "f5de8e50c3320eeb72061938da8817b467057c81feb1a66b08262371592be36c",
+    "deployment_receipt_sha256": "515ad368066de759bad2b13570904cd4d95f9a970046ce9bbe18e796fe01fd8b",
+    "entry_18891_status": 307,
+    "git_sha": "6709bf51a39ab51938852da4719a5a9061a3329f",
+    "healthz_status": 200,
+    "post_deployment_readback_sha256": "bf79d42dc2787618af8319328b499d419bf61a2413318e0659ab72efa92bf11a",
+    "pr": 127
+  },
+  "priority_packets_sc178": {
+    "P20": {
+      "full_packet_acceptance": false,
+      "remaining_parent_criteria_gaps": [
+        "Live /api/v1/worktrees, /api/v1/screens, /api/v1/ports, /api/v1/disks runtime retirement executor and archive equivalence checker",
+        "Pre-retire archive snapshot + equivalence proof before retiring the 14 older non-ancestor Screens and 54 merged-PR worktrees"
+      ],
+      "status": "in_progress",
+      "verified_evidence": [
+        {
+          "path": "/home/ubuntu/admiralty-v2-build/receipts/native-model-public-views-20261019T1348Z/objects/214-audit-receipt.json",
+          "sha256": "adcc5b91ce06e039f770e7030e954629d1f1348222855e88504732bf127fe1f9",
+          "summary": "Inventory of 15 Screens, 60 worktrees, 148 branches; preserves 885617.adm_p18a_conflicts, dirty accept-p19, dirty /home/ubuntu/admiralty, and 14 older non-ancestor Screens."
+        }
+      ]
+    },
+    "P30": {
+      "full_packet_acceptance": false,
+      "remaining_parent_criteria_gaps": [
+        "Live deployment of PR #128 (c58a67c095248ab3a3c7dd5ba9568422575ad751) onto :18890 by 885617.adm_p18a_conflicts",
+        "WCAG 2.2 AA contrast + keyboard focus order + screen-reader landmarks across all remaining P02..P31 packet surfaces once mounted"
+      ],
+      "status": "in_progress",
+      "verified_evidence": [
+        {
+          "commit": "6709bf51a39ab51938852da4719a5a9061a3329f",
+          "path": "receipts/integration/native-model-public-views-20261019T1348Z.json",
+          "sha256": "3d83d034a7254f5e9e8ffaaf6394ed196bcb66e5622485242afd701719c2f349",
+          "summary": "PR #127 observer uppercase GPT/replacement-separator model detection + public producer fallback for Git Flow and Fleet Atlas on 401/403."
+        },
+        {
+          "commit": "c58a67c095248ab3a3c7dd5ba9568422575ad751",
+          "path": "receipts/integration/native-browser-session-20261019T1406Z.json",
+          "sha256": "0dc6a64f8a42702960e7b1fd9ff7d0c4fd7be6bb37799fa4dbbb591ba0fb1ff9",
+          "summary": "PR #128 repairs all 5 Linux browser harness drifts from 6709bf51a; 21/21 Mac browser tests pass and 11/11 axe surfaces pass with 0 violations and 0 incomplete."
+        },
+        {
+          "path": "/home/ubuntu/admiralty-v2-build/verification/p30-visual-system/acceptance-report.json",
+          "sha256": "7b25f1f0dc666039ab3521bf3fd3de4b9256706fa3207e4f8caadcc7d7d8df59",
+          "summary": "P30-T1..T4 visual system, typography, motion, and responsive layout verification."
+        }
+      ]
+    },
+    "P31": {
+      "full_packet_acceptance": false,
+      "remaining_parent_criteria_gaps": [
+        "Depends on all P00..P30 packets reaching full_packet_acceptance: true before final P31 whole-parent signoff",
+        "Zero browser console errors / zero uncaught pageexceptions / zero failed network requests across every completed P00..P30 route on live :18890"
+      ],
+      "status": "in_progress",
+      "verified_evidence": [
+        {
+          "commit": "6709bf51a39ab51938852da4719a5a9061a3329f",
+          "path": "receipts/integration/native-model-public-views-20261019T1348Z.json",
+          "sha256": "3d83d034a7254f5e9e8ffaaf6394ed196bcb66e5622485242afd701719c2f349",
+          "summary": "PR #127 live cutover verification on :18890/:18891."
+        },
+        {
+          "commit": "c58a67c095248ab3a3c7dd5ba9568422575ad751",
+          "path": "receipts/integration/native-browser-session-20261019T1406Z.json",
+          "sha256": "0dc6a64f8a42702960e7b1fd9ff7d0c4fd7be6bb37799fa4dbbb591ba0fb1ff9",
+          "summary": "PR #128 21/21 Mac browser verification + 512MiB streaming binary hash + CARGO_PROFILE_DEV_DEBUG=0 disk budget guard."
+        },
+        {
+          "path": "/home/ubuntu/admiralty-v2-build/verification/p31-e2e-cutover/acceptance-report.json",
+          "sha256": "ba9920d3cc0a8b34e2fc46ef93d160110566f5de70f21274a35733572060ebfa",
+          "summary": "P31-T1..T4 E2E harness, chaos, rollback, and cutover verification."
+        }
+      ]
+    }
+  },
+  "report_markdown_path": "/home/ubuntu/xbabe2_kicker/captains-20261017/COMMODORE_SC178_P20_P30_P31_AUDIT_AND_CAS_HANDOFF_20261019T1412Z.md",
+  "report_markdown_sha256": "1621b125735323ca0c20c993db430d640009a8b6fd9cbb72a72ba4cac3503a82",
+  "schema": "admiralty.commodore.sc178_p20_p30_p31_audit.v1"
+}
