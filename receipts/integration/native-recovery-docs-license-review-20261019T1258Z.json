@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "kind": "independent-final-documentation-license-metadata-review",
+  "reviewed_utc": "2026-10-19T12:59:09.851Z",
+  "verdict": "CLEAR",
+  "observed_root_head": "3a2135e384d36cc82e686211e5ebb0e38ff0fa5f",
+  "scope": "Current documentation, project-license metadata and historical canonical evidence. The expected later0ab8214 deadline implementation and pending checks have a separate reviewer and are excluded from code approval here; subsequent ledger/archive additions are excluded.",
+  "findings": [],
+  "resolved_findings": [
+    "Distribution credits existing scoped private immutable-version installation, retaining clean-machine/support/provenance/activation/sign/publication gates.",
+    "REMAINING uses exact12:50:19.167Z zeroPR/no-release observation."
+  ],
+  "assessments": {
+    "license": {
+      "selected": "MIT",
+      "authorization_basis": "User explicitly selected MIT in reply to call_83ea12f93f23473a96f5ebc45aba42c5/0",
+      "copyright": "2026 Admiralty contributors",
+      "sha256": "26857af5468e70d056dc1cb952314c0a7b2efc4aa00b54f9a087c2317c31bb65",
+      "rust_packages": 9,
+      "javascript_packages": 3,
+      "manifest_differences_from_a6df_license_only": true,
+      "metadata_basis": "Root retained locked/offline metadata, not a reviewer rerun",
+      "dependency_or_asset_clearance": false
+    },
+    "documentation": [
+      "Bounded metadata-only sequential journal inspection and actual useful eight-slot history remain advisory; no reconstructed authority, safe retry, recovery controller or atomic lifecycle claim.",
+      "Historicalbcf5 turn/process0 is separate from coding/probe17 SourcePreflight. EAGAIN cause unproved, requested model/effort distinct from null observations, usage reported only, one-run grant consumed with no retry.",
+      "Final text credits separate implemented duration clamp while explicitly withholding actual timeout/stop-grace proof and requiring fresh exact authorization/binary for another provider run.",
+      "Contributor guidance distinguishes Rust/React native runtime and retained Python compatibility checks, matches actual all.sh commands and preserves exact-head review and failed evidence.",
+      "Security text makes reporting conditional without invented private enablement/address/SLA; same-UID/root limits and default-deny general execution remain clear.",
+      "Release scope credits slot/fence/browser/private installer components but keeps authentic production, physical custody, settlement, recovery, rights and major-release gates open.",
+      "Exacte6e red Rustchecks and green browser remain separate. OnlyP00/P01 are accepted;30 other parents stay open."
+    ],
+    "local_links": {
+      "checked": 147,
+      "broken": 0,
+      "remote_links_not_fetched": true
+    }
+  },
+  "historical_source": {
+    "git_commit": "a6df0fb38314232a67290ec5bba86733d00dc327",
+    "three_git_object_hashes_verified": true,
+    "files": [
+      {
+        "path": "crates/admiralty-server/src/services/native_executor.rs",
+        "bytes": 112225,
+        "sha256": "87b6db47f751492435f114ae2e74ad78b442d8b998b4a4219ca753654eda1abe"
+      },
+      {
+        "path": "crates/admiralty-runtime/src/resource_gate.rs",
+        "bytes": 94667,
+        "sha256": "8bfbfba7b00b49afd74efa1d73331209b49db5ac0bc3cef26192fd9c04efaad2"
+      },
+      {
+        "path": "crates/admiralty-runtime/src/resource_gate_diagnostics_tests.rs",
+        "bytes": 24265,
+        "sha256": "fb26c9448b2f95559688682fe8164ea5a17171597dad4c120be4333f1af552c2"
+      }
+    ],
+    "not_relabelled_as_new_deadline_source": true
+  },
+  "separate_code_exclusion": {
+    "expected_commit": "0ab821408fb0930107b69bf88c9bf5f1a27c5116",
+    "parent_confirmed": true,
+    "code_approval_by_this_review": false
+  },
+  "reviewed_files": [
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/README.md",
+      "bytes": 21577,
+      "sha256": "f92296d747d2845c1f3f0c45851ed81f3854ff98c428ab4231476e70738ea651"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/CONTRIBUTING.md",
+      "bytes": 4493,
+      "sha256": "49c28e2961160480222aafc48a0a8ada963ac4e8d0fcc564f481dd7c69efd2f5"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/SECURITY.md",
+      "bytes": 2794,
+      "sha256": "d2dc6dcd65460d0019452e79498cff27a6efc955abcd9e9b3865825cc9221d35"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/docs/architecture/native-recovery-diagnostics.md",
+      "bytes": 3047,
+      "sha256": "85292902b82cdfc33c5eb49a23c715beb519189e4d8a40242127fa25586cf565"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/docs/operators/release-status.md",
+      "bytes": 5016,
+      "sha256": "368f7ca716c9d7ab90e0d2b7dfeb19ecb30a705574216d066aa650e3c9d96162"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/docs/plans/admiralty-v2/REMAINING_20261019.md",
+      "bytes": 54128,
+      "sha256": "091697192d78eb3e16ce3619d4360562bb3042aa2df9e4dff010801123d7da59"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/CI_CLEANUP_BACKLOG.md",
+      "bytes": 17939,
+      "sha256": "e9f213cb4c9b9642f0093171dba8eea980197acabdc903305686202db8c0e406"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/Cargo.toml",
+      "bytes": 2908,
+      "sha256": "7781cd4e8db579cf51871d4b6f1cb27e903cae6fde7fa8912552ecf822f260df"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-cli/Cargo.toml",
+      "bytes": 768,
+      "sha256": "2ca6965e44998e7731744cd7a4803a01c95e887e1bde0252dbc5b0afe58a7e6e"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-core/Cargo.toml",
+      "bytes": 403,
+      "sha256": "5550b3c022eb5cc9addaf06b985097635bed24b312c0e2921628f762193204b1"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-integration-tests/Cargo.toml",
+      "bytes": 514,
+      "sha256": "2f48005d3b136fcc443159b3be38dad8ec15a516c04bda45c5a21524ccfe9579"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-observe/Cargo.toml",
+      "bytes": 573,
+      "sha256": "75f62b9010859706bb245ebc03c42b4606584155bdcec66241c29df9e9fcbbdf"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-runtime/Cargo.toml",
+      "bytes": 463,
+      "sha256": "edf708a7cac3493b10c3fc252478b867662699ba08e057f2602c365fb2c2314b"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/Cargo.toml",
+      "bytes": 641,
+      "sha256": "0f908caff768995fc48801a9e3841dabe03e24a46700d588c0925ab36c58e33d"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-store/Cargo.toml",
+      "bytes": 533,
+      "sha256": "51a6436f2b3f978ae6355518f14a3a47738630c85b4adf99ada678bf903ffd82"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-testkit/Cargo.toml",
+      "bytes": 9976,
+      "sha256": "f88f4b633d1a492fc2a13a258b8ccc06a42d3f2d2f72aa5ba9f1aa2be523fe36"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/package.json",
+      "bytes": 484,
+      "sha256": "01cf2c4e9de91e5e59d23ffc05edb588024d45fb0aeb5fec2070d12c483df8fb"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/apps/dashboard/package.json",
+      "bytes": 530,
+      "sha256": "7efe0ce9bcb7effda19f2436200a9db95b17eb8feb001489b885e8a00e7056d7"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/packages/contracts/package.json",
+      "bytes": 2438,
+      "sha256": "d54378b99275babb7b1cbb31a85d7137cbe267beae679748dedde63238d68f96"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/LICENSE",
+      "bytes": 1079,
+      "sha256": "26857af5468e70d056dc1cb952314c0a7b2efc4aa00b54f9a087c2317c31bb65"
+    }
+  ],
+  "evidence_pins": [
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/receipts/integration/native-recovery-diagnostics-20261019T1252Z.json",
+      "bytes": 21076,
+      "sha256": "64ffe3b5549e8593a4080767996736e2b338e8fc7795d015a8200d6957709fa7"
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/receipts/integration/native-human-bcf5-diagnostic-20261019T1245Z.json",
+      "bytes": 16263,
+      "sha256": "9f6e1ea6b77e1a7949c66cba071a25c0a41d1774b77e1a4a7ff4abff5ac896fc"
+    }
+  ],
+  "validation_pins": [
+    {
+      "path": "/private/tmp/adm-mit-license-choice-validation.json",
+      "bytes": 1428,
+      "sha256": "e69d14ac101f381692b79a9831310696cb08c7db9a3d1030cfc057c5e2cd7b04"
+    },
+    {
+      "path": "/private/tmp/adm-mit-cargo-metadata.json",
+      "bytes": 67204,
+      "sha256": "8bfa1c1c6ed3faeebb80e2e80894472245ca0c33149eef524e014aa4ffb9a0a3"
+    },
+    {
+      "path": "/private/tmp/adm-recovery-forge-1255.json",
+      "bytes": 1052,
+      "sha256": "bc43c7928c10852fbcd6957a53e58cebc15e907e633daea5fd172158857fb5a0"
+    }
+  ],
+  "limits": [
+    "MIT selection is not a dependency-license, asset-attribution, SBOM or distribution-rights clearance.",
+    "Static review does not qualify security certification, execution, timeout enforcement, clean-machine installation, signing, publication or parent acceptance.",
+    "The contributor worker receipt remains historical to its original candidate; this review separately binds final Root wording/MIT metadata.",
+    "No approval of later ledger text, archive transfer/readback, source edits or later deployment is implied."
+  ],
+  "actions": {
+    "repository_edits": false,
+    "builds": false,
+    "tests": false,
+    "remote": false,
+    "forge": false,
+    "provider": false,
+    "services": false,
+    "grants": false
+  }
+}

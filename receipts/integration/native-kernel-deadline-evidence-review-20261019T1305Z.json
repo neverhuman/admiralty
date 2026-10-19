@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "kind": "independent-final-kernel-deadline-evidence-review",
+  "reviewed_utc": "2026-10-19T13:04:48.826Z",
+  "verdict": "CLEAR",
+  "canonical": {
+    "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/receipts/integration/native-kernel-deadline-final-20261019T1302Z.json",
+    "bytes": 11076,
+    "sha256": "6d6748c800287d4cbbcec7f56396e6c57f0717b1b812bb429f290bcec6a8a2f0"
+  },
+  "source_revision": "3a2135e384d36cc82e686211e5ebb0e38ff0fa5f",
+  "source_files": [
+    {
+      "path": "crates/admiralty-server/src/services/native_executor.rs",
+      "bytes": 112240,
+      "sha256": "737385b6892670d1ccce05745fad23880e7b9d4fd115d0a424c4c669e62c64fc"
+    },
+    {
+      "path": "crates/admiralty-runtime/src/resource_gate.rs",
+      "bytes": 100108,
+      "sha256": "41c17e6be7c1ce2ba13872d7d15b063ed2ba8244156d6c22a1a8b64ff256af5c"
+    },
+    {
+      "path": "crates/admiralty-runtime/src/resource_gate_diagnostics_tests.rs",
+      "bytes": 24265,
+      "sha256": "fb26c9448b2f95559688682fe8164ea5a17171597dad4c120be4333f1af552c2"
+    },
+    {
+      "path": "crates/admiralty-server/examples/native_lifecycle_probe.rs",
+      "bytes": 44567,
+      "sha256": "8e33ed6f72f451cbec6c10124d80e20d5a66a3e0dad1324a0b707fb4f2c8ec39"
+    }
+  ],
+  "checks": {
+    "direct_references_verified": 13,
+    "worker_nested_actual_hash_references_verified": 56,
+    "four_git_objects_and_linux_posthash_match": true,
+    "source_archive_matches_actual_git_archive": true,
+    "mac_actual_cases": 26,
+    "linux_actual_cases": 26,
+    "distinct_case_names": 26,
+    "names_equal_canonical_and_both_platforms": true,
+    "journal": 8,
+    "history": 14,
+    "wrapper": 4,
+    "new_definitions_subset": 9,
+    "worker_and_prior_runs_nonadditive": true,
+    "linux_exit": 0,
+    "linux_signal": null,
+    "linux_error": null,
+    "linux_elapsed_ms": 142426,
+    "inside_gates": 3,
+    "all_outer_inside_after_gates_pass": true,
+    "linux_strict_runtime_server_alltargets_clippy": true,
+    "linux_example_compiled_not_executed": true,
+    "mac_strict_completion_log_checked": true,
+    "mac_fmt": "Root reports0 with empty log; worker retained actual exit0 metadata and raw pins independently verified. Reviewer did not execute formatting."
+  },
+  "source_reuse": "Mac wrapper4 was run on earlier0ab working source plus license metadata; four source files are byte-identical to final3a. Final Mac journal8/history14 ran on3a. No embedded source stamp or new executable identity is inferred.",
+  "limits": [
+    "This is evidence verification, not a new code review, test, build, fleet run or deployment.",
+    "Wrapper argument tests and Linux all-target compilation do not exercise systemd timeout, stop-grace or actual wall-clock termination.",
+    "No provider execution, fresh grant, automatic recovery, acceptance or full CI green follows.",
+    "Historicalbcf5 grant remains consumed; final source qualification authorizes no retry.",
+    "Mac/Linux filtered cases are excluded from acceptance and case totals are nonadditive across platforms and worker retries."
+  ],
+  "reference_pins": [
+    {
+      "path": "/private/tmp/adm-deadline-final-journal.log",
+      "bytes": 1552,
+      "sha256": "2430e8959b7c728475b115018f22e1e7762eb1e1ebbf7e2312254477f7d4e588"
+    },
+    {
+      "path": "/private/tmp/adm-deadline-final-history.log",
+      "bytes": 1894,
+      "sha256": "bba551bf0af5bd441437864b1f2632049d119d49983c389e7643473ff123f34f"
+    },
+    {
+      "path": "/private/tmp/adm-deadline-root-tests.log",
+      "bytes": 819,
+      "sha256": "fbafe246de37dcde1f8a6ffa8f078cb5e65cb6769574d10260c5d715d470155e"
+    },
+    {
+      "path": "/private/tmp/adm-deadline-root-clippy.log",
+      "bytes": 501,
+      "sha256": "612e79ae30617c37db25149ea11d1e9134126b6d46b70cf96fe0c10a28ea0e59"
+    },
+    {
+      "path": "/private/tmp/adm-deadline-root-fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/adm-finaldeadline-linux-result.json",
+      "bytes": 2429,
+      "sha256": "dcd591a11c52d0961f5aab446d936670f86b4ac81e2d586c5d9fc57ddef79719"
+    },
+    {
+      "path": "/private/tmp/adm-finaldeadline-linux-test.log",
+      "bytes": 9463,
+      "sha256": "5e12c87d184997339a5017ebd2e07f6d7a770aea4554d9c3228a965cc3fb23d8"
+    },
+    {
+      "path": "/private/tmp/adm-finaldeadline-linux-posthash.json",
+      "bytes": 889,
+      "sha256": "7c25edf24f530456639cf9c6ce309a64b4f653e9548a6b6d9db30f7e2b3e63e5"
+    },
+    {
+      "path": "/private/tmp/adm-finaldeadline-linux-inputs.json",
+      "bytes": 234,
+      "sha256": "ec5770737806c6141706cfddb4f2e45c50b43417a78de59f6d91225e3f1a7185"
+    },
+    {
+      "path": "/private/tmp/admiralty-finaldeadline-source.tar",
+      "bytes": 19988480,
+      "sha256": "cb2da699f68a8164586c9349813f27bca046ca0ce4ffb6f897bb3f2f843ed7b4"
+    },
+    {
+      "path": "/private/tmp/ADMIRALTY_RUNTIME_DEADLINE_BOUND_3f19a29_static_review.json",
+      "bytes": 2980,
+      "sha256": "9a23db98aa90a17c179fb982acd970b0542cfe1754e5682fe6f6bfb85381dc3c"
+    },
+    {
+      "path": "/private/tmp/adm-native-kernel-deadline.RF8D6h/source-worker-receipt.json",
+      "bytes": 33007,
+      "sha256": "7faa03ddb55c22b4218db1ca782ddf748336d4850f0d4c09b018b827f27279ed"
+    },
+    {
+      "path": "/private/tmp/adm-native-recovery-docs-license-final-review.json",
+      "bytes": 9792,
+      "sha256": "1816e8b584390becfac2afbac7c7d2ed0ef95f989fd8eefdc83711fda9f2d896"
+    }
+  ],
+  "worker_failure_limits": [
+    {
+      "label": "focused-wrapper-tests",
+      "exit": 101,
+      "tests_executed": 0,
+      "cause": "test-only comparison initially required unimplemented LaunchSpec PartialEq",
+      "repair": "compare serialized LaunchSpec values without modifying its public type",
+      "source_hash_limitation": "initial draft source hash was not sampled before this failed run; final source is pinned above"
+    },
+    {
+      "label": "static-review",
+      "exit": 1,
+      "nested_rg_exit": 2,
+      "cause": "read command referred to session.rs; actual source is session/mod.rs",
+      "repair": "corrected read-only command in static-review-corrected",
+      "source_mutation": false
+    }
+  ],
+  "actions": {
+    "repository_edits": false,
+    "tests": false,
+    "builds": false,
+    "remote": false,
+    "provider": false,
+    "services": false
+  }
+}
