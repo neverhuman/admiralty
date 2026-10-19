@@ -25,10 +25,15 @@ use super::{
 };
 use admiralty_core::{PrincipalId, SchedulingState, TaskView, content_digest};
 use admiralty_runtime::{
+    reservations::{Reservation, ReservationEvent},
     resource_gate::{ResourceGate, VerifiedResourcePermit},
     session::validate_launch_envelope,
 };
-use admiralty_store::{Store, outbox::MAX_LEASE_SECONDS};
+use admiralty_store::{
+    Store,
+    admission_reservations::{ReservationCommand, ReservationProof, validate_command},
+    outbox::MAX_LEASE_SECONDS,
+};
 use std::{
     cell::{Cell, RefCell},
     collections::BTreeMap,
@@ -53,6 +58,21 @@ pub struct NativeTaskRuntimeConfig {
     pub journal_root: PathBuf,
     pub deadline: Duration,
     pub capture_limit: usize,
+}
+
+/// Explicit process-local budget admission. A command or public digest does not
+/// construct its opaque proof or install a current Store authority.
+pub struct NativeBudgetAdmission {
+    pub command: ReservationCommand,
+    pub proof: ReservationProof,
+}
+
+struct RetainedBudget {
+    admission: NativeBudgetAdmission,
+    /// Stable fields come from the actual plan. The budget revision is the
+    /// frozen ledger CAS successor, independently confirmed by Store's receipt;
+    /// it is not the resource plan's reservation version.
+    expected: Reservation,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -143,6 +163,7 @@ struct RetainedRun {
     request: LaunchRequest,
     contract_revision: u32,
     durable: Option<DurableIntent>,
+    budget: Option<RetainedBudget>,
     phase: Phase,
     receipt: Option<RuntimeReceipt>,
     // Independent of closure/buffer phase; only a confirmed fenced ACK sets it.
@@ -211,7 +232,35 @@ impl NativeTaskLoop {
         plan: NativeExecutionPlan,
         admission: &impl CurrentAdmission,
     ) -> Result<AdmissionStatus, RejectedAdmission> {
-        let checked = self.preflight(&request, &plan);
+        self.admit_mode(request, plan, admission, None)
+    }
+
+    /// Atomically reserve budget with the task claim and launch intent. The
+    /// exact command/proof and actual plan reservation stay with this retained
+    /// run across ambiguous replies. No caller can replace them on a retry.
+    pub fn admit_reserved(
+        &mut self,
+        request: LaunchRequest,
+        plan: NativeExecutionPlan,
+        admission: &impl CurrentAdmission,
+        budget: NativeBudgetAdmission,
+    ) -> Result<AdmissionStatus, RejectedAdmission> {
+        self.admit_mode(request, plan, admission, Some(budget))
+    }
+
+    fn admit_mode(
+        &mut self,
+        request: LaunchRequest,
+        plan: NativeExecutionPlan,
+        admission: &impl CurrentAdmission,
+        budget: Option<NativeBudgetAdmission>,
+    ) -> Result<AdmissionStatus, RejectedAdmission> {
+        let checked = self.preflight(&request, &plan).and_then(|revision| {
+            if let Some(budget) = &budget {
+                self.validate_budget(&request, &plan, budget)?;
+            }
+            Ok(revision)
+        });
         let revision = match checked {
             Ok(revision) => revision,
             Err(reason) => {
@@ -223,6 +272,24 @@ impl NativeTaskLoop {
         };
         // Capacity and duplicate checks precede ownership transfer. The runtime's
         // ownership-returning API also retains the plan on journal/capacity errors.
+        let budget = match budget {
+            Some(admission) => {
+                let Some(revision) = admission.command.expected_ledger_revision.checked_add(1)
+                else {
+                    return Err(RejectedAdmission {
+                        reason: LoopError::InvalidBinding,
+                        plan: Box::new(plan),
+                    });
+                };
+                let mut expected = plan.reservation.clone();
+                expected.revision = revision;
+                Some(RetainedBudget {
+                    admission,
+                    expected,
+                })
+            }
+            None => None,
+        };
         if let Err(failure) = self.executor.try_register_plan(plan) {
             let (_, plan) = failure.into_parts();
             return Err(RejectedAdmission {
@@ -237,6 +304,7 @@ impl NativeTaskLoop {
                 request,
                 contract_revision: revision,
                 durable: None,
+                budget,
                 phase: Phase::AdmissionUncertain,
                 receipt: None,
                 effect_recorded: false,
@@ -254,6 +322,7 @@ impl NativeTaskLoop {
         let run = self.runs.get(run_id).ok_or(LoopError::UnknownRun)?;
         match run.phase {
             Phase::AdmissionUncertain => Ok(self.admit_retained(run_id, admission)),
+            Phase::Queued if run.budget.is_some() => Ok(self.admit_retained(run_id, admission)),
             Phase::Queued => Ok(AdmissionStatus::Queued(
                 run.durable.clone().ok_or(LoopError::InvalidBinding)?,
             )),
@@ -276,8 +345,33 @@ impl NativeTaskLoop {
             revision: run.contract_revision,
             inner: admission,
         };
-        match controller::admit_one(&self.store, &scoped, &run.request) {
-            Ok(durable) => {
+        let result = match &run.budget {
+            Some(budget) => controller::admit_one_reserved(
+                &self.store,
+                &scoped,
+                &run.request,
+                budget.admission.command.clone(),
+                Arc::clone(&budget.admission.proof),
+            )
+            .map(|result| {
+                (
+                    result.intent,
+                    Some(result.reservation.receipt.ledger_revision),
+                )
+            }),
+            None => controller::admit_one(&self.store, &scoped, &run.request)
+                .map(|intent| (intent, None)),
+        };
+        match result {
+            Ok((durable, budget_revision)) => {
+                if run.budget.as_ref().is_some_and(|budget| {
+                    budget_revision != Some(budget.expected.revision)
+                        || !budget_current(&self.store, budget)
+                }) {
+                    // The atomic write may already be durable. Retain all
+                    // custody; no ordinary admission or registration fallback.
+                    return AdmissionStatus::Held(HoldReason::AdmissionUncertain);
+                }
                 run.durable = Some(durable.clone());
                 run.phase = Phase::Queued;
                 AdmissionStatus::Queued(durable)
@@ -312,12 +406,19 @@ impl NativeTaskLoop {
             request: &run.request,
             revision: run.contract_revision,
             inner: admission,
+            store: &self.store,
+            durable,
+            budget: run.budget.as_ref(),
         };
         let runtime = RecordingRuntime {
             executor: &self.executor,
             request: &run.request,
             receipt: RefCell::new(None),
             attempted: Cell::new(false),
+            final_budget_admission: run
+                .budget
+                .is_some()
+                .then_some(&scoped as &dyn DispatchAdmission),
         };
         let result = controller::dispatch_key(
             &self.store,
@@ -474,6 +575,70 @@ impl NativeTaskLoop {
         validate_plan(&self.config.scope, task, request, plan)?;
         Ok(task.contract.revision)
     }
+
+    fn validate_budget(
+        &self,
+        request: &LaunchRequest,
+        plan: &NativeExecutionPlan,
+        budget: &NativeBudgetAdmission,
+    ) -> Result<(), LoopError> {
+        validate_command(&budget.command).map_err(|_| LoopError::InvalidBinding)?;
+        let ReservationEvent::Reserve {
+            reservation_id,
+            scope,
+            correlation_id,
+            amount,
+            ..
+        } = &budget.command.event
+        else {
+            return Err(LoopError::InvalidBinding);
+        };
+        let expected = &plan.reservation;
+        if budget.command.source != request.source
+            || budget.command.source.incarnation != scope.incarnation
+            || reservation_id != &expected.id
+            || scope != &expected.scope
+            || correlation_id != &expected.correlation_id
+            || amount != &expected.original
+            || budget
+                .command
+                .expected_ledger_revision
+                .checked_add(1)
+                .is_none()
+            || expected.settled.get() != 0
+            || expected.stop_requested
+            || !expected.outstanding
+        {
+            return Err(LoopError::InvalidBinding);
+        }
+        let snapshot = self
+            .store
+            .snapshot()
+            .map_err(|_| LoopError::StoreUnavailable)?;
+        let task = snapshot
+            .projection
+            .tasks
+            .get(&request.task_id)
+            .ok_or(LoopError::InvalidBinding)?;
+        let intent = controller::planned_launch_intent(task, request)
+            .map_err(|_| LoopError::InvalidBinding)?;
+        if budget.command.launch_intent_digest.as_deref()
+            != Some(
+                admiralty_store::outbox::intent_digest(&intent)
+                    .map_err(|_| LoopError::InvalidBinding)?
+                    .as_str(),
+            )
+        {
+            return Err(LoopError::InvalidBinding);
+        }
+        Ok(())
+    }
+}
+
+fn budget_current(store: &Store, budget: &RetainedBudget) -> bool {
+    store
+        .reservation_ledger(Arc::clone(&budget.admission.proof))
+        .is_ok_and(|ledger| ledger.reservations.get(&budget.expected.id) == Some(&budget.expected))
 }
 
 fn ack_state(run: &RetainedRun) -> EffectAckState {
@@ -544,6 +709,9 @@ struct ScopedDispatch<'a, A> {
     request: &'a LaunchRequest,
     revision: u32,
     inner: &'a A,
+    store: &'a Store,
+    durable: &'a DurableIntent,
+    budget: Option<&'a RetainedBudget>,
 }
 impl<A: DispatchAdmission> DispatchAdmission for ScopedDispatch<'_, A> {
     fn authorize_dispatch(&self, task: &TaskView, intent: &DispatchIntent) -> Result<(), String> {
@@ -552,9 +720,67 @@ impl<A: DispatchAdmission> DispatchAdmission for ScopedDispatch<'_, A> {
         {
             return Err("frozen dispatch binding differs".into());
         }
+        if let Some(budget) = self.budget {
+            let current = DispatchReplayAdmission {
+                scope: self.scope,
+                owner: self.owner,
+                request: self.request,
+                revision: self.revision,
+                inner: self.inner,
+            };
+            let replay = controller::admit_one_reserved(
+                self.store,
+                &current,
+                self.request,
+                budget.admission.command.clone(),
+                Arc::clone(&budget.admission.proof),
+            )
+            .map_err(|_| "current budget dispatch admission denied".to_owned())?;
+            let mut expected = self.durable.clone();
+            expected.duplicate = true;
+            if replay.intent != expected
+                || !replay.reservation.replayed
+                || replay.reservation.receipt.ledger_revision != budget.expected.revision
+                || !budget_current(self.store, budget)
+            {
+                return Err("frozen budget dispatch binding differs".into());
+            }
+            Ok(())
+        } else {
+            self.inner
+                .authorize_dispatch(task, intent)
+                .map_err(|_| "trusted dispatch admission denied".into())
+        }
+    }
+}
+
+/// Adapter for an exact already-claimed budget replay at the dispatch boundary.
+/// It cannot make a Ready/historical task newly eligible while reauthorizing.
+struct DispatchReplayAdmission<'a, A> {
+    scope: &'a StartedScope,
+    owner: &'a PrincipalId,
+    request: &'a LaunchRequest,
+    revision: u32,
+    inner: &'a A,
+}
+impl<A: DispatchAdmission> CurrentAdmission for DispatchReplayAdmission<'_, A> {
+    fn authorize_current(&self, task: &TaskView, request: &LaunchRequest) -> Result<(), String> {
+        if request != self.request
+            || task.contract.revision != self.revision
+            || task.state != SchedulingState::Claimed
+            || task.attempt_id.as_ref() != Some(&request.attempt_id)
+            || task.owner.as_ref() != Some(&request.owner)
+            || validate_task(self.scope, self.owner, task, request).is_err()
+        {
+            return Err("frozen budget replay is not the current claimed attempt".into());
+        }
+        let planned = controller::planned_launch_intent(task, request)
+            .map_err(|_| "budget replay intent differs".to_owned())?;
+        let intent: DispatchIntent = serde_json::from_value(planned.payload)
+            .map_err(|_| "budget replay intent is invalid".to_owned())?;
         self.inner
-            .authorize_dispatch(task, intent)
-            .map_err(|_| "trusted dispatch admission denied".into())
+            .authorize_dispatch(task, &intent)
+            .map_err(|_| "trusted budget dispatch admission denied".into())
     }
 }
 struct RecordingRuntime<'a> {
@@ -562,11 +788,20 @@ struct RecordingRuntime<'a> {
     request: &'a LaunchRequest,
     receipt: RefCell<Option<RuntimeReceipt>>,
     attempted: Cell<bool>,
+    final_budget_admission: Option<&'a dyn DispatchAdmission>,
 }
 impl NativeRuntimeExecutor for RecordingRuntime<'_> {
     fn execute(&self, task: &TaskView, intent: &DispatchIntent) -> Result<RuntimeReceipt, String> {
         if !intent_matches(self.request, task.contract.revision, intent) {
             return Err("runtime dispatch binding differs".into());
+        }
+        if let Some(admission) = self.final_budget_admission {
+            // The controller reads its clock after the first admission check.
+            // Revalidate any intervening stop/revocation before calling the
+            // executor. This is no claim of atomic physical launch with Store.
+            admission
+                .authorize_dispatch(task, intent)
+                .map_err(|_| "current budget runtime admission denied".to_owned())?;
         }
         self.attempted.set(true);
         let receipt = self.executor.execute(task, intent)?;
@@ -829,16 +1064,21 @@ mod tests {
             self.0
         }
     }
-    struct TestFixture {
-        temp: PathBuf,
-        journal: PathBuf,
-        marker: PathBuf,
-        request: LaunchRequest,
-        plan: NativeExecutionPlan,
-        task_loop: NativeTaskLoop,
-        store: Store,
+    pub(super) struct TestFixture {
+        pub(super) temp: PathBuf,
+        pub(super) journal: PathBuf,
+        pub(super) marker: PathBuf,
+        pub(super) request: LaunchRequest,
+        pub(super) plan: NativeExecutionPlan,
+        pub(super) task_loop: NativeTaskLoop,
+        pub(super) store: Store,
     }
-    fn fixture() -> TestFixture {
+    pub(super) fn fixture() -> TestFixture {
+        fixture_with_authority(None)
+    }
+    pub(super) fn fixture_with_authority(
+        authority: Option<Arc<dyn admiralty_store::admission_reservations::ReservationAuthority>>,
+    ) -> TestFixture {
         let temp = private_fixture("native-executor-test");
         let source = temp.join("source");
         let managed_parent = temp.join("managed");
@@ -1046,7 +1286,14 @@ mod tests {
             permit_claims: claims,
             permit_authority: Arc::new(CurrentPermit),
         };
-        let store = Store::open(temp.join("loop.sqlite")).expect("actual Store");
+        let store = Store::open_with_startup_authorities(
+            temp.join("loop.sqlite"),
+            admiralty_store::StoreAuthorities {
+                reservations: authority,
+                ..Default::default()
+            },
+        )
+        .expect("actual Store");
         store
             .append(
                 admiralty_core::SourceIdentity {
