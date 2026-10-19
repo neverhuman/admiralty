@@ -5,6 +5,7 @@ pub mod native_install;
 pub mod native_intake;
 pub mod native_package;
 pub mod native_recovery;
+pub mod work_order_intake;
 mod workplans;
 use admiralty_core::{
     AcceptanceCriterion, AttemptId, CheckSpec, CoordinationMessage, DomainEvent, DomainEventV2,
@@ -106,6 +107,8 @@ enum Command {
     },
     /// Preview or register immutable workplan revisions offline. Does not launch tasks.
     Workplan(workplans::WorkplanArgs),
+    /// Explicit offline work-order capture and enrichment; never launches tasks.
+    Intake(work_order_intake::IntakeArgs),
     /// Compile a protected task capsule from an existing offline database.
     Context {
         #[arg(long)]
@@ -802,6 +805,7 @@ async fn run(cli: Cli) -> CliResult<()> {
             print_json(serde_json::to_value(open_existing(&database)?.snapshot()?)?)?;
         }
         Command::Workplan(args) => workplans::run(args)?,
+        Command::Intake(args) => work_order_intake::run(args)?,
         Command::Work { command } => match command {
             WorkCommand::Preview { file, source } => {
                 let preview = native_intake::preview_work_order(
