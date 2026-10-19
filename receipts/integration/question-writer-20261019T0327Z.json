@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T03:27:37.542Z",
+  "base_revision": "40501925ae2a8906532ed5f709cda83a5898c675",
+  "qualified_source": "177b6ceb65ee1c0b302ba48b9508e922ec92f5bf",
+  "worker_candidate": "4cc2032a08334a76fbbd75b313523b6f60286820",
+  "scope": "Existing question journal composed with default-deny startup authority on sole Store writer",
+  "sha256": {
+    "crates/admiralty-store/src/questions.rs": "9a076e388394d03afe108520a438a7bc4ba968ae6301192c4d9adba315672368",
+    "crates/admiralty-store/src/lib.rs": "5a364bee291905f4aa377df7c6413814e16845eb81d9cf4e11cc68baa238f2bf",
+    "crates/admiralty-store/tests/question_store.rs": "99f2a37d0736901431599eefda151d3ad3fd14ba317a626e240059c98419a66c",
+    "target/quality/question-writer-integrated.log": "47e05990609676d1d5d53271087e0e601814b47344a822e9318dc589d288efe3",
+    "target/quality/question-writer-integrated-clippy.log": "2cd33d03c0fe4c83a7da7f937497d70339b9738f68df3f98558ca67773636d16"
+  },
+  "root_checks": {
+    "command": "cargo test -p admiralty-store --test question_store --test intake_capture --test work_order_intake --test workplan_registry --locked",
+    "exit_code": 0,
+    "questions": 10,
+    "capture": 12,
+    "enriched_intake": 14,
+    "workplan": 4,
+    "failed": 0,
+    "ignored": 0,
+    "filtered": 0,
+    "strict_store_all_targets_clippy_exit_code": 0,
+    "format_exit_code": 0
+  },
+  "review": {
+    "independent": "audit_runtime",
+    "result": "clear on frozen production module and excluded registration; audit_product separately reviews root composed startup plumbing",
+    "module_sha256": "9a076e388394d03afe108520a438a7bc4ba968ae6301192c4d9adba315672368",
+    "historical_contract_handling": "Original bound contract retained; current auth every turn, old receipt replay does not rewind state, stale new actions/reads deny"
+  },
+  "worker_receipt": {
+    "sha256": "9c2a27e219e1f2f6772e92fb3d588d6fd8b71ef210b51ff71bb7f26e18c8d23d",
+    "contents": {
+      "schema_version": 1,
+      "kind": "authorized_question_store_component",
+      "created_utc": "2026-10-19T03:24:03.782437+00:00",
+      "candidate_commit": "4cc2032a08334a76fbbd75b313523b6f60286820",
+      "base_commit": "90e76d881689d36226c176a9493c1b8736cce071",
+      "owned_paths": [
+        "crates/admiralty-store/src/questions.rs",
+        "crates/admiralty-store/tests/question_store.rs"
+      ],
+      "registration_patch": "target/quality/question-store/store-registration.patch",
+      "registration_patch_is_required": true,
+      "registration_patch_committed": false,
+      "registered_lib_sha256_during_final_checks": "c83e3d2602e5b78fd841ca91e189a361c2f7d1820cbbb248c6a83917f29f2454",
+      "checks": [
+        {
+          "command": "cargo test --locked --offline -p admiralty-store --test question_store -- --test-threads=1",
+          "exit_code": 0,
+          "passed": 10,
+          "failed": 0,
+          "ignored": 0,
+          "source": "final owned source plus excluded registration patch"
+        },
+        {
+          "command": "cargo test --locked --offline -p admiralty-store --lib questions::tests -- --test-threads=1",
+          "exit_code": 0,
+          "passed": 12,
+          "failed": 0,
+          "ignored": 0,
+          "source": "final owned source plus excluded registration patch"
+        },
+        {
+          "command": "cargo clippy --locked --offline -p admiralty-store --all-targets -- -D warnings",
+          "exit_code": 0,
+          "source": "final owned source plus excluded registration patch"
+        },
+        {
+          "command": "rustfmt --edition 2024 --check crates/admiralty-store/src/questions.rs crates/admiralty-store/tests/question_store.rs crates/admiralty-store/src/lib.rs",
+          "exit_code": 0
+        },
+        {
+          "command": "git diff --check",
+          "exit_code": 0
+        },
+        {
+          "command": "cargo test --locked --offline -p admiralty-store -- --test-threads=1",
+          "exit_code": 0,
+          "passed": 152,
+          "source": "earlier candidate before final global-cap/old-replay integrity guard; retained evidence only, not exact-final full-suite claim"
+        }
+      ],
+      "environment": {
+        "platform": "macOS",
+        "jobs": 1,
+        "test_threads": 1,
+        "TMPDIR": "/private/tmp/adm-native-4pbrtc1l",
+        "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/question-store"
+      },
+      "failed_evidence_preserved": [
+        "own-smoke-r1-compile-failed.log (revision scalar corrected to actual u32)",
+        "own-clippy-r3.log (three needless borrows repaired)"
+      ],
+      "peer_review": {
+        "reviewer": "audit_runtime",
+        "verdict": "clear",
+        "source_sha256": "9a076e388394d03afe108520a438a7bc4ba968ae6301192c4d9adba315672368",
+        "test_sha256": "99f2a37d0736901431599eefda151d3ad3fd14ba317a626e240059c98419a66c",
+        "duplicate_suites_run": false
+      },
+      "artifacts": {
+        "crates/admiralty-store/src/questions.rs": {
+          "bytes": 87868,
+          "sha256": "9a076e388394d03afe108520a438a7bc4ba968ae6301192c4d9adba315672368"
+        },
+        "crates/admiralty-store/tests/question_store.rs": {
+          "bytes": 19402,
+          "sha256": "99f2a37d0736901431599eefda151d3ad3fd14ba317a626e240059c98419a66c"
+        },
+        "target/quality/question-store/store-registration.patch": {
+          "bytes": 7275,
+          "sha256": "fec9e293e9d6f4dc3588ad904fb7f879979e2efbc7618eb17ff5c7f676164ae5"
+        },
+        "target/quality/question-store/own-clippy-r3.log": {
+          "bytes": 3010,
+          "sha256": "75bf09716c5c63772dcf364e3d910cea0a8f818853fc528aeb75a6a1b89889d8"
+        },
+        "target/quality/question-store/own-clippy.log": {
+          "bytes": 180,
+          "sha256": "79f8f2cbab29219ffd7d7a7cfeb1dd1ad94b4428e1c3a9652038dc71eed43278"
+        },
+        "target/quality/question-store/own-format.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "target/quality/question-store/own-legacy-questions-r3.log": {
+          "bytes": 1577,
+          "sha256": "f8e967d917e2681dc3f14471065d3ad9d1932dea7efcc415874ff73fcf01f3f1"
+        },
+        "target/quality/question-store/own-legacy-questions.log": {
+          "bytes": 1577,
+          "sha256": "f1e457b9cd340ffee996f93f8b2f5ceafbd43a49376a24cf9a8dd6e5e5f6133e"
+        },
+        "target/quality/question-store/own-smoke-r1-compile-failed.log": {
+          "bytes": 5857,
+          "sha256": "f26c97ab6e467841e56adaefe4dd67de4ca2398d81336d9b34985105d1e72161"
+        },
+        "target/quality/question-store/own-smoke-r2-eight-pass.log": {
+          "bytes": 1123,
+          "sha256": "a061db7a642c35c7887b1b30647269bbcb2afc8bda8d38e37cb5c292a49fdd3d"
+        },
+        "target/quality/question-store/own-smoke-r3.log": {
+          "bytes": 1199,
+          "sha256": "05ae951b68e5da2fa0ed3e3e750ab7e0db58424e7e89b1fb14d7b574bb5223f9"
+        },
+        "target/quality/question-store/own-smoke.log": {
+          "bytes": 1289,
+          "sha256": "81f5b8f766765d7c07d707ab1b91e82c7a784e0fd857cadd5ee698f296e6da66"
+        },
+        "target/quality/question-store/own-store-tests.log": {
+          "bytes": 16386,
+          "sha256": "49c05a60f0b24e5e3548db944001b52ad7283a0b32a419a3907dc0d98048e61f"
+        }
+      },
+      "remaining_limits": [
+        "Root must apply/adapt required excluded Storelib registration patch together with this commit, preserving raw-capture authority slot.",
+        "No production QuestionAuthority issuer, authenticated service/HTTP route or provider transport installed.",
+        "Answers and deadline escalation proposals remain information, not effective authorized committed decisions.",
+        "No model calls, automatic answer/route, invented clock, outbox effects, delivery grants or parent P05 acceptance.",
+        "Legacy raw caller-owned Connection APIs remain component compatibility; protected Store access requires current installed authority and native provenance."
+      ]
+    }
+  },
+  "parent_acceptance": false,
+  "native_execution_qualified": false,
+  "provider_turns": 0,
+  "limits": [
+    "No production QuestionAuthority issuer/HTTP route/provider delivery/effective decision authority",
+    "No model calls/autoanswers/outbox effects",
+    "Startup policies are in-process non-deserializable trusted configuration, not request grants",
+    "Earlier broader152-test worker result precedes final guard changes and is not final-source qualification"
+  ]
+}
