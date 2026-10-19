@@ -1,0 +1,21 @@
+{
+  "source_head": "32dea091f09910059392d4fb014810b30d01bbf3",
+  "uncommitted_changes": "regression tests only; implementation unchanged",
+  "argv": [
+    "rtk",
+    "pnpm",
+    "--dir",
+    "apps/dashboard",
+    "exec",
+    "vitest",
+    "run",
+    "--config",
+    "e2e/vitest.config.ts",
+    "e2e/live-views.e2e.ts",
+    "-t",
+    "restores nonzero"
+  ],
+  "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+  "exit_code": 0,
+  "expected": "nonzero due actual offset loss after graph remount"
+}

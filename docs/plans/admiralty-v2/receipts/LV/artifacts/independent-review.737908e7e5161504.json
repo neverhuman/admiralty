@@ -1,0 +1,27 @@
+{
+  "reviewer": "/root/live_views_review",
+  "authorization": "User: Authorize read-only reviewer",
+  "scope": "Read-only source review; no edits, GitHub posting, extra agents or heavyweight suite",
+  "initial_head": "32dea091f09910059392d4fb014810b30d01bbf3",
+  "repair_head": "39c3cf22ad16176dd245a69efbb790367da05406",
+  "findings": [
+    {
+      "priority": "P2",
+      "finding": "Conflicting project/manager claims selected the last captain and could mix task/branch context",
+      "proof": "project-claims-negative.log fails; repaired unit and full qualification follow",
+      "resolution": "Accumulate canonical project claims; retain unassigned identity, clear ambiguous context, preserve projects and separate unknown configured managers."
+    },
+    {
+      "priority": "P2",
+      "finding": "Follow latest can stay behind the frontier after updates arrive in Inventory",
+      "proof": "git-follow-inventory-counterexample.log fails by3240px; targeted repair passes",
+      "resolution": "Resume follow on Inventory exit and synchronize actual attached scroll offsets."
+    }
+  ],
+  "retracted_hypothesis": {
+    "finding": "Plain Graph to Inventory to Graph loses offsets because DOM remounts",
+    "outcome": "Passing nonzero offset control disproved assumed remount; reviewer explicitly retracted. Initial test harness missing-method failure is preserved and is not a behavioral counterexample."
+  },
+  "final_review": "No additional actionable findings in 39c3cf22. Conflicting project claims now retain one unassigned identity, clear ambiguous task/branch data, preserve projects, and create distinct unobserved manager placeholders. The Git repair addresses the reproduced Follow latest failure while Inventory is open. Reviewed code and regression coverage only; no heavyweight tests rerun or files edited.",
+  "formal_neverhumanbot_approval": false
+}

@@ -1,0 +1,41 @@
+{
+  "base_head": "32dea091f09910059392d4fb014810b30d01bbf3",
+  "uncommitted_changes": "project-claim conflict normalization and Git follow/scroll synchronization with regressions",
+  "commands": [
+    {
+      "name": "project-claims-repaired",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "admiralty-server",
+        "--lib",
+        "views::tests"
+      ],
+      "exit_code": 0,
+      "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty"
+    },
+    {
+      "name": "git-follow-inventory-repaired",
+      "argv": [
+        "rtk",
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "e2e/vitest.config.ts",
+        "e2e/live-views.e2e.ts",
+        "-t",
+        "preserves Git offsets"
+      ],
+      "exit_code": 0,
+      "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty"
+    }
+  ]
+}

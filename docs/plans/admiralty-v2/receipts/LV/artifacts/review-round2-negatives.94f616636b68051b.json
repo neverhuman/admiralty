@@ -1,0 +1,42 @@
+{
+  "source_head": "32dea091f09910059392d4fb014810b30d01bbf3",
+  "commands": [
+    {
+      "name": "project-claims-negative",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "admiralty-server",
+        "--lib",
+        "conflicting_project_and_manager_claims_are_unassigned_and_order_independent"
+      ],
+      "exit_code": 101,
+      "expected": "nonzero counterexample against unchanged implementation; only regression tests added",
+      "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty"
+    },
+    {
+      "name": "git-remount-negative",
+      "argv": [
+        "rtk",
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "e2e/vitest.config.ts",
+        "e2e/live-views.e2e.ts",
+        "-t",
+        "restores nonzero"
+      ],
+      "exit_code": 1,
+      "expected": "nonzero counterexample against unchanged implementation; only regression tests added",
+      "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty"
+    }
+  ]
+}
