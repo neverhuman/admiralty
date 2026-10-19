@@ -2,6 +2,8 @@ pub mod agent_routes;
 pub mod agent_tools;
 pub mod controller;
 pub mod coordination;
+#[cfg(unix)]
+pub mod native_codex_plan;
 pub mod native_commands;
 pub mod native_evidence_catalog;
 #[cfg(unix)]
