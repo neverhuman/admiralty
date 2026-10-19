@@ -6,6 +6,18 @@ neverhumanbot approval and matched-head rebase. Red/queued CI is never green.
 One cleanup lane takes this list after remaining cutover implementation lands;
 build failures remain immediate work.
 
+Actual maina9d0a002 workflow39232621495 failed its controlled capture case
+`services::native_executor::tests::actual_producer_capture_failure_cannot_yield_typed_transcript`
+at native_executor.rs2319 with `controlled child capture deadline`:95server
+cases passed,1failed,2ignored. This is an actual same-class observation on new
+source, not a resource-pressure diagnosis. Earlier CLI90/archive5/install7 and
+other targets in this run passed before Cargo stopped; Store's full target was
+not reached, so the separate219Store component pass does not make the workflow
+green. Raw `/private/tmp/adm-ci-a9d0-rust-39232621495.log` SHA-256
+`c81df12a34341973e51d9c3db90fa6003049b19d141b1eb9e14cc5e5c77a2a8a`
+is retained. Maina9d0 browser39232621504 passed. No rerun, weakened deadline,
+new cleanup lane, shared-runner or service control follows.
+
 Actual09:45Z mainaf6 snapshot: browser39228085850 passed; checks39228085831
 was cancelled. Root did not cancel it and has not established the actor or
 reason; cancellation is not a passing Rust/legacy result. Older18417 checks

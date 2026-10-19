@@ -6,6 +6,30 @@ This additive update retains the full audit below at its original source/time.
 Only P00/P01 are fully accepted; all30 other parents remain open. Do not rebuild
 the following later integrated components or infer that they are live:
 
+**10:25Z composition addendum:** source
+`a08d2e8d2bfc55121a0ce96532aa9c8fa822c65b` composes explicit slotted controller,
+original Codex model/preparation binding and protected native-loop admission,
+retry and dispatch. Root Mac and actual capped Linux pass the same 34 scoped
+cases (13 new cases within 34); strict server all-target Clippy, formatting and
+separate static review pass. See `native-slotted-loop-20261019T1025Z.json`.
+This supersedes the missing *explicit composition* below. Production pool/model
+authentication, common policy fencing, startup issuer, physical-start custody,
+real provider completion, settlement/release and recovery remain open. The
+tests reach only the unconfigured ResourceGate; they do not launch a provider.
+
+**10:00Z primary correction:** PR121 was actually approved and merged at
+09:46Z, receiving `a9d0a002628d1b4d433380aab7a414c328412f96`. SC156's sole
+backup deployer cut over that exact source at 09:57:56Z. Root independently
+verified all 14 manifest files, both executable hashes/start identities,
+health/UI/feed and 18891 redirect at 10:00:15.499Z. Rust producer model turns
+remain zero; history is 256 displayed/537 retained, with no retired owned
+Python or prior af6 PIDs. Original first-history time/browser controls were
+not requalified. See `native-a9d0a002-independent-20261019T1000Z.json`.
+The new composition above is separately packaged source, not yet a live claim.
+Main a9d0 browser CI passed; Rust failed one controlled-capture deadline
+(95 server cases passed, 1 failed, 2 ignored). The single CI backlog retains
+that failure; scoped passing checks do not make the workflow green.
+
 **09:45Z component addendum:** source
 `d9cd57464b01f08a59fef97159d5a040dddc4dbe` adds the optional reserve-only
 managed inference-slot journal and atomic Store claim/budget/hold/outbox path.

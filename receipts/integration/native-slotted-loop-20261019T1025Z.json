@@ -1,0 +1,522 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T10:25:59.723Z",
+  "source_commit": "a08d2e8d2bfc55121a0ce96532aa9c8fa822c65b",
+  "base_commit": "a9d0a002628d1b4d433380aab7a414c328412f96",
+  "scope": "Explicit trusted-local slotted controller, retained actual Codex preparation binding, native-loop protected admission/retry/dispatch composition; no production activation",
+  "files": [
+    {
+      "repo_path": "crates/admiralty-server/src/services/controller.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/controller.rs",
+      "bytes": 55320,
+      "sha256": "ac635372ef34a2ee4d254e8a6ce0411003b20ef48f88cff108b8f5ad71e47ed8"
+    },
+    {
+      "repo_path": "crates/admiralty-server/src/services/native_codex_plan.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_codex_plan.rs",
+      "bytes": 33422,
+      "sha256": "81bc6bbca148560db28db9d331aaca9badde190a485d7d4dc8b80ca51fa56b6a"
+    },
+    {
+      "repo_path": "crates/admiralty-server/src/services/native_task_loop.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/src/services/native_task_loop.rs",
+      "bytes": 79720,
+      "sha256": "1959c0f9df46cc0dc97eae1ce327bd6a134607c55c5fba826c556ed654d72941"
+    },
+    {
+      "repo_path": "crates/admiralty-server/tests/controller_slots.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/tests/controller_slots.rs",
+      "bytes": 20236,
+      "sha256": "375d9c12e28f857b41f8b078152d369fd1ec7be6c5c7fd226f89a0348d9456f0"
+    },
+    {
+      "repo_path": "crates/admiralty-server/tests/native_codex_plan.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-server/tests/native_codex_plan.rs",
+      "bytes": 77720,
+      "sha256": "632d9065759cd7cac05ef2167d11ed11ab448e34dfdf1265c796c224a85e84e0"
+    }
+  ],
+  "implementation": {
+    "controller": "admit_one_slotted binds held registry model ID to exact outbox declaration and joins actual Store claim/budget/hold/intent; no lower-protection fallback",
+    "factory": "Private retained exact ModelSpec/task plus original PreparedCodexLaunch tuple/spec; independent fullModelSpec and routingtuple digest domains, registry/provider/observed identities remain separate",
+    "inference_and_kernel": "Inference claim digest never replaces full kernel claims or kernel reservation scope. Current Store profile binds command source incarnation to kernel scope while Codex tuple producer incarnation remains distinct.",
+    "ownership": "Factory binding failure returns original bound preparation, both proofs/commands and claim. RejectedSlotAdmission boxes and returns original plan+private slot; no clone or capability loss.",
+    "private_binding": "NonClone/nonDeserialize/no public constructor; matches exact request/spec/full resource claims/whole reservation/authority Arc/workspace metadata/head/tree. Does not attest live inode custody/current policy.",
+    "retention": "Native loop holds original private mapping/commands/proofs, hold/pool physical key/generation and original CAS-successor receipts across uncertain replies.",
+    "current_checks": "Exact original slotted controller replay and current authorized whole budget/hold/key/generation on admission retry and dispatch, repeated at RecordingRuntime after final clock sample; unrelated global ledger updates allowed.",
+    "unknowns": "Dispatch-held/unknown cannot requeue, downgrade, refund or release; occupancy and budget liability remain.",
+    "policy_fence": "Separate observational policies sampled sequentially, no common retained authorization fence or physical-start linearization installed."
+  },
+  "checks": [
+    {
+      "environment": "RootMac",
+      "command": "cargo test -p admiralty-server --test controller_slots --test native_codex_plan --locked -- --test-threads=1",
+      "passed": 18,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 0,
+      "raw": {
+        "path": "/private/tmp/adm-slotted-native-revised-tests.log",
+        "bytes": 2305,
+        "sha256": "87233de2672eea5c109e8b98f531ea8708811b3938373ebe8aa94fc2ebded0db"
+      },
+      "breakdown": {
+        "controller": 5,
+        "factory_file_total": 13,
+        "factory_file_breakdown": {
+          "existing": 5,
+          "new_binding": 4,
+          "new_slotted_loop": 4
+        }
+      }
+    },
+    {
+      "environment": "RootMac",
+      "command": "cargo test -p admiralty-server --lib services::native_task_loop --locked -- --test-threads=1",
+      "passed": 16,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 82,
+      "raw": {
+        "path": "/private/tmp/adm-slotted-native-revised-unit.log",
+        "bytes": 2285,
+        "sha256": "658761520b72cf8a9ead2ffc7f0eff68d84eca9a9de460b7da28d4067d062582"
+      }
+    },
+    {
+      "environment": "ActualLinuxxbabe2",
+      "command": "Same two actual Cargo targets in one sequential capped invocation",
+      "passed": 34,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 82,
+      "raw": {
+        "path": "/private/tmp/adm-slotted-native-linux-test.log",
+        "bytes": 5871,
+        "sha256": "a2e5690a8ff6042e5cecb0f3a129c15e2a4b4dc5849e7c92c430a289904485ad"
+      },
+      "invocation": {
+        "schema_version": 1,
+        "source": "a08d2e8d2bfc55121a0ce96532aa9c8fa822c65b",
+        "source_archive_sha256": "e2628e169c68103ddaf8403c96e1b523427e48a22635477af52523cfcb267dd0",
+        "source_directory": "/home/ubuntu/admiralty-v2-build/native-model-loop-a08d2e8d-20261019T102226Z",
+        "started_utc": "2026-10-19T10:22:27.039Z",
+        "finished_utc": "2026-10-19T10:24:30.144Z",
+        "code": 0,
+        "signal": null,
+        "error": null,
+        "outer": {
+          "observed_utc": "2026-10-19T10:22:26.919Z",
+          "cpu_percent": 19.24801384409659,
+          "mem_available_kib": 81380748,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        },
+        "inside_gates_in_log": true,
+        "log_sha256": "a2e5690a8ff6042e5cecb0f3a129c15e2a4b4dc5849e7c92c430a289904485ad",
+        "log_bytes": 5871,
+        "tail": [
+          "   Compiling admiralty-server v0.1.0 (/home/ubuntu/admiralty-v2-build/native-model-loop-a08d2e8d-20261019T102226Z/crates/admiralty-server)",
+          "    Finished `test` profile [unoptimized] target(s) in 13.07s",
+          "     Running unittests src/lib.rs (target-linux/debug/deps/admiralty_server-9bd2583ce72fd672)",
+          "",
+          "running 16 tests",
+          "test services::native_task_loop::budget_tests::current_budget_dispatch_reaches_only_the_unconfigured_executor_without_a_child ... ok",
+          "test services::native_task_loop::budget_tests::dispatch_denial_marks_effect_unknown_without_runtime_or_admission_retry ... ok",
+          "test services::native_task_loop::budget_tests::failed_writer_admission_retains_registered_plan_for_authorized_retry ... ok",
+          "test services::native_task_loop::budget_tests::mismatched_reservation_and_command_return_actual_preparation_without_effects ... ok",
+          "test services::native_task_loop::budget_tests::protected_admission_commits_one_debit_claim_and_exact_outbox_effect ... ok",
+          "test services::native_task_loop::budget_tests::request_stop_invalidates_retry_and_dispatch_while_liability_stays_outstanding ... ok",
+          "test services::native_task_loop::budget_tests::revoked_budget_authority_blocks_dispatch_replay_and_cannot_reset_unknown_effect ... ok",
+          "test services::native_task_loop::budget_tests::stop_at_second_dispatch_clock_sample_fences_runtime_and_preserves_liability ... ok",
+          "test services::native_task_loop::tests::actual_durable_claim_with_lost_reply_replays_without_registering_or_spawning_again ... ok",
+          "test services::native_task_loop::tests::clock_unavailable_is_retryable_before_claim_but_expired_lease_never_launches ... ok",
+          "test services::native_task_loop::tests::completion_backpressure_never_calls_one_shot_custody_transfer ... ok",
+          "test services::native_task_loop::tests::denied_admission_keeps_registration_and_exact_retry_claims_once ... ok",
+          "test services::native_task_loop::tests::exact_dispatch_key_leaves_foreign_pending_task_and_effect_untouched ... ok",
+          "test services::native_task_loop::tests::existing_recovery_evidence_rejects_registration_and_returns_actual_preparation ... ok",
+          "test services::native_task_loop::tests::full_preflight_rejects_stale_scope_identity_and_preserves_original_plan ... ok",
+          "test services::native_task_loop::tests::lease_bounds_and_retained_admission_capacity_reject_before_losing_plan ... ok",
+          "",
+          "test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 82 filtered out; finished in 23.38s",
+          "",
+          ""
+        ],
+        "jobs": 1,
+        "test_threads": 1,
+        "unique_target": "/home/ubuntu/admiralty-v2-build/native-model-loop-a08d2e8d-20261019T102226Z/target-linux",
+        "private_tmp": "/home/ubuntu/admiralty-v2-build/native-model-loop-a08d2e8d-20261019T102226Z/private-tmp",
+        "cache_copy_only": "/home/ubuntu/admiralty-v2-build/native-model-loop-c175412b-20261019T101806Z/target-linux",
+        "workspace_packages_cleaned_in_new_target": true,
+        "original_cache_not_mutated": true,
+        "provider_run": false,
+        "service_control": false,
+        "after": {
+          "observed_utc": "2026-10-19T10:24:31.412Z",
+          "cpu_percent": 30.91253552257657,
+          "mem_available_kib": 70242404,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        }
+      },
+      "result": {
+        "path": "/private/tmp/adm-slotted-native-linux-result.json",
+        "bytes": 4131,
+        "sha256": "ef2b1714db0b15cd51ca1de9197879c3e755964b3e3f9c96db6d2946047d2ea5"
+      },
+      "post_run_source_hashes": {
+        "path": "/private/tmp/adm-slotted-native-linux-posthash.json",
+        "bytes": 714,
+        "sha256": "3faaa0fdccb3ed4177a4e0c0d0830f9393f582e3e7497058428ee02b36006817"
+      },
+      "same34_cases_as_Mac": true
+    },
+    {
+      "environment": "RootMac",
+      "command": "cargo clippy -p admiralty-server --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "raw": {
+        "path": "/private/tmp/adm-slotted-native-revised-clippy.log",
+        "bytes": 180,
+        "sha256": "78219fabd65746b36a729356f6366e2ce14a0d7857dc41dfedcce191c5e92a37"
+      }
+    },
+    {
+      "environment": "RootWorkspace",
+      "command": "cargo fmt --all --check; git diff --check",
+      "exit_code": 0,
+      "raw": [
+        {
+          "path": "/private/tmp/adm-slotted-native-revised-fmt.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "/private/tmp/adm-slotted-native-revised-diff-check.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    }
+  ],
+  "counts": {
+    "scoped_cases_per_platform": 34,
+    "new_cases": 13,
+    "new_cases_subset_of34": true,
+    "same_cases_across_platforms_and_workers_not_additive": true,
+    "nested_variants_not_counted_as_top_level_cases": true,
+    "whole_workspace_suite": false
+  },
+  "worker_receipts": [
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/factory-receipt.json",
+      "bytes": 4907,
+      "sha256": "979a96ba132ef62d69d1c6d7d6efbe449ce822ecd7cd56915359282c0f58817d"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-receipt.json",
+      "bytes": 6496,
+      "sha256": "fe7dbd0a4039dae5090a2d1b7a5ee1b73a2baf3878e5eab3f889f6a5da6f031b"
+    }
+  ],
+  "preserved_worker_logs": [
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/umask-before.log",
+      "bytes": 5095,
+      "sha256": "be16afbbe98fff76e2845029157d6b293b37691979be29c571951a132bf0672f"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/umask-before-command.json",
+      "bytes": 685,
+      "sha256": "44e447e0ac1cebfa4f13810cefee5c430e61852462a1a93ef495cb7b3c50f92a"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/umask-before-result.json",
+      "bytes": 72,
+      "sha256": "32677025a6fed8a804f952b4afee754e90bb78d2f6d3761a69ec96ba3944d4f6"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/tests-attempt1.log",
+      "bytes": 1871,
+      "sha256": "bec87bfb5aa6966e4d20831fc6f37f98df5d9eba98faffdad02877a3a8e0b8a6"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/tests-attempt1-command.json",
+      "bytes": 302,
+      "sha256": "2c47826800734cd0c6521e15e03dc6f446c08d8036cff838922b8c774c0332f3"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/tests-attempt1-result.json",
+      "bytes": 72,
+      "sha256": "4766faafe04b61e650ca055dae9bdd6df6fcc42d60abe2ac855703ebb7130765"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/tests-attempt2.log",
+      "bytes": 1341,
+      "sha256": "e2edd93a4b64ec47318d496fe794ad1a504619f3a2177ac270ae2e2a5368e4b3"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/tests-attempt2-command.json",
+      "bytes": 302,
+      "sha256": "111b85ec562fbf5772dab776f3d5a306012d7f9ad1de28ee91af249059d84f75"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/tests-attempt2-result.json",
+      "bytes": 70,
+      "sha256": "4520ba298d1c3de7b4837f3a724a5834c4f78acc63ebdf2c1345c48528288753"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/clippy.log",
+      "bytes": 3458,
+      "sha256": "4147d22b8eb1dfcd0978ef78dd85a1d2465c3fed033d3d83d318f4f7813eca26"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/clippy-command.json",
+      "bytes": 206,
+      "sha256": "df418543906e0c1144d41bdd6752303fb193064e89e1c8cc39ca47af3bbaabd2"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/clippy-result.json",
+      "bytes": 70,
+      "sha256": "43450e8d863df6a463a2b88234724c168c9e366e6c020b00e30eea7040b98b8f"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/diff.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-attempt1.log",
+      "bytes": 2637,
+      "sha256": "421d20e12e29569ec9d8eb87f76e6c2ef436ff181b9e269d73cd00476405b585"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-attempt1-command.json",
+      "bytes": 859,
+      "sha256": "23c103fae80d58a8590c718684a493ccc622ae015a8c10b53b0e7d5220424156"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-attempt1-result.json",
+      "bytes": 72,
+      "sha256": "586cccf1b044ed2d0a2efbbd9e19735b599c5f0cb24d1edb46a4210a76851f73"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-attempt2.log",
+      "bytes": 865,
+      "sha256": "6afa95396b0c59a865e7b6880160a081b75eecd8b41e1c407cf030758cfbf8eb"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-attempt2-command.json",
+      "bytes": 859,
+      "sha256": "b775843ed84777e3eb7702bfd3ebd962f64213baad3f8a98d1c542eac90e0117"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-attempt2-result.json",
+      "bytes": 70,
+      "sha256": "abb73234fa3061aed602f8dd5e939d4512b093fe0d73378ec7a6696744d226ff"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-clippy.log",
+      "bytes": 988,
+      "sha256": "09ac26b9c6ccc314d1433ee8033c707ad15667abc3c58f9bc8908686a2037249"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-clippy-command.json",
+      "bytes": 206,
+      "sha256": "d56181b01031482cb90d0edcf7012b6f7cafab38a30a927fde73e45f423b5b28"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-clippy-result.json",
+      "bytes": 72,
+      "sha256": "4d67cf228ec93d020e009951780cf28ef4fc5d639a1b333202a1e9d75b87cbf6"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-attempt3.log",
+      "bytes": 865,
+      "sha256": "1985e2fb9e433790ba3f1f0a568cd8974d0b34e6bca28d8fd84a85af3148b1cf"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-attempt3-command.json",
+      "bytes": 859,
+      "sha256": "e35fc6b56d4de5ed7e0901c5f6fd24f41327765e60822855414b84cb66ac3132"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-attempt3-result.json",
+      "bytes": 70,
+      "sha256": "a1c4c85067ef872652921ac02cf5d7a5970dd74b59d626f9e2297ef190991366"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-clippy-final.log",
+      "bytes": 195,
+      "sha256": "56ca937ea92dfda3c9eebc24adc69b72c8cecf8df0db7244eaa043f294afa8ea"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-clippy-final-command.json",
+      "bytes": 206,
+      "sha256": "6c1603ac7cbcb16c2730b1b37e2cb7f5ec1f033a016241906c40e01151120b7b"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-clippy-final-result.json",
+      "bytes": 70,
+      "sha256": "c889cae0dc64107e65b64208a08ef82b382174253071809e0c7d4231a50ecd00"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/adm-codex-slot-factory-proof/loop-diff.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "original_failures": [
+    {
+      "source": "a9d0 original existing fixture, unchanged before reproduction",
+      "passed": 0,
+      "failed": 1,
+      "filtered_out": 4,
+      "cause": "UnsafeSourceMetadata under owned child-shell umask002; repaired ONLY owned Git child with argv-preserving /bin/sh umask077 wrapper, no process-global/shared guard changes",
+      "actual_linux_reproduction_claimed": false
+    },
+    {
+      "cause": "First factory test draft two compile errors: partial move/boolean match arm; corrected tests only"
+    },
+    {
+      "cause": "First new loop test draft five compile errors: unavailable direct rusqlite dependency and trait scope; used existing actual Store APIs, no dependency/manifest change"
+    },
+    {
+      "cause": "Actual strict Clippy result_large_err, >=3464byte unboxed rejected slot. Boxed the same original slot capability on all three rejection paths; no lint suppression/guard weakening."
+    }
+  ],
+  "prior_revision_checks": {
+    "source_commit": "c175412b532142939bc48de89070d3d74d8a73d7",
+    "mac_integration": {
+      "passed": 18,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 0,
+      "raw": {
+        "path": "/private/tmp/adm-slotted-native-final-tests.log",
+        "bytes": 2305,
+        "sha256": "50be13addf93fa58f68f74ef8f7883feca561bdbce9181741c963fcdc61d9325"
+      }
+    },
+    "mac_unit": {
+      "passed": 16,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 82,
+      "raw": {
+        "path": "/private/tmp/adm-slotted-native-final-unit.log",
+        "bytes": 2393,
+        "sha256": "511ca9166bbdd654d5195ac80dd64352a986deced30ecb1e9a6efcd5936a712a"
+      }
+    },
+    "linux": {
+      "passed": 34,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 82,
+      "raw": {
+        "path": "/private/tmp/adm-slotted-native-c175-test.log",
+        "bytes": 5872,
+        "sha256": "0f260201df248a941578ce2e06550cc3e3891c0df9f599bd430b6d506c2760d7"
+      }
+    },
+    "linux_result": {
+      "path": "/private/tmp/adm-slotted-native-c175-result.json",
+      "bytes": 4127,
+      "sha256": "801585a4278915d3287c4c41898d07999ef99a20221999c7024d148eeb87e664"
+    },
+    "linux_posthash": {
+      "path": "/private/tmp/adm-slotted-native-c175-posthash.json",
+      "bytes": 714,
+      "sha256": "a4076310799c7cf486e98ac3ead2beccdee81824b6f7c2425f401be4e750683a"
+    },
+    "strict_clippy_failure": {
+      "path": "/private/tmp/adm-slotted-native-clippy-bool-failure.log",
+      "bytes": 1139,
+      "sha256": "4ea197f3593402b70312fae7cc12edf556c45bf0cfa0007209c782b8bbe7ce95"
+    },
+    "repair": "Only assert_eq!(same capacity predicate,true) changed to assert!(same predicate). Three production files unchanged; all 34 cases and strict checks then rerun at final a08 source. Prior and final platform cases are not additive.",
+    "linux_invocations_total": 2,
+    "final_source_linux_invocations": 1
+  },
+  "static_review": {
+    "path": "/private/tmp/adm-slotted-native-a08-review-xep0y0/review.json",
+    "bytes": 3643,
+    "sha256": "05a456880f4a922ff4961e9f6480bc1c895cfef871cdf994b764cf0794954508"
+  },
+  "prior_static_review": {
+    "path": "/private/tmp/adm-slotted-native-final-static-review.json",
+    "bytes": 4940,
+    "sha256": "3a968c192ec1fd0c1845bccf7f2f840358cfd586354689498f866d3630932c60"
+  },
+  "review_scope": "Separate source/test/evidence review; no reviewer or neverhumanbot test execution claimed.",
+  "live": {
+    "source": "a9d0a002628d1b4d433380aab7a414c328412f96",
+    "observed_utc": "2026-10-19T10:00:15.499Z",
+    "independent": {
+      "path": "/private/tmp/admiralty-a9d-independent-20261019T1000Z.json",
+      "bytes": 5173,
+      "sha256": "65e5a5b67e408755b62b74869d87d75c200a43940a5fe8aa74b60be082b0505b"
+    },
+    "owner_deploy": {
+      "path": "/private/tmp/adm-a9d0-owner-deployment-receipt.json",
+      "bytes": 8872,
+      "sha256": "cf88bccbb6e1854d6a5068aa1094d2b8de327425387b9e29336a95434bcbc6e8"
+    },
+    "root_service_control": false
+  },
+  "ci": {
+    "source": "a9d0a002628d1b4d433380aab7a414c328412f96",
+    "browser": {
+      "run": "39232621504",
+      "status": "success"
+    },
+    "rust": {
+      "run": "39232621495",
+      "status": "failure",
+      "server_passed": 95,
+      "server_failed": 1,
+      "server_ignored": 2,
+      "cause": "controlled child capture deadline at native_executor.rs2319",
+      "raw": {
+        "path": "/private/tmp/adm-ci-a9d0-rust-39232621495.log",
+        "bytes": 192103,
+        "sha256": "c81df12a34341973e51d9c3db90fa6003049b19d141b1eb9e14cc5e5c77a2a8a"
+      }
+    },
+    "single_backlog": true,
+    "no_resource_cause_inferred": true,
+    "no_rerun_cancel_runner_control": true
+  },
+  "limits": {
+    "ResourceGate_unconfigured_in_loop_tests": true,
+    "metadata_only_synthetic_CLI_help_not_provider_turn": true,
+    "live_registry_or_pool_authentication_installed": false,
+    "production_issuer_or_common_fence_installed": false,
+    "default_scheduler_provider_route_enabled": false,
+    "actual_provider_completion_qualified": false,
+    "new_provider_grant": false,
+    "SC155_reused": false,
+    "usage_settlement_or_release": false,
+    "coordinator_process_restart_qualified": false,
+    "filesystem_inode_custody_attested_by_private_comparison": false,
+    "general_native_execution_qualified": false,
+    "full_parent_acceptance": false,
+    "full_hosted_CI_green": false,
+    "root_primary_service_control": false
+  }
+}

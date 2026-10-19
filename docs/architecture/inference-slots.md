@@ -51,7 +51,40 @@ have separate byte bounds and canonical digests/revisions; open and recovery
 replay the journal and compare the materialized ledger. Checked sums and revision
 overflow fail closed.
 
-This is a Store component. It does not activate physical capacity admission,
-NativeTaskLoop/ResourceGate/model-selection composition, provider execution,
-usage valuation, settlement/release, restart process reconciliation or full
-P03/P10/P14 acceptance. No host names or model endpoints are hard-coded.
+The explicit controller `admit_one_slotted` binds the held registry model ID to
+the exact declared outbox model and delegates the transaction to Store. This
+declared-only entry point does not authenticate a prepared provider mapping.
+
+`BoundNativeCodexPlan::bind_inference_slot` retains the original selected
+`ModelSpec`, TaskView and descriptor-backed preparation. It compares the actual
+Codex tuple's full-model digest separately from model selection's routing-field
+digest. Registry model ID and provider-requested model are different namespaces;
+neither becomes an observed model identity. Actual prepared argv/spec, full
+kernel claims, original kernel reservation, inference claim, both commands and
+planned effect are bound without conflating inference and kernel scope digests.
+This Store profile requires the command source incarnation to match its kernel
+scope; the Codex tuple's producer incarnation remains independently bound.
+
+The returned private `NativeCodexSlotAdmission` cannot be constructed from JSON
+or public hashes. Its pure `matches_plan` comparison freezes the exact request,
+launch spec, complete resource claims/reservation, permit-authority Arc and
+workspace metadata/head/tree. Live filesystem descriptor/inode custody and
+current resource authorization remain the existing execution gates' job. Every
+factory rejection returns the original bound preparation, proofs and claim.
+
+`NativeTaskLoop::admit_slotted` returns the original plan and private slot
+binding on pre-admission or registration rejection. Once registered, it retains
+those capabilities, original commands/proofs, hold, physical key/generation and
+receipt revisions through uncertain replies. Admission retry and dispatch use
+the slotted controller path, with no budget-only fallback. They require the
+exact current authorized hold/budget and unchanged generation/key; unrelated
+global-ledger advances do not change the original receipts. The runtime repeats
+the same check after the final controller clock sample. Unknown dispatch retains
+all custody/occupancy/liability and cannot be reset by a retry.
+
+These are explicit trusted-local composition APIs. They install no startup
+issuer, live registry/pool authentication, common policy fence, physical-start
+linearization or default scheduler/provider route. Provider completion, usage
+valuation, settlement/release, restart process reconciliation and full
+P03/P10/P14 acceptance remain separate. No host names or model endpoints are
+hard-coded.

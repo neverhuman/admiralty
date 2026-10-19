@@ -1,0 +1,88 @@
+{
+  "kind": "independent-static-native-slot-composition-review",
+  "observed_utc": "2026-10-19T10:20:42.480Z",
+  "reviewer": "audit_evidence",
+  "verdict": "CLEAR",
+  "source": {
+    "repository": "/Users/bentaylor/Documents/ChatGPT/admiralty",
+    "commit": "c175412b532142939bc48de89070d3d74d8a73d7",
+    "files": [
+      {
+        "path": "crates/admiralty-server/src/services/controller.rs",
+        "sha256": "ac635372ef34a2ee4d254e8a6ce0411003b20ef48f88cff108b8f5ad71e47ed8",
+        "bytes": 55320,
+        "working_matches_commit": true
+      },
+      {
+        "path": "crates/admiralty-server/src/services/native_codex_plan.rs",
+        "sha256": "81bc6bbca148560db28db9d331aaca9badde190a485d7d4dc8b80ca51fa56b6a",
+        "bytes": 33422,
+        "working_matches_commit": true
+      },
+      {
+        "path": "crates/admiralty-server/src/services/native_task_loop.rs",
+        "sha256": "1959c0f9df46cc0dc97eae1ce327bd6a134607c55c5fba826c556ed654d72941",
+        "bytes": 79720,
+        "working_matches_commit": true
+      },
+      {
+        "path": "crates/admiralty-server/tests/controller_slots.rs",
+        "sha256": "5c949b798d4e11f7ce0e65e5602c9f163305149e12b48a6bcea00d8f0bb710a7",
+        "bytes": 20253,
+        "working_matches_commit": true
+      },
+      {
+        "path": "crates/admiralty-server/tests/native_codex_plan.rs",
+        "sha256": "632d9065759cd7cac05ef2167d11ed11ab448e34dfdf1265c796c224a85e84e0",
+        "bytes": 77720,
+        "working_matches_commit": true
+      }
+    ]
+  },
+  "prior_review": {
+    "path": "/private/tmp/adm-slotted-native-static-review-GLAv6t/review.json",
+    "sha256": "1b2498d03cca55e25f84cef24ba0996740b59cc08d860d180e534535ae3cf550",
+    "preserved": true
+  },
+  "review_scope": [
+    "Previously reviewed controller slotted atomic admission, exact source/model/outbox bindings, current policy and durable replay",
+    "Previously reviewed factory-only opaque binding of actual prepared provider, workspace metadata/head/tree, complete resource and inference claims and retained authority identity",
+    "Previously reviewed NativeTaskLoop retained admission/dispatch path with final RecordingRuntime guard and unknown holds",
+    "Final four-line loop boxing delta preserves the original capability and all rejection ownership",
+    "Final controller test delta separates hold and claimed counts rather than allowing sum cancellation",
+    "All thirteen native_codex_plan test definitions and all five controller_slots test definitions statically read; new factory matrix and four actual Store loop journeys reviewed"
+  ],
+  "test_scope": {
+    "native_codex_plan_definitions": 13,
+    "composition": {
+      "existing_factory": 5,
+      "new_factory": 4,
+      "new_loop": 4
+    },
+    "controller_slots_definitions": 5,
+    "combined_integration_definitions": 18,
+    "separate_existing_loop_unit_cases_reported_by_parent": 16,
+    "planned_parent_scoped_run_total": 34,
+    "reviewer_tests_run": 0,
+    "actual_test_results": "Not qualified by this static receipt; parent owns raw Mac and exact-source Linux results."
+  },
+  "findings": [],
+  "positive_checks": [
+    "Different registry ID and provider model remain distinct; selected ModelSpec digest differs from routing model configuration digest",
+    "38 invalid inference/command variants include coherently recomputed digests, retaining original preparation, proof Arcs and input claims on error",
+    "Request and plan mutation matrices require restoration before private capability matches again; original prepared workspace custody remains separately checked",
+    "Store loop fixtures use private directories and fixed help-only provider fixture; ResourceGate is intentionally unconfigured",
+    "Current revocation and managed-pool rotation before or during the second clock prevent runtime attempt and retain liability",
+    "Unconfigured executor invocation produces no pending resource admission, no completion and no automatic unknown retry",
+    "Exact replay preserves original budget/slot receipts across unrelated ledger changes and current denial",
+    "Controller tests cover exact-key outbox payload, no second due intent, typed refreshed capacity loss and no downgrade"
+  ],
+  "limits": [
+    "Static source/test review only; no reviewer builds, tests, remote effects, provider calls, services or source edits",
+    "Private test authority adapters do not authenticate production selection or create an issuer",
+    "Private matches_plan freezes supplied original bindings; it does not itself attest current filesystem inode/custody, live policy, physical capacity or observed provider model",
+    "No configured ResourceGate or actual coding-provider execution is qualified by these tests",
+    "No joint policy-at-commit/start fence or production startup activation is asserted",
+    "No full parent acceptance, CI green, provider identity, release or fleet qualification is asserted"
+  ]
+}
