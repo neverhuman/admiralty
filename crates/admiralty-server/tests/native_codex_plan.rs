@@ -7,8 +7,8 @@ pub use admiralty_server::services::{controller, native_codex_plan, native_execu
 mod tests {
     use super::{controller, native_codex_plan, native_executor};
     use admiralty_core::{
-        content_digest, nodes::NodeId, AcceptanceCriterion, AttemptId, CheckSpec, PrincipalId,
-        ProjectId, RootId, SchedulingState, SourceIdentity, TaskContract, TaskId, TaskView,
+        AcceptanceCriterion, AttemptId, CheckSpec, PrincipalId, ProjectId, RootId, SchedulingState,
+        SourceIdentity, TaskContract, TaskId, TaskView, content_digest, nodes::NodeId,
     };
     use admiralty_runtime::{
         models::{ModelSpec, Provider},
@@ -29,12 +29,12 @@ mod tests {
         },
         session::{CaptureState, LaunchSpec, OutputStream, SessionError, SessionHost},
         workspace::{
-            preparation::{prepare_workspace, PreparedWorkspace, WorkspacePreparation},
+            preparation::{PreparedWorkspace, WorkspacePreparation, prepare_workspace},
             registry::NodeRef,
         },
     };
     use admiralty_server::{
-        model_selection::{model_config_digest, InferenceSlotClaim},
+        model_selection::{InferenceSlotClaim, model_config_digest},
         services::{
             native_loop::StartedScope,
             native_task_loop::{
@@ -44,6 +44,7 @@ mod tests {
         },
     };
     use admiralty_store::{
+        BudgetAndSlotAdmission, Store, StoreAuthorities,
         admission_reservations::{
             self, ReservationAuthority, ReservationBinding, ReservationCommand, ReservationProof,
         },
@@ -51,11 +52,11 @@ mod tests {
             self, InferenceSlotAuthority, SlotBinding, SlotClaim, SlotCommand, SlotEvent,
             SlotLedger, SlotProof,
         },
-        outbox, BudgetAndSlotAdmission, Store, StoreAuthorities,
+        outbox,
     };
     use native_codex_plan::{
-        prepare_codex_plan, BoundNativeCodexPlan, CodexPlanError, CodexPlanInput,
-        CodexResourceBinding, NativeCodexAdmissionReadProofs, PreparedNativeCodexPlan,
+        BoundNativeCodexPlan, CodexPlanError, CodexPlanInput, CodexResourceBinding,
+        NativeCodexAdmissionReadProofs, PreparedNativeCodexPlan, prepare_codex_plan,
     };
     use std::{
         any::Any,
@@ -66,8 +67,8 @@ mod tests {
         os::unix::fs::{DirBuilderExt, PermissionsExt},
         path::{Path, PathBuf},
         sync::{
-            atomic::{AtomicBool, Ordering},
             Arc,
+            atomic::{AtomicBool, Ordering},
         },
         thread,
         time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -1251,8 +1252,12 @@ mod tests {
             .unwrap();
     }
     fn loop_fixture() -> SlotLoopFixture {
+        loop_fixture_with_slot_read(None)
+    }
+
+    fn loop_fixture_with_slot_read(slot_read_override: Option<SlotProof>) -> SlotLoopFixture {
         let mut fixture = slot_fixture();
-        let (bound, mut inputs, inference, expected, reads) = slot_inputs(&mut fixture);
+        let (bound, mut inputs, inference, expected, mut reads) = slot_inputs(&mut fixture);
         let policy = Arc::new(LoopPolicy {
             claim: slot_claim_mut(&mut inputs).clone(),
             slot_live: AtomicBool::new(true),
@@ -1312,6 +1317,9 @@ mod tests {
         inputs.slot_command.expected_ledger_revision = slots.revision;
         inputs.slot_command.expected_ledger_digest =
             inference_slots::ledger_digest(&slots).unwrap();
+        if let Some(slot_read_proof) = slot_read_override {
+            reads.slot = slot_read_proof;
+        }
         let original_inputs = clone_slot_inputs(&inputs);
         let (plan, request, _, _, _, slot) = bound
             .bind_inference_slot(inputs, inference, reads)
@@ -1489,7 +1497,7 @@ mod tests {
         assert!(matches!(retry, AdmissionStatus::Queued(ref d) if d.duplicate));
         assert_eq!(f.receipts(), original);
         assert_eq!(f.counts(), before);
-        f.policy.slot_read_live.store(false, Ordering::SeqCst);
+        f.policy.slot_live.store(false, Ordering::SeqCst);
         assert!(matches!(
             f.task_loop
                 .retry_admission(&f.request.run_id, &f.admission)
@@ -1507,7 +1515,7 @@ mod tests {
                 ..
             }
         ));
-        f.policy.slot_read_live.store(true, Ordering::SeqCst);
+        f.policy.slot_live.store(true, Ordering::SeqCst);
         assert_eq!(f.counts(), before);
         assert_eq!(f.receipts(), original);
         f.assert_held();
@@ -1525,6 +1533,83 @@ mod tests {
                 .unwrap(),
             AdmissionStatus::Held(_)
         ));
+    }
+
+    #[test]
+    fn slotted_loop_read_revocation_holds_without_executor_attempt_and_retains_hold() {
+        let mut f = loop_fixture();
+        assert!(matches!(f.admit(), AdmissionStatus::Queued(_)));
+        let before = f.counts();
+        f.policy.slot_read_live.store(false, Ordering::SeqCst);
+        assert!(matches!(
+            f.task_loop
+                .retry_admission(&f.request.run_id, &f.admission)
+                .unwrap(),
+            AdmissionStatus::Held(_)
+        ));
+        assert!(matches!(
+            f.task_loop
+                .dispatch(&f.request.run_id, &FixedClock, &f.admission)
+                .unwrap(),
+            TaskDispatchStatus::Held {
+                runtime_attempted: false,
+                ..
+            }
+        ));
+        f.policy.slot_read_live.store(true, Ordering::SeqCst);
+        assert_eq!(f.counts(), before);
+        f.assert_held();
+    }
+
+    #[test]
+    fn wrong_slotted_read_proof_rejects_preflight_without_effects_or_retained_run() {
+        let bad_read: SlotProof = Arc::new("foreign-slot-read-proof".to_owned());
+        let bad_read_weak = Arc::downgrade(&bad_read);
+        let mut f = loop_fixture_with_slot_read(Some(Arc::clone(&bad_read)));
+        drop(bad_read);
+        let before = f.counts();
+        let original_head = f
+            .plan
+            .as_ref()
+            .unwrap()
+            .prepared_workspace
+            .head_oid()
+            .to_owned();
+        let original_slot_proof = Arc::clone(&f.original_inputs.slot_proof);
+        let rejected = f
+            .task_loop
+            .admit_slotted(
+                f.request.clone(),
+                f.plan.take().unwrap(),
+                &f.admission,
+                f.slot.take().unwrap(),
+            )
+            .expect_err("foreign slot read proof is rejected before registration");
+        assert_eq!(
+            rejected.reason,
+            admiralty_server::services::native_task_loop::LoopError::StoreUnavailable
+        );
+        assert_eq!(rejected.plan.prepared_workspace.head_oid(), original_head);
+        assert!(Arc::ptr_eq(
+            &rejected.slot.inputs().slot_proof,
+            &original_slot_proof
+        ));
+        assert_eq!(
+            bad_read_weak.strong_count(),
+            1,
+            "rejected slot retains the supplied read proof"
+        );
+        assert_eq!(
+            f.counts(),
+            before,
+            "preflight rejection has no durable effects"
+        );
+        assert!(matches!(
+            f.task_loop.retry_admission(&f.request.run_id, &f.admission),
+            Err(admiralty_server::services::native_task_loop::LoopError::UnknownRun)
+        ));
+        drop(rejected);
+        assert_eq!(bad_read_weak.strong_count(), 0);
     }
 
     #[test]

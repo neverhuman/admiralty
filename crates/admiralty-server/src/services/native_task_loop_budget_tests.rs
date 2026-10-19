@@ -3,10 +3,10 @@
 //! retained loop state only, never Linux enforcement or a real provider.
 
 use super::{
-    controller::{self, CurrentAdmission},
-    tests::{fixture_with_authority, TestFixture},
     AdmissionStatus, DispatchAdmission, DispatchClock, DispatchIntent, HoldReason,
     NativeBudgetAdmission, TaskDispatchStatus,
+    controller::{self, CurrentAdmission},
+    tests::{TestFixture, fixture_with_authority},
 };
 use admiralty_core::TaskView;
 use admiralty_runtime::reservations::{
@@ -14,8 +14,8 @@ use admiralty_runtime::reservations::{
 };
 use admiralty_store::{
     admission_reservations::{
-        ledger_digest, ReservationAuthority, ReservationBinding, ReservationCommand,
-        ReservationProof,
+        ReservationAuthority, ReservationBinding, ReservationCommand, ReservationProof,
+        ledger_digest,
     },
     outbox,
 };
@@ -23,8 +23,8 @@ use std::{
     any::Any,
     fs,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
     },
 };
 
@@ -33,7 +33,8 @@ struct BudgetReadProof;
 
 #[derive(Default)]
 struct BudgetPolicy {
-    revoked: AtomicBool,
+    write_revoked: AtomicBool,
+    read_revoked: AtomicBool,
     reads: AtomicUsize,
     writes: AtomicUsize,
 }
@@ -41,12 +42,12 @@ struct BudgetPolicy {
 impl ReservationAuthority for BudgetPolicy {
     fn authorize_write(&self, _: &ReservationBinding<'_>, proof: &(dyn Any + Send + Sync)) -> bool {
         self.writes.fetch_add(1, Ordering::SeqCst);
-        proof.is::<BudgetProof>() && !self.revoked.load(Ordering::SeqCst)
+        proof.is::<BudgetProof>() && !self.write_revoked.load(Ordering::SeqCst)
     }
 
     fn authorize_read(&self, _: &ReservationLedger, proof: &(dyn Any + Send + Sync)) -> bool {
         self.reads.fetch_add(1, Ordering::SeqCst);
-        proof.is::<BudgetReadProof>() && !self.revoked.load(Ordering::SeqCst)
+        proof.is::<BudgetReadProof>() && !self.read_revoked.load(Ordering::SeqCst)
     }
 }
 
@@ -244,7 +245,8 @@ fn protected_admission_commits_one_debit_claim_and_exact_outbox_effect() {
     };
     assert!(!first.duplicate);
 
-    policy.revoked.store(true, Ordering::SeqCst);
+    policy.write_revoked.store(true, Ordering::SeqCst);
+    policy.read_revoked.store(true, Ordering::SeqCst);
     assert!(matches!(
         fixture
             .task_loop
@@ -252,7 +254,8 @@ fn protected_admission_commits_one_debit_claim_and_exact_outbox_effect() {
             .expect("queued retry rechecks current writer authority"),
         AdmissionStatus::Held(HoldReason::AdmissionUncertain)
     ));
-    policy.revoked.store(false, Ordering::SeqCst);
+    policy.write_revoked.store(false, Ordering::SeqCst);
+    policy.read_revoked.store(false, Ordering::SeqCst);
     let replay = fixture
         .task_loop
         .retry_admission(&request.run_id, &Permit)
@@ -341,39 +344,45 @@ fn protected_admission_commits_one_debit_claim_and_exact_outbox_effect() {
         .expect("one atomic outbox intent");
     assert_eq!(claim.idempotency_key, key);
     assert_eq!(claim.payload["run_id"], request.run_id);
-    assert!(fixture
-        .store
-        .claim_outbox_key(
-            Some(11),
-            "budget-test-second".into(),
-            30,
-            claim.idempotency_key
-        )
-        .expect("same effect is not duplicated")
-        .is_none());
+    assert!(
+        fixture
+            .store
+            .claim_outbox_key(
+                Some(11),
+                "budget-test-second".into(),
+                30,
+                claim.idempotency_key
+            )
+            .expect("same effect is not duplicated")
+            .is_none()
+    );
     fixture
         .store
         .fail_outbox_unknown(claim.token, "test leaves effect unresolved".into())
         .expect("unknown effect remains fenced");
-    assert!(fixture
-        .store
-        .claim_outbox_key(
-            Some(50),
-            "budget-test-no-retry".into(),
-            30,
-            first.outbox_key
-        )
-        .expect("unknown effect is not made runnable")
-        .is_none());
+    assert!(
+        fixture
+            .store
+            .claim_outbox_key(
+                Some(50),
+                "budget-test-no-retry".into(),
+                30,
+                first.outbox_key
+            )
+            .expect("unknown effect is not made runnable")
+            .is_none()
+    );
     let after_unknown = fixture
         .store
         .reservation_ledger(read_proof())
         .expect("unknown effect retains liability");
     assert!(after_unknown.reservations["native-reservation"].outstanding);
-    assert!(after_unknown
-        .unresolved_liabilities
-        .values()
-        .any(|amount| { amount == &MinorUnits::new(1) }));
+    assert!(
+        after_unknown
+            .unresolved_liabilities
+            .values()
+            .any(|amount| { amount == &MinorUnits::new(1) })
+    );
     assert!(policy.reads.load(Ordering::SeqCst) >= 3);
     assert!(policy.writes.load(Ordering::SeqCst) >= 2);
     cleanup_parts(fixture.temp, fixture.task_loop, fixture.store);
@@ -385,7 +394,7 @@ fn failed_writer_admission_retains_registered_plan_for_authorized_retry() {
     let request = fixture.request.clone();
     let temp = fixture.temp.clone();
     let budget = budget_for(&fixture);
-    policy.revoked.store(true, Ordering::SeqCst);
+    policy.write_revoked.store(true, Ordering::SeqCst);
     assert!(matches!(
         fixture
             .task_loop
@@ -398,9 +407,9 @@ fn failed_writer_admission_retains_registered_plan_for_authorized_retry() {
         fixture.store.snapshot().expect("no claim").cursor.event_seq,
         "1"
     );
-    assert!(fixture.store.reservation_ledger(read_proof()).is_err());
+    assert!(fixture.store.reservation_ledger(read_proof()).is_ok());
 
-    policy.revoked.store(false, Ordering::SeqCst);
+    policy.write_revoked.store(false, Ordering::SeqCst);
     assert!(matches!(
         fixture
             .task_loop
@@ -453,12 +462,14 @@ fn wrong_budget_read_proof_rejects_preflight_and_returns_original_plan_and_custo
             .event_seq,
         "1"
     );
-    assert!(fixture
-        .store
-        .reservation_ledger(read_proof())
-        .expect("authorized read can inspect unchanged ledger")
-        .reservations
-        .is_empty());
+    assert!(
+        fixture
+            .store
+            .reservation_ledger(read_proof())
+            .expect("authorized read can inspect unchanged ledger")
+            .reservations
+            .is_empty()
+    );
     cleanup_parts(fixture.temp, fixture.task_loop, fixture.store);
 }
 
@@ -635,16 +646,18 @@ fn dispatch_denial_marks_effect_unknown_without_runtime_or_admission_retry() {
         }
     ));
     assert!(!fixture.marker.exists(), "dispatch denial starts no child");
-    assert!(fixture
-        .store
-        .claim_outbox_key(
-            Some(50),
-            "budget-test-after-denial".into(),
-            30,
-            format!("launch/{}/{}", request.task_id, request.attempt_id),
-        )
-        .expect("unknown outbox effect remains fenced")
-        .is_none());
+    assert!(
+        fixture
+            .store
+            .claim_outbox_key(
+                Some(50),
+                "budget-test-after-denial".into(),
+                30,
+                format!("launch/{}/{}", request.task_id, request.attempt_id),
+            )
+            .expect("unknown outbox effect remains fenced")
+            .is_none()
+    );
     assert!(matches!(
         fixture
             .task_loop
@@ -706,16 +719,18 @@ fn stop_at_second_dispatch_clock_sample_fences_runtime_and_preserves_liability()
         "stop occurs at the second sample; the controller also samples after the refused runtime call"
     );
     assert!(!fixture.marker.exists(), "no child starts after the stop");
-    assert!(fixture
-        .store
-        .claim_outbox_key(
-            Some(50),
-            "budget-test-no-runtime-retry".into(),
-            30,
-            format!("launch/{}/{}", request.task_id, request.attempt_id),
-        )
-        .expect("ambiguous outbox stays fenced")
-        .is_none());
+    assert!(
+        fixture
+            .store
+            .claim_outbox_key(
+                Some(50),
+                "budget-test-no-runtime-retry".into(),
+                30,
+                format!("launch/{}/{}", request.task_id, request.attempt_id),
+            )
+            .expect("ambiguous outbox stays fenced")
+            .is_none()
+    );
     assert!(matches!(
         fixture
             .task_loop
@@ -747,7 +762,7 @@ fn revoked_budget_authority_blocks_dispatch_replay_and_cannot_reset_unknown_effe
         AdmissionStatus::Queued(_)
     ));
     let writes_before = policy.writes.load(Ordering::SeqCst);
-    policy.revoked.store(true, Ordering::SeqCst);
+    policy.write_revoked.store(true, Ordering::SeqCst);
     assert!(matches!(
         fixture
             .task_loop
@@ -761,7 +776,7 @@ fn revoked_budget_authority_blocks_dispatch_replay_and_cannot_reset_unknown_effe
     assert!(policy.writes.load(Ordering::SeqCst) > writes_before);
     assert!(!fixture.marker.exists(), "revoked budget starts no child");
 
-    policy.revoked.store(false, Ordering::SeqCst);
+    policy.write_revoked.store(false, Ordering::SeqCst);
     assert!(matches!(
         fixture
             .task_loop
@@ -769,16 +784,18 @@ fn revoked_budget_authority_blocks_dispatch_replay_and_cannot_reset_unknown_effe
             .expect("restoring authority cannot turn unknown dispatch back into queued"),
         AdmissionStatus::Held(HoldReason::DispatchUncertain)
     ));
-    assert!(fixture
-        .store
-        .claim_outbox_key(
-            Some(50),
-            "budget-revoked-no-retry".into(),
-            30,
-            format!("launch/{}/{}", request.task_id, request.attempt_id),
-        )
-        .expect("durable unknown cannot be claimed again")
-        .is_none());
+    assert!(
+        fixture
+            .store
+            .claim_outbox_key(
+                Some(50),
+                "budget-revoked-no-retry".into(),
+                30,
+                format!("launch/{}/{}", request.task_id, request.attempt_id),
+            )
+            .expect("durable unknown cannot be claimed again")
+            .is_none()
+    );
     let ledger = fixture
         .store
         .reservation_ledger(read_proof())
