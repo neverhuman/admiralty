@@ -4,22 +4,29 @@
 //! latter consume the pure governor's clock/budget too. Wake proposals and new
 //! outbox intents commit in one transaction. Recording a wake is neither an
 //! authenticated grant nor transport, provider, or application delivery.
-//! Source authority/evidence references are consistency data. The trusted caller
-//! supplies the independent project/root/recipient scope; service auth is external.
+//! Source authority/evidence references are consistency data. Protected Store
+//! admission additionally rechecks independently installed current policy and an
+//! opaque authenticated actor proof on the sole writer, including retries. Raw
+//! Connection compatibility functions are not protected Store admission APIs.
 //! No history/configuration/epoch is replaced or evicted to reset a budget.
 //! Unkeyed integrity digests do not authenticate a database owner who rewrites all
 //! evidence. Scope/authentication, transport reconciliation and safe retirement
 //! remain external. The JSON byte cap is not a SQLite/WAL/disk-growth guarantee.
+use crate::context_renders::{
+    self, ContextNamespace, ContextScope, RenderRef, StoredContextRender,
+};
 use crate::outbox::{self, EnqueueResult, OutboxIntent, PreparedIntent};
 use admiralty_core::{
-    ProjectId, RootId, content_digest,
+    PrincipalId, ProjectId, RootId, content_digest,
+    coordination::context::{ProtectedTaskFacts, RecipientRole, RoleFacts, decode_role_capsule},
     governor::{
         AttentionGovernor, AttentionUpdate, DeliveryBatch, DeliveryDecision, GovernorConfig,
-        GovernorError, Observation, Recipient,
+        GovernorError, Observation, Recipient, Role,
     },
 };
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 use serde::{Deserialize, Serialize};
+use std::{any::Any, sync::Arc};
 
 pub const MAX_JOURNALS: usize = 64;
 pub const MAX_COMMANDS: usize = 4096;
@@ -53,6 +60,12 @@ pub enum AttentionError {
     Capacity,
     #[error("stored attention history is inconsistent")]
     Integrity,
+    #[error("current attention recording authority is absent or denies this exact request")]
+    AccessDenied,
+    #[error("attention context/evidence does not match the exact stored capsule")]
+    ContextBinding,
+    #[error(transparent)]
+    Context(#[from] context_renders::ContextRenderError),
 }
 
 /// One project/root and an explicitly declared set of independently scoped
@@ -113,6 +126,103 @@ pub struct AttentionCommand {
     /// Trusted recorded logical policy tick; None is rejected, never zero-filled.
     pub logical_tick: Option<u64>,
     pub operation: AttentionOperation,
+}
+
+/// Claimed immutable references, never authentication, delivery, baseline or ACK.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct AttentionContextPin {
+    pub scope: ContextScope,
+    pub render: RenderRef,
+    pub facts_digest: String,
+}
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct AttentionRequestBinding {
+    pub actor: PrincipalId,
+    pub credential_ref: String,
+    pub policy_digest: String,
+    pub context: AttentionContextPin,
+}
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct AuthorizedAttentionCommand {
+    pub command: AttentionCommand,
+    pub binding: AttentionRequestBinding,
+}
+
+/// Transported ONLY on the in-process writer queue. There is no deserializer,
+/// credential byte storage, or proof constructor here. The installed authority
+/// must downcast its own private authenticated identity and validate CURRENT
+/// credentials/policy. An arbitrary `Any` value or matching labels is not proof.
+pub type AttentionProof = Arc<dyn Any + Send + Sync>;
+
+pub struct AttentionDefinitionBinding<'a> {
+    pub definition: &'a AttentionDefinition,
+    pub definition_digest: &'a str,
+    pub config_digest: &'a str,
+}
+pub struct AttentionCommandBinding<'a> {
+    pub definition: &'a AttentionDefinition,
+    pub definition_digest: &'a str,
+    pub request: &'a AuthorizedAttentionCommand,
+    pub request_digest: &'a str,
+    pub stored_context: &'a StoredContextRender,
+    /// None before replay/execution; Some before the transaction commits. This
+    /// does NOT assert pending batch refs were compiled into request_context.
+    pub outcome: Option<&'a AttentionOutcome>,
+}
+
+/// Startup policy only, never installed by deserializing a request. Callbacks
+/// must be bounded, side-effect-free, and do no I/O or reentrant Store calls.
+/// Definition/status checks are startup configuration checks, NOT caller read
+/// authentication. Command checks must validate opaque proof/current actor and
+/// exact scope/role/epoch/source/evidence/context/request/policy bindings.
+pub trait AttentionAuthority: Send + Sync {
+    fn authorize_definition(&self, binding: &AttentionDefinitionBinding<'_>) -> bool;
+    fn authorize_command(
+        &self,
+        binding: &AttentionCommandBinding<'_>,
+        proof: &(dyn Any + Send + Sync),
+    ) -> bool;
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+struct StoredAuthorizedCommand {
+    protocol_version: u8,
+    request: AuthorizedAttentionCommand,
+}
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(untagged)]
+enum StoredCommand {
+    Authorized(Box<StoredAuthorizedCommand>),
+    Legacy(Box<AttentionCommand>),
+}
+impl StoredCommand {
+    fn command(&self) -> &AttentionCommand {
+        match self {
+            Self::Authorized(v) => &v.request.command,
+            Self::Legacy(v) => v,
+        }
+    }
+    fn validate(&self) -> Result<()> {
+        match self {
+            Self::Authorized(v) if v.protocol_version == 2 => {
+                validate_authorized_command(&v.request)?
+            }
+            Self::Authorized(_) => return Err(AttentionError::Invalid),
+            Self::Legacy(v) => validate_command(v)?,
+        }
+        json(self, MAX_COMMAND_BYTES)?;
+        Ok(())
+    }
+    fn prefix(&self) -> &'static str {
+        match self {
+            Self::Authorized(_) => "attention-prefix-v2",
+            Self::Legacy(_) => "attention-prefix-v1",
+        }
+    }
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -236,6 +346,156 @@ pub(crate) fn validate_command(command: &AttentionCommand) -> Result<()> {
     Ok(())
 }
 
+pub(crate) fn validate_authorized_command(request: &AuthorizedAttentionCommand) -> Result<()> {
+    validate_command(&request.command)?;
+    json(request, MAX_COMMAND_BYTES)?;
+    let binding = &request.binding;
+    let pin = &binding.context;
+    if !id(&binding.credential_ref)
+        || !digest(&binding.policy_digest)
+        || !digest(&pin.facts_digest)
+        || !digest(&pin.render.record_digest)
+    {
+        return Err(AttentionError::Invalid);
+    }
+    context_renders::validate_get_request(&pin.scope, &pin.render.key)?;
+    let recipient = match &request.command.operation {
+        AttentionOperation::Observe { update } => &update.recipient,
+        AttentionOperation::TakeDelivery { recipient, .. } => recipient,
+    };
+    let role = match recipient.role {
+        Role::TaskWorker => RecipientRole::Worker,
+        Role::Captain => RecipientRole::Commodore,
+        Role::SuperCaptain => RecipientRole::Admiral,
+    };
+    if binding.actor != recipient.principal_id
+        || pin.scope.recipient != recipient.principal_id
+        || pin.scope.role != role
+    {
+        return Err(AttentionError::ContextBinding);
+    }
+    let scope = &request.command.scope;
+    let includes = match &pin.scope.namespace {
+        ContextNamespace::Project {
+            project_id,
+            root_id,
+        } => project_id == &scope.project_id && root_id == &scope.root_id,
+        ContextNamespace::Fleet { project_roots, .. } => project_roots
+            .iter()
+            .any(|r| r.project_id == scope.project_id && r.root_id == scope.root_id),
+    };
+    if !includes {
+        return Err(AttentionError::ContextBinding);
+    }
+    if let AttentionOperation::Observe { update } = &request.command.operation
+        && update.evidence_ref != pin.render.record_digest
+    {
+        return Err(AttentionError::ContextBinding);
+    }
+    Ok(())
+}
+
+/// Exact request identity from actual immutable definition + all request data.
+/// This is an unkeyed consistency digest, not an authentication token.
+pub fn authorized_request_digest(
+    definition_digest: &str,
+    request: &AuthorizedAttentionCommand,
+) -> Result<String> {
+    if !digest(definition_digest) {
+        return Err(AttentionError::Invalid);
+    }
+    validate_authorized_command(request)?;
+    let value = &("attention-request-v2", definition_digest, request);
+    json(value, MAX_COMMAND_BYTES)?;
+    hash(value)
+}
+
+fn checked_context(
+    connection: &Connection,
+    request: &AuthorizedAttentionCommand,
+) -> Result<StoredContextRender> {
+    validate_authorized_command(request)?;
+    let pin = &request.binding.context;
+    let stored = context_renders::get(connection, &pin.scope, &pin.render.key)?
+        .ok_or(AttentionError::ContextBinding)?;
+    if stored.capsule.context_epoch != request.command.scope.epoch
+        || stored.capsule.facts_digest != pin.facts_digest
+        || hash(&stored)? != pin.render.record_digest
+    {
+        return Err(AttentionError::ContextBinding);
+    }
+    let facts = decode_role_capsule(
+        &stored.capsule.text,
+        pin.scope.role,
+        &request.command.scope.epoch,
+        &pin.facts_digest,
+    )
+    .map_err(|_| AttentionError::ContextBinding)?;
+    if let AttentionOperation::Observe { update } = &request.command.operation {
+        let matches = |task: &ProtectedTaskFacts| {
+            task.contract.project_id == update.scope.project_id
+                && task.contract.root_id == request.command.scope.root_id
+                && task.contract.task_id == update.scope.task_id
+                && task.contract.revision == update.scope.revision
+                && task.contract.authority_ref == update.authority_ref
+        };
+        let present = match facts {
+            RoleFacts::Decision(f) => matches(&f.task),
+            RoleFacts::Handoff(f) => matches(&f.task),
+            RoleFacts::ProjectExceptions(f) => f.exceptions.iter().any(matches),
+            RoleFacts::FleetExceptions(f) => {
+                f.projects.iter().any(|p| p.exceptions.iter().any(matches))
+            }
+        };
+        if !present {
+            return Err(AttentionError::ContextBinding);
+        }
+    }
+    Ok(stored)
+}
+
+fn authorize_definition(
+    authority: Option<&dyn AttentionAuthority>,
+    definition: &AttentionDefinition,
+) -> Result<()> {
+    let authority = authority.ok_or(AttentionError::AccessDenied)?;
+    let definition_digest = hash(definition)?;
+    let config_digest = hash(&definition.config)?;
+    if !authority.authorize_definition(&AttentionDefinitionBinding {
+        definition,
+        definition_digest: &definition_digest,
+        config_digest: &config_digest,
+    }) {
+        return Err(AttentionError::AccessDenied);
+    }
+    Ok(())
+}
+fn authorize_request(
+    authority: &dyn AttentionAuthority,
+    def: &DefinitionRow,
+    request: &AuthorizedAttentionCommand,
+    context: &StoredContextRender,
+    proof: &(dyn Any + Send + Sync),
+    outcome: Option<&AttentionOutcome>,
+) -> Result<()> {
+    authorize_definition(Some(authority), &def.definition)?;
+    let request_digest = authorized_request_digest(&def.definition_digest, request)?;
+    if !authority.authorize_command(
+        &AttentionCommandBinding {
+            definition: &def.definition,
+            definition_digest: &def.definition_digest,
+            request,
+            request_digest: &request_digest,
+            stored_context: context,
+            outcome,
+        },
+        proof,
+    ) {
+        return Err(AttentionError::AccessDenied);
+    }
+    Ok(())
+}
+
 fn bounds(connection: &Connection) -> Result<(i64, i64, i64)> {
     let (journals, definitions): (i64, i64) = connection.query_row(
         "SELECT count(*),COALESCE(sum(length(CAST(definition_json AS BLOB))),0) FROM main.attention_journals", [],
@@ -294,12 +554,32 @@ fn definition(connection: &Connection, journal_id: &str) -> Result<Option<Defini
     })
     .transpose()
 }
-pub(crate) fn register(
+/// Legacy caller-owned Connection compatibility. Real Store registration MUST
+/// use `register_authorized`; possessing this data is never recording authority.
+pub fn register(
     connection: &mut Connection,
     requested: AttentionDefinition,
 ) -> Result<AttentionRegistration> {
+    register_inner(connection, requested, None, false)
+}
+pub(crate) fn register_authorized(
+    connection: &mut Connection,
+    requested: AttentionDefinition,
+    authority: Option<&dyn AttentionAuthority>,
+) -> Result<AttentionRegistration> {
+    register_inner(connection, requested, authority, true)
+}
+fn register_inner(
+    connection: &mut Connection,
+    requested: AttentionDefinition,
+    authority: Option<&dyn AttentionAuthority>,
+    protected: bool,
+) -> Result<AttentionRegistration> {
     validate_definition(&requested)?;
     let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    if protected {
+        authorize_definition(authority, &requested)?;
+    }
     let (count, _, _) = bounds(&tx)?;
     let existing = definition(&tx, &requested.scope.journal_id)?;
     let replayed = existing.is_some();
@@ -314,6 +594,9 @@ pub(crate) fn register(
         }
         tx.execute("INSERT INTO main.attention_journals(journal_id,definition_json,definition_digest) VALUES(?1,?2,?3)",
             params![requested.scope.journal_id,json(&requested,MAX_DEFINITION_BYTES)?,hash(&requested)?])?;
+    }
+    if protected {
+        authorize_definition(authority, &requested)?;
     }
     tx.commit()?;
     Ok(AttentionRegistration {
@@ -385,17 +668,18 @@ fn effect(id: i64, prepared: &PreparedIntent) -> AttentionEffect {
 }
 fn receipt(
     def: &DefinitionRow,
-    command: &AttentionCommand,
+    stored_command: &StoredCommand,
     sequence: i64,
     outcome: AttentionOutcome,
     effect: Option<AttentionEffect>,
 ) -> Result<AttentionReceipt> {
+    let command = stored_command.command();
     let state_digest = hash(&(
-        "attention-prefix-v1",
+        stored_command.prefix(),
         &def.definition_digest,
         sequence.to_string(),
         &command.expected_prior,
-        hash(command)?,
+        hash(stored_command)?,
         &outcome,
         &effect,
     ))?;
@@ -436,7 +720,7 @@ fn validate_effect(connection: &Connection, id: i64, prepared: &PreparedIntent) 
 struct Replayed {
     governor: AttentionGovernor,
     cursor: Option<AttentionCursor>,
-    matching: Option<(AttentionCommand, AttentionResult)>,
+    matching: Option<(StoredCommand, AttentionResult)>,
     count: i64,
 }
 fn replay(connection: &Connection, def: &DefinitionRow, find_id: Option<&str>) -> Result<Replayed> {
@@ -466,23 +750,33 @@ fn replay(connection: &Connection, def: &DefinitionRow, find_id: Option<&str>) -
         if bytes > MAX_HISTORY_BYTES {
             return Err(AttentionError::Capacity);
         }
-        let command: AttentionCommand = serde_json::from_str(&command_json)?;
+        let stored_command: StoredCommand = serde_json::from_str(&command_json)?;
+        stored_command
+            .validate()
+            .map_err(|_| AttentionError::Integrity)?;
+        if let StoredCommand::Authorized(authorized) = &stored_command {
+            // Historical consistency only: current revocation must not erase
+            // valid history or prevent reopen/rebuild/backup of older records.
+            checked_context(connection, &authorized.request)
+                .map_err(|_| AttentionError::Integrity)?;
+        }
+        let command = stored_command.command();
         let stored: AttentionReceipt = serde_json::from_str(&receipt_json)?;
-        validate_command(&command).map_err(|_| AttentionError::Integrity)?;
+        validate_command(command).map_err(|_| AttentionError::Integrity)?;
         if command.scope != def.definition.scope
             || command.config_digest != hash(&def.definition.config)?
             || command.command_id != id
             || command.expected_prior != cursor
             || sequence != count
-            || hash(&command)? != command_digest
-            || json(&command, MAX_COMMAND_BYTES)? != command_json
+            || hash(&stored_command)? != command_digest
+            || json(&stored_command, MAX_COMMAND_BYTES)? != command_json
             || hash(&stored)? != receipt_digest
             || json(&stored, MAX_RECEIPT_BYTES)? != receipt_json
         {
             return Err(AttentionError::Integrity);
         }
         let (outcome, prepared) =
-            execute(&mut governor, &command).map_err(|_| AttentionError::Integrity)?;
+            execute(&mut governor, command).map_err(|_| AttentionError::Integrity)?;
         let association = match (outbox_id, prepared) {
             (Some(id), Some(prepared)) => {
                 validate_effect(connection, id, &prepared)?;
@@ -491,14 +785,14 @@ fn replay(connection: &Connection, def: &DefinitionRow, find_id: Option<&str>) -
             (None, None) => None,
             _ => return Err(AttentionError::Integrity),
         };
-        let expected = receipt(def, &command, sequence, outcome, association)?;
+        let expected = receipt(def, &stored_command, sequence, outcome, association)?;
         if stored != expected {
             return Err(AttentionError::Integrity);
         }
         cursor = Some(expected.cursor.clone());
         if find_id == Some(id.as_str()) {
             matching = Some((
-                command,
+                stored_command,
                 AttentionResult {
                     receipt: stored,
                     receipt_digest,
@@ -517,11 +811,34 @@ fn replay(connection: &Connection, def: &DefinitionRow, find_id: Option<&str>) -
         count,
     })
 }
-pub(crate) fn apply(
+/// Legacy caller-owned Connection compatibility, preserving original bytes and
+/// receipts. This function is NOT a protected Store admission route.
+pub fn apply(connection: &mut Connection, command: AttentionCommand) -> Result<AttentionResult> {
+    apply_inner(connection, StoredCommand::Legacy(Box::new(command)), None)
+}
+pub(crate) fn apply_authorized(
     connection: &mut Connection,
-    command: AttentionCommand,
+    request: AuthorizedAttentionCommand,
+    proof: &(dyn Any + Send + Sync),
+    authority: Option<&dyn AttentionAuthority>,
 ) -> Result<AttentionResult> {
-    validate_command(&command)?;
+    let authority = authority.ok_or(AttentionError::AccessDenied)?;
+    apply_inner(
+        connection,
+        StoredCommand::Authorized(Box::new(StoredAuthorizedCommand {
+            protocol_version: 2,
+            request,
+        })),
+        Some((authority, proof)),
+    )
+}
+fn apply_inner(
+    connection: &mut Connection,
+    stored_command: StoredCommand,
+    protected: Option<(&dyn AttentionAuthority, &(dyn Any + Send + Sync))>,
+) -> Result<AttentionResult> {
+    stored_command.validate()?;
+    let command = stored_command.command();
     let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
     let def = definition(&tx, &command.scope.journal_id)?.ok_or(AttentionError::MissingJournal)?;
     if def.definition.scope != command.scope
@@ -529,10 +846,31 @@ pub(crate) fn apply(
     {
         return Err(AttentionError::Collision);
     }
+    let checked = match (protected, &stored_command) {
+        (Some((authority, proof)), StoredCommand::Authorized(authorized)) => {
+            let context = checked_context(&tx, &authorized.request)?;
+            authorize_request(authority, &def, &authorized.request, &context, proof, None)?;
+            Some(context)
+        }
+        (None, StoredCommand::Legacy(_)) => None,
+        _ => return Err(AttentionError::AccessDenied),
+    };
     let mut state = replay(&tx, &def, Some(&command.command_id))?;
     if let Some((original, result)) = state.matching {
-        if original != command {
+        if original != stored_command {
             return Err(AttentionError::Collision);
+        }
+        if let (Some((authority, proof)), StoredCommand::Authorized(authorized), Some(context)) =
+            (protected, &stored_command, checked.as_ref())
+        {
+            authorize_request(
+                authority,
+                &def,
+                &authorized.request,
+                context,
+                proof,
+                Some(&result.receipt.outcome),
+            )?;
         }
         tx.commit()?;
         return Ok(result);
@@ -544,7 +882,7 @@ pub(crate) fn apply(
     if count >= MAX_COMMANDS as i64 {
         return Err(AttentionError::Capacity);
     }
-    let (outcome, prepared) = execute(&mut state.governor, &command)?;
+    let (outcome, prepared) = execute(&mut state.governor, command)?;
     let association = if let Some(prepared) = prepared {
         match outbox::enqueue_prepared_in_transaction(&tx, &prepared)? {
             EnqueueResult::Inserted { id } => Some(effect(id, &prepared)),
@@ -557,8 +895,8 @@ pub(crate) fn apply(
     } else {
         None
     };
-    let receipt = receipt(&def, &command, state.count + 1, outcome, association)?;
-    let command_json = json(&command, MAX_COMMAND_BYTES)?;
+    let receipt = receipt(&def, &stored_command, state.count + 1, outcome, association)?;
+    let command_json = json(&stored_command, MAX_COMMAND_BYTES)?;
     let receipt_json = json(&receipt, MAX_RECEIPT_BYTES)?;
     if bytes
         .checked_add((command_json.len() + receipt_json.len()) as i64)
@@ -574,7 +912,7 @@ pub(crate) fn apply(
         .transpose()
         .map_err(|_| AttentionError::Integrity)?;
     tx.execute("INSERT INTO main.attention_commands(journal_id,command_id,sequence,command_json,command_digest,receipt_json,receipt_digest,outbox_id) VALUES(?1,?2,?3,?4,?5,?6,?7,?8)",
-        params![command.scope.journal_id,command.command_id,state.count+1,command_json,hash(&command)?,receipt_json,receipt_digest,outbox_id])?;
+        params![command.scope.journal_id,command.command_id,state.count+1,command_json,hash(&stored_command)?,receipt_json,receipt_digest,outbox_id])?;
     tx.execute(
         "UPDATE main.attention_journals SET head_sequence=?2,head_digest=?3 WHERE journal_id=?1",
         params![
@@ -583,12 +921,47 @@ pub(crate) fn apply(
             receipt.cursor.state_digest
         ],
     )?;
+    // This check is on the actual writer after SQL effects are staged and before
+    // commit. Denial rolls back outbox, receipt and cursor together. The external
+    // authority still owns its own revocation synchronization; no callback here
+    // can promise atomicity with an unrelated policy store after it returns.
+    if let (Some((authority, proof)), StoredCommand::Authorized(authorized), Some(context)) =
+        (protected, &stored_command, checked.as_ref())
+    {
+        authorize_request(
+            authority,
+            &def,
+            &authorized.request,
+            context,
+            proof,
+            Some(&receipt.outcome),
+        )?;
+    }
     tx.commit()?;
     Ok(AttentionResult {
         receipt,
         receipt_digest,
         replayed: false,
     })
+}
+pub(crate) fn status_authorized(
+    connection: &Connection,
+    scope: &AttentionScope,
+    authority: Option<&dyn AttentionAuthority>,
+) -> Result<Option<AttentionStatus>> {
+    validate_scope(scope)?;
+    let Some(def) = definition(connection, &scope.journal_id)? else {
+        // Do not leak existence through a missing startup policy.
+        authority.ok_or(AttentionError::AccessDenied)?;
+        return Ok(None);
+    };
+    if &def.definition.scope != scope {
+        return Err(AttentionError::MissingJournal);
+    }
+    authorize_definition(authority, &def.definition)?;
+    let result = status(connection, scope)?;
+    authorize_definition(authority, &def.definition)?;
+    Ok(result)
 }
 pub(crate) fn status(
     connection: &Connection,
