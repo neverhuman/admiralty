@@ -6,6 +6,15 @@ neverhumanbot approval and matched-head rebase. Red/queued CI is never green.
 One cleanup lane takes this list after remaining cutover implementation lands;
 build failures remain immediate work.
 
+Actual09:45Z mainaf6 snapshot: browser39228085850 passed; checks39228085831
+was cancelled. Root did not cancel it and has not established the actor or
+reason; cancellation is not a passing Rust/legacy result. Older18417 checks
+39225291204 and browser39225291103 failed; their exact causes still require
+source-specific logs, not inference from097 or resource pressure. The new slot
+component's219Mac/219Linux Store cases and strict Store/server Clippy do not
+turn those different workflows green. No rerun, cancellation, guard weakening,
+runner control or additional cleanup lane is authorized by this observation.
+
 Main0970118's actual Rust workflow39221684261 passed contracts and reached the
 `native_codex_plan` integration target, which reported0passed/5failed at
 line229 with `UnsafeSourceMetadata`. This is the same diagnostic class as

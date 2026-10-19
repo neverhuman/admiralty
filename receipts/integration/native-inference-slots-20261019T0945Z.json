@@ -1,0 +1,367 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T09:43:08.805Z",
+  "source_commit": "d9cd57464b01f08a59fef97159d5a040dddc4dbe",
+  "base_commit": "af6aeea9bb7353f80ef2ef9d573aba1790f0c593",
+  "scope": "Optional reserve-only managed inference-slot journal atomically joined to actual Store task claim, budget reservation and exact outbox intent; no runtime activation",
+  "files": [
+    {
+      "repo_path": "crates/admiralty-store/src/lib.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-store/src/lib.rs",
+      "bytes": 158781,
+      "sha256": "91431c90418642dd9b247d8f1d71f5d4a719f5784a96d7bb04e7a0b2b3c7caf5"
+    },
+    {
+      "repo_path": "crates/admiralty-store/src/inference_slots.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-store/src/inference_slots.rs",
+      "bytes": 36669,
+      "sha256": "095ebc4879039b8d33179df7214ed54968d8527a5cadf531182718f54caef0e5"
+    },
+    {
+      "repo_path": "crates/admiralty-store/src/admission_reservations.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-store/src/admission_reservations.rs",
+      "bytes": 24172,
+      "sha256": "d61d2dbdfb9919e0885999912457a67cd6a8ede0a260ac89280dec62140a0fac"
+    },
+    {
+      "repo_path": "crates/admiralty-store/migrations/0010_inference_slots.sql",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-store/migrations/0010_inference_slots.sql",
+      "bytes": 1609,
+      "sha256": "f6c97f36509fd3120681ad8ac3c264885088b15b1b57a5c5174fdca99ca98486"
+    },
+    {
+      "repo_path": "crates/admiralty-store/tests/inference_slots.rs",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/crates/admiralty-store/tests/inference_slots.rs",
+      "bytes": 36420,
+      "sha256": "4003682ca4aa0d14891464c9bb2735c141552429e01e773332ccbaa481b572a2"
+    },
+    {
+      "repo_path": "README.md",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/README.md",
+      "bytes": 20286,
+      "sha256": "7834767d885d83ec6bc8c5a56f8a48229369a3bf42863f4ac360fb650998addc"
+    },
+    {
+      "repo_path": "docs/architecture/durable-admission.md",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/docs/architecture/durable-admission.md",
+      "bytes": 5888,
+      "sha256": "71689cbfe4318e1577328705f3af80944ce884293bfd60ff8965ffd336e51ee7"
+    },
+    {
+      "repo_path": "docs/architecture/inference-slots.md",
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/docs/architecture/inference-slots.md",
+      "bytes": 3663,
+      "sha256": "6b2e0516230ef6bb45712ab8cfefb87fc77631fb7b8dbe7b91b9be55ea865407"
+    }
+  ],
+  "implementation": {
+    "schema_migration": "0010_inference_slots.sql",
+    "default_authority": "None; opaque independently installed read/write policy/proof only",
+    "api": [
+      "record_inference_slot (SetPool only)",
+      "inference_slot_ledger",
+      "claim_with_budget_and_slot"
+    ],
+    "four_record_atomicity": "One sole-writer SQL transaction stages claim/budget/slot/outbox or rolls back, publishing projection only after commit",
+    "replay": "Original receipts after later commands/reopen; current policy sampled; no duplicate debit/hold and no ordinary/budget/slotted upgrade/downgrade",
+    "integrity": "Bounded immutable command journal plus materialized-ledger replay and both event-association directions on open/rebuild/backup/protected operations",
+    "occupancy": "Immutable unique independently authenticated capacity key; generations retain every hold; reductions below held occupancy denied; no release/reset/expiry eviction",
+    "identity": "Exact task/contract/attempt/owner/incarnation/source/budget command and id/kernel/model-config/claims/planned-intent digests; policy independently authenticates physical pool mapping",
+    "bounds": {
+      "pools": 128,
+      "holds": 1024,
+      "commands": 8192,
+      "total_journal_text_bytes": 67108864,
+      "command_bytes": 65536,
+      "ledger_bytes": 1048576,
+      "receipt_bytes": 8192
+    },
+    "policy_contract": "Callbacks observational/bounded/nonblocking/non-reentrant/no I/O, must not directly or indirectly mutate any admission-authority state. Separate policies sampled sequentially at explicit boundaries; shared snapshot/epoch/lease fence required for joint revocation through COMMIT and is not installed."
+  },
+  "checks": [
+    {
+      "environment": "RootMac",
+      "command": "cargo test -p admiralty-store --locked -- --test-threads=1",
+      "exit_code": 0,
+      "passed": 219,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 0,
+      "suite_summaries_including_empty_doctests": 16,
+      "raw": {
+        "path": "/private/tmp/adm-slot-root-store-tests.log",
+        "bytes": 22766,
+        "sha256": "a36f9648658f279ed9e782d80276320a6b88f1776ba9a28afcc9881c0bdb3876"
+      },
+      "jobs": 1,
+      "private_tmp": "/private/tmp/adm-slot-root-XhRnlE",
+      "target": "target/context-integrated-final",
+      "new_cases": 16,
+      "new_cases_subset_of_total": true
+    },
+    {
+      "environment": "ActualLinuxxbabe2",
+      "command": "cargo test -p admiralty-store --locked -- --test-threads=1",
+      "exit_code": 0,
+      "passed": 219,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 0,
+      "suite_summaries_including_empty_doctests": 16,
+      "raw": {
+        "path": "/private/tmp/adm-slot-linux-test.log",
+        "bytes": 23771,
+        "sha256": "5100bee3882917781c65bec69a7780b2afd1f9a145c3596a34a893f62e9530f5"
+      },
+      "same_cases_as_Mac": true,
+      "new_cases": 16,
+      "new_cases_not_additive_across_platforms": true,
+      "invocation": {
+        "schema_version": 1,
+        "source": "d9cd57464b01f08a59fef97159d5a040dddc4dbe",
+        "source_archive_sha256": "411d02ac976f54759ef3e4c82e16dbb968bc1289f94ce37be8957fee65419b3c",
+        "source_directory": "/home/ubuntu/admiralty-v2-build/native-slots-d9cd5746-20261019T093912Z",
+        "started_utc": "2026-10-19T09:39:13.188Z",
+        "finished_utc": "2026-10-19T09:42:38.937Z",
+        "code": 0,
+        "signal": null,
+        "error": null,
+        "outer": {
+          "observed_utc": "2026-10-19T09:39:12.934Z",
+          "cpu_percent": 24.803055621866797,
+          "mem_available_kib": 104858704,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        },
+        "inside_gates_in_log": true,
+        "log_sha256": "5100bee3882917781c65bec69a7780b2afd1f9a145c3596a34a893f62e9530f5",
+        "log_bytes": 23771,
+        "tail": [
+          "test racing_identical_commands_replay_once_and_competing_plan_cas_has_one_winner ... ok",
+          "test read_identifiers_and_scope_references_are_bounded_before_lookup_work ... ok",
+          "test reopen_rebuild_backup_preserve_history_and_never_install_an_issuer ... ok",
+          "test startup_authority_is_required_and_record_replay_preserves_exact_receipt ... ok",
+          "test work_order_revisions_advance_by_cas_without_rewriting_original_source_or_receipt ... ok",
+          "",
+          "test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.96s",
+          "",
+          "     Running tests/workplan_registry.rs (target-linux/debug/deps/workplan_registry-bd7931cb352dc561)",
+          "",
+          "running 4 tests",
+          "test cloned_writers_serialize_competing_revision_commands_and_preserve_winner ... ok",
+          "test domain_and_registry_cannot_rebind_task_identity_in_either_order ... ok",
+          "test rebuild_rejects_registry_tampering_before_changing_cursor_or_projection ... ok",
+          "test writer_registry_survives_backup_reopen_and_old_retry_without_events_or_wakes ... ok",
+          "",
+          "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.57s",
+          "",
+          "   Doc-tests admiralty_store",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "",
+          ""
+        ],
+        "jobs": 1,
+        "test_threads": 1,
+        "unique_target": "/home/ubuntu/admiralty-v2-build/native-slots-d9cd5746-20261019T093912Z/target-linux",
+        "private_tmp": "/home/ubuntu/admiralty-v2-build/native-slots-d9cd5746-20261019T093912Z/private-tmp",
+        "cache_copy_only": "/home/ubuntu/admiralty-v2-build/intake-cli-source-7f20384-20261019T0759Z/target-linux",
+        "workspace_packages_cleaned_in_new_target": true,
+        "original_cache_not_mutated": true,
+        "provider_run": false,
+        "service_control": false,
+        "after": {
+          "observed_utc": "2026-10-19T09:42:40.047Z",
+          "cpu_percent": 9.553037456720181,
+          "mem_available_kib": 103345996,
+          "controller_active": true,
+          "freeze": "0",
+          "admitted": true,
+          "provider_started": false
+        }
+      },
+      "result": {
+        "path": "/private/tmp/adm-slot-linux-result.json",
+        "bytes": 2934,
+        "sha256": "4406f887211721f5f8c77fe2523b63db7df470ccaa4e3a3d6fa0ad45636502ab"
+      },
+      "post_run_source_hashes": {
+        "path": "/private/tmp/adm-slot-linux-source-posthash.json",
+        "bytes": 1526,
+        "sha256": "9e7c135d4b6520f51bcbcaa48c4ab94fcada885510e1a4748d98963ebe092bc8"
+      }
+    },
+    {
+      "environment": "RootMac",
+      "command": "cargo clippy -p admiralty-store -p admiralty-server --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "raw": {
+        "path": "/private/tmp/adm-slot-root-clippy.log",
+        "bytes": 287,
+        "sha256": "ca0314422fb0bc3599b994bd14b8d86d1da046dd13c09f6d591772cabcfe1d34"
+      }
+    },
+    {
+      "environment": "RootWorkspace",
+      "command": "cargo fmt --all --check; git diff --check af6aeea9..HEAD",
+      "exit_code": 0
+    }
+  ],
+  "independent_review": {
+    "path": "/private/tmp/adm-inference-slot-review-d9cd574.json",
+    "bytes": 2884,
+    "sha256": "7dae102b27a444e23cc993b19eb1ed0f5b31f7b29113adac6cedabedfb28cfd6",
+    "verdict": "CLEAR",
+    "reviewer": "Separate Codex audit_product; static source/tests/docs review; no reviewer or neverhumanbot test execution claimed"
+  },
+  "worker_candidates": {
+    "journal": [
+      "d705cec21386098dd0820c154516cbaf70d846bb",
+      "3749e390b08ff0d3622b82d093b60d895c1272a0",
+      "77a1a6b796e664a04ad6bdfd5971ee853f75298e"
+    ],
+    "luna_test_file": "02c1a3e6e42fd4f53fb2e11aa973a081123b3cc9",
+    "parallel_disjoint_write_scopes": true,
+    "private_worktrees_and_branches_preserved": true,
+    "prior_passing_worker_checks_overlap_root": true
+  },
+  "preserved_evidence": [
+    {
+      "path": "/private/tmp/admiralty-slot-journal-check.bKWifS/unit.log",
+      "bytes": 3192,
+      "sha256": "6131771b5fdc1873a5218f327f6dba420f9157b18d4315eb1f5e529b3feb24f2"
+    },
+    {
+      "path": "/private/tmp/admiralty-slot-journal-check.bKWifS/clippy.log",
+      "bytes": 3017,
+      "sha256": "80f25e40b58d5453e3ca1ed2350bb2a3641636d401310b1f3d5149692bbf19ef"
+    },
+    {
+      "path": "/private/tmp/admiralty-slot-journal-check.bKWifS/unit-final.log",
+      "bytes": 935,
+      "sha256": "710846d76aaba89cdb720f354570d2e995fc05c26c47d65b4b808d7a342acba8"
+    },
+    {
+      "path": "/private/tmp/admiralty-slot-journal-check.bKWifS/clippy-final.log",
+      "bytes": 179,
+      "sha256": "6828509a358719e7eee16745ed480b3fd80e3111037e4bd234e2f797acf93466"
+    },
+    {
+      "path": "/private/tmp/admiralty-inference-slots-clippy-rerun1.log",
+      "bytes": 177,
+      "sha256": "b12ed4780bf90068d02c02d94982e71271122bd867ee9b82c6cf7a3d41990c3f"
+    },
+    {
+      "path": "/private/tmp/admiralty-inference-slots-clippy.log",
+      "bytes": 3185,
+      "sha256": "13a2f88124e840a46883fe78ac0b0fbeb38015d61c581f85d0b4005d99c41d99"
+    },
+    {
+      "path": "/private/tmp/admiralty-inference-slots-test-final.log",
+      "bytes": 1203,
+      "sha256": "172d76a53c7466fdc9a3f31fb4b3e14242521440fefbce95a1f551dacc6ef7a8"
+    },
+    {
+      "path": "/private/tmp/admiralty-inference-slots-test-rerun1.log",
+      "bytes": 1779,
+      "sha256": "e7734d17343149ab2e370c9346a40c6ac28195a220d26dc55235ed07689d9ccd"
+    },
+    {
+      "path": "/private/tmp/admiralty-inference-slots-test-rerun2.log",
+      "bytes": 1789,
+      "sha256": "f4054a1db42908eccf47c2215984564a7f41f1881e47c83e814a3b3c90242e92"
+    },
+    {
+      "path": "/private/tmp/admiralty-inference-slots-test-rerun3.log",
+      "bytes": 1203,
+      "sha256": "cdb13ef1254165d86151c990dd614d664115f00c5c7b51fdf06c75ce7a06b2b7"
+    },
+    {
+      "path": "/private/tmp/admiralty-inference-slots-test.log",
+      "bytes": 3128,
+      "sha256": "2798f6c1d9eaae2a1daee97d46499a9fa67640ccfc859c7fc6069d79813ebef6"
+    }
+  ],
+  "original_failures": [
+    {
+      "stage": "module initial strict Clippy",
+      "cause": "large_enum_variant for frozen unboxed SlotEvent; narrow documented enum allow, no guard or behavior weakened"
+    },
+    {
+      "stage": "test draft compilation",
+      "cause": "private import and missing observed_utc arguments; corrected tests to actual Store API; no tests executed in failed compile"
+    },
+    {
+      "stage": "initial external 10-case run",
+      "passed": 9,
+      "failed": 1,
+      "cause": "outbox collision legitimately commits existing integrity incident only; corrected counts assertion, still checks no claim/debit/hold/launch"
+    },
+    {
+      "stage": "next external 10-case run",
+      "passed": 9,
+      "failed": 1,
+      "cause": "backup taken before corruption has one existing event, not two; fixture expectation corrected, preserved replay/integrity checks"
+    }
+  ],
+  "static_review_correction": {
+    "counterexample": "A final slot callback mutating/revoking budget authorization after budget sampling defeats a joint-through-COMMIT claim. Static reasoning only, not an executed counterexample.",
+    "repair": "Explicit observational callback trust contract in both traits and docs; sequential sampling and absent common fence stated. SQL atomicity never claimed to solve arbitrary asynchronous policy revocation.",
+    "production_fence_implemented": false
+  },
+  "cases": [
+    "Cross-project last-slot winner; loser refreshed to both current ledgers still gets capacity-specific denial with no partial writes",
+    "Exact original receipts after later commands, generation change, reopen, rebuild and backup",
+    "Default/foreign/revoked current policy, identity/digest/source/budget/kernel/intent mismatches, no mode upgrades/downgrades",
+    "Final slot denial witnesses actual staged Claimed task; rollback of both ledgers/event/outbox/associations",
+    "Late SQL association abort and subsequent explicit authorized retry; incident-only outbox collision",
+    "Unknown pool/stale generation/alias/key rebinding/capacity reduction denied; all generations retain occupancy",
+    "RequestStop/expired unknown dispatch retain slot and budget liability; no requeue/refund/release",
+    "Reverse-association tamper fails open/rebuild/backup; private fixtures created atomically0700"
+  ],
+  "limits": {
+    "store_component_only": true,
+    "physical_pool_or_model_mapping_qualified": false,
+    "external_consumers_reconciled": false,
+    "global_capacity_activation": false,
+    "NativeTaskLoop_ResourceGate_model_selection_composed": false,
+    "production_issuer_or_common_fence_installed": false,
+    "provider_execution": false,
+    "new_provider_grant": false,
+    "SC155_reused": false,
+    "settlement_or_release": false,
+    "process_restart_recovery_qualified": false,
+    "full_parent_acceptance": false,
+    "general_native_execution_qualified": false,
+    "full_hosted_CI_green": false,
+    "primary_service_control": false
+  },
+  "operations": {
+    "PR120": "Merged09:10:39Z receivingaf6; exact-head neverhumanbot09:10:30Z; existing failed18417 smoke retained, repaired isolated actual smoke15pass. Do not confuse this prior baseline with slot source.",
+    "last_rollout_CAS": "2026-10-19T09:15:04.268Z sha256:58e1fca8a5053875b9b334a0444e883791ef59d388e03709f501076c1d9359e6; all32 packet objects/source/history unchanged",
+    "deployment": {
+      "owner_receipt": {
+        "path": "/private/tmp/adm-af6-deployment-receipt.json",
+        "bytes": 8298,
+        "sha256": "4f1b398774fe09315dac1028200d8e92fe5732e74f29c0b0bd9bc2f242873294"
+      },
+      "source": "af6aeea9bb7353f80ef2ef9d573aba1790f0c593",
+      "cutover": "2026-10-19T09:40:41.790291+00:00",
+      "full_independent_proof": {
+        "path": "/private/tmp/admiralty-af6-independent-20261019T0942Z.json",
+        "bytes": 5178,
+        "sha256": "b704fe8eff4081c455673630b33ba8f2c9c56acf5f1d9ea3497c187e0674c79a"
+      },
+      "observed": "2026-10-19T09:42:31.675Z",
+      "native_execution_qualified": false,
+      "root_service_control": false,
+      "retired_owned_python_pids": [],
+      "original_first_history_timestamp": null
+    },
+    "provider": "SC155 consumed, unknown closure retained; no retry/new grant/provider"
+  }
+}
