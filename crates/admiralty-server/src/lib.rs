@@ -1,4 +1,5 @@
 //! Fleet projection, durable replay and explicitly configured native command services.
+pub mod intake_configuration;
 pub mod legacy;
 pub mod model_selection;
 pub mod models;
@@ -458,6 +459,29 @@ async fn model_access_gate(
         Err(error) => error.into_response(),
     }
 }
+
+// Runs before the intake adapter reads a body or interprets its own credential.
+// Reject ambiguous Authorization fields rather than choosing a proxy-dependent
+// first value. No credential contents enter the response or diagnostics.
+async fn intake_private_access_gate(
+    State(state): State<AppState>,
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Response {
+    if request
+        .headers()
+        .get_all(header::AUTHORIZATION)
+        .iter()
+        .count()
+        > 1
+    {
+        return error(StatusCode::UNAUTHORIZED, "private authentication required").into_response();
+    }
+    match authorized(&state, request.headers()) {
+        Ok(()) => next.run(request).await,
+        Err(error) => error.into_response(),
+    }
+}
 async fn model_list(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -608,7 +632,19 @@ pub fn app_with_native_routes(
     config: ServerConfig,
     native_routes: Option<Router>,
 ) -> Result<Router, Box<dyn std::error::Error + Send + Sync>> {
-    if config.simulated && native_routes.is_some() {
+    app_with_work_order_routes(store, config, native_routes, None)
+}
+
+/// Intake is an independently configured capability. The server credential
+/// authenticates access to this private transport; it never grants intake scope.
+/// The intake adapter separately authenticates its own opaque current actor.
+pub fn app_with_work_order_routes(
+    store: Store,
+    config: ServerConfig,
+    native_routes: Option<Router>,
+    intake: Option<services::work_order_routes::WorkOrderRouteState>,
+) -> Result<Router, Box<dyn std::error::Error + Send + Sync>> {
+    if config.simulated && (native_routes.is_some() || intake.is_some()) {
         return Err("demo mode cannot install native command routes".into());
     }
     if !config.listen.ip().is_loopback() {
@@ -652,6 +688,9 @@ pub fn app_with_native_routes(
             state.clone(),
             model_access_gate,
         ));
+    let intake_routes = services::work_order_routes::router(intake).route_layer(
+        axum::middleware::from_fn_with_state(state.clone(), intake_private_access_gate),
+    );
     let router = Router::new()
         .merge(model_routes)
         .route("/healthz", get(health))
@@ -671,7 +710,8 @@ pub fn app_with_native_routes(
         .route("/", get(asset))
         .route("/{*path}", get(asset))
         .layer(axum::extract::DefaultBodyLimit::max(1024 * 1024))
-        .with_state(state);
+        .with_state(state)
+        .nest("/v2/intake", intake_routes);
     Ok(match native_routes {
         Some(routes) => router.merge(routes),
         None => router,
@@ -690,9 +730,18 @@ pub async fn serve_with_native_routes(
     config: ServerConfig,
     native_routes: Option<Router>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    serve_with_work_order_routes(store, config, native_routes, None).await
+}
+
+pub async fn serve_with_work_order_routes(
+    store: Store,
+    config: ServerConfig,
+    native_routes: Option<Router>,
+    intake: Option<services::work_order_routes::WorkOrderRouteState>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let listen = config.listen;
-    let native_commands = native_routes.is_some();
-    let app = app_with_native_routes(store, config, native_routes)?;
+    let native_commands = native_routes.is_some() || intake.is_some();
+    let app = app_with_work_order_routes(store, config, native_routes, intake)?;
     let listener = tokio::net::TcpListener::bind(listen).await?;
     let mode = if native_commands {
         "native commands enabled; execution requires admitted controller"

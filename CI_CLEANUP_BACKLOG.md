@@ -83,6 +83,32 @@ build failures remain immediate work.
    failures after implementation. Current b864 workflows were queued at the
    subsequent snapshot, not passing. No rerun/cancellation/runner control here.
 
+10. Main7e282c3 run39203091433 passed formatting/strict workspace Clippy and
+    contracts, then its CLI library suite reported56passed/8failed. Positive
+    archive preflights fail `directory ownership or permissions`; later fault
+    assertions therefore do not reach their intended seam. Original log
+    `/private/tmp/adm-ci-7e-rust-39203091433.log` SHA-256
+    `875ace92d1f723a1153c8bd833ca855497e9c93645eac3626d115cd393757876`
+    remains preserved. This is separate from the restrictive077 manifest-mode
+    defect and actual fixed619 Linux35-case pass; no cause is inferred from
+    permission wording alone. Do not weaken production directory guards.
+    The7e browser workflow39203091407 passed historically. New066 browser
+    run39204416792 reports11passed/2failed/6skipped plus a failed live-views
+    setup: isolated-native readiness and an assertion that the fatal-frame
+    browser PID was already dead. This is neither axe failure nor permission
+    failure. Raw log `/private/tmp/adm-ci-066-browser-39204416792.log` SHA-256
+    `b1800e3b2cd835faea57afeed19c065a07c65892705256097dd9cce1792ab4e5`.
+    Preserve actual child diagnostics and deadlines. Main066 checks were still
+    running at the05:37 snapshot. Final cleanup owns follow-up after current
+    implementation; no new cleanup lane, rerun, cancellation or runner control.
+    Later main066 run39204416898 also passed contracts/fmt/strict Clippy, then
+    its CLI suite again reported56passed/8failed with positive archive preflight
+    directory-permission errors. Exact log
+    `/private/tmp/adm-ci-066-rust-39204416898.log` SHA-256
+    `d47fcab746003e2ef68f6aec4dcba236131cc31c5c221cf250d4f74ffdc8d453`.
+    This is a failed workflow; the separate Linux35-case pass used its recorded
+    owned077 environment and does not turn this different run green.
+
 Raw failures and computed hashes are retained in
 [the failure receipt](receipts/integration/ci-cleanup-evidence-20261019T0224Z.json).
 Test-only repair WIP is preserved at `/private/tmp/admiralty-linux-fixtures-32dea09`;

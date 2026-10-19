@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "origins": ["http://127.0.0.1:18890", "http://localhost:18890"],
+  "policies": [{
+    "id": "bounded-intake",
+    "revision": "intake-v1",
+    "max_source_bytes": "1048576",
+    "max_requests": "256",
+    "max_outcomes": "1000",
+    "max_json_item_text_bytes": "65536"
+  }],
+  "credentials": [{
+    "credential_id": "intake-operator",
+    "token_file": "/absolute/private/intake-token",
+    "actor": "operator",
+    "grants": [{
+      "project_id": "my-project",
+      "root_id": "my-root",
+      "authority_ref": "intake:operator-v1",
+      "authority_generation": "1",
+      "policy_id": "bounded-intake",
+      "actions": ["preview_raw", "capture_raw", "record_enriched", "read_captured", "read_work_order", "query_duplicates"]
+    }]
+  }],
+  "action_rules": [{
+    "credential_id": "intake-operator",
+    "actor": "operator",
+    "project_id": "my-project",
+    "root_id": "my-root",
+    "authority_ref": "intake:operator-v1",
+    "authority_generation": "1",
+    "policy_id": "bounded-intake",
+    "actions": ["preview_raw", "capture_raw", "record_enriched", "read_captured", "read_work_order", "query_duplicates"]
+  }]
+}
