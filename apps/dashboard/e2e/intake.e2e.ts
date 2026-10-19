@@ -340,7 +340,26 @@ it('captures a real native Unicode source once and replays an identical browser 
       outbox_scope: 'No public outbox inspection API; assert zero native tasks/messages and only preview/capture/read POSTs, not general delivery qualification',
       abandoned_reload_scope: 'SPA navigation/back retains pending envelope; reload/close discards page memory and is not exercised',
     });
-  } catch (error) { failure = error; }
+  } catch (error) {
+    failure = error;
+    // Preserve the exact request/reply trace before closing this owned browser.
+    // Never persist markup, headers or credential values even on a failed check.
+    if (browser) {
+      try {
+        const transport = await browser.evaluate<TransportProof | null>('window.__intakeProof || null', 1_000);
+        const data = { stage: 'browser-assertion-failed', transport, native_execution_qualified: false };
+        const serialized = JSON.stringify(data);
+        if (new TextEncoder().encode(serialized).byteLength > 2 * 1024 * 1024
+          || serialized.includes(native.ownerToken) || serialized.includes(native.intakeToken)) {
+          throw new Error('Failure trace is unsafe or exceeds its bound');
+        }
+        writePrivate(join(native.root, 'browser-failure-proof.json'), data);
+      } catch {
+        try { writePrivate(join(native.root, 'browser-failure-metadata.json'), { transport_available: false, diagnostic: 'Browser trace unavailable, unsafe or over bound; private native fixture retained' }); }
+        catch { /* Preserve the original failure; no unsafe cleanup or overwrite. */ }
+      }
+    }
+  }
   finally {
     try { await browser?.close(); } catch (error) { failure ??= error; }
     try { await native.close(); } catch (error) { failure ??= error; }
