@@ -20,6 +20,16 @@ export type Selection =
   | { kind: "agent"; agent: ViewAgent }
   | { kind: "commit"; project: ViewProject; commit: GitCommit }
   | { kind: "checkout"; project: ViewProject; checkout: GitCheckout };
+type PausedGitSnapshot = { token?: string; scopeEpoch: number; snapshot: ViewsSnapshot };
+export function pausedSnapshotForToken(
+  paused: PausedGitSnapshot | null,
+  token?: string,
+  scopeEpoch = 0,
+): ViewsSnapshot | null {
+  return paused && paused.token === token && paused.scopeEpoch === scopeEpoch
+    ? paused.snapshot
+    : null;
+}
 export function resolveSelection(
   snapshot: ViewsSnapshot,
   params: URLSearchParams,
@@ -61,13 +71,26 @@ export default function LiveViews({
     route = useRoute(),
     root = useRef<HTMLDivElement>(null),
     slots = useRef<SlotRegistry>(new Map());
+  const currentToken = useRef(token), currentEpoch = useRef(feed.scopeEpoch), currentSnapshot = useRef(feed.snapshot);
+  currentToken.current = token;
+  currentEpoch.current = feed.scopeEpoch;
+  currentSnapshot.current = feed.snapshot;
   useEffect(() => {
     slots.current.clear();
   }, [token]);
-  const [pausedGit, setPausedGit] = useState<ViewsSnapshot | null>(null);
+  const [pausedGit, setPausedGit] = useState<PausedGitSnapshot | null>(null);
   useEffect(() => {
     setPausedGit(null);
   }, [token]);
+  const visiblePausedGit = pausedSnapshotForToken(pausedGit, token, feed.scopeEpoch);
+  const pauseGit = (value: ViewsSnapshot | null) => {
+    if (currentToken.current !== token || currentEpoch.current !== feed.scopeEpoch) return;
+    if (value === null) {
+      setPausedGit(null);
+      return;
+    }
+    if (currentSnapshot.current === value) setPausedGit({ token, scopeEpoch: feed.scopeEpoch, snapshot: value });
+  };
   const [fullscreen, setFullscreen] = useState(false),
     [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -89,7 +112,7 @@ export default function LiveViews({
     return () => document.removeEventListener("fullscreenchange", sync);
   }, []);
   const snapshot = feed.snapshot,
-    presented = mode === "git" ? (pausedGit ?? snapshot) : snapshot,
+    presented = mode === "git" ? (visiblePausedGit ?? snapshot) : snapshot,
     selection = presented ? resolveSelection(presented, route.params) : null;
   const sources = snapshot?.sources ?? [],
     gaps = sources.filter(
@@ -238,8 +261,8 @@ export default function LiveViews({
           ) : (
             <GitFlow
               snapshot={snapshot}
-              paused={pausedGit}
-              onPause={setPausedGit}
+              paused={visiblePausedGit}
+              onPause={pauseGit}
               selection={selection}
               onSelect={select}
               now={now}

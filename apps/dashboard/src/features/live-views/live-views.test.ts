@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseRoute, routeHref } from "../../router";
+import { pausedSnapshotForToken } from "./LiveViews";
 import {
   age,
   isStale,
   parseViews,
   projectPublicLegacyViews,
+  snapshotForScope,
   watchViews,
   type ViewAgent,
   type ViewsSnapshot,
@@ -84,13 +86,55 @@ describe("visual truth and deterministic geometry", () => {
     const source = publicLegacy(), projected = projectPublicLegacyViews(source);
     expect(projected.observed_utc).toBe(source.generated_utc);
     expect(projected.projects).toEqual([{ id: "project-a", name: "Project A", task_count: 3 }]);
-    expect(projected.agents).toMatchObject([
-      { id: "screen:node-a:123.worker-a", project_id: "project-a", presence: "observed", state: "unknown", observed_utc: "2026-10-19T13:14:12Z" },
-      { id: "screen:node-b:worker-b", project_id: null, presence: "unobserved", state: "unknown", observed_utc: source.generated_utc },
-    ]);
+    const byId = new Map(projected.agents.map((agent) => [agent.id, agent]));
+    expect(byId.get("screen:node-a:123.worker-a")).toMatchObject({ project_id: "project-a", presence: "observed", state: "unknown", observed_utc: "2026-10-19T13:14:12Z" });
+    expect(byId.get("screen:node-b:worker-b")).toMatchObject({ project_id: null, presence: "unobserved", state: "unknown", observed_utc: source.generated_utc });
     expect(projected.agents[0].model).toBeUndefined();
     expect(projected.agents.some((agent) => agent.role === "assignment")).toBe(false);
     expect(projected.sources.find((item) => item.id === "native")?.state).toBe("unavailable");
+  });
+  it("preserves explicit simulation state and rejects malformed markers", () => {
+    expect(projectPublicLegacyViews({ ...publicLegacy(), simulated: true }).simulated).toBe(true);
+    expect(projectPublicLegacyViews({ ...publicLegacy(), simulated: false }).simulated).toBe(false);
+    expect(() => projectPublicLegacyViews({ ...publicLegacy(), simulated: "false" })).toThrow("simulation marker");
+    // The live public legacy producer currently omits this field by contract.
+    expect(projectPublicLegacyViews(publicLegacy()).simulated).toBe(false);
+  });
+  it("uses only exact hierarchy screen identity and node matches for public roles", () => {
+    const source = {
+      ...publicLegacy(),
+      hierarchy: {
+      super_captain: { id: "40.admiral", host: "node-a" },
+      captains: [{ id: "41.commodore", host: "node-a", key: "project-a" }],
+      },
+      agents: [
+      { id: "40.admiral", screen: "admiral", host: "node-a", project: "unassigned", state: "active" },
+      { id: "41.commodore", screen: "commodore", host: "node-a", project: "project-a", state: "active" },
+      { id: "42.commodore", screen: "commodore", host: "node-b", project: "project-a", state: "active" },
+      { id: "43.worker", screen: "admiral", host: "node-a", project: "project-a", state: "active" },
+      ],
+    };
+    const projected = projectPublicLegacyViews(source);
+    const byId = new Map(projected.agents.map((agent) => [agent.id, agent]));
+    expect(byId.get("screen:node-a:40.admiral")).toMatchObject({ role: "admiral", project_id: null });
+    expect(byId.get("screen:node-a:41.commodore")).toMatchObject({ role: "commodore", project_id: "project-a", parent_id: "screen:node-a:40.admiral" });
+    expect(byId.get("screen:node-b:42.commodore")).toMatchObject({ role: "worker", project_id: "project-a" });
+    expect(byId.get("screen:node-a:43.worker")).toMatchObject({ role: "worker", project_id: "project-a" });
+  });
+  it("hides a paused Git cut synchronously when its token scope changes", () => {
+    const paused = { token: "old-session", scopeEpoch: 2, snapshot: fixture() };
+    expect(pausedSnapshotForToken(paused, "old-session", 2)).toBe(paused.snapshot);
+    expect(pausedSnapshotForToken(paused, "new-session")).toBeNull();
+    expect(pausedSnapshotForToken(paused, undefined)).toBeNull();
+    expect(pausedSnapshotForToken(paused, "old-session", 3)).toBeNull();
+  });
+  it("invalidates the previous private cut immediately on same-token auth revocation", () => {
+    const privateCut = { token: "same-token", scopeEpoch: 7, snapshot: fixture() };
+    expect(snapshotForScope(privateCut, "same-token", 7)).toBe(privateCut.snapshot);
+    // 401/403 advances scope before the public request settles; first render at
+    // the new epoch cannot present the old private cut or paused selection.
+    expect(snapshotForScope(privateCut, "same-token", 8)).toBeNull();
+    expect(pausedSnapshotForToken({ ...privateCut }, "same-token", 8)).toBeNull();
   });
   it("rejects an invalid public Git payload instead of partially rendering it", () => {
     const source = publicLegacy();
@@ -363,6 +407,64 @@ describe("atomic authenticated visual feed", () => {
     finishLegacy(new Response(JSON.stringify(publicLegacy()), { headers: { "Content-Type": "application/json" } }));
     await vi.advanceTimersByTimeAsync(0);
     expect(onSnapshot).not.toHaveBeenCalled();
+  });
+  it("revokes same-token private visibility while the public fallback is still pending", async () => {
+    let finishLegacy!: (response: Response) => void;
+    const onSnapshot = vi.fn(), onState = vi.fn(), onError = vi.fn();
+    let scopeEpoch = 0;
+    let current: { token?: string; scopeEpoch: number; snapshot: ViewsSnapshot } | null = {
+      token: "same-token", scopeEpoch, snapshot: fixture(),
+    };
+    const fetcher = vi.fn<typeof fetch>((input) => String(input) === "/v2/views/events"
+      ? Promise.resolve(new Response("", { status: 401 }))
+      : new Promise((resolve) => { finishLegacy = resolve; }));
+    const stop = watchViews({
+      token: "same-token", fetcher, onSnapshot, onState, onError,
+      onSessionAccessRequired(required) {
+        if (required) {
+          scopeEpoch++;
+          current = null;
+        }
+      },
+    });
+    stops.push(stop);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(snapshotForScope(current, "same-token", scopeEpoch)).toBeNull();
+    expect(onSnapshot).not.toHaveBeenCalled();
+    finishLegacy(new Response(JSON.stringify(publicLegacy()), { headers: { "Content-Type": "application/json" } }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onSnapshot).toHaveBeenCalledTimes(1);
+  });
+  it("ignores a late successful native response after its watcher was stopped", async () => {
+    let finishOldNative!: (response: Response) => void;
+    const oldCallbacks = {
+      onSnapshot: vi.fn(), onState: vi.fn(), onError: vi.fn(),
+      onSessionAccessRequired: vi.fn(), onPublicFallback: vi.fn(),
+    };
+    const oldFetcher = vi.fn<typeof fetch>(() => new Promise((resolve) => { finishOldNative = resolve; }));
+    const stopOld = watchViews({ token: "expired-token", fetcher: oldFetcher, ...oldCallbacks });
+    stops.push(stopOld);
+    await vi.advanceTimersByTimeAsync(0);
+    stopOld();
+
+    const nextCallbacks = {
+      onSnapshot: vi.fn(), onState: vi.fn(), onError: vi.fn(),
+      onSessionAccessRequired: vi.fn(), onPublicFallback: vi.fn(),
+    };
+    const newFetcher = vi.fn<typeof fetch>((input) => String(input) === "/v2/views/events"
+      ? Promise.resolve(new Response("", { status: 401 }))
+      : Promise.resolve(new Response(JSON.stringify(publicLegacy()), { headers: { "Content-Type": "application/json" } })));
+    const stopNew = watchViews({ token: "expired-token", fetcher: newFetcher, ...nextCallbacks });
+    stops.push(stopNew);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(nextCallbacks.onPublicFallback).toHaveBeenLastCalledWith(true);
+    finishOldNative(new Response(new ReadableStream<Uint8Array>(), { headers: { "Content-Type": "text/event-stream" } }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(oldCallbacks.onSessionAccessRequired).not.toHaveBeenCalled();
+    expect(oldCallbacks.onPublicFallback).not.toHaveBeenCalled();
+    expect(oldCallbacks.onSnapshot).not.toHaveBeenCalled();
+    expect(nextCallbacks.onPublicFallback).toHaveBeenLastCalledWith(true);
   });
   it("bounds reconnect storms even when each short connection sends a valid snapshot", async () => {
     const server = service();

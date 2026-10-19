@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { validateViewsSnapshot } from "../../../../../packages/contracts/index";
 import type { ViewsSnapshot } from "../../../../../packages/contracts/generated/views-snapshot";
 import { ApiError } from "../../api";
@@ -65,6 +65,12 @@ export function parseViews(value: unknown): ViewsSnapshot {
 /** Bounded rendering of fields exposed by the explicitly public legacy route. */
 export function projectPublicLegacyViews(value: unknown): ViewsSnapshot {
   const source = parseLegacy(value), generated = source.generated_utc;
+  // The public legacy producer does not currently emit a simulation marker;
+  // its snapshots come from the live collector. Preserve an explicit marker
+  // when another producer supplies one and fail closed on malformed values.
+  const simulated = source.simulated === undefined ? false : source.simulated;
+  if (typeof simulated !== "boolean")
+    throw new Error("Invalid public simulation marker");
   const host = text(source.host) || "unknown-node";
   const names = new Map<string, string>();
   for (const project of list(source.project_catalog).map(data)) {
@@ -86,6 +92,28 @@ export function projectPublicLegacyViews(value: unknown): ViewsSnapshot {
     return project;
   });
   const agents = new Map<string, ViewsSnapshot["agents"][number]>();
+  const hierarchy = data(source.hierarchy);
+  const exactScreenId = (value: unknown) => {
+    const id = text(value);
+    return /^[1-9]\d*\..+$/.test(id) ? id : "";
+  };
+  const hierarchyRoles = new Map<string, { role: "admiral" | "commodore"; project?: string; parent?: string } | null>();
+  const addHierarchyRole = (raw: unknown, role: "admiral" | "commodore", project?: string, parent?: string) => {
+    const item = data(raw), id = exactScreenId(item.id), node = text(item.host) || text(item.node);
+    if (!id || !node) return;
+    const key = `${node}\0${id}`;
+    if (hierarchyRoles.has(key)) {
+      hierarchyRoles.set(key, null); // conflicting duplicate hierarchy claims stay unclassified
+      return;
+    }
+    hierarchyRoles.set(key, { role, ...(project ? { project } : {}), ...(parent ? { parent } : {}) });
+  };
+  const admiral = data(hierarchy.super_captain), admiralId = exactScreenId(admiral.id);
+  const admiralNode = text(admiral.host) || text(admiral.node);
+  addHierarchyRole(admiral, "admiral");
+  for (const captain of list(hierarchy.captains).map(data))
+    addHierarchyRole(captain, "commodore", text(captain.key) || text(captain.project) || undefined,
+      admiralId && admiralNode ? `screen:${admiralNode}:${admiralId}` : undefined);
   const add = (items: unknown, observed: boolean) => {
     for (const raw of list(items).map(data)) {
       const identity = text(raw.id) || text(raw.screen) || text(raw.name);
@@ -94,16 +122,21 @@ export function projectPublicLegacyViews(value: unknown): ViewsSnapshot {
       const node = text(raw.host) || text(raw.node) || text(raw.node_id) || host;
       const full = /^\d+\..+/.test(identity) ? identity : name;
       const id = `screen:${node}:${full}`;
+      const project = text(raw.project);
+      const hierarchyRole = exactScreenId(raw.id) === raw.id
+        ? hierarchyRoles.get(`${node}\0${raw.id}`) ?? undefined
+        : undefined;
+      const linkedProject = project || hierarchyRole?.project || "";
       const state = text(raw.state) || text(raw.status) ||
         (raw.agent_running === true ? "active" : raw.alive === true ? "screen alive; agent unknown" : "unknown");
       const ended = ["finished", "exited", "gone", "dead", "cancelled"].includes(state);
       const model = text(raw.model);
-      const project = text(raw.project);
       agents.set(id, {
         id,
         name,
-        role: "worker",
-        project_id: project && project !== "unassigned" ? project : null,
+        role: hierarchyRole?.role ?? "worker",
+        project_id: linkedProject && linkedProject !== "unassigned" ? linkedProject : null,
+        ...(hierarchyRole?.parent ? { parent_id: hierarchyRole.parent } : {}),
         node,
         presence: ended ? "ended" : observed || raw.agent_running === true ? "observed" : "unobserved",
         state,
@@ -128,7 +161,7 @@ export function projectPublicLegacyViews(value: unknown): ViewsSnapshot {
   return parseViews({
     schema_version: 1,
     revision: `public-${generated}`,
-    simulated: false,
+    simulated,
     observed_utc: generated,
     projects,
     agents: [...agents.values()],
@@ -137,6 +170,15 @@ export function projectPublicLegacyViews(value: unknown): ViewsSnapshot {
       { id: "native", label: "Private native assignments", state: "unavailable", coverage: "Authenticated native task assignments are unavailable in this public-only projection." },
     ],
   });
+}
+export function snapshotForScope(
+  state: { token?: string; scopeEpoch: number; snapshot: ViewsSnapshot } | null,
+  token: string | undefined,
+  scopeEpoch: number,
+): ViewsSnapshot | null {
+  return state && state.token === token && state.scopeEpoch === scopeEpoch
+    ? state.snapshot
+    : null;
 }
 type Options = {
   token?: string;
@@ -211,6 +253,7 @@ export function watchViews(options: Options): () => void {
               : {}),
           },
         });
+        if (lifetime.signal.aborted) return;
         clearTimeout(timer);
         if (!response.ok)
           throw new ApiError(
@@ -294,6 +337,7 @@ export function watchViews(options: Options): () => void {
 export function useViews(token?: string) {
   const [snapshotState, setSnapshotState] = useState<{
     token?: string;
+    scopeEpoch: number;
     snapshot: ViewsSnapshot;
   } | null>(null),
     [state, setState] = useState<ConnectionState>("connecting"),
@@ -301,22 +345,39 @@ export function useViews(token?: string) {
     [publicFallback, setPublicFallback] = useState(false),
     [error, setError] = useState(""),
     [retry, setRetry] = useState(0);
+  const [scopeEpoch, setScopeEpoch] = useState(0),
+    scopeEpochRef = useRef(0),
+    sourceScopeRef = useRef<"private" | "public">("private");
+  const changeSourceScope = (next: "private" | "public") => {
+    if (sourceScopeRef.current === next) return;
+    sourceScopeRef.current = next;
+    scopeEpochRef.current++;
+    setScopeEpoch(scopeEpochRef.current);
+    if (next === "public") setSnapshotState(null);
+  };
   useEffect(() => {
     setSnapshotState(null);
+    changeSourceScope("private");
     setError("");
     setSessionAccessRequired(false);
     setPublicFallback(false);
     return watchViews({
       token,
-      onSnapshot: (snapshot) => setSnapshotState({ token, snapshot }),
+      onSnapshot: (snapshot) => setSnapshotState({ token, scopeEpoch: scopeEpochRef.current, snapshot }),
       onState: setState,
       onError: setError,
-      onSessionAccessRequired: setSessionAccessRequired,
-      onPublicFallback: setPublicFallback,
+      onSessionAccessRequired: (required) => {
+        changeSourceScope(required ? "public" : "private");
+        setSessionAccessRequired(required);
+      },
+      onPublicFallback: (active) => {
+        if (active) changeSourceScope("public");
+        setPublicFallback(active);
+      },
     });
   }, [token, retry]);
-  const snapshot = snapshotState && snapshotState.token === token ? snapshotState.snapshot : null;
-  return { snapshot, state, error, sessionAccessRequired, publicFallback, retry: () => setRetry((n) => n + 1) };
+  const snapshot = snapshotForScope(snapshotState, token, scopeEpoch);
+  return { snapshot, scopeEpoch, state, error, sessionAccessRequired, publicFallback, retry: () => setRetry((n) => n + 1) };
 }
 export function age(
   value: string | null | undefined,
