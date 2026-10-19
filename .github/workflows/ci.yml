@@ -10,6 +10,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   rust-and-legacy:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on:
       group: neverhuman-lan
       labels: [self-hosted, Linux, X64, lan-ci]
@@ -28,6 +29,7 @@ jobs:
         run: printf 'runner=%s os=%s arch=%s cargo_build_jobs=%s cargo_profile_dev_debug=%s cargo_profile_test_debug=%s\n' "$RUNNER_NAME" "$RUNNER_OS" "$RUNNER_ARCH" "$CARGO_BUILD_JOBS" "$CARGO_PROFILE_DEV_DEBUG" "$CARGO_PROFILE_TEST_DEBUG"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          persist-credentials: false
           fetch-depth: 0
       - name: Prepare private test scratch outside the checkout
         run: |
@@ -77,6 +79,7 @@ jobs:
           python3 scripts/check/canary-smoke.py --admiraltyd-binary "$GITHUB_WORKSPACE/target/debug/admiraltyd" --admiralty-binary "$GITHUB_WORKSPACE/target/debug/admiralty" --scratch-root "$TMPDIR/canary"
       - run: cargo run -p admiralty-cli --locked -- contracts check
   contracts:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on:
       group: neverhuman-lan
       labels: [self-hosted, Linux, X64, lan-ci]
@@ -85,6 +88,8 @@ jobs:
       - name: Record selected runner
         run: printf 'runner=%s os=%s arch=%s\n' "$RUNNER_NAME" "$RUNNER_OS" "$RUNNER_ARCH"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'

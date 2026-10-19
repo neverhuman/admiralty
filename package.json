@@ -5,6 +5,7 @@
   "private": true,
   "packageManager": "pnpm@11.15.1",
   "scripts": {
+    "check": "bash scripts/check/all.sh",
     "contracts:generate": "node scripts/contracts/generate.mjs",
     "contracts:check": "node scripts/contracts/generate.mjs --check",
     "demo": "bash scripts/dev/demo.sh",
