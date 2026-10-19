@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "scope": "One real native captain-Admiral coordination cycle on production source5512531",
+  "production_source": "551253108fef5f8cf5e00b77c715dcac44c9a422",
+  "observed_at_utc": "2026-10-19T19:15:24.651908+00:00",
+  "actual_role_cycle_qualified": true,
+  "roles": {
+    "admiral_session": "4060655.super_captain",
+    "captain_session": "2062267.agy_captain_admiralty:0"
+  },
+  "events": [
+    {
+      "acceptance_granted": false,
+      "duplicate": false,
+      "event_seq": "8",
+      "execution_granted": false,
+      "message_id": "native-474ce49ad87f0e027f7358505790e244ee96daadddac3a5cee866969e7b9a882"
+    },
+    {
+      "acceptance_granted": false,
+      "duplicate": false,
+      "event_seq": "9",
+      "execution_granted": false,
+      "message_id": "native-474ce49ad87f0e027f7358505790e244ee96daadddac3a5cee866969e7b9a882"
+    },
+    {
+      "acceptance_granted": false,
+      "duplicate": false,
+      "event_seq": "10",
+      "execution_granted": false,
+      "message_id": "native-64b09077a64ba2314fdcecc40111443a82221fbe899dcabf75aaa5f10a74973b"
+    },
+    {
+      "acceptance_granted": false,
+      "duplicate": false,
+      "event_seq": "11",
+      "execution_granted": false,
+      "message_id": "native-64b09077a64ba2314fdcecc40111443a82221fbe899dcabf75aaa5f10a74973b"
+    }
+  ],
+  "binding_checks": [
+    "Separate actual role sessions sent and separately acknowledged using their own current credentials.",
+    "Captain read current pending message and task context, applied handoff constraints, acknowledged, and replied with assignment causation.",
+    "Admiral read the reply, applied the constraints, separately acknowledged, and observed an empty own inbox.",
+    "Root verified source artifacts and durable journal correspondence without sending or acknowledging as either role."
+  ],
+  "private_evidence_aggregate_sha256": "be5b1b70ff694e1afdaada266ec670ecd18463049c2e2fe53faafbe86a16896b",
+  "referenced_artifact_hashes_rechecked": [
+    {
+      "artifact_name": "captain-read-pending-2062267.json",
+      "sha256": "3dd58a1dc3e8224e9e3dd45e3c121abfe0fc7eb8899f2fd9c7ff290aca2abaf0"
+    },
+    {
+      "artifact_name": "captain-read-pending-receipt-2062267.json",
+      "sha256": "4020516c4d469cb1947da8cd865c6218e775e389c4e1ad7f223568dda571de0b"
+    },
+    {
+      "artifact_name": "captain-task-context-get-2062267.json",
+      "sha256": "ee5b73311af187632880667c1919b8a046bfae5c7a75d67a4a17f8ad5dc5bb14"
+    },
+    {
+      "artifact_name": "captain-task-context-receipt-2062267.json",
+      "sha256": "a1c354357f42873d875ee2b040b5b182568452886330a333d165b1f6fdf33d09"
+    },
+    {
+      "artifact_name": "captain-ack-request-2062267.json",
+      "sha256": "fe61a79206a554e403187b735a1133c52e4c2b4869b8c599597d85b48b5ae314"
+    },
+    {
+      "artifact_name": "captain-ack-receipt-2062267.json",
+      "sha256": "beb363908704f9b2cf20498f23706c7801523db9a461830d1777930c63c7d187"
+    },
+    {
+      "artifact_name": "captain-read-pending-after-ack-receipt-2062267.json",
+      "sha256": "cad0a7cd69270ac342600cad10bdef716b5aaefdb83566be9ddbb99f6cacf87b"
+    },
+    {
+      "artifact_name": "captain-reply-handoff-2062267.json",
+      "sha256": "e8ccc152293b6483c32a74c121288d16aeb69590a845c758cf1ca66be0d73915"
+    },
+    {
+      "artifact_name": "captain-reply-send-receipt-2062267.json",
+      "sha256": "19378d617f57a8cb0329f621e3cc909fbfe4da29e18fe4763ce52a5349ce54cf"
+    },
+    {
+      "artifact_name": "admiral-read-pending.json",
+      "sha256": "ec25a5789d6cf81a2ab1e07ec0f41de2837c4a9523315190a6ff55daed9a849c"
+    },
+    {
+      "artifact_name": "admiral-read-pending-event10-receipt-4060655.json",
+      "sha256": "af7ae334388a948948892a091011d86b26107e8f4fa2df2954cd81b10c0dd998"
+    },
+    {
+      "artifact_name": "captain-sc186g-summary-2062267.json",
+      "sha256": "4091d0fba0cf1f505af3f321af3752807430cea276bcbfc41318121c8e3090d8"
+    },
+    {
+      "artifact_name": "admiral-ack-captain-reply-4060655.json",
+      "sha256": "8301b2be0d268eaf5e358e6722b3897d74a7fd2014b142c16c73ee64876a9273"
+    },
+    {
+      "artifact_name": "admiral-ack-captain-reply-receipt-4060655.json",
+      "sha256": "b2ff3d6a601c1bb2ef7eb37c5f8f0c7ad33b0b9ddd1b51b79249e0b4ac994f12"
+    },
+    {
+      "artifact_name": "admiral-read-pending-after-ack-event10-receipt-4060655.json",
+      "sha256": "cad0a7cd69270ac342600cad10bdef716b5aaefdb83566be9ddbb99f6cacf87b"
+    },
+    {
+      "artifact_name": "admiral-sc186h-application-summary-4060655.json",
+      "sha256": "dbd184f5441d56b8cbabf29d5fa3774aac960b7b5a81f75280c3f0ad4a2dd0f6"
+    }
+  ],
+  "earlier_scripted_cycle_counts_as_actual_role_adoption": false,
+  "limits": {
+    "bootstrap_wakeup_still_uses_legacy_inbox": true,
+    "event_driven_native_role_wakeup_qualified": false,
+    "native_execution_qualified": false,
+    "full_development_dogfooding": false,
+    "full_release_accepted": false,
+    "parent_acceptance": [
+      "P00",
+      "P01"
+    ],
+    "other_parents_open": 30,
+    "root_sent_or_acked_as_role": false
+  },
+  "sanitization": "Raw messages, request/context payloads, credentials, private configuration and production transcripts remain outside Git. Artifact hashes identify privately retained source evidence; they are not publicly reproducible source bytes."
+}

@@ -2999,3 +2999,18 @@ Production code, authentication, limits and deadlines are unchanged. The
 preserve both failures and the scoped source qualification. Full local matrix
 and renewed exact-head review follow this source commit; this entry does not
 claim hosted CI, full native execution or release acceptance.
+
+The complete19-stage macOS matrix at repaired source
+`6d539218194282c6708cfa58921f4576235568f1` now passes:1,703Rust executions,
+five existing ignored helpers,24real browser cases, package/canary checks,
+actual binaries, contracts, unit tests, typechecks and build. Rust took150seconds
+with jobs2/testthreads1 and Node24.19.0. The [receipt](../../../receipts/integration/local-ci-20261019.json)
+preserves every command, exit and hashed compressed log. `scripts/check/all.sh`
+now includes the previously omitted audit/package/canary/native smoke/E2E gates,
+short private scratch, pinned dependencies and browser-native hashes; its full
+invocation follows this source commit. Linux-only cases and hosted checks remain
+separate. One actual production role cycle is now demonstrated by the
+[sanitized adoption receipt](../../../receipts/integration/native-actual-role-cycle-20261019.json),
+without publishing raw messages or granting native execution. Legacy wake-up,
+production admission/provider/closure/recovery/distribution and full parent
+acceptance remain open; P00/P01 alone remain accepted.
