@@ -195,7 +195,10 @@ def redact(data: bytes, secret: str) -> str:
 def find_listener(capture: BoundedCapture) -> tuple[str, int] | None:
     if capture.oversized:
         raise SmokeError("child stderr exceeded bounded output storage")
-    for line in capture.snapshot().splitlines():
+    # A pipe read is not a record boundary. Only LF terminates the daemon's
+    # announcement; retain an incomplete tail for the next bounded snapshot.
+    # In particular, splitlines() includes its unterminated final fragment.
+    for line in capture.snapshot().split(b"\n")[:-1]:
         if line.startswith(LISTEN_PREFIX):
             return validate_listener_line(line)
     return None
@@ -735,6 +738,83 @@ class HarnessTests(unittest.TestCase):
                      b"Admiralty listening on http://127.0.0.1:0"):
             with self.subTest(line=line), self.assertRaises(SmokeError):
                 validate_listener_line(line)
+
+    def test_listener_waits_for_every_split_and_crlf_record(self) -> None:
+        for ending in (b"\n", b"\r\n"):
+            line = (LISTEN_PREFIX + b"127.0.0.1:12345"
+                    b" (read-only; native execution disabled)" + ending)
+            for split in range(len(line)):
+                with self.subTest(ending=ending, split=split):
+                    capture = BoundedCapture()
+                    capture.append(line[:split])
+                    self.assertIsNone(find_listener(capture))
+                    capture.append(line[split:])
+                    self.assertEqual(find_listener(capture), ("127.0.0.1", 12345))
+
+    def test_listener_unterminated_eof_is_not_a_record(self) -> None:
+        class Exited:
+            def poll(self) -> int:
+                return 0
+
+        for tail in (LISTEN_PREFIX, LISTEN_PREFIX + b"127.0.0.1:12345",
+                     LISTEN_PREFIX + b"127.0.0.1:12345 (read-only; native execution disabled)"):
+            with self.subTest(tail=tail):
+                capture = BoundedCapture()
+                capture.append(b"unrelated complete diagnostic\n" + tail)
+                capture.eof = True
+                self.assertIsNone(find_listener(capture))
+                with self.assertRaisesRegex(SmokeError, "child exited before listener announcement"):
+                    wait_for_listener(Exited(), capture, time.monotonic() + 0.1)
+
+    def test_listener_complete_malformed_record_still_fails(self) -> None:
+        suffix = b" (read-only; native execution disabled)\n"
+        for line in (LISTEN_PREFIX + b"127.0.0.1:12345 (future mode)\n",
+                     LISTEN_PREFIX + b"127.0.0.1:18890" + suffix,
+                     LISTEN_PREFIX + b"127.0.0.1:18891" + suffix,
+                     LISTEN_PREFIX + b"192.0.2.1:12345" + suffix,
+                     LISTEN_PREFIX + b"example.com:12345" + suffix):
+            with self.subTest(line=line):
+                capture = BoundedCapture()
+                capture.append(line)
+                with self.assertRaises(SmokeError):
+                    find_listener(capture)
+
+    def test_listener_ignores_only_complete_unrelated_records(self) -> None:
+        capture = BoundedCapture()
+        capture.append(b"unrelated\nnot a boundary\v" + LISTEN_PREFIX
+                       + b"127.0.0.1:12345 (read-only; native execution disabled)\n")
+        self.assertIsNone(find_listener(capture))
+        capture.append(LISTEN_PREFIX
+                       + b"[::1]:12345 (read-only; native execution disabled)\n")
+        self.assertEqual(find_listener(capture), ("::1", 12345))
+
+    def test_listener_actual_pipe_can_pause_between_prefix_and_suffix(self) -> None:
+        prefix = LISTEN_PREFIX
+        suffix = b"127.0.0.1:12345 (read-only; native execution disabled)\n"
+        code = (f"import os,sys,time; os.write(2,{prefix!r}); "
+                f"sys.stdin.buffer.read(1); os.write(2,{suffix!r}); time.sleep(10)")
+        child = subprocess.Popen([sys.executable, "-c", code], stdin=subprocess.PIPE,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                                 shell=False, bufsize=0)
+        capture = BoundedCapture()
+        reader = drain_stderr(child, capture)
+        try:
+            deadline = time.monotonic() + 2
+            while len(capture.snapshot()) < len(prefix) and time.monotonic() < deadline:
+                time.sleep(0.005)
+            self.assertEqual(capture.snapshot(), prefix)
+            self.assertIsNone(find_listener(capture))
+            self.assertIsNotNone(child.stdin)
+            child.stdin.write(b"x")
+            child.stdin.flush()
+            self.assertEqual(wait_for_listener(child, capture, deadline), ("127.0.0.1", 12345))
+        finally:
+            cleanup_owned_child(child)
+            reader.join(timeout=FINAL_WAIT_SECONDS)
+            if child.stdin is not None:
+                child.stdin.close()
+            if child.stderr is not None:
+                child.stderr.close()
 
     def test_capture_is_bounded(self) -> None:
         capture = BoundedCapture(8)
