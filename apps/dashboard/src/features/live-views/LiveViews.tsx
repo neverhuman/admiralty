@@ -94,8 +94,9 @@ export default function LiveViews({
   const sources = snapshot?.sources ?? [],
     gaps = sources.filter(
       (s) =>
-        ["error", "unavailable", "not_configured"].includes(s.state) ||
-        isStale(s.observed_utc, now),
+        ["error", "unavailable", "not_configured", "conflict"].includes(
+          s.state,
+        ) || isStale(s.observed_utc, now),
     );
   const select = (value: Selection | null) => {
     const params = new URLSearchParams(window.location.hash.split("?")[1]);

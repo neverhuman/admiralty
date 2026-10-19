@@ -58,16 +58,16 @@ registered resource limits, unrelated jobs and preserved work remain in force.
 
 ## Git Flow and Fleet Atlas — qualified source, 19 October 2026 UTC
 
-Branch `codex/live-git-fleet-final` implements the worker-ready
+[PR95](https://github.com/neverhuman/admiralty/pull/95), branch `codex/live-git-fleet-final` implements the worker-ready
 [LIVE_VIEWS_PLAN](LIVE_VIEWS_PLAN.md) and [operator contract](../../operators/live-views.md).
-Source `d6b0be0cc71707400f4f3d54383d017cba171b21`, based on main
+Source `a21532a3147e7a30d47caf02f18d27fa05fb5545`, based on main
 `99f4e26cebfab97afa661ed05aea6192bfd5935c`, was qualified directly from a clean
-checkout. The [final LV receipt](receipts/LV/d6b0be0cc71707400f4f3d54383d017cba171b21.json)
+checkout. The [final LV receipt](receipts/LV/a21532a3147e7a30d47caf02f18d27fa05fb5545.json)
 stores exact commands, computed hashes, failed runs/repairs and screenshots.
 Earlier PR86/88/93 candidates and the `9cde56d` receipt remain historical evidence.
 The final source preserves the upstream native task-loop probe, `sha2`
 dependency, browser form deadlines and CI resource limits. Published histories
-are preserved. Final PR publication follows this evidence-only commit.
+are preserved. The final review-repair head follows this evidence-only commit.
 
 Git Flow retains original ordered parents, shallow boundaries, refs and
 main/linked/detached/unborn checkouts with bounded working-state observations.
@@ -76,14 +76,20 @@ native task assignments, unassigned agents, exact model evidence and its
 original timestamps. Both routes share authenticated current-state SSE,
 inspectors, URL navigation, complete loaded inventories and full-window mode.
 
-Direct checks pass 1,162 Rust tests (five existing ignored), 114 dashboard tests,
-eleven contract runtime tests, legacy qualification and all eighteen browser
+Direct checks pass 1,164 Rust tests (five existing ignored), 114 dashboard tests,
+eleven contract runtime tests, legacy qualification and all nineteen browser
 checks. These include real temporary Git → observer → server → built UI,
 a synthetic 500-agent census, and nine pinned axe surfaces with zero violations
 and zero incomplete. Package/canary self-tests pass. Local macOS proof does not
 establish hosted Linux CI success. Exact-final-head neverhumanbot approval and
 normal merge gates remain pending at receipt creation. This follow-up changes
 documentation/evidence only; verify runtime object identities before integration.
+
+The authorized read-only reviewer found no additional actionable findings after
+repairing conflicting project/manager claims and Git Follow latest after
+Inventory updates. Reversed-order Rust fixtures and a failing-before/passing-after
+browser counterexample cover those repairs. A plain scroll-roundtrip theory was
+disproved and retracted; initial browser setup failures remain explicit.
 
 Independent review repairs cover each linked worktree's effective filters,
 retained Git on matching native projects, manager deduplication, ambiguous
