@@ -375,11 +375,17 @@ describe("built live views against the real Rust server", () => {
     await audit("roster dark");
     await browser.clickButtonByAriaLabel("Switch to light theme");
     await audit("roster light");
+    await browser.clickButtonByText("Map");
+    await audit("atlas light");
     await browser.clickNav("Git Flow");
     await browser.waitForSelector(".git-canvas");
     await audit("git light");
     await browser.clickButtonByText("Inventory");
     await audit("git inventory light");
+    await browser.clickButtonByAriaLabel("Switch to dark theme");
+    await audit("git inventory dark");
+    await browser.clickButtonByText("Graph");
+    await audit("git dark");
     await browser.setViewportSize(390, 844);
     await browser.clickNav("Fleet Atlas");
     await browser.waitForSelector(".atlas-roster");

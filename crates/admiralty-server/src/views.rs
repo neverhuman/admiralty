@@ -804,6 +804,10 @@ pub(crate) async fn snapshot(
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     authorized(&state, &headers)?;
+    let _permit = state
+        .reads
+        .try_acquire()
+        .map_err(|_| error(StatusCode::TOO_MANY_REQUESTS, "Visual read limit reached"))?;
     state
         .views
         .start(state.store.clone(), state.config.clone())
@@ -867,6 +871,24 @@ pub(crate) async fn events(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn unknown_project_and_owner_named_worker_remain_discoverable() {
+        let dir = tempfile::tempdir().expect("fixture");
+        let store = Store::open(dir.path().join("store.sqlite")).expect("store");
+        let source = json!({"generated_utc":"2026-10-18T12:00:00Z","host":"node","projects":{},"hierarchy":{"owner":"Owner"},
+            "agents":[{"id":"12.Owner","screen":"Owner","host":"node","project":"orphan"}]});
+        let result = project(&store.snapshot().expect("snapshot"), Some(&source), false);
+        assert!(result.projects.iter().any(|p| p.id == "orphan"));
+        assert!(result.agents.iter().any(|a| a.name == "Owner"
+            && a.role == ViewRole::Worker
+            && a.presence == ViewPresence::Observed));
+        assert!(
+            result
+                .agents
+                .iter()
+                .any(|a| a.role == ViewRole::Owner && a.presence == ViewPresence::Unobserved)
+        );
+    }
     #[test]
     fn projection_retains_taskless_projects_node_identity_and_honest_model_presence() {
         let dir = tempfile::tempdir().expect("fixture");
