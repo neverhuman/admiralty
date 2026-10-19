@@ -29,6 +29,24 @@ build failures remain immediate work.
    overflow checks, all checks, jobs2 and fifteen minutes. No measured timeout
    improvement is established; preserve previous failures and obtain actual
    final-source results.
+5. Receiving main f590837 browser run39192222037/job117867775022 failed one
+   negative diagnostic assertion (18passed/1failed): the160ms missing-label
+   probe timed out in CDP before label inspection, so its retained bounded
+   error differs from the asserted label-absence reason. This is distinct from
+   the readiness issue above. Original log SHA-256
+   `2f1421b5212ac5310dabb860f459c9df0c28147e39d9ee4d70340208d620fd93`
+   is retained at `/private/tmp/adm-ci-f590-browser-117867775022.log`.
+   PR99 head1542e212 and PR98 headf02ccfda browser runs passed historically;
+   neither proves receiving-main green. Owner: the final cleanup lane after
+   implementation; preserve negative timeout coverage and actual diagnostics.
+6. PR100 run39193205311/job117870271726 stopped at strict Clippy on the
+   native-attention test policy's nonminimal boolean. The equivalent expression
+   repair at7c502ae builds through strict server all-target Clippy and passes
+   all5attention tests (74unrelated cases filtered), with independent review.
+   Original failure log SHA-256
+   `7b1c3270f4b1fecadc7a279addb7da7cce5b0b4e62c76fcaadc371359f6819a6`
+   is retained at `/private/tmp/adm-ci-pr100-clippy-117870271726.log`.
+   New receiving-main hosted validation remains separate from this local result.
 
 Raw failures and computed hashes are retained in
 [the failure receipt](receipts/integration/ci-cleanup-evidence-20261019T0224Z.json).
