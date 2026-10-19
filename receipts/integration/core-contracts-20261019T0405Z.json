@@ -1,0 +1,813 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T04:03:12.163Z",
+  "base_revision": "8e99eaac1ab72a6debf55bf2d442462568ca8b4f",
+  "qualified_source": "04d334650fda018ee7acc88980c5c3f143948a6d",
+  "scope": "Registered v2 coordination header + explicit bundled-timezone scheduling + inert pinned todoq importer",
+  "component_candidates": {
+    "envelope": "b1a379e377e2e32ba6c76dd9ee0ad5d011b06f5f",
+    "scheduling": "755c3d92d6b16f2ec414dc9310fc8cf391d0b985",
+    "todoq": "c42d4c119c9263e75db957e4e2c0be9c20f0499b",
+    "todoq_repair": "d0fe293f681add8b0c8dbb076d10c5b2411cd9b6"
+  },
+  "artifacts": {
+    "crates/admiralty-core/src/coordination/envelope.rs": {
+      "bytes": 19702,
+      "sha256": "cbd703b6e78ca423c0dd1999c3407056a2ddf6a0bd5d0d82c333d5763b863dcf"
+    },
+    "crates/admiralty-core/src/coordination/mod.rs": {
+      "bytes": 123,
+      "sha256": "db9c632efd33090e1bfe8ed47d25ef3f7b66bbbc4b954b803195e94fb2b79d52"
+    },
+    "crates/admiralty-core/src/scheduling_profile.rs": {
+      "bytes": 29015,
+      "sha256": "43a41ba84df5df11e3e795022d1fe6394a6d80ec325381e18614894a97d0d410"
+    },
+    "crates/admiralty-core/src/import/todoq.rs": {
+      "bytes": 36012,
+      "sha256": "75d808ed662bb45c2ee84bd195d21d5a7dd44fbe6b214611ae14e14793235032"
+    },
+    "crates/admiralty-core/src/import/mod.rs": {
+      "bytes": 87,
+      "sha256": "1242740820bef53cc0e8bdd56688062f6003cb5f125d81789471a1e14301eb98"
+    },
+    "crates/admiralty-core/src/lib.rs": {
+      "bytes": 1267,
+      "sha256": "870309c614d920c18a6f15d326918ab8d47c0db32477a167f2951e5547a40d5d"
+    },
+    "crates/admiralty-cli/src/main.rs": {
+      "bytes": 53636,
+      "sha256": "3dc150932da821b6fd313ed72f8b1234b17920d012565035cc5fc418d9aba282"
+    },
+    "crates/admiralty-cli/src/native_package.rs": {
+      "bytes": 50330,
+      "sha256": "efeed28ec051011e33af34424aab6b9544b621fbee98b1141208346aa8026a6d"
+    },
+    "scripts/contracts/generate.mjs": {
+      "bytes": 13699,
+      "sha256": "aebdb8073e515ec9b0cd2df078736382bb1d467ed1a43b1328114c6197a9df04"
+    },
+    "Cargo.toml": {
+      "bytes": 2867,
+      "sha256": "542a76fec9fe75fa106662ce168360712ae07525c5fc407df8f314d415079899"
+    },
+    "Cargo.lock": {
+      "bytes": 37806,
+      "sha256": "f7b4476d8f9fa4099ff88da0879322658d6f75e082f5a90a06065b544bfbe297"
+    },
+    "crates/admiralty-core/Cargo.toml": {
+      "bytes": 378,
+      "sha256": "0aa7ceac35f0b8d900ae4554d7a4e3e6859a3cf4221348c42444c22b0f70283e"
+    },
+    "crates/admiralty-core/tests/coordination_envelope.rs": {
+      "bytes": 23728,
+      "sha256": "ddc532f6402db2dbd72208b4de279950170d3b9ae25fd2500614fad308be538d"
+    },
+    "crates/admiralty-core/tests/scheduling_profile.rs": {
+      "bytes": 19749,
+      "sha256": "bdc130a21bd513a97f25df965fd9510e80def6dc91f1b83b28d45b015aa27053"
+    },
+    "crates/admiralty-core/tests/todoq_import.rs": {
+      "bytes": 26571,
+      "sha256": "6e5e8d46b7fbe3cf753d623e86a816064cde315abbc61d73756c7c20281df22e"
+    },
+    "target/quality/core-contracts-integrated-final.log": {
+      "bytes": 6647,
+      "sha256": "53f6811363fcbb47b8e0a2f43966aa6fde5c78d857dddff7bffc95a3a1bf2cee"
+    },
+    "target/quality/core-contracts-clippy.log": {
+      "bytes": 283,
+      "sha256": "61691486c3b40de44ebb2d9c2a341cdef60e8c42fce6e73cdeedbddf5ed2c1b7"
+    },
+    "target/quality/core-contracts-package.log": {
+      "bytes": 3621,
+      "sha256": "1c535408f73312baffd0b533c982c05aee4460a5415c9c51930204fa9eeb5442"
+    },
+    "target/quality/core-contracts-cli-public.log": {
+      "bytes": 538,
+      "sha256": "a297049b13716fc16ec920d957f5b8625db524a8f5b7f9284d7d2d62b67a21c6"
+    },
+    "target/quality/core-contracts-cli-clippy.log": {
+      "bytes": 718,
+      "sha256": "2de1742fd0d347ad52af5b425d6d4b604828e4922c200b5aea8aad07a163faeb"
+    },
+    "target/quality/core-contracts-schema-drift.log": {
+      "bytes": 1137,
+      "sha256": "21b75955849ab0757659a1788ac4b39f0afd40239d83b672b3b66207d80f4180"
+    },
+    "target/quality/core-contracts-ts-drift.log": {
+      "bytes": 78,
+      "sha256": "4886ef107bdb53016d51b08d54908c05ea193cee27dc360e04f5b208ef497bac"
+    },
+    "target/quality/core-contracts-format.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "target/quality/envelope-contract-runtime.log": {
+      "bytes": 1549,
+      "sha256": "a0bd6c0586b3880068e6be579343fc60c48f89cd805810687d4001a94e182e01"
+    },
+    "target/quality/envelope-schema-export.log": {
+      "bytes": 1334,
+      "sha256": "3a9af08d00ea9110e2c69430551f132f7012c06a33a98b45ed27863b8bebd3d4"
+    },
+    "target/quality/envelope-public-generate.log": {
+      "bytes": 150,
+      "sha256": "221b8c15229386011a382dc6b2d1eb5a212de611903b42129f62221aed0b8d03"
+    },
+    "target/quality/envelope-scheduling-integrated.log": {
+      "bytes": 2116,
+      "sha256": "2b1fe492a94c6bc0e5c3c8d99ce625afcf87fdcd9b23f8af88b51346d6888840"
+    }
+  },
+  "checks": {
+    "core": {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-core",
+        "--test",
+        "coordination_envelope",
+        "--test",
+        "scheduling_profile",
+        "--test",
+        "todoq_import",
+        "--test",
+        "intake_contracts",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "summaries": [
+        {
+          "passed": 14,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 0
+        },
+        {
+          "passed": 19,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 0
+        },
+        {
+          "passed": 22,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 0
+        },
+        {
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 0
+        }
+      ],
+      "passed": 73
+    },
+    "native_package": {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-cli",
+        "--bin",
+        "admiralty",
+        "--locked",
+        "native_package::tests"
+      ],
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 34,
+      "exit_code": 0
+    },
+    "cli_public": {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-cli",
+        "--bin",
+        "admiralty",
+        "--locked",
+        "tests::public_"
+      ],
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 41,
+      "exit_code": 0
+    },
+    "contracts_runtime": {
+      "argv": [
+        "node",
+        "--test",
+        "packages/contracts/runtime.test.mjs"
+      ],
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "includes_typescript_consumer": true,
+      "exit_code": 0
+    },
+    "strict_core_clippy_exit_code": 0,
+    "strict_cli_clippy_exit_code": 0,
+    "format_exit_code": 0,
+    "rust_schema_drift": {
+      "roots": 23,
+      "drift": false,
+      "exit_code": 0
+    },
+    "typescript_guard_drift": {
+      "roots": 23,
+      "drift": false,
+      "exit_code": 0
+    }
+  },
+  "old_outputs": {
+    "count": 63,
+    "schemas": 22,
+    "types": 22,
+    "guard_modules": 19,
+    "byte_identical": true,
+    "base": "8e99eaac"
+  },
+  "dependencies": {
+    "old_name_version_source_checksum_tuples_preserved": true,
+    "additional_locked_packages": [
+      "bitflags@1.3.2",
+      "defmt@1.2.0",
+      "defmt-macros@1.2.0",
+      "defmt-parser@1.1.0",
+      "equivalent@1.0.3",
+      "indexmap@2.14.2",
+      "jiff@0.2.38",
+      "jiff-core@0.1.1",
+      "jiff-static@0.2.38",
+      "jiff-tzdb@0.1.9",
+      "portable-atomic@1.15.0",
+      "portable-atomic-util@0.2.8",
+      "serde_spanned@1.1.2",
+      "toml@1.1.8+spec-1.1.0",
+      "toml_datetime@1.1.2+spec-1.1.0",
+      "toml_parser@1.1.5+spec-1.1.0",
+      "toml_writer@1.1.3+spec-1.1.0",
+      "winnow@1.0.4"
+    ],
+    "direct": {
+      "toml": "=1.1.8, defaults off, std/serde/parse",
+      "jiff": "=0.2.38, defaults off, std",
+      "jiff_tzdb": "=0.1.9, explicit TZif2026e"
+    },
+    "primary_references": [
+      "https://docs.rs/toml/1.1.8%2Bspec-1.1.0/toml/",
+      "https://raw.githubusercontent.com/BurntSushi/jiff/0.2.38/crates/jiff/Cargo.toml"
+    ]
+  },
+  "reviews": [
+    {
+      "reviewer": "audit_product",
+      "scope": "scheduling final repaired source43a41ba8",
+      "result": "clear"
+    },
+    {
+      "reviewer": "audit_runtime",
+      "scope": "repaired todoq75d808ed and envelope ASCII-only schema repaircbd703b6",
+      "result": "clear",
+      "duplicate_suites": false
+    }
+  ],
+  "worker_receipts": {
+    "envelope": {
+      "path": "/private/tmp/admiralty-durable-context-c230002/target/quality/coordination-envelope/receipt.json",
+      "sha256": "17e50ba1abb44743c0b5dea0cfd9c54e9d9902508ebce25b6b77d60b9174c337",
+      "contents": {
+        "source_commit": "b1a379e377e2e32ba6c76dd9ee0ad5d011b06f5f",
+        "base_commit": "6f76ed29e2d11278d9834be408f11f98a1b9c019",
+        "recorded_utc": "2026-10-19T03:44:53.536602+00:00",
+        "workspace": "/private/tmp/admiralty-durable-context-c230002",
+        "scope": "Pure additive CoordinationEnvelopeV2 component; two committed new files only",
+        "registered_test_source": true,
+        "temporary_registration_restored_before_commit": true,
+        "artifacts": {
+          "crates/admiralty-core/src/coordination/envelope.rs": "e73c0f64329d87539835434e0d9bb092bdabe8c25eaf09a87f205182a17f44fa",
+          "crates/admiralty-core/tests/coordination_envelope.rs": "4314e1ba586a805a9bf9e023251d1d4f602512c5ff878ed374b540b15752197e",
+          "target/quality/coordination-envelope/registration.patch": "d2e9523d98ee3fa011df2f4ae552aaff82d9e0698c3b5867486ea64733a81989",
+          "target/quality/coordination-envelope/targeted-tests.log": "1660799e3a487600607b0063997f05f12416a3024b3d0d0ace9737862091b733",
+          "target/quality/coordination-envelope/clippy.log": "759d699b2f2e98ac3c2c9a5a6ca94155ae7fb9abbadca542f97fa6b901ba60af",
+          "target/quality/coordination-envelope/fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "checks": [
+          {
+            "command": "rtk proxy env TMPDIR=/private/tmp/adm-native-4pbrtc1l CARGO_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target/coordination-envelope CARGO_BUILD_JOBS=1 cargo test -p admiralty-core --test coordination_envelope -- --test-threads=1",
+            "exit_code": 0,
+            "passed": 14,
+            "ignored": 0
+          },
+          {
+            "command": "rtk proxy env TMPDIR=/private/tmp/adm-native-4pbrtc1l CARGO_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target/coordination-envelope CARGO_BUILD_JOBS=1 cargo clippy -p admiralty-core --lib --test coordination_envelope -- -D warnings",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk proxy rustfmt --edition 2024 --check crates/admiralty-core/src/coordination/envelope.rs crates/admiralty-core/tests/coordination_envelope.rs",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk git diff --check",
+            "exit_code": 0
+          }
+        ],
+        "preserved_prior_failures": [
+          "initial-compile-failed.log is a diagnostic summary of actual tool-session23720 failure, not a raw compiler log; invalid schemars pattern annotation corrected",
+          "initial-clippy-test-unwraps-failed.log is the actual failed strict Clippy output; test unwraps replaced by descriptive expects"
+        ],
+        "limitations": [
+          "No production module registration or shared schema/type/guard/package export in this candidate; excluded registration patch supplied to root",
+          "No version negotiation, bus/inbox/outbox dispatch, issuer, authenticated route, delivery/application ACK or provider execution activation",
+          "Header validates reference and exact raw payload bytes; body semantic decoder and artifact custody are independently required",
+          "AuthorityRef and ExpectedBindings are comparison data, not current capability proof",
+          "No full P02 parent acceptance or bus qualification claimed",
+          "Old v1 source/schema files untouched by this two-file commit"
+        ]
+      }
+    },
+    "scheduling": {
+      "path": "/private/tmp/adm-scheduling-profile-proof-segj_4fd/receipt.json",
+      "sha256": "af5590ca9caaa0e98aa143c398d4e42454dc545951cb716a3dc4eb8bae61105c",
+      "contents": {
+        "packet": "WO4 pure SchedulingProfile and environment-wait component",
+        "base_commit": "40501925ae2a8906532ed5f709cda83a5898c675",
+        "candidate_commit": "755c3d92d6b16f2ec414dc9310fc8cf391d0b985",
+        "worktree": "/private/tmp/admiralty-attention-journal-99f4e26",
+        "branch": "codex/scheduling-profile",
+        "candidate_files": {
+          "crates/admiralty-core/src/scheduling_profile.rs": "43a41ba84df5df11e3e795022d1fe6394a6d80ec325381e18614894a97d0d410",
+          "crates/admiralty-core/tests/scheduling_profile.rs": "bdc130a21bd513a97f25df965fd9510e80def6dc91f1b83b28d45b015aa27053"
+        },
+        "checks": [
+          {
+            "command": "rtk proxy env TMPDIR=/private/tmp/adm-native-4pbrtc1l CARGO_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target/wo2-intake CARGO_BUILD_JOBS=1 RUST_TEST_THREADS=1 cargo test -p admiralty-core --test scheduling_profile --locked",
+            "log": "scheduling-tests-repaired.log",
+            "result": "PASS",
+            "passed": 22,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "command": "rtk proxy env TMPDIR=/private/tmp/adm-native-4pbrtc1l CARGO_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target/wo2-intake CARGO_BUILD_JOBS=1 RUST_TEST_THREADS=1 cargo clippy -p admiralty-core --all-targets --locked -- -D warnings",
+            "log": "clippy-repaired.log",
+            "result": "PASS"
+          },
+          {
+            "command": "rtk proxy rustfmt --edition 2024 --check crates/admiralty-core/src/scheduling_profile.rs crates/admiralty-core/tests/scheduling_profile.rs",
+            "log": "format.log",
+            "result": "PASS"
+          },
+          {
+            "command": "rtk proxy rustc --edition=2024 --test tests/integration/scheduler_admission.rs -L dependency=<owned-target>/debug/deps --extern admiralty_core=<sole-final-test-profile-rlib> -o <proof>/scheduler-admission; rtk proxy <proof>/scheduler-admission --test-threads=1",
+            "logs": [
+              "scheduler-admission-compile-final.log",
+              "scheduler-admission-tests-final.log",
+              "linked-core-artifact-final.json"
+            ],
+            "result": "PASS",
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0,
+            "note": "Existing fixture was unregistered in Cargo integration harness; compiled actual fixture against actual final-source core artifact. No synthetic replacement."
+          },
+          {
+            "command": "rtk git diff --cached --check",
+            "result": "PASS"
+          }
+        ],
+        "preserved_failures": [
+          {
+            "log": "dependency-offline-failure.log",
+            "kind": "summary",
+            "effect": "No compilation: offline index lacked exact approved Jiff; normal Cargo dependency resolution then succeeded."
+          },
+          {
+            "log": "boundary-regression-before-fix.log",
+            "kind": "raw",
+            "production_source_sha256": "d106ba5720a78a7f1d4ce7cf67d7840c8675f35d9cc3303bd6d7b1b6ef8e055f",
+            "passed": 17,
+            "failed": 3,
+            "failures": [
+              "valid1970 observation rejected by another negative-epoch endpoint",
+              "valid9999 observation rejected by future out-of-range endpoint",
+              "unknown zone returned WeekdayNotApplicable before current-zone check"
+            ]
+          },
+          {
+            "log": "stale-artifact-preflight-summary.log",
+            "kind": "summary",
+            "effect": "Earlier dev-profile core rlib rejected before compile/run; final fixture linked sole newer final-source test-profile artifact."
+          }
+        ],
+        "independent_review": {
+          "agent": "/root/audit_product",
+          "result": "CLEAR",
+          "source_hashes_verified": true,
+          "no_duplicate_suites": true,
+          "limits": "Environment and override inputs still require independent production authentication/current admission."
+        },
+        "registration": {
+          "excluded_patch": "registration.patch",
+          "sha256": "92624e990074c6a6bd0471e985cff5e3ad61586c4c8bebf4aa88537434047080",
+          "required_root_changes": [
+            "workspace exact jiff =0.2.38 default-features=false features=[std]",
+            "workspace exact jiff-tzdb =0.1.9",
+            "core Cargo jiff.workspace=true and jiff-tzdb.workspace=true",
+            "core lib pub mod scheduling_profile",
+            "root-owned Cargo.lock graph update; source-invariants confirms no existing package/version/checksum changes"
+          ],
+          "restored_before_candidate_commit": true,
+          "feature_evidence": "dependency-features.log",
+          "invariants": "source-invariants.json"
+        },
+        "semantics": [
+          "Explicit positive-epoch Unix seconds are canonical DecimalU64 on wire; no now/OS zone/global tzdb/environment lookup.",
+          "Exact bundled2026e TZif bytes and raw SHA256; canonical IANA name, Jiff and bundle identities retained.",
+          "Fold Earlier/Later/Reject; gap skips entire window; no automatic compatible shift.",
+          "Civil start !=end, end<start crosses midnight; shift identity and blocked date mean local START date. UTC endpoints half-open and <=72h.",
+          "Current-2..current+2 candidate dates x <=32windows; current validation precedes candidate Range-only skip. Structural/profile/chronology errors never silently skipped.",
+          "Historical replay verifies independently retained digest, scope/profile identity and recorded offset/UTC arithmetic without current TZif lookup.",
+          "Immediate eligibility and externally granted expiring override cannot clear setup/resource/quota/decision waits or produce permits, priority, model escalation or execution grants."
+        ],
+        "remaining_integration": [
+          "Root applies/merges dependency/export patch and registers any desired public schema roots; component commit alone deliberately has no shared registration.",
+          "Trusted service obtains current independently authenticated profiles/environment/override bindings; no production issuer is implemented here.",
+          "Durably persist resolved window/profile/tzdb/override provenance at admission and reuse exact original digest on replay.",
+          "Compose eligibility with propose_ready_tasks plus atomic lease/resource/budget/approval admission; no scheduler daemon or Store/controller wiring in this packet."
+        ],
+        "limits": {
+          "component_only": true,
+          "full_packet_acceptance": false,
+          "P02_accepted": false,
+          "P14_accepted": false,
+          "scheduling_daemon_qualified": false,
+          "execution_granted": false,
+          "fleet_changes": false,
+          "provider_calls": false,
+          "CI_runs": false,
+          "model_escalation": false,
+          "resolution_precision": "whole Unix seconds",
+          "supported_domain": "civil shift dates>=1970 and Jiff Timestamp range; explicit errors outside; no host TZ fallback",
+          "historical_record_authentication": "Independent trusted digest is required; constructing matching data+digest is not authentication."
+        },
+        "primary_dependency_sources": [
+          "https://raw.githubusercontent.com/BurntSushi/jiff/0.2.38/crates/jiff/Cargo.toml",
+          "https://raw.githubusercontent.com/BurntSushi/jiff/0.2.38/crates/jiff-tzdb/tzname.rs",
+          "https://docs.rs/jiff-tzdb/latest/jiff_tzdb/fn.get.html",
+          "https://docs.rs/jiff/latest/jiff/tz/struct.AmbiguousTimestamp.html"
+        ],
+        "proof_files": {
+          "scheduler-admission-tests.log": "1d7b15fb6bfe0f59b95a71fcaec7a47fc45e931ad7173312eee2ded9e8e51ae0",
+          "linked-core-artifact-final.json": "84785e22ce0b4ae1aa62db97431f07f3175bcbbc589b3c98ce989b1140044f32",
+          "scheduler-admission-tests-final.log": "1d7b15fb6bfe0f59b95a71fcaec7a47fc45e931ad7173312eee2ded9e8e51ae0",
+          "core-build.stderr.log": "4d6701b45523f204dede0eb2b206afdf2f16d1ae264bad320e69283964ae3a3f",
+          "linked-core-artifact.txt": "332433d21b90fdb266b24047878e1f7e71db845035b2814d9fe4c20f0c5be26f",
+          "core-build.jsonl": "d989a6930427bef4bbad570c8f2006545a174e5b284c449badf134741d2bc0fb",
+          "dependency-features.log": "f8bc6b954f7d6354cf721e73a0532aa7669e9e95485135b5b0f4ecf6ed774957",
+          "format.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "clippy-repaired.log": "261538903cfd526edbecc513e6d5dd03e56060ead955cc1d68aaa929b0aa4af7",
+          "boundary-regression-before-fix.log": "d9844487397e66b0bf8ea2beb3423b845b00809e919c002daa3d747868f318d6",
+          "scheduling-tests-final.log": "26cdcb6857dfef909c396697e607f65e0c634df920d450780207f7e59d889251",
+          "scheduler-admission-compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scheduling-tests-first.log": "38d18af89c6018f9713fb3e266ecd4d620b2bce628e93c393219ca17d26c26f7",
+          "registration.patch": "92624e990074c6a6bd0471e985cff5e3ad61586c4c8bebf4aa88537434047080",
+          "dependency-offline-failure.log": "0fe40630160ab552eec95d82f04ba7a3831ec21afcc2ab7e69242392be631d87",
+          "stale-artifact-preflight-summary.log": "85ba45d75c967d489bb40163a39b06253b1e02ad04f36cc577db07416c8ddb4a",
+          "scheduling-tests-repaired.log": "82c7f3113c55e5a9a7c6dbca12509c3c3c1bf2f99c143e5a6d92c285e5f61a7d",
+          "clippy-first.log": "72a02d8e4714de0ab1a22749d3569dc873eed6541541c24ce94f1968c797cd34",
+          "scheduler-admission-compile-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source-invariants.json": "970f67d49224a9bddb6e56e8b36f48cc8e016cf3f83c771c778cfeab7c548442"
+        }
+      }
+    },
+    "todoq": {
+      "path": "/private/tmp/adm-todoq-import-4050192-r96bwr__/receipt.json",
+      "sha256": "e9509f6bfe3c16e62f7dffd523f38291eea9054794aa7f18c318a81e41daebeb",
+      "contents": {
+        "packet": "WO3 inert supplied todoq snapshot parser",
+        "created_utc": "2026-10-19T03:52:30.676303+00:00",
+        "worktree": "/private/tmp/admiralty-audit-b2b9e7a",
+        "branch": "codex/todoq-pinned-import",
+        "base": "40501925ae2a8906532ed5f709cda83a5898c675",
+        "commit": "c42d4c119c9263e75db957e4e2c0be9c20f0499b",
+        "clean_worktree": true,
+        "files": [
+          {
+            "path": "crates/admiralty-core/src/import/todoq.rs",
+            "bytes": 35090,
+            "sha256": "c71e35ded8b186cb833a129a3f4eb41dcbb662e2c579c68a71c9807847721639"
+          },
+          {
+            "path": "crates/admiralty-core/tests/todoq_import.rs",
+            "bytes": 23176,
+            "sha256": "451a6ffc7ac9127df5f8a6cc014fc817e49a82101ec7446ceaa09714d11dfad3"
+          },
+          {
+            "path": "tests/fixtures/todoq/README.md",
+            "bytes": 624,
+            "sha256": "2961f2f326a8bd9bf1f30a4ced23c0b50fae87e390225e98036f46fae453cab4"
+          },
+          {
+            "path": "tests/fixtures/todoq/family-batch.toml",
+            "bytes": 342,
+            "sha256": "2c79449648bed387c2508200cf19d1c8edc2ba97cebd0ddbcc2557f0bee4ec38"
+          },
+          {
+            "path": "tests/fixtures/todoq/family-legacy.toml",
+            "bytes": 158,
+            "sha256": "cbb68ce958842181409fa0df1621c0ac03ba413bb1e05fc766f8a1398b6ec124"
+          },
+          {
+            "path": "tests/fixtures/todoq/family-minimal.toml",
+            "bytes": 102,
+            "sha256": "35955c04ef2967a5ecdf71b36e519adddbb532b69652d0efbeeef10b1c663f6f"
+          },
+          {
+            "path": "tests/fixtures/todoq/family-shifts.toml",
+            "bytes": 307,
+            "sha256": "3f6a7ce537b9fa82e41ba14e207c61d81c05e431fa8d930071cd645a89f0f3c9"
+          },
+          {
+            "path": "tests/fixtures/todoq/historical-done.md",
+            "bytes": 395,
+            "sha256": "f623cbcfc7defd0c8575c600beb947afb23f8cfe73e210bc67c876835c75fa57"
+          }
+        ],
+        "checks": [
+          {
+            "argv": [
+              "cargo",
+              "clippy",
+              "-p",
+              "admiralty-core",
+              "--all-targets",
+              "--locked",
+              "--",
+              "-D",
+              "warnings"
+            ],
+            "exit": 0,
+            "seconds": 4.987795209046453,
+            "log": "/private/tmp/adm-todoq-import-4050192-r96bwr__/frozen-core-strict.log",
+            "log_sha256": "246ec81e09bea355c73557566091b4b5486f8ab1def1addf016b0fa6468d8885"
+          },
+          {
+            "argv": [
+              "cargo",
+              "test",
+              "-p",
+              "admiralty-core",
+              "--test",
+              "todoq_import",
+              "--locked"
+            ],
+            "exit": 0,
+            "seconds": 4.239158249925822,
+            "log": "/private/tmp/adm-todoq-import-4050192-r96bwr__/frozen-todoq.log",
+            "log_sha256": "a1fddff5c704008d1a88f3ee51abd1c7d31fd5f87c105331106cdb9e731d4b38",
+            "passed": 17,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 0
+          },
+          {
+            "argv": [
+              "cargo",
+              "fmt",
+              "--all",
+              "--",
+              "--check"
+            ],
+            "exit": 0,
+            "seconds": 1.0714584160596132,
+            "log": "/private/tmp/adm-todoq-import-4050192-r96bwr__/frozen-format.log",
+            "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "argv": [
+              "cargo",
+              "test",
+              "-p",
+              "admiralty-core",
+              "--test",
+              "intake_contracts",
+              "--locked"
+            ],
+            "exit": 0,
+            "seconds": 1.2843197081238031,
+            "log": "/private/tmp/adm-todoq-import-4050192-r96bwr__/core-intake-compat.log",
+            "log_sha256": "d4174e7bce5336550952184be0c1a1c78c865e8776a919d9e34f6ad28fdd1ce2",
+            "passed": 19,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 0,
+            "source_limit": "Existing intake compatibility tests ran before final importer-only incremental tree-budget check; no intake source was changed."
+          },
+          {
+            "argv": [
+              "cargo",
+              "tree",
+              "-p",
+              "admiralty-core",
+              "-e",
+              "features",
+              "--locked"
+            ],
+            "exit": 0,
+            "seconds": 0.035347916185855865,
+            "log": "/private/tmp/adm-todoq-import-4050192-r96bwr__/toml-features.log",
+            "log_sha256": "fdc957d6ace3c4dc8da70fe5476f18197c85b5a07c112b9de40708a1d2b3d517"
+          }
+        ],
+        "check_environment": {
+          "TMPDIR": "/private/tmp/adm-todoq-import-4050192-r96bwr__/tmp",
+          "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/todoq-import",
+          "CARGO_BUILD_JOBS": "1",
+          "RUST_TEST_THREADS": "1",
+          "temporary_registration": "Real core module and TOML dependency present for checks, excluded from final commit and preserved separately."
+        },
+        "root_integration": {
+          "excluded_patch": "/private/tmp/adm-todoq-import-4050192-r96bwr__/root-registration-dependency.patch",
+          "sha256": "47656a4b88d718de528f9027f04c6476f13edb9ab4276420b8b3a82309c93b68",
+          "files": [
+            "Cargo.lock",
+            "crates/admiralty-core/Cargo.toml",
+            "crates/admiralty-core/src/lib.rs",
+            "crates/admiralty-core/src/import/mod.rs"
+          ],
+          "dependency": "toml = { version = \"=1.1.8\", default-features = false, features = [\"std\", \"serde\", \"parse\"] }",
+          "resolved_version": "1.1.8+spec-1.1.0",
+          "active_features": [
+            "parse",
+            "serde",
+            "std"
+          ],
+          "unbounded_feature": false,
+          "display_feature": false,
+          "all_temporary_shared_edits_restored": true
+        },
+        "reference_study": {
+          "repository": "neverhuman/nightshift-todo-driver",
+          "commit": "b26ddcbfc12e6be527093dd3afa3e63040c03d1a",
+          "private_manifest": "/private/tmp/adm-todoq-reference-4050192-ibl_04xw/source-manifest.json",
+          "manifest_sha256": "f9980a7580f184f5ef1ea05babe1ae64acb940d39a82728828bbd5b0bf52c786",
+          "files": [
+            "todoq/README.md",
+            "todoq/todoq/config.py",
+            "todoq/todoq/todo.py",
+            "todoq/todoq/queue.py",
+            "todoq/tests/test_todoq.py"
+          ],
+          "downloaded_code_executed": false,
+          "live_queues_accessed": false,
+          "synthetic_committed_fixtures_only": true
+        },
+        "preserved_failure_logs": [
+          {
+            "path": "/private/tmp/adm-todoq-import-4050192-r96bwr__/todoq-first.log",
+            "sha256": "7ba285ca80e38a7c0f1a55079e443c017fa9d9e2b5de4185462e12eeb415c05b"
+          },
+          {
+            "path": "/private/tmp/adm-todoq-import-4050192-r96bwr__/todoq-compile-first.log",
+            "sha256": "06e8655c98f40599b38aa7ecf41b44e95de8f30ee9732e15486a1865b8433335"
+          },
+          {
+            "path": "/private/tmp/adm-todoq-import-4050192-r96bwr__/core-strict-first.log",
+            "sha256": "e2aa784f7b39343236e073a1bc4d63797d0416b99e840796a8eaf61434275d60"
+          },
+          {
+            "path": "/private/tmp/adm-todoq-import-4050192-r96bwr__/core-strict-final.log",
+            "sha256": "4787836a9c2d5635d535530435485fcfb4b3414fb019c33368b60b7520153d22"
+          }
+        ],
+        "limits": [
+          "1 MiB aggregate raw UTF-8 input and 1000 records checked before hashing or TOML parsing.",
+          "TOML real parser allocation is bounded by raw input and its normal recursion limit; custom global node/depth/field bounds apply after each document parse before projection, subsequent parse, or snapshot hashing.",
+          "8 MiB serialized observation, 4096 diagnostics/edges, 64 mappings/repositories, depth32, 32768 tree nodes, field64KiB, page100.",
+          "Supplied repository/ref/commit/blob fields are claims. Raw SHA256 confirms only supplied bytes, not Git-tree membership.",
+          "Exact raw source retained; setup/gates/notes/deny patterns remain inert text. No live acquisition or execution.",
+          "Historical done/merged/claimant/lease/cost values remain observations; malformed files and unresolved mappings/dependencies never disappear.",
+          "Snapshot paging digest detects accidental content mutation but is unkeyed and grants no authority.",
+          "No active import route, provider, task creation, TaskContract, lease, acceptance, policy/grant, or parent packet acceptance is implemented or claimed."
+        ]
+      }
+    },
+    "todoq_repair": {
+      "path": "/private/tmp/adm-todoq-import-4050192-r96bwr__/page-repair-receipt.json",
+      "sha256": "d05e986752b1d3c6b59ec9aabf18c9e69dd0f586752a06ec43d3ed6f3997cce4",
+      "contents": {
+        "packet": "WO3 page raw-source binding repair",
+        "created_utc": "2026-10-19T03:55:21.700708+00:00",
+        "worktree": "/private/tmp/admiralty-audit-b2b9e7a",
+        "commit": "d0fe293f681add8b0c8dbb076d10c5b2411cd9b6",
+        "parent_candidate": "c42d4c119c9263e75db957e4e2c0be9c20f0499b",
+        "source_files": [
+          {
+            "path": "crates/admiralty-core/src/import/todoq.rs",
+            "sha256": "75d808ed662bb45c2ee84bd195d21d5a7dd44fbe6b214611ae14e14793235032"
+          },
+          {
+            "path": "crates/admiralty-core/tests/todoq_import.rs",
+            "sha256": "6e5e8d46b7fbe3cf753d623e86a816064cde315abbc61d73756c7c20281df22e"
+          }
+        ],
+        "failed_before": {
+          "log": "/private/tmp/adm-todoq-import-4050192-r96bwr__/page-binding-before-repair.log",
+          "sha256": "a6830a0e152f46f036d12aca2b49f4c77d3b5928f5362659774970450fe9071e",
+          "exit": 101,
+          "passed": 0,
+          "failed": 1,
+          "filtered": 17
+        },
+        "checks": [
+          {
+            "argv": [
+              "cargo",
+              "test",
+              "-p",
+              "admiralty-core",
+              "--test",
+              "todoq_import",
+              "--locked"
+            ],
+            "exit": 0,
+            "seconds": 4.6057424996979535,
+            "log": "/private/tmp/adm-todoq-import-4050192-r96bwr__/page-repair-todoq.log",
+            "sha256": "9e7cb03e78317daad2128fcf6afa76f74c2f5f58c494a38b23e3c2622462b0d7",
+            "passed": 18,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 0
+          },
+          {
+            "argv": [
+              "cargo",
+              "clippy",
+              "-p",
+              "admiralty-core",
+              "--all-targets",
+              "--locked",
+              "--",
+              "-D",
+              "warnings"
+            ],
+            "exit": 0,
+            "seconds": 5.225702167022973,
+            "log": "/private/tmp/adm-todoq-import-4050192-r96bwr__/page-repair-core-strict.log",
+            "sha256": "7f9fe7043a80ffb4bd71883794629c770ad814bf79a626bdd3745a7e4230c177"
+          },
+          {
+            "argv": [
+              "cargo",
+              "fmt",
+              "--all",
+              "--",
+              "--check"
+            ],
+            "exit": 0,
+            "seconds": 1.1351718748919666,
+            "log": "/private/tmp/adm-todoq-import-4050192-r96bwr__/page-repair-format.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "semantics": [
+          "source_index indexes containing snapshot/page.sources; every page preserves original family source at zero.",
+          "page record_offset preserves original first record ordinal; queue/family/family_diagnostics retain context.",
+          "Stable source_key/path/blob/raw_sha256/raw_text and all todo/diagnostic content remain identical; spans address exact raw bytes.",
+          "Original snapshot_digest and cursor validation unchanged; no trust/authentication claim."
+        ],
+        "original_receipt": "/private/tmp/adm-todoq-import-4050192-r96bwr__/receipt.json",
+        "original_receipt_sha256": "e9509f6bfe3c16e62f7dffd523f38291eea9054794aa7f18c318a81e41daebeb",
+        "excluded_root_patch": "/private/tmp/adm-todoq-import-4050192-r96bwr__/root-registration-dependency.patch",
+        "excluded_root_patch_sha256": "47656a4b88d718de528f9027f04c6476f13edb9ab4276420b8b3a82309c93b68",
+        "shared_registration_restored": true,
+        "clean_worktree": true
+      }
+    }
+  },
+  "preserved_failures": [
+    "Original scheduling17pass3fail: unknown-zone early exits and unrelated epoch/range candidates; final22pass",
+    "Original importer page source-index mismatch; final18pass includes1000-record/malformed/later-page joins",
+    "Root initial schema bootstrap compile failed because native include_bytes preceded generated leaf; temporary exact package-entry omission only for generation, restored before final package checks",
+    "Strict standalone generation rejected Unicode-length helper imports; equivalent anchored ASCII regex bounds repair retained strict no-loader policy",
+    "Root first core schema expectation asserted old min/maxLength representation; adjusted to exact bounded ASCII pattern, final14pass"
+  ],
+  "limits": [
+    "No v2 bus persistence/transport/body decoder/custody/current authority installed by header shape",
+    "Scheduling is pure eligibility, not durable admission/production issuer/override authentication",
+    "todoq raw hash checks do not authenticate supplied Git commit/blob membership; no queue acquisition or imported effects",
+    "No parent acceptance/general coding execution qualification",
+    "No hosted green/soak/performance/clean public release claim from these local checks"
+  ],
+  "parent_acceptance": false,
+  "native_execution_qualified": false,
+  "provider_turns": 0
+}

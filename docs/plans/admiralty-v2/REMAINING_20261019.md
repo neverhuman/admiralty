@@ -1,6 +1,27 @@
 # Remaining Admiralty work — 19 October 2026
 
-**Audited source:** `90e76d881689d36226c176a9493c1b8736cce071` (verified local `origin/main`, receiving PR100).
+**Latest integration audit:** source `04d3346` based on receiving main
+`8e99eaac1ab72a6debf55bf2d442462568ca8b4f` (PR103). The source-bound ledger
+records subsequent merge and deployment evidence separately. The older matrix
+and handoff text below preserve their original90e76d audit scope.
+
+Since that original audit, raw capture and writer-authorized questions are
+merged. The public intake pipeline exports22 roots; this integration adds the
+separate v2 coordination header as root23, bundled-timezone scheduling and the
+repaired inert todoq importer. Actual73 focused core,10 package,3 CLI-public and
+14 contract runtime checks pass with strict core/CLI Clippy and both23-root drift
+checks. These close components, not parent packets. Historical handoffs1,2,4
+and5 below must not be reassigned as missing implementations: raw capture and
+exports are integrated, import is in this source, and S1 owns delivery. S2 owns
+the service adapter; root owns shared registration and rollout reconciliation.
+
+The fresh minimal-HOME provider run0349 starts a real CLI turn but all three
+shell commands fail with EAGAIN. It makes no source change and fails the probe
+with exit17; its grant is consumed. Reported usage is not billing/model identity
+or qualification. No retained counter yet proves the resource cause. Current
+writer-bound attention authorization and resource diagnostics are separate
+active lanes. The next runtime gates remain real changed-source execution,
+trusted checks/acceptance, production admission/accounting and recovery.
 
 **Parent state:** **2/32 accepted**: P00 and P01 at their recorded foundation scope. **P02–P31 remain open.** Integrated components below do not promote a parent.
 

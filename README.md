@@ -164,6 +164,14 @@ and atomically records compact wake intents across retries. Its authenticated
 recording bridge is default-deny; production delivery and autonomous execution
 remain separate activation gates.
 
+The additive v2 coordination header now preserves complete routing, causation,
+correlation, scoped cursors, epochs, protected-fact and payload digests. Its
+generated public guard is separate from the frozen v1 message. Pure scheduling
+uses an explicit bundled timezone database and retains resolved UTC windows for
+historical replay. The bounded todoq importer observes supplied pinned snapshots;
+imported claims and setup commands remain inert. See the
+[component contracts and limits](docs/operators/native-contracts.md).
+
 See the [source-pinned remaining-work audit](docs/plans/admiralty-v2/REMAINING_20261019.md), [release scope and remaining gates](docs/operators/release-status.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [master plan](docs/plans/admiralty-v2/MASTER_PLAN.md) and [work packets](docs/plans/admiralty-v2/WORK_PACKETS.md). Historical deployment information remains in [the compatibility inventory](docs/operators/legacy-inventory.md).
 
 Backups and isolated restore rehearsals are available through `admiralty recover`. Restart admission remains a proposal; it cannot reactivate an unknown session. `admiralty release stage` and [the deterministic packager](docs/operators/source-package.md) stage explicit inputs without installing, signing, publishing or qualifying a release.
