@@ -192,6 +192,11 @@ impl NativeLifecycleAuthority {
         if !validated.all_checks_passed() {
             return Err(NativeLifecycleError::EvidenceMismatch);
         }
+        // This preparation method runs outside Store's writer callback and
+        // before taking the grant lock. The writer callback remains I/O-free.
+        checks
+            .revalidate_environment(&task.contract, &self.policy.verification)
+            .map_err(|_| NativeLifecycleError::EvidenceMismatch)?;
         let closed = closed.ok_or(NativeLifecycleError::MissingClosure)?;
         let identity = &closed.identity().identity;
         if identity.project_id != task.contract.project_id

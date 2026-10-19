@@ -831,6 +831,27 @@ impl NativeEvidenceCatalog {
                 "verification receipt did not pass all checks",
             ));
         }
+        // Filesystem probes run before acquiring catalog state, never from
+        // Store's authority callbacks. Observed environment drift revokes any
+        // previously published record for this custody identity.
+        if checks.candidate_checkout() != candidate_checkout_path
+            || checks
+                .revalidate_environment(&task.contract, &self.policy.verification)
+                .is_err()
+        {
+            if self
+                .revoke_custody_digest(
+                    candidate_custody_digest,
+                    "trusted check execution environment changed",
+                )
+                .is_err()
+            {
+                self.fail_closed.store(true, Ordering::SeqCst);
+            }
+            return Err(NativeEvidenceCatalogError::EvidenceMismatch(
+                "trusted check checkout or execution environment changed",
+            ));
+        }
         if decision_evidence.contract_digest != contract_digest
             || decision_evidence.verification_policy_digest != policy_digest
             || decision_evidence.receipt_digest != validated.receipt_digest()
