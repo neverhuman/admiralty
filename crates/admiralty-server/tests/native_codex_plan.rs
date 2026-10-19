@@ -19,7 +19,10 @@ mod tests {
             },
             supervision::SupervisionScope,
         },
-        reservations::{AccountId, CurrencyUnit, MinorUnits, Reservation, ReservationScope},
+        reservations::{
+            AccountId, CurrencyUnit, MinorUnits, Reservation, ReservationEvent, ReservationLedger,
+            ReservationScope,
+        },
         resource_gate::{
             AdmissionIdentity, QualifiedEnvironment, ResourcePermitAuthority, ResourcePermitClaims,
             SystemdBackendConfig,
@@ -30,9 +33,16 @@ mod tests {
             registry::NodeRef,
         },
     };
+    use admiralty_server::model_selection::{InferenceSlotClaim, model_config_digest};
+    use admiralty_store::{
+        BudgetAndSlotAdmission,
+        admission_reservations::{self, ReservationCommand},
+        inference_slots::{self, SlotClaim, SlotCommand, SlotEvent, SlotLedger},
+        outbox,
+    };
     use native_codex_plan::{
-        CodexPlanError, CodexPlanInput, CodexResourceBinding, PreparedNativeCodexPlan,
-        prepare_codex_plan,
+        BoundNativeCodexPlan, CodexPlanError, CodexPlanInput, CodexResourceBinding,
+        PreparedNativeCodexPlan, prepare_codex_plan,
     };
     use std::{
         collections::{BTreeMap, BTreeSet},
@@ -166,7 +176,23 @@ mod tests {
                     "core.fsmonitor=false",
                 ];
                 fixed.extend_from_slice(args);
-                command(&git, &fixed, &root.0.join("base"), &root.0, id)
+                // Git-created metadata must remain private even when the owned
+                // test process inherits umask 002. Preserve every argv byte;
+                // change only this Git child's mask, never the process-global mask.
+                let mut wrapped = vec![
+                    "-c",
+                    "umask 077; exec \"$@\"",
+                    "fixture-git",
+                    git.to_str().unwrap(),
+                ];
+                wrapped.extend_from_slice(&fixed);
+                command(
+                    Path::new("/bin/sh"),
+                    &wrapped,
+                    &root.0.join("base"),
+                    &root.0,
+                    id,
+                )
             };
             run_git(&["init", "--quiet", "--object-format=sha1"], "git-init");
             run_git(&["add", "--", "src/lib.rs"], "git-add");
@@ -461,6 +487,516 @@ mod tests {
             request: p.launch_request().clone(),
             current: true,
         }
+    }
+
+    fn clone_slot_inputs(inputs: &BudgetAndSlotAdmission) -> BudgetAndSlotAdmission {
+        BudgetAndSlotAdmission {
+            budget_command: inputs.budget_command.clone(),
+            budget_proof: Arc::clone(&inputs.budget_proof),
+            slot_command: inputs.slot_command.clone(),
+            slot_proof: Arc::clone(&inputs.slot_proof),
+        }
+    }
+
+    struct SlotExpected {
+        request: controller::LaunchRequest,
+        spec: LaunchSpec,
+        reservation: Reservation,
+        tuple_digest: String,
+        original_head: String,
+        original_workspace: PathBuf,
+    }
+
+    fn slot_fixture() -> Fixture {
+        let mut fixture = Fixture::new();
+        // Explicitly choose the existing Store profile before preparing the
+        // original request. The Codex producer incarnation remains independent.
+        fixture.source.incarnation = "fixture-host-boot".into();
+        fixture
+    }
+
+    fn slot_inputs(
+        fixture: &mut Fixture,
+    ) -> (
+        BoundNativeCodexPlan,
+        BudgetAndSlotAdmission,
+        InferenceSlotClaim,
+        SlotExpected,
+    ) {
+        let prepared = fixture.prepare();
+        let request = prepared.launch_request().clone();
+        let provider = prepared.prepared_provider();
+        let tuple = provider.tuple();
+        let inference = InferenceSlotClaim {
+            project_id: tuple.scope.project_id.clone(),
+            root_id: tuple.scope.root_id.clone(),
+            task_id: tuple.scope.task_id.clone(),
+            attempt_id: tuple.scope.attempt_id.clone(),
+            contract_revision: tuple.scope.revision,
+            contract_digest: tuple.scope.contract_digest.clone(),
+            model_id: fixture.model.id.clone(),
+            provider: fixture.model.provider.clone(),
+            provider_model: fixture.model.provider_model.clone(),
+            tier: fixture.model.tier,
+            node_id: fixture.model.node_id.clone(),
+            slots_reserved: 1,
+            registry_revision: tuple.registry_revision.clone(),
+            // Data only: no observed capacity or authorization is created here.
+            snapshot_revision: "fixture-unattested-snapshot".into(),
+            model_config_digest: model_config_digest(&fixture.model).unwrap(),
+        };
+        let resources = fixture.resources(&prepared);
+        let expected = SlotExpected {
+            request: request.clone(),
+            spec: provider.launch_spec().clone(),
+            reservation: resources.reservation.clone(),
+            tuple_digest: provider.tuple_digest().into(),
+            original_head: prepared.prepared_workspace().head_oid().into(),
+            original_workspace: prepared.prepared_workspace().workspace().workspace.clone(),
+        };
+        let intent = controller::planned_launch_intent(&fixture.task, &request).unwrap();
+        let intent_digest = outbox::intent_digest(&intent).unwrap();
+        let budget_command = ReservationCommand {
+            schema_version: 1,
+            command_id: "fixture-slot-budget".into(),
+            source: request.source.clone(),
+            expected_ledger_revision: 0,
+            expected_ledger_digest:
+                admission_reservations::ledger_digest(&ReservationLedger::new()).unwrap(),
+            launch_intent_digest: Some(intent_digest.clone()),
+            event: ReservationEvent::Reserve {
+                event_id: "fixture-slot-budget".into(),
+                reservation_id: resources.reservation.id.clone(),
+                scope: resources.reservation.scope.clone(),
+                correlation_id: resources.reservation.correlation_id.clone(),
+                amount: resources.reservation.original.clone(),
+            },
+        };
+        let slot_command = SlotCommand {
+            schema_version: 1,
+            command_id: "fixture-slot-command".into(),
+            source: request.source.clone(),
+            expected_ledger_revision: 0,
+            expected_ledger_digest: inference_slots::ledger_digest(&SlotLedger::default()).unwrap(),
+            event: SlotEvent::Hold {
+                hold_id: "fixture-slot-hold".into(),
+                claim: SlotClaim {
+                    scope: resources.reservation.scope.clone(),
+                    pool_id: "fixture-managed-pool".into(),
+                    generation: "fixture-generation".into(),
+                    model_id: inference.model_id.clone(),
+                    model_config_digest: inference.model_config_digest.clone(),
+                    inference_claims_digest: content_digest(&inference).unwrap(),
+                    kernel_claims_digest: native_executor::native_resource_claims_digest(
+                        &resources.claims,
+                    )
+                    .unwrap(),
+                    budget_reservation_id: resources.reservation.id.clone(),
+                    budget_command_digest: admission_reservations::validate_command(
+                        &budget_command,
+                    )
+                    .unwrap(),
+                    launch_intent_digest: intent_digest,
+                    slots: inference.slots_reserved,
+                },
+            },
+        };
+        let inputs = BudgetAndSlotAdmission {
+            budget_command,
+            budget_proof: Arc::new("fixture-private-budget-proof".to_owned()),
+            slot_command,
+            slot_proof: Arc::new("fixture-private-slot-proof".to_owned()),
+        };
+        let admission = current(fixture, &prepared);
+        let bound = prepared.bind_resources(resources, &admission).unwrap();
+        (bound, inputs, inference, expected)
+    }
+
+    fn slot_claim_mut(inputs: &mut BudgetAndSlotAdmission) -> &mut SlotClaim {
+        match &mut inputs.slot_command.event {
+            SlotEvent::Hold { claim, .. } => claim,
+            _ => panic!("owned fixture requires a slot hold"),
+        }
+    }
+
+    fn sync_inference_digest(inputs: &mut BudgetAndSlotAdmission, inference: &InferenceSlotClaim) {
+        let claim = slot_claim_mut(inputs);
+        claim.model_id = inference.model_id.clone();
+        claim.model_config_digest = inference.model_config_digest.clone();
+        claim.slots = inference.slots_reserved;
+        claim.inference_claims_digest = content_digest(inference).unwrap();
+    }
+
+    fn sync_budget_digest(inputs: &mut BudgetAndSlotAdmission) {
+        let digest = admission_reservations::validate_command(&inputs.budget_command).unwrap();
+        slot_claim_mut(inputs).budget_command_digest = digest;
+    }
+
+    #[test]
+    fn slot_factory_binds_distinct_model_ids_digest_domains_and_global_node_without_a_turn() {
+        for global_model in [false, true] {
+            let mut fixture = slot_fixture();
+            if global_model {
+                fixture.model.node_id = None;
+                fixture.admission.selected_model_digest = content_digest(&fixture.model).unwrap();
+            }
+            let (bound, inputs, inference, expected) = slot_inputs(&mut fixture);
+            assert_ne!(fixture.model.id, fixture.model.provider_model);
+            assert_ne!(
+                content_digest(&fixture.model).unwrap(),
+                inference.model_config_digest
+            );
+            let budget_proof = Arc::clone(&inputs.budget_proof);
+            let slot_proof = Arc::clone(&inputs.slot_proof);
+            let slot_bound = bound
+                .bind_inference_slot(inputs, inference.clone())
+                .unwrap();
+            let (plan, request, provider, _, _, retained) = slot_bound.into_parts();
+            assert!(retained.matches_plan(&request, &plan));
+            assert_eq!(request, expected.request);
+            assert_eq!(request.model, fixture.model.id);
+            assert_eq!(plan.model_declared, fixture.model.id);
+            assert_eq!(provider.tuple().registry_model_id, fixture.model.id);
+            assert_eq!(
+                provider.tuple().requested_model,
+                fixture.model.provider_model
+            );
+            assert_eq!(
+                provider.tuple().selected_model_digest,
+                content_digest(&fixture.model).unwrap()
+            );
+            assert_eq!(provider.tuple_digest(), expected.tuple_digest);
+            assert_ne!(
+                provider.tuple().scope.incarnation,
+                plan.permit_claims.host_incarnation
+            );
+            assert_eq!(
+                request.source.incarnation,
+                plan.permit_claims.host_incarnation
+            );
+            assert_eq!(inference.node_id, fixture.model.node_id);
+            assert_eq!(provider.tuple().node_id, "fixture-node");
+            assert_eq!(plan.reservation, expected.reservation);
+            assert_eq!(plan.prepared_workspace.head_oid(), expected.original_head);
+            assert_eq!(
+                plan.prepared_workspace.workspace().workspace,
+                expected.original_workspace
+            );
+            plan.prepared_workspace.validate_current_custody().unwrap();
+            assert!(Arc::ptr_eq(&retained.inputs().budget_proof, &budget_proof));
+            assert!(Arc::ptr_eq(&retained.inputs().slot_proof, &slot_proof));
+            let summary = CodexNdjsonStream::from_prepared(&provider)
+                .unwrap()
+                .finish(None, false);
+            assert_eq!(summary.reported_model, None);
+            assert!(!summary.native_execution_qualified());
+            assert!(!fixture.root.0.join("forbidden").exists());
+        }
+    }
+
+    #[test]
+    fn slot_factory_rejection_matrix_returns_original_preparation_proofs_and_claim_for_correction()
+    {
+        let mut fixture = slot_fixture();
+        let (mut bound, original, inference, expected) = slot_inputs(&mut fixture);
+        for case in 0..38 {
+            let mut inputs = clone_slot_inputs(&original);
+            let mut claimed = inference.clone();
+            match case {
+                0 => claimed.model_id = "different-registry-id".into(),
+                1 => claimed.provider = Provider::OpenaiCompatible,
+                2 => claimed.provider_model = "different-provider-model".into(),
+                3 => claimed.tier = 1,
+                4 => claimed.node_id = None,
+                5 => claimed.registry_revision = "43".into(),
+                6 => claimed.model_config_digest = content_digest(&fixture.model).unwrap(),
+                7 => claimed.project_id = ProjectId::new("foreign-project").unwrap(),
+                8 => claimed.root_id = RootId::new("foreign-root").unwrap(),
+                9 => claimed.task_id = TaskId::new("foreign-task").unwrap(),
+                10 => claimed.attempt_id = AttemptId::new("foreign-attempt").unwrap(),
+                11 => claimed.contract_revision += 1,
+                12 => claimed.contract_digest = content_digest(&"foreign-contract").unwrap(),
+                13 => claimed.slots_reserved = 0,
+                14 => claimed.slots_reserved = 2,
+                15 => claimed.snapshot_revision.clear(),
+                16 => claimed.snapshot_revision = "x".repeat(129),
+                17 => {
+                    inputs.budget_command.source.producer_id = "foreign-producer".into();
+                    inputs.slot_command.source = inputs.budget_command.source.clone();
+                    sync_budget_digest(&mut inputs);
+                }
+                18 => {
+                    inputs.budget_command.source.incarnation = "foreign-host-boot".into();
+                    inputs.slot_command.source = inputs.budget_command.source.clone();
+                    if let ReservationEvent::Reserve { scope, .. } =
+                        &mut inputs.budget_command.event
+                    {
+                        scope.incarnation = "foreign-host-boot".into();
+                        slot_claim_mut(&mut inputs).scope.incarnation = "foreign-host-boot".into();
+                    }
+                    sync_budget_digest(&mut inputs);
+                }
+                19 => {
+                    if let ReservationEvent::Reserve { reservation_id, .. } =
+                        &mut inputs.budget_command.event
+                    {
+                        *reservation_id = "foreign-reservation".into();
+                    }
+                    slot_claim_mut(&mut inputs).budget_reservation_id =
+                        "foreign-reservation".into();
+                    sync_budget_digest(&mut inputs);
+                }
+                20 => {
+                    if let ReservationEvent::Reserve { amount, .. } =
+                        &mut inputs.budget_command.event
+                    {
+                        *amount = MinorUnits::new(2);
+                    }
+                    sync_budget_digest(&mut inputs);
+                }
+                21 => {
+                    if let ReservationEvent::Reserve { correlation_id, .. } =
+                        &mut inputs.budget_command.event
+                    {
+                        *correlation_id = "foreign-correlation".into();
+                    }
+                    sync_budget_digest(&mut inputs);
+                }
+                22 => {
+                    if let ReservationEvent::Reserve { scope, .. } =
+                        &mut inputs.budget_command.event
+                    {
+                        scope.root_id = RootId::new("foreign-kernel-root").unwrap();
+                    }
+                    slot_claim_mut(&mut inputs).scope.root_id =
+                        RootId::new("foreign-kernel-root").unwrap();
+                    sync_budget_digest(&mut inputs);
+                }
+                23 => {
+                    let wrong = content_digest(&"different-kernel-claims").unwrap();
+                    if let ReservationEvent::Reserve { scope, .. } =
+                        &mut inputs.budget_command.event
+                    {
+                        scope.resource_claims_digest = wrong.clone();
+                    }
+                    let claim = slot_claim_mut(&mut inputs);
+                    claim.scope.resource_claims_digest = wrong.clone();
+                    claim.kernel_claims_digest = wrong;
+                    sync_budget_digest(&mut inputs);
+                }
+                24 => {
+                    let wrong = content_digest(&"different-launch-intent").unwrap();
+                    inputs.budget_command.launch_intent_digest = Some(wrong.clone());
+                    slot_claim_mut(&mut inputs).launch_intent_digest = wrong;
+                    sync_budget_digest(&mut inputs);
+                }
+                25 => {
+                    inputs.budget_command.expected_ledger_revision = u64::MAX;
+                    sync_budget_digest(&mut inputs);
+                }
+                26 => inputs.slot_command.expected_ledger_revision = u64::MAX,
+                27 => {
+                    slot_claim_mut(&mut inputs).budget_command_digest =
+                        content_digest(&"different-budget-command").unwrap()
+                }
+                28 => {
+                    slot_claim_mut(&mut inputs).inference_claims_digest =
+                        expected.reservation.scope.resource_claims_digest.clone()
+                }
+                29 => slot_claim_mut(&mut inputs).model_id = "foreign-slot-model".into(),
+                30 => {
+                    slot_claim_mut(&mut inputs).model_config_digest =
+                        content_digest(&fixture.model).unwrap()
+                }
+                31 => slot_claim_mut(&mut inputs).slots = 2,
+                32 => slot_claim_mut(&mut inputs).pool_id.clear(),
+                33 => slot_claim_mut(&mut inputs).generation.clear(),
+                34 => {
+                    slot_claim_mut(&mut inputs).kernel_claims_digest =
+                        content_digest(&"foreign-kernel").unwrap()
+                }
+                35 => {
+                    slot_claim_mut(&mut inputs).scope.owner =
+                        PrincipalId::new("foreign-owner").unwrap()
+                }
+                36 => inputs.slot_command.source.sequence = "2".into(),
+                37 => inputs.budget_command.source.sequence = "2".into(),
+                _ => unreachable!(),
+            }
+            if case <= 16 {
+                // Preserve matching sidecar hashes so the actual prepared-model
+                // mapping, rather than only a stale digest, must reject the claim.
+                sync_inference_digest(&mut inputs, &claimed);
+            }
+            let command_before = inputs.budget_command.clone();
+            let slot_before = inputs.slot_command.clone();
+            let budget_proof = Arc::clone(&inputs.budget_proof);
+            let slot_proof = Arc::clone(&inputs.slot_proof);
+            let failure = bound
+                .bind_inference_slot(inputs, claimed.clone())
+                .err()
+                .unwrap_or_else(|| panic!("factory accepted invalid binding case {case}"));
+            let debug = format!("{failure:?}");
+            assert!(!debug.contains("fixture-private-budget-proof"));
+            assert!(!debug.contains("fixture-private-slot-proof"));
+            assert!(!debug.contains(fixture.root.0.to_str().unwrap()));
+            let (error, returned, inputs, returned_claim) = failure.into_parts();
+            assert_eq!(error, CodexPlanError::ResourceBinding, "case {case}");
+            assert_eq!(inputs.budget_command, command_before, "case {case}");
+            assert_eq!(inputs.slot_command, slot_before, "case {case}");
+            assert!(
+                Arc::ptr_eq(&inputs.budget_proof, &budget_proof),
+                "case {case}"
+            );
+            assert!(Arc::ptr_eq(&inputs.slot_proof, &slot_proof), "case {case}");
+            assert_eq!(returned_claim, claimed, "case {case}");
+            bound = returned;
+        }
+        // Explicit correction uses the same returned original preparation; no
+        // reconstructed workspace, silent profile rewrite, or automatic retry.
+        let (plan, request, provider, _, _, retained) = bound
+            .bind_inference_slot(original, inference)
+            .unwrap()
+            .into_parts();
+        assert!(retained.matches_plan(&request, &plan));
+        assert_eq!(plan.prepared_workspace.head_oid(), expected.original_head);
+        assert_eq!(
+            plan.prepared_workspace.workspace().workspace,
+            expected.original_workspace
+        );
+        plan.prepared_workspace.validate_current_custody().unwrap();
+        assert_eq!(provider.tuple_digest(), expected.tuple_digest);
+        assert_eq!(plan.reservation, expected.reservation);
+        assert!(!fixture.root.0.join("forbidden").exists());
+    }
+
+    #[test]
+    fn slot_factory_does_not_equate_codex_and_kernel_incarnation_namespaces() {
+        // The ordinary fixture deliberately has different request-source and
+        // kernel incarnations. Existing Store profile cannot bind that request;
+        // rejection must preserve it, rather than silently rewrite either value.
+        let mut fixture = Fixture::new();
+        let (bound, inputs, inference, expected) = slot_inputs(&mut fixture);
+        let source_before = inputs.budget_command.source.clone();
+        assert_ne!(
+            source_before.incarnation,
+            expected.reservation.scope.incarnation
+        );
+        let proof_before = Arc::clone(&inputs.slot_proof);
+        let (_, bound, returned, claim) = bound
+            .bind_inference_slot(inputs, inference.clone())
+            .err()
+            .unwrap()
+            .into_parts();
+        assert_eq!(returned.budget_command.source, source_before);
+        assert_eq!(returned.slot_command.source, source_before);
+        assert_eq!(claim, inference);
+        assert!(Arc::ptr_eq(&returned.slot_proof, &proof_before));
+        let (plan, request, provider, _, _) = bound.into_parts();
+        assert_eq!(request.source, source_before);
+        assert_eq!(plan.reservation, expected.reservation);
+        assert_ne!(
+            provider.tuple().scope.incarnation,
+            plan.permit_claims.host_incarnation
+        );
+        plan.prepared_workspace.validate_current_custody().unwrap();
+    }
+
+    #[test]
+    fn private_slot_binding_rejects_public_request_and_plan_mutation_after_extraction() {
+        let mut fixture = slot_fixture();
+        let (bound, inputs, inference, expected) = slot_inputs(&mut fixture);
+        let (mut plan, request, _, _, _, retained) = bound
+            .bind_inference_slot(inputs, inference)
+            .unwrap()
+            .into_parts();
+        assert!(retained.matches_plan(&request, &plan));
+        for case in 0..12 {
+            let mut changed = request.clone();
+            match case {
+                0 => changed.source.producer_id = "foreign-producer".into(),
+                1 => changed.source.incarnation = "foreign-incarnation".into(),
+                2 => changed.source.sequence = "2".into(),
+                3 => changed.model = fixture.model.provider_model.clone(),
+                4 => changed.provider = "openai_compatible".into(),
+                5 => changed.context_digest = content_digest(&"foreign-context").unwrap(),
+                6 => changed.policy_digest = content_digest(&"foreign-policy").unwrap(),
+                7 => changed.run_id = "foreign-run".into(),
+                8 => changed.owner = PrincipalId::new("foreign-owner").unwrap(),
+                9 => changed.not_before += 1,
+                10 => changed.observed_utc = "2026-10-18T23:00:01Z".into(),
+                11 => {
+                    changed.expected_contract_digest = content_digest(&"foreign-contract").unwrap()
+                }
+                _ => unreachable!(),
+            }
+            assert!(
+                !retained.matches_plan(&changed, &plan),
+                "request case {case}"
+            );
+            assert!(retained.matches_plan(&request, &plan));
+        }
+        let original_claims = plan.permit_claims.clone();
+        let original_workspace = plan.workspace.clone();
+        let original_authority = Arc::clone(&plan.permit_authority);
+        for case in 0..26 {
+            match case {
+                0 => plan.model_declared = fixture.model.provider_model.clone(),
+                1 => plan.provider_declared = "openai_compatible".into(),
+                2 => plan.context_digest = content_digest(&"foreign-context").unwrap(),
+                3 => plan.policy_digest = content_digest(&"foreign-policy").unwrap(),
+                4 => plan.run_id = "foreign-run".into(),
+                5 => plan.contract_digest = content_digest(&"foreign-contract").unwrap(),
+                6 => plan.task_id = TaskId::new("foreign-task").unwrap(),
+                7 => plan.attempt_id = AttemptId::new("foreign-attempt").unwrap(),
+                8 => plan.launch_spec.args.push("foreign-argument".into()),
+                9 => plan.launch_spec.program = PathBuf::from("/bin/false"),
+                10 => plan.launch_spec.cwd = fixture.root.0.clone(),
+                11 => plan.launch_spec.spool_dir = fixture.root.0.join("foreign-spool"),
+                12 => plan.launch_spec.run_id = "foreign-spec-run".into(),
+                13 => plan.permit_claims.memory_max_bytes += 1,
+                14 => plan.permit_claims.max_tasks += 1,
+                15 => plan.permit_claims.expires_at_unix_ms -= 1,
+                16 => {
+                    plan.permit_claims.cpu_set.insert(1);
+                }
+                17 => plan.permit_claims.host_incarnation = "foreign-boot".into(),
+                18 => plan.reservation.revision += 1,
+                19 => plan.reservation.original = MinorUnits::new(2),
+                20 => plan.reservation.stop_requested = true,
+                21 => plan.reservation.scope.root_id = RootId::new("foreign-root").unwrap(),
+                22 => plan.workspace.node_id = NodeRef::new("foreign-node").unwrap(),
+                23 => plan.workspace.owned_paths.push("foreign.rs".into()),
+                24 => plan.workspace.workspace = fixture.root.0.clone(),
+                25 => {
+                    plan.permit_authority = Arc::new(FixturePermit {
+                        expected: original_claims.clone(),
+                        current: AtomicBool::new(true),
+                    })
+                }
+                _ => unreachable!(),
+            }
+            assert!(!retained.matches_plan(&request, &plan), "plan case {case}");
+            plan.task_id = request.task_id.clone();
+            plan.attempt_id = request.attempt_id.clone();
+            plan.contract_digest = request.expected_contract_digest.clone();
+            plan.context_digest = request.context_digest.clone();
+            plan.policy_digest = request.policy_digest.clone();
+            plan.provider_declared = request.provider.clone();
+            plan.model_declared = request.model.clone();
+            plan.run_id = request.run_id.clone();
+            plan.launch_spec = expected.spec.clone();
+            plan.permit_claims = original_claims.clone();
+            plan.reservation = expected.reservation.clone();
+            plan.workspace = original_workspace.clone();
+            plan.permit_authority = Arc::clone(&original_authority);
+            assert!(
+                retained.matches_plan(&request, &plan),
+                "restored plan case {case}"
+            );
+        }
+        plan.prepared_workspace.validate_current_custody().unwrap();
+        assert!(!fixture.root.0.join("forbidden").exists());
     }
 
     #[test]
