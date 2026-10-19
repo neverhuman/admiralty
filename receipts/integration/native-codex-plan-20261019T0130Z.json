@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T01:28:50.007Z",
+  "base_revision": "9893516024c855a2c0e28503bc35c471a6ae9635",
+  "worker_commit": "676c746396c3a3b39840ed9c95ac39f3145a3e94",
+  "scope": "Registered inert Codex launch-plan composition; actual descriptor-backed workspace and CLI metadata fixtures, no coding-provider turn",
+  "source_sha256": {
+    "crates/admiralty-server/src/services/native_codex_plan.rs": "01910a4f26b20726078833f9862f50f15e0db2292af4e0b450abfe80e1cbb9f3",
+    "crates/admiralty-server/tests/native_codex_plan.rs": "9eaf97e2577d0b415e09898331e04cb0818a181c266e42ff0afe4733024644ca",
+    "crates/admiralty-server/src/services/mod.rs": "aab60854bc2942af721723633b5f51d96b8454a4113ecff241379e79c6fe7c89"
+  },
+  "checks": [
+    {
+      "command": "cargo test -p admiralty-server --test native_codex_plan --test native_evidence_catalog --locked",
+      "exit_code": 0,
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "log": "target/quality/provider-catalog-registered-tests.log",
+      "sha256": "6c1ac4aa28e95fbdfc7d8bcfab76e8b8b3b662843bc18ff8922d0e2e6378e815"
+    },
+    {
+      "command": "cargo clippy -p admiralty-server --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "target/quality/provider-catalog-registered-clippy.log",
+      "sha256": "aa5cce2388e2a5cd30cf4f801415160ce256928c8a6dc24eed62128082abf29d"
+    },
+    {
+      "command": "cargo fmt --all --check",
+      "exit_code": 0
+    }
+  ],
+  "review": {
+    "independent_source_review": "audit_evidence",
+    "worker_module_sha256": "01910a4f26b20726078833f9862f50f15e0db2292af4e0b450abfe80e1cbb9f3",
+    "root_change": "Register module and exercise registered export rather than duplicate path compilation"
+  },
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "cargo_build_jobs": 2,
+    "rust_test_threads": 1,
+    "private_canonical_tmp": true
+  },
+  "limitations": [
+    "No provider turn, credential delivery or startup activation",
+    "CurrentAdmission and ResourcePermitAuthority remain trusted caller inputs, not new issuers",
+    "Actual model identity not inferred from registry/provider-native requested model",
+    "Original opaque workspace and all resource inputs returned on rejected binding; no implicit cancellation or capacity release",
+    "Canonical JSON-string capsule digest is distinct from Store raw UTF-8 render digest; caller authenticates mapping and committed selection",
+    "No atomic model capacity/budget settlement, production restart or parent acceptance established"
+  ],
+  "coding_provider_qualified": false,
+  "native_execution_qualified": false,
+  "parent_packet_acceptance": false,
+  "paid_provider_turns": 0
+}
