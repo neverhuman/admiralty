@@ -298,6 +298,54 @@ pub fn claim_retirement(
     apply(c, &request, Operation::Retire)
 }
 
+/// A local executor fence backed by an irreversible durable retirement claim.
+/// Exact replay checks the custody projection/history; new pins are refused by
+/// the existing claim transaction. The binding digest names the filesystem
+/// registration receipt, not a worker-supplied pathname.
+#[cfg(target_os = "linux")]
+pub struct DurableRetirementFence<'a> {
+    connection: &'a mut Connection,
+    request: ClaimRetirementRequest,
+}
+
+#[cfg(target_os = "linux")]
+pub fn retirement_fence(
+    connection: &mut Connection,
+    request: ClaimRetirementRequest,
+) -> CustodyResult<DurableRetirementFence<'_>> {
+    claim_retirement(connection, request.clone())?;
+    Ok(DurableRetirementFence {
+        connection,
+        request,
+    })
+}
+
+#[cfg(target_os = "linux")]
+impl admiralty_runtime::workspace::cleanup::RetirementFence for DurableRetirementFence<'_> {
+    fn recheck(
+        &mut self,
+        scope: &admiralty_core::retirement::RetirementScope,
+        registration_digest: &str,
+    ) -> admiralty_runtime::workspace::cleanup::Result<()> {
+        use admiralty_runtime::workspace::cleanup::CleanupError;
+        let b = &self.request.binding;
+        if b.project_id != scope.project
+            || b.root_id != scope.root
+            || b.task_id != scope.task
+            || b.owner_id != scope.owner
+            || b.asset_id != scope.asset_id.as_str()
+            || b.sha256 != registration_digest
+        {
+            return Err(CleanupError::Preserve(
+                "custody claim belongs to another registration",
+            ));
+        }
+        claim_retirement(self.connection, self.request.clone())
+            .map_err(|error| CleanupError::Custody(error.to_string()))?;
+        Ok(())
+    }
+}
+
 fn apply<T: Request>(
     connection: &mut Connection,
     request: &T,
