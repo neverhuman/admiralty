@@ -155,3 +155,27 @@ task dispatch. PlainText stays one unresolved request; enriched recording still
 requires explicit outcomes/contracts/checks and both current CAS values. The
 enrichment UI and complete request-to-delivery runtime qualification remain
 release work. Focused service/API tests do not accept a full parent packet.
+
+## Dashboard raw intake
+
+Open **Intake** in the dashboard, or `#/intake`. Supply the main bearer through
+**Owner access** and the separate scoped intake credential in the form. Both
+remain in page memory. A profile name supplies neither credential nor requester
+attribution. An installation without explicit intake configuration reports
+unavailable; the form does not enable it or create grants.
+
+Enter the project/root, original source ID/revision and observed source time,
+then paste the original request. Preview preserves all paragraphs as one
+unresolved plain-text request. Capture records that exact source and returns an
+immutable receipt; it creates no task. The form reads back the exact recorded
+revision and checks it against the frozen request and receipt.
+
+If a capture reply is lost, retry sends the same command ID and serialized
+request. Keep that pending request until its outcome is resolved. Abandoning a
+local retry envelope only resets the form: the server may already have captured
+the original request. It does not roll back or delete that record. Enrichment,
+duplicate search and delivery views remain separate work.
+
+Moving between dashboard tabs retains the form and pending retry in page memory.
+Reloading or closing the page loses that local envelope and credentials; keep the
+page open while a capture outcome is unresolved. Recorded server captures remain.
