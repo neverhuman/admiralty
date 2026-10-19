@@ -63,6 +63,24 @@ limits concurrent compiler memory and I/O without changing runner limits,
 test coverage or deadlines. A successful later run must establish whether it
 resolves that runner's delay; the configuration alone is not a passing result.
 
+The later `616ce667` job `117844998810` on `xbabe3-lan-2` also reached the
+fifteen-minute job deadline, after formatting and strict workspace Clippy passed,
+while the Cargo test step was still active. That timeout is not evidence of a
+test assertion failure. The Rust job also sets `CARGO_PROFILE_DEV_DEBUG=0` and
+`CARGO_PROFILE_TEST_DEBUG=0` to omit line-debug information from development and
+test artifacts and reduce compiler/linker output and I/O. These settings change
+only the Cargo profiles' `debug` property; debug assertions, overflow checks,
+optimization defaults, test selection and execution remain unchanged. The
+selected-runner diagnostic records both values alongside `CARGO_BUILD_JOBS=2`.
+
+CI artifacts built with these flags have less source-line information for
+debuggers and backtraces. They are not release-profile builds. All strict Rust,
+legacy, packaging, real isolated smoke, staged JavaScript guard and contract
+checks remain required, with the same runner labels, pinned toolchains and
+fifteen-minute deadline. This is a build-efficiency change, not a passing CI
+result or proof that a timeout has been resolved; the next actual exact-source
+run must establish its effect.
+
 Validate the workflow locally with:
 
 ```sh

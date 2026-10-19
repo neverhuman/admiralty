@@ -17,9 +17,12 @@ jobs:
     env:
       # Bound compiler/linker memory and I/O independently of test execution.
       CARGO_BUILD_JOBS: '2'
+      # Omit line-debug data; retain profile defaults for assertions/overflow.
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
     steps:
       - name: Record selected runner
-        run: printf 'runner=%s os=%s arch=%s cargo_build_jobs=%s\n' "$RUNNER_NAME" "$RUNNER_OS" "$RUNNER_ARCH" "$CARGO_BUILD_JOBS"
+        run: printf 'runner=%s os=%s arch=%s cargo_build_jobs=%s cargo_profile_dev_debug=%s cargo_profile_test_debug=%s\n' "$RUNNER_NAME" "$RUNNER_OS" "$RUNNER_ARCH" "$CARGO_BUILD_JOBS" "$CARGO_PROFILE_DEV_DEBUG" "$CARGO_PROFILE_TEST_DEBUG"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
