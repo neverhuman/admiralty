@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T07:28:26.861Z",
+  "component": "durable budget journal and atomic controller task-claim/outbox admission",
+  "source_commit": "e766ce6af29beb141568a7f07b86ad3b0e86153d",
+  "original_checked_code_commit": "d092796 (same relevant Rust/Cargo/migration bytes; rebase adds merged PR115)",
+  "base_commit": "03989ae76f93f38f6e3d2a63619c39b8fde74989",
+  "worker_candidate": "8a7829d2388bb03c472132c3638423601198ce9c",
+  "files": {
+    "Cargo.lock": "228046d4779c487d4dc33df93412ae6ed8f7bd6ae834c75cda351a3f3686704c",
+    "crates/admiralty-store/Cargo.toml": "e9ab84a10a65a20f56b6cb101ed9e657987a6ec60e8f1815d20acca6c0461a54",
+    "crates/admiralty-store/src/admission_reservations.rs": "4321af5c0c81ea1f88ce552f3041f89078f49eba325c0a6986d6a323c14dd4fe",
+    "crates/admiralty-store/src/lib.rs": "262057295e8d468605c5f8612a8869b139bd3ee469b01d9b272e152b9dc405b8",
+    "crates/admiralty-store/src/outbox.rs": "96001548ad2684ac333f0715622045f61c8461c34e5421e1f53cc979a0fd0555",
+    "crates/admiralty-store/migrations/0009_admission_reservations.sql": "26a1d9482eb57c40badd7eb7aa152f06f029ab3d562327d03c182b001dfed84a",
+    "crates/admiralty-store/tests/admission_reservations.rs": "f5384f19671f2190ef2090affb19620e3377fa3445c0df42b1c46f35e79da1ad",
+    "crates/admiralty-store/tests/admission_atomic_claim.rs": "f5912f3b637676ffee850be72d2f2f32b40d603fe2f3f8541587b5457680cebe",
+    "crates/admiralty-server/src/services/controller.rs": "4f54c246ca47bc00c74a1248bacafa9ef5f8ccf05fe7c4a3254c067fff93cff4",
+    "docs/architecture/durable-admission.md": "3e1ad82a084ff6f9ec6432628af1b1c7a6f8343a5c8cd854dcaac7136f843ee8"
+  },
+  "checks": [
+    {
+      "command": "cargo test -p admiralty-store --test admission_atomic_claim --test admission_reservations --locked -- --test-threads=1",
+      "exit_code": 0,
+      "atomic_cases": 9,
+      "journal_cases": 6,
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "log": {
+        "path": "/private/tmp/adm-admission-store-final.log",
+        "sha256": "785c1b49067e640db3946b9582891a09af50f769e6eef90b0c9361e31b39afce"
+      }
+    },
+    {
+      "command": "cargo test -p admiralty-store --lib admission_reservations --locked -- --test-threads=1",
+      "exit_code": 0,
+      "passed": 1,
+      "scope": "constructed TaskView lineage helper; not full two-attempt Store journey",
+      "log": {
+        "path": "/private/tmp/adm-admission-history-unit-final.log",
+        "sha256": "16002cb05855cb42540b4cbe407bb842efff2293b18ef74eecb65cec9615b5ff"
+      }
+    },
+    {
+      "command": "cargo test -p admiralty-server --lib services::controller::tests --locked -- --test-threads=1",
+      "exit_code": 0,
+      "passed": 9,
+      "failed": 0,
+      "log": {
+        "path": "/private/tmp/adm-admission-controller-final.log",
+        "sha256": "4d452a88bb25311cee36e2aee7efd4b6068237db976534b7ed208c04d3692836"
+      }
+    },
+    {
+      "command": "cargo clippy -p admiralty-store -p admiralty-server --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": {
+        "path": "/private/tmp/adm-admission-clippy-final.log",
+        "sha256": "8e585eab6996eb9766ca43669eaf0d14f21f321c26d5394e792cb3f0546c8c74"
+      }
+    },
+    {
+      "command": "cargo test -p admiralty-cli --test work_order_intake_cli --locked -- --test-threads=1",
+      "exit_code": 0,
+      "passed": 5,
+      "scope": "actual CLI composition on new Store/Cargo edge after rebase on merged PR115",
+      "log": {
+        "path": "/private/tmp/adm-admission-wo-cli-composed.log",
+        "sha256": "f9f74e328aedbd007c1a6bfdfe2194f1390e5e94111258b7dd0026e335e6e420"
+      }
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0
+    }
+  ],
+  "preserved_failure": {
+    "check": "new protected controller fixture",
+    "exit_code": 101,
+    "log": {
+      "path": "/private/tmp/adm-admission-controller.log",
+      "sha256": "71c65f88856cf1a9f61c489cf8c6c88332f3d521096cb97ed4c97aa38d29dd2e"
+    },
+    "repair": "fixture initially omitted project/root budgets; existing reducer correctly denied. Set known 100-unit fixture limits in all dimensions. No production reducer/guard relaxed."
+  },
+  "review": {
+    "reviewer": "independent Codex audit_product subagent, plus Root integration review",
+    "status": "CLEAR no remaining P1/P2 after source repairs",
+    "performed_tests": false,
+    "findings_repaired": [
+      "SQL text bounded before allocation",
+      "immutable journal/bindings and active reverse guard",
+      "historical exact replay uses actual lifecycle lineage",
+      "current authorization before protected writes and every commit including incident-only branches"
+    ],
+    "reviewed_file_hashes": {
+      "store_lib": "262057295e8d468605c5f8612a8869b139bd3ee469b01d9b272e152b9dc405b8",
+      "journal_before_test_only_lint_annotation": "0ea5c2568514a68e0a59248f3968ad90e8c05a492dd9dd55dd4a4f070fdb46a0",
+      "controller": "4f54c246ca47bc00c74a1248bacafa9ef5f8ccf05fe7c4a3254c067fff93cff4",
+      "migration": "26a1d9482eb57c40badd7eb7aa152f06f029ab3d562327d03c182b001dfed84a"
+    },
+    "root_reviewed_final_delta": "test-only unwrap/expect allowance follows existing fixture convention; no production lint/guard change"
+  },
+  "actual_coverage": [
+    "task claim/outbox/reservation commit together; late SQL failure rolls back all plus projection",
+    "same-ledger race and fresh-CAS overspend denial",
+    "current opaque authority on new/replayed requests and final incident commit",
+    "original exact receipt after later journal/task changes, restart, rebuild and backup",
+    "ordinary/protected paths cannot be interchanged; active/reopen missing association fails",
+    "wrong contract/project/unit/account/effect and unknown exposure deny",
+    "stop/expiry retains liability; no settlement/release surface",
+    "bounded text reads before allocation; immutable journal canonical replay"
+  ],
+  "limits": {
+    "production_issuer_installed": false,
+    "global_model_slots_reserved": false,
+    "provider_executed": false,
+    "usage_settled": false,
+    "restart_recovery_qualified": false,
+    "general_autonomous_execution_qualified": false,
+    "full_P03_P10_P14_acceptance": false,
+    "live_deployment_claimed": false
+  },
+  "environment": {
+    "host": "local Mac",
+    "jobs": 1,
+    "test_threads": 1,
+    "target": "target/context-integrated-final",
+    "private_tmp": "/private/tmp/adm-native-4pbrtc1l"
+  }
+}
