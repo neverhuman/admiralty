@@ -51,6 +51,10 @@ impl ArtifactStore {
 
         if path_exists(&target)? {
             self.verify_path(&target, &reference)?;
+            // A previous publisher may have stopped after linking the object
+            // but before syncing the directory. Replay must make that name
+            // durable before acknowledging publication too.
+            File::open(&self.root)?.sync_all()?;
             return Ok(reference);
         }
 
@@ -95,6 +99,24 @@ impl ArtifactStore {
     pub fn read_verified(&self, reference: &ArtifactRef) -> Result<Vec<u8>> {
         let target = self.object_path(reference)?;
         self.read_path(&target, reference)
+    }
+
+    /// Return a half-open byte range only after verifying the entire object.
+    /// Callers must authorize the reference before invoking this file primitive.
+    pub fn read_verified_range(
+        &self,
+        reference: &ArtifactRef,
+        range: std::ops::Range<u64>,
+    ) -> Result<Vec<u8>> {
+        if range.start > range.end || range.end > reference.size_bytes {
+            return Err(StoreError::Invalid(
+                "artifact range is outside the object".into(),
+            ));
+        }
+        let bytes = self.read_verified(reference)?;
+        // Successful verification has already checked that the full object
+        // fits usize, so both offsets fit as well.
+        Ok(bytes[range.start as usize..range.end as usize].to_vec())
     }
 
     fn check_size(&self, size: u64) -> Result<()> {

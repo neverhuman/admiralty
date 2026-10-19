@@ -11,9 +11,15 @@ Publication writes a uniquely named temporary file with exclusive creation,
 syncs its contents, then creates the digest name with a same-directory hard
 link so an existing name is never overwritten. The parent directory is synced
 after publication. Concurrent publishers converge on the same immutable name;
-each verifies any object that already exists. A crash can leave an unreferenced
-temporary file or object. This layer does not make an object available in a
-database, and callers must not acknowledge availability until their own durable
+each verifies any object that already exists. Replay also syncs the parent after
+verifying an existing name, covering a publisher interrupted between link creation and its
+directory sync. `read_verified_range` accepts half-open ranges within the
+reference size, verifies the whole object, then returns the selected bytes;
+corruption outside the requested range still fails. The caller must authorize
+the reference before reading it.
+
+A crash can leave an unreferenced temporary file or object. This layer does not
+make an object available in a database, and callers must not acknowledge availability until their own durable
 reference transaction succeeds.
 
 This prototype owns file publication and integrity checks only. It has no
