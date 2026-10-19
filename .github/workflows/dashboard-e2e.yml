@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
-      - name: Install pinned Rust and build admiraltyd from exact checked-out source
+      - name: Install pinned Rust and build native observation binaries from exact checked-out source
         run: |
           export CARGO_HOME="$RUNNER_TEMP/admiralty-cargo"
           export RUSTUP_HOME="$RUNNER_TEMP/admiralty-rustup"
@@ -48,9 +48,12 @@ jobs:
           export PATH="$CARGO_HOME/bin:$PATH"
           rustup toolchain install 1.95.0 --profile minimal
           cargo build --locked -p admiralty-server --bin admiraltyd
+          cargo build --locked -p admiralty-observe --bin admiralty-observe
+          test -x "$GITHUB_WORKSPACE/target/debug/admiralty-observe"
           test -x "$GITHUB_WORKSPACE/target/debug/admiraltyd"
           printf 'ADMIRALTY_E2E_ADMIRALTYD_BIN=%s\nADMIRALTYD_BINARY=%s\n' "$GITHUB_WORKSPACE/target/debug/admiraltyd" "$GITHUB_WORKSPACE/target/debug/admiraltyd" >> "$GITHUB_ENV"
-          sha256sum "$GITHUB_WORKSPACE/target/debug/admiraltyd"
+          printf 'ADMIRALTY_E2E_OBSERVER_BIN=%s\n' "$GITHUB_WORKSPACE/target/debug/admiralty-observe" >> "$GITHUB_ENV"
+          sha256sum "$GITHUB_WORKSPACE/target/debug/admiraltyd" "$GITHUB_WORKSPACE/target/debug/admiralty-observe"
       - name: Verify or provision qualified Chromium/Chrome binary in job scratch
         run: |
           set -euo pipefail

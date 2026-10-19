@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "rtk",
+    "proxy",
+    "git",
+    "rebase",
+    "--onto",
+    "779a008f9660e3fa1c8e9f308aae8229a263e547",
+    "b2b9e7a6c33bd57fd7b56079a846482f7ea25964",
+    "codex/live-views-rebase-proof-e9b0c1d"
+  ],
+  "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+  "exit_code": 1,
+  "source_head": "e9b0c1d9991a16d9f6b99306896d315d38f2e098",
+  "main_base": "779a008f9660e3fa1c8e9f308aae8229a263e547",
+  "date_utc": "2026-10-19T01:45:34.182155+00:00"
+}

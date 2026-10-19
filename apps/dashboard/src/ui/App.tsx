@@ -6,12 +6,18 @@ import NativeTasks from './NativeTasks';
 import Models from './Models';
 import { useProfile } from '../profile';
 import { ProfileAvatar, ProfileSettings } from './Profile';
+import { navigate, useRoute, type RouteName } from '../router';
 
+const LiveViews = lazy(() => import('../features/live-views/LiveViews'));
 const CommandJourneys = lazy(() => import('./CommandJourneys'));
-type View = 'Legacy detailed view' | 'Overview' | 'Workplans' | 'Coordination' | 'Commands' | 'Models';
+type View = 'Legacy detailed view' | 'Overview' | 'Workplans' | 'Coordination' | 'Commands' | 'Models' | 'Git Flow' | 'Fleet Atlas';
 
 function App() {
-  const [view, setView] = useState<View>('Legacy detailed view');
+  const route = useRoute();
+  const destinations: Record<RouteName, View> = { detail: 'Legacy detailed view', overview: 'Overview', workplans: 'Workplans', coordination: 'Coordination', commands: 'Commands', models: 'Models', git: 'Git Flow', atlas: 'Fleet Atlas' };
+  const view = destinations[route.name];
+  const setView = (value: View) => navigate((Object.keys(destinations) as RouteName[]).find(key => destinations[key] === value) ?? 'detail');
+  const visualView = route.name === 'git' || route.name === 'atlas';
   const [fleet, setFleet] = useState<NativeFleet | null>(null);
   const [error, setError] = useState('');
   const [updated, setUpdated] = useState<Date | null>(null);
@@ -30,27 +36,28 @@ function App() {
 
   useEffect(() => {
     setFleet(null); setUpdated(null); setError('');
+    if (visualView) return;
     return watchFleet({ token: token || undefined,
       onFleet: (result) => {
         setFleet(result);
         setUpdated(new Date());
       }, onState: setConnection, onError: setError,
     });
-  }, [token, retry]);
+  }, [token, retry, visualView]);
 
   const totals = useMemo(() => fleet ? fleetTotals(fleet) : null, [fleet]);
 
-  return <div className={`app theme-${theme} ${legacyView ? 'fleet-console' : ''}`}>
+  return <div className={`app theme-${theme} ${legacyView ? 'fleet-console' : ''} ${visualView ? 'visual-console' : ''}`}>
     <aside className="sidebar">
-      <a className="brand" href="#overview" onClick={() => setView('Legacy detailed view')}>
+      <a className="brand" href="#/detail">
         <img className="brand-mark" src="/brand/admiralty-source.png" alt="Admiralty" /><span><strong>ADMIRALTY</strong> <small>FLEET CONTROL</small></span>
       </a>
       <div className="workspace-label">WORKSPACE</div>
       <div className="workspace"><span className="workspace-dot" /> Fleet overview <span className="chevron" data-icon="⌄" aria-hidden="true" /></div>
       <nav aria-label="Main navigation">
         <div className="nav-label">MONITOR</div>
-        {(['Legacy detailed view', 'Overview', 'Workplans', 'Coordination', 'Commands', 'Models'] as View[]).map((item, index) => <button key={item} className={`nav-item ${view === item ? 'active' : ''}`} onClick={() => setView(item)}>
-          <span className="nav-icon" data-icon={['▦', '◫', '≡', '◉', '⌘', '⚙'][index]} aria-hidden="true" />{item === 'Overview' && fleet?.simulated ? 'Demo overview' : item}
+        {(['Legacy detailed view', 'Git Flow', 'Fleet Atlas', 'Overview', 'Workplans', 'Coordination', 'Commands', 'Models'] as View[]).map((item, index) => <button key={item} className={`nav-item ${view === item ? 'active' : ''}`} title={item} aria-current={view === item ? 'page' : undefined} onClick={() => setView(item)}>
+          <span className="nav-icon" data-icon={['▦', '⑂', '✦', '◫', '≡', '◉', '⌘', '⚙'][index]} aria-hidden="true" />{item === 'Overview' && fleet?.simulated ? 'Demo overview' : item}
           {item === 'Coordination' && fleet && <span className="nav-count">{fleet.coordination.queued_messages}</span>}
         </button>)}
       </nav>
@@ -70,12 +77,13 @@ function App() {
 
       <div className={`content ${legacyView ? 'legacy-content' : ''}`}>
         <section className="page-heading"><div><div className="eyebrow">ADMIRALTY / {legacyView ? 'OBSERVED PRODUCER FLEET' : 'NATIVE CONTROL PLANE'}</div><h1>{legacyView ? 'Fleet detail' : view === 'Overview' && fleet?.simulated ? 'Demo overview' : view}</h1><p>{legacyView ? 'Live project progress · hierarchy · model mix · token efficiency' : view === 'Overview' ? 'Native task projections; separate from the detailed producer fleet.' : view === 'Workplans' ? 'Native task stages and current ownership.' : commandsView ? 'Create work, revise pending contracts and inspect task evidence.' : view === 'Models' ? 'Provider and model configuration.' : 'Compact native coordination activity and message acknowledgements.'}</p></div>
-          <div className="heading-meta"><span className={`mode-pill ${!legacyView && fleet?.simulated ? 'simulation' : ''}`}>{legacyView ? 'PRODUCER OBSERVATIONS' : fleet?.simulated ? 'SIMULATION · SYNTHETIC TASKS' : fleet ? 'NATIVE SNAPSHOT' : 'AWAITING DATA'}</span>{!legacyView && <span className="freshness"><i />{updated ? `Updated ${updated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No snapshot yet'}</span>}</div>
+          <div className="heading-meta"><span className={`mode-pill ${!legacyView && !visualView && fleet?.simulated ? 'simulation' : ''}`}>{legacyView ? 'PRODUCER OBSERVATIONS' : fleet?.simulated ? 'SIMULATION · SYNTHETIC TASKS' : fleet ? 'NATIVE SNAPSHOT' : 'AWAITING DATA'}</span>{!legacyView && <span className="freshness"><i />{updated ? `Updated ${updated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No snapshot yet'}</span>}</div>
         </section>
+        {visualView && <Suspense fallback={<div className="loading-card" role="status">Loading observatory…</div>}><LiveViews mode={route.name === 'atlas' ? 'atlas' : 'git'} token={token || undefined} onAccess={() => setShowAccess(true)} /></Suspense>}
         {legacyView && <LegacyDetailed token={token || undefined} />}
-        {!legacyView && fleet?.simulated && <div className="simulation-note">Simulation: these synthetic projects and tasks are separate from the real producer fleet.</div>}
-        {!legacyView && !modelsView && !commandsView && error && <div className="error-banner" role="status"><span>{connection === 'paused' ? 'Updates paused' : 'Connection issue'}</span><span>{error}{connection === 'reconnecting' ? ' · Reconnecting automatically.' : ''}</span><button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry connection</button></div>}
-        {!legacyView && !modelsView && !commandsView && !fleet && !error && <div className="loading-card">Connecting to the local native service…</div>}
+        {!legacyView && !visualView && fleet?.simulated && <div className="simulation-note">Simulation: these synthetic projects and tasks are separate from the real producer fleet.</div>}
+        {!legacyView && !visualView && !modelsView && !commandsView && error && <div className="error-banner" role="status"><span>{connection === 'paused' ? 'Updates paused' : 'Connection issue'}</span><span>{error}{connection === 'reconnecting' ? ' · Reconnecting automatically.' : ''}</span><button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry connection</button></div>}
+        {!legacyView && !visualView && !modelsView && !commandsView && !fleet && !error && <div className="loading-card">Connecting to the local native service…</div>}
         {fleet && view === 'Overview' && <Overview fleet={fleet} totals={totals!} onWorkplans={() => setView('Workplans')} />}
         {view === 'Workplans' && <NativeTasks fleet={fleet} error={error} connection={connection} />}
         {fleet && view === 'Coordination' && <Coordination fleet={fleet} />}

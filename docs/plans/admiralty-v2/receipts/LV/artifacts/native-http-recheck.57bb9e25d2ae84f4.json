@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "rtk",
+    "proxy",
+    "cargo",
+    "test",
+    "-p",
+    "admiralty-server",
+    "--lib",
+    "--locked",
+    "services::native_commands::tests::exact_lifecycle_retries_survive_later_cancellation_without_reapplying",
+    "--",
+    "--exact"
+  ],
+  "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+  "source_head": "88bd1e3a1fd3f388a978c4a4c6bf0d039527812f",
+  "exit_code": 0,
+  "started_utc": "2026-10-19T01:28:39.317832+00:00",
+  "ended_utc": "2026-10-19T01:28:45.136157+00:00"
+}

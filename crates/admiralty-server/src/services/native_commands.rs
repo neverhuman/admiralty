@@ -474,7 +474,7 @@ mod tests {
     use serde_json::{Value, json};
     use std::{
         fs,
-        io::{Read, Write},
+        io::{BufRead, BufReader, Read, Write},
         net::{SocketAddr, TcpStream},
         os::unix::fs::DirBuilderExt,
         path::PathBuf,
@@ -580,6 +580,98 @@ mod tests {
         body: Value,
     }
 
+    // HTTP completion is the declared body length, not a subsequent TCP FIN.
+    // A server rejecting an unread request body may reset after a full response.
+    fn read_local_response(reader: impl BufRead) -> std::io::Result<TestResponse> {
+        let invalid = || {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "invalid bounded fixture HTTP response",
+            )
+        };
+        let mut reader = reader.take(64 * 1024);
+        let mut head = String::new();
+        loop {
+            let mut line = String::new();
+            if reader.read_line(&mut line)? == 0 || !line.ends_with("\r\n") {
+                return Err(invalid());
+            }
+            head.push_str(&line);
+            if head.len() > 16 * 1024 {
+                return Err(invalid());
+            }
+            if line == "\r\n" {
+                break;
+            }
+        }
+        let status = head
+            .lines()
+            .next()
+            .and_then(|l| l.split_whitespace().nth(1))
+            .and_then(|v| v.parse::<u16>().ok())
+            .and_then(|v| StatusCode::from_u16(v).ok())
+            .ok_or_else(invalid)?;
+        let mut lengths = Vec::new();
+        for line in head.lines().skip(1).filter(|l| !l.is_empty()) {
+            let (name, value) = line.split_once(':').ok_or_else(invalid)?;
+            if name.eq_ignore_ascii_case("transfer-encoding") {
+                return Err(invalid());
+            }
+            if name.eq_ignore_ascii_case("content-length") {
+                let value = value.trim();
+                if value.is_empty() || !value.bytes().all(|b| b.is_ascii_digit()) {
+                    return Err(invalid());
+                }
+                lengths.push(value.parse::<usize>().map_err(|_| invalid())?);
+            }
+        }
+        if lengths.len() != 1 || lengths[0] > 64 * 1024 - head.len() {
+            return Err(invalid());
+        }
+        let mut bytes = vec![0; lengths[0]];
+        reader.read_exact(&mut bytes)?;
+        let body = serde_json::from_slice(&bytes).map_err(|_| invalid())?;
+        Ok(TestResponse { status, body })
+    }
+
+    #[test]
+    fn fixture_http_accepts_complete_bodies_before_reset_and_rejects_truncation() {
+        struct Reset;
+        impl Read for Reset {
+            fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+                Err(std::io::ErrorKind::ConnectionReset.into())
+            }
+        }
+        let body = r#"{"ok":true}"#;
+        let wire = format!(
+            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{body}",
+            body.len()
+        )
+        .into_bytes();
+        let response = read_local_response(BufReader::new(
+            std::io::Cursor::new(wire.clone()).chain(Reset),
+        ))
+        .expect("complete framed response");
+        assert_eq!(response.status, StatusCode::OK);
+        assert_eq!(response.body["ok"], true);
+        let mut truncated = wire;
+        truncated.pop();
+        assert!(read_local_response(std::io::Cursor::new(truncated)).is_err());
+        for head in [
+            "Content-Length: 65536",
+            "Content-Length: 1\r\nContent-Length: 1",
+            "Transfer-Encoding: chunked",
+            "Content-Length: +1",
+        ] {
+            assert!(
+                read_local_response(std::io::Cursor::new(format!(
+                    "HTTP/1.1 200 OK\r\n{head}\r\n\r\n{{}}"
+                )))
+                .is_err()
+            );
+        }
+    }
+
     async fn call(
         server: &TestServer,
         path: &str,
@@ -611,22 +703,7 @@ mod tests {
                 .write_all(request.as_bytes())
                 .and_then(|()| stream.write_all(&body))
                 .expect("write local HTTP request");
-            let mut response = Vec::new();
-            stream
-                .take(64 * 1024)
-                .read_to_end(&mut response)
-                .expect("read bounded local HTTP response");
-            let response = String::from_utf8(response).expect("HTTP response headers are UTF-8");
-            let (head, body) = response.split_once("\r\n\r\n").expect("HTTP response separator");
-            let status = head
-                .lines()
-                .next()
-                .and_then(|line| line.split_whitespace().nth(1))
-                .and_then(|value| value.parse::<u16>().ok())
-                .and_then(|value| StatusCode::from_u16(value).ok())
-                .expect("HTTP status code");
-            let body = serde_json::from_str(body).expect("JSON response");
-            TestResponse { status, body }
+            read_local_response(BufReader::new(stream)).expect("read complete bounded local HTTP response")
         })
         .await
         .expect("bounded local HTTP client task")

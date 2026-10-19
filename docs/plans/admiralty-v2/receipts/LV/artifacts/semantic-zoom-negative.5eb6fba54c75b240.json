@@ -1,0 +1,22 @@
+{
+  "source_head": "e65e16a097450cc069ee88765cfd2421ee460508",
+  "uncommitted_change": "rendered-name-height assertion only; old 0.65 semantic threshold retained",
+  "argv": [
+    "rtk",
+    "pnpm",
+    "--dir",
+    "apps/dashboard",
+    "exec",
+    "vitest",
+    "run",
+    "--config",
+    "e2e/vitest.config.ts",
+    "e2e/live-views.e2e.ts",
+    "-t",
+    "joins all roles"
+  ],
+  "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+  "started_utc": "2026-10-19T01:40:51.849453+00:00",
+  "exit_code": 1,
+  "expected_exit": "nonzero: clipped names in unchanged render implementation"
+}

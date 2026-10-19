@@ -888,3 +888,109 @@ async fn model_configuration_requires_auth_and_exact_revision_and_never_exposes_
         .expect("stale update");
     assert_eq!(stale.status(), StatusCode::CONFLICT);
 }
+
+#[tokio::test]
+async fn visual_feed_is_private_atomic_and_reconnects_to_current_projection() {
+    let f = fixture(false);
+    for path in ["/v2/views", "/v2/views/events"] {
+        assert_eq!(
+            request(&f.app, "GET", path, None).await.status(),
+            StatusCode::UNAUTHORIZED
+        );
+    }
+    let first = json(request(&f.app, "GET", "/v2/views", Some(TOKEN)).await).await;
+    assert_eq!(first["schema_version"], 1);
+    let response = request(&f.app, "GET", "/v2/views/events", Some(TOKEN)).await;
+    assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+    let mut stream = response.into_body().into_data_stream();
+    let frame = tokio::time::timeout(Duration::from_secs(1), stream.next())
+        .await
+        .expect("initial cut")
+        .expect("frame")
+        .expect("bytes");
+    let frame = String::from_utf8(frame.to_vec()).expect("utf8");
+    assert!(frame.contains("event: views"));
+    assert!(frame.contains(first["revision"].as_str().expect("revision")));
+    append_real_task(&f.store, 1, "visual-project");
+    let changed = tokio::time::timeout(Duration::from_secs(4), stream.next())
+        .await
+        .expect("changed cut")
+        .expect("frame")
+        .expect("bytes");
+    let changed = String::from_utf8(changed.to_vec()).expect("utf8");
+    assert!(changed.contains("project"));
+    assert!(!changed.contains(first["revision"].as_str().expect("old revision")));
+    drop(stream);
+    let latest = json(request(&f.app, "GET", "/v2/views", Some(TOKEN)).await).await;
+    assert_ne!(latest["revision"], first["revision"]);
+    assert_eq!(latest["projects"].as_array().expect("projects").len(), 1);
+}
+
+#[tokio::test]
+async fn visual_producer_failure_keeps_last_known_inventory_and_public_legacy_flag_never_grants_access()
+ {
+    let directory = store_directory();
+    let status = directory.path().join("status.json");
+    let source = serde_json::json!({"generated_utc":"2026-10-18T12:00:00Z","host":"node","order":["demo-harbor"],"projects":{},"project_catalog":[{"id":"demo-harbor","name":"Producer project"}],
+        "hierarchy":{"captains":[{"key":"demo-harbor","screen":"77.manager","host":"node","agent_running":true}]},
+        "agents":[{"id":"12.worker","screen":"worker","host":"node","demo-harbor":"demo-harbor","model":null},{"id":"77.manager","screen":"manager","host":"node","demo-harbor":"demo-harbor","model":null}],
+        "git":{"demo-harbor":{"instance_id":"retained-instance","node":"node","observed_utc":"2026-10-18T11:00:00Z","error":null,"shallow":false,"truncated":false,"commits":[],"refs":[],"checkouts":[]}}});
+    std::fs::write(&status, source.to_string()).expect("source");
+    let store = Store::open(directory.path().join("fleet.sqlite")).expect("store");
+    append_real_task(&store, 1, "native-and-git");
+    let mut settings = config(false, None);
+    settings.legacy = Some(admiralty_server::legacy::LegacyConfig {
+        status_file: status.clone(),
+        index_file: directory.path().join("index.html"),
+        public_read: true,
+    });
+    let router = app(store, settings).expect("router");
+    assert_eq!(
+        request(&router, "GET", "/v2/views/events", None)
+            .await
+            .status(),
+        StatusCode::UNAUTHORIZED
+    );
+    let first = json(request(&router, "GET", "/v2/views", Some(TOKEN)).await).await;
+    std::fs::write(&status, "malformed").expect("failure");
+    tokio::time::sleep(Duration::from_millis(2200)).await;
+    let stale = json(request(&router, "GET", "/v2/views", Some(TOKEN)).await).await;
+    assert_eq!(stale["projects"][0]["id"], "demo-harbor");
+    assert_eq!(
+        stale["projects"][0]["git"]["instance_id"],
+        "retained-instance"
+    );
+    assert_eq!(
+        stale["projects"][0]["git"]["observed_utc"],
+        "2026-10-18T11:00:00Z"
+    );
+    let managers = stale["agents"]
+        .as_array()
+        .expect("agents")
+        .iter()
+        .filter(|a| a["role"] == "commodore")
+        .collect::<Vec<_>>();
+    assert_eq!(managers.len(), 1);
+    assert_eq!(managers[0]["presence"], "observed");
+    assert_eq!(managers[0]["id"], "screen:node:77.manager");
+    let original = first["agents"]
+        .as_array()
+        .expect("agents")
+        .iter()
+        .find(|a| a["role"] == "worker")
+        .expect("worker");
+    let retained = stale["agents"]
+        .as_array()
+        .expect("agents")
+        .iter()
+        .find(|a| a["id"] == original["id"])
+        .expect("retained");
+    assert_eq!(retained["observed_utc"], original["observed_utc"]);
+    assert!(
+        stale["sources"]
+            .as_array()
+            .expect("sources")
+            .iter()
+            .any(|s| s["state"] == "error")
+    );
+}

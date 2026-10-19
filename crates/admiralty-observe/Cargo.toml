@@ -10,6 +10,7 @@ name = "admiralty-observe"
 path = "src/main.rs"
 
 [dependencies]
+admiralty-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true

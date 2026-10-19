@@ -1,0 +1,22 @@
+{
+  "source_head": "d4adeee8d73d54ac9c0bcdbc4f216c259098cfdd",
+  "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+  "commands": [
+    {
+      "argv": [
+        "rtk",
+        "proxy",
+        "env",
+        "ADMIRALTY_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target",
+        "CARGO_BUILD_JOBS=4",
+        "RUST_TEST_THREADS=4",
+        "bash",
+        "scripts/check/all.sh"
+      ],
+      "started_utc": "2026-10-19T01:03:01.300738+00:00",
+      "ended_utc": "2026-10-19T01:04:10.293505+00:00",
+      "exit_code": 101,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/contributor-checks.log"
+    }
+  ]
+}

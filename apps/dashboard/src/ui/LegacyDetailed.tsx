@@ -4,6 +4,7 @@ import { TemporalPlots } from './TemporalPlots';
 import { LegacyHierarchy } from './LegacyHierarchy';
 import { TokenEfficiency } from './TokenEfficiency';
 import { ModelBadge } from './ModelBadge';
+import { routeHref } from '../router';
 import './legacy-evidence.css';
 
 /** Semantic React views of producer facts. Unknown values never become zeros. */
@@ -43,7 +44,7 @@ function PullRequest({ value }: { value: unknown }) {
 export function ProjectDetail({ project, compact = false }: { project: ProjectDetailModel; compact?: boolean }) {
   const total = project.total, entries = Object.entries(project.stages);
   return <article className={`legacy-project panel ${compact ? 'compact' : ''}`} data-project-id={project.id}>
-    <header className="legacy-project-heading"><h2>{project.name}</h2><span>{total === null ? 'Unknown total' : `${total} tasks`}</span></header>
+    <header className="legacy-project-heading"><h2>{project.name}</h2><a className="legacy-live-link" href={routeHref('git', { project: project.id })}>Git Flow ↗</a><span>{total === null ? 'Unknown total' : `${total} tasks`}</span></header>
     <p className="legacy-provenance">{project.source}</p>
     <div className="legacy-stage-bar" role="img" aria-label={`${project.name} reported task stages`}>{entries.map(([stage, count]) => <span key={stage} className={stageClass(stage)} style={{ width: `${total && total > 0 ? Math.min(100, count / total * 100) : 0}%` }} title={`${stageLabel(stage, project.labels)}: ${count}`} />)}</div>
     <div className="legacy-stage-counts">{entries.map(([stage, count]) => <span key={stage}><i className={stageClass(stage)} /><b>{count}</b> {stageLabel(stage, project.labels)}</span>)}</div>
@@ -72,7 +73,7 @@ export function LegacyFleetView({ snapshot, selected = 'all' }: { snapshot: Lega
     <div className="legacy-layout">
       <div className="legacy-project-grid">{visible.map(project => <ProjectDetail key={project.id} project={project} compact={selected === 'all'} />)}{!visible.length && <div className="loading-card">Selected project is no longer present in this snapshot.</div>}</div>
       <aside className="legacy-side">
-        <LegacyHierarchy snapshot={snapshot} />
+        <a className="text-button" href={routeHref('atlas')}>Open full Fleet Atlas ↗</a><LegacyHierarchy snapshot={snapshot} />
         <TokenEfficiency snapshot={snapshot} />
         <div className="legacy-auxiliary panel legacy-side-panel">
           <SourceSection title="Fleet resources" value={snapshot.global_resources} />

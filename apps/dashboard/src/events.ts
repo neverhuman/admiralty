@@ -5,11 +5,11 @@ export type StreamFrame = { event: string; id?: string; data: string };
 const MAX_FRAME_CHARACTERS = 2 * 1024 * 1024;
 
 /** Incremental SSE framing, including split CRLF and multiline data. */
-export function createSseParser(onFrame: (frame: StreamFrame) => void) {
+export function createSseParser(onFrame: (frame: StreamFrame) => void, maxCharacters = MAX_FRAME_CHARACTERS) {
   let buffer = '', event = '', id: string | undefined, data: string[] = [], size = 0;
   function line(value: string) {
     size += value.length;
-    if (size > MAX_FRAME_CHARACTERS) throw new Error('Event stream frame exceeds size limit');
+    if (size > maxCharacters) throw new Error('Event stream frame exceeds size limit');
     if (!value) {
       if (data.length) onFrame({ event: event || 'message', id, data: data.join('\n') });
       event = ''; id = undefined; data = []; size = 0;
@@ -32,7 +32,7 @@ export function createSseParser(onFrame: (frame: StreamFrame) => void) {
       const width = buffer[end] === '\r' && buffer[end + 1] === '\n' ? 2 : 1;
       line(buffer.slice(0, end)); buffer = buffer.slice(end + width);
     }
-    if (buffer.length + size > MAX_FRAME_CHARACTERS) throw new Error('Event stream frame exceeds size limit');
+    if (buffer.length + size > maxCharacters) throw new Error('Event stream frame exceeds size limit');
   } };
 }
 export function cursorFromId(id: string | undefined): Cursor {

@@ -17,7 +17,7 @@ pub struct LegacyConfig {
 const MAX_STATUS_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_INDEX_BYTES: u64 = 2 * 1024 * 1024;
 
-fn read_bounded(path: &PathBuf, limit: u64) -> Result<Vec<u8>, String> {
+pub(crate) fn read_bounded(path: &PathBuf, limit: u64) -> Result<Vec<u8>, String> {
     use std::io::Read;
     let mut file = fs::File::open(path).map_err(|_| "legacy source is unavailable")?;
     let metadata = file
