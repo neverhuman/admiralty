@@ -64,6 +64,7 @@ mod probe {
     };
     use clap::{Args, Parser, Subcommand};
     use serde_json::{Value, json};
+    use sha2::{Digest, Sha256};
     use std::{
         collections::{BTreeMap, BTreeSet},
         error::Error,
@@ -82,6 +83,11 @@ mod probe {
     type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
     const MAX_BYTES: usize = 1024 * 1024;
     const AUTH_BYTES: usize = 64 * 1024;
+    // Metadata qualification is distinct from the128MiB artifact/read cap.
+    // The supported installed CLI is ~283MiB; never load/copy it into artifacts.
+    const MAX_CODEX_BINARY_BYTES: u64 = 384 * 1024 * 1024;
+    const CODEX_HASH_CHUNK_BYTES: usize = 64 * 1024;
+    const CODEX_HASH_DEADLINE: Duration = Duration::from_secs(30);
     const ORACLE_MISMATCH_EXIT: u8 = 23;
     const SOURCE_SHA: Option<&str> = option_env!("ADMIRALTY_PROBE_SOURCE_SHA");
 
@@ -656,6 +662,83 @@ mod probe {
         }
         Ok(bytes)
     }
+    fn codex_program_fingerprint(path: &Path) -> Result<Value> {
+        validate_program(path)?;
+        let mut file = fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(
+                (rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::NONBLOCK).bits() as i32,
+            )
+            .open(path)?;
+        let before = file.metadata()?;
+        let identity = |metadata: &fs::Metadata| {
+            (
+                metadata.dev(),
+                metadata.ino(),
+                metadata.len(),
+                metadata.uid(),
+                metadata.gid(),
+                metadata.mode(),
+                metadata.nlink(),
+                metadata.mtime(),
+                metadata.mtime_nsec(),
+                metadata.ctime(),
+                metadata.ctime_nsec(),
+            )
+        };
+        if !before.is_file()
+            || !(before.uid() == 0 || before.uid() == rustix::process::geteuid().as_raw())
+            || before.mode() & 0o022 != 0
+            || before.mode() & 0o111 == 0
+            || before.len() == 0
+            || before.len() > MAX_CODEX_BINARY_BYTES
+            || identity(&before) != identity(&fs::symlink_metadata(path)?)
+        {
+            return Err(
+                "Codex metadata fingerprint requires a bounded qualified executable".into(),
+            );
+        }
+        let end = Instant::now() + CODEX_HASH_DEADLINE;
+        let mut hasher = Sha256::new();
+        let mut buffer = [0_u8; CODEX_HASH_CHUNK_BYTES];
+        let mut count = 0_u64;
+        loop {
+            if Instant::now() >= end {
+                return Err("Codex metadata fingerprint deadline exceeded".into());
+            }
+            let read = file.read(&mut buffer)?;
+            if read == 0 {
+                break;
+            }
+            count = count
+                .checked_add(u64::try_from(read)?)
+                .ok_or("Codex hash length overflow")?;
+            if count > before.len() || count > MAX_CODEX_BINARY_BYTES {
+                return Err("Codex executable grew during metadata fingerprint".into());
+            }
+            hasher.update(&buffer[..read]);
+        }
+        let after = file.metadata()?;
+        let entry = fs::symlink_metadata(path)?;
+        if count != before.len()
+            || !entry.is_file()
+            || identity(&before) != identity(&after)
+            || identity(&after) != identity(&entry)
+            || Instant::now() >= end
+        {
+            return Err("Codex executable changed during metadata fingerprint".into());
+        }
+        validate_program(path)?;
+        Ok(json!({"kind":"bounded-streaming-executable-fingerprint-v1",
+            "sha256":format!("sha256:{:x}",hasher.finalize()),"size_bytes":count.to_string(),
+            "device":before.dev().to_string(),"inode":before.ino().to_string(),
+            "uid":before.uid().to_string(),"gid":before.gid().to_string(),
+            "mode":before.mode().to_string(),"links":before.nlink().to_string(),
+            "mtime_seconds":before.mtime().to_string(),"mtime_nanoseconds":before.mtime_nsec().to_string(),
+            "ctime_seconds":before.ctime().to_string(),"ctime_nanoseconds":before.ctime_nsec().to_string(),
+            "maximum_bytes":MAX_CODEX_BINARY_BYTES.to_string(),"chunk_bytes":CODEX_HASH_CHUNK_BYTES.to_string(),
+            "maximum_seconds":CODEX_HASH_DEADLINE.as_secs().to_string(),"artifact_copy":false}))
+    }
     fn cpu_set(value: &str) -> Result<BTreeSet<u32>> {
         let mut cpus = BTreeSet::new();
         for item in value.split(',') {
@@ -1022,8 +1105,7 @@ mod probe {
         } else {
             private_directory(&directory)?;
         }
-        let program_bytes = read_file(&profile.program, 128 * 1024 * 1024, false)?;
-        let program = stored(ctx.objects, &program_bytes)?;
+        let program = codex_program_fingerprint(&profile.program)?;
         let registry = RegistryFile::new(profile.registry.clone())?.read()?;
         let model = registry
             .models
@@ -1136,7 +1218,7 @@ mod probe {
             Some(current_tick),
         )?;
         let snapshot = json!({"kind":"one-run-codex-provider-qualification-v1","program":profile.program,
-            "program_artifact":artifact_value(&program),"cli_observation":cli,"help_objects":observation_objects,
+            "program_fingerprint":program,"cli_observation":cli,"help_objects":observation_objects,
             "registry_path":profile.registry,"registry_artifact":artifact_value(&registry_object),"model":model,
             "selected_model_digest":admission.selected_model_digest,"capsule":capsule,"provider_tuple":preview.tuple(),
             "provider_tuple_digest":preview.tuple_digest(),"provider_home":profile.home,"auth_context_ref":profile.auth_context_ref,
@@ -2332,8 +2414,8 @@ mod probe {
             );
             assert_eq!(prepared.cli.fingerprint(), replay.cli.fingerprint());
             assert_eq!(
-                prepared.snapshot["program_artifact"],
-                replay.snapshot["program_artifact"]
+                prepared.snapshot["program_fingerprint"],
+                replay.snapshot["program_fingerprint"]
             );
             assert_eq!(
                 prepared.snapshot["registry_artifact"],
@@ -2352,8 +2434,8 @@ mod probe {
             fs::write(&fixture.profile.program, bytes).unwrap();
             let changed = fixture.prepare().unwrap();
             assert_ne!(
-                original.snapshot["program_artifact"],
-                changed.snapshot["program_artifact"]
+                original.snapshot["program_fingerprint"],
+                changed.snapshot["program_fingerprint"]
             );
             let mut registry: Value =
                 serde_json::from_slice(&read_owned_file(&fixture.profile.registry, 4096).unwrap())
@@ -2393,6 +2475,62 @@ mod probe {
             )
             .unwrap();
             assert!(fixture.prepare().is_err());
+        }
+        #[test]
+        fn codex_fingerprint_streams_large_sparse_binary_and_detects_tamper() {
+            use std::io::{Seek, SeekFrom};
+            let fixture = private_fixture();
+            let program = fixture.path().join("large-codex-fixture");
+            let mut file = fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(0o700)
+                .open(&program)
+                .unwrap();
+            // Larger than the unchanged128MiB artifact/read cap; only the
+            // filesystem's sparse file plus64KiB hash buffer is used.
+            let length = 129 * 1024 * 1024 + 17;
+            file.set_len(length).unwrap();
+            file.write_all(b"codex-stream-fixture-v1\n").unwrap();
+            file.seek(SeekFrom::End(-1)).unwrap();
+            file.write_all(&[0x7f]).unwrap();
+            file.sync_all().unwrap();
+            let before = codex_program_fingerprint(&program).unwrap();
+            assert_eq!(
+                before["sha256"],
+                "sha256:5843c7f85ca81ae89a70fc0152f1b7111e0c9ed24f77ed5138ddf5e925171346"
+            );
+            assert_eq!(before["size_bytes"], length.to_string());
+            assert_eq!(before["chunk_bytes"], "65536");
+            assert_eq!(before["artifact_copy"], false);
+            assert!(read_file(&program, 128 * 1024 * 1024, false).is_err());
+            file.seek(SeekFrom::End(-1)).unwrap();
+            file.write_all(&[0x7e]).unwrap();
+            file.sync_all().unwrap();
+            let changed = codex_program_fingerprint(&program).unwrap();
+            assert_ne!(before["sha256"], changed["sha256"]);
+            assert_ne!(before, changed);
+            assert_eq!(before["inode"], changed["inode"]);
+            assert_eq!(before["size_bytes"], changed["size_bytes"]);
+        }
+        #[test]
+        fn codex_fingerprint_refuses_links_nonregular_writable_and_overbudget_entries() {
+            let fixture = private_fixture();
+            let program = fixture.path().join("program");
+            write_new(&program, b"metadata only").unwrap();
+            fs::set_permissions(&program, fs::Permissions::from_mode(0o700)).unwrap();
+            let alias = fixture.path().join("alias");
+            std::os::unix::fs::symlink(&program, &alias).unwrap();
+            assert!(codex_program_fingerprint(&alias).is_err());
+            assert!(codex_program_fingerprint(fixture.path()).is_err());
+            fs::set_permissions(&program, fs::Permissions::from_mode(0o775)).unwrap();
+            assert!(codex_program_fingerprint(&program).is_err());
+            fs::set_permissions(&program, fs::Permissions::from_mode(0o700)).unwrap();
+            let file = fs::OpenOptions::new().write(true).open(&program).unwrap();
+            file.set_len(MAX_CODEX_BINARY_BYTES + 1).unwrap();
+            assert!(codex_program_fingerprint(&program).is_err());
+            file.set_len(0).unwrap();
+            assert!(codex_program_fingerprint(&program).is_err());
         }
         #[test]
         fn codex_profile_has_no_implicit_model_or_credential_value_reference() {

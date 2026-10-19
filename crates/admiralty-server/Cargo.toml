@@ -19,5 +19,6 @@ futures-util.workspace = true
 clap.workspace = true
 uuid.workspace = true
 rustix.workspace = true
+sha2.workspace = true
 [lints]
 workspace = true
