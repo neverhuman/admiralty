@@ -167,6 +167,9 @@ describe("built live views against the real Rust server", () => {
   it("joins all roles and projects, supports search/selection/cross-links and browser history", async () => {
     await connect("atlas");
     await browser.waitForSelector(".atlas-agent");
+    await browser.evaluate(
+      "new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))",
+    );
     expect(
       await browser.evaluate(
         `(()=>{const el=document.querySelector('.atlas-viewport');const r=el.getBoundingClientRect();const event=new WheelEvent('wheel',{ctrlKey:true,deltaY:20,clientX:r.left+r.width/2,clientY:r.top+r.height/2,bubbles:true,cancelable:true});el.dispatchEvent(event);return event.defaultPrevented;})()`,

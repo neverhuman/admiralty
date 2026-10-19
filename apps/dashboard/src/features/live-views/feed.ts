@@ -19,17 +19,17 @@ export type {
   GitCheckout,
 } from "../../../../../packages/contracts/generated/views-snapshot";
 export function parseViews(value: unknown): ViewsSnapshot {
+  assertBoundedJson(value, {
+    ...API_VALIDATION_LIMITS,
+    nodes: 500_000,
+    collection: 20_000,
+  });
   if (
     !value ||
     typeof value !== "object" ||
     (value as { schema_version?: unknown }).schema_version !== 1
   )
     throw new Error("Unsupported visual snapshot version");
-  assertBoundedJson(value, {
-    ...API_VALIDATION_LIMITS,
-    nodes: 500_000,
-    collection: 20_000,
-  });
   if (!validateViewsSnapshot(value))
     throw new Error("Unsupported visual snapshot");
   if (

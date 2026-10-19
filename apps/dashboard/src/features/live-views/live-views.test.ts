@@ -164,6 +164,19 @@ describe("visual truth and deterministic geometry", () => {
   });
 });
 
+it("rejects non-JSON accessors before reading visual version metadata", () => {
+  let accessed = false;
+  const value = Object.defineProperty({}, "schema_version", {
+    enumerable: true,
+    get() {
+      accessed = true;
+      return 1;
+    },
+  });
+  expect(() => parseViews(value)).toThrow("accessors");
+  expect(accessed).toBe(false);
+});
+
 describe("atomic authenticated visual feed", () => {
   const stops: Array<() => void> = [];
   beforeEach(() => vi.useFakeTimers());
