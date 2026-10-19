@@ -1,4 +1,5 @@
 //! Pure, bounded scheduling proposals. This module never starts work.
+pub mod fairness;
 use crate::{ProjectId, RootId, TaskContract, TaskId, content_digest};
 use serde::{Deserialize, Serialize};
 use std::{
