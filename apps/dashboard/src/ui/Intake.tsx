@@ -334,7 +334,7 @@ export default function Intake({ token = '', onAccess, fetcher = fetch }: Intake
       </div>
       <label style={{ ...field, marginTop: '.65rem' }}>Original raw request<textarea aria-label="Original raw request" value={draft.text} disabled={busy || Boolean(pending)} rows={10} style={{ ...control, resize: 'vertical' }} onChange={e => mutate('text', e.target.value)} /></label>
       <p>{new TextEncoder().encode(draft.text).byteLength.toLocaleString()} / 1,048,576 UTF-8 bytes</p>
-      <label style={{ ...field, maxWidth: '32rem' }}>Separate intake token<input aria-label="Separate intake token" type="password" autoComplete="new-password" value={intakeToken} disabled={busy} style={control} onChange={e => setIntakeToken(e.target.value)} /></label>
+      <label style={{ ...field, maxWidth: '32rem' }}>Separate intake token<input aria-label="Separate intake token" type="password" autoComplete="new-password" disabled={busy} style={control} onChange={e => setIntakeToken(e.target.value)} /></label>
       <p>Requester attribution is unknown. A profile name does not authenticate or authorize intake.</p>
       {onAccess && <button type="button" disabled={busy} onClick={onAccess}>Owner access</button>}{' '}
       <button type="submit" disabled={busy || Boolean(pending) || !authorized}>Preview exact source</button>{' '}
