@@ -84,3 +84,24 @@ watcher icons load lazily. The existing browser journey enforces a32KiB per-icon
 budget and rejects source-PNG requests. See the [asset recipe](../../apps/dashboard/src/assets/README.md).
 The [sanitized measurement receipt](../../receipts/integration/dashboard-image-contention-20261019.json) retains the overlap control and pixel checks.
 Production before/after navigation timings remain a separate deployment check.
+
+After the image cutover at3375621, actual Chrome155 on the original localhost
+forward showed current facts in1,697ms while fetching the new JavaScript bundle,
+then556ms and543ms on repeats. Full detail/history finished in2,761ms,1,934ms
+and1,550ms respectively. Every run rendered six project tabs with no error;
+repeat JavaScript, CSS and both image transfers were zero bytes. These are
+three observed loads, not a percentile or a guarantee of network latency.
+
+The independent full-detail comparison then caught nine one-ULP differences in
+floating-point observations, up to1.42e-14, while keys/counts/timestamps matched.
+The original full endpoint was byte-preserved; the projected reader used
+serde_json's default fast float parsing. The workspace now enables its existing
+`float_roundtrip` feature so parsing is correctly rounded before reserialization.
+The regression compares actual source literals with Rust's independently rounded
+`str::parse::<f64>()` bit pattern, including small values and signed zero, through
+both projections and a serialized reopen. The original failure is retained in
+[the precision receipt](../../receipts/integration/dashboard-decimal-roundtrip-before-20261019.json).
+No approximate equality replaces the final production fidelity check. Existing
+provider cost readers also share this feature, so the complete workspace/native
+reopen/backup and browser matrix must pass before push; no schema or authority
+changes are introduced. Final receiving-source readback remains separate.

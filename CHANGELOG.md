@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve the exact floating-point values of source decimals through JSON
+  parsing and detail projection; independent bit-level regression retains the
+  original one-ULP failure. No dependency versions or schemas change.
+
 - Replace megabyte UI mascot PNG transfers with 192-pixel lossless WebP icons
   (42.5 KB combined), lazy-load watcher images and cache content-hashed images.
   Vite hashes containing hyphens retain their immutable cache policy.
