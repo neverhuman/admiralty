@@ -1183,3 +1183,96 @@ browser failure repair and a trusted local evidence catalog. A separate isolated
 Linux real-task-loop proof is being implemented; it will use a fixed child and
 fresh exact authorization, not a paid provider or reused failed permit. Native
 general execution remains false. P00/P01 remain the only accepted parent packets.
+
+## Task-loop Linux proof and independent review repairs — 2026-10-19T00:50Z
+
+PR81 merged at 00:36:49 UTC after exact-head neverhumanbot approval of
+`b7d7597a80ba1fc49d3902d55dcba5512e642a39` and matched-head rebase. Receiving
+main is `3fdb10189322962bb91eadfbcb111f483697a688`; all eight production Rust
+hashes in the coordinator receipt match that revision. The Commodore remains
+the sole deployment writer and deployed it at 00:42:35 UTC. Independent checks
+at 00:47:12 UTC verify actual daemon/observer executable paths, all twelve
+manifest files, primary200, redirect307 and the Rust producer. Manifest hash:
+`e90f8944190d01d35ccbc1c8be8e9eaac9c2836c589446076aff86e0b91110c4`.
+The actual browser retains thirteen temporal controls and one profile control.
+The deploy receipt's zero plots/false profile fields are unsupported feed-schema
+inferences; the original is retained and an explicit correction was requested.
+Receiving-main browser CI39181566301 succeeds; pending Rust/contracts checks are
+not described as green.
+
+An isolated example now composes actual `NativeTaskLoop` admission/dispatch,
+observed-start Store sink, acknowledged closure, original prepared workspace,
+changed-source candidate, independent compilation/checks and lifecycle acceptance.
+It prepares a new bounded exact request, requires external private authorization,
+and creates a one-run fence before runtime Git or launch. Its fixed deterministic
+child is not a coding provider. Independent review caught that generic checker
+exit17 could satisfy the old negative control. The repair reserves exit23 for a
+private typed oracle mismatch after successful compilation, execution and complete
+capture; setup/compiler/capture failures remain17. This also limits the older
+eb62 proof's wrong-oracle claim; its original receipt is preserved.
+
+Actual Linux source `dbec672d0fa0fd4137200d148d67115f2edb29a3` ran once with a
+fresh protected authorization, owned empty probe slice, CPUs0–1, memory256MiB,
+tasks16 and deadline90s. It recorded the real claim, observed start and effect ACK,
+captured actual successful resource closure and materialized changed source. Its
+positive trusted check then failed: rustc created a mode0775 executable under the
+inherited host umask, and the unchanged program guard correctly refused it. The
+failed fixture, journals, authorization and output remain in the owned private
+proof area; no acceptance or passing proof is claimed, and authorization is not
+reused. The owned probe slice is empty after closure. The repair retains the
+new output-directory descriptor, refuses aliases and replacement, and applies0700
+only through the exact owned compiler-output file descriptor. Independent static
+review and nine component tests cover the permission repair; a fresh build and
+authorization are required for the next actual Linux run.
+
+PR82 at `c3e1066` is held for two concrete defects: an attempted freeze could lose
+its unknown-state fence if diagnostic OIDs were unavailable, and its new error
+diagnostics invoked Git after metadata preflight rejected that repository.
+Thirty-six actual focused workspace tests and strict runtime Clippy passed but
+did not cover these defects. S1 owns the repair and regressions. PR83 at `fb979f7`
+passes its browser CI, but independent review found cleanup could return before
+an existing asynchronous termination completed and retry options admitted
+nonfinite counts. S2 owns shared cleanup-promise and bounded-option repairs.
+Neither old reviewed head is approved for merge.
+
+The unregistered S3 catalog candidate `88af5f6` remains held. Its real closure cwd
+check confused the original execution workspace with the detached candidate;
+its path-only Git revalidation was weaker and unbounded; revocation failure on
+capacity/lock contention could leave known-drift authority active. S3 owns these
+three repairs. Component fixture checks are not a real opaque-proof positive path.
+No weaker catalog authority has been installed.
+
+Actual component/source/deployment reconciliation updated rollout.json at
+00:48:23 UTC, preserving every parent status and unrelated packet. Archived proof
+records before hash `e7a65ad3de83a8e7c843c515f0e31829b98713c159f1e1e12599806194a270e6`
+and after hash `1edbdda027b9942b1a007e8e3e9baa63c5d21f199bc44e1e815e12d8933d253e`.
+Display staleness now follows the authorized thirty-minute engineering heartbeat
+plus five-minute grace; original producer/history timestamps and actual ages stay
+intact. No runtime permit, lease, admission or security limit changed. P00/P01
+alone remain accepted; all other thirty parent packets and general autonomous
+coding execution remain unqualified. The existing heartbeat remains active every
+thirty minutes with current owners and source evidence, without duplicate monitors.
+
+The fresh Linux proof at source `661e5c5294fe8fe3fe968ce2070b0d71951be397`
+subsequently passes with exit0. The [sanitized task-loop receipt](../../../receipts/integration/native-task-loop-linux-20261019T0053Z.json)
+pins the source archive, executable, failed predecessor and independently verified
+evidence objects. Actual positive compilation/check exits0; the independently
+compiled wrong-oracle control exits23. Store records one real claim and one actual
+observed start, retained admission replay matches, duplicate dispatch does not
+attempt another runtime, effect ACK is recorded, acceptance is event5, exact replay
+matches, revocation is denied and reopened projection agrees. The owned slice is
+empty afterward. All nine example tests also pass on Linux with zero ignored or
+filtered. The fixed deterministic workload still does not qualify a coding
+provider, install production startup authority or close a whole parent packet.
+One additional preparation copied the prior executable before the new build
+finished; it was never authorized or launched, was preserved, and was superseded
+by the independently checked new binary and fresh fixture.
+
+PR83's cleanup-promise and finite-option repairs pass independent review at
+`98c4bcfcb6468eab8db4c428fe5434e65c491a05`. Its exact Linux local proof passes
+all13 browser cases and TypeScript; original failures remain preserved. Under the
+authorized `local-CI only` path, exact-head neverhumanbot approval precedes
+matched-head rebase at 00:55:14 UTC, receiving main
+`a3b0b661a2071cab1e87e64956b7bd88de6771e8`. Queued hosted checks are not relabeled
+green. The small remaining form-loop deadline correction is assigned to S2 on a
+fresh branch; it affects latency/diagnostics, not successful-check interpretation.
