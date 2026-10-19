@@ -35,6 +35,7 @@ const specifications = [
   ['delivery-requirement', 'DeliveryRequirement'],
   ['duplicate-query', 'DuplicateQuery'],
   ['duplicate-page', 'DuplicatePage'],
+  ['coordination-envelope-v2', 'CoordinationEnvelopeV2'],
 ];
 const check = process.argv.length === 3 && process.argv[2] === '--check';
 if (process.argv.length > 2 && !check) {

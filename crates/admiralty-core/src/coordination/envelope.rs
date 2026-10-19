@@ -84,8 +84,10 @@ macro_rules! identifier {
         impl JsonSchema for $name {
             fn schema_name() -> std::borrow::Cow<'static, str> { stringify!($name).into() }
             fn json_schema(_: &mut SchemaGenerator) -> Schema {
-                json_schema!({"type":"string", "minLength":1, "maxLength":$max,
-                    "pattern":r"^(?!\.{1,2}(?![\s\S]))[A-Za-z0-9_.-]+(?![\s\S])"})
+                // ASCII characters make regex length identical to Rust's byte
+                // bound, without a Unicode-length runtime helper dependency.
+                json_schema!({"type":"string", "pattern":format!(
+                    r"^(?!\.{{1,2}}(?![\s\S]))[A-Za-z0-9_.-]{{1,{}}}(?![\s\S])", $max)})
             }
         }
     };
@@ -133,7 +135,7 @@ impl JsonSchema for Sha256Digest {
         "CoordinationSha256Digest".into()
     }
     fn json_schema(_: &mut SchemaGenerator) -> Schema {
-        json_schema!({"type":"string", "pattern":r"^sha256:[0-9a-f]{64}(?![\s\S])", "minLength":71, "maxLength":71})
+        json_schema!({"type":"string", "pattern":r"^sha256:[0-9a-f]{64}(?![\s\S])"})
     }
 }
 
@@ -206,7 +208,7 @@ impl JsonSchema for AuthorityGeneration {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AuthorityRef {
-    #[schemars(length(min = 1, max = MAX_AUTHORITY_REFERENCE_BYTES), pattern(r"^[!-~]+(?![\s\S])"))]
+    #[schemars(pattern(r"^[!-~]{1,512}(?![\s\S])"))]
     pub reference: String,
     pub generation: AuthorityGeneration,
     pub policy_digest: Sha256Digest,
@@ -327,8 +329,8 @@ fn nullable_schema<T: JsonSchema>(generator: &mut SchemaGenerator) -> Schema {
 fn canonical_id_schema(_: &mut SchemaGenerator) -> Schema {
     // Match the reused ProjectId/RootId/TaskId/PrincipalId/MessageId constructors
     // without changing their legacy schemas or creating a second ID codec.
-    json_schema!({"type":"string", "minLength":1, "maxLength":128,
-        "pattern":r"^(?!\.{1,2}(?![\s\S]))[A-Za-z0-9_.-]+(?![\s\S])"})
+    json_schema!({"type":"string",
+        "pattern":r"^(?!\.{1,2}(?![\s\S]))[A-Za-z0-9_.-]{1,128}(?![\s\S])"})
 }
 fn nullable_id_schema(generator: &mut SchemaGenerator) -> Schema {
     json_schema!({"anyOf":[canonical_id_schema(generator), {"type":"null"}]})

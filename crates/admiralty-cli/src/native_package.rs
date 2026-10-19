@@ -28,7 +28,7 @@ const GENERATED_GUARD_ENTRY: &[u8] =
     include_bytes!("../../../packages/contracts/generated/validators.mjs");
 // This deliberately exact allowlist is reviewed with the public generator. A
 // release never discovers dependencies by traversing a source directory.
-const GENERATED_GUARD_MODULES: [(&str, &[u8]); 19] = [
+const GENERATED_GUARD_MODULES: [(&str, &[u8]); 20] = [
     (
         "validators-base.mjs",
         include_bytes!("../../../packages/contracts/generated/validators-base.mjs"),
@@ -110,6 +110,12 @@ const GENERATED_GUARD_MODULES: [(&str, &[u8]); 19] = [
     (
         "validators-duplicate-page.mjs",
         include_bytes!("../../../packages/contracts/generated/validators-duplicate-page.mjs"),
+    ),
+    (
+        "validators-coordination-envelope-v2.mjs",
+        include_bytes!(
+            "../../../packages/contracts/generated/validators-coordination-envelope-v2.mjs"
+        ),
     ),
 ];
 type FileIdentity = (u64, u64, u64, i64, i64, i64, i64, u64);
@@ -1114,7 +1120,7 @@ import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 const guards = await import(pathToFileURL(process.argv[1]).href);
 const fixtures = JSON.parse(process.argv[2]);
-assert.equal(Object.keys(guards).filter(name => name.startsWith('validate')).length, 22);
+assert.equal(Object.keys(guards).filter(name => name.startsWith('validate')).length, 23);
 for (const [name, value] of Object.entries(fixtures)) assert.equal(guards[`validate${name}`](value), true, name);
 const task = fixtures.Workplan.tasks[0];
 assert.equal(guards.validateTaskContract(task), true);
@@ -1133,7 +1139,7 @@ for (const authority_generation of ['0', '01', '18446744073709551616', 900719925
 }
 assert.equal(guards.validateRecordIntakeRequest({...fixtures.RecordIntakeRequest,acceptance_granted:true}),false);
 assert.equal(guards.validateDeliveryRequirement({...fixtures.DeliveryRequirement,execution_qualified:true}),false);
-console.log('all 22 staged public guards passed real import, closed-input and precision checks');
+console.log('all 23 staged public guards passed real import, closed-input and precision checks');
 "#;
         let stdout_path = root.path().join("node-guard-stdout.log");
         let stderr_path = root.path().join("node-guard-stderr.log");
@@ -1193,7 +1199,7 @@ console.log('all 22 staged public guards passed real import, closed-input and pr
             "real staged guard smoke failed: {}",
             read_output(&stderr_path)?
         );
-        assert!(read_output(&stdout_path)?.contains("all 22 staged public guards passed"));
+        assert!(read_output(&stdout_path)?.contains("all 23 staged public guards passed"));
         Ok(())
     }
 

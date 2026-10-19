@@ -35,7 +35,7 @@ use std::{
 
 type CliResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 const MAX_JSON_BYTES: u64 = 1024 * 1024;
-const SCHEMA_FILES: [&str; 22] = [
+const SCHEMA_FILES: [&str; 23] = [
     "task-contract.schema.json",
     "coordination-message.schema.json",
     "domain-event.schema.json",
@@ -58,6 +58,7 @@ const SCHEMA_FILES: [&str; 22] = [
     "delivery-requirement.schema.json",
     "duplicate-query.schema.json",
     "duplicate-page.schema.json",
+    "coordination-envelope-v2.schema.json",
 ];
 
 #[derive(Parser)]
@@ -511,6 +512,9 @@ fn schema_documents() -> CliResult<Vec<(&'static str, Vec<u8>)>> {
         serde_json::to_value(schemars::schema_for!(DeliveryRequirement))?,
         serde_json::to_value(schemars::schema_for!(DuplicateQuery))?,
         serde_json::to_value(schemars::schema_for!(DuplicatePage))?,
+        serde_json::to_value(schemars::schema_for!(
+            admiralty_core::coordination::envelope::CoordinationEnvelopeV2
+        ))?,
     ];
     SCHEMA_FILES
         .into_iter()
@@ -1178,6 +1182,14 @@ mod tests {
         public_contract_fixture::<DeliveryRequirement>(&fixtures, "DeliveryRequirement", true)?;
         public_contract_fixture::<DuplicateQuery>(&fixtures, "DuplicateQuery", true)?;
         public_contract_fixture::<DuplicatePage>(&fixtures, "DuplicatePage", true)?;
+        public_contract_fixture::<admiralty_core::coordination::envelope::CoordinationEnvelopeV2>(
+            &fixtures,
+            "CoordinationEnvelopeV2",
+            true,
+        )?;
+        admiralty_core::coordination::envelope::CoordinationEnvelopeV2::parse(
+            &serde_json::to_vec(&fixtures["CoordinationEnvelopeV2"])?,
+        )?;
         // Exercise existing bounded parsers as well as serde; these pure
         // parsers do not authenticate a verifier or execute any task/check.
         admiralty_core::workplans::preview_workplan(&serde_json::to_vec(&fixtures["Workplan"])?)?;
