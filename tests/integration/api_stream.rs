@@ -850,6 +850,18 @@ async fn dashboard_compression_is_negotiated_without_bypassing_auth_or_source_va
         cached.headers()[header::CACHE_CONTROL],
         "public, max-age=31536000, immutable"
     );
+    let initial =
+        json(encoded(router.clone(), "/v1/legacy/detail/initial", "identity").await).await;
+    assert_eq!(initial["admiralty_delivery"], "initial");
+    assert_eq!(initial["generated_utc"], "2026-10-19T12:00:00Z");
+    assert_eq!(initial["projects"]["real"]["name"], "real source");
+    assert!(initial["projects"]["real"].get("log").is_none());
+    let detail = json(encoded(router.clone(), "/v1/legacy/detail", "identity").await).await;
+    assert_eq!(detail["admiralty_delivery"], "complete");
+    assert_eq!(
+        detail["projects"]["real"]["log"],
+        serde_json::from_str::<Value>(&source).expect("source")["projects"]["real"]["log"]
+    );
     for (path, original) in [
         ("/v1/legacy", source.as_bytes()),
         ("/legacy/status.json", source.as_bytes()),
@@ -879,6 +891,12 @@ async fn dashboard_compression_is_negotiated_without_bypassing_auth_or_source_va
     }
     settings.legacy.as_mut().expect("legacy").public_read = false;
     let private = app(store, settings).expect("private router");
+    for path in ["/v1/legacy/detail", "/v1/legacy/detail/initial"] {
+        assert_eq!(
+            encoded(private.clone(), path, "gzip").await.status(),
+            StatusCode::UNAUTHORIZED
+        );
+    }
     let denied = encoded(private.clone(), "/v1/legacy", "gzip").await;
     assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
     assert!(!denied.headers().contains_key(header::CONTENT_ENCODING));

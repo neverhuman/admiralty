@@ -544,7 +544,26 @@ fn legacy_config(state: &AppState, headers: &HeaderMap) -> Result<legacy::Legacy
 async fn legacy_snapshot(
     State(state): State<AppState>,
     headers: HeaderMap,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<Response, ApiError> {
+    legacy_snapshot_view(state, headers, legacy::SnapshotView::Full).await
+}
+async fn legacy_detail_snapshot(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
+    legacy_snapshot_view(state, headers, legacy::SnapshotView::Detail).await
+}
+async fn legacy_initial_snapshot(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
+    legacy_snapshot_view(state, headers, legacy::SnapshotView::Initial).await
+}
+async fn legacy_snapshot_view(
+    state: AppState,
+    headers: HeaderMap,
+    view: legacy::SnapshotView,
+) -> Result<Response, ApiError> {
     let started = std::time::Instant::now();
     let config = legacy_config(&state, &headers)?;
     let _permit = state
@@ -552,7 +571,8 @@ async fn legacy_snapshot(
         .acquire()
         .await
         .map_err(|_| error(StatusCode::SERVICE_UNAVAILABLE, "read capacity unavailable"))?;
-    let response = legacy::snapshot_encoded(config, http_bytes::accepts_gzip(&headers)).await?;
+    let response =
+        legacy::snapshot_encoded(config, http_bytes::accepts_gzip(&headers), view).await?;
     Ok(http_bytes::timed(response, "snapshot", started.elapsed()))
 }
 async fn legacy_index(
@@ -734,6 +754,8 @@ pub fn app_with_work_order_routes(
         .route("/v2/views/events", get(views::events))
         .route("/v2/{*path}", get(|| async { StatusCode::NOT_FOUND }))
         .route("/v1/legacy", get(legacy_snapshot))
+        .route("/v1/legacy/detail", get(legacy_detail_snapshot))
+        .route("/v1/legacy/detail/initial", get(legacy_initial_snapshot))
         .route("/legacy/", get(legacy_index))
         .route("/legacy/index.html", get(legacy_index))
         .route("/legacy/status.json", get(legacy_snapshot))

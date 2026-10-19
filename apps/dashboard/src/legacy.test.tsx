@@ -23,6 +23,18 @@ const snapshot = () => parseLegacy({ generated_utc: '2026-10-18T12:00:00Z', host
 });
 
 describe('detailed project source adapters', () => {
+  it('labels initial delivery as loading history and never calls a partial record complete', () => {
+    const initial = snapshot(); initial.admiralty_delivery = 'initial'; delete initial.history;
+    const html = renderToStaticMarkup(<LegacyFleetView snapshot={initial} />);
+    expect(html).toContain('Live project summaries loaded');
+    expect(html).toContain('Project alpha');
+    expect(html).toContain('Independent audit required');
+    expect(html).toContain('Loading history');
+    expect(html).not.toContain('0 historical samples');
+    expect(html).not.toContain('Complete producer project record');
+    expect(html).not.toContain('Source coordination log');
+    expect(renderToStaticMarkup(<LegacyFleetView snapshot={snapshot()} />)).toContain('Source coordination log');
+  });
   it('preserves ledger source age even when publication and observation are fresh', () => {
     const source = snapshot();
     source.projects.alpha.ledger_updated_utc = '2026-10-17T01:00:00Z';
@@ -218,6 +230,41 @@ describe('read-only detailed snapshot transport', () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response('', { status: 404 }));
     const stop = watchLegacy({ fetcher, onSnapshot: vi.fn(), onError: vi.fn() });
     await vi.advanceTimersByTimeAsync(60_000); expect(fetcher).toHaveBeenCalledTimes(1); stop();
+  });
+  it('publishes initial facts before pending detail and preserves them if enrichment fails', async () => {
+    vi.useFakeTimers();
+    const initial = { ...snapshot(), admiralty_delivery: 'initial' };
+    let rejectDetail: (reason: Error) => void = () => { throw new Error('detail not started'); };
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json(initial))
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectDetail = reject; }))
+      .mockResolvedValue(Response.json({ ...snapshot(), admiralty_delivery: 'complete' }));
+    const onSnapshot = vi.fn(), onError = vi.fn();
+    const stop = watchLegacy({ fetcher, view: 'detail', progressive: true, onSnapshot, onError });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(onSnapshot).toHaveBeenCalledTimes(1);
+    expect(onSnapshot.mock.calls[0][0]).toMatchObject({ admiralty_delivery: 'initial' });
+    expect(fetcher.mock.calls.map(call => call[0])).toEqual(['/v1/legacy/detail/initial', '/v1/legacy/detail']);
+    rejectDetail(new Error('detail transfer failed'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onSnapshot).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenLastCalledWith('detail transfer failed');
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(onSnapshot).toHaveBeenCalledTimes(2);
+    expect(onSnapshot.mock.calls[1][0]).toMatchObject({ admiralty_delivery: 'complete' });
+    expect(fetcher.mock.calls[2][0]).toBe('/v1/legacy/detail');
+    stop();
+  });
+  it('falls back once to the original API on older servers without dropping initial data', async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response('', { status: 404 }))
+      .mockResolvedValue(Response.json(snapshot()));
+    const onSnapshot = vi.fn(), stop = watchLegacy({ fetcher, view: 'detail', progressive: true, onSnapshot, onError: vi.fn() });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetcher.mock.calls.map(call => call[0])).toEqual(['/v1/legacy/detail/initial', '/v1/legacy']);
+    expect(onSnapshot).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(fetcher.mock.calls[2][0]).toBe('/v1/legacy');
+    stop();
   });
   it('reports the bounded timeout clearly and recovers on the next sequential poll', async () => {
     vi.useFakeTimers();

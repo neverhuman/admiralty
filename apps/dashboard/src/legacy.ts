@@ -30,14 +30,17 @@ export function parseLegacy(value: unknown): LegacySnapshot {
   for (const project of Object.values(snapshot.projects)) if (!project || typeof project !== 'object' || Array.isArray(project)) throw new Error('Invalid detailed project source');
   return snapshot as LegacySnapshot;
 }
-export async function getLegacy(token?: string, signal?: AbortSignal, fetcher: typeof fetch = fetch): Promise<LegacySnapshot | null> {
-  const response = await fetcher('/v1/legacy', { headers: token ? { Authorization: `Bearer ${token}` } : undefined, signal, cache: 'no-store' });
+type LegacyView = 'full' | 'detail' | 'initial';
+const legacyPaths: Record<LegacyView, string> = { full: '/v1/legacy', detail: '/v1/legacy/detail', initial: '/v1/legacy/detail/initial' };
+export async function getLegacy(token?: string, signal?: AbortSignal, fetcher: typeof fetch = fetch, view: LegacyView = 'full'): Promise<LegacySnapshot | null> {
+  const response = await fetcher(legacyPaths[view], { headers: token ? { Authorization: `Bearer ${token}` } : undefined, signal, cache: 'no-store' });
   if (response.status === 404) return null;
   if (!response.ok) throw new ApiError(`Detailed snapshot request failed (${response.status})`, response.status);
   return parseLegacy(await readBoundedJson(response));
 }
-export function watchLegacy(options: { token?: string; onSnapshot: (value: LegacySnapshot | null) => void; onError: (value: string) => void; fetcher?: typeof fetch }): () => void {
+export function watchLegacy(options: { token?: string; onSnapshot: (value: LegacySnapshot | null) => void; onError: (value: string) => void; fetcher?: typeof fetch; view?: 'full' | 'detail'; progressive?: boolean }): () => void {
   let stopped = false, timer: ReturnType<typeof setTimeout> | undefined;
+  let phase: LegacyView = options.progressive ? 'initial' : options.view ?? 'full';
   let request: AbortController | undefined;
   async function poll() {
     const controller = new AbortController();
@@ -45,10 +48,18 @@ export function watchLegacy(options: { token?: string; onSnapshot: (value: Legac
     let timedOut = false;
     const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 12_000);
     let repeat = true;
+    let nextDelay = 15_000;
     try {
-      const snapshot = await getLegacy(options.token, controller.signal, options.fetcher);
+      const snapshot = await getLegacy(options.token, controller.signal, options.fetcher, phase);
+      if (snapshot === null && phase !== 'full') {
+        // Compatibility with older and synthetic servers. Keep any rendered
+        // initial view while falling back to the original full source.
+        phase = 'full'; nextDelay = 0;
+        return;
+      }
       if (!stopped) { options.onSnapshot(snapshot); options.onError(''); }
       if (snapshot === null) repeat = false;
+      else if (phase === 'initial') { phase = options.view ?? 'full'; nextDelay = 0; }
     } catch (error) {
       if (!stopped) options.onError(timedOut
         ? 'The live snapshot did not arrive within 12 seconds. Retrying automatically; check the dashboard connection.'
@@ -56,7 +67,7 @@ export function watchLegacy(options: { token?: string; onSnapshot: (value: Legac
       if (error instanceof ApiError && [401, 403].includes(error.status)) repeat = false;
     } finally {
       clearTimeout(timeout);
-      if (!stopped && repeat) timer = setTimeout(() => void poll(), 15_000);
+      if (!stopped && repeat) timer = setTimeout(() => void poll(), nextDelay);
     }
   }
   void poll();

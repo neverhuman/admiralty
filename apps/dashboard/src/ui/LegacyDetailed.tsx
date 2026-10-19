@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { data, list, text, label, freshness, safeHref, stageLabel, stageClass, projectDetails, watchLegacy, type LegacySnapshot, type ProjectDetailModel } from '../legacy';
 import { TemporalPlots } from './TemporalPlots';
 import { LegacyHierarchy } from './LegacyHierarchy';
@@ -42,7 +42,7 @@ function PullRequest({ value }: { value: unknown }) {
   if (!Object.keys(pr).length) return <div className="muted">No PR metadata reported.</div>;
   return <div className="legacy-pr">{link ? <a href={link} target="_blank" rel="noopener noreferrer">{pr.number ? `PR #${text(pr.number)}` : 'Integration PR'}</a> : <b>PR not linked</b>} · {text(pr.state) || 'State unknown'}{pr.draft === true ? ' (draft)' : ''}<p>{text(pr.title)}</p><div>Head <code>{text(pr.head) || 'Unknown'}</code> · {text(pr.branch)}</div><div>CI: <b>{text(ci.state) || 'Unknown'}</b> · Review: {text(pr.review_decision) || 'Unknown'} · {pr.exact_head_approved === true ? 'exact head approved (source report)' : 'exact-head approval not confirmed'}</div><DataValue value={{ checks: ci.counts, failing: ci.failing, last_review: pr.last_review, fetched_utc: pr.fetched_utc, merged_at: pr.merged_at, note: pr.note }} /></div>;
 }
-export function ProjectDetail({ project, compact = false }: { project: ProjectDetailModel; compact?: boolean }) {
+export function ProjectDetail({ project, compact = false, initial = false }: { project: ProjectDetailModel; compact?: boolean; initial?: boolean }) {
   const total = project.total, entries = Object.entries(project.stages);
   return <article className={`legacy-project panel ${compact ? 'compact' : ''}`} data-project-id={project.id}>
     <header className="legacy-project-heading"><h2>{project.name}</h2><a className="legacy-live-link" href={routeHref('git', { project: project.id })}>Git Flow ↗</a><span>{total === null ? 'Unknown total' : `${total} tasks`}</span></header>
@@ -62,29 +62,31 @@ export function ProjectDetail({ project, compact = false }: { project: ProjectDe
     <section><h3>Commodore</h3><Screen value={project.captain} /></section>
     <section><h3>Worker screens and models ({project.workers.length})</h3><Workers values={project.workers} /></section>
     <section><h3>Integration PR, CI and review</h3><PullRequest value={project.pr} /></section>
-    {project.sections.map((section, index) => <SourceSection key={`${section.title}:${index}`} {...section} />)}
-    <SourceSection title="Complete producer project record" value={project.raw} />
+    {!initial && project.sections.map((section, index) => <SourceSection key={`${section.title}:${index}`} {...section} />)}
+    {!initial && <SourceSection title="Complete producer project record" value={project.raw} />}
   </article>;
 }
 export function LegacyFleetView({ snapshot, selected = 'all' }: { snapshot: LegacySnapshot; selected?: string }) {
+  const initial = snapshot.admiralty_delivery === 'initial';
   const projects = projectDetails(snapshot), visible = selected === 'all' ? projects : projects.filter(project => project.id === selected);
   return <>
+    {initial && <div className="legacy-provenance" role="status">Live project summaries loaded. Charts and detailed evidence are loading in the background.</div>}
     <TemporalPlots snapshot={snapshot} />
-    <div className="legacy-source-status">Source host: <b>{text(snapshot.host) || 'Unknown'}</b> · Produced {snapshot.generated_utc} ({freshness(snapshot.generated_utc)}) · Read-only observation every 15 seconds</div>
+    <div className="legacy-source-status" data-detail-phase={initial ? 'initial' : 'complete'}>Source host: <b>{text(snapshot.host) || 'Unknown'}</b> · Produced {snapshot.generated_utc} ({freshness(snapshot.generated_utc)}) · Read-only observation every 15 seconds</div>
     <div className="legacy-layout">
-      <div className="legacy-project-grid">{visible.map(project => <ProjectDetail key={project.id} project={project} compact={selected === 'all'} />)}{!visible.length && <div className="loading-card">Selected project is no longer present in this snapshot.</div>}</div>
+      <div className="legacy-project-grid">{visible.map(project => <ProjectDetail key={project.id} project={project} compact={selected === 'all'} initial={initial} />)}{!visible.length && <div className="loading-card">Selected project is no longer present in this snapshot.</div>}</div>
       <aside className="legacy-side">
         <a className="text-button" href={routeHref('atlas')}>Open full Fleet Atlas ↗</a><LegacyHierarchy snapshot={snapshot} />
         <TokenEfficiency snapshot={snapshot} />
         <Economics />
-        <div className="legacy-auxiliary panel legacy-side-panel">
+        {!initial && <div className="legacy-auxiliary panel legacy-side-panel">
           <SourceSection title="Fleet resources" value={snapshot.global_resources} />
           <SourceSection title="Admiral" value={snapshot.super_captain} />
           <SourceSection title="Token yield source and coverage" value={snapshot.token_yield} />
           <SourceSection title="Complete history source" value={snapshot.history} />
           <SourceSection title="All agent observations" value={snapshot.agents} />
           <SourceSection title="Remote screens" value={snapshot.remote_screens} />
-        </div>
+        </div>}
       </aside>
     </div>
   </>;
@@ -93,8 +95,11 @@ export default function LegacyDetailed({ token }: { token?: string }) {
   const [snapshot, setSnapshot] = useState<LegacySnapshot | null>(null), [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false), [selected, setSelected] = useState('all'), [density, setDensity] = useState<'dense' | 'comfortable'>('dense');
   const [retry, setRetry] = useState(0);
-  useEffect(() => { setSnapshot(null); setLoaded(false); setError(''); }, [token]);
-  useEffect(() => { setError(''); return watchLegacy({ token, onSnapshot: value => { setSnapshot(value); setLoaded(true); }, onError: value => { setError(value); if (value) setLoaded(true); } }); }, [token, retry]);
+  const completeReceived = useRef(false);
+  useEffect(() => { completeReceived.current = false; setSnapshot(null); setLoaded(false); setError(''); }, [token]);
+  useEffect(() => { setError(''); return watchLegacy({ token, view: 'detail', progressive: !completeReceived.current,
+    onSnapshot: value => { if (value && value.admiralty_delivery !== 'initial') completeReceived.current = true; setSnapshot(value); setLoaded(true); },
+    onError: value => { setError(value); if (value) setLoaded(true); } }); }, [token, retry]);
   const projects = useMemo(() => snapshot ? projectDetails(snapshot) : [], [snapshot]);
   return <div className={`legacy-detailed density-${density}`}><div className="legacy-toolbar"><div className="legacy-project-tabs" role="tablist" aria-label="Observed projects"><button role="tab" aria-selected={selected === 'all'} onClick={() => setSelected('all')}>All projects</button>{projects.map(project => <button role="tab" key={project.id} aria-selected={selected === project.id} onClick={() => setSelected(project.id)}><span className="legacy-tab-title">{project.name}<small>{project.total === null ? 'Unknown total' : `${project.total} tasks`}</small></span><span className="legacy-tab-metrics">{Object.entries(project.stages).filter(([stage, count]) => count > 0 && ['done', 'in_progress', 'in_pr', 'blocked', 'review', 'verified', 'integrated'].includes(stage)).map(([stage, count]) => <span key={stage}><b>{count}</b> {stageLabel(stage, project.labels)}</span>)}</span><span className="legacy-stage-bar" aria-hidden="true">{Object.entries(project.stages).map(([stage, count]) => <span key={stage} className={stageClass(stage)} style={{width:`${project.total ? Math.min(100,count/project.total*100) : 0}%`}} />)}</span></button>)}</div><label>Density <select value={density} onChange={event => setDensity(event.target.value as 'dense' | 'comfortable')}><option value="dense">Dense</option><option value="comfortable">Comfortable</option></select></label><button className="text-button" onClick={() => setRetry(value => value + 1)}>Refresh source</button><a href="/legacy/" target="_blank" rel="noopener noreferrer">Original detailed dashboard ↗</a></div>
     {error && <div className="error-banner" role="status">{error} {snapshot ? 'Showing the last received snapshot; its original source age is preserved.' : 'No live snapshot has loaded yet.'}</div>}

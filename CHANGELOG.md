@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The detail view loads current project facts before history and complete
+  records, with explicit enrichment state and the original full Git source
+  preserved for Git Flow. Failed enrichment retains the initial facts and age.
+
 - Negotiate lossless gzip for live snapshots and text assets, cache Vite's
   versioned JavaScript/CSS, and explain timed-out snapshot requests clearly.
   Existing source bounds, authentication and request deadlines remain enforced.

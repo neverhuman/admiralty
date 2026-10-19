@@ -44,3 +44,23 @@ source age and the12second request deadline remain enforced. Identity clients
 and explicit `gzip;q=0` remain supported. Local tests do not establish production
 availability: repeat the rendered browser timing through the same localhost
 connection after the sole Commodore's qualified cutover.
+
+The first production fix eliminated the abort but still took5.24seconds through
+the actual localhost tunnel: the shell painted at1.09seconds and the compressed
+snapshot consumed3.99seconds. Local captured-data rendering took0.53–0.57seconds,
+so local timings alone did not establish an acceptable production load.
+
+The progressive detail reader uses `/v1/legacy/detail/initial` for current
+project counts, flags/warnings, role/model observations and source timestamps.
+History and full packet/project evidence are explicitly marked as loading,
+then `/v1/legacy/detail` replaces the whole snapshot after enrichment. A later
+source timestamp is retained as later, without mixing records between the two
+responses. Enrichment failure keeps the initial facts and their original age;
+normal retries remain sequential with their own12second deadline. Once complete,
+manual refresh requests full detail directly and keeps the previous view.
+
+The detail routes omit the separate Git graph, which this view does not use.
+The original `/v1/legacy` and `/legacy/status.json` retain every source field for
+Git Flow and other existing readers. Older/synthetic servers without the new
+routes fall back once to the original endpoint. Both projections use the same
+authentication and bounded source validation; they grant no native authority.
