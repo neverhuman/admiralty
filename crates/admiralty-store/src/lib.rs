@@ -1,5 +1,6 @@
 //! Single-owner durable event store. Replay only applies the pure domain reducer.
 pub mod artifacts;
+pub mod attention;
 pub mod context_renders;
 pub mod custody;
 pub mod inbox;
@@ -68,6 +69,8 @@ pub enum StoreError {
     Workplan(#[from] workplans::WorkplanStoreError),
     #[error(transparent)]
     ContextRender(#[from] context_renders::ContextRenderError),
+    #[error(transparent)]
+    Attention(#[from] attention::AttentionError),
     #[error(transparent)]
     Inbox(#[from] inbox::InboxError),
     #[error("store already has an owner")]
@@ -152,6 +155,18 @@ pub trait LifecycleAuthority: Send + Sync {
 }
 
 enum Request {
+    RegisterAttention {
+        request: Box<attention::AttentionDefinition>,
+        reply: Reply<attention::AttentionRegistration>,
+    },
+    ApplyAttention {
+        request: Box<attention::AttentionCommand>,
+        reply: Reply<attention::AttentionResult>,
+    },
+    AttentionStatus {
+        scope: attention::AttentionScope,
+        reply: Reply<Option<attention::AttentionStatus>>,
+    },
     RecordContextRender {
         request: Box<context_renders::RecordContextRender>,
         reply: Reply<context_renders::ContextRenderReceipt>,
@@ -408,6 +423,34 @@ impl Store {
         })
     }
 
+    /// Trusted storage seam; authenticated source/delivery authority is external.
+    pub fn register_attention(
+        &self,
+        request: attention::AttentionDefinition,
+    ) -> Result<attention::AttentionRegistration> {
+        attention::validate_definition(&request)?;
+        self.ask(|reply| Request::RegisterAttention {
+            request: Box::new(request),
+            reply,
+        })
+    }
+    pub fn apply_attention(
+        &self,
+        request: attention::AttentionCommand,
+    ) -> Result<attention::AttentionResult> {
+        attention::validate_command(&request)?;
+        self.ask(|reply| Request::ApplyAttention {
+            request: Box::new(request),
+            reply,
+        })
+    }
+    pub fn attention_status(
+        &self,
+        scope: attention::AttentionScope,
+    ) -> Result<Option<attention::AttentionStatus>> {
+        attention::validate_scope(&scope)?;
+        self.ask(|reply| Request::AttentionStatus { scope, reply })
+    }
     /// Trusted in-process storage seam. The caller must independently authorize
     /// this recipient and namespace. Recording is neither delivery nor authority.
     pub fn record_context_render(
@@ -1138,6 +1181,7 @@ impl Writer {
         migration.commit()?;
         workplans::initialize(&connection)?;
         context_renders::initialize(&connection)?;
+        attention::initialize(&connection)?;
         let generation = connection
             .query_row(
                 "SELECT value FROM metadata WHERE key='recovery_generation'",
@@ -1175,6 +1219,22 @@ impl Writer {
     fn run(&mut self, receiver: mpsc::Receiver<Request>, changes: tokio::sync::watch::Sender<()>) {
         while let Ok(request) = receiver.recv() {
             match request {
+                Request::RegisterAttention { request, reply } => {
+                    let _ = reply.send(
+                        attention::register(&mut self.connection, *request)
+                            .map_err(StoreError::from),
+                    );
+                }
+                Request::ApplyAttention { request, reply } => {
+                    let _ = reply.send(
+                        attention::apply(&mut self.connection, *request).map_err(StoreError::from),
+                    );
+                }
+                Request::AttentionStatus { scope, reply } => {
+                    let _ = reply.send(
+                        attention::status(&self.connection, &scope).map_err(StoreError::from),
+                    );
+                }
                 Request::RecordContextRender { request, reply } => {
                     let _ = reply.send(
                         context_renders::record(&mut self.connection, *request)
@@ -1673,6 +1733,7 @@ impl Writer {
 
     fn rebuild(&mut self) -> Result<Snapshot> {
         context_renders::validate_all(&self.connection)?;
+        attention::validate_all(&self.connection)?;
         let projection = replay(&self.connection)?;
         let pending_inbox = inbox::PendingInboxIndex::from_projection(&projection)?;
         workplans::validate_task_contracts(
@@ -1692,6 +1753,7 @@ impl Writer {
 
     fn backup(&self, destination: &Path) -> Result<Snapshot> {
         context_renders::validate_all(&self.connection)?;
+        attention::validate_all(&self.connection)?;
         // Hard-link publication is atomic and refuses an existing destination.
         // Staging and destination share a directory, so publication cannot cross filesystems.
         let parent = destination
