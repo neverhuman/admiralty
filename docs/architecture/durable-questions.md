@@ -10,8 +10,31 @@ On reopen, `reconstruct` uses one consistent read transaction to parse each boun
 
 Every command receipt, including a cached return, is checked against its actual canonical event and original command identity. A receipt's self-hash alone is insufficient. Event sequence, revision, duplicate flag, command digest and event-specific escalation reference must agree; every event must retain its original receipt. An exact command retry returns its original receipt. A new command replaying an old opening event after expiry receives a duplicate opening receipt with no fabricated expiry proposal.
 
-When the connection contains the Store's `domain_events`, journal reads and appends first verify that event log and require the exact task contract's project, root, task and authority. Contracts are immutable in the current domain protocol; the Store verifies their canonical event and source binding. A standalone journal has no domain task catalog and remains dependent on caller scope/grant checks. The helper still requires explicit initialization and the caller-owned writer connection; this module registration does not activate a delivery service.
+The Store now exposes `question_command` and `question` on its existing sole
+writer. Trusted startup installs `QuestionAuthority` through
+`open_with_question_authority`, or combines independent policies with
+`open_with_startup_authorities` and the non-deserializable `StoreAuthorities`.
+Default construction installs none. Authorization runs inside every writer turn,
+including exact retries and reads, against the writer's current task projection.
+The public actor/source/policy fields are binding data, never grants.
+
+Protected commands retain their complete canonical provenance and original
+writer-supplied task contract in the same transaction as the existing journal.
+Historical retries validate full provenance coverage and return the original
+receipt when currently authorized. Legitimate contract revision preserves
+historical evidence; fresh stale-contract actions and reads return
+`StaleContract`. Startup, rebuild and backup verify original historical bindings
+without requiring them to equal a later task contract.
+
+Global storage is bounded at4,096questions,8,192commands and32MiB of stored text
+across all roots, in addition to per-question bounds. A command is at most32KiB,
+provenance8KiB and16evidence references; capacity refuses new writes without
+eviction. The raw caller-owned Connection APIs remain compatibility components;
+they do not acquire the protected Store authorization boundary.
 
 An expiry creates one deterministic escalation proposal reference and its bounded proposal record in the same transaction as the event, projection, and command receipt. The proposal is data only. This module has no delivery, network, LLM, terminal, timer, or external-effect path. Callers remain responsible for actor/grant authorization before append; a valid reducer transition is not an authorization grant.
 
 The proposal digest includes the journal root. Tests cover canonical forged receipts with recomputed hashes, missing historical receipts, real Store scope mismatches, two-connection revision races, and SQL receipt insertion failure rolling back the event, projection and escalation together. Capacity failures retain earlier receipts; an exact retry remains readable at capacity. These are storage integrity checks, not independent authentication against an owner who can rewrite the entire database and all hashes.
+
+No production question issuer, HTTP route, provider delivery, effective decision
+authority or auto-answer is installed by this registration.
