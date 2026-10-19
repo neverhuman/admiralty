@@ -1,6 +1,6 @@
 # Python-to-Rust Migration Plan (`JEPSON_RULING_20261018T1940Z`)
 
-Per Jepson's 2026-10-18 stack ruling (`JEPSON_RULING_20261018T1940Z_stack_rust_jankurai.md`), Admiralty's target language stack is **Rust** (backend, CLI, tools, compute, smoke/release harnesses) and **Vite + TypeScript + React** (UI). All existing Python files are inventoried below with line counts, purpose, disposition, and assigned porting tasks.
+Per Jepson's 2026-10-18 stack ruling (`JEPSON_RULING_20261018T1940Z_stack_rust_jankurai.md`), Admiralty's target language stack is **Rust** (backend, CLI, tools, compute, smoke/release harnesses) and **Vite + TypeScript + React** (UI). All existing Python files are inventoried below with line counts, purpose, disposition, and assigned porting tasks. The owned production Python collector, server and observer have already been retired in favor of Rust; retained compatibility source is not authorization to restart them. Remaining ports preserve actual behavior and tests before source deletion.
 
 ## 1. Complete Inventory of Existing Python Files (`40` files, `11,351` LOC)
 
@@ -15,8 +15,8 @@ Per Jepson's 2026-10-18 stack ruling (`JEPSON_RULING_20261018T1940Z_stack_rust_j
 | `dashboard/token_yield.py` | 214 | Legacy `tokens.db` yield aggregator | Replace with `admiralty-core::economics` & delete | `ADM-PY01` |
 | `scripts/check/canary-smoke.py` | 1,105 | Isolated HTTP/CLI canary smoke test runner | Port to Rust binary/test in `admiralty-testkit` & delete | `ADM-PY02` |
 | `scripts/check/excursions-smoke.py` | 143 | Isolated excursions CLI/HTTP smoke test runner | Port to Rust test in `admiralty-testkit` & delete | `ADM-PY02` |
-| `scripts/demos/encode.py` | 177 | Deterministic demo fixture encoder | Port to Rust subcommand in `admiralty-cli` & delete | `ADM-PY02` |
-| `scripts/demos/verify.py` | 71 | Deterministic demo fixture verifier | Port to Rust subcommand in `admiralty-cli` & delete | `ADM-PY02` |
+| `scripts/demos/encode.py` | 177 | Actual production PNG-capture WebP/GIF encoder | Port to Rust subcommand in `admiralty-cli` & delete | `ADM-PY02` |
+| `scripts/demos/verify.py` | 71 | Actual capture/encoded-media integrity verifier | Port to Rust subcommand in `admiralty-cli` & delete | `ADM-PY02` |
 | `scripts/release/package.py` | 609 | Deterministic release tarball & manifest builder | Port to Rust `admiralty-cli release package` & delete | `ADM-PY02` |
 | `scripts/release/qualify_native.py` | 188 | Native release qualification runner | Port to Rust `admiralty-cli release qualify` & delete | `ADM-PY02` |
 | `tools/sc_audit.py` | 1,776 | Fleet-wide Super-Captain watchdog & stall/PR/GPU auditor | Port to Rust `admiralty-cli sc-audit` binary with parity tests & delete | `ADM-PY03` |
@@ -47,11 +47,11 @@ Per Jepson's 2026-10-18 stack ruling (`JEPSON_RULING_20261018T1940Z_stack_rust_j
 | `tests/test_sc_audit_survey.py` | 17 | Unit tests for `tools/sc_audit.py` survey | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
 | `tests/test_sc_audit_watchdog.py` | 133 | Unit tests for `tools/sc_audit.py` watchdog | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
 
-## 2. Tracker Tasks for Rust Porting (Post-Cutover on Spare Workers)
+## 2. Tracker Tasks for Remaining Parity and Source Retirement
 
 | Task ID | Scope | Assigned Owner | Target |
 | :--- | :--- | :--- | :--- |
-| **`ADM-PY01`** | Retire `dashboard/*.py` (2,589 LOC) once native `admiralty-server` + `admiralty-observe` + React UI cutover is finalized | `2062267.agy_captain_admiralty` | Delete `dashboard/*.py` after legacy collector retirement |
+| **`ADM-PY01`** | Retire `dashboard/*.py` (2,589 LOC) after remaining compatibility/parity criteria close; native production cutover is already complete | `2062267.agy_captain_admiralty` | Delete compatibility sources only after remaining parity/fixture/consumer retirement is proven |
 | **`ADM-PY02`** | Port `scripts/check/*.py`, `scripts/demos/*.py`, and `scripts/release/*.py` (2,293 LOC) to Rust in `admiralty-cli` / `admiralty-testkit` | `2062267.agy_captain_admiralty` | Parity-tested Rust subcommands + delete `scripts/**/*.py` |
 | **`ADM-PY03`** | Port `tools/sc_audit.py` (1,776 LOC) to Rust `admiralty-cli sc-audit` | `2062267.agy_captain_admiralty` | Parity-tested Rust binary + delete `tools/sc_audit.py` |
 | **`ADM-PY04`** | Port `tools/{rollout_observe,rollout_packets,export_history,probe_opencode}.py` + `tools/bin/classify_screen.py` (1,928 LOC) to Rust | `2062267.agy_captain_admiralty` | Parity-tested Rust modules + delete `tools/**/*.py` |

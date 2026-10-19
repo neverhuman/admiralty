@@ -26,13 +26,34 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Install verified Jankurai v1.7.5 in job scratch
+        run: |
+          set -euo pipefail
+          umask 077
+          tools_dir="${RUNNER_TEMP}/jankurai-tools"
+          install -d -m 700 "${tools_dir}"
+          installer="${tools_dir}/jankurai-installer.sh"
+          curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --silent --show-error --location \
+            --retry 3 --retry-delay 2 --retry-max-time 120 --connect-timeout 10 --max-time 90 --max-filesize 1048576 \
+            --output "${installer}" https://github.com/neverhuman/jankurai-audit/releases/download/v1.7.5/jankurai-installer.sh
+          # Official release asset digest; the pinned installer verifies the
+          # binary signature, checksum, archive inventory and source provenance.
+          printf '%s  %s\n' 828e513628080823a9afaa19eeaeee4ce2e54174483a11cdde00073dbafb895f "${installer}" | sha256sum --check --status
+          bash "${installer}" --tag v1.7.5 --install-dir "${tools_dir}/bin"
+          audit_binary="${tools_dir}/bin/jankurai"
+          test "$("${audit_binary}" --version)" = 'jankurai 1.7.5'
+          sha256sum "${audit_binary}"
+          "${audit_binary}" audit --help > "${tools_dir}/audit-help.txt"
+          for flag in --read-only --no-badge --no-score-history --repair-queue-jsonl; do
+            grep -q -- "${flag}" "${tools_dir}/audit-help.txt"
+          done
+          printf 'JANKURAI_BIN=%s\n' "${audit_binary}" >> "${GITHUB_ENV}"
       - name: Run Jankurai read-only audit and emit repair queue
         run: |
-          mkdir -p "${RUNNER_TEMP}/jankurai"
-          JANKURAI_BIN="${HOME}/.jeryu/bin/jankurai"
-          if [ ! -x "${JANKURAI_BIN}" ]; then
-            JANKURAI_BIN="$(command -v jankurai)"
-          fi
+          set -euo pipefail
+          umask 077
+          # Fail on stale output rather than treating an old report as success.
+          mkdir "${RUNNER_TEMP}/jankurai"
           "${JANKURAI_BIN}" audit . \
             --read-only \
             --no-badge \
@@ -41,8 +62,10 @@ jobs:
             --json "${RUNNER_TEMP}/jankurai/repo-score.json" \
             --md "${RUNNER_TEMP}/jankurai/repo-score.md" \
             --github-step-summary "${GITHUB_STEP_SUMMARY}" \
-            --repair-queue-jsonl "${RUNNER_TEMP}/jankurai/repair-queue.jsonl" || true
+            --repair-queue-jsonl "${RUNNER_TEMP}/jankurai/repair-queue.jsonl"
           test -s "${RUNNER_TEMP}/jankurai/repo-score.json"
+          test -s "${RUNNER_TEMP}/jankurai/repo-score.md"
+          test -f "${RUNNER_TEMP}/jankurai/repair-queue.jsonl"
       - name: Upload Jankurai audit artifacts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
