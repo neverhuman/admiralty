@@ -43,7 +43,7 @@ before admission is not proof that the organization pool is absent.
 ## Checks and job isolation
 
 The Rust/legacy and contracts/dashboard checks retain their existing triggers,
-job names, timeouts, pinned checkout/setup-node actions, pinned Rust/Node/pnpm,
+job names, pinned checkout/setup-node actions, pinned Rust/Node/pnpm,
 read-only workflow token and concurrency cancellation. Private test scratch and
 actual isolated-binary smoke scratch use a fresh owner-only canonical `/tmp`
 directory, with ancestor custody recorded by CI. Rust homes and pinned pnpm use
@@ -76,10 +76,20 @@ selected-runner diagnostic records both values alongside `CARGO_BUILD_JOBS=2`.
 CI artifacts built with these flags have less source-line information for
 debuggers and backtraces. They are not release-profile builds. All strict Rust,
 legacy, packaging, real isolated smoke, staged JavaScript guard and contract
-checks remain required, with the same runner labels, pinned toolchains and
-fifteen-minute deadline. This is a build-efficiency change, not a passing CI
+checks remained required, with the same runner labels, pinned toolchains and
+fifteen-minute deadline at those earlier revisions. This was a build-efficiency change, not a passing CI
 result or proof that a timeout has been resolved; the next actual exact-source
 run must establish its effect.
+
+The native coordination qualification update gives `rust-and-legacy` a bounded
+thirty-minute job budget for toolchain installation, compilation and the complete
+serialized process/SQLite matrix. Compiler/test concurrency, profile assertions,
+overflow checks and test selection remain unchanged. The real 8 MiB overflow
+capture fixture has its own thirty-second storage-work budget: it crosses more
+than 1,000 actual `sync_data` boundaries before observing capture failure and
+owned-child exit. Other small capture fixtures keep five seconds. This is not
+provider timeout qualification. Actual exact-source CI must establish success;
+historical cancelled/failed runs remain failed evidence.
 
 Validate the workflow locally with:
 

@@ -2900,3 +2900,51 @@ No new case definitions, live-new-source proof, provider authority, settlement,
 recovery or whole-parent acceptance follow. Prior reviewe110d8f6 called20c09...
 a production-bundle hash; it is the pinned axe script hash. Actual UI provenance
 uses source/dist/deployment hashes. Immutable prior review remains preserved.
+
+
+### Native role communication and complete local qualification — 19 October 2026
+
+Source `7bf86c4db676a4f35baa4baf85e0c3f1f6754157` adds explicit native
+captain–admiral message routes and separately granted own-inbox application ACKs.
+Protected startup installs the same credential registry and finite route policy
+before Store open. The writer rechecks current contract membership; source and
+message identities bind the authenticated principal and retained request UUID.
+Credential read guards span the Store operation, current expiry is checked at the
+writer, and changed-payload identities retain collision evidence. CLI/MCP expose
+the typed commands and protected credential-file input. Messages do not claim,
+execute, verify, accept or merge tasks.
+
+Actual synthetic HTTP/Store qualification includes six scoped role-route cases,
+both communication directions, context reads, lost replies and two complete
+reopens. Complete serialized Mac workspace validation passes 1,702 test executions,
+zero failures, five existing ignored helpers across 164 reported targets including
+empty/doc targets. These are execution counts, not distinct acceptance criteria.
+The pinned real-browser suite passes all 23 cases; dashboard units 183, client
+tools five and actual isolated-binary smoke fifteen also pass. Full all-target
+workspace Clippy, formatting, contracts, frontend checks, retained fixtures and
+configured-label actionlint pass. Browser/build source `353fa969` differs only in
+an integration fixture from the full workspace source; later source `4bd0a70b`
+changes only the CI job budget. Exact commands, hashes, reuse scopes, raw logs and
+all failed drafts are in [the receipt](../../../receipts/integration/native-coordination-20261019.json).
+
+Qualification exposed and repaired real gaps: control-plane main runtimes now
+use two async workers independently of CPU count (the existing primary daemon
+was observed with 106 threads); browser retries/cleanup require confirmed owned
+PID exit; known-revoked evidence is denied before probing its removed checkout,
+with the final locked race check retained; the audit fixture now uses the current
+policy version and explicitly rejects its old v2 control. The real 8 MiB capture
+failure test has an explicit thirty-second storage-work budget for more than
+1,000 durability flushes; production limits and failure assertions are unchanged.
+The complete Rust CI job now allows thirty bounded minutes, retaining serialized
+tests, compiler jobs2, assertions, overflow checks, toolchain and runner selectors.
+
+Hosted PR155 browser failure (9 failed/14 passed) and receiving-main Rust capture
+failure (101 server passed/1 failed/2 ignored) remain source-attributed failures.
+New-source hosted qualification is pending at this receipt; no green result is
+inferred from the local passes. The added Linux-only actual-binary thread bound
+case has not run on this Mac. A read-only primary observation found source-path
+stamp `ddcf09cf`, one native agent/task, zero configured routes/messages/ACKs and
+`native_execution_qualified=false`; it was not a full binary/hash requalification.
+No primary service control or provider invocation occurred. Actual supervisor
+adoption, authenticated execution/pool policy, completion/settlement/recovery,
+distribution and full P02–P31 criteria remain open. P00/P01 alone stay accepted.

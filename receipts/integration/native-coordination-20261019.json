@@ -1,0 +1,511 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T17:46:16.219311+00:00",
+  "scope": "Native role communication and qualification repairs; no full packet or production cutover acceptance",
+  "base": "ddcf09cf03ed56d810324502032396b99e66569b",
+  "code_head_before_receipt": "4bd0a70b541d56d89ac56531e65b82a6ea11672f",
+  "tested_workspace_source": "7bf86c4db676a4f35baa4baf85e0c3f1f6754157",
+  "browser_and_binary_source": "353fa96920a734c56d52c20c4c93db11daccbfb7",
+  "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty",
+  "platform": "macOS / Darwin",
+  "environment": {
+    "CARGO_TARGET_DIR": "/private/tmp/admiralty-native-dogfood-target",
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "RUST_TEST_THREADS": "1 (final workspace run)",
+    "TMPDIR": "/private/tmp/admiralty-native-dogfood-private (0700; final runs)"
+  },
+  "changed_paths": [
+    ".github/workflows/ci.yml",
+    "README.md",
+    "apps/dashboard/e2e/browser-harness.ts",
+    "apps/dashboard/e2e/dashboard-e2e.e2e.ts",
+    "crates/admiralty-cli/src/agent_tools.rs",
+    "crates/admiralty-cli/src/main.rs",
+    "crates/admiralty-observe/src/main.rs",
+    "crates/admiralty-runtime/src/agent_tools/mod.rs",
+    "crates/admiralty-server/src/main.rs",
+    "crates/admiralty-server/src/services/agent_routes.rs",
+    "crates/admiralty-server/src/services/coordination.rs",
+    "crates/admiralty-server/src/services/coordination_routing.rs",
+    "crates/admiralty-server/src/services/coordination_routing_tests.rs",
+    "crates/admiralty-server/src/services/mod.rs",
+    "crates/admiralty-server/src/services/native_evidence_catalog.rs",
+    "crates/admiralty-server/src/services/native_executor.rs",
+    "crates/admiralty-server/src/startup.rs",
+    "crates/admiralty-server/tests/runtime_threads.rs",
+    "crates/admiralty-store/src/subscriptions.rs",
+    "docs/operators/native-coordination.md",
+    "docs/operators/native-startup.md",
+    "docs/operators/release-status.md",
+    "docs/protocol/agent-tools.md",
+    "tests/integration/codex_accept_p09_p16.rs",
+    "tests/integration/coordination_delivery.rs",
+    "tests/integration/session_continuity.rs"
+  ],
+  "file_sha256": {
+    ".github/workflows/ci.yml": "1c5939a4ce93d44291b09cd6f48c2ccdc884a8fa448e5c24c230a4af74acbf9b",
+    "README.md": "87caf9d8bb1537675d91b468d34b69cf94ec89241557a47a41b2e0b0ede18777",
+    "apps/dashboard/e2e/browser-harness.ts": "1f42c95e50b4f5c509b1ca073ebb85a9479a42b8ddc18b7b360f3ad9d0fab9c2",
+    "apps/dashboard/e2e/dashboard-e2e.e2e.ts": "6ab4f21faaa0ee9fe1bf67dfd483a30cd27a2a1c0009b05a4e8a300c92c49313",
+    "crates/admiralty-cli/src/agent_tools.rs": "c5b985fb02609cd036a457a383182c5006787655a5a7e020595800728d5d07f1",
+    "crates/admiralty-cli/src/main.rs": "ee65546d26921350ab778ba6d01140ca97ba727ab5e8ce3e4bd896fb9e148f4e",
+    "crates/admiralty-observe/src/main.rs": "260f6a3cd13ce05d9d73b3765785aa37d52b3391a64b2fcc4072afe2193cf83f",
+    "crates/admiralty-runtime/src/agent_tools/mod.rs": "225796a2da7cd0044204425a002f033404da0b967716ba7642cf65416b00f244",
+    "crates/admiralty-server/src/main.rs": "e9dccedbaed5ea8d3da83cc25cb1f91c2fa76012e19dec0493d5be50f8c12389",
+    "crates/admiralty-server/src/services/agent_routes.rs": "8afdea3efa6acf23d52f7fb1070a5dbdee1e8db2d92ed318429d08c04ca2d31c",
+    "crates/admiralty-server/src/services/coordination.rs": "7766624b1a392b7bc1b7397b9d343880f5aaab461c3dd4c112fa180c40f60cb1",
+    "crates/admiralty-server/src/services/coordination_routing.rs": "8e8238f25332a2c7222e8ac73296d6d925371ab88bc72ba11116b1efe7a83006",
+    "crates/admiralty-server/src/services/coordination_routing_tests.rs": "bfaf8f584b8104e3fe18a8bba6721e246b07a1656e3356107512188f0656d43b",
+    "crates/admiralty-server/src/services/mod.rs": "adc4c6a43127a7102e6393562d8da5dfab598ec2cfb78858960aeaa67236d478",
+    "crates/admiralty-server/src/services/native_evidence_catalog.rs": "98522ec47e1fc2ca3146acf3d171361cb05a89d3905f05f3b6a9edfa255975b6",
+    "crates/admiralty-server/src/services/native_executor.rs": "6b7b4d1bd01e41c8788d1129ae81a1fc37ba75ab263b4328649da1b2fe2894fa",
+    "crates/admiralty-server/src/startup.rs": "ff93128585508056ff1b3e185ee891e381355dd4b217045fe23fe845ba3b9af4",
+    "crates/admiralty-server/tests/runtime_threads.rs": "3cb995e81157ab58d9ada5ac5c5a74de7cc341505c445f7dd41d66b24346d5e7",
+    "crates/admiralty-store/src/subscriptions.rs": "e7e52f81687bf6ecfad2c412b57b96ab41887330a8c565040cba00f41c7584e4",
+    "docs/operators/native-coordination.md": "91ad45fb5ecdde8856291801fe4966f65647394343484f19e7196460a97825f6",
+    "docs/operators/native-startup.md": "8451b37dde7b6fb7c388a1ae03644ec6d6a19dd2a41f714d4a1c35216315dca5",
+    "docs/operators/release-status.md": "9a9e859ec2beb724b0f4a6708000f7226672546966818e69cb4315c28353795e",
+    "docs/protocol/agent-tools.md": "93bcbd895feb991f7fa8d60b9c805b4b4e0e1aa9f354a2fc5ef7ff3e6db7f3b1",
+    "tests/integration/codex_accept_p09_p16.rs": "b86e8f0d9f437108ad44abf31c4f9cf2f3f6245a05ea82722a3c4b98c0bbf5e7",
+    "tests/integration/coordination_delivery.rs": "8dc16c3a62ec8b7b2a093c5327781392fdf54bcfa417295adaefb9a1ca15efe2",
+    "tests/integration/session_continuity.rs": "f81ea9072d30e4b460b890243e05564be52078900cd3207e449404e41d095917"
+  },
+  "logs": {
+    "admiralty-native-dogfood-actionlint-final.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-actionlint-final.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "raw_bytes": 0
+    },
+    "admiralty-native-dogfood-actionlint-lan-only.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-actionlint-lan-only.log.gz",
+      "sha256": "d01add622219cf36b8b9dbb2a24e5ddc8439484c5def2c1745ea5235f5bec938",
+      "raw_sha256": "8ea46d8ac7462c2c808a8b8dd2699e88bb5d7e84ad2b4f94de4f4d6381c08fc5",
+      "raw_bytes": 961
+    },
+    "admiralty-native-dogfood-actionlint.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-actionlint.log.gz",
+      "sha256": "fd70995dc9e1fca6590a5df77fe67f9ba49cdc2409679465baec6cdc83251e0e",
+      "raw_sha256": "b6c1ea720a174ffdecccbd732b999f0746442804fb269de2a582799dcfc6e92f",
+      "raw_bytes": 4643
+    },
+    "admiralty-native-dogfood-binary-smoke.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-binary-smoke.log.gz",
+      "sha256": "7b69c67ac0934cec8e55bf884fd517cda73a4d05da1460aa4da352073e8125dd",
+      "raw_sha256": "a806b3878e832e6ab88b1c24618a6d140dc51f5af4dc7a4a729e1872adc6b9f3",
+      "raw_bytes": 1562
+    },
+    "admiralty-native-dogfood-browser-final.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-browser-final.log.gz",
+      "sha256": "b2b6479abf9c2398cc9fd00c13a223c21c52e4640bc57a1f978da5504d8de5c6",
+      "raw_sha256": "09a241a8f00215f843c2b704b81d8550484079adc2b4c684ea20735a15964646",
+      "raw_bytes": 218
+    },
+    "admiralty-native-dogfood-browser.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-browser.log.gz",
+      "sha256": "ac03f1934406e1fd1d33fc1c7c0f7defaa94f9fb4e76e287041a4922370aa12d",
+      "raw_sha256": "57a0a6f3386cf0809b9286006d624ef9fe56be75668acf3e0c292b453f8d3b38",
+      "raw_bytes": 2140
+    },
+    "admiralty-native-dogfood-canary.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-canary.log.gz",
+      "sha256": "f77578e7f90169e6bf3f71a4f51a3956741eb931d17286026a54660eb2a1dc09",
+      "raw_sha256": "135cee85ac3e22da5d29de8710682a949c2432d747f48881c964634103eae420",
+      "raw_bytes": 3820
+    },
+    "admiralty-native-dogfood-client.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-client.log.gz",
+      "sha256": "fe340ef15f3d49fcc496a4c9359ee9ceed6a49306fc70b8389f07bd5bf24c9fd",
+      "raw_sha256": "25c09534e217beb6ed5a2d58d56106f1f9c5e16c2e44f789f9f1b79941b95cec",
+      "raw_bytes": 2517
+    },
+    "admiralty-native-dogfood-clippy-qualification.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-clippy-qualification.log.gz",
+      "sha256": "6cf2b5d5a85cbdad8c2981cb5b4dda1483317a601e57e14c66b3dbbb7cd9036d",
+      "raw_sha256": "b4770969766ece547bb1ee53038eb81b2730987e12c6699085482363c356e76a",
+      "raw_bytes": 192
+    },
+    "admiralty-native-dogfood-clippy.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-clippy.log.gz",
+      "sha256": "b989714550b9a1a53bfe25fdda626c94c477851a87159e0be98e8cd65e9427c8",
+      "raw_sha256": "ecdb3fb64f3333954969707615136c33126e07140e4cc4f86f5815fb24417118",
+      "raw_bytes": 1658
+    },
+    "admiralty-native-dogfood-contracts-check.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-contracts-check.log.gz",
+      "sha256": "8d5dbefb87d8f45c80ff94338193a695008312c60d87aca9ecebc7c67264b5f0",
+      "raw_sha256": "f34e72eecbcf010310ef24b129bc29d7e90b1be1ba2e7d0cc8113ef2261e03aa",
+      "raw_bytes": 124
+    },
+    "admiralty-native-dogfood-contracts-test.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-contracts-test.log.gz",
+      "sha256": "33e4a808bf753aef4e0a8a39db56d012091835522f31f9c3470ef151e582bfa4",
+      "raw_sha256": "727a60e0e5ea676a0bc21a20f1eae9ff0ac48643eb22b39e68061d29612aa73f",
+      "raw_bytes": 1584
+    },
+    "admiralty-native-dogfood-e2e-typecheck.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-e2e-typecheck.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "raw_bytes": 0
+    },
+    "admiralty-native-dogfood-fixtures.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-fixtures.log.gz",
+      "sha256": "bd6ad92307ecca634344c4c293abe0827bc227b0368e7bdeb47a26e22b18d110",
+      "raw_sha256": "1f71333b4bcdf797888bfdcf7347f96dcc6700d0ca6123c59c3a21452ca0cd12",
+      "raw_bytes": 853
+    },
+    "admiralty-native-dogfood-fmt-final.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-fmt-final.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "raw_bytes": 0
+    },
+    "admiralty-native-dogfood-legacy.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-legacy.log.gz",
+      "sha256": "3f10df3431c5cec33dbe8957e2806e4965b256f22d1c50ca9032b3fa8a565a7b",
+      "raw_sha256": "da4d5283314e48e2df1bfa2f3b8716bb22fa920609eb9d6ed70673004c9d67bb",
+      "raw_bytes": 14446
+    },
+    "admiralty-native-dogfood-package.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-package.log.gz",
+      "sha256": "4c530a6c32ea4cbe5f706b3a9b99e31810204b8e5f70fdff961c9166556a1242",
+      "raw_sha256": "ea0148a570db6a6c5adf896f23490ab1cbc0bff7323e4ad62ef8111516943e0f",
+      "raw_bytes": 1451
+    },
+    "admiralty-native-dogfood-routing-final.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-routing-final.log.gz",
+      "sha256": "cb9673f1a3f0c08b5e47bed0eb431a38541986295aeb8a8984dbe3a3762411b8",
+      "raw_sha256": "e7f06ceee0f2dea6f97056b1e78c45162f4f77d37d9300c61c1f104734e35bc8",
+      "raw_bytes": 4148
+    },
+    "admiralty-native-dogfood-routing-repair1.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-routing-repair1.log.gz",
+      "sha256": "ba683868b374b4f429ec424aacc52c7906805159ee7a8ddd2625aa1863703fcb",
+      "raw_sha256": "f6e4658c9c23f025947771230d1b9aa3c29b86c63e6dd552947ae559b222f8e4",
+      "raw_bytes": 1939
+    },
+    "admiralty-native-dogfood-routing-repair2.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-routing-repair2.log.gz",
+      "sha256": "7d70444f80430f247e829f34631c3fc586623a6fe2e0abb2728a196f0064cb40",
+      "raw_sha256": "072ce4f3cbc69e9b9e178490e2fef20ff7d47b711fb673f21745051f55ef8f9a",
+      "raw_bytes": 3784
+    },
+    "admiralty-native-dogfood-routing.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-routing.log.gz",
+      "sha256": "094504cc49a61a3ccc94b036279416c33c20d49cb5c2a09f5d843feabef43096",
+      "raw_sha256": "be491ea013238b53467430b9a6105ea7b500a1e9f6008aa4ce0b5b4735629448",
+      "raw_bytes": 7342
+    },
+    "admiralty-native-dogfood-sc-audit.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-sc-audit.log.gz",
+      "sha256": "6f80d6844ddff4d062afec4f1a8c16b3ec6276c88d7094c7beb21a53d2f3d8de",
+      "raw_sha256": "2c5061f8b682e078c7a74f5cb74c3148aaaf3738d21a08f6b4884d3481901045",
+      "raw_bytes": 61308
+    },
+    "admiralty-native-dogfood-tools-help.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-tools-help.log.gz",
+      "sha256": "9328536ec2124d2dd43858a87274dbec26b789380da75d704a1897259f60eec5",
+      "raw_sha256": "952733e2246957c2a73cd82543b1dd7eb8cc7ac37496ec80e1fd8659348e44de",
+      "raw_bytes": 637
+    },
+    "admiralty-native-dogfood-ui-build.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-ui-build.log.gz",
+      "sha256": "7f2b6401974cd83fe853352d27f17947e773916889603e878f4116f4fc7c8adf",
+      "raw_sha256": "07d80dc921c48fa2953e697c78b0b30e63b8bfa6ff89202abdba4a24eff1877d",
+      "raw_bytes": 1268
+    },
+    "admiralty-native-dogfood-ui-typecheck.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-ui-typecheck.log.gz",
+      "sha256": "decff4e40f51c23a3fb129535a1238d4f5debb9bdcfdfb7174096fbe5d4a48b0",
+      "raw_sha256": "5cfb036289d819b2a87e947d65f4532031dd37753f3cf2def0f77d398eea1737",
+      "raw_bytes": 24
+    },
+    "admiralty-native-dogfood-ui-unit.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-ui-unit.log.gz",
+      "sha256": "6beac303feb54dec3b316f06ecf121146f158577d2cbe8d9228ec7dae31dd181",
+      "raw_sha256": "30da1896faa90ebe5f0452d58f8646dbf71892afe4be13ddc9ce1c4ffd868b9c",
+      "raw_bytes": 263
+    },
+    "admiralty-native-dogfood-workspace-complete.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-workspace-complete.log.gz",
+      "sha256": "3e6c5b8543c976a0b1f9f515726e9694803e308a3cb23017014acae63b0024ac",
+      "raw_sha256": "60d10479d0c5cfb82116452c49bc0e2d2e6e51d7ff5bbca3ce11076794a4a706",
+      "raw_bytes": 198099
+    },
+    "admiralty-native-dogfood-workspace-final.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-workspace-final.log.gz",
+      "sha256": "1ec2270f84a8aefbcc73bdfac57573e0cef59a9924008a988735dee237260c6f",
+      "raw_sha256": "6b731ab50d021d847c624e93d7f958fd53fe458071d1c6afa3a336539b9e57e3",
+      "raw_bytes": 133447
+    },
+    "admiralty-native-dogfood-workspace-tests-private.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-workspace-tests-private.log.gz",
+      "sha256": "f69d3212ac4030365bbc185616f82b730da97dc5b3a7a64b0713b0899936584a",
+      "raw_sha256": "876a3822c15445167313f4fe2f3f18446f781bceabaa69e6ca72d81ed6ae1ef5",
+      "raw_bytes": 99355
+    },
+    "admiralty-native-dogfood-workspace-tests-repair1.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-workspace-tests-repair1.log.gz",
+      "sha256": "719ffaac596065fee5ae800506b003703b08e827229be92aa8eac09e5a19b445",
+      "raw_sha256": "db1d4eee468c21608c3525650c99b0139de78cfd222bcc3f2a9cff1c968ef6b0",
+      "raw_bytes": 93764
+    },
+    "admiralty-native-dogfood-workspace-tests.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-workspace-tests.log.gz",
+      "sha256": "bbac77cbf105c8de9a193777571fd4e27383f74672085bfd898e1b14e93cbd7a",
+      "raw_sha256": "6de34700e4bd4d900caa58b6c07416acbdb7ef3fa1d9d59dd8ccdb59f20e9a3e",
+      "raw_bytes": 2331
+    },
+    "admiralty-pr155-e2e-final.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-pr155-e2e-final.log.gz",
+      "sha256": "cbff973cf8eb66d623d58b77a87ae0c37b627847ed68a16cc09991a090534928",
+      "raw_sha256": "882dcaa397f8070bf68603b039eeed1bbf7330e52b56bf069638e36c3cf216a1",
+      "raw_bytes": 82222
+    },
+    "admiralty-main-ddcf-rust-tail.log": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-main-ddcf-rust-tail.log.gz",
+      "sha256": "63d5044835f95f4300a179459e305381876602649f2f07c041a2f8f359d5ee21",
+      "raw_sha256": "ce8183d841458c20f611c2750c903c8f8b131f7fc616ae387117eca6c0a5f7e8",
+      "raw_bytes": 120001
+    },
+    "admiralty-native-dogfood-actionlint.yaml": {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-actionlint.yaml.gz",
+      "sha256": "c296b35309025356eaa14a87d30ff8a4fdad684d608d46616b5d755388ee3dd3",
+      "raw_sha256": "6ceb113f17c77fa7cf6a66ff564f3f407fe4ab104f0cc91a2f09b21891a75cf8",
+      "raw_bytes": 60
+    }
+  },
+  "source_reuse": {
+    "browser_to_workspace_diff": [
+      "tests/integration/codex_accept_p09_p16.rs"
+    ],
+    "workspace_to_code_head_diff": [
+      ".github/workflows/ci.yml"
+    ],
+    "meaning": "Production source unchanged after browser qualification; later test fixture and CI job budget changes are explicit."
+  },
+  "qualification": {
+    "workspace": {
+      "command": "cargo test --workspace --locked --no-fail-fast",
+      "exit_code": 0,
+      "reported_passed_executions": 1702,
+      "reported_failed_executions": 0,
+      "reported_ignored_executions": 5,
+      "completed_targets_including_empty_and_doc_tests": 164,
+      "counts_are_distinct_acceptance_criteria": false
+    },
+    "native_role_route_cases": 6,
+    "agent_client_cases": 5,
+    "browser_cases": 23,
+    "dashboard_unit_cases": 183,
+    "binary_smoke_checks": 15,
+    "all_workspace_clippy_exit": 0,
+    "fmt_exit": 0,
+    "actionlint_configured_labels_exit": 0
+  },
+  "browser_binary": {
+    "source": "353fa96920a734c56d52c20c4c93db11daccbfb7",
+    "binary": "/private/tmp/admiralty-native-dogfood-target/debug/admiraltyd",
+    "sha256": "d935e0166258e43ac3bfcd582106cddc9c1e03d8577986b93206175c9ca90aee",
+    "bytes": 35351184,
+    "identity_unchanged": true,
+    "exit_code": 0
+  },
+  "production_observation": {
+    "source_path_stamp": "ddcf09cf03ed56d810324502032396b99e66569b",
+    "pid": 631292,
+    "threads": 106,
+    "configured_agents": 1,
+    "configured_routes": 0,
+    "tasks": 1,
+    "queued_messages": 0,
+    "acknowledged_messages": 0,
+    "native_execution_qualified": false,
+    "method": "Read-only primary process/config-shape and authenticated fleet summary; not a full deployment/hash requalification.",
+    "observed_utc": null,
+    "timestamp_limit": "The read-only probe occurred during this phase before receipt creation; it did not emit its own timestamp."
+  },
+  "failed_drafts": [
+    {
+      "log": "admiralty-native-dogfood-routing.log",
+      "reason": "Temporary directory default permissions violated protected startup; the initial negative startup case was not valid qualification."
+    },
+    {
+      "log": "admiralty-native-dogfood-routing-repair1.log",
+      "reason": "Fixture attempted to revise an already referenced task. Production immutable-reference guard correctly denied it; stale-route case now revises an unreferenced task."
+    },
+    {
+      "log": "admiralty-native-dogfood-clippy.log",
+      "reason": "Draft test passed &str where Store::append requires String."
+    },
+    {
+      "log": "admiralty-native-dogfood-workspace-tests.log",
+      "reason": "New coordination action needed explicit denial in the legacy fixture policy."
+    },
+    {
+      "log": "admiralty-native-dogfood-workspace-tests-repair1.log",
+      "source": "551c11214f69063533d87e7f4d6ac7946e30aa71",
+      "reason": "Parallel run used world-writable /private/tmp: one fixture violated Store parent custody; another encountered AlreadyOwned; real capture overflow also exceeded its five-second storage budget. Final run uses the CI private scratch/serialized profile."
+    },
+    {
+      "log": "admiralty-native-dogfood-workspace-tests-private.log",
+      "reason": "Known-revoked evidence re-registration returned checkout-drift denial before permanent revocation denial; production ordering repaired without removing final race check."
+    },
+    {
+      "log": "admiralty-native-dogfood-workspace-final.log",
+      "source": "353fa96920a734c56d52c20c4c93db11daccbfb7",
+      "reason": "Legacy audit fixture hard-coded policy v2; switched positive fixture to current public version and retained explicit v2 denial control."
+    },
+    {
+      "log": "admiralty-native-dogfood-browser.log",
+      "reason": "First browser invocation omitted mandatory binary SHA pin; 21 cases passed, two rejected preflight. Correct pinned run passes all 23."
+    },
+    {
+      "log": "admiralty-native-dogfood-actionlint.log",
+      "reason": "Unconfigured local actionlint did not know self-hosted runner labels; configured labels run is separately recorded."
+    }
+  ],
+  "limitations": [
+    "Synthetic role exchange through real protected startup/HTTP/Store and two reopens; actual production supervisors have not adopted native routes.",
+    "Native coding-provider admission, physical pool/allotment authority, independent provider completion, settlement and recovery remain unqualified.",
+    "Linux-only actual daemon thread-count regression is added but cannot run on this macOS host; hosted Linux CI is pending.",
+    "P00/P01 alone remain accepted; no P02-P31 parent is promoted. Full release/distribution remains open.",
+    "Some early draft source hashes and exact command wall-clock boundaries were not recorded; those failed logs are preserved as failures, not acceptance evidence.",
+    "Earlier capture failure causes were not retroactively diagnosed from a later passing test; filesystem durability work is explicitly budgeted without changing production limits."
+  ],
+  "original_hosted_failures": [
+    {
+      "job_id": 118190341471,
+      "head": "e542c165ae4872bca83e1c45362dd36c05357963",
+      "result": "failure",
+      "browser_failed": 9,
+      "browser_passed": 14,
+      "log": "admiralty-pr155-e2e-final.log",
+      "log_truncated": false
+    },
+    {
+      "job_id": 118190367431,
+      "head": "ddcf09cf03ed56d810324502032396b99e66569b",
+      "result": "failure",
+      "failure": "actual_producer_capture_failure_cannot_yield_typed_transcript: controlled child capture deadline",
+      "server_passed": 101,
+      "server_failed": 1,
+      "server_ignored": 2,
+      "log": "admiralty-main-ddcf-rust-tail.log",
+      "log_truncated": true
+    }
+  ],
+  "commands": [
+    {
+      "command": "cargo test --workspace --locked --no-fail-fast",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-workspace-complete.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-clippy-qualification.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-fmt-final.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "pnpm --dir apps/dashboard exec tsc -p e2e/tsconfig.json --noEmit",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-e2e-typecheck.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "pnpm --dir apps/dashboard typecheck",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-ui-typecheck.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "pnpm --dir apps/dashboard test --run",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-ui-unit.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "pnpm --dir apps/dashboard build",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-ui-build.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "pnpm contracts:check",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-contracts-check.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "pnpm --dir packages/contracts test",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-contracts-test.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "pnpm --dir apps/dashboard exec vitest run --config e2e/vitest.config.ts (exact executable SHA pinned by recorded wrapper)",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-browser-final.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "python3 -m unittest discover -s tests/legacy -v",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-legacy.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -p 'test_sc_audit*.py' -v",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-sc-audit.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "python3 tests/fixtures/legacy/verify.py",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-fixtures.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "python3 scripts/release/package.py --self-test",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-package.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "python3 scripts/check/canary-smoke.py --self-test",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-canary.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "python3 scripts/check/canary-smoke.py --admiraltyd-binary /private/tmp/admiralty-native-dogfood-target/debug/admiraltyd --admiralty-binary /private/tmp/admiralty-native-dogfood-target/debug/admiralty --scratch-root /private/tmp/admiralty-native-dogfood-private",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-binary-smoke.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    },
+    {
+      "command": "actionlint -config-file /private/tmp/admiralty-native-dogfood-actionlint.yaml (lan-ci and browser158 labels)",
+      "exit_code": 0,
+      "log": "admiralty-native-dogfood-actionlint-final.log",
+      "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty"
+    }
+  ],
+  "command_source_notes": {
+    "workspace": "7bf86c4db676a4f35baa4baf85e0c3f1f6754157; final no-fail-fast run completed before any following edits.",
+    "clippy": "4bd0a70b541d56d89ac56531e65b82a6ea11672f; only CI job budget differs from workspace source.",
+    "frontend": "Frontend and browser-harness bytes unchanged after 551c11214f69063533d87e7f4d6ac7946e30aa71; exact full browser invocation/source/binary metadata recorded separately.",
+    "receipt_commit": "Later edits contain CI operator documentation, remaining-work/ledger notes and this receipt/log set only."
+  }
+}

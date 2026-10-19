@@ -2,6 +2,23 @@
 
 ## Later component reconciliation
 
+**Native communication qualification update:** native startup now has opt-in
+exact task/revision/recipient routes and separate own-inbox receipt grants.
+CLI/MCP can send typed messages, read current context and ACK application receipt
+through the real Store writer; requests cannot choose a sender or install grants.
+Six scoped cases cover the captain–admiral exchange, two server/Store reopens,
+exact replay, actor/route/epoch denial, revocation, current expiry, stale contracts
+and collision evidence. The complete Mac workspace passes 1,702 test executions
+with five existing ignored helpers; actual pinned browser qualification passes
+23 cases. See [source-bound proof](../../../receipts/integration/native-coordination-20261019.json)
+and [operator setup](../../operators/native-coordination.md).
+This is source qualification, not supervisor adoption: a read-only primary audit
+still observed one configured agent, zero native routes/messages and execution
+unqualified. Production policy/provider admission, closure/settlement/recovery,
+product/distribution and full parent criteria below remain open. P00/P01 alone
+remain accepted. Source work also repairs exposed qualification failures without
+changing production byte limits or acceptance guards; exact hosted CI is separate.
+
 **13:48Z regression/coordination addendum:** MIT and kernel timer/diagnostic work
 merged in PR126, receiving68bae1e. That primary is independently verified at
 13:42:48.155Z, including14files/process hashes and absence of retired ownedPython;
