@@ -13,7 +13,7 @@ use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::os::fd::OwnedFd;
-use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
+use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Component, Path, PathBuf};
 
 const MAX_FILES: usize = 1024;
@@ -328,7 +328,13 @@ pub fn stage_native_package(
     for ((input, destination), (mut source, before_identity)) in prepared.iter().zip(sources) {
         let staged_path = staging.path().join(destination);
         if let Some(parent) = staged_path.parent() {
-            fs::create_dir_all(parent)?;
+            // Only create directories inside this fresh private stage. An
+            // explicit mode prevents permissive umasks from adding group/other
+            // write access; existing directories and source modes are untouched.
+            fs::DirBuilder::new()
+                .recursive(true)
+                .mode(0o755)
+                .create(parent)?;
         }
         let mut staged = OpenOptions::new()
             .write(true)

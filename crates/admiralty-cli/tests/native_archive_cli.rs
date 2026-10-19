@@ -320,20 +320,39 @@ fn actual_stage_and_archive_preserve_declared_modes_in_isolated_private_umask_ch
     const CHILD: &str = "ADMIRALTY_ARCHIVE_PRIVATE_UMASK_TEST_CHILD";
     const TEST: &str =
         "actual_stage_and_archive_preserve_declared_modes_in_isolated_private_umask_child";
-    if std::env::var_os(CHILD).as_deref() == Some(std::ffi::OsStr::new("1")) {
+    if let Some(mask) = std::env::var_os(CHILD) {
+        let (mask, mode) = match mask.to_str().expect("test-only mask value") {
+            "077" => (0o077_u32, rustix::fs::Mode::from_bits_truncate(0o077)),
+            "002" => (0o002_u32, rustix::fs::Mode::from_bits_truncate(0o002)),
+            "000" => (0o000_u32, rustix::fs::Mode::from_bits_truncate(0o000)),
+            _ => panic!("unsupported test-only mask value"),
+        };
         // This branch runs only in a dedicated, single-test child. Never change
         // the umask of the shared, potentially parallel integration-test parent.
-        rustix::process::umask(rustix::fs::Mode::from_bits_truncate(0o077));
+        rustix::process::umask(mode);
         let f = fixture();
         let probe = OpenOptions::new()
             .write(true)
             .create_new(true)
-            .mode(0o644)
+            .mode(0o666)
             .open(f.root.path().join("private-mask-probe"))
             .expect("new child-only mask probe");
         assert_eq!(
             probe.metadata().expect("probe metadata").mode() & 0o777,
-            0o600
+            0o666 & !mask,
+            "prove this child's actual umask without changing the parent"
+        );
+        assert_eq!(
+            fs::metadata(f.root.path().join("target/release/admiralty"))
+                .expect("unchanged source metadata")
+                .mode()
+                & 0o777,
+            0o666 & !mask,
+            "staging must not chmod original input files"
+        );
+        assert_eq!(
+            fs::metadata(&f.stage).expect("private stage root").mode() & 0o777,
+            0o700
         );
         assert_eq!(
             fs::metadata(f.stage.join("MANIFEST.json"))
@@ -348,9 +367,20 @@ fn actual_stage_and_archive_preserve_declared_modes_in_isolated_private_umask_ch
                 .stage
                 .join(entry["archive_path"].as_str().expect("declared path"));
             assert_eq!(
-                fs::metadata(path).expect("actual staged payload").mode() & 0o7777,
+                fs::metadata(&path).expect("actual staged payload").mode() & 0o7777,
                 entry["mode"].as_u64().expect("declared mode") as u32
             );
+            let mut parent = path.parent().expect("staged payload parent");
+            while parent != f.stage {
+                let metadata = fs::symlink_metadata(parent).expect("actual stage directory");
+                assert!(metadata.is_dir() && !metadata.file_type().is_symlink());
+                assert_eq!(
+                    metadata.mode() & 0o777,
+                    0o755 & !mask,
+                    "new stage directory must use explicit non-writable group/other mode"
+                );
+                parent = parent.parent().expect("within private stage");
+            }
         }
         // Exercise actual Rust stage/archive children, archive digests, tar
         // extraction and the unchanged false authority flags under that mask.
@@ -362,22 +392,24 @@ fn actual_stage_and_archive_preserve_declared_modes_in_isolated_private_umask_ch
         .permissions(fs::Permissions::from_mode(0o700))
         .tempdir_in(std::env::temp_dir().canonicalize().expect("canonical tmp"))
         .expect("private parent capture");
-    let result = capture_command(
-        root.path(),
-        Command::new(std::env::current_exe().expect("actual test executable"))
-            .args(["--exact", TEST, "--nocapture", "--test-threads=1"])
-            .current_dir(root.path())
-            .env_clear()
-            .env(CHILD, "1")
-            .env("TMPDIR", root.path()),
-    );
-    assert!(
-        result.status.success(),
-        "isolated private-mask stage/archive failed: {}{}",
-        String::from_utf8_lossy(&result.stdout),
-        String::from_utf8_lossy(&result.stderr)
-    );
-    assert!(String::from_utf8_lossy(&result.stdout).contains("1 passed; 0 failed"));
+    for mask in ["077", "002", "000"] {
+        let result = capture_command(
+            root.path(),
+            Command::new(std::env::current_exe().expect("actual test executable"))
+                .args(["--exact", TEST, "--nocapture", "--test-threads=1"])
+                .current_dir(root.path())
+                .env_clear()
+                .env(CHILD, mask)
+                .env("TMPDIR", root.path()),
+        );
+        assert!(
+            result.status.success(),
+            "isolated mask {mask} stage/archive failed: {}{}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert!(String::from_utf8_lossy(&result.stdout).contains("1 passed; 0 failed"));
+    }
 }
 #[test]
 fn actual_archive_cli_preserves_existing_destination_and_reports_failure() {
