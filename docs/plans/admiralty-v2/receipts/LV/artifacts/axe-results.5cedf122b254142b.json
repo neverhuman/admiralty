@@ -1,0 +1,146 @@
+[
+  {
+    "label": "atlas dark",
+    "report": {
+      "url": "http://127.0.0.1:61726/#/atlas",
+      "timestamp": "2026-10-19T01:53:52.710Z",
+      "testEngine": {
+        "name": "axe-core",
+        "version": "4.14.0"
+      },
+      "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+      "violations": [],
+      "incomplete": [],
+      "passesCount": 27,
+      "inapplicableCount": 36
+    }
+  },
+  {
+    "label": "roster dark",
+    "report": {
+      "url": "http://127.0.0.1:61726/#/atlas?display=roster",
+      "timestamp": "2026-10-19T01:53:52.821Z",
+      "testEngine": {
+        "name": "axe-core",
+        "version": "4.14.0"
+      },
+      "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+      "violations": [],
+      "incomplete": [],
+      "passesCount": 29,
+      "inapplicableCount": 34
+    }
+  },
+  {
+    "label": "roster light",
+    "report": {
+      "url": "http://127.0.0.1:61726/#/atlas?display=roster",
+      "timestamp": "2026-10-19T01:53:52.919Z",
+      "testEngine": {
+        "name": "axe-core",
+        "version": "4.14.0"
+      },
+      "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+      "violations": [],
+      "incomplete": [],
+      "passesCount": 29,
+      "inapplicableCount": 34
+    }
+  },
+  {
+    "label": "atlas light",
+    "report": {
+      "url": "http://127.0.0.1:61726/#/atlas?display=map",
+      "timestamp": "2026-10-19T01:53:53.046Z",
+      "testEngine": {
+        "name": "axe-core",
+        "version": "4.14.0"
+      },
+      "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+      "violations": [],
+      "incomplete": [],
+      "passesCount": 27,
+      "inapplicableCount": 36
+    }
+  },
+  {
+    "label": "git light",
+    "report": {
+      "url": "http://127.0.0.1:61726/#/git",
+      "timestamp": "2026-10-19T01:53:53.095Z",
+      "testEngine": {
+        "name": "axe-core",
+        "version": "4.14.0"
+      },
+      "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+      "violations": [],
+      "incomplete": [],
+      "passesCount": 27,
+      "inapplicableCount": 36
+    }
+  },
+  {
+    "label": "git inventory light",
+    "report": {
+      "url": "http://127.0.0.1:61726/#/git",
+      "timestamp": "2026-10-19T01:53:53.130Z",
+      "testEngine": {
+        "name": "axe-core",
+        "version": "4.14.0"
+      },
+      "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+      "violations": [],
+      "incomplete": [],
+      "passesCount": 28,
+      "inapplicableCount": 35
+    }
+  },
+  {
+    "label": "git inventory dark",
+    "report": {
+      "url": "http://127.0.0.1:61726/#/git",
+      "timestamp": "2026-10-19T01:53:53.181Z",
+      "testEngine": {
+        "name": "axe-core",
+        "version": "4.14.0"
+      },
+      "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+      "violations": [],
+      "incomplete": [],
+      "passesCount": 28,
+      "inapplicableCount": 35
+    }
+  },
+  {
+    "label": "git dark",
+    "report": {
+      "url": "http://127.0.0.1:61726/#/git",
+      "timestamp": "2026-10-19T01:53:53.228Z",
+      "testEngine": {
+        "name": "axe-core",
+        "version": "4.14.0"
+      },
+      "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+      "violations": [],
+      "incomplete": [],
+      "passesCount": 27,
+      "inapplicableCount": 36
+    }
+  },
+  {
+    "label": "mobile roster",
+    "report": {
+      "url": "http://127.0.0.1:61726/#/atlas",
+      "timestamp": "2026-10-19T01:53:53.284Z",
+      "testEngine": {
+        "name": "axe-core",
+        "version": "4.14.0"
+      },
+      "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+      "violations": [],
+      "incomplete": [],
+      "passesCount": 29,
+      "inapplicableCount": 34
+    }
+  }
+]

@@ -1,0 +1,115 @@
+{
+  "source_head": "d6b0be0cc71707400f4f3d54383d017cba171b21",
+  "qualification_commit": "d6b0be0cc71707400f4f3d54383d017cba171b21",
+  "main_base": "99f4e26cebfab97afa661ed05aea6192bfd5935c",
+  "prospective_tree": "3dd1d13081ec4d174eeafb6b90226606a6756c82",
+  "kind": "direct clean source-head qualification",
+  "cwd": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty",
+  "environment": {
+    "TMPDIR": "/private/tmp/admiralty-views-qual-cbapuf30",
+    "ADMIRALTY_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+    "CARGO_TARGET_DIR": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target",
+    "CARGO_BUILD_JOBS": "4",
+    "RUST_TEST_THREADS": "1",
+    "ADMIRALTY_E2E_ADMIRALTYD_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiraltyd",
+    "ADMIRALTY_E2E_OBSERVER_BIN": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/debug/admiralty-observe"
+  },
+  "commands": [
+    {
+      "name": "contributor-checks-direct-final",
+      "argv": [
+        "rtk",
+        "proxy",
+        "bash",
+        "scripts/check/all.sh"
+      ],
+      "started_utc": "2026-10-19T01:50:35.955849+00:00",
+      "ended_utc": "2026-10-19T01:53:31.317226+00:00",
+      "exit_code": 0,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/contributor-checks-direct-final.log"
+    },
+    {
+      "name": "native-binaries-direct-final",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "build",
+        "--locked",
+        "-p",
+        "admiralty-server",
+        "-p",
+        "admiralty-observe"
+      ],
+      "started_utc": "2026-10-19T01:53:31.318310+00:00",
+      "ended_utc": "2026-10-19T01:53:31.768741+00:00",
+      "exit_code": 0,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/native-binaries-direct-final.log"
+    },
+    {
+      "name": "browser-types-direct-final",
+      "argv": [
+        "rtk",
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "exec",
+        "tsc",
+        "-p",
+        "e2e/tsconfig.json",
+        "--pretty",
+        "false"
+      ],
+      "started_utc": "2026-10-19T01:53:31.769008+00:00",
+      "ended_utc": "2026-10-19T01:53:32.127929+00:00",
+      "exit_code": 0,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/browser-types-direct-final.log"
+    },
+    {
+      "name": "browser-direct-final",
+      "argv": [
+        "rtk",
+        "pnpm",
+        "--dir",
+        "apps/dashboard",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "e2e/vitest.config.ts"
+      ],
+      "started_utc": "2026-10-19T01:53:32.128185+00:00",
+      "ended_utc": "2026-10-19T01:53:53.397992+00:00",
+      "exit_code": 0,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/browser-direct-final.log"
+    },
+    {
+      "name": "package-self-test-direct-final",
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "scripts/release/package.py",
+        "--self-test"
+      ],
+      "started_utc": "2026-10-19T01:53:53.398260+00:00",
+      "ended_utc": "2026-10-19T01:53:53.551424+00:00",
+      "exit_code": 0,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/package-self-test-direct-final.log"
+    },
+    {
+      "name": "canary-self-test-direct-final",
+      "argv": [
+        "rtk",
+        "proxy",
+        "python3",
+        "scripts/check/canary-smoke.py",
+        "--self-test"
+      ],
+      "started_utc": "2026-10-19T01:53:53.551691+00:00",
+      "ended_utc": "2026-10-19T01:53:56.986987+00:00",
+      "exit_code": 0,
+      "log": "/Users/bentaylor/.codex/worktrees/live-git-fleet/admiralty/target/live-views-evidence/canary-self-test-direct-final.log"
+    }
+  ]
+}
