@@ -1838,3 +1838,60 @@ admission. No Linux pass, clean install, signing or publication follows from Mac
 tests. Accepted parents remain2/32 and native execution false. Both manager quota
 failures preserve the existing sole-deployer handoff and consumed one-run permit;
 root performs no service control, new provider grant or paid retry.
+
+### Native intake HTTP and explicit startup configuration — 05:53Z
+
+PR109 merged05:24:42Z to066706b1d563d7554e19b9ffb0b2137cf66f14e8.
+Commodore deployed it05:32:51Z; root's
+[independent proof](../../../receipts/integration/native-066706b1-independent-20261019T0540Z.json)
+observes05:36:32.886Z and checks all14manifest/file hashes, actual daemon/observer
+executable hashes and process start identities, health/UI/feed200 and18891redirect307.
+The producer is Rust,0model turns,256history rows, no retired owned Python PID.
+The unchanged React bundle hash is retained; no fresh browser/control-count or
+first original-history timestamp measurement is claimed. Manager access briefly
+resumed for this deploy; fresh hardcopies again show Gemini4Argon quota errors.
+Root never operated primary services or changed the sole-deployer handoff.
+
+The exact619 Linux packaging follow-up completed05:28:38Z with35passes
+(20archive/5actualCLI/10package),0failures, one capped invocation385.66seconds.
+[Its receipt](../../../receipts/integration/native-archive-linux-20261019T0530Z.json)
+preserves original b864failure and preflight refusal, checks940source files/
+1081entry names against the pinned archive and retains deterministic hashes.
+This proves the scoped synthetic workflow under its recorded077environment;
+it is not installation/signing/publication/P30 acceptance. Different hosted
+directory-permission failures remain on the single CI backlog.
+
+Root's [05:39 reconciliation](../../../receipts/integration/rollout-reconciliation-20261019T0538Z.json)
+archives the prior rollout, verifies transferred receipts and records actual
+PR108/109 component progress plus independently running066. All32parent states,
+P00/P01, unrelated packets and original evidence/timestamps remain preserved.
+The refreshed [remaining audit](REMAINING_20261019.md) pins066; its historical
+b864deployment paragraph is superseded by the independent proof above.
+
+New sourcead5ea2ed59b5ba3f02dee99451f5499b46b3f511 composes frozen HTTP15423e33
+and private configuration19d2bb44 with actual native startup/main. The
+[integrated receipt](../../../receipts/integration/native-intake-http-20261019T0553Z.json)
+records26actual cases (9config,5startup,3priorstartup,9HTTP), strict server
+all-target Clippy, formatting and independent exact-commit review. One case
+launches the actual `admiraltyd` binary with cleared environment/private example
+files, previews/captures/reads exact multiline source, then closes only its owned
+child and reopens the Store with no hidden task admission. Initial root ID
+conversion and router-state compile failures remain preserved as zero-test
+attempts before repair.
+
+`--intake-config` requires `--native-config`; all closed protected-file policy,
+scope/action intersections and credential-domain checks occur before DB open.
+The same bridge supplies both writer authority slots. Existing entrypoints keep
+None/default denial. Every HTTP operation requires main bearer plus independent
+intake credential, exact Origin/Host/non-simple marker and bounded body/query/
+response/capacity. Review caught early permit release, framed GET body acceptance
+and browser GET Origin incompatibility. The repaired adapter retains a permit
+through response materialization and blocking work after disconnect; bounded
+POST read variants preserve strict guards. No CORS or profile/inbox fallback.
+
+This adds an explicit optional startup issuer, not a production configuration or
+provider/check/acceptance/dispatch grant. No live intake token/file was created
+or enabled. Enrichment UI, real coding-provider qualification, durable budget/
+model admission, recovery and full parent criteria remain. SC-DEC133 is consumed;
+no new provider fixture/metadata/grant/run follows from the successful6e build.
+All30open parents remain open; accepted2/32, native autonomous coding false.
