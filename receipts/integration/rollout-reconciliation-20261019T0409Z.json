@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T04:09:23.490Z",
+  "receiving_main": "9c4ba020615ec62024ef1b1ab98c15a15a02df76",
+  "before_sha256": "4971756c15a3eb5e9761d995e76ef4acf393967c247265e96f9b8993d944d69a",
+  "after_sha256": "40720da38221f31a8cb303299e44681391e351b893d8621ec41531926ff60ca3",
+  "archive": "/home/ubuntu/admiralty-v2-build/receipts/rollout-corrections/20261019T040923Z",
+  "receipt_hashes_verified": [
+    {
+      "name": "raw-intake-capture-20261019T0320Z.json",
+      "sha256": "24f39031f624e882a952a3070cd7fc91a4bffc088711a32245f4314075dc4c57"
+    },
+    {
+      "name": "question-writer-20261019T0327Z.json",
+      "sha256": "5f9e382347a41ec91689daf34e41de3b4ba8697f12d3474750dad822dfb10da7"
+    },
+    {
+      "name": "question-intake-package-20261019T0340Z.json",
+      "sha256": "88562e32770f8847760e58b1165fb39a64e4ab9c16df43780b065b31c7f0a708"
+    },
+    {
+      "name": "p02-criterion-audit-20261019T0330Z.json",
+      "sha256": "042f52b1c94fb7d71405bdcdc9f5b0f3432ccd26848bee5956b5099b92db1782"
+    },
+    {
+      "name": "core-contracts-20261019T0405Z.json",
+      "sha256": "dc974b4c5fe2e22d431763f109e544f1361e6b170eb4da0b8b17311170c532af"
+    },
+    {
+      "name": "native-codex-minimal-failure-20261019T0353Z.json",
+      "sha256": "d27f6ed637a2d3af901c3f1c794d1e4f4265b63d2e2430718e2b7d50aaec9c8d"
+    },
+    {
+      "name": "native-8e99eaac-independent-20261019T0403Z.json",
+      "sha256": "5cc282c863e79d52a3058c96d0e5176824decf22d0cded7841cdea686fbb986a"
+    }
+  ],
+  "live_proof": {
+    "source": "8e99eaac1ab72a6debf55bf2d442462568ca8b4f",
+    "observed_utc": "2026-10-19T04:01:42.470Z",
+    "sha256": "5cc282c863e79d52a3058c96d0e5176824decf22d0cded7841cdea686fbb986a"
+  },
+  "all_parent_statuses_preserved": true,
+  "foundation_packets_byte_identical": true,
+  "unrelated_packets_byte_identical": true,
+  "all_original_history_source_timestamps_preserved": true,
+  "new_observation_basis": "new reviewed mergedsource/componentchecks and actual independent liveverification, not clock-onlyfreshening",
+  "accepted": [
+    "P00",
+    "P01"
+  ],
+  "remaining_parents": 30,
+  "native_execution_qualified": false,
+  "provider_grants_this_run": 1,
+  "provider_grant_consumed": true,
+  "provider_qualified": false,
+  "service_control": false
+}

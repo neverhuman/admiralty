@@ -1614,3 +1614,47 @@ proof, bounded native resource diagnostics and Rust native archive. Root owns
 shared registration/dependencies/source integration/rollout; Commodore alone
 deploys. Parent acceptance remains2/32 and native coding execution false. CI
 cleanup stays deferred; current hosted results never replace source-bound proof.
+
+### Writer attention and advisory resource composition — 2026-10-19T04:40Z
+
+Sourceee47a0b84b0fecb6f2afed36f97727cee4285089 composes current opaque actor/
+policy authorization on Store's sole attention writer with the paired native
+adapter. Exact historical retries recheck current permission; final denial rolls
+back staged journal, budget and outbox changes. Prior history and receipt
+formulas remain readable. No production issuer, pending-batch compiler or
+provider delivery is activated. Independent review clears the exact Store,
+credential helper, adapter and retained legacy test assertions.
+
+The same source retains bounded first/latest/final original-cgroup diagnostics
+without changing authority, caps or launch bindings. Explicit version2 full
+journals separate advisory bytes from the original closure authority digest.
+Executor sampling is bounded to250ms; both probe authority comparisons retain
+the original closure serialization. Independent review verifies this separation,
+including the final formatting-only test delta. Actual root qualification in
+an exclusive fresh target passes55 cases:12authority,9prior journal,7bridge,
+1versioned journal,11resource and15example tests. Strict server/Store/runtime
+all-target Clippy and formatting pass. [Source-bound receipt](../../../receipts/integration/attention-resource-20261019T0440Z.json)
+preserves the initial incompatible shared-target build; final checks rebuild
+the actual source in an exclusive target. No new provider turn/grant occurs.
+
+The [04:09 rollout CAS](../../../receipts/integration/rollout-reconciliation-20261019T0409Z.json)
+archives original bytes and source/history times and records PR102–104 without
+parent promotion. SC-DEC139 acknowledges the correction: partial same-source
+tests cannot replace full P02/P03/P05/P12/P13 contracts. Accepted parents remain
+2/32, general coding execution false, prior0349 grant consumed. Commodore
+reports9c4ba020 deployed04:16:32Z; root public health returns200/ok/false.
+An additional root full-hash check is queued behind the fleet compute gate;
+it is not yet an independent qualification of that deployment.
+
+S1 delivery candidate85c432ba is held for four independently reproduced
+failures: loose evidence binding, order-dependent package/stage joins,
+foreign-attempt running sessions and silent attention-fact truncation. Its12
+original passing tests do not clear these counterexamples. Findings and four
+actual failing-before cases go to the existing S1 owner; no competing edits.
+Rust archive review likewise reproduced three guard-closure bypasses and the
+owner repaired them with existing staging validation; CLI integration remains
+owned work. S2 continues the exact current-writer work-order service. The next
+context lane owns a bounded authorized original-wake/source read and protected
+batch compiler; no claimed digest substitutes for original journal custody.
+Actual hosted failures are retained on the single CI cleanup backlog, with no
+cleanup lane before implementation under the02:12 human ruling.

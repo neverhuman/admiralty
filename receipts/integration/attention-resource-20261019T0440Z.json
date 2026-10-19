@@ -1,0 +1,622 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T04:25:49.055Z",
+  "code_source_git_revision": "ee47a0b84b0fecb6f2afed36f97727cee4285089",
+  "base_git_revision": "9c4ba020615ec62024ef1b1ab98c15a15a02df76",
+  "scope": "Current writer-bound attention recording and bounded advisory native resource diagnostics",
+  "source_artifacts": [
+    {
+      "path": "crates/admiralty-runtime/src/resource_gate.rs",
+      "sha256": "59b98d13fd5bb5faa658be71473f60241d9afb1e98d6c1dd1a7ac4bc1be5be8c",
+      "bytes": 91890
+    },
+    {
+      "path": "crates/admiralty-runtime/src/resource_gate_diagnostics_tests.rs",
+      "sha256": "c6e76528b60d69b8ddc501d947254c75d8f11af87575c3e8d111a11b10443e36",
+      "bytes": 17070
+    },
+    {
+      "path": "crates/admiralty-server/examples/native_lifecycle_probe.rs",
+      "sha256": "012f621ae4dd1bbabb08e148b07403403d9712abc22eb6978922b0abe12bb435",
+      "bytes": 44528
+    },
+    {
+      "path": "crates/admiralty-server/examples/native_task_loop_probe.rs",
+      "sha256": "34baab61e30d1f4a0123d482eee6089c1af5c2551bd2904fc686f75312bdcebe",
+      "bytes": 120831
+    },
+    {
+      "path": "crates/admiralty-server/src/native_attention.rs",
+      "sha256": "d0e11189690fb86cade7fdcfe22ec99c9a07e2b130b04986dc5824a291e483aa",
+      "bytes": 36690
+    },
+    {
+      "path": "crates/admiralty-server/src/services/coordination.rs",
+      "sha256": "19b30ed164d4fbd6d27c30b2e29e3e7544dc4a547e02e0c98841ec65f1ab6833",
+      "bytes": 35139
+    },
+    {
+      "path": "crates/admiralty-server/src/services/native_executor.rs",
+      "sha256": "67ac8c63362223b49a84c020b1d03575c5d8ff38276c1188bce61aeff2a926d1",
+      "bytes": 100629
+    },
+    {
+      "path": "crates/admiralty-store/src/attention.rs",
+      "sha256": "2a8d14edcf702c5806af289615144caa45f866a6120634ca392e49883fef486d",
+      "bytes": 39747
+    },
+    {
+      "path": "crates/admiralty-store/src/lib.rs",
+      "sha256": "4350962caeba1d3e19bd7d540d80cefd965949ac01d49a5306989c511e0be4d7",
+      "bytes": 116823
+    },
+    {
+      "path": "crates/admiralty-store/tests/attention_authority.rs",
+      "sha256": "84797326511bac04db768ae5fa06c10ca3852747e09a3a8c88c064f14f1e43b3",
+      "bytes": 30174
+    },
+    {
+      "path": "crates/admiralty-store/tests/attention_journal.rs",
+      "sha256": "960567853e6c6cc416ec5b6b93d5f5e74cbb4222ae4b9b36ed7e08be78b43e9f",
+      "bytes": 39610
+    }
+  ],
+  "checks": [
+    {
+      "name": "actual Store authority and legacy journal integration",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-store",
+        "--test",
+        "attention_authority",
+        "--test",
+        "attention_journal",
+        "--locked"
+      ],
+      "exit": 0,
+      "log": "target/quality/writer-resource-store-final.log",
+      "results": [
+        {
+          "passed": 12,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 0
+        },
+        {
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 0
+        }
+      ]
+    },
+    {
+      "name": "server",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-server",
+        "--lib",
+        "--locked",
+        "native_attention::tests"
+      ],
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/writer-resource-server-final.log",
+      "exit": 0,
+      "signal": null,
+      "elapsed_ms": 48108,
+      "results": [
+        {
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 75
+        }
+      ]
+    },
+    {
+      "name": "journal",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-server",
+        "--lib",
+        "--locked",
+        "resource_journal_versions"
+      ],
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/writer-resource-journal-final.log",
+      "exit": 0,
+      "signal": null,
+      "elapsed_ms": 179,
+      "results": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 81
+        }
+      ]
+    },
+    {
+      "name": "resource",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-runtime",
+        "--lib",
+        "--locked",
+        "resource_gate::diagnostics_tests"
+      ],
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/writer-resource-resource-final.log",
+      "exit": 0,
+      "signal": null,
+      "elapsed_ms": 24267,
+      "results": [
+        {
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 184
+        }
+      ]
+    },
+    {
+      "name": "probe",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-server",
+        "--example",
+        "native_task_loop_probe",
+        "--locked"
+      ],
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/writer-resource-probe-final.log",
+      "exit": 0,
+      "signal": null,
+      "elapsed_ms": 19662,
+      "results": [
+        {
+          "passed": 15,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 0
+        }
+      ]
+    },
+    {
+      "name": "clippy",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "clippy",
+        "-p",
+        "admiralty-server",
+        "-p",
+        "admiralty-store",
+        "-p",
+        "admiralty-runtime",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/writer-resource-clippy-final.log",
+      "exit": 0,
+      "signal": null,
+      "elapsed_ms": 36117
+    },
+    {
+      "name": "fmt",
+      "argv": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "log": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/writer-resource-fmt-final.log",
+      "exit": 0,
+      "signal": null,
+      "elapsed_ms": 1196
+    }
+  ],
+  "log_artifacts": [
+    {
+      "path": "target/quality/writer-resource-store-final.log",
+      "sha256": "b54f2804eee62b7fec9bc59951edb604836638956567cbe88447ec6cfef5844c",
+      "bytes": 4501
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/writer-resource-server-final.log",
+      "sha256": "c859bc788b4db95089ace4ca55290c5d4043bac4da8e2ab16f6f9637c67d89af",
+      "bytes": 3350
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/writer-resource-journal-final.log",
+      "sha256": "47523c0a62a4bcd633341403979ea7c68a0692c6f1bade8df7acfccb255ab328",
+      "bytes": 414
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/writer-resource-resource-final.log",
+      "sha256": "38065fad3603975878d5fde3b8a3871b3dfcdd5910b49bd9d0c9b7f8ec828039",
+      "bytes": 2169
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/writer-resource-probe-final.log",
+      "sha256": "a8142d84bc6dcbf9d03d482f20258ec0c03e23b6c99c90a33518ca6f7a00bde2",
+      "bytes": 1764
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/writer-resource-clippy-final.log",
+      "sha256": "b1ddfdcbaac4ba67c1c8e4ade97750205ecdd7928b8ffcd329ee0e3b9c1eefd0",
+      "bytes": 3398
+    },
+    {
+      "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/quality/writer-resource-fmt-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  ],
+  "focused_actual_passed": 55,
+  "worker_receipts": [
+    {
+      "path": "/private/tmp/admiralty-durable-context-c230002/target/quality/attention-authority/receipt.json",
+      "sha256": "12fe1f6597e24cfa9d9354b34d111ff79899c596d36a5f9b9690cab3f310da67",
+      "bytes": 4505,
+      "receipt": {
+        "source_commit": "295ba2e3d5e04c76666f1b633de04ac0821bbecd",
+        "base_commit": "fde68a4eb5977ede044ef0859be7b364dce394e8",
+        "recorded_utc": "2026-10-19T03:59:49.905429+00:00",
+        "workspace": "/private/tmp/admiralty-durable-context-c230002",
+        "scope": "Writer-bound current attention recording authorization; two-file component candidate",
+        "artifacts": {
+          "crates/admiralty-store/src/attention.rs": "2a8d14edcf702c5806af289615144caa45f866a6120634ca392e49883fef486d",
+          "crates/admiralty-store/tests/attention_authority.rs": "84797326511bac04db768ae5fa06c10ca3852747e09a3a8c88c064f14f1e43b3",
+          "target/quality/attention-authority/registration.patch": "32ea8f28c420764d6166d3101d663cab14bbea0ab0d643971f6b5ada7eebb37f",
+          "target/quality/attention-authority/targeted-tests.log": "159648c5ac3960d5db2a04a5c92fe08b0d657b1d2148e5996a83ae73883a7364",
+          "target/quality/attention-authority/clippy.log": "fe5af1bdecdfdd9d214d53ce2895a2de0a8c28bc1dfadb5518a5eb3958f44ef6",
+          "target/quality/attention-authority/fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "target/quality/attention-authority/initial-legacy-fixture-missing-context-failed.log": "7e855a6c4803c36fd2d0fe38ab24ac84f07778090ed9c724050d6c675b4594ab",
+          "target/quality/attention-authority/initial-clippy-needless-borrows-failed.log": "e2dbd965413c129aef964ff87fdab823ba3b0e32c0f59e18882b7718cdd2436c",
+          "target/quality/attention-authority/clippy-test-boolean-failed.log": "1482055254f395649c3409a7cf38a059a485966a53bb968fadd9b5a7167551f9"
+        },
+        "temporary_excluded_registration_restored_before_commit": true,
+        "checks": [
+          {
+            "command": "rtk proxy env TMPDIR=/private/tmp/adm-native-4pbrtc1l CARGO_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target/attention-authority CARGO_BUILD_JOBS=1 cargo test -p admiralty-store --test attention_authority -- --test-threads=1",
+            "exit_code": 0,
+            "passed": 12,
+            "ignored": 0
+          },
+          {
+            "command": "rtk proxy env TMPDIR=/private/tmp/adm-native-4pbrtc1l CARGO_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target/attention-authority CARGO_BUILD_JOBS=1 cargo clippy -p admiralty-store --lib --test attention_authority -- -D warnings",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk proxy rustfmt --edition 2024 --check crates/admiralty-store/src/attention.rs crates/admiralty-store/tests/attention_authority.rs",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk git diff --check",
+            "exit_code": 0
+          }
+        ],
+        "proofs": [
+          "actual writer callback barrier with revoke and independent policy drift after enqueue: no durable command/outbox",
+          "opaque private actor proof/current incarnation required; matching serialized labels and arbitrary Any denied",
+          "final writer policy denial and actual late SQL fault roll back outbox/receipt/head/budget together",
+          "lostreply retry after later commands returns original immutable receipt without head rewind and rechecks current policy",
+          "unknown/completed outbox effect is retained without redispatch or delivered/applicationACK promotion",
+          "old raw command bytes and original prefix/hash formula remain valid across reopen/rebuild",
+          "actual stored capsule role/recipient/project/root/epoch/taskrevision/authority/evidence bindings checked",
+          "historical open/rebuild/backup remains valid with absent or revoked current authority; actions remain denied",
+          "oversized binding denied and corrupted retained wrapper fails closed without deleting records"
+        ],
+        "limitations": [
+          "Root must register StoreAuthorities attention slot/internal request+opaque proof and guarded old Store API routing using supplied excluded patch",
+          "Root owns actual authenticated server policy/credential composition, caller access routing and startup issuer; tests use private deterministic fixture actor proof, not production credential qualification",
+          "No pending-batch-to-context compilation proof: request_context and observed batch refs remain distinct",
+          "No provider transport/application ACK/baseline advancement or activation",
+          "External authority owns synchronization of revocation after the final callback returns; this component does not atomically commit against an unrelated policy database",
+          "Raw caller-owned Connection register/apply remain explicitly legacy compatibility; the protected real Store path must never call them",
+          "No full P05/P06 parent acceptance or hostedCI claim"
+        ]
+      }
+    },
+    {
+      "path": "/private/tmp/admiralty-durable-context-c230002/target/quality/native-attention-writer/receipt.json",
+      "sha256": "086f0f51c641cbc2d1dddc8d2d5ecc1823c47836244c4197b6f1ffd6eeb44572",
+      "bytes": 6033,
+      "receipt": {
+        "source_commit": "891dd02049704cbd24291a16a99b8cd0a7b9ce2a",
+        "base_commit": "56861ded8a737292993ee2802e9b075f35fa7e41",
+        "recorded_utc": "2026-10-19T04:19:54.927541+00:00",
+        "workspace": "/private/tmp/admiralty-durable-context-c230002",
+        "scope": "Explicit native attention server composition with startup writer authority, actual authenticated actor proof and shared current registry; prior real Store journal test port",
+        "artifacts": {
+          "crates/admiralty-server/src/native_attention.rs": "d0e11189690fb86cade7fdcfe22ec99c9a07e2b130b04986dc5824a291e483aa",
+          "crates/admiralty-store/tests/attention_journal.rs": "960567853e6c6cc416ec5b6b93d5f5e74cbb4222ae4b9b36ed7e08be78b43e9f",
+          "target/quality/native-attention-writer/root-registration.patch": "73a0376ff9ee49567fdde947e4b980d74f63e1569a291817d4b212cf5f70adbe",
+          "target/quality/native-attention-writer/server-tests.log": "812e3a9b9880a67f577cd8f6463069b5eec74a4e75c9d29425bdc253715ff6b1",
+          "target/quality/native-attention-writer/journal-tests.log": "e5d7409d83997c911b19659359e756ad16b3171663063949a41d95a3313d5fa0",
+          "target/quality/native-attention-writer/server-clippy.log": "26cac9c1526af767bcd85ed5c60567b94b0d01008a127bc3e3b68f1e56dade2f",
+          "target/quality/native-attention-writer/journal-clippy.log": "be33a4da72bceb7cca0e7f3541cbf7f1ff6c7481806f7186040de4c088800002",
+          "target/quality/native-attention-writer/fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "target/quality/native-attention-writer/initial-server-foreign-registry-fixture-failed.log": "a089f11356975d23bf356f7bbb97cc147d9c60f7eb908d99a7ab188e9f3c62e0",
+          "target/quality/native-attention-writer/initial-server-clippy-gate-shape-failed.log": "9a653b3ab596b6f450ff3e5b503254614ece3478a980686c1a105caa16d2cbb5"
+        },
+        "temporary_root_registration_and_coordination_patch_restored_before_commit": true,
+        "checks": [
+          {
+            "command": "rtk proxy env TMPDIR=/private/tmp/adm-native-4pbrtc1l CARGO_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target/native-attention-writer CARGO_BUILD_JOBS=1 cargo test -p admiralty-server --lib native_attention::tests -- --test-threads=1",
+            "exit_code": 0,
+            "passed": 7,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 74
+          },
+          {
+            "command": "rtk proxy env TMPDIR=/private/tmp/adm-native-4pbrtc1l CARGO_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target/native-attention-writer CARGO_BUILD_JOBS=1 cargo test -p admiralty-store --test attention_journal -- --test-threads=1",
+            "exit_code": 0,
+            "passed": 9,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 0
+          },
+          {
+            "command": "rtk proxy env TMPDIR=/private/tmp/adm-native-4pbrtc1l CARGO_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target/native-attention-writer CARGO_BUILD_JOBS=1 cargo clippy -p admiralty-server --lib --tests -- -D warnings",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk proxy env TMPDIR=/private/tmp/adm-native-4pbrtc1l CARGO_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target/native-attention-writer CARGO_BUILD_JOBS=1 cargo clippy -p admiralty-store --lib --test attention_journal -- -D warnings",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk proxy rustfmt --edition 2024 --check crates/admiralty-server/src/native_attention.rs crates/admiralty-store/tests/attention_journal.rs",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk git diff --check",
+            "exit_code": 0
+          }
+        ],
+        "independent_review": {
+          "reviewer": "audit_runtime",
+          "result": "clear",
+          "module_sha256": "d0e11189690fb86cade7fdcfe22ec99c9a07e2b130b04986dc5824a291e483aa",
+          "tests_sha256": "960567853e6c6cc416ec5b6b93d5f5e74cbb4222ae4b9b36ed7e08be78b43e9f",
+          "duplicate_suites": false
+        },
+        "evidence": [
+          "Actual AuthenticatedCoordinationActor downcast, current registry incarnation and credential ID checked before/after current explicit action policy; try_read contention/poisoning denies.",
+          "Actual shared credential revoked after enqueue inside writer callback test; no caller-held registry lock crosses callback or queue.",
+          "Explicit issuer required, missing Store attention authority denies registration, serialized labels and foreign registry actors deny.",
+          "Exact complete command, source, role/epoch/scope/context/policy/request digests bind current recording permission; Store validates actual retained capsule and task references.",
+          "Request context B and pending observed evidence A remain separately represented; no coverage claim.",
+          "Final writer action policy denial leaves no journal cursor/effect consumption; retry succeeds after explicit permission restored.",
+          "All nine prior real Store budget, CAS/source collision, first-wait/progress, reserve, unknown/completed outbox, lostreply/reopen/backup, fault and corruption cases retain their assertions under explicit test-only private issuer/proof and actual capsules."
+        ],
+        "limitations": [
+          "Root owns actual shared StoreAuthorities/internal queue and minimal credential_id/is_active_actor integration; excluded tested patch supplied.",
+          "No startup/router configuration or production issuer activation; explicit protected configured path only.",
+          "Current source/task membership remains independently installed action policy's responsibility; consistency hashes do not authenticate imported assertions.",
+          "No pending batch-to-capsule compiler coverage, provider send, delivery/application ACK, baseline advancement or execution qualification.",
+          "External policy/credential synchronization after a callback returns remains issuer responsibility; no atomic commit across an external policy database claimed.",
+          "Tests use private deterministic fixture credentials/proofs and capsules, not production provider qualification.",
+          "No full P05/P06 parent acceptance or hostedCI green claimed."
+        ],
+        "provider_turns": 0,
+        "parent_acceptance": false,
+        "provider_delivery_activated": false
+      }
+    },
+    {
+      "path": "/private/tmp/adm-resource-gate-diagnostics-proof-ikc1owqw/receipt.json",
+      "sha256": "cbcef77c214798e8711943093f702ba97ba0d7e9c8607a6933b876577439dd53",
+      "bytes": 6726,
+      "receipt": {
+        "packet": "Advisory resource diagnostics after one failed minimal-HOME Codex qualification",
+        "base_commit": "04d334650fda018ee7acc88980c5c3f143948a6d",
+        "candidate_commit": "18fdc4e2f028c2b83bf303c3b0bb5e48ce134b46",
+        "branch": "codex/resource-gate-advisory-diagnostics",
+        "worktree": "/private/tmp/admiralty-attention-journal-99f4e26",
+        "owned_files": {
+          "crates/admiralty-runtime/src/resource_gate.rs": "59b98d13fd5bb5faa658be71473f60241d9afb1e98d6c1dd1a7ac4bc1be5be8c",
+          "crates/admiralty-runtime/src/resource_gate_diagnostics_tests.rs": "c6e76528b60d69b8ddc501d947254c75d8f11af87575c3e8d111a11b10443e36"
+        },
+        "checks": [
+          {
+            "command": "rtk proxy env TMPDIR=/private/tmp/adm-native-4pbrtc1l CARGO_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target/wo2-intake CARGO_BUILD_JOBS=1 RUST_TEST_THREADS=1 cargo test -p admiralty-runtime resource_gate::diagnostics_tests --locked",
+            "log": "diagnostics-repaired-final.log",
+            "result": "PASS",
+            "actual_focused_tests_passed": 11,
+            "failed": 0,
+            "ignored": 0,
+            "other_library_tests_intentionally_filtered": 184,
+            "other_binary_example_zero_test_results": "not counted as proof"
+          },
+          {
+            "command": "rtk proxy env TMPDIR=/private/tmp/adm-native-4pbrtc1l CARGO_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target/wo2-intake CARGO_BUILD_JOBS=1 RUST_TEST_THREADS=1 cargo clippy -p admiralty-runtime --all-targets --locked -- -D warnings",
+            "log": "clippy-final.log",
+            "result": "PASS"
+          },
+          {
+            "command": "rtk proxy rustfmt --edition 2024 --check crates/admiralty-runtime/src/resource_gate.rs crates/admiralty-runtime/src/resource_gate_diagnostics_tests.rs",
+            "log": "format-final.log",
+            "result": "PASS"
+          },
+          {
+            "command": "rtk git diff --cached --check",
+            "result": "PASS"
+          }
+        ],
+        "preserved_failure": {
+          "log": "diagnostics-final.log",
+          "passed": 10,
+          "failed": 1,
+          "cause": "New test incorrectly searched entire advisory JSON for frozen and matched the legitimate cgroup.events.frozen flag; corrected to check only absent top-level internal fence. No production source changed for this test correction."
+        },
+        "authority_invariants": {
+          "source_regions": "authority-source-invariants.json",
+          "source_regions_byte_identical": 8,
+          "launch_environment_backend": "Actual fixture proves byte/digest identity before and after sampling; source validation, wrapper, permit/recovery and observation-shape regions exactly match base.",
+          "closure_digest": "Exact original closed-admission-v1 tuple of recovery, EnforcementObservation, exit code and success; advisory data excluded.",
+          "authoritative_binding": "Serialization view exactly preserves original five-field ClosedAdmission JSON, tested before/after diagnostic samples.",
+          "advisory_full_journal": "Full serialized ClosedAdmission now carries advisory bytes when present; this is intentionally different and must not silently replace old blanket authority hash material.",
+          "lost_ack": "Private serde-skipped freeze after first successfully minted ClosedAdmission prevents diagnostic mutation of immutable journal retries."
+        },
+        "api": [
+          "RunningAdmission::refresh_resource_diagnostics(&mut self) -> &ResourceUsageDiagnostics",
+          "RunningAdmission::observation_diagnostics().resource_usage",
+          "ClosedAdmission::resource_usage_diagnostics() -> &ResourceUsageDiagnostics",
+          "ClosedAdmission::authoritative_binding() -> impl Serialize"
+        ],
+        "bounds": {
+          "files_per_sample": 11,
+          "max_bytes_per_file": 4096,
+          "event_rows_per_file": 32,
+          "event_key_bytes": 64,
+          "fixed_retained_samples": "first plus latest observed plus final; failed later reads preserve latest",
+          "data": "canonical u64 metrics, optional known event keys, sanitized failure enum only",
+          "identity": "Original validated cgroup directory FD retained; owner digest binds observed host/run/unit/invocation/PID-start; device/inode checked before/after; no path reopening",
+          "no_new_reads": "No additional process/env/parent/service probes, no writes to cgroup controls or files, no recursive scans"
+        },
+        "retained_failure_diagnosis": {
+          "receipt": "/private/tmp/adm-resource-diagnostics-review-ojw6545y/retained-observation.json",
+          "sha256": "15dbc974ae5b0263fea955643e855ba11ea566371ffe3c5baaa48f6c3312f15d",
+          "finding": "Retained closed journal establishes controlled caps and actual provider exit0 but has no peak/event counters. All current owned cgroup metric files ENOENT and exact unit query failed. EAGAIN cause remains unknown.",
+          "proven_tasks_limit_hit": false,
+          "proven_oom": false
+        },
+        "required_root_integration": [
+          "Poll refresh_resource_diagnostics on the retained original RunningAdmission while live; root owns native_executor and probe integration.",
+          "Compute previous authority/evidence digest using authoritative_binding view, explicitly separate full advisory journal bytes/content hash. The existing NativeExecutor blanket ClosedEvidence hash otherwise changes when advisory fields are added.",
+          "Persist unknown/failure diagnostics as bounded private evidence; do not infer zero, limit cause, acceptance or model identity.",
+          "GC can precede final read even with FD retention; final Unknown is honest. No unit-retention/lifecycle redesign, reset, service or cap change was added."
+        ],
+        "limits": {
+          "local_fixture_tests_only": true,
+          "actual_linux_sampling_qualified": false,
+          "new_provider_or_cli_runs": 0,
+          "new_grants": 0,
+          "cap_changes": false,
+          "service_changes": false,
+          "credentials_or_environment_files_read": false,
+          "source_acceptance": false,
+          "native_execution_qualified": false,
+          "model_observed": "unknown",
+          "prior_grant": "consumed; no reuse"
+        },
+        "next_review": "Reserve read-only attention candidate295ba2e plus root adaptation after this handoff",
+        "proof_files": {
+          "authority-source-invariants.json": "67f1db20db550e905786d74293420d6f36916d6ff5121b9c2e0a9c031d1eb677",
+          "diagnostics-first.log": "b84dd3a347f4099438abfdb850e8a2c1a408971c2df1a71d4d1d025a4e805d7d",
+          "format.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "clippy-final.log": "59c0b18126c7bea99b50bdf3aeafa09d99db89fe56c1248ae26b1aba5af6bf47",
+          "format-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "diagnostics-repaired-final.log": "9d1e7910b45f5a43541e2b7a1d4741a7c1d85e8e3d3c6858ae404d472a290476",
+          "clippy-first.log": "52ac6016c8d28f1d3f82a5427f61e840b481a4794ef8211183b416fb32c374c5",
+          "diagnostics-final.log": "d77349a9be268c657bef12bfc7b70abeaa02487ba8f54d75ee8f278105340d9e"
+        }
+      }
+    },
+    {
+      "path": "/private/tmp/adm-resource-composition-review-e2f0ece-kbjr00tj/receipt.json",
+      "sha256": "f7861d45f6931c3753d52a8096f88e3031e925fa1f438a175390498207435757",
+      "bytes": 2521,
+      "receipt": {
+        "review": "read-only resource diagnostics executor/probe composition",
+        "source_base": "e2f0ece70b8363dbc2fc6f1f8642ff48d005155a",
+        "created_utc": "2026-10-19T04:18:49.684416+00:00",
+        "conclusion": "STATIC CLEAR exact source; no runtime/provider/platform qualification inferred",
+        "files": [
+          {
+            "path": "crates/admiralty-server/src/services/native_executor.rs",
+            "sha256": "5a4a40829a59a567f0e4faf690f7f86111528755ba3a7ab694030f339e652604"
+          },
+          {
+            "path": "crates/admiralty-server/examples/native_lifecycle_probe.rs",
+            "sha256": "012f621ae4dd1bbabb08e148b07403403d9712abc22eb6978922b0abe12bb435"
+          },
+          {
+            "path": "crates/admiralty-server/examples/native_task_loop_probe.rs",
+            "sha256": "34baab61e30d1f4a0123d482eee6089c1af5c2551bd2904fc686f75312bdcebe"
+          }
+        ],
+        "resource_gate_sha256": "59b98d13fd5bb5faa658be71473f60241d9afb1e98d6c1dd1a7ac4bc1be5be8c",
+        "diff_sha256": "903f81ce8095cb0cf3d9a5c591e16f6075a69985521211c437df838e3695b867",
+        "checks": [
+          "Compared all3 affected file diffs against e2f0ece.",
+          "Confirmed ClosedEvidence field order remains identical with closure.authoritative_binding in place of full closure serialization; resource counters enter only V2 advisory journal and new full-journal digest.",
+          "Checked fixed250ms monotonic gating and bounded cloned PendingDiagnostics, no authority/permit/start/capture/capacity path weakened.",
+          "Checked private-journal same-or-new retry/collision test uses actual journal writer and explicit inert authority fixture.",
+          "Searched crates/tests/scripts/docs/operators/packages for native-evidence prefix consumers: only current emitter found; controller receipt_ref accepts generic bounded identity.",
+          "Checked both probe custody issuance/comparison paths use the identical original closure authority bytes; original opaque closure remains owned by source candidate.",
+          "Checked private resource-observation write occurs after opaque completion and before child-success/source preflight; no raw environment or provider capture duplicated."
+        ],
+        "limits": [
+          "No source edits or tests/services/providers/grants repeated. Root qualification results remain separate.",
+          "New V2 closed journal intentionally differs from legacy full journal. Existing file with old content remains a collision, not an upgrade/reset/retry authorization.",
+          "Regular cgroup diagnostics are advisory, potentially non-atomic samples; counters do not diagnose cause or confer acceptance."
+        ]
+      }
+    }
+  ],
+  "independent_review": {
+    "attention": "audit_runtime CLEAR exact source Store2a8d/registration4350/credentials19b3/adapterd0e111/journal960567",
+    "resource": "audit_evidence CLEAR runtime59b98 + composition. Final executor67ac differs reviewed5a4 only split test expectation formatting, reconstructed and independently confirmed; probes012f/34ba unchanged"
+  },
+  "preserved_failures": [
+    {
+      "path": "target/quality/attention-bridge-integrated-final.log",
+      "sha256": "7919e9d29e0b288939a68ff90e88636234ad1198f68b692c55fa3c0904febafb",
+      "bytes": 2718,
+      "detail": "Initial server build resolved incompatible shared-target Store artifacts while root source contained new API and Store21 tests had passed. Fresh exclusive target rebuilt actual same source and all affected checks pass. No claim that changing compiler settings or guards fixed a source defect."
+    }
+  ],
+  "environment": {
+    "host": "actual macOS",
+    "target": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/writer-resource-final",
+    "build_jobs": 1,
+    "test_threads": 1,
+    "tmpdir": "/private/tmp/adm-native-4pbrtc1l"
+  },
+  "invariants": [
+    "Opaque private actor proof and current startup authority on sole writer, including exact historical retries and final commit check.",
+    "Actual retained capsule/task bindings and full command/policy/context digests; no JSON or read-token recording grant.",
+    "Original legacy attention history and receipt identity remain replayable; unbound real Store mutations deny.",
+    "Original resource permit/caps/argv/env/observed identity and opaque closure binding unchanged.",
+    "Fixed bounded original-cgroup FD sampling; unknown remains unknown. V2 journal full bytes have new native-evidence-v2 identity separate from legacy authority digest.",
+    "Both example authority issuance/comparison paths retain original closure bytes; task-loop resource observation retained before source preflight."
+  ],
+  "limits": [
+    "No startup/router or production issuer activation; actual pending batch-to-context compilation, provider transport/ACK/baseline remain separate.",
+    "External policy/registry synchronization after callback return remains issuer responsibility, not cross-database linearizability.",
+    "Local resource fixtures and example unit tests do not qualify Linux sampling, a coding provider, restart recovery, capacity or billing settlement.",
+    "No new provider turn, authorization, cap/slice change, service control or automatic retry; previous0349grant consumed. Prior EAGAIN cause remains unknown.",
+    "P00/P01 alone accepted2/32; no parent promotion or hostedCI green."
+  ],
+  "native_execution_qualified": false,
+  "parent_acceptance": false,
+  "new_provider_turns": 0,
+  "new_grants": 0
+}
