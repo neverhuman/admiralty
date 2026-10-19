@@ -8,6 +8,9 @@
 //! acknowledge delivery, advance baselines, or prove pending delivery.refs were
 //! compiled into the separately retained request_context. External policy changes
 //! after a callback returns remain the issuer's synchronization responsibility.
+use crate::native_attention_context::{
+    CompiledSafeTurnContext, SafeTurnContextError, SafeTurnExpectation, compile_safe_turn_context,
+};
 use crate::services::coordination::{
     AuthenticatedCoordinationActor, CoordinationCredentialAuthority,
 };
@@ -24,6 +27,7 @@ use admiralty_store::{
         AttentionRequestBinding, AttentionResult, AuthorizedAttentionCommand,
         authorized_request_digest,
     },
+    context_renders::StoredContextRender,
     outbox::OutboxIntent,
 };
 use serde::Serialize;
@@ -69,6 +73,32 @@ pub struct NativeAttentionBinding<'a> {
 }
 pub trait NativeAttentionPolicy: Send + Sync {
     fn authorize_current(&self, binding: &NativeAttentionBinding<'_>) -> bool;
+    /// Separate current read permission, denied unless explicitly implemented.
+    /// Check the entire actual namespace/content for EACH original source and
+    /// wake, not just its project label or historical recording credential.
+    /// This callback must be bounded and do no I/O, Store calls or lock-taking
+    /// side effects. Recording permission alone never supplies this permission.
+    fn authorize_context_read(&self, _binding: &NativeAttentionContextReadBinding<'_>) -> bool {
+        false
+    }
+}
+
+/// Current authenticated reader and independently configured policy are distinct
+/// from all historical labels in the original stored request. The full actual
+/// retained render/namespace and whole original request reach read policy; a
+/// historical source actor/credential need not equal today's reader.
+pub struct NativeAttentionContextReadBinding<'a> {
+    pub reader: &'a PrincipalId,
+    pub reader_credential_id: &'a str,
+    pub current_policy_digest: &'a str,
+    pub scope: &'a admiralty_store::attention::AttentionScope,
+    pub config_digest: &'a str,
+    pub original_request: &'a AuthorizedAttentionCommand,
+    pub stored_context: &'a StoredContextRender,
+    pub request_digest: &'a str,
+    /// Some for the exact original Wake, None for each original Observe source.
+    /// This is not a delivery/ACK or a current recording grant.
+    pub outcome: Option<&'a AttentionOutcome>,
 }
 #[derive(Debug)]
 pub enum NativeAttentionError {
@@ -203,6 +233,62 @@ impl AttentionAuthority for NativeAttentionWriterAuthority {
                 .is_ok_and(|digest| digest == b.request.binding.context.render.record_digest)
             && self.permits(actor, b.request, b.request_digest, b.outcome)
     }
+    fn authorize_delivery_context(
+        &self,
+        b: &AttentionCommandBinding<'_>,
+        proof: &(dyn Any + Send + Sync),
+    ) -> bool {
+        let Some(reader) = proof.downcast_ref::<AuthenticatedCoordinationActor>() else {
+            return false;
+        };
+        if !self.active(reader)
+            || !self.authorize_definition(&AttentionDefinitionBinding {
+                definition: b.definition,
+                definition_digest: b.definition_digest,
+                config_digest: &b.request.command.config_digest,
+            })
+            || b.request.command.scope != self.definition.scope
+            || !authorized_request_digest(&self.definition_digest, b.request)
+                .is_ok_and(|digest| digest == b.request_digest)
+            || admiralty_core::limits::bounded_json_size(
+                b.stored_context,
+                admiralty_store::context_renders::MAX_RECORD_BYTES,
+            )
+            .is_err()
+            || b.stored_context.scope != b.request.binding.context.scope
+            || b.stored_context.capsule.context_epoch != b.request.command.scope.epoch
+            || b.stored_context.capsule.facts_digest != b.request.binding.context.facts_digest
+            || !content_digest(b.stored_context)
+                .is_ok_and(|digest| digest == b.request.binding.context.render.record_digest)
+        {
+            return false;
+        }
+        match (&b.request.command.operation, b.outcome) {
+            (AttentionOperation::Observe { .. }, None)
+            | (
+                AttentionOperation::TakeDelivery { .. },
+                Some(AttentionOutcome::Delivery {
+                    decision: admiralty_core::governor::DeliveryDecision::Wake { .. },
+                }),
+            ) => {}
+            _ => return false,
+        }
+        let binding = NativeAttentionContextReadBinding {
+            reader: reader.principal(),
+            reader_credential_id: reader.credential_id(),
+            current_policy_digest: &self.policy_digest,
+            scope: &b.request.command.scope,
+            config_digest: &self.config_digest,
+            original_request: b.request,
+            stored_context: b.stored_context,
+            request_digest: b.request_digest,
+            outcome: b.outcome,
+        };
+        // Both temporary registry guards are dropped before returning. No guard
+        // spans the policy callback or a later Store queue operation. Historical
+        // source recording claims are deliberately not current read grants.
+        self.policy.authorize_context_read(&binding) && self.active(reader)
+    }
 }
 
 pub struct NativeAttentionService {
@@ -259,6 +345,27 @@ impl NativeAttentionService {
     ) -> Result<AttentionResult, NativeAttentionError> {
         let bound = self.bind_take(actor, request, recipient, idempotency_key, not_before)?;
         self.record(actor, bound)
+    }
+    /// Compile complete retained source context only. Existing Wake recording
+    /// policy remains a separate required Store check, so changed recording
+    /// policy can deny historical reads; never mint another wake/reset a budget
+    /// to work around that denial. No provider send, ACK, baseline change or
+    /// execution grant occurs here, and no router/startup issuer is installed.
+    pub fn compile_at_safe_turn(
+        &self,
+        actor: &AuthenticatedCoordinationActor,
+        expected: &SafeTurnExpectation,
+        max_bytes: usize,
+    ) -> Result<CompiledSafeTurnContext, SafeTurnContextError> {
+        if !self.issuer.active(actor) {
+            return Err(SafeTurnContextError::Store(StoreError::Attention(
+                admiralty_store::attention::AttentionError::AccessDenied,
+            )));
+        }
+        if expected.scope != self.issuer.definition.scope {
+            return Err(SafeTurnContextError::BindingMismatch);
+        }
+        compile_safe_turn_context(&self.store, expected, Arc::new(actor.clone()), max_bytes)
     }
     fn bind(
         &self,
@@ -378,6 +485,10 @@ mod tests {
         deny_final: AtomicBool,
         calls: AtomicUsize,
         gate: Mutex<Option<Gate>>,
+        read_allowed: Mutex<BTreeSet<String>>,
+        read_calls: AtomicUsize,
+        read_gate: Mutex<Option<Gate>>,
+        deny_final_read: AtomicBool,
     }
     impl ExactPolicy {
         fn admit(&self, request: &AuthorizedAttentionCommand) {
@@ -385,6 +496,15 @@ mod tests {
                 authorized_request_digest(&self.definition_digest, request)
                     .expect("bounded exact request"),
             );
+        }
+        fn admit_read(&self, request: &AuthorizedAttentionCommand) {
+            self.read_allowed
+                .lock()
+                .expect("independent read grants")
+                .insert(
+                    authorized_request_digest(&self.definition_digest, request)
+                        .expect("bounded exact read request"),
+                );
         }
     }
     impl NativeAttentionPolicy for ExactPolicy {
@@ -425,6 +545,40 @@ mod tests {
                     .expect("exact requests")
                     .contains(b.request_digest)
         }
+        fn authorize_context_read(&self, b: &NativeAttentionContextReadBinding<'_>) -> bool {
+            let call = self.read_calls.fetch_add(1, Ordering::SeqCst);
+            if let Some(gate) = self.read_gate.lock().expect("read gate").take()
+                && (gate.entered.send(()).is_err()
+                    || gate.resume.recv_timeout(Duration::from_secs(5)).is_err())
+            {
+                return false;
+            }
+            !(self.revoked.load(Ordering::SeqCst)
+                || self.deny_final_read.load(Ordering::SeqCst) && call == 3)
+                && b.scope == &self.scope
+                && b.config_digest == self.config_digest
+                && b.current_policy_digest == self.policy_digest
+                && b.reader == &self.scope.recipients[0].principal_id
+                && matches!(b.reader_credential_id, "credential" | "current-reader")
+                && self
+                    .contexts
+                    .lock()
+                    .expect("independent source pins")
+                    .get(&b.original_request.binding.context.render.record_digest)
+                    == Some(&b.original_request.binding.context)
+                && b.stored_context.scope == b.original_request.binding.context.scope
+                && self
+                    .read_allowed
+                    .lock()
+                    .expect("independent full read grants")
+                    .contains(b.request_digest)
+        }
+    }
+    struct RecordingOnly(Arc<ExactPolicy>);
+    impl NativeAttentionPolicy for RecordingOnly {
+        fn authorize_current(&self, b: &NativeAttentionBinding<'_>) -> bool {
+            self.0.authorize_current(b)
+        }
     }
     struct Fixture {
         store: Store,
@@ -439,6 +593,9 @@ mod tests {
         _dir: tempfile::TempDir,
     }
     fn fixture() -> Fixture {
+        fixture_config(false, false)
+    }
+    fn fixture_config(recording_only: bool, two_credentials: bool) -> Fixture {
         use std::os::unix::fs::PermissionsExt;
         let dir = tempfile::Builder::new()
             .permissions(std::fs::Permissions::from_mode(0o700))
@@ -563,24 +720,46 @@ mod tests {
             deny_final: AtomicBool::new(false),
             calls: AtomicUsize::new(0),
             gate: Mutex::new(None),
+            read_allowed: Mutex::new(BTreeSet::new()),
+            read_calls: AtomicUsize::new(0),
+            read_gate: Mutex::new(None),
+            deny_final_read: AtomicBool::new(false),
         });
-        let credentials = Arc::new(RwLock::new(
-            CoordinationCredentialAuthority::new(vec![CoordinationCredential::configured(
-                "credential".into(),
-                "attention-fixture-token-01234567890123456789".into(),
-                principal.clone(),
+        let mut configured_credentials = vec![CoordinationCredential::configured(
+            "credential".into(),
+            "attention-fixture-token-01234567890123456789".into(),
+            principal.clone(),
+            vec![CoordinationCredentialGrant {
+                scope: InboxScope {
+                    project_id: project.clone(),
+                    recipient: principal,
+                    context_epoch: "epoch".into(),
+                },
+                action: CoordinationAction::ReadPending,
+                message_id: None,
+                source: None,
+            }],
+        )];
+        if two_credentials {
+            configured_credentials.push(CoordinationCredential::configured(
+                "current-reader".into(),
+                "current-reader-token-01234567890123456789".into(),
+                definition.scope.recipients[0].principal_id.clone(),
                 vec![CoordinationCredentialGrant {
                     scope: InboxScope {
-                        project_id: project.clone(),
-                        recipient: principal,
-                        context_epoch: "epoch".into(),
+                        project_id: definition.scope.project_id.clone(),
+                        recipient: definition.scope.recipients[0].principal_id.clone(),
+                        context_epoch: definition.scope.epoch.clone(),
                     },
                     action: CoordinationAction::ReadPending,
                     message_id: None,
                     source: None,
                 }],
-            )])
-            .expect("configured real credential registry"),
+            ));
+        }
+        let credentials = Arc::new(RwLock::new(
+            CoordinationCredentialAuthority::new(configured_credentials)
+                .expect("configured real credential registry"),
         ));
         let actor = credentials
             .read()
@@ -591,7 +770,11 @@ mod tests {
             NativeAttentionWriterAuthority::configured(
                 definition.clone(),
                 policy_digest,
-                policy.clone(),
+                if recording_only {
+                    Arc::new(RecordingOnly(policy.clone()))
+                } else {
+                    policy.clone()
+                },
                 credentials.clone(),
             )
             .expect("explicit reviewed writer issuer"),
@@ -680,6 +863,354 @@ mod tests {
             .expect("bounded take");
         f.policy.admit(&bound);
         request
+    }
+
+    fn compile_request(
+        f: &Fixture,
+        reader: &AuthenticatedCoordinationActor,
+    ) -> (
+        SafeTurnExpectation,
+        AuthorizedAttentionCommand,
+        AuthorizedAttentionCommand,
+    ) {
+        use crate::native_attention_context::{ExpectedBaseline, SafeTurnSourcePin};
+        use admiralty_core::{DomainEvent, coordination::context::RoleFacts};
+        let stored = f
+            .store
+            .context_render(
+                f.request.context.scope.clone(),
+                f.request.context.render.key.clone(),
+            )
+            .expect("actual original render")
+            .expect("source render exists");
+        let RoleFacts::ProjectExceptions(facts) =
+            admiralty_core::coordination::context::decode_role_capsule(
+                &stored.capsule.text,
+                RecipientRole::Commodore,
+                "epoch",
+                &stored.capsule.facts_digest,
+            )
+            .expect("actual protected role facts")
+        else {
+            panic!("project facts");
+        };
+        let contract = facts.exceptions[0].contract.clone();
+        f.store
+            .append(
+                SourceIdentity {
+                    producer_id: "compile-fixture".into(),
+                    incarnation: "boot".into(),
+                    sequence: "1".into(),
+                },
+                DomainEvent::TaskSubmitted {
+                    contract: contract.clone(),
+                },
+                "2026-10-19T05:00:00Z".into(),
+            )
+            .expect("actual task registration only for compile fixture");
+        let original = f.service.bind(
+            &f.actor,
+            f.request.clone(),
+            AttentionOperation::Observe {
+                update: Box::new(f.update.clone()),
+            },
+        );
+        let observed = f
+            .service
+            .observe_authenticated(&f.actor, f.request.clone(), f.update.clone())
+            .expect("actual original source observation");
+        let recorded = f
+            .store
+            .record_context_render(RecordContextRender {
+                scope: stored.scope,
+                key: RenderKey {
+                    render_id: "compile-request-b".into(),
+                    version: 1,
+                },
+                expected_epoch: stored.capsule.context_epoch.clone(),
+                expected_facts_digest: stored.capsule.facts_digest.clone(),
+                capsule: stored.capsule,
+            })
+            .expect("actual separate request context B");
+        let mut pin = f.request.context.clone();
+        pin.render = recorded.render;
+        f.policy
+            .contexts
+            .lock()
+            .expect("independent request pin")
+            .insert(pin.render.record_digest.clone(), pin.clone());
+        let request = AttentionRequest {
+            command_id: "compile-take".into(),
+            expected_prior: Some(observed.receipt.cursor),
+            logical_tick: Some(2),
+            context: pin.clone(),
+        };
+        let wake = f
+            .service
+            .bind_take(
+                reader,
+                request.clone(),
+                f.update.recipient.clone(),
+                "compile-wake".into(),
+                0,
+            )
+            .expect("bounded actual wake");
+        f.policy.admit(&wake);
+        let result = f
+            .service
+            .take_at_safe_turn(
+                reader,
+                request,
+                f.update.recipient.clone(),
+                "compile-wake".into(),
+                0,
+            )
+            .expect("actual independent wake recording");
+        let AttentionOutcome::Delivery {
+            decision: admiralty_core::governor::DeliveryDecision::Wake { delivery },
+        } = &result.receipt.outcome
+        else {
+            panic!("recorded wake");
+        };
+        let expected = SafeTurnExpectation {
+            scope: f.definition.scope.clone(),
+            command_id: "compile-take".into(),
+            receipt_digest: result.receipt_digest,
+            batch_digest: content_digest(delivery).expect("actual batch identity"),
+            request_context: pin,
+            baseline: ExpectedBaseline::Absent,
+            sources: vec![SafeTurnSourcePin {
+                order: delivery.refs[0].order.clone(),
+                update_digest: content_digest(&f.update).expect("original update identity"),
+                context: f.request.context.clone(),
+                contract_digest: content_digest(&contract).expect("original task identity"),
+            }],
+        };
+        (expected, original, wake)
+    }
+
+    #[test]
+    fn compile_read_policy_defaults_deny_even_when_all_recording_requests_are_allowed() {
+        let f = fixture_config(true, false);
+        let (expected, source, wake) = compile_request(&f, &f.actor);
+        f.policy.admit_read(&source);
+        f.policy.admit_read(&wake);
+        assert!(matches!(
+            f.service.compile_at_safe_turn(&f.actor, &expected, 65536),
+            Err(SafeTurnContextError::Store(StoreError::Attention(
+                AttentionError::AccessDenied
+            )))
+        ));
+        assert_eq!(f.policy.read_calls.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn compile_requires_explicit_wake_and_each_source_read_grant_and_preserves_full_context() {
+        let f = fixture();
+        let (expected, source, wake) = compile_request(&f, &f.actor);
+        f.policy.admit_read(&wake);
+        assert!(matches!(
+            f.service.compile_at_safe_turn(&f.actor, &expected, 65536),
+            Err(SafeTurnContextError::Store(StoreError::Attention(
+                AttentionError::AccessDenied
+            )))
+        ));
+        f.policy.admit_read(&source);
+        let before = f.store.snapshot().expect("actual cursor").cursor;
+        let output = f
+            .service
+            .compile_at_safe_turn(&f.actor, &expected, 65536)
+            .expect("independently authorized complete context");
+        let document: serde_json::Value =
+            serde_json::from_str(output.text()).expect("compiled context");
+        assert_eq!(
+            document["evidence"]["sources"][0]["render"]["key"]["render_id"],
+            "render"
+        );
+        assert_eq!(
+            document["evidence"]["request_render"]["key"]["render_id"],
+            "compile-request-b"
+        );
+        assert!(output.text().contains("Do NOT publish"));
+        for flag in ["delivered", "application_acknowledged", "authority_granted"] {
+            assert_eq!(document[flag], false);
+        }
+        assert_eq!(f.store.snapshot().expect("unchanged cursor").cursor, before);
+        assert!(
+            f.store
+                .context_baseline(expected.request_context.scope.clone())
+                .expect("baseline read")
+                .is_none()
+        );
+        assert_eq!(
+            output.text(),
+            f.service
+                .compile_at_safe_turn(&f.actor, &expected, 65536)
+                .expect("exact read retry")
+                .text()
+        );
+    }
+
+    #[test]
+    fn compile_source_historical_credential_is_not_the_current_authenticated_reader() {
+        let f = fixture_config(false, true);
+        let reader = f
+            .credentials
+            .read()
+            .expect("registry")
+            .authenticate("current-reader-token-01234567890123456789")
+            .expect("new real reader");
+        let (expected, source, wake) = compile_request(&f, &reader);
+        assert_ne!(source.binding.credential_ref, reader.credential_id());
+        f.policy.admit_read(&source);
+        f.policy.admit_read(&wake);
+        f.credentials
+            .write()
+            .expect("current registry")
+            .revoke("credential")
+            .expect("revoke original source credential");
+        let output = f
+            .service
+            .compile_at_safe_turn(&reader, &expected, 65536)
+            .expect("separate current read grant still checks actual new reader");
+        let document: serde_json::Value =
+            serde_json::from_str(output.text()).expect("exact compiled context");
+        assert_eq!(
+            document["evidence"]["sources"][0]["observe_request"]["binding"]["credential_ref"],
+            "credential"
+        );
+        assert_eq!(
+            document["evidence"]["wake_request"]["binding"]["credential_ref"],
+            "current-reader"
+        );
+        assert!(matches!(
+            f.service.compile_at_safe_turn(&f.actor, &expected, 65536),
+            Err(SafeTurnContextError::Store(StoreError::Attention(
+                AttentionError::AccessDenied
+            )))
+        ));
+    }
+
+    #[test]
+    fn compile_current_credential_revocation_after_enqueue_has_no_registry_lock_or_output() {
+        let f = fixture();
+        let (expected, source, wake) = compile_request(&f, &f.actor);
+        f.policy.admit_read(&source);
+        f.policy.admit_read(&wake);
+        let (entered, receive) = mpsc::sync_channel(1);
+        let (resume, wait) = mpsc::sync_channel(1);
+        *f.policy
+            .read_gate
+            .lock()
+            .expect("bounded read test barrier") = Some(Gate {
+            entered,
+            resume: wait,
+        });
+        std::thread::scope(|scope| {
+            let worker = scope.spawn(|| f.service.compile_at_safe_turn(&f.actor, &expected, 65536));
+            receive
+                .recv_timeout(Duration::from_secs(5))
+                .expect("actual sole writer read callback");
+            f.credentials
+                .write()
+                .expect("no held registry read guard")
+                .revoke("credential")
+                .expect("actual current revocation");
+            resume.send(()).expect("resume writer");
+            assert!(matches!(
+                worker.join().expect("read thread"),
+                Err(SafeTurnContextError::Store(StoreError::Attention(
+                    AttentionError::AccessDenied
+                )))
+            ));
+        });
+        assert!(
+            f.store
+                .context_baseline(expected.request_context.scope.clone())
+                .expect("baseline")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn compile_final_read_policy_denial_preserves_original_wake_for_exact_retry() {
+        let f = fixture();
+        let (expected, source, wake) = compile_request(&f, &f.actor);
+        f.policy.admit_read(&source);
+        f.policy.admit_read(&wake);
+        f.policy.deny_final_read.store(true, Ordering::SeqCst);
+        assert!(matches!(
+            f.service.compile_at_safe_turn(&f.actor, &expected, 65536),
+            Err(SafeTurnContextError::Store(StoreError::Attention(
+                AttentionError::AccessDenied
+            )))
+        ));
+        assert_eq!(f.policy.read_calls.load(Ordering::SeqCst), 4);
+        f.policy.deny_final_read.store(false, Ordering::SeqCst);
+        let result = f
+            .service
+            .compile_at_safe_turn(&f.actor, &expected, 65536)
+            .expect("original exact wake remains readable");
+        assert_eq!(result.receipt_digest(), expected.receipt_digest);
+    }
+
+    #[test]
+    fn compile_foreign_identity_serialized_labels_namespace_and_facts_fail_closed() {
+        let f = fixture();
+        let (mut expected, source, wake) = compile_request(&f, &f.actor);
+        f.policy.admit_read(&source);
+        f.policy.admit_read(&wake);
+        let foreign =
+            CoordinationCredentialAuthority::new(vec![CoordinationCredential::configured(
+                "credential".into(),
+                "other-token-01234567890123456789".into(),
+                f.actor.principal().clone(),
+                vec![CoordinationCredentialGrant {
+                    scope: InboxScope {
+                        project_id: f.definition.scope.project_id.clone(),
+                        recipient: f.actor.principal().clone(),
+                        context_epoch: "epoch".into(),
+                    },
+                    action: CoordinationAction::ReadPending,
+                    message_id: None,
+                    source: None,
+                }],
+            )])
+            .expect("foreign registry");
+        let actor = foreign
+            .authenticate("other-token-01234567890123456789")
+            .expect("foreign real actor");
+        assert!(
+            f.service
+                .compile_at_safe_turn(&actor, &expected, 65536)
+                .is_err()
+        );
+        assert!(matches!(
+            f.store.attention_delivery_context(
+                admiralty_store::attention::LoadDeliveryContext {
+                    scope: expected.scope.clone(),
+                    command_id: expected.command_id.clone(),
+                    receipt_digest: expected.receipt_digest.clone()
+                },
+                Arc::new("credential")
+            ),
+            Err(StoreError::Attention(AttentionError::AccessDenied))
+        ));
+        expected.sources[0].context.scope.namespace = ContextNamespace::Project {
+            project_id: ProjectId::new("foreign").expect("project"),
+            root_id: RootId::new("foreign").expect("root"),
+        };
+        assert!(matches!(
+            f.service.compile_at_safe_turn(&f.actor, &expected, 65536),
+            Err(SafeTurnContextError::BindingMismatch)
+        ));
+        expected.sources[0].context = source.binding.context.clone();
+        expected.sources[0].context.facts_digest =
+            content_digest(&"changed facts").expect("digest");
+        assert!(matches!(
+            f.service.compile_at_safe_turn(&f.actor, &expected, 65536),
+            Err(SafeTurnContextError::BindingMismatch)
+        ));
     }
     #[test]
     fn authenticated_safe_turn_records_exact_outbox_once_without_delivery() {
