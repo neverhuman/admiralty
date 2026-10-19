@@ -1,4 +1,5 @@
-//! Offline domain operations and an isolated, read-only demo. No provider execution.
+//! Operator operations, bounded authenticated agent tools and an isolated demo.
+mod agent_tools;
 mod diagnostics;
 pub mod native_archive;
 pub mod native_install;
@@ -77,6 +78,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Narrow authenticated agent tools, CLI JSON fallback and MCP stdio.
+    AgentTools(agent_tools::AgentToolsArgs),
     /// Run an isolated fake fleet. No accounts, real providers or live projects.
     Demo {
         #[arg(long, default_value = "127.0.0.1:18892")]
@@ -768,6 +771,7 @@ async fn run(cli: Cli) -> CliResult<()> {
             }
             // Store ownership drains before the enclosing temporary directory.
         }
+        Command::AgentTools(args) => args.run()?,
         Command::Doctor => {
             print_json(json!({
                 "version": env!("CARGO_PKG_VERSION"), "platform": std::env::consts::OS,
