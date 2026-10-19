@@ -14,9 +14,12 @@ jobs:
       group: neverhuman-lan
       labels: [self-hosted, Linux, X64, lan-ci]
     timeout-minutes: 15
+    env:
+      # Bound compiler/linker memory and I/O independently of test execution.
+      CARGO_BUILD_JOBS: '2'
     steps:
       - name: Record selected runner
-        run: printf 'runner=%s os=%s arch=%s\n' "$RUNNER_NAME" "$RUNNER_OS" "$RUNNER_ARCH"
+        run: printf 'runner=%s os=%s arch=%s cargo_build_jobs=%s\n' "$RUNNER_NAME" "$RUNNER_OS" "$RUNNER_ARCH" "$CARGO_BUILD_JOBS"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
