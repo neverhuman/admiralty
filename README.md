@@ -122,6 +122,12 @@ text, then reads its exact recorded revision. Lost-reply retries reuse the same
 command and body; credentials and pending drafts stay in page memory. Enrichment
 and delivery views remain separate work.
 
+The native `admiralty intake` CLI provides the same scoped preview, capture,
+explicit enriched recording, exact revision reads and duplicate query operations
+against an exclusively owned **offline** database. Use protected request files,
+`--intake-config` and `--token-file`; never pass a credential as a command value.
+See [the offline intake commands](docs/operators/work-order-intake.md#offline-intake-cli).
+
 ## Configure models and project work
 
 Create your model policy from [the example registry](configs/examples/models.json), then follow [model setup](docs/operators/models.md). The example names and endpoints are examples, not fleet constants. `--models-file /absolute/private/models.json` enables authenticated model settings on `admiraltyd`; the live launcher accepts `--models` for the same purpose.

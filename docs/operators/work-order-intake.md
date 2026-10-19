@@ -179,3 +179,45 @@ duplicate search and delivery views remain separate work.
 Moving between dashboard tabs retains the form and pending retry in page memory.
 Reloading or closing the page loses that local envelope and credentials; keep the
 page open while a capture outcome is unresolved. Recorded server captures remain.
+
+## Offline intake CLI
+
+`admiralty intake --help` lists `preview`, `capture`, `record`, `show-capture`,
+`show` and `duplicates`. Stateful commands acquire exclusive Store ownership;
+they cannot operate on a database currently owned by `admiraltyd`. They start no
+HTTP server or provider and do not dispatch tasks. Each invocation loads the
+explicit private configuration and authenticates its separate intake token.
+Owner/inbox access alone does not grant intake authority. File changes affect
+the next CLI invocation; they do not revoke a running server's static grants.
+
+All paths are absolute. Request, configuration and token files must satisfy the
+existing owned-file and ancestor protection rules; requests are capped at1MiB.
+Keep credentials out of request JSON, command arguments and Git. Preview uses
+an isolated temporary Store rather than a live database.
+
+```sh
+admiralty intake preview --request /absolute/private/preview.json \
+  --intake-config /absolute/private/intake.json --token-file /absolute/private/intake.token
+admiralty intake capture --database /absolute/private/offline.sqlite \
+  --request /absolute/private/capture.json \
+  --intake-config /absolute/private/intake.json --token-file /absolute/private/intake.token
+admiralty intake show-capture --database /absolute/private/offline.sqlite \
+  --request /absolute/private/read.json \
+  --intake-config /absolute/private/intake.json --token-file /absolute/private/intake.token
+```
+
+Preview JSON contains `project_id`, `root_id`, `format`, `provenance` and the
+original `source_payload`, matching the HTTP preview contract. Capture and record
+take the full existing `CaptureIntakeRequest` and `RecordIntakeRequest` contracts,
+including their command/source identities and exact scope/policy/CAS bindings.
+They do not automatically enrich prose. Retry the identical request file after
+an uncertain reply; changing its immutable identity/content is rejected.
+
+`show-capture` takes `{scope,capture_id,revision}`; `show` takes
+`{scope,work_order_id,revision}`. A null revision requests the current recorded
+revision; a number requests that exact revision. The returned recorded scope
+must equal the supplied scope. `duplicates` takes `{project_id,root_id,query}`,
+where `query` is the bounded `DuplicateQuery` contract; the service resolves
+current authorization and queries all supported states. Successful stdout is
+the typed JSON result, without credentials. Reads intentionally return original
+source text, so protect redirected output as private data.
