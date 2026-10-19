@@ -28,8 +28,8 @@ mod probe {
         reservations::{AccountId, CurrencyUnit, MinorUnits, Reservation, ReservationScope},
         resource_gate::{
             AdmissionIdentity, ClosedAdmission, QualifiedEnvironment, ResourceGate,
-            ResourcePermitAuthority, ResourcePermitClaims, SystemdBackendConfig,
-            VerifiedResourcePermit,
+            ResourcePermitAuthority, ResourcePermitClaims, ResourceUsageDiagnostics,
+            ResourceUsageSample, SystemdBackendConfig, VerifiedResourcePermit,
         },
         session::{CaptureState, LaunchSpec, OutputStream, SessionError, SessionHost},
         trusted_checks::{ExecutedChecks, execute_checks},
@@ -47,15 +47,18 @@ mod probe {
             CodexBindingFailure, CodexPlanInput, CodexPreparationFailure, CodexResourceBinding,
             PreparedNativeCodexPlan, prepare_codex_plan,
         },
-        native_executor::{CompletedCapture, NativeExecutionPlan, native_resource_claims_digest},
+        native_executor::{
+            CompletedCapture, NativeExecutionPlan, PendingDiagnostics,
+            native_resource_claims_digest,
+        },
         native_lifecycle::{
             NativeDecisionBinding, NativeEvidenceAuthority, NativeLifecycleAuthority,
             NativeLifecyclePolicy,
         },
         native_loop::StartedScope,
         native_task_loop::{
-            AdmissionStatus, CompletionStatus, EffectAckState, NativeTaskLoop,
-            NativeTaskLoopConfig, NativeTaskRuntimeConfig, TaskDispatchStatus,
+            AdmissionStatus, CompletionStatus, EffectAckState, HoldReason, LoopError,
+            NativeTaskLoop, NativeTaskLoopConfig, NativeTaskRuntimeConfig, TaskDispatchStatus,
         },
     };
     use admiralty_store::{
@@ -63,6 +66,7 @@ mod probe {
         artifacts::{ArtifactRef, ArtifactStore},
     };
     use clap::{Args, Parser, Subcommand};
+    use serde::Serialize;
     use serde_json::{Value, json};
     use sha2::{Digest, Sha256};
     use std::{
@@ -83,6 +87,7 @@ mod probe {
     type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
     const MAX_BYTES: usize = 1024 * 1024;
     const AUTH_BYTES: usize = 64 * 1024;
+    const HELD_DIAGNOSTIC_BYTES: usize = 32 * 1024;
     // Metadata qualification is distinct from the128MiB artifact/read cap.
     // The supported installed CLI is ~283MiB; never load/copy it into artifacts.
     const MAX_CODEX_BINARY_BYTES: u64 = 384 * 1024 * 1024;
@@ -115,6 +120,180 @@ mod probe {
             return Err(OracleMismatch.into());
         }
         Ok(())
+    }
+
+    /// Diagnostic observations only. No Debug strings, argv, environment,
+    /// output, policy/configuration documents or claimed provider identity enter
+    /// this closed serializer. The receipt never reconstructs runtime custody.
+    #[derive(Serialize)]
+    #[serde(tag = "kind", rename_all = "snake_case")]
+    enum UncertainDispatch {
+        Idle,
+        Held {
+            reason: &'static str,
+            runtime_attempted: bool,
+        },
+        Error {
+            reason: &'static str,
+        },
+    }
+    fn uncertain_dispatch(
+        status: std::result::Result<&TaskDispatchStatus, &LoopError>,
+    ) -> Result<UncertainDispatch> {
+        Ok(match status {
+            Ok(TaskDispatchStatus::Idle) => UncertainDispatch::Idle,
+            Ok(TaskDispatchStatus::Held {
+                reason,
+                runtime_attempted,
+            }) => UncertainDispatch::Held {
+                reason: match reason {
+                    HoldReason::AdmissionUncertain => "admission_uncertain",
+                    HoldReason::DispatchUncertain => "dispatch_uncertain",
+                    HoldReason::RuntimeUncertain => "runtime_uncertain",
+                    HoldReason::CompletionUnavailable => "completion_unavailable",
+                },
+                runtime_attempted: *runtime_attempted,
+            },
+            Err(error) => UncertainDispatch::Error {
+                reason: match error {
+                    LoopError::InvalidConfiguration => "invalid_configuration",
+                    LoopError::InvalidBinding => "invalid_binding",
+                    LoopError::Capacity => "capacity",
+                    LoopError::UnknownRun => "unknown_run",
+                    LoopError::StoreUnavailable => "store_unavailable",
+                    LoopError::RegistrationRejected => "registration_rejected",
+                },
+            },
+            Ok(TaskDispatchStatus::EffectRecorded(_)) => {
+                return Err("recorded dispatch is not an uncertain dispatch diagnostic".into());
+            }
+        })
+    }
+    #[derive(Serialize)]
+    struct RetainedJournalRef {
+        kind: &'static str,
+        relative_path: String,
+        state: &'static str,
+        bytes: Option<u64>,
+        raw_sha256: Option<String>,
+    }
+    fn retained_journal_refs(root: &Path, run_digest: &str) -> Vec<RetainedJournalRef> {
+        ["prepared", "observed", "closed"]
+            .into_iter()
+            .map(|kind| {
+                let relative_path = format!("journal/{run_digest}.{kind}.json");
+                // Read only the exact generated journal names, never directory
+                // contents or a serialized recovery path. Refusal remains unknown.
+                match read_owned_file(&root.join(&relative_path), AUTH_BYTES) {
+                    Ok(bytes) => RetainedJournalRef {
+                        kind,
+                        relative_path,
+                        state: "observed",
+                        bytes: Some(bytes.len() as u64),
+                        raw_sha256: Some(format!("sha256:{:x}", Sha256::digest(&bytes))),
+                    },
+                    Err(_) => RetainedJournalRef {
+                        kind,
+                        relative_path,
+                        state: "unavailable",
+                        bytes: None,
+                        raw_sha256: None,
+                    },
+                }
+            })
+            .collect()
+    }
+    #[derive(Serialize)]
+    struct PendingAdvisory<'a> {
+        refresh_attempts: u32,
+        refresh_failed: bool,
+        observed_identity_persisted: bool,
+        started_persisted: bool,
+        resource_usage: &'a ResourceUsageDiagnostics,
+    }
+    fn pending_advisory(pending: &PendingDiagnostics) -> Result<PendingAdvisory<'_>> {
+        let usage = &pending.resource_usage;
+        let mut snapshots = usage
+            .before
+            .iter()
+            .chain(usage.final_sample.iter())
+            .filter_map(|sample| match sample {
+                ResourceUsageSample::Observed { snapshot } => Some(snapshot.as_ref()),
+                _ => None,
+            })
+            .chain(usage.latest.iter().map(Box::as_ref));
+        // The only variable-length resource field is a canonical digest. Fail
+        // closed rather than serialize a malformed/sensitive string as one.
+        if snapshots.any(|snapshot| !sha256(&snapshot.identity.owner_digest)) {
+            return Err("pending resource identity digest is invalid".into());
+        }
+        Ok(PendingAdvisory {
+            refresh_attempts: pending.refresh_attempts,
+            refresh_failed: pending.refresh_failed,
+            observed_identity_persisted: pending.observed_identity_persisted,
+            started_persisted: pending.started_persisted,
+            resource_usage: usage,
+        })
+    }
+    #[derive(Serialize)]
+    struct HeldDispatchDiagnostic<'a> {
+        schema_version: u32,
+        recorded_at_unix_ms: u64,
+        admiralty_build_source_sha: Option<&'static str>,
+        advisory_only: bool,
+        run_id_digest: String,
+        dispatch: UncertainDispatch,
+        pending: Option<PendingAdvisory<'a>>,
+        pending_unavailable_reason: Option<&'static str>,
+        retained_journals: Vec<RetainedJournalRef>,
+        completion_state: &'static str,
+        resource_sampling: &'static str,
+        usage_observation_disposition: &'static str,
+        usage_unavailable_reason: &'static str,
+        provider_observed: Option<&'static str>,
+        model_observed: Option<&'static str>,
+        native_execution_qualified: bool,
+        automatic_retry: bool,
+        authority_granted: bool,
+    }
+    fn write_held_dispatch_diagnostic(
+        root: &Path,
+        run_id: &str,
+        status: std::result::Result<&TaskDispatchStatus, &LoopError>,
+        pending: Option<&PendingDiagnostics>,
+    ) -> Result<()> {
+        private_directory(root)?;
+        private_directory(&root.join("journal"))?;
+        if run_id.is_empty() || run_id.len() > 128 {
+            return Err("bounded retained run identity required".into());
+        }
+        let run_id_digest = content_digest(&run_id)?;
+        let retained_journals = retained_journal_refs(root, &run_id_digest);
+        let diagnostic = HeldDispatchDiagnostic {
+            schema_version: 1,
+            recorded_at_unix_ms: now()?,
+            admiralty_build_source_sha: SOURCE_SHA,
+            advisory_only: true,
+            run_id_digest,
+            dispatch: uncertain_dispatch(status)?,
+            pending: pending.map(pending_advisory).transpose()?,
+            pending_unavailable_reason: pending
+                .is_none()
+                .then_some("no_pending_diagnostics_returned"),
+            retained_journals,
+            completion_state: "not_inspected",
+            resource_sampling: "retained_advisory_samples_only_no_new_poll",
+            usage_observation_disposition: "unavailable",
+            usage_unavailable_reason: "dispatch_not_acknowledged_no_completed_provider_observation",
+            provider_observed: None,
+            model_observed: None,
+            native_execution_qualified: false,
+            automatic_retry: false,
+            authority_granted: false,
+        };
+        admiralty_core::limits::bounded_json_size(&diagnostic, HELD_DIAGNOSTIC_BYTES)?;
+        let bytes = serde_json::to_vec(&diagnostic)?;
+        write_new(&root.join("dispatch-diagnostics.json"), &bytes)
     }
 
     #[derive(Parser)]
@@ -1902,7 +2081,18 @@ mod probe {
             return Err("exact retained admission reply differs".into());
         }
         phase.store(1, Ordering::SeqCst);
-        let dispatch = task_loop.dispatch(&run_id, &WallClock, &admission)?;
+        let dispatch = match task_loop.dispatch(&run_id, &WallClock, &admission) {
+            Ok(status) => status,
+            Err(error) => {
+                let pending = task_loop.pending_diagnostics(&run_id);
+                write_held_dispatch_diagnostic(root, &run_id, Err(&error), pending.as_ref())?;
+                return Err(error.into());
+            }
+        };
+        if !matches!(dispatch, TaskDispatchStatus::EffectRecorded(_)) {
+            let pending = task_loop.pending_diagnostics(&run_id);
+            write_held_dispatch_diagnostic(root, &run_id, Ok(&dispatch), pending.as_ref())?;
+        }
         write_new(
             &root.join("dispatch.json"),
             &serde_json::to_vec_pretty(&json!({"outbox_key":intent.outbox_key,
@@ -2183,6 +2373,283 @@ mod probe {
             let path = parent.join(format!("loop-probe-test-{}", uuid::Uuid::new_v4()));
             create_private(&path).unwrap();
             PrivateFixture(path)
+        }
+        fn held_fixture() -> PrivateFixture {
+            let fixture = private_fixture();
+            create_private(&fixture.path().join("journal")).unwrap();
+            fixture
+        }
+        fn held_status() -> TaskDispatchStatus {
+            TaskDispatchStatus::Held {
+                reason: HoldReason::DispatchUncertain,
+                runtime_attempted: true,
+            }
+        }
+        fn held_json(fixture: &PrivateFixture) -> Value {
+            serde_json::from_slice(
+                &read_owned_file(
+                    &fixture.path().join("dispatch-diagnostics.json"),
+                    HELD_DIAGNOSTIC_BYTES,
+                )
+                .unwrap(),
+            )
+            .unwrap()
+        }
+        #[test]
+        fn held_diagnostics_preserve_unknowns_without_completion_or_pending_handle() {
+            let fixture = held_fixture();
+            write_held_dispatch_diagnostic(
+                fixture.path(),
+                "retained-run",
+                Ok(&held_status()),
+                None,
+            )
+            .unwrap();
+            let value = held_json(&fixture);
+            assert_eq!(
+                value["dispatch"],
+                json!({"kind":"held","reason":"dispatch_uncertain","runtime_attempted":true})
+            );
+            assert!(value["pending"].is_null());
+            assert_eq!(
+                value["pending_unavailable_reason"],
+                "no_pending_diagnostics_returned"
+            );
+            assert_eq!(value["completion_state"], "not_inspected");
+            assert_eq!(value["usage_observation_disposition"], "unavailable");
+            assert!(value["provider_observed"].is_null() && value["model_observed"].is_null());
+            assert_eq!(value["native_execution_qualified"], false);
+            assert_eq!(value["automatic_retry"], false);
+            assert_eq!(value["authority_granted"], false);
+            assert!(
+                value["retained_journals"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .all(|v| v["state"] == "unavailable" && v["raw_sha256"].is_null())
+            );
+            assert!(!fixture.path().join("resource-observation.json").exists());
+            assert!(!fixture.path().join("provider-observation.json").exists());
+            let mode = fs::metadata(fixture.path().join("dispatch-diagnostics.json"))
+                .unwrap()
+                .mode()
+                & 0o777;
+            assert_eq!(mode, 0o600);
+        }
+        #[test]
+        fn held_diagnostics_retain_actual_typed_resource_unavailability() {
+            use admiralty_runtime::resource_gate::ResourceReadFailure;
+            let fixture = held_fixture();
+            let mut resource_usage = ResourceUsageDiagnostics::default();
+            resource_usage.sample_attempts = 3;
+            resource_usage.before = Some(ResourceUsageSample::Unavailable {
+                reason: ResourceReadFailure::NoObservedCgroup,
+            });
+            resource_usage.final_sample = Some(ResourceUsageSample::Unavailable {
+                reason: ResourceReadFailure::Missing,
+            });
+            resource_usage.last_sample_failure = Some(ResourceReadFailure::Missing);
+            let pending = PendingDiagnostics {
+                refresh_attempts: 7,
+                refresh_failed: true,
+                observed_identity_persisted: true,
+                started_persisted: true,
+                resource_usage,
+            };
+            write_held_dispatch_diagnostic(
+                fixture.path(),
+                "retained-run",
+                Ok(&held_status()),
+                Some(&pending),
+            )
+            .unwrap();
+            let value = held_json(&fixture);
+            assert_eq!(value["pending"]["refresh_attempts"], 7);
+            assert_eq!(value["pending"]["observed_identity_persisted"], true);
+            assert_eq!(value["pending"]["resource_usage"]["sample_attempts"], 3);
+            assert_eq!(
+                value["pending"]["resource_usage"]["final_sample"],
+                json!({"state":"unavailable","reason":"missing"})
+            );
+            assert!(value["pending"]["resource_usage"]["latest"].is_null());
+            assert!(value["pending_unavailable_reason"].is_null());
+        }
+        #[test]
+        fn held_diagnostics_hash_journals_without_copying_sensitive_contents() {
+            let fixture = held_fixture();
+            let sensitive = b"{\"launch_spec\":{\"args\":[\"PRIVATE_PROMPT_SENTINEL\"]},\"token\":\"PRIVATE_TOKEN_SENTINEL\"}";
+            let run = "retained-run";
+            let digest = content_digest(&run).unwrap();
+            write_new(
+                &fixture
+                    .path()
+                    .join(format!("journal/{digest}.prepared.json")),
+                sensitive,
+            )
+            .unwrap();
+            write_held_dispatch_diagnostic(fixture.path(), run, Ok(&held_status()), None).unwrap();
+            let value = held_json(&fixture);
+            assert_eq!(
+                value["retained_journals"][0]["raw_sha256"],
+                format!("sha256:{:x}", Sha256::digest(sensitive))
+            );
+            assert_eq!(value["retained_journals"][0]["bytes"], sensitive.len());
+            let bytes = fs::read(fixture.path().join("dispatch-diagnostics.json")).unwrap();
+            let text = String::from_utf8(bytes.clone()).unwrap();
+            assert!(
+                !text.contains("PRIVATE_PROMPT_SENTINEL")
+                    && !text.contains("PRIVATE_TOKEN_SENTINEL")
+            );
+            assert!(!text.contains("launch_spec") && !text.contains("args"));
+            assert!(bytes.len() <= HELD_DIAGNOSTIC_BYTES);
+            assert!(
+                write_held_dispatch_diagnostic(fixture.path(), run, Ok(&held_status()), None)
+                    .is_err()
+            );
+            assert_eq!(
+                fs::read(fixture.path().join("dispatch-diagnostics.json")).unwrap(),
+                bytes
+            );
+        }
+        #[test]
+        fn held_diagnostics_refuse_symlink_and_oversized_journals_without_reading_targets() {
+            let fixture = held_fixture();
+            let digest = content_digest(&"retained-run").unwrap();
+            let outside = fixture.path().join("private-source");
+            write_new(&outside, b"PRIVATE_TARGET_SENTINEL").unwrap();
+            std::os::unix::fs::symlink(
+                &outside,
+                fixture
+                    .path()
+                    .join(format!("journal/{digest}.observed.json")),
+            )
+            .unwrap();
+            let oversized = fixture
+                .path()
+                .join(format!("journal/{digest}.prepared.json"));
+            let file = fs::OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .mode(0o600)
+                .open(&oversized)
+                .unwrap();
+            file.set_len((AUTH_BYTES + 1) as u64).unwrap();
+            write_held_dispatch_diagnostic(
+                fixture.path(),
+                "retained-run",
+                Ok(&held_status()),
+                None,
+            )
+            .unwrap();
+            let value = held_json(&fixture);
+            assert!(
+                value["retained_journals"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .all(|v| v["state"] == "unavailable")
+            );
+            assert!(
+                !serde_json::to_string(&value)
+                    .unwrap()
+                    .contains("PRIVATE_TARGET_SENTINEL")
+            );
+        }
+        #[test]
+        fn held_diagnostics_capture_typed_loop_error_without_claiming_runtime_attempt() {
+            let fixture = held_fixture();
+            write_held_dispatch_diagnostic(
+                fixture.path(),
+                "retained-run",
+                Err(&LoopError::StoreUnavailable),
+                None,
+            )
+            .unwrap();
+            let value = held_json(&fixture);
+            assert_eq!(
+                value["dispatch"],
+                json!({"kind":"error","reason":"store_unavailable"})
+            );
+            assert!(value["dispatch"].get("runtime_attempted").is_none());
+        }
+        #[test]
+        fn held_diagnostics_preserve_numeric_samples_and_reject_non_digest_strings() {
+            use admiralty_runtime::resource_gate::{
+                CgroupResourceSnapshot, ResourceCgroupIdentity, ResourceReadFailure,
+                ResourceReading,
+            };
+            fn unknown<T>() -> ResourceReading<T> {
+                ResourceReading::Unavailable {
+                    reason: ResourceReadFailure::Missing,
+                }
+            }
+            let snapshot = CgroupResourceSnapshot {
+                identity: ResourceCgroupIdentity {
+                    owner_digest: format!("sha256:{}", "a".repeat(64)),
+                    device: 17,
+                    inode: 23,
+                },
+                pids_current: ResourceReading::Observed { value: 4 },
+                pids_max: ResourceReading::Observed { value: 32 },
+                pids_peak: unknown(),
+                pids_events: unknown(),
+                pids_events_local: unknown(),
+                memory_current: ResourceReading::Observed { value: 1048576 },
+                memory_max: ResourceReading::Observed { value: 536870912 },
+                memory_peak: unknown(),
+                memory_events: unknown(),
+                memory_events_local: unknown(),
+                cgroup_events: unknown(),
+            };
+            let mut usage = ResourceUsageDiagnostics::default();
+            usage.sample_attempts = 1;
+            usage.before = Some(ResourceUsageSample::Observed {
+                snapshot: Box::new(snapshot.clone()),
+            });
+            usage.latest = Some(Box::new(snapshot));
+            let mut pending = PendingDiagnostics {
+                refresh_attempts: 1,
+                refresh_failed: false,
+                observed_identity_persisted: true,
+                started_persisted: true,
+                resource_usage: usage,
+            };
+            let fixture = held_fixture();
+            write_held_dispatch_diagnostic(
+                fixture.path(),
+                "retained-run",
+                Ok(&held_status()),
+                Some(&pending),
+            )
+            .unwrap();
+            let value = held_json(&fixture);
+            assert_eq!(
+                value["pending"]["resource_usage"]["latest"]["pids_current"],
+                json!({"state":"observed","value":4})
+            );
+            assert_eq!(
+                value["pending"]["resource_usage"]["latest"]["memory_current"],
+                json!({"state":"observed","value":1048576})
+            );
+            assert!(value["pending"]["resource_usage"]["final_sample"].is_null());
+            pending
+                .resource_usage
+                .latest
+                .as_mut()
+                .unwrap()
+                .identity
+                .owner_digest = "PRIVATE_IDENTITY_SENTINEL".into();
+            let rejected = held_fixture();
+            assert!(
+                write_held_dispatch_diagnostic(
+                    rejected.path(),
+                    "retained-run",
+                    Ok(&held_status()),
+                    Some(&pending)
+                )
+                .is_err()
+            );
+            assert!(!rejected.path().join("dispatch-diagnostics.json").exists());
         }
         #[test]
         fn helper_source_is_bounded_scoped_and_not_the_oracle() {
