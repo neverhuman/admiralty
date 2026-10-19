@@ -766,6 +766,28 @@ impl NativeEvidenceCatalog {
             ));
         }
 
+        // A permanent tombstone already settles this identity. Preserve that
+        // result even when its old checkout has since disappeared; do not probe
+        // stale files before denying known-revoked evidence. Release the lock
+        // before I/O and retain the final locked check to catch later revocation.
+        {
+            let state = self
+                .state
+                .try_lock()
+                .map_err(|_| NativeEvidenceCatalogError::Unavailable)?;
+            if self.is_fail_closed() {
+                return Err(NativeEvidenceCatalogError::Unavailable);
+            }
+            if state
+                .tombstones_by_custody
+                .contains_key(candidate_custody_digest)
+            {
+                return Err(NativeEvidenceCatalogError::RevokedEvidence(
+                    "cannot register or replay previously revoked or superseded evidence",
+                ));
+            }
+        }
+
         if !closed_success
             || closed_exit_code != Some(0)
             || closed_closure_digest != candidate_closure_digest
