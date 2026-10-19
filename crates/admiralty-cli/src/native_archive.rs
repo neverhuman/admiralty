@@ -1,6 +1,8 @@
 //! Deterministic archives of explicitly staged native packages. No build, discovery,
 //! installation, publisher authentication, or platform qualification is performed.
-use crate::native_package::{PackageManifest, validate_staged_manifest};
+use crate::native_package::{
+    PackageManifest, validate_staged_guard_closure, validate_staged_manifest,
+};
 use flate2::{Compression, GzBuilder};
 use rustix::fs::{AtFlags, FileType, Mode, OFlags, RenameFlags};
 use serde::Serialize;
@@ -578,6 +580,18 @@ fn archive_with_hook(
             size: entry.size,
             mode: entry.mode,
         });
+    }
+    {
+        let mut files: Vec<_> = sources.iter_mut().map(|source| &mut source.file).collect();
+        validate_staged_guard_closure(expected, &mut files)
+            .map_err(|_| ArchiveError::Invalid("native staged guard closure"))?;
+    }
+    for source in &sources {
+        if identity(&source.file)? != source.identity {
+            return Err(ArchiveError::Invalid(
+                "guard inspection changed pinned identity",
+            ));
+        }
     }
     hook(Point::SourcesPinned)?;
     let parent_path = output
@@ -1418,5 +1432,154 @@ mod tests {
             fs::read(replacement.expect("replacement path")).expect("replacement preserved"),
             b"FOREIGN REPLACEMENT"
         );
+    }
+    fn generated_fixture() -> (tempfile::TempDir, Vec<PackageInput>) {
+        let (root, mut inputs) = fixture(false);
+        let generated =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/contracts/generated");
+        let names = [
+            "validators.mjs",
+            "validators-base.mjs",
+            "validators-workplan.mjs",
+            "validators-verification-receipt.mjs",
+            "validators-verification-policy.mjs",
+            "validators-interface-contract.mjs",
+            "validators-config-layer.mjs",
+            "validators-config-patch.mjs",
+            "validators-config-layer-receipt.mjs",
+            "validators-provenance-contribution.mjs",
+            "validators-views-snapshot.mjs",
+            "validators-intake-batch.mjs",
+            "validators-source-provenance.mjs",
+            "validators-intake-preview.mjs",
+            "validators-work-order-revision.mjs",
+            "validators-record-intake-request.mjs",
+            "validators-record-intake-receipt.mjs",
+            "validators-delivery-requirement.mjs",
+            "validators-duplicate-query.mjs",
+            "validators-duplicate-page.mjs",
+            "validators-coordination-envelope-v2.mjs",
+        ];
+        inputs.retain(|entry| entry.source != "packages/contracts/generated/validators.mjs");
+        for name in names {
+            let bytes = fs::read(generated.join(name)).expect("exact local generated source");
+            let source = format!("packages/contracts/generated/{name}");
+            let path = root.path().join(&source);
+            fs::create_dir_all(path.parent().expect("guard parent")).expect("guard parents");
+            fs::write(path, &bytes).expect("exact guard bytes");
+            inputs.push(PackageInput {
+                source,
+                expected_sha256: hash(&bytes),
+                mode: 0o644,
+            });
+        }
+        (root, inputs)
+    }
+    fn rewrite_manifest(stage: &mut PackageReceipt) {
+        stage
+            .manifest
+            .entries
+            .sort_by(|a, b| a.archive_path.cmp(&b.archive_path));
+        resign(&mut stage.manifest);
+        let mut raw = serde_json::to_vec(&stage.manifest).expect("updated operator manifest");
+        raw.push(b'\n');
+        fs::write(stage.output_dir.join(MANIFEST), raw).expect("consistent raw manifest");
+    }
+    fn change_guard(stage: &mut PackageReceipt, name: &str, bytes: &[u8]) {
+        let path = format!("share/admiralty/guards/v2/{name}");
+        fs::write(stage.output_dir.join(&path), bytes).expect("changed guard");
+        let entry = stage
+            .manifest
+            .entries
+            .iter_mut()
+            .find(|e| e.archive_path == path)
+            .expect("guard entry");
+        entry.size = bytes.len() as u64;
+        entry.sha256 = hash(bytes);
+        rewrite_manifest(stage);
+    }
+    #[test]
+    fn consistent_manifest_missing_split_guard_sibling_is_rejected() {
+        let (root, inputs) = generated_fixture();
+        let mut staged = stage(root.path(), "stage", &inputs);
+        let missing = "share/admiralty/guards/v2/validators-workplan.mjs";
+        fs::remove_file(staged.output_dir.join(missing)).expect("remove sibling");
+        staged
+            .manifest
+            .entries
+            .retain(|e| e.archive_path != missing);
+        rewrite_manifest(&mut staged);
+        assert!(
+            archive(root.path(), &staged, "bad.gz").is_err(),
+            "split guard dependency closure must remain enforced despite consistent hashes"
+        );
+        assert!(!root.path().join("bad.gz").exists());
+    }
+    #[test]
+    fn consistent_manifest_changed_generated_guard_leaf_is_rejected() {
+        let (root, inputs) = generated_fixture();
+        let mut staged = stage(root.path(), "stage", &inputs);
+        change_guard(
+            &mut staged,
+            "validators-workplan.mjs",
+            b"export const validateWorkplan = () => true;\n",
+        );
+        assert!(
+            archive(root.path(), &staged, "bad.gz").is_err(),
+            "generated guard source identity must remain enforced despite consistent hashes"
+        );
+        assert!(!root.path().join("bad.gz").exists());
+    }
+    #[test]
+    fn consistent_manifest_custom_dynamic_guard_import_is_rejected() {
+        let (root, inputs) = fixture(false);
+        let mut staged = stage(root.path(), "stage", &inputs);
+        change_guard(
+            &mut staged,
+            "validators.mjs",
+            b"export { validateDomainEventV2 } from './dynamic.mjs';\n",
+        );
+        assert!(
+            archive(root.path(), &staged, "bad.gz").is_err(),
+            "dynamic guard dependencies must remain refused despite consistent hashes"
+        );
+        assert!(!root.path().join("bad.gz").exists());
+    }
+    #[test]
+    fn real_staged_generated_guard_closure_is_archived_without_execution() {
+        let (root, inputs) = generated_fixture();
+        let staged = stage(root.path(), "stage", &inputs);
+        let receipt = archive(root.path(), &staged, "full-guards.gz")
+            .expect("complete generated guard closure");
+        let bytes = fs::read(&receipt.output).expect("archive bytes");
+        assert_eq!(receipt.archive_sha256, hash(&bytes));
+        let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(bytes.as_slice()));
+        let mut count = 0;
+        for entry in archive.entries().expect("entries") {
+            let mut entry = entry.expect("entry");
+            if entry
+                .path()
+                .expect("path")
+                .starts_with("share/admiralty/guards/v2")
+            {
+                let mut actual = Vec::new();
+                entry.read_to_end(&mut actual).expect("guard bytes");
+                let path = entry
+                    .path()
+                    .expect("path")
+                    .to_str()
+                    .expect("ASCII")
+                    .to_owned();
+                let expected = staged
+                    .manifest
+                    .entries
+                    .iter()
+                    .find(|e| e.archive_path == path)
+                    .expect("guard bound to manifest");
+                assert_eq!(hash(&actual), expected.sha256);
+                count += 1;
+            }
+        }
+        assert_eq!(count, 21);
     }
 }
