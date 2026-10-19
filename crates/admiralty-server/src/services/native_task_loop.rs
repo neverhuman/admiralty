@@ -18,7 +18,8 @@ use super::{
         DurableIntent, LaunchRequest, NativeRuntimeExecutor, RuntimeReceipt,
     },
     native_executor::{
-        ClosedExecution, NativeExecutionPlan, NativeExecutor, native_resource_claims_digest,
+        ClosedExecution, NativeExecutionPlan, NativeExecutor, PendingDiagnostics,
+        native_resource_claims_digest,
     },
     native_loop::{StartedScope, StoreStartedSink},
 };
@@ -413,6 +414,12 @@ impl NativeTaskLoop {
 
     pub fn completion(&self, run_id: &str) -> Option<&ClosedExecution> {
         self.completions.get(run_id)
+    }
+    /// Read retained advisory diagnostics without observing, signalling or
+    /// reconciling a run. This grants no effect acknowledgement or closure.
+    pub fn pending_diagnostics(&self, run_id: &str) -> Option<PendingDiagnostics> {
+        self.runs.get(run_id)?;
+        self.executor.pending_diagnostics(run_id)
     }
     pub fn effect_ack_state(&self, run_id: &str) -> Result<EffectAckState, LoopError> {
         self.runs
