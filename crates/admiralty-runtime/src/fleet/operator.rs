@@ -283,8 +283,16 @@ pub fn run(args: NodeArgs) -> io::Result<()> {
             let mut controller = Controller::open(&state)?;
             let listener = TcpListener::bind(listen)?;
             for socket in listener.incoming() {
-                let config = transport::server_config(&credentials, controller.certificates()?)?;
-                if let Err(error) = transport::serve_once(socket?, config, &mut controller) {
+                let socket = socket?;
+                let config =
+                    match transport::server_config(&credentials, controller.certificates()?) {
+                        Ok(config) => config,
+                        Err(_) => {
+                            eprintln!("node receipt rejected: no trusted client certificates");
+                            continue;
+                        }
+                    };
+                if let Err(error) = transport::serve_once(socket, config, &mut controller) {
                     eprintln!("node receipt rejected: {}", error.kind());
                 }
             }
