@@ -11,7 +11,7 @@ interface Buffer extends Uint8Array {
 declare var Buffer: {
   concat(list: ReadonlyArray<Uint8Array>): Buffer;
   byteLength(string: string, encoding?: 'utf8'): number;
-  from(input: string, encoding?: 'utf8'): Buffer;
+  from(input: string, encoding?: 'utf8' | 'base64'): Buffer;
 };
 
 declare module 'node:crypto' {
@@ -69,6 +69,7 @@ declare module 'node:child_process' {
       cwd?: string;
       env?: Record<string, string | undefined>;
       encoding?: 'utf8';
+      timeout?: number;
     },
   ): {
     status: number | null;
@@ -78,6 +79,7 @@ declare module 'node:child_process' {
 }
 
 declare module 'node:fs' {
+  export function realpathSync(path: string): string;
   export function chmodSync(path: string, mode: number): void;
   export function existsSync(path: string): boolean;
   export function mkdirSync(path: string, options?: { recursive?: boolean; mode?: number }): void;

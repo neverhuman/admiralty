@@ -2,6 +2,7 @@
 //! source checkout mutations or acceptance authority are part of observation.
 pub mod config;
 pub mod fleet;
+pub mod git;
 pub mod history;
 pub mod io;
 pub mod projects;
@@ -40,6 +41,14 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
         snapshot["rollout"] = rollout;
     }
     attach_hierarchy(config, &mut snapshot);
+    snapshot["project_catalog"] = json!(
+        config
+            .projects
+            .iter()
+            .map(|p| json!({"id":p.id,"name":p.name}))
+            .collect::<Vec<_>>()
+    );
+    snapshot["git"] = serde_json::to_value(git::collect(config).await)?;
     match usage::collect(config, &snapshot).await {
         Ok(fields) => {
             if let Some(fields) = fields.as_object() {

@@ -13,11 +13,15 @@ admiralty-runtime.workspace = true
 admiralty-store.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+chrono.workspace = true
 tokio.workspace = true
 axum.workspace = true
 futures-util.workspace = true
 clap.workspace = true
 uuid.workspace = true
 rustix.workspace = true
+[dev-dependencies]
+tempfile.workspace = true
+
 [lints]
 workspace = true
