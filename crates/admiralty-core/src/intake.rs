@@ -72,7 +72,7 @@ pub struct AuthorizedIntakeScope {
     pub authority_generation: u64,
 }
 /// Trusted caller policy can tighten these caps, never exceed public maxima.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct IntakePolicy {
     pub revision: String,
     pub max_source_bytes: usize,
@@ -91,6 +91,54 @@ impl Default for IntakePolicy {
         }
     }
 }
+impl IntakePolicy {
+    fn validate(&self) -> Result<()> {
+        if self.max_source_bytes == 0
+            || self.max_source_bytes > MAX_SOURCE_BYTES
+            || self.max_requests == 0
+            || self.max_requests > MAX_REQUESTS
+            || self.max_outcomes == 0
+            || self.max_outcomes > MAX_OUTCOMES
+            || self.max_json_item_text_bytes == 0
+            || self.max_json_item_text_bytes > MAX_JSON_ITEM_TEXT_BYTES
+        {
+            return Err(IntakeError::Bound);
+        }
+        reference(&self.revision)
+    }
+    /// Exact trusted policy identity, including every limit, not only its label.
+    /// This digest is binding data; it does not authenticate a supplied policy.
+    pub fn identity_digest(&self) -> Result<String> {
+        self.validate()?;
+        canonical_hash(b"admiralty.intake.policy/v1\0", self)
+    }
+}
+
+// Keep the trusted Rust counter unchanged while the public wire rejects numeric
+// JSON and noncanonical/zero/overflow strings before any comparison can round.
+mod authority_generation_wire {
+    use serde::{Deserialize, Deserializer, Serializer, de, ser};
+    pub fn serialize<S: Serializer>(value: &u64, serializer: S) -> Result<S::Ok, S::Error> {
+        if *value == 0 {
+            return Err(ser::Error::custom("authority generation must be positive"));
+        }
+        serializer.serialize_str(&value.to_string())
+    }
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u64, D::Error> {
+        let wire = String::deserialize(deserializer)?;
+        let value = wire.parse::<u64>().map_err(de::Error::custom)?;
+        if value == 0 || value.to_string() != wire {
+            return Err(de::Error::custom(
+                "authority generation must be a canonical positive decimal u64",
+            ));
+        }
+        Ok(value)
+    }
+}
+fn authority_generation_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    let decimal = <crate::interfaces::DecimalU64 as JsonSchema>::json_schema(generator);
+    schemars::json_schema!({"allOf":[decimal,{"not":{"const":"0"}}]})
+}
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct ScopeSnapshot {
@@ -98,6 +146,9 @@ pub struct ScopeSnapshot {
     pub project_id: Option<ProjectId>,
     pub root_id: Option<RootId>,
     pub authority_ref: String,
+    /// Canonical positive decimal string on the public wire; never a JS number.
+    #[serde(with = "authority_generation_wire")]
+    #[schemars(schema_with = "authority_generation_schema")]
     pub authority_generation: u64,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
@@ -225,6 +276,8 @@ pub struct IntakePreview {
     pub schema_version: u32,
     pub parser_revision: String,
     pub policy_revision: String,
+    /// Domain-separated identity of the exact supplied revision and all caps.
+    pub policy_digest: String,
     pub format: IntakeFormat,
     pub raw_digest: String,
     pub canonical_digest: String,
@@ -362,6 +415,8 @@ pub struct WorkOrderRevision {
     pub raw_digest: String,
     pub canonical_digest: String,
     pub parser_revision: String,
+    /// Exact chosen parse mode, never inferred from JSON-looking source bytes.
+    pub format: IntakeFormat,
     pub source_payload: SourcePayload,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
@@ -394,6 +449,10 @@ pub struct RecordIntakeRequest {
     pub expected_plan_revision: u32,
     pub preview_manifest_digest: String,
     pub policy_revision: String,
+    pub policy_digest: String,
+    /// Canonical positive decimal string on the public wire.
+    #[serde(with = "authority_generation_wire")]
+    #[schemars(schema_with = "authority_generation_schema")]
     pub authority_generation: u64,
     pub work_order: WorkOrderRevision,
     pub selected_tasks: Vec<SelectedTask>,
@@ -652,17 +711,7 @@ pub fn preview_intake(
     scope: &AuthorizedIntakeScope,
     policy: &IntakePolicy,
 ) -> Result<IntakePreview> {
-    if policy.max_source_bytes == 0
-        || policy.max_source_bytes > MAX_SOURCE_BYTES
-        || policy.max_requests == 0
-        || policy.max_requests > MAX_REQUESTS
-        || policy.max_outcomes == 0
-        || policy.max_outcomes > MAX_OUTCOMES
-        || policy.max_json_item_text_bytes == 0
-        || policy.max_json_item_text_bytes > MAX_JSON_ITEM_TEXT_BYTES
-    {
-        return Err(IntakeError::Bound);
-    }
+    policy.validate()?;
     if source.len() > policy.max_source_bytes {
         return Err(IntakeError::SourceTooLarge {
             limit: policy.max_source_bytes,
@@ -863,6 +912,7 @@ pub fn preview_intake(
         schema_version: INTAKE_VERSION,
         parser_revision: "wo1-json-raw-spans-v1".into(),
         policy_revision: policy.revision.clone(),
+        policy_digest: policy.identity_digest()?,
         format,
         raw_digest: domain_hash(b"admiralty.intake.raw/v1\0", source),
         canonical_digest,
@@ -1127,11 +1177,24 @@ impl WorkOrderTaskBinding {
     }
 }
 impl RecordIntakeRequest {
+    /// Future Store recording must call this with independently authorized
+    /// CURRENT policy in the same writer turn as source/selection/CAS checks.
+    /// Shape validation alone cannot authenticate this digest or policy.
+    pub fn validate_with_policy(&self, policy: &IntakePolicy) -> Result<()> {
+        self.validate()?;
+        if self.policy_revision != policy.revision
+            || self.policy_digest != policy.identity_digest()?
+        {
+            return Err(IntakeError::Binding);
+        }
+        Ok(())
+    }
     pub fn validate(&self) -> Result<()> {
         version(self.schema_version)?;
         identifier(&self.plan_id)?;
         reference(&self.policy_revision)?;
         if !digest(&self.preview_manifest_digest)
+            || !digest(&self.policy_digest)
             || self.selected_tasks.is_empty()
             || self.selected_tasks.len() > MAX_OUTCOMES
             || self.authority_generation != self.work_order.scope.authority_generation
@@ -1148,6 +1211,9 @@ impl RecordIntakeRequest {
         for selected in &self.selected_tasks {
             let b = &selected.binding;
             b.validate()?;
+            if self.work_order.format == IntakeFormat::PlainText && b.request_index != 0 {
+                return Err(IntakeError::Binding);
+            }
             validate_task(&selected.task)?;
             if b.work_order_id != self.work_order.id
                 || b.work_order_revision != self.work_order.revision
