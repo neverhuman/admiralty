@@ -75,6 +75,36 @@ describe('raw request intake', () => {
     expect(calls).toBe(0);
   });
 
+  it('allows a preview body at one MiB but rejects the larger capture envelope before sending', async () => {
+    const encoder = new TextEncoder();
+    const emptyBody = buildPreviewEnvelope({ ...source, text: '' });
+    const fixedPreviewBytes = encoder.encode(JSON.stringify(emptyBody)).byteLength;
+    const text = 'x'.repeat(1_048_576 - fixedPreviewBytes);
+    const input = buildPreviewEnvelope({ ...source, text });
+    const previewBody = JSON.stringify(input);
+    expect(encoder.encode(text).byteLength).toBeLessThanOrEqual(1_048_576);
+    expect(encoder.encode(previewBody).byteLength).toBe(1_048_576);
+    const p = { ...preview(), provenance: input.provenance, raw_byte_length: encoder.encode(text).byteLength,
+      requests: [{ ...preview().requests[0], text, raw_span: { start: 0, end: encoder.encode(text).byteLength } }] };
+    let previewCalls = 0;
+    const previewFetcher: typeof fetch = async (_url, init) => {
+      previewCalls++;
+      expect(encoder.encode(String(init?.body)).byteLength).toBe(1_048_576);
+      return response(envelope(p));
+    };
+    await previewRawIntake(input, 'owner', 'intake', previewFetcher);
+    expect(previewCalls).toBe(1);
+    const base = captureRequest();
+    const request = { ...base, provenance: input.provenance, source_payload: input.source_payload,
+      preview_manifest_digest: p.manifest_digest };
+    const captureBody = JSON.stringify(request);
+    expect(encoder.encode(captureBody).byteLength).toBeGreaterThan(1_048_576);
+    let captureCalls = 0;
+    const captureFetcher: typeof fetch = async () => { captureCalls++; return response(envelope(captureResult(request))); };
+    expect(() => captureRawIntake(request, captureBody, 'owner', 'intake', captureFetcher)).toThrow('one MiB');
+    expect(captureCalls).toBe(0);
+  });
+
   it('invalidates preview and receipt readback when any source draft field changes', () => {
     const current = { preview: preview(), previewBody: '{"original":true}', capture: captureResult(),
       stored: { request: captureRequest(), preview: preview(), receipt: receipt(), receipt_digest: digest('4') } };
@@ -90,7 +120,12 @@ describe('raw request intake', () => {
   it('maps unavailable, authentication, denied scope, and conflicts without exposing response bodies', async () => {
     for (const [status, expected] of [[503, 'unavailable'], [401, 'credentials'], [403, 'scope denied'], [409, 'conflicted']] as const) {
       const fetcher: typeof fetch = async () => response({ error: 'private raw server detail must not escape' }, status);
-      await expect(previewRawIntake(buildPreviewEnvelope(source), 'owner', 'intake', fetcher)).rejects.toThrow(expected);
+      let failure: unknown;
+      try { await previewRawIntake(buildPreviewEnvelope(source), 'owner', 'intake', fetcher); }
+      catch (error) { failure = error; }
+      expect(failure).toBeInstanceOf(Error);
+      expect((failure as Error).message).toContain(expected);
+      expect((failure as Error).message).not.toContain('private raw server detail');
     }
   });
 
@@ -111,18 +146,22 @@ describe('raw request intake', () => {
   });
 
   it('reads the exact recorded revision by POST and checks the response against its receipt', async () => {
-    const request = captureRequest(), result = captureResult(request), p = preview();
-    const savedReceipt = { ...result.receipt, raw_digest: p.raw_digest, canonical_digest: p.canonical_digest };
-    const stored = { request, preview: p, receipt: savedReceipt, receipt_digest: result.receipt_digest };
+    const request = captureRequest(), p = preview();
+    const result = { ...captureResult(request), receipt: { ...receipt(request), raw_digest: p.raw_digest, canonical_digest: p.canonical_digest } };
+    const stored = { request, preview: p, receipt: result.receipt, receipt_digest: result.receipt_digest };
     const calls: Array<{ path: string; init: RequestInit }> = [];
     const fetcher: typeof fetch = async (input, init) => { calls.push({ path: String(input), init: init! }); return response(envelope(stored)); };
-    const original = await readRawCapture('capture-a', 'project-a', 'root-a', 1, result, 'owner', 'intake', fetcher);
+    const original = await readRawCapture(request, result, 'owner', 'intake', fetcher);
     expect(original.request.source_payload.text).toBe(source.text);
     expect(calls).toHaveLength(1);
     expect(calls[0].path).toBe('/v2/intake/captures/capture-a');
     expect(calls[0].init.method).toBe('POST');
     expect(JSON.parse(String(calls[0].init.body))).toEqual({ project_id: 'project-a', root_id: 'root-a', revision: 1 });
     expect(calls[0].path.includes('?')).toBe(false);
+    const sameLengthChangedSource = { ...stored, request: { ...request, source_payload: { kind: 'inline_utf8' as const, text: 'First paragraph.\n\nSecond paragraph α.' } } };
+    expect(new TextEncoder().encode(sameLengthChangedSource.request.source_payload.text).byteLength).toBe(new TextEncoder().encode(request.source_payload.text).byteLength);
+    const changedFetcher: typeof fetch = async () => response(envelope(sameLengthChangedSource));
+    await expect(readRawCapture(request, result, 'owner', 'intake', changedFetcher)).rejects.toThrow('does not match');
   });
 
   it('shows required scope and provenance fields and keeps credentials out of initial markup', () => {

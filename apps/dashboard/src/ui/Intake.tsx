@@ -30,7 +30,9 @@ type CaptureRequest = {
   source_payload: InlineSourcePayload; preview_manifest_digest: string; policy_revision: string; policy_digest: string;
 };
 type StoredCapture = { request: CaptureRequest; preview: IntakePreview; receipt: CaptureReceipt; receipt_digest: string };
-type PendingCapture = { request: CaptureRequest; body: string };
+type PendingCapture = { request: CaptureRequest; body: string; rawDigest: string; canonicalDigest: string };
+type ReadTarget = { request: CaptureRequest; result: CaptureResult };
+type RequestSummary = { commandId: string; captureId: string; sourceId: string; sourceRevision: string; manifestDigest: string; bodyBytes: number; outcome: string };
 export type IntakeDerivedState = { preview: IntakePreview | null; previewBody: string | null; capture: CaptureResult | null; stored: StoredCapture | null };
 export function invalidateIntakeDraft(_state: IntakeDerivedState): IntakeDerivedState {
   return { preview: null, previewBody: null, capture: null, stored: null };
@@ -41,6 +43,11 @@ function object(value: unknown): value is Record<string, unknown> {
 }
 function exactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
   return Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
+}
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (object(value)) return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(',')}}`;
+  return JSON.stringify(value);
 }
 function digest(value: unknown): value is string { return typeof value === 'string' && DIGEST.test(value); }
 function isScope(value: unknown): value is ScopeSnapshot {
@@ -100,11 +107,9 @@ function isStoredCapture(value: unknown): value is StoredCapture {
 }
 function uuid(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16);
-  });
+  throw new Error('Secure browser UUID support is required for capture.');
 }
-function generatedCaptureId(): string { return `intake-${uuid()}`; }
+function generatedCaptureId(): string { try { return `intake-${uuid()}`; } catch { return ''; } }
 function provenance(draft: Pick<Draft, 'sourceId' | 'revision' | 'capturedAt'>): SourceProvenance {
   const at = new Date(draft.capturedAt);
   if (!Number.isFinite(at.getTime())) throw new Error('Enter the observed draft time.');
@@ -139,30 +144,46 @@ export function previewRawIntake(envelope: ReturnType<typeof buildPreviewEnvelop
 }
 export function captureRawIntake(request: CaptureRequest, serializedBody: string, ownerToken: string, intakeToken: string, fetcher: typeof fetch = fetch): Promise<CaptureResult> {
   if (!isCaptureRequest(request) || JSON.stringify(request) !== serializedBody) throw new Error('Capture retry envelope is not the frozen request.');
+  if (new TextEncoder().encode(serializedBody).byteLength > MAX_SOURCE_BYTES) throw new Error('Capture request exceeds one MiB UTF-8 body limit.');
   return post(fetcher, '/v2/intake/captures', serializedBody, ownerToken, intakeToken, isCaptureResult).then(result => {
     if (result.receipt.command_id !== request.command_id || result.receipt.capture_id !== request.capture_id
       || result.receipt.revision !== request.revision || result.receipt.preview_manifest_digest !== request.preview_manifest_digest) throw new Error('Capture receipt does not bind the submitted command.');
     return result;
   });
 }
-export async function readRawCapture(captureId: string, projectId: string, rootId: string, revision: number, expected: CaptureResult,
+export async function readRawCapture(request: CaptureRequest, expected: CaptureResult,
   ownerToken: string, intakeToken: string, fetcher: typeof fetch = fetch): Promise<StoredCapture> {
-  const body = JSON.stringify({ project_id: projectId, root_id: rootId, revision });
-  const record = await post(fetcher, `/v2/intake/captures/${encodeURIComponent(captureId)}`, body, ownerToken, intakeToken, isStoredCapture);
-  if (record.request.capture_id !== expected.receipt.capture_id || record.request.revision !== expected.receipt.revision
-    || record.receipt_digest !== expected.receipt_digest || record.receipt.request_digest !== expected.receipt.request_digest) throw new Error('Readback does not match the saved capture receipt.');
+  const { project_id: projectId, root_id: rootId } = request.scope;
+  if (!projectId || !rootId) throw new Error('Saved capture scope is incomplete.');
+  const body = JSON.stringify({ project_id: projectId, root_id: rootId, revision: request.revision });
+  const record = await post(fetcher, `/v2/intake/captures/${encodeURIComponent(request.capture_id)}`, body, ownerToken, intakeToken, isStoredCapture);
+  if (stableJson(record.request) !== stableJson(request) || stableJson(record.receipt) !== stableJson(expected.receipt)
+    || record.receipt_digest !== expected.receipt_digest) throw new Error('Readback does not match the saved capture request and receipt.');
   return record;
 }
 function statusMessage(status: number): string {
+  if (status === 400 || status === 422) return 'The server rejected this intake request. Review the source and capture fields before starting a new command.';
   if (status === 503) return 'Intake is unavailable.';
   if (status === 401) return 'Intake credentials were rejected. Check both access tokens.';
   if (status === 403) return 'The current intake scope denied this request.';
   if (status === 409) return 'The capture conflicted with current stored state. The exact request is retained for a safe retry.';
   if (status === 413) return 'The request exceeds the server body limit.';
-  return `Intake request failed (${status}).`;
+  if (status === 404) return 'The requested intake record was not found.';
+  if (status === 415) return 'The intake endpoint requires JSON.';
+  if (status === 429) return 'Intake request capacity is currently full.';
+  return 'The intake endpoint returned an unsupported response.';
 }
 function safeError(error: unknown): string {
-  if (error instanceof Error && 'status' in error && typeof (error as Error & { status?: unknown }).status === 'number') return error.message;
+  if (object(error) && typeof error.status === 'number') return statusMessage(error.status);
+  const known = new Set([
+    'Secure browser UUID support is required for capture.', 'Enter a unique capture ID; secure browser UUID support is unavailable.',
+    'Capture request exceeds one MiB UTF-8 body limit.', 'Request envelope exceeds one MiB UTF-8 body limit.',
+    'Original source exceeds one MiB in UTF-8.', 'Project, root, source ID, and source revision are required.',
+    'Enter the observed draft time.', 'Capture retry envelope is not the frozen request.',
+    'Capture receipt does not bind the submitted command.', 'Capture receipt digests do not match the preview.',
+    'Readback does not match the saved capture request and receipt.', 'Saved capture scope is incomplete.',
+  ]);
+  if (error instanceof Error && known.has(error.message)) return error.message;
   return 'The response could not be confirmed or validated. No server details were shown.';
 }
 
@@ -174,7 +195,9 @@ export default function Intake({ token = '', onAccess, fetcher = fetch }: Intake
   const [previewBody, setPreviewBody] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingCapture | null>(null);
   const [capture, setCapture] = useState<CaptureResult | null>(null);
+  const [readTarget, setReadTarget] = useState<ReadTarget | null>(null);
   const [receiptHistory, setReceiptHistory] = useState<CaptureResult[]>([]);
+  const [requestHistory, setRequestHistory] = useState<RequestSummary[]>([]);
   const [stored, setStored] = useState<StoredCapture | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -205,40 +228,95 @@ export default function Intake({ token = '', onAccess, fetcher = fetch }: Intake
   function makeCapture(): PendingCapture {
     if (!preview || !previewBody) throw new Error('Preview this exact draft before capture.');
     const source = buildPreviewEnvelope(draft);
-    const request: CaptureRequest = {
-      schema_version: 1, command_id: uuid(), capture_id: draft.captureId.trim(), revision: 1, expected_revision: 0,
-      parent_receipt_digest: null, scope: preview.authorized_scope, format: 'plain_text', provenance: source.provenance,
+    const captureId = draft.captureId.trim();
+    if (!captureId) throw new Error('Enter a unique capture ID; secure browser UUID support is unavailable.');
+    const unsigned = {
+      schema_version: 1 as const, command_id: '00000000-0000-4000-8000-000000000000', capture_id: captureId, revision: 1 as const, expected_revision: 0 as const,
+      parent_receipt_digest: null, scope: preview.authorized_scope, format: 'plain_text' as const, provenance: source.provenance,
       source_payload: source.source_payload, preview_manifest_digest: preview.manifest_digest,
       policy_revision: preview.policy_revision, policy_digest: preview.policy_digest,
     };
-    if (!request.capture_id) throw new Error('Capture ID is required.');
-    return { request, body: JSON.stringify(request) };
+    if (new TextEncoder().encode(JSON.stringify(unsigned)).byteLength > MAX_SOURCE_BYTES) throw new Error('Capture request exceeds one MiB UTF-8 body limit.');
+    const request: CaptureRequest = { ...unsigned, command_id: uuid() };
+    const body = JSON.stringify(request);
+    if (new TextEncoder().encode(body).byteLength > MAX_SOURCE_BYTES) throw new Error('Capture request exceeds one MiB UTF-8 body limit.');
+    return { request, body, rawDigest: preview.raw_digest, canonicalDigest: preview.canonical_digest };
+  }
+  function rememberRequest(frozen: PendingCapture, outcome: string, result?: CaptureResult) {
+    const summary: RequestSummary = { commandId: frozen.request.command_id, captureId: frozen.request.capture_id,
+      sourceId: frozen.request.provenance.source_id, sourceRevision: frozen.request.provenance.revision,
+      manifestDigest: frozen.request.preview_manifest_digest, bodyBytes: new TextEncoder().encode(frozen.body).byteLength,
+      outcome: result ? `receipt confirmed · ${result.receipt_digest}` : outcome };
+    setRequestHistory(current => [summary, ...current.filter(item => item.commandId !== summary.commandId)].slice(0, 5));
+  }
+  async function readConfirmedOriginal(target: ReadTarget) {
+    const record = await readRawCapture(target.request, target.result, token, intakeToken, fetcher);
+    setStored(record);
+  }
+  async function retryReadback() {
+    if (!readTarget) return;
+    const frozen = readTarget;
+    await run(async () => {
+      await readConfirmedOriginal(frozen);
+      setMessage('Original bytes and receipt were read again at the recorded revision.');
+    });
   }
   async function captureDraft() {
     if (pending) { setMessage('Retry or resolve the retained capture before starting a new one.'); return; }
-    const frozen = makeCapture(); setPending(frozen);
+    if (!authorized) { setMessage('Enter the owner access token and separate intake token.'); return; }
     await run(async () => {
-      const result = await captureRawIntake(frozen.request, frozen.body, token, intakeToken, fetcher);
+      const frozen = makeCapture();
+      setPending(frozen);
+      rememberRequest(frozen, 'response unresolved; exact request retained for retry');
+      let result: CaptureResult;
+      try { result = await captureRawIntake(frozen.request, frozen.body, token, intakeToken, fetcher); }
+      catch (error) {
+        const status = object(error) && typeof error.status === 'number' ? error.status : null;
+        rememberRequest(frozen, status === null ? 'response unresolved; server may have captured it'
+          : status === 400 || status === 413 || status === 422 ? `server refusal (${status}); exact request retained`
+          : status === 409 ? 'conflict response; existing capture remains possible; exact request retained'
+          : `HTTP ${status}; no receipt confirmed; exact request retained`);
+        throw error;
+      }
+      if (result.receipt.raw_digest !== frozen.rawDigest || result.receipt.canonical_digest !== frozen.canonicalDigest) throw new Error('Capture receipt digests do not match the preview.');
+      rememberRequest(frozen, 'receipt confirmed', result);
+      const target = { request: frozen.request, result };
       setCapture(result); setReceiptHistory(current => [result, ...current.filter(item => item.receipt_digest !== result.receipt_digest)].slice(0, 5));
-      setPending(null); setMessage(result.replayed ? 'Original immutable capture receipt replayed.' : 'Original request captured with unresolved facts; no execution or acceptance was granted.');
-      const readBody = JSON.stringify({ project_id: frozen.request.scope.project_id ?? draft.projectId.trim(), root_id: frozen.request.scope.root_id ?? draft.rootId.trim(), revision: result.receipt.revision });
-      const record = await readRawCapture(result.receipt.capture_id, JSON.parse(readBody).project_id, JSON.parse(readBody).root_id,
-        result.receipt.revision, result, token, intakeToken, fetcher);
-      setStored(record);
+      setReadTarget(target); setPending(null); setDraft(current => ({ ...current, captureId: generatedCaptureId() }));
+      setMessage(result.replayed ? 'Original immutable capture receipt replayed.' : 'Original request captured with unresolved facts; no execution or acceptance was granted.');
+      await readConfirmedOriginal(target);
     });
   }
   async function retryCapture() {
     if (!pending) return;
     const frozen = pending;
     await run(async () => {
-      const result = await captureRawIntake(frozen.request, frozen.body, token, intakeToken, fetcher);
+      rememberRequest(frozen, 'retry in progress; exact command and body retained');
+      let result: CaptureResult;
+      try { result = await captureRawIntake(frozen.request, frozen.body, token, intakeToken, fetcher); }
+      catch (error) {
+        const status = object(error) && typeof error.status === 'number' ? error.status : null;
+        rememberRequest(frozen, status === null ? 'response unresolved; server may have captured it'
+          : status === 400 || status === 413 || status === 422 ? `server refusal (${status}); exact request retained`
+          : status === 409 ? 'conflict response; existing capture remains possible; exact request retained'
+          : `HTTP ${status}; no receipt confirmed; exact request retained`);
+        throw error;
+      }
+      if (result.receipt.raw_digest !== frozen.rawDigest || result.receipt.canonical_digest !== frozen.canonicalDigest) throw new Error('Capture receipt digests do not match the preview.');
+      rememberRequest(frozen, 'receipt confirmed', result);
+      const target = { request: frozen.request, result };
       setCapture(result); setReceiptHistory(current => [result, ...current.filter(item => item.receipt_digest !== result.receipt_digest)].slice(0, 5));
-      setPending(null); setMessage(result.replayed ? 'Original immutable capture receipt replayed.' : 'Capture receipt recorded.');
-      const readBody = JSON.stringify({ project_id: frozen.request.scope.project_id ?? draft.projectId.trim(), root_id: frozen.request.scope.root_id ?? draft.rootId.trim(), revision: result.receipt.revision });
-      const record = await readRawCapture(result.receipt.capture_id, JSON.parse(readBody).project_id, JSON.parse(readBody).root_id,
-        result.receipt.revision, result, token, intakeToken, fetcher);
-      setStored(record);
+      setReadTarget(target); setPending(null); setDraft(current => ({ ...current, captureId: generatedCaptureId() }));
+      setMessage(result.replayed ? 'Original immutable capture receipt replayed.' : 'Capture receipt recorded.');
+      await readConfirmedOriginal(target);
     });
+  }
+  function abandonPendingCapture() {
+    if (!pending || busyRef.current) return;
+    rememberRequest(pending, 'locally abandoned; server may already have captured it');
+    setPending(null); setPreview(null); setPreviewBody(null); setCapture(null); setStored(null); setReadTarget(null);
+    setDraft(current => ({ ...current, sourceId: '', revision: '', capturedAt: '', text: '', captureId: generatedCaptureId() }));
+    setMessage('Local retry envelope discarded. This does not undo or verify any server-side capture; keep the retained request summary for reference. Enter a new source identity and capture ID before proceeding.');
   }
   const unresolvedCount = preview?.requests.reduce((n, request) => n + request.unresolved.length, 0) ?? 0;
   return <section style={surface} aria-labelledby="intake-title">
@@ -247,24 +325,25 @@ export default function Intake({ token = '', onAccess, fetcher = fetch }: Intake
     {!token && <p role="status">Owner access must be supplied by the application.</p>}
     <form onSubmit={previewDraft}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '.65rem' }}>
-        <label style={field}>Project ID<input aria-label="Project ID" value={draft.projectId} disabled={busy} style={control} onChange={e => mutate('projectId', e.target.value)} /></label>
-        <label style={field}>Root ID<input aria-label="Root ID" value={draft.rootId} disabled={busy} style={control} onChange={e => mutate('rootId', e.target.value)} /></label>
-        <label style={field}>Source ID<input aria-label="Source ID" value={draft.sourceId} disabled={busy} style={control} onChange={e => mutate('sourceId', e.target.value)} /></label>
-        <label style={field}>Source revision<input aria-label="Source revision" value={draft.revision} disabled={busy} style={control} onChange={e => mutate('revision', e.target.value)} /></label>
-        <label style={field}>Observed draft time<input aria-label="Observed draft time" type="datetime-local" value={draft.capturedAt} disabled={busy} style={control} onChange={e => mutate('capturedAt', e.target.value)} /></label>
+        <label style={field}>Project ID<input aria-label="Project ID" value={draft.projectId} disabled={busy || Boolean(pending)} style={control} onChange={e => mutate('projectId', e.target.value)} /></label>
+        <label style={field}>Root ID<input aria-label="Root ID" value={draft.rootId} disabled={busy || Boolean(pending)} style={control} onChange={e => mutate('rootId', e.target.value)} /></label>
+        <label style={field}>Source ID<input aria-label="Source ID" value={draft.sourceId} disabled={busy || Boolean(pending)} style={control} onChange={e => mutate('sourceId', e.target.value)} /></label>
+        <label style={field}>Source revision<input aria-label="Source revision" value={draft.revision} disabled={busy || Boolean(pending)} style={control} onChange={e => mutate('revision', e.target.value)} /></label>
+        <label style={field}>Observed draft time<input aria-label="Observed draft time" type="datetime-local" value={draft.capturedAt} disabled={busy || Boolean(pending)} style={control} onChange={e => mutate('capturedAt', e.target.value)} /></label>
         <label style={field}>Capture ID<input aria-label="Capture ID" value={draft.captureId} disabled={busy || Boolean(pending)} style={control} onChange={e => mutate('captureId', e.target.value)} /></label>
       </div>
-      <label style={{ ...field, marginTop: '.65rem' }}>Original raw request<textarea aria-label="Original raw request" value={draft.text} disabled={busy} rows={10} style={{ ...control, resize: 'vertical' }} onChange={e => mutate('text', e.target.value)} /></label>
+      <label style={{ ...field, marginTop: '.65rem' }}>Original raw request<textarea aria-label="Original raw request" value={draft.text} disabled={busy || Boolean(pending)} rows={10} style={{ ...control, resize: 'vertical' }} onChange={e => mutate('text', e.target.value)} /></label>
       <p>{new TextEncoder().encode(draft.text).byteLength.toLocaleString()} / 1,048,576 UTF-8 bytes</p>
       <label style={{ ...field, maxWidth: '32rem' }}>Separate intake token<input aria-label="Separate intake token" type="password" autoComplete="new-password" value={intakeToken} disabled={busy} style={control} onChange={e => setIntakeToken(e.target.value)} /></label>
       <p>Requester attribution is unknown. A profile name does not authenticate or authorize intake.</p>
       {onAccess && <button type="button" disabled={busy} onClick={onAccess}>Owner access</button>}{' '}
-      <button type="submit" disabled={busy || !authorized}>Preview exact source</button>{' '}
-      <button type="button" disabled={busy || !authorized || !preview || Boolean(pending) || capture?.receipt.capture_id === draft.captureId} onClick={() => void captureDraft()}>Capture unresolved request</button>
+      <button type="submit" disabled={busy || Boolean(pending) || !authorized}>Preview exact source</button>{' '}
+      <button type="button" disabled={busy || !authorized || !preview || Boolean(pending) || capture?.receipt.preview_manifest_digest === preview?.manifest_digest} onClick={() => void captureDraft()}>Capture unresolved request</button>
     </form>
     {pending && <aside style={{ marginTop: '1rem', borderTop: '1px solid #444', paddingTop: '.7rem' }}>
-      <p>Capture response is unresolved. Retry will resend the identical command ID and serialized request.</p>
+      <p>No receipt is confirmed for this command. Retry will resend the identical command ID and serialized request.</p>
       <button type="button" disabled={busy || !authorized} onClick={() => void retryCapture()}>Retry same capture request</button>
+      {' '}<button type="button" disabled={busy} onClick={abandonPendingCapture}>Abandon local retry envelope and reset draft</button>
     </aside>}
     {message && <p role="status" aria-live="polite">{message}</p>}
     {preview && <article aria-label="Intake preview" style={{ marginTop: '1rem', borderTop: '1px solid #444', paddingTop: '.7rem' }}>
@@ -281,8 +360,12 @@ export default function Intake({ token = '', onAccess, fetcher = fetch }: Intake
       <h3>Immutable capture receipt</h3><p>Receipt recorded; execution and acceptance remain false. Replayed: {String(capture.replayed)}.</p>
       <dl><dt>Capture ID / revision</dt><dd>{capture.receipt.capture_id} / {capture.receipt.revision}</dd><dt>Command ID</dt><dd>{capture.receipt.command_id}</dd><dt>Receipt digest</dt><dd><code>{capture.receipt_digest}</code></dd><dt>Request digest</dt><dd><code>{capture.receipt.request_digest}</code></dd></dl>
     </article>}
+    {readTarget && capture && !stored && <button type="button" disabled={busy || !authorized} onClick={() => void retryReadback()}>Read captured original again</button>}
     {receiptHistory.length > 0 && <details><summary>Recent immutable receipt summaries ({receiptHistory.length}, kept in page memory)</summary>
       <ul>{receiptHistory.map(item => <li key={item.receipt_digest}>{item.receipt.capture_id} revision {item.receipt.revision} · command {item.receipt.command_id} · <code>{item.receipt_digest}</code></li>)}</ul>
+    </details>}
+    {requestHistory.length > 0 && <details><summary>Recent capture request summaries ({requestHistory.length}, kept in page memory)</summary>
+      <ul>{requestHistory.map(item => <li key={item.commandId}>{item.sourceId}@{item.sourceRevision} · capture {item.captureId} · command {item.commandId} · {item.bodyBytes} UTF-8 bytes · {item.outcome} · manifest <code>{item.manifestDigest}</code></li>)}</ul>
     </details>}
     {stored && <article aria-label="Recorded original source"><h3>Original bytes as recorded</h3><p>Capture {stored.request.capture_id}, revision {stored.receipt.revision}, receipt <code>{stored.receipt_digest}</code>.</p><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{stored.request.source_payload.text}</pre></article>}
     <p>Enriched-record, duplicate-query, and delivery views are not part of this intake panel.</p>
