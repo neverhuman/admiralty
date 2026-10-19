@@ -1,81 +1,75 @@
-//! Authenticated, scoped attention recording at a caller-owned safe turn.
+//! Scoped attention recording with writer-bound current authentication/policy.
 //!
-//! Trusted startup installs the immutable journal definition and current action
-//! policy. An inbox read grant alone never authorizes a mutation. This adapter
-//! records observations/wake outbox intents only: it does not send provider
-//! input, acknowledge delivery, advance context baselines or grant authority.
-//! A wake's `request_context` is the caller's safe-turn context pin. The Store
-//! separately retains observed evidence pins in `delivery.refs`; this adapter
-//! does not prove those references were compiled into the request context.
-//! Policy checks occur before enqueueing the Store command and are not
-//! linearizable with its commit. Production activation requires writer-bound
-//! current-policy authorization and batch-to-context compilation validation.
+//! Trusted startup must install the same reviewed writer authority in Store and
+//! this adapter. Inbox read grants alone never authorize a mutation. The Store
+//! validates actual retained capsules on its sole writer; every command/retry
+//! additionally checks the real opaque actor and current shared credential state.
+//! This records observations/wake intents only. It does not send provider input,
+//! acknowledge delivery, advance baselines, or prove pending delivery.refs were
+//! compiled into the separately retained request_context. External policy changes
+//! after a callback returns remain the issuer's synchronization responsibility.
 use crate::services::coordination::{
-    AuthenticatedCoordinationActor, CoordinationCredentialAuthority, CoordinationService,
+    AuthenticatedCoordinationActor, CoordinationCredentialAuthority,
 };
 use admiralty_core::{
     PrincipalId, SourceIdentity, content_digest,
-    coordination::context::{ProtectedTaskFacts, RecipientRole, RoleFacts, decode_role_capsule},
-    governor::{AttentionUpdate, Recipient, Role},
+    governor::{AttentionUpdate, Recipient},
 };
+pub use admiralty_store::attention::AttentionContextPin;
 use admiralty_store::{
     Store, StoreError,
     attention::{
-        AttentionCommand, AttentionCursor, AttentionDefinition, AttentionOperation,
-        AttentionResult, AttentionScope,
+        AttentionAuthority, AttentionCommand, AttentionCommandBinding, AttentionCursor,
+        AttentionDefinition, AttentionDefinitionBinding, AttentionOperation, AttentionOutcome,
+        AttentionRequestBinding, AttentionResult, AuthorizedAttentionCommand,
+        authorized_request_digest,
     },
-    context_renders::{ContextNamespace, ContextScope, RenderRef},
-    inbox::InboxScope,
     outbox::OutboxIntent,
 };
 use serde::Serialize;
-use std::sync::Arc;
+use std::{
+    any::Any,
+    sync::{Arc, RwLock},
+};
 
 const MAX_REQUEST_BYTES: usize = 32 * 1024;
-
-#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
-pub struct AttentionContextPin {
-    pub scope: ContextScope,
-    pub render: RenderRef,
-    /// Independently retained compiler binding, checked against the real record.
-    pub facts_digest: String,
-}
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct AttentionRequest {
     pub command_id: String,
     pub expected_prior: Option<AttentionCursor>,
-    /// A trusted policy tick, not a wall-clock value invented by this adapter.
+    /// Explicit caller-owned recorded logical time, never a synthesized clock.
     pub logical_tick: Option<u64>,
     pub context: AttentionContextPin,
 }
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NativeAttentionAction {
     Observe,
     TakeAtSafeTurn,
 }
 
-/// Complete bounded request binding presented to an independently installed
-/// policy. Implementors must check current actor/root/role/epoch membership,
-/// source provenance, exact context/evidence custody and the whole request digest.
-/// A true result is recording permission only, never execution/delivery authority.
+/// Current recording permission only. All references and digests remain data;
+/// the policy independently owns scope/role/epoch/source/evidence membership.
+/// It must be bounded and perform no I/O, Store calls or lock-taking side effects.
 pub struct NativeAttentionBinding<'a> {
     pub action: NativeAttentionAction,
     pub actor: &'a PrincipalId,
-    pub scope: &'a AttentionScope,
+    pub scope: &'a admiralty_store::attention::AttentionScope,
     pub config_digest: &'a str,
+    pub policy_digest: &'a str,
     pub recipient: &'a Recipient,
     pub context: &'a AttentionContextPin,
     pub source: Option<&'a SourceIdentity>,
     pub evidence_ref: &'a str,
+    pub command: &'a AttentionCommand,
     pub request_digest: &'a str,
+    /// Actual computed outcome at the Store's final check, not a delivery ACK
+    /// or proof pending references were compiled into request_context.
+    pub outcome: Option<&'a AttentionOutcome>,
 }
-
 pub trait NativeAttentionPolicy: Send + Sync {
     fn authorize_current(&self, binding: &NativeAttentionBinding<'_>) -> bool;
 }
-
 #[derive(Debug)]
 pub enum NativeAttentionError {
     AccessDenied,
@@ -95,122 +89,216 @@ impl std::fmt::Display for NativeAttentionError {
 }
 impl std::error::Error for NativeAttentionError {}
 
-pub struct NativeAttentionService {
-    store: Store,
-    scope: AttentionScope,
+/// Non-deserializable trusted startup composition. Definition permission is
+/// separate from caller action permission. No token bytes or JSON proof are
+/// copied into Store. The registry must be the actual current shared authority.
+pub struct NativeAttentionWriterAuthority {
+    definition: AttentionDefinition,
+    definition_digest: String,
     config_digest: String,
-    policy: Option<Arc<dyn NativeAttentionPolicy>>,
+    policy_digest: String,
+    policy: Arc<dyn NativeAttentionPolicy>,
+    credentials: Arc<RwLock<CoordinationCredentialAuthority>>,
 }
-
-impl NativeAttentionService {
-    /// Trusted startup only: registers a bounded immutable policy journal.
-    /// HTTP/request data must never install this policy or replace its definition.
-    /// With no action policy installed, both mutation methods fail closed.
+impl NativeAttentionWriterAuthority {
     pub fn configured(
-        store: Store,
         definition: AttentionDefinition,
-        policy: Option<Arc<dyn NativeAttentionPolicy>>,
+        policy_digest: String,
+        policy: Arc<dyn NativeAttentionPolicy>,
+        credentials: Arc<RwLock<CoordinationCredentialAuthority>>,
     ) -> Result<Self, NativeAttentionError> {
         admiralty_core::limits::bounded_json_size(
             &definition,
             admiralty_store::attention::MAX_DEFINITION_BYTES,
         )
         .map_err(|_| NativeAttentionError::InvalidBinding)?;
-        let registration = store
-            .register_attention(definition.clone())
-            .map_err(NativeAttentionError::Store)?;
+        admiralty_core::governor::AttentionGovernor::new(definition.config.clone())
+            .map_err(|_| NativeAttentionError::InvalidBinding)?;
+        if !is_digest(&policy_digest) {
+            return Err(NativeAttentionError::InvalidBinding);
+        }
+        let definition_digest =
+            content_digest(&definition).map_err(|_| NativeAttentionError::InvalidBinding)?;
+        let config_digest =
+            content_digest(&definition.config).map_err(|_| NativeAttentionError::InvalidBinding)?;
         Ok(Self {
-            store,
-            scope: definition.scope,
-            config_digest: registration.config_digest,
+            definition,
+            definition_digest,
+            config_digest,
+            policy_digest,
             policy,
+            credentials,
         })
     }
-
-    /// Record a source update only after independent recording permission and
-    /// current authenticated inbox membership for the exact recipient/epoch.
-    pub fn observe_authenticated(
+    fn active(&self, actor: &AuthenticatedCoordinationActor) -> bool {
+        self.credentials
+            .try_read()
+            .is_ok_and(|registry| registry.is_active_actor(actor))
+    }
+    fn permits(
         &self,
         actor: &AuthenticatedCoordinationActor,
-        credentials: &CoordinationCredentialAuthority,
-        request: AttentionRequest,
-        update: AttentionUpdate,
-    ) -> Result<AttentionResult, NativeAttentionError> {
-        let digest = self.scoped_digest(&(&request, &update))?;
-        update
-            .validate()
-            .map_err(|_| NativeAttentionError::InvalidBinding)?;
-        if update.scope.project_id != self.scope.project_id
-            || update.evidence_ref != request.context.render.record_digest
+        request: &AuthorizedAttentionCommand,
+        digest: &str,
+        outcome: Option<&AttentionOutcome>,
+    ) -> bool {
+        if !self.active(actor)
+            || actor.principal() != &request.binding.actor
+            || actor.credential_id() != request.binding.credential_ref
+            || request.binding.policy_digest != self.policy_digest
+            || request.command.scope != self.definition.scope
+            || request.command.config_digest != self.config_digest
+            || !authorized_request_digest(&self.definition_digest, request)
+                .is_ok_and(|actual| actual == digest)
+        {
+            return false;
+        }
+        let (action, recipient, source) = match &request.command.operation {
+            AttentionOperation::Observe { update } => (
+                NativeAttentionAction::Observe,
+                &update.recipient,
+                Some(&update.source),
+            ),
+            AttentionOperation::TakeDelivery { recipient, .. } => {
+                (NativeAttentionAction::TakeAtSafeTurn, recipient, None)
+            }
+        };
+        let binding = NativeAttentionBinding {
+            action,
+            actor: actor.principal(),
+            scope: &request.command.scope,
+            config_digest: &request.command.config_digest,
+            policy_digest: &self.policy_digest,
+            recipient,
+            context: &request.binding.context,
+            source,
+            evidence_ref: &request.binding.context.render.record_digest,
+            command: &request.command,
+            request_digest: digest,
+            outcome,
+        };
+        // Never hold a registry lock across an external policy callback or a
+        // Store queue operation. Contention/poisoning denies, never waits.
+        self.policy.authorize_current(&binding) && self.active(actor)
+    }
+}
+impl AttentionAuthority for NativeAttentionWriterAuthority {
+    fn authorize_definition(&self, b: &AttentionDefinitionBinding<'_>) -> bool {
+        b.definition == &self.definition
+            && b.definition_digest == self.definition_digest
+            && b.config_digest == self.config_digest
+    }
+    fn authorize_command(
+        &self,
+        b: &AttentionCommandBinding<'_>,
+        proof: &(dyn Any + Send + Sync),
+    ) -> bool {
+        let Some(actor) = proof.downcast_ref::<AuthenticatedCoordinationActor>() else {
+            return false;
+        };
+        b.definition == &self.definition
+            && b.definition_digest == self.definition_digest
+            && b.stored_context.scope == b.request.binding.context.scope
+            && content_digest(b.stored_context)
+                .is_ok_and(|digest| digest == b.request.binding.context.render.record_digest)
+            && self.permits(actor, b.request, b.request_digest, b.outcome)
+    }
+}
+
+pub struct NativeAttentionService {
+    store: Store,
+    issuer: Arc<NativeAttentionWriterAuthority>,
+}
+impl NativeAttentionService {
+    /// The issuer must already be installed in Store through trusted startup.
+    /// Absence is denied at construction, even when a read credential exists.
+    pub fn configured(
+        store: Store,
+        definition: AttentionDefinition,
+        issuer: Option<Arc<NativeAttentionWriterAuthority>>,
+    ) -> Result<Self, NativeAttentionError> {
+        let issuer = issuer.ok_or(NativeAttentionError::AccessDenied)?;
+        if definition != issuer.definition {
+            return Err(NativeAttentionError::InvalidBinding);
+        }
+        let registration = store
+            .register_attention(definition)
+            .map_err(NativeAttentionError::Store)?;
+        if registration.definition_digest != issuer.definition_digest
+            || registration.config_digest != issuer.config_digest
         {
             return Err(NativeAttentionError::InvalidBinding);
         }
-        let facts = self.authorize(
+        Ok(Self { store, issuer })
+    }
+    pub fn observe_authenticated(
+        &self,
+        actor: &AuthenticatedCoordinationActor,
+        request: AttentionRequest,
+        update: AttentionUpdate,
+    ) -> Result<AttentionResult, NativeAttentionError> {
+        let bound = self.bind(
             actor,
-            credentials,
-            NativeAttentionAction::Observe,
-            &request.context,
-            &update.recipient,
-            Some(&update.source),
-            &digest,
-        )?;
-        let matches = |task: &ProtectedTaskFacts| {
-            task.contract.project_id == update.scope.project_id
-                && task.contract.root_id == self.scope.root_id
-                && task.contract.task_id == update.scope.task_id
-                && task.contract.revision == update.scope.revision
-                && task.contract.authority_ref == update.authority_ref
-        };
-        let in_context = match &facts {
-            RoleFacts::Decision(facts) => matches(&facts.task),
-            RoleFacts::Handoff(facts) => matches(&facts.task),
-            RoleFacts::ProjectExceptions(facts) => facts.exceptions.iter().any(matches),
-            RoleFacts::FleetExceptions(facts) => facts
-                .projects
-                .iter()
-                .any(|p| p.exceptions.iter().any(matches)),
-        };
-        if !in_context {
-            return Err(NativeAttentionError::InvalidBinding);
-        }
-        self.apply(
             request,
             AttentionOperation::Observe {
                 update: Box::new(update),
             },
-        )
+        );
+        self.record(actor, bound)
     }
-
-    /// Called by the authenticated recipient at an independently authorized safe
-    /// turn. `request_context` identifies that request's actual stored capsule;
-    /// it does not establish coverage of the separately stored `delivery.refs`.
-    /// A recorded outbox intent remains undelivered and unacknowledged.
+    /// Records the safe-turn request separately from observed pending refs.
+    /// Neither this call nor a recorded outbox intent proves model delivery.
     #[allow(clippy::too_many_arguments)]
     pub fn take_at_safe_turn(
         &self,
         actor: &AuthenticatedCoordinationActor,
-        credentials: &CoordinationCredentialAuthority,
         request: AttentionRequest,
         recipient: Recipient,
         idempotency_key: String,
         not_before: u64,
     ) -> Result<AttentionResult, NativeAttentionError> {
-        let digest = self.scoped_digest(&(&request, &recipient, &idempotency_key, not_before))?;
-        self.authorize(
-            actor,
-            credentials,
-            NativeAttentionAction::TakeAtSafeTurn,
-            &request.context,
-            &recipient,
-            None,
-            &digest,
-        )?;
+        let bound = self.bind_take(actor, request, recipient, idempotency_key, not_before)?;
+        self.record(actor, bound)
+    }
+    fn bind(
+        &self,
+        actor: &AuthenticatedCoordinationActor,
+        request: AttentionRequest,
+        operation: AttentionOperation,
+    ) -> AuthorizedAttentionCommand {
+        AuthorizedAttentionCommand {
+            command: AttentionCommand {
+                scope: self.issuer.definition.scope.clone(),
+                config_digest: self.issuer.config_digest.clone(),
+                command_id: request.command_id,
+                expected_prior: request.expected_prior,
+                logical_tick: request.logical_tick,
+                operation,
+            },
+            binding: AttentionRequestBinding {
+                actor: actor.principal().clone(),
+                credential_ref: actor.credential_id().to_owned(),
+                policy_digest: self.issuer.policy_digest.clone(),
+                context: request.context,
+            },
+        }
+    }
+    fn bind_take(
+        &self,
+        actor: &AuthenticatedCoordinationActor,
+        request: AttentionRequest,
+        recipient: Recipient,
+        idempotency_key: String,
+        not_before: u64,
+    ) -> Result<AuthorizedAttentionCommand, NativeAttentionError> {
+        admiralty_core::limits::bounded_json_size(&request, MAX_REQUEST_BYTES)
+            .map_err(|_| NativeAttentionError::InvalidBinding)?;
         let payload = serde_json::json!({
-            "kind":"native_attention_context", "request_context":request.context,
-            "request_digest":digest, "delivered":false,
-            "application_acknowledged":false, "authority_granted":false,
+            "kind":"native_attention_context","request_context":request.context,
+            "delivered":false,"application_acknowledged":false,"authority_granted":false,
         });
-        self.apply(
+        Ok(self.bind(
+            actor,
             request,
             AttentionOperation::TakeDelivery {
                 recipient,
@@ -220,197 +308,111 @@ impl NativeAttentionService {
                     not_before,
                 },
             },
-        )
+        ))
     }
-
-    #[allow(clippy::too_many_arguments)]
-    fn authorize(
+    fn record(
         &self,
         actor: &AuthenticatedCoordinationActor,
-        credentials: &CoordinationCredentialAuthority,
-        action: NativeAttentionAction,
-        context: &AttentionContextPin,
-        recipient: &Recipient,
-        source: Option<&SourceIdentity>,
-        digest: &str,
-    ) -> Result<RoleFacts, NativeAttentionError> {
-        let policy = self
-            .policy
-            .as_ref()
-            .ok_or(NativeAttentionError::AccessDenied)?;
-        let role = match recipient.role {
-            Role::TaskWorker => RecipientRole::Worker,
-            Role::Captain => RecipientRole::Commodore,
-            Role::SuperCaptain => RecipientRole::Admiral,
-        };
-        if actor.principal() != &recipient.principal_id
-            || context.scope.recipient != recipient.principal_id
-            || context.scope.role != role
-            || !self.scope.recipients.contains(recipient)
-        {
-            return Err(NativeAttentionError::AccessDenied);
-        }
-        let mut roots = match &context.scope.namespace {
-            ContextNamespace::Project {
-                project_id,
-                root_id,
-            } => vec![(project_id, root_id)],
-            ContextNamespace::Fleet { project_roots, .. } if project_roots.len() <= 16 => {
-                project_roots
-                    .iter()
-                    .map(|p| (&p.project_id, &p.root_id))
-                    .collect()
-            }
-            _ => return Err(NativeAttentionError::InvalidBinding),
-        };
-        if !roots.contains(&(&self.scope.project_id, &self.scope.root_id)) {
-            return Err(NativeAttentionError::InvalidBinding);
-        }
-        roots.sort();
-        if roots.windows(2).any(|w| w[0] == w[1]) {
-            return Err(NativeAttentionError::InvalidBinding);
-        }
-        // Authenticate against CURRENT grants before any context/journal read.
-        // Fleet contexts require independent inbox membership for every project;
-        // the installed policy additionally binds all root and role membership.
-        for (project_id, _) in roots {
-            CoordinationService::new(&self.store)
-                .pending_messages_authenticated(
-                    actor,
-                    credentials,
-                    InboxScope {
-                        project_id: project_id.clone(),
-                        recipient: actor.principal().clone(),
-                        context_epoch: self.scope.epoch.clone(),
-                    },
-                    None,
-                    1,
-                )
-                .map_err(|_| NativeAttentionError::AccessDenied)?;
-        }
-        let binding = NativeAttentionBinding {
-            action,
-            actor: actor.principal(),
-            scope: &self.scope,
-            config_digest: &self.config_digest,
-            recipient,
-            context,
-            source,
-            evidence_ref: &context.render.record_digest,
-            request_digest: digest,
-        };
-        if !policy.authorize_current(&binding) {
-            return Err(NativeAttentionError::AccessDenied);
-        }
-        let stored = self
-            .store
-            .context_render(context.scope.clone(), context.render.key.clone())
-            .map_err(NativeAttentionError::Store)?
-            .ok_or(NativeAttentionError::ContextUnavailable)?;
-        if stored.capsule.context_epoch != self.scope.epoch
-            || stored.capsule.facts_digest != context.facts_digest
-            || content_digest(&stored).map_err(|_| NativeAttentionError::InvalidBinding)?
-                != context.render.record_digest
-        {
-            return Err(NativeAttentionError::ContextUnavailable);
-        }
-        let facts = decode_role_capsule(
-            &stored.capsule.text,
-            role,
-            &self.scope.epoch,
-            &context.facts_digest,
-        )
-        .map_err(|_| NativeAttentionError::ContextUnavailable)?;
-        // Recheck after the read. This is deliberately not a claim that policy
-        // revocation is linearized with the later Store command/commit.
-        if !policy.authorize_current(&binding) {
-            return Err(NativeAttentionError::AccessDenied);
-        }
-        Ok(facts)
-    }
-
-    fn apply(
-        &self,
-        request: AttentionRequest,
-        operation: AttentionOperation,
+        bound: AuthorizedAttentionCommand,
     ) -> Result<AttentionResult, NativeAttentionError> {
+        let digest = authorized_request_digest(&self.issuer.definition_digest, &bound)
+            .map_err(|_| NativeAttentionError::InvalidBinding)?;
+        if !self.issuer.permits(actor, &bound, &digest, None) {
+            return Err(NativeAttentionError::AccessDenied);
+        }
         self.store
-            .apply_attention(AttentionCommand {
-                scope: self.scope.clone(),
-                config_digest: self.config_digest.clone(),
-                command_id: request.command_id,
-                expected_prior: request.expected_prior,
-                logical_tick: request.logical_tick,
-                operation,
-            })
+            .apply_attention_authorized(bound, Arc::new(actor.clone()))
             .map_err(NativeAttentionError::Store)
     }
-
-    fn scoped_digest(&self, value: &impl Serialize) -> Result<String, NativeAttentionError> {
-        request_digest(&(&self.scope, &self.config_digest, value))
-    }
 }
-
-fn request_digest(value: &impl Serialize) -> Result<String, NativeAttentionError> {
-    admiralty_core::limits::bounded_json_size(value, MAX_REQUEST_BYTES)
-        .map_err(|_| NativeAttentionError::InvalidBinding)?;
-    content_digest(value).map_err(|_| NativeAttentionError::InvalidBinding)
+fn is_digest(value: &str) -> bool {
+    value.strip_prefix("sha256:").is_some_and(|hex| {
+        hex.len() == 64
+            && hex
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    })
 }
 
 #[cfg(test)]
-#[allow(clippy::expect_used, clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::services::coordination::{
         CoordinationAction, CoordinationCredential, CoordinationCredentialGrant,
     };
     use admiralty_core::{
-        AcceptanceCriterion, CheckSpec, PrincipalId, ProjectId, RootId, TaskContract, TaskId,
+        AcceptanceCriterion, CheckSpec, ProjectId, RootId, TaskContract, TaskId,
         coordination::context::{
             BudgetObservation, CheckObservation, FactObservation, ProjectExceptionFacts,
-            ProtectedTaskFacts, compile_project_exceptions,
+            ProtectedTaskFacts, RecipientRole, compile_project_exceptions,
         },
-        governor::{BlockState, DeliveryDecision, GovernorConfig, Scope, UpdateKind},
+        governor::{BlockState, GovernorConfig, Role, Scope, UpdateKind},
     };
     use admiralty_store::{
-        attention::AttentionOutcome,
-        context_renders::{RecordContextRender, RenderKey},
+        StoreAuthorities,
+        attention::{AttentionError, AttentionScope},
+        context_renders::{ContextNamespace, ContextScope, RecordContextRender, RenderKey},
+        inbox::InboxScope,
     };
     use std::{
-        collections::BTreeSet,
+        collections::{BTreeMap, BTreeSet},
         sync::{
             Mutex,
             atomic::{AtomicBool, AtomicUsize, Ordering},
+            mpsc,
         },
+        time::Duration,
     };
-
+    struct Gate {
+        entered: mpsc::SyncSender<()>,
+        resume: mpsc::Receiver<()>,
+    }
     struct ExactPolicy {
         scope: AttentionScope,
         config_digest: String,
-        context: AttentionContextPin,
+        policy_digest: String,
+        definition_digest: String,
+        contexts: Mutex<BTreeMap<String, AttentionContextPin>>,
         allowed: Mutex<BTreeSet<String>>,
         revoked: AtomicBool,
+        deny_final: AtomicBool,
         calls: AtomicUsize,
-        deny_after_first: AtomicBool,
+        gate: Mutex<Option<Gate>>,
     }
     impl ExactPolicy {
-        fn admit(&self, value: &impl Serialize) {
-            self.allowed.lock().expect("policy lock").insert(
-                request_digest(&(&self.scope, &self.config_digest, value)).expect("bounded digest"),
+        fn admit(&self, request: &AuthorizedAttentionCommand) {
+            self.allowed.lock().expect("exact requests").insert(
+                authorized_request_digest(&self.definition_digest, request)
+                    .expect("bounded exact request"),
             );
         }
     }
     impl NativeAttentionPolicy for ExactPolicy {
         fn authorize_current(&self, b: &NativeAttentionBinding<'_>) -> bool {
-            let calls = self.calls.fetch_add(1, Ordering::SeqCst);
+            let call = self.calls.fetch_add(1, Ordering::SeqCst);
+            if call == 1 {
+                let gate = self.gate.lock().expect("gate").take();
+                if let Some(gate) = gate
+                    && (gate.entered.send(()).is_err()
+                        || gate.resume.recv_timeout(Duration::from_secs(5)).is_err())
+                {
+                    return false;
+                }
+            }
             !(self.revoked.load(Ordering::SeqCst)
-                || self.deny_after_first.load(Ordering::SeqCst) && calls > 0)
+                || self.deny_final.load(Ordering::SeqCst) && b.outcome.is_some())
                 && b.scope == &self.scope
+                && b.command.scope == self.scope
                 && b.config_digest == self.config_digest
-                && b.context == &self.context
-                && b.actor == &self.context.scope.recipient
+                && b.policy_digest == self.policy_digest
+                && b.actor == &b.recipient.principal_id
                 && self.scope.recipients.contains(b.recipient)
-                && b.evidence_ref == self.context.render.record_digest
+                && self
+                    .contexts
+                    .lock()
+                    .expect("actual context pins")
+                    .get(b.evidence_ref)
+                    == Some(b.context)
                 && match b.action {
                     NativeAttentionAction::Observe => b.source.is_some_and(|s| {
                         s.producer_id == "trusted-source" && s.incarnation == "trusted-boot"
@@ -420,7 +422,7 @@ mod tests {
                 && self
                     .allowed
                     .lock()
-                    .expect("policy lock")
+                    .expect("exact requests")
                     .contains(b.request_digest)
         }
     }
@@ -428,9 +430,10 @@ mod tests {
         store: Store,
         definition: AttentionDefinition,
         service: NativeAttentionService,
-        credentials: CoordinationCredentialAuthority,
+        credentials: Arc<RwLock<CoordinationCredentialAuthority>>,
         actor: AuthenticatedCoordinationActor,
         policy: Arc<ExactPolicy>,
+        issuer: Arc<NativeAttentionWriterAuthority>,
         request: AttentionRequest,
         update: AttentionUpdate,
         _dir: tempfile::TempDir,
@@ -440,11 +443,12 @@ mod tests {
         let dir = tempfile::Builder::new()
             .permissions(std::fs::Permissions::from_mode(0o700))
             .tempdir()
-            .expect("private actual Store fixture");
-        let store = Store::open(dir.path().join("attention.sqlite")).expect("Store");
+            .expect("private fixture");
+        let path = dir.path().join("attention.sqlite");
+        let store = Store::open(&path).expect("context storage only, no attention authority");
         let project = ProjectId::new("project").expect("project");
         let root = RootId::new("root").expect("root");
-        let principal = PrincipalId::new("commodore").expect("recipient");
+        let principal = PrincipalId::new("commodore").expect("principal");
         let recipient = Recipient {
             role: Role::Captain,
             principal_id: principal.clone(),
@@ -456,15 +460,15 @@ mod tests {
             task_id: TaskId::new("task").expect("task"),
             revision: 1,
             title: "Exact task".into(),
-            objective: "Carry a scoped context reference".into(),
-            non_goals: vec!["Never grant authority".into()],
+            objective: "Carry a scoped reference".into(),
+            non_goals: vec!["Do NOT publish".into()],
             owned_paths: vec!["src".into()],
             forbidden_paths: vec!["private".into()],
             read_first: vec![],
             dependencies: vec![],
             criteria: vec![AcceptanceCriterion {
-                id: "smoke".into(),
-                text: "Scope retained".into(),
+                id: "scope".into(),
+                text: "Exact scope".into(),
                 check_ids: vec!["unit".into()],
             }],
             checks: vec![CheckSpec {
@@ -497,13 +501,13 @@ mod tests {
                 budget: BudgetObservation::Unknown {
                     reason: "Not measured".into(),
                 },
-                next_action: "Inspect the blocker".into(),
+                next_action: "Inspect blocker".into(),
             }],
             uncertainty: vec![],
-            next_action: "Inspect the blocker".into(),
+            next_action: "Inspect blocker".into(),
         };
-        let capsule = compile_project_exceptions(&facts, "epoch", 8192).expect("real compiler");
-        let context_scope = ContextScope {
+        let capsule = compile_project_exceptions(&facts, "epoch", 8192).expect("actual compiler");
+        let scope = ContextScope {
             recipient: principal.clone(),
             role: RecipientRole::Commodore,
             namespace: ContextNamespace::Project {
@@ -513,7 +517,7 @@ mod tests {
         };
         let recorded = store
             .record_context_render(RecordContextRender {
-                scope: context_scope.clone(),
+                scope: scope.clone(),
                 key: RenderKey {
                     render_id: "render".into(),
                     version: 1,
@@ -522,9 +526,9 @@ mod tests {
                 expected_facts_digest: capsule.facts_digest.clone(),
                 capsule: capsule.clone(),
             })
-            .expect("actual durable context record");
+            .expect("actual retained context");
         let context = AttentionContextPin {
-            scope: context_scope,
+            scope,
             render: recorded.render,
             facts_digest: capsule.facts_digest,
         };
@@ -538,16 +542,29 @@ mod tests {
             },
             config: GovernorConfig::default(),
         };
+        let policy_digest = content_digest(&(
+            "explicit-fixture-action-policy",
+            &definition,
+            "trusted-source",
+            "trusted-boot",
+        ))
+        .expect("actual policy config identity");
         let policy = Arc::new(ExactPolicy {
             scope: definition.scope.clone(),
-            config_digest: content_digest(&definition.config).expect("config digest"),
-            context: context.clone(),
+            config_digest: content_digest(&definition.config).expect("config"),
+            policy_digest: policy_digest.clone(),
+            definition_digest: content_digest(&definition).expect("definition"),
+            contexts: Mutex::new(BTreeMap::from([(
+                context.render.record_digest.clone(),
+                context.clone(),
+            )])),
             allowed: Mutex::new(BTreeSet::new()),
             revoked: AtomicBool::new(false),
+            deny_final: AtomicBool::new(false),
             calls: AtomicUsize::new(0),
-            deny_after_first: AtomicBool::new(false),
+            gate: Mutex::new(None),
         });
-        let credentials =
+        let credentials = Arc::new(RwLock::new(
             CoordinationCredentialAuthority::new(vec![CoordinationCredential::configured(
                 "credential".into(),
                 "attention-fixture-token-01234567890123456789".into(),
@@ -563,16 +580,37 @@ mod tests {
                     source: None,
                 }],
             )])
-            .expect("actual configured credentials");
+            .expect("configured real credential registry"),
+        ));
         let actor = credentials
+            .read()
+            .expect("registry")
             .authenticate("attention-fixture-token-01234567890123456789")
-            .expect("authenticate actual credential");
+            .expect("actual authentication");
+        let issuer = Arc::new(
+            NativeAttentionWriterAuthority::configured(
+                definition.clone(),
+                policy_digest,
+                policy.clone(),
+                credentials.clone(),
+            )
+            .expect("explicit reviewed writer issuer"),
+        );
+        drop(store);
+        let store = Store::open_with_startup_authorities(
+            path,
+            StoreAuthorities {
+                attention: Some(issuer.clone()),
+                ..StoreAuthorities::default()
+            },
+        )
+        .expect("actual installed writer authority");
         let service = NativeAttentionService::configured(
             store.clone(),
             definition.clone(),
-            Some(policy.clone()),
+            Some(issuer.clone()),
         )
-        .expect("configured service");
+        .expect("explicit protected bridge");
         let request = AttentionRequest {
             command_id: "observe".into(),
             expected_prior: None,
@@ -598,7 +636,13 @@ mod tests {
                 state: BlockState::Raised,
             },
         };
-        policy.admit(&(&request, &update));
+        policy.admit(&service.bind(
+            &actor,
+            request.clone(),
+            AttentionOperation::Observe {
+                update: Box::new(update.clone()),
+            },
+        ));
         Fixture {
             store,
             definition,
@@ -606,48 +650,60 @@ mod tests {
             credentials,
             actor,
             policy,
+            issuer,
             request,
             update,
             _dir: dir,
         }
     }
-
+    fn take(
+        f: &Fixture,
+        prior: AttentionCursor,
+        id: &str,
+        context: AttentionContextPin,
+    ) -> AttentionRequest {
+        let request = AttentionRequest {
+            command_id: id.into(),
+            expected_prior: Some(prior),
+            logical_tick: Some(2),
+            context,
+        };
+        let bound = f
+            .service
+            .bind_take(
+                &f.actor,
+                request.clone(),
+                f.update.recipient.clone(),
+                id.into(),
+                0,
+            )
+            .expect("bounded take");
+        f.policy.admit(&bound);
+        request
+    }
     #[test]
-    fn authenticated_safe_turn_records_exact_context_outbox_once_without_delivery() {
+    fn authenticated_safe_turn_records_exact_outbox_once_without_delivery() {
         let f = fixture();
         let observed = f
             .service
-            .observe_authenticated(
-                &f.actor,
-                &f.credentials,
-                f.request.clone(),
-                f.update.clone(),
-            )
-            .expect("scoped observe");
-        let mut request = f.request.clone();
-        request.command_id = "take".into();
-        request.expected_prior = Some(observed.receipt.cursor);
-        request.logical_tick = Some(2);
-        let key = "attention:wake".to_owned();
-        f.policy
-            .admit(&(&request, &f.update.recipient, &key, 0_u64));
+            .observe_authenticated(&f.actor, f.request.clone(), f.update.clone())
+            .expect("actual protected observe");
+        let request = take(
+            &f,
+            observed.receipt.cursor,
+            "take",
+            f.request.context.clone(),
+        );
         let result = f
             .service
             .take_at_safe_turn(
                 &f.actor,
-                &f.credentials,
                 request.clone(),
                 f.update.recipient.clone(),
-                key.clone(),
+                "take".into(),
                 0,
             )
-            .expect("actual atomic wake");
-        assert!(matches!(
-            result.receipt.outcome,
-            AttentionOutcome::Delivery {
-                decision: DeliveryDecision::Wake { .. }
-            }
-        ));
+            .expect("protected wake");
         assert!(result.receipt.recorded_wake);
         assert!(
             !result.receipt.delivered
@@ -658,197 +714,250 @@ mod tests {
             .service
             .take_at_safe_turn(
                 &f.actor,
-                &f.credentials,
                 request,
                 f.update.recipient.clone(),
-                key.clone(),
+                "take".into(),
                 0,
             )
-            .expect("lost response replay");
+            .expect("exact retry");
         assert!(replay.replayed);
         assert_eq!(replay.receipt, result.receipt);
         let claim = f
             .store
-            .claim_outbox_key(Some(0), "dispatcher".into(), 10, key)
-            .expect("claim own durable effect")
-            .expect("one effect");
+            .claim_outbox_key(Some(0), "dispatcher".into(), 10, "take".into())
+            .expect("claim")
+            .expect("one exact effect");
         assert_eq!(
             claim.payload["payload"]["request_context"]["render"]["record_digest"],
             f.request.context.render.record_digest
         );
         assert_eq!(claim.payload["payload"]["delivered"], false);
     }
-
     #[test]
-    fn request_context_does_not_replace_recorded_batch_evidence() {
+    fn safe_turn_context_b_does_not_replace_pending_evidence_a() {
         let f = fixture();
         let observed = f
             .service
-            .observe_authenticated(
-                &f.actor,
-                &f.credentials,
-                f.request.clone(),
-                f.update.clone(),
-            )
-            .expect("observe actual context A");
+            .observe_authenticated(&f.actor, f.request.clone(), f.update.clone())
+            .expect("observe context A");
         let stored = f
             .store
             .context_render(
                 f.request.context.scope.clone(),
                 f.request.context.render.key.clone(),
             )
-            .expect("read exact record")
-            .expect("actual context A");
-        let context_b = f
+            .expect("context read")
+            .expect("A");
+        let record = f
             .store
             .record_context_render(RecordContextRender {
                 scope: stored.scope.clone(),
                 key: RenderKey {
-                    render_id: "safe-turn-context".into(),
+                    render_id: "context-b".into(),
                     version: 1,
                 },
                 expected_epoch: stored.capsule.context_epoch.clone(),
                 expected_facts_digest: stored.capsule.facts_digest.clone(),
                 capsule: stored.capsule,
             })
-            .expect("record distinct actual context B");
-        let mut request = f.request.clone();
-        request.command_id = "take-context-b".into();
-        request.expected_prior = Some(observed.receipt.cursor);
-        request.logical_tick = Some(2);
-        request.context.render = context_b.render;
-        let policy = Arc::new(ExactPolicy {
-            scope: f.definition.scope.clone(),
-            config_digest: f.policy.config_digest.clone(),
-            context: request.context.clone(),
-            allowed: Mutex::new(BTreeSet::new()),
-            revoked: AtomicBool::new(false),
-            calls: AtomicUsize::new(0),
-            deny_after_first: AtomicBool::new(false),
-        });
-        let key = "attention:context-b".to_owned();
-        policy.admit(&(&request, &f.update.recipient, &key, 0_u64));
-        let service =
-            NativeAttentionService::configured(f.store.clone(), f.definition, Some(policy))
-                .expect("same immutable journal, new exact policy");
-        let result = service
-            .take_at_safe_turn(
-                &f.actor,
-                &f.credentials,
-                request.clone(),
-                f.update.recipient,
-                key.clone(),
-                0,
-            )
-            .expect("record request B separately from observed evidence A");
-        assert!(result.receipt.recorded_wake);
+            .expect("real context B");
+        let mut context = f.request.context.clone();
+        context.render = record.render;
+        f.policy
+            .contexts
+            .lock()
+            .expect("actual contexts")
+            .insert(context.render.record_digest.clone(), context.clone());
+        let request = take(&f, observed.receipt.cursor, "take-b", context.clone());
+        f.service
+            .take_at_safe_turn(&f.actor, request, f.update.recipient, "take-b".into(), 0)
+            .expect("record context B request separately");
         let claim = f
             .store
-            .claim_outbox_key(Some(0), "dispatcher".into(), 10, key)
-            .expect("claim own effect")
-            .expect("recorded effect");
-        let request_pin = &claim.payload["payload"]["request_context"]["render"]["record_digest"];
-        let observed_pin = &claim.payload["delivery"]["refs"][0]["evidence_ref"];
-        assert_eq!(request_pin, &request.context.render.record_digest);
-        assert_eq!(observed_pin, &f.update.evidence_ref);
-        assert_ne!(request_pin, observed_pin);
-        assert_eq!(claim.payload["payload"]["delivered"], false);
-        assert!(!result.receipt.authority_granted);
-    }
-
-    #[test]
-    fn read_grant_does_not_replace_action_policy_or_current_credential() {
-        let mut f = fixture();
-        let denied =
-            NativeAttentionService::configured(f.store.clone(), f.definition.clone(), None)
-                .expect("absent policy");
-        assert!(matches!(
-            denied.observe_authenticated(
-                &f.actor,
-                &f.credentials,
-                f.request.clone(),
-                f.update.clone()
-            ),
-            Err(NativeAttentionError::AccessDenied)
-        ));
-        f.credentials
-            .revoke("credential")
-            .expect("revoke actual credential");
-        assert!(matches!(
-            f.service.observe_authenticated(
-                &f.actor,
-                &f.credentials,
-                f.request.clone(),
-                f.update.clone()
-            ),
-            Err(NativeAttentionError::AccessDenied)
-        ));
-        assert!(
-            f.store
-                .attention_status(f.definition.scope)
-                .expect("status")
-                .expect("registered")
-                .cursor
-                .is_none()
+            .claim_outbox_key(Some(0), "dispatcher".into(), 10, "take-b".into())
+            .expect("claim")
+            .expect("wake");
+        assert_eq!(
+            claim.payload["payload"]["request_context"]["render"]["record_digest"],
+            context.render.record_digest
+        );
+        assert_eq!(
+            claim.payload["delivery"]["refs"][0]["evidence_ref"],
+            f.update.evidence_ref
+        );
+        assert_ne!(
+            claim.payload["payload"]["request_context"]["render"]["record_digest"],
+            claim.payload["delivery"]["refs"][0]["evidence_ref"]
         );
     }
-
     #[test]
-    fn current_policy_context_and_protected_task_bindings_fail_closed() {
+    fn absent_issuer_and_read_grant_without_action_policy_never_allow_mutation() {
         let f = fixture();
-        let mut request = f.request.clone();
-        request.context.facts_digest = content_digest(&"wrong facts").expect("digest");
-        f.policy.admit(&(&request, &f.update));
-        assert!(
-            f.service
-                .observe_authenticated(&f.actor, &f.credentials, request, f.update.clone())
-                .is_err()
-        );
-        let mut update = f.update.clone();
-        update.scope.revision = 2;
-        f.policy.admit(&(&f.request, &update));
         assert!(matches!(
-            f.service
-                .observe_authenticated(&f.actor, &f.credentials, f.request.clone(), update),
-            Err(NativeAttentionError::InvalidBinding)
+            NativeAttentionService::configured(f.store.clone(), f.definition.clone(), None),
+            Err(NativeAttentionError::AccessDenied)
         ));
         f.policy.revoked.store(true, Ordering::SeqCst);
         assert!(matches!(
-            f.service.observe_authenticated(
-                &f.actor,
-                &f.credentials,
-                f.request.clone(),
-                f.update.clone()
-            ),
+            f.service
+                .observe_authenticated(&f.actor, f.request.clone(), f.update.clone()),
             Err(NativeAttentionError::AccessDenied)
         ));
         assert!(
             f.store
                 .attention_status(f.definition.scope)
-                .expect("status")
-                .expect("registered")
+                .expect("startup status only")
+                .expect("journal")
                 .cursor
                 .is_none()
         );
     }
-
     #[test]
-    fn policy_is_rechecked_after_exact_context_read_before_recording() {
+    fn actual_registry_revoke_foreign_actor_and_lock_contention_fail_closed() {
         let f = fixture();
-        f.policy.deny_after_first.store(true, Ordering::SeqCst);
+        let foreign =
+            CoordinationCredentialAuthority::new(vec![CoordinationCredential::configured(
+                "credential".into(),
+                "other-fixture-token-01234567890123456789".into(),
+                f.actor.principal().clone(),
+                vec![CoordinationCredentialGrant {
+                    scope: InboxScope {
+                        project_id: f.definition.scope.project_id.clone(),
+                        recipient: f.actor.principal().clone(),
+                        context_epoch: f.definition.scope.epoch.clone(),
+                    },
+                    action: CoordinationAction::ReadPending,
+                    message_id: None,
+                    source: None,
+                }],
+            )])
+            .expect("other registry");
+        let foreign_actor = foreign
+            .authenticate("other-fixture-token-01234567890123456789")
+            .expect("actual but foreign actor");
         assert!(matches!(
             f.service
-                .observe_authenticated(&f.actor, &f.credentials, f.request, f.update),
+                .observe_authenticated(&foreign_actor, f.request.clone(), f.update.clone()),
             Err(NativeAttentionError::AccessDenied)
         ));
-        assert_eq!(f.policy.calls.load(Ordering::SeqCst), 2);
+        let mut guard = f.credentials.write().expect("current registry");
+        assert!(matches!(
+            f.service
+                .observe_authenticated(&f.actor, f.request.clone(), f.update.clone()),
+            Err(NativeAttentionError::AccessDenied)
+        ));
+        guard
+            .revoke("credential")
+            .expect("actual current credential revocation");
+        drop(guard);
+        assert!(matches!(
+            f.service
+                .observe_authenticated(&f.actor, f.request.clone(), f.update.clone()),
+            Err(NativeAttentionError::AccessDenied)
+        ));
+    }
+    #[test]
+    fn writer_rechecks_current_registry_after_enqueue_without_caller_held_lock() {
+        let f = fixture();
+        let (entered, receive) = mpsc::sync_channel(1);
+        let (resume, wait) = mpsc::sync_channel(1);
+        *f.policy.gate.lock().expect("gate") = Some(Gate {
+            entered,
+            resume: wait,
+        });
+        std::thread::scope(|scope| {
+            let worker = scope.spawn(|| {
+                f.service
+                    .observe_authenticated(&f.actor, f.request.clone(), f.update.clone())
+            });
+            receive
+                .recv_timeout(Duration::from_secs(5))
+                .expect("actual writer callback after service precheck");
+            f.credentials
+                .write()
+                .expect("no caller-held read lock")
+                .revoke("credential")
+                .expect("revoke actual authenticated credential");
+            resume.send(()).expect("resume policy");
+            assert!(matches!(
+                worker.join().expect("request"),
+                Err(NativeAttentionError::Store(StoreError::Attention(
+                    AttentionError::AccessDenied
+                )))
+            ));
+        });
         assert!(
             f.store
                 .attention_status(f.definition.scope)
                 .expect("status")
-                .expect("registered")
+                .expect("journal")
                 .cursor
                 .is_none()
         );
+    }
+    #[test]
+    fn actual_capsule_task_binding_and_final_policy_check_are_enforced() {
+        let f = fixture();
+        let mut wrong = f.update.clone();
+        wrong.scope.revision = 2;
+        f.policy.admit(&f.service.bind(
+            &f.actor,
+            f.request.clone(),
+            AttentionOperation::Observe {
+                update: Box::new(wrong.clone()),
+            },
+        ));
+        assert!(matches!(
+            f.service
+                .observe_authenticated(&f.actor, f.request.clone(), wrong),
+            Err(NativeAttentionError::Store(StoreError::Attention(
+                AttentionError::ContextBinding
+            )))
+        ));
+        f.policy.deny_final.store(true, Ordering::SeqCst);
+        assert!(matches!(
+            f.service
+                .observe_authenticated(&f.actor, f.request.clone(), f.update.clone()),
+            Err(NativeAttentionError::Store(StoreError::Attention(
+                AttentionError::AccessDenied
+            )))
+        ));
+        assert!(f.policy.calls.load(Ordering::SeqCst) >= 3);
+        assert!(
+            f.store
+                .attention_status(f.definition.scope.clone())
+                .expect("status")
+                .expect("journal")
+                .cursor
+                .is_none()
+        );
+        f.policy.deny_final.store(false, Ordering::SeqCst);
+        f.service
+            .observe_authenticated(&f.actor, f.request.clone(), f.update.clone())
+            .expect("denial did not consume command");
+    }
+    #[test]
+    fn writer_rejects_serialized_labels_and_missing_store_issuer() {
+        let f = fixture();
+        let bound = f.service.bind(
+            &f.actor,
+            f.request.clone(),
+            AttentionOperation::Observe {
+                update: Box::new(f.update.clone()),
+            },
+        );
+        assert!(matches!(
+            f.store
+                .apply_attention_authorized(bound, Arc::new("credential")),
+            Err(StoreError::Attention(AttentionError::AccessDenied))
+        ));
+        let path = f._dir.path().join("no-issuer.sqlite");
+        let unprotected = Store::open(path).expect("default deny Store");
+        assert!(matches!(
+            NativeAttentionService::configured(unprotected, f.definition, Some(f.issuer)),
+            Err(NativeAttentionError::Store(StoreError::Attention(
+                AttentionError::AccessDenied
+            )))
+        ));
     }
 }
