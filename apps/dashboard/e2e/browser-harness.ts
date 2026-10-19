@@ -51,6 +51,9 @@ const CDP_COMMAND_TIMEOUT_MS = 30_000;
 const BROWSER_STARTUP_TIMEOUT_MS = 25_000;
 const MAX_BROWSER_STARTUP_ATTEMPTS = 2;
 const GOTO_NAVIGATE_TIMEOUT_MS = 20_000;
+// A navigation command receipt precedes document/script loading. Give that
+// separate stage an explicit bounded budget within the 90-second test budget.
+const GOTO_DOCUMENT_TIMEOUT_MS = 30_000;
 const STOP_LOADING_TIMEOUT_MS = 5_000;
 export const FORM_CONTROL_STAGE_TIMEOUT_MS = 10_000;
 export const MAX_STAGE_EVALUATE_BUDGET_MS = 5_000;
@@ -1997,13 +2000,21 @@ async function launchBrowserHarnessAttempt(
       }
       await sendCdp('Page.stopLoading', {}, sessionId, STOP_LOADING_TIMEOUT_MS).catch(() => undefined);
       let firstNavError: string | null = null;
+      let navigationResult: Record<string, unknown> | undefined;
+      async function navigate(): Promise<void> {
+        navigationResult = await sendCdp('Page.navigate', { url }, sessionId, GOTO_NAVIGATE_TIMEOUT_MS);
+        if (navigationResult.errorText) {
+          throw new Error(`Page.navigate failed: ${String(navigationResult.errorText)}`);
+        }
+        if (navigationResult.isDownload) throw new Error('Page.navigate started a download instead of a document');
+      }
       try {
-        await sendCdp('Page.navigate', { url }, sessionId, GOTO_NAVIGATE_TIMEOUT_MS);
+        await navigate();
       } catch (err) {
         firstNavError = err instanceof Error ? err.message : String(err);
         await sendCdp('Page.stopLoading', {}, sessionId, STOP_LOADING_TIMEOUT_MS).catch(() => undefined);
         try {
-          await sendCdp('Page.navigate', { url }, sessionId, GOTO_NAVIGATE_TIMEOUT_MS);
+          await navigate();
         } catch (retryErr) {
           const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
           throw new Error(
@@ -2015,11 +2026,17 @@ async function launchBrowserHarnessAttempt(
         await waitForCondition(
           `document.readyState === 'complete' && document.querySelector('#root')?.children.length > 0`,
           `navigation to ${url}`,
+          GOTO_DOCUMENT_TIMEOUT_MS,
         );
       } catch (condErr) {
         const condMsg = condErr instanceof Error ? condErr.message : String(condErr);
+        const documentState = await evaluate<unknown>(
+          `({url: location.href, readyState: document.readyState, rootChildren: document.querySelector('#root')?.children.length ?? null})`,
+          1_000,
+        ).catch(() => '<unavailable>');
+        const diagnostic = `${condMsg}; navigation=${JSON.stringify(navigationResult)}; document=${JSON.stringify(documentState)}`;
         throw new Error(
-          firstNavError ? `${condMsg} (after initial Page.navigate retry: ${firstNavError})` : condMsg,
+          firstNavError ? `${diagnostic} (after initial Page.navigate retry: ${firstNavError})` : diagnostic,
         );
       }
     },
