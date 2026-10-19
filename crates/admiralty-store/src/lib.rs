@@ -5,6 +5,7 @@ pub mod context_renders;
 pub mod custody;
 pub mod inbox;
 pub mod intake;
+pub mod intake_capture;
 pub mod outbox;
 pub mod questions;
 pub mod workplans;
@@ -74,6 +75,8 @@ pub enum StoreError {
     Attention(#[from] attention::AttentionError),
     #[error(transparent)]
     Intake(#[from] intake::IntakeStoreError),
+    #[error(transparent)]
+    IntakeCapture(#[from] intake_capture::CaptureError),
     #[error(transparent)]
     Inbox(#[from] inbox::InboxError),
     #[error("store already has an owner")]
@@ -158,6 +161,16 @@ pub trait LifecycleAuthority: Send + Sync {
 }
 
 enum Request {
+    CaptureIntake {
+        request: Box<intake_capture::CaptureIntakeRequest>,
+        reply: Reply<intake_capture::CaptureResult>,
+    },
+    CapturedIntake {
+        scope: Box<admiralty_core::intake::AuthorizedIntakeScope>,
+        id: String,
+        revision: Option<u32>,
+        reply: Reply<Option<intake_capture::CapturedIntake>>,
+    },
     RecordIntake {
         request: Box<admiralty_core::intake::RecordIntakeRequest>,
         reply: Reply<intake::IntakeRecordResult>,
@@ -327,7 +340,7 @@ pub struct Store {
 
 impl Store {
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
-        Self::open_configured(path.as_ref(), None, None)
+        Self::open_configured(path.as_ref(), None, None, None)
     }
 
     /// Trusted composition boundary. Default `open` denies native mutations.
@@ -335,7 +348,7 @@ impl Store {
         path: impl AsRef<Path>,
         authority: Arc<dyn LifecycleAuthority>,
     ) -> Result<Self> {
-        Self::open_configured(path.as_ref(), Some(authority), None)
+        Self::open_configured(path.as_ref(), Some(authority), None, None)
     }
 
     /// Trusted startup-only composition; default constructors preserve denial.
@@ -344,13 +357,22 @@ impl Store {
         lifecycle: Option<Arc<dyn LifecycleAuthority>>,
         intake: Option<Arc<dyn intake::IntakeAuthority>>,
     ) -> Result<Self> {
-        Self::open_configured(path.as_ref(), lifecycle, intake)
+        Self::open_configured(path.as_ref(), lifecycle, intake, None)
+    }
+
+    /// Trusted startup-only raw capture; no default issuer or task admission.
+    pub fn open_with_intake_capture_authority(
+        path: impl AsRef<Path>,
+        authority: Arc<dyn intake_capture::IntakeCaptureAuthority>,
+    ) -> Result<Self> {
+        Self::open_configured(path.as_ref(), None, None, Some(authority))
     }
 
     fn open_configured(
         path: &Path,
         authority: Option<Arc<dyn LifecycleAuthority>>,
         intake_authority: Option<Arc<dyn intake::IntakeAuthority>>,
+        intake_capture_authority: Option<Arc<dyn intake_capture::IntakeCaptureAuthority>>,
     ) -> Result<Self> {
         let path = canonical_database_path(path)?;
         let mut lock_path = path.as_os_str().to_os_string();
@@ -373,6 +395,7 @@ impl Store {
                 Ok(mut writer) => {
                     writer.lifecycle_authority = authority;
                     writer.intake_authority = intake_authority;
+                    writer.intake_capture_authority = intake_capture_authority;
                     if ready_tx.send(Ok(())).is_ok() {
                         writer.run(receiver, writer_changes);
                     }
@@ -403,6 +426,31 @@ impl Store {
             .send(make(sender))
             .map_err(|_| StoreError::Closed)?;
         receiver.recv().map_err(|_| StoreError::Closed)?
+    }
+
+    pub fn capture_intake(
+        &self,
+        request: intake_capture::CaptureIntakeRequest,
+    ) -> Result<intake_capture::CaptureResult> {
+        intake_capture::validate_request(&request)?;
+        self.ask(|reply| Request::CaptureIntake {
+            request: Box::new(request),
+            reply,
+        })
+    }
+    /// Independently trusted scoped read; public snapshots confer no grant.
+    pub fn captured_intake(
+        &self,
+        scope: admiralty_core::intake::AuthorizedIntakeScope,
+        id: String,
+        revision: Option<u32>,
+    ) -> Result<Option<intake_capture::CapturedIntake>> {
+        self.ask(|reply| Request::CapturedIntake {
+            scope: Box::new(scope),
+            id,
+            revision,
+            reply,
+        })
     }
 
     pub fn record_intake(
@@ -1207,6 +1255,7 @@ struct Writer {
     generation: String,
     lifecycle_authority: Option<Arc<dyn LifecycleAuthority>>,
     intake_authority: Option<Arc<dyn intake::IntakeAuthority>>,
+    intake_capture_authority: Option<Arc<dyn intake_capture::IntakeCaptureAuthority>>,
     _lock: File,
 }
 
@@ -1249,6 +1298,7 @@ impl Writer {
         context_renders::initialize(&connection)?;
         attention::initialize(&connection)?;
         intake::initialize(&connection)?;
+        intake_capture::initialize(&connection)?;
         let generation = connection
             .query_row(
                 "SELECT value FROM metadata WHERE key='recovery_generation'",
@@ -1280,6 +1330,7 @@ impl Writer {
             generation,
             lifecycle_authority: None,
             intake_authority: None,
+            intake_capture_authority: None,
             _lock: lock,
         })
     }
@@ -1287,6 +1338,29 @@ impl Writer {
     fn run(&mut self, receiver: mpsc::Receiver<Request>, changes: tokio::sync::watch::Sender<()>) {
         while let Ok(request) = receiver.recv() {
             match request {
+                Request::CaptureIntake { request, reply } => {
+                    let result = self
+                        .intake_capture_authority
+                        .as_ref()
+                        .ok_or(intake_capture::CaptureError::Denied)
+                        .and_then(|authority| authority.authorize(&request))
+                        .and_then(|context| {
+                            intake_capture::record(&mut self.connection, *request, context)
+                        })
+                        .map_err(StoreError::from);
+                    let _ = reply.send(result);
+                }
+                Request::CapturedIntake {
+                    scope,
+                    id,
+                    revision,
+                    reply,
+                } => {
+                    let _ = reply.send(
+                        intake_capture::get(&mut self.connection, &scope, &id, revision)
+                            .map_err(StoreError::from),
+                    );
+                }
                 Request::RecordIntake { request, reply } => {
                     let result = self
                         .intake_authority
@@ -1851,6 +1925,7 @@ impl Writer {
         context_renders::validate_all(&self.connection)?;
         attention::validate_all(&self.connection)?;
         intake::validate_all(&self.connection)?;
+        intake_capture::validate_all(&self.connection)?;
         let projection = replay(&self.connection)?;
         let pending_inbox = inbox::PendingInboxIndex::from_projection(&projection)?;
         workplans::validate_task_contracts(
@@ -1872,6 +1947,7 @@ impl Writer {
         context_renders::validate_all(&self.connection)?;
         attention::validate_all(&self.connection)?;
         intake::validate_all(&self.connection)?;
+        intake_capture::validate_all(&self.connection)?;
         // Hard-link publication is atomic and refuses an existing destination.
         // Staging and destination share a directory, so publication cannot cross filesystems.
         let parent = destination
