@@ -1,5 +1,5 @@
-//! Offline P19 checks for the public, pure publication proposal/reconciliation API.
-//! These tests do not qualify a forge adapter or grant an external write.
+//! P19 pure contracts and opt-in durable gateway qualification. All forge effects
+//! are local fixtures; the GitHub adapter never contacts a live repository here.
 
 use admiralty_core::{
     ProjectId, RootId, TaskId,
@@ -341,4 +341,383 @@ fn ambiguous_effect_slot_requires_matching_reconciliation_and_replays_once() {
         reduce_publication_intent(Some(&completed), &reopened, None),
         Err(PublicationError::InvalidReconciliation)
     );
+}
+
+#[cfg(unix)]
+mod durable_gateway {
+    use super::*;
+    use admiralty_runtime::integration::{
+        publisher::{
+            EffectObservation, Forge, ForgeObservation, GatewayPolicy, PublicationGateway,
+            PublicationRequest,
+        },
+        reconcile::GitHubForge,
+    };
+    use std::{cell::RefCell, fs, os::unix::fs::PermissionsExt, path::PathBuf, rc::Rc};
+
+    #[derive(Clone)]
+    struct LocalForge(Rc<RefCell<LocalState>>);
+    struct LocalState {
+        observation: ForgeObservation,
+        root: PathBuf,
+        writes: usize,
+        reads: usize,
+        change_at_boundary: bool,
+        effect: bool,
+        probe_available: bool,
+    }
+    impl Forge for LocalForge {
+        fn observe(&mut self, _: &str, _: u64) -> Result<ForgeObservation, String> {
+            let mut state = self.0.borrow_mut();
+            state.reads += 1;
+            if state.change_at_boundary && state.reads == 2 {
+                state.observation.checks[0].state = CheckState::Pending;
+            }
+            Ok(state.observation.clone())
+        }
+        fn merge_rebase(&mut self, _: &str, _: &PublicationRequest) -> Result<(), String> {
+            let mut state = self.0.borrow_mut();
+            let journal: serde_json::Value = serde_json::from_slice(
+                &fs::read(state.root.join("journal.json")).expect("journal durable before call"),
+            )
+            .expect("journal JSON");
+            assert_eq!(journal["entries"].as_array().expect("entries").len(), 1);
+            assert_eq!(journal["entries"][0]["intent"]["stage"], "ambiguous");
+            state.writes += 1;
+            Err("deterministic lost reply, possibly after a remote effect".into())
+        }
+        fn reconcile(
+            &mut self,
+            _: &str,
+            _: &PublicationRequest,
+        ) -> Result<EffectObservation, String> {
+            let state = self.0.borrow();
+            if !state.probe_available {
+                return Ok(EffectObservation::Unknown);
+            }
+            if state.effect {
+                Ok(EffectObservation::Applied {
+                    head: state.observation.head.clone(),
+                    commit: NEXT_HEAD.into(),
+                    provenance: "fixture:independent-request-probe".into(),
+                })
+            } else {
+                Ok(EffectObservation::NoEffect {
+                    provenance: "fixture:quiesced-request-never-applied".into(),
+                })
+            }
+        }
+    }
+    fn private_tempdir() -> tempfile::TempDir {
+        let directory = tempfile::tempdir().expect("private fixture directory");
+        fs::set_permissions(directory.path(), fs::Permissions::from_mode(0o700))
+            .expect("private fixture mode");
+        directory
+    }
+
+    fn setup() -> (
+        tempfile::TempDir,
+        GatewayPolicy,
+        PublicationRequest,
+        LocalForge,
+    ) {
+        let root = private_tempdir();
+        let (scope, snapshot, generation) = fixtures();
+        let policy = GatewayPolicy {
+            project_id: scope.project_id.clone(),
+            repository: "fixture/disposable".into(),
+            target_ref: scope.target_ref.clone(),
+            authority_generation: generation,
+            required_reviewers: vec!["maintainer".into()],
+            required_checks: vec!["ci".into()],
+            owner_only: false,
+            owners: vec!["owner".into()],
+        };
+        let request = PublicationRequest {
+            intent_key: "durable-request".into(),
+            pull_request: 7,
+            scope,
+            expected_head: HEAD.into(),
+            expected_base: BASE.into(),
+        };
+        let forge = LocalForge(Rc::new(RefCell::new(LocalState {
+            observation: ForgeObservation {
+                repository: policy.repository.clone(),
+                target_ref: policy.target_ref.clone(),
+                pull_request: 7,
+                head: HEAD.into(),
+                base: BASE.into(),
+                open: true,
+                approvals: snapshot.approvals,
+                checks: snapshot.checks,
+            },
+            root: root.path().to_owned(),
+            writes: 0,
+            reads: 0,
+            change_at_boundary: false,
+            effect: true,
+            probe_available: false,
+        })));
+        (root, policy, request, forge)
+    }
+
+    #[test]
+    fn durable_target_slot_survives_lost_reply_restart_and_generation_rotation() {
+        let (root, mut policy, request, forge) = setup();
+        let mut gateway =
+            PublicationGateway::open(root.path(), policy.clone(), forge.clone()).expect("gateway");
+        assert!(
+            PublicationGateway::open(root.path(), policy.clone(), forge.clone()).is_err(),
+            "second publisher excluded"
+        );
+        let initial = gateway
+            .publish(&request, "worker")
+            .expect("ambiguous effect recorded");
+        assert_eq!(initial.intent.stage, IntentStage::Ambiguous);
+        assert_eq!(forge.0.borrow().writes, 1);
+        assert_eq!(gateway.publish(&request, "worker").expect("retry"), initial);
+        let mut competing = request.clone();
+        competing.intent_key = "competing".into();
+        competing.pull_request = 8;
+        assert!(gateway.publish(&competing, "worker").is_err());
+        policy.authority_generation = DecimalU64::new(10);
+        gateway
+            .rotate_policy(policy.clone())
+            .expect("revoke old generation");
+        competing.scope.authority_generation = policy.authority_generation.clone();
+        assert!(
+            gateway.publish(&competing, "worker").is_err(),
+            "generation cannot clear occupied slot"
+        );
+        drop(gateway);
+        let mut restored = PublicationGateway::open(root.path(), policy, forge.clone())
+            .expect("restart retains target custody");
+        assert_eq!(
+            restored
+                .publish(&request, "worker")
+                .expect("replay without write"),
+            initial
+        );
+        assert_eq!(forge.0.borrow().writes, 1);
+        forge.0.borrow_mut().probe_available = true;
+        let completed = restored
+            .reconcile(&request.intent_key)
+            .expect("independent probe");
+        assert_eq!(completed.intent.stage, IntentStage::ReconciledSuccess);
+        assert_eq!(
+            restored
+                .reconcile(&request.intent_key)
+                .expect("receipt replay"),
+            completed
+        );
+        let mut rebound = request.clone();
+        rebound.pull_request = 99;
+        assert!(
+            restored.publish(&rebound, "worker").is_err(),
+            "key cannot rebind another PR"
+        );
+        assert_eq!(forge.0.borrow().writes, 1);
+    }
+
+    #[test]
+    fn durable_gateway_rejects_every_stale_admission_before_external_effect() {
+        for case in 0..9 {
+            let (root, mut policy, mut request, forge) = setup();
+            match case {
+                0 => forge.0.borrow_mut().observation.approvals[0].reviewer = "stranger".into(),
+                1 => forge.0.borrow_mut().observation.approvals[0].dismissed = true,
+                2 => forge.0.borrow_mut().observation.head = NEXT_HEAD.into(),
+                3 => forge.0.borrow_mut().observation.base = NEXT_HEAD.into(),
+                4 => forge.0.borrow_mut().observation.checks[0].state = CheckState::Pending,
+                5 => request.scope.authority_generation = DecimalU64::new(8),
+                6 => policy.owner_only = true,
+                7 => forge.0.borrow_mut().observation.repository = "foreign/repo".into(),
+                8 => forge.0.borrow_mut().change_at_boundary = true,
+                _ => unreachable!(),
+            }
+            let mut gateway =
+                PublicationGateway::open(root.path(), policy, forge.clone()).expect("gateway");
+            assert!(gateway.publish(&request, "worker").is_err(), "case {case}");
+            assert_eq!(forge.0.borrow().writes, 0, "case {case}");
+            assert!(
+                gateway.entries().is_empty(),
+                "case {case}: denied requests reserve no slot"
+            );
+        }
+    }
+
+    #[test]
+    fn definitive_no_effect_releases_slot_but_unknown_does_not() {
+        let (root, policy, request, forge) = setup();
+        let mut gateway =
+            PublicationGateway::open(root.path(), policy, forge.clone()).expect("gateway");
+        gateway.publish(&request, "worker").expect("uncertain");
+        assert_eq!(
+            gateway
+                .reconcile(&request.intent_key)
+                .expect("unknown")
+                .intent
+                .stage,
+            IntentStage::Ambiguous
+        );
+        {
+            let mut state = forge.0.borrow_mut();
+            state.effect = false;
+            state.probe_available = true;
+        }
+        assert_eq!(
+            gateway
+                .reconcile(&request.intent_key)
+                .expect("definitive no effect")
+                .intent
+                .stage,
+            IntentStage::ReconciledNoEffect
+        );
+        let mut next = request;
+        next.intent_key = "next".into();
+        assert!(
+            gateway
+                .assess(&next, "worker")
+                .expect("released slot")
+                .eligible
+        );
+    }
+
+    #[test]
+    fn mismatched_probe_corrupt_journal_and_public_directory_fail_closed() {
+        let (root, policy, request, forge) = setup();
+        let mut gateway =
+            PublicationGateway::open(root.path(), policy.clone(), forge.clone()).expect("gateway");
+        gateway.publish(&request, "worker").expect("uncertain");
+        {
+            let mut state = forge.0.borrow_mut();
+            state.probe_available = true;
+            state.observation.head = BASE.into();
+        }
+        assert_eq!(
+            gateway
+                .reconcile(&request.intent_key)
+                .expect("foreign effect ignored")
+                .intent
+                .stage,
+            IntentStage::Ambiguous
+        );
+        drop(gateway);
+        let journal = root.path().join("journal.json");
+        let mut value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&journal).expect("journal")).expect("json");
+        value["entries"][0]["request"]["expected_head"] = serde_json::json!(NEXT_HEAD);
+        fs::write(&journal, serde_json::to_vec(&value).expect("serialize"))
+            .expect("corrupt fixture");
+        assert!(PublicationGateway::open(root.path(), policy.clone(), forge.clone()).is_err());
+        fs::set_permissions(root.path(), fs::Permissions::from_mode(0o755))
+            .expect("public fixture");
+        assert!(PublicationGateway::open(root.path(), policy, forge).is_err());
+    }
+
+    fn github_fixture(root: &std::path::Path) -> GitHubForge {
+        let pull = serde_json::json!({ "number":7, "state":"open", "merged":false, "draft":false,
+            "head":{"sha":HEAD}, "base":{"sha":BASE,"ref":"main","repo":{"full_name":"fixture/disposable"}} });
+        let mut merged = pull.clone();
+        merged["merged"] = serde_json::json!(true);
+        merged["state"] = serde_json::json!("closed");
+        merged["merge_commit_sha"] = serde_json::json!(NEXT_HEAD);
+        merged["merged_at"] = serde_json::json!("2026-10-19T14:00:00Z");
+        let reviews = serde_json::json!([{ "id":42,"state":"APPROVED","user":{"login":"maintainer"},"commit_id":HEAD }]);
+        let runs = serde_json::json!({"total_count":1,"check_runs":[{"id":11,"name":"ci","app":{"id":99},"head_sha":HEAD,"status":"completed","conclusion":"success"}]});
+        let statuses = serde_json::json!({"sha":HEAD,"total_count":0,"statuses":[]});
+        for (name, value) in [
+            ("pull.json", pull),
+            ("merged.json", merged),
+            ("reviews.json", reviews),
+            ("runs.json", runs),
+            ("statuses.json", statuses),
+        ] {
+            fs::write(
+                root.join(name),
+                serde_json::to_vec(&value).expect("fixture JSON"),
+            )
+            .expect("fixture write");
+        }
+        let executable = root.join("fixture-gh");
+        fs::write(&executable, r#"#!/bin/sh
+set -eu
+[ "$HOME" = "$GH_CONFIG_DIR" ]
+[ "$GH_HOST" = github.com ]
+[ -z "${GH_TOKEN-}${GITHUB_TOKEN-}${CARGO_TARGET_DIR-}${RUSTUP_HOME-}" ]
+printf '%s\n' "$*" >> calls.txt
+case "$*" in
+  *pulls/7/reviews*) cat reviews.json ;;
+  *check-runs*) cat runs.json ;;
+  *commits/*/status*) cat statuses.json ;;
+  *pulls/7) cat pull.json ;;
+  'pr merge 7 --repo fixture/disposable --rebase --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+    cp merged.json pull.json
+    exit 1 ;; # success occurred but the reply was lost
+  *) exit 90 ;;
+esac
+"#).expect("fixture executable");
+        fs::set_permissions(&executable, fs::Permissions::from_mode(0o700)).expect("fixture mode");
+        GitHubForge::new(executable, root.to_owned()).expect("isolated fixture adapter")
+    }
+
+    #[test]
+    fn github_adapter_uses_isolated_credentials_exact_head_rebase_and_independent_probe() {
+        let (root, mut policy, request, _) = setup();
+        let credentials = private_tempdir();
+        let forge = github_fixture(credentials.path());
+        policy.required_checks = vec!["check-run:99:ci".into()];
+        let mut gateway = PublicationGateway::open(root.path(), policy, forge).expect("gateway");
+        let entry = gateway
+            .publish(&request, "worker")
+            .expect("lost reply independently reconciled");
+        assert_eq!(entry.intent.stage, IntentStage::ReconciledSuccess);
+        assert_eq!(
+            entry.intent.effect_receipt.expect("receipt").observed_head,
+            NEXT_HEAD
+        );
+        gateway
+            .publish(&request, "worker")
+            .expect("idempotent replay");
+        let calls = fs::read_to_string(credentials.path().join("calls.txt")).expect("calls");
+        assert_eq!(
+            calls.lines().filter(|l| l.starts_with("pr merge ")).count(),
+            1
+        );
+        assert!(!calls.contains("--admin"));
+    }
+
+    #[test]
+    fn github_adapter_keeps_open_pr_ambiguous_and_latest_dismissal_blocks() {
+        let (_, _, request, _) = setup();
+        let credentials = private_tempdir();
+        let mut forge = github_fixture(credentials.path());
+        assert!(matches!(
+            forge
+                .reconcile("fixture/disposable", &request)
+                .expect("open PR"),
+            EffectObservation::Unknown
+        ));
+        let reviews = serde_json::json!([
+            {"id":43,"state":"DISMISSED","user":{"login":"maintainer"},"commit_id":HEAD},
+            {"id":42,"state":"APPROVED","user":{"login":"maintainer"},"commit_id":HEAD}
+        ]);
+        fs::write(
+            credentials.path().join("reviews.json"),
+            serde_json::to_vec(&reviews).expect("reviews"),
+        )
+        .expect("reviews fixture");
+        let observation = forge
+            .observe("fixture/disposable", 7)
+            .expect("fresh observation");
+        assert!(
+            observation.approvals[0].dismissed,
+            "latest review ID wins even out of order"
+        );
+        let mut moved = request;
+        moved.expected_base = NEXT_HEAD.into();
+        assert!(forge.merge_rebase("fixture/disposable", &moved).is_err());
+        let calls = fs::read_to_string(credentials.path().join("calls.txt")).expect("calls");
+        assert!(!calls.lines().any(|l| l.starts_with("pr merge ")));
+    }
 }
