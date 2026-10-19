@@ -70,16 +70,20 @@ fn p09_p16_round8_captain_orchestrator_receipt_qualification() {
         minimum_score: Some(DecimalU64::new(80)),
         prior_audit: None,
     };
-    policy.required_identity.policy_digest = content_digest(&(
-        2_u32,
-        &policy.required_paths,
-        &policy.hard_findings,
-        &policy.required_checks,
-        &policy.required_affected_checks,
-        &policy.negative_checks,
-        &policy.minimum_score,
-    ))
-    .expect("canonical policy digest");
+    let policy_digest_for = |version: u32, policy: &AuditPolicy| {
+        content_digest(&(
+            version,
+            &policy.required_paths,
+            &policy.hard_findings,
+            &policy.required_checks,
+            &policy.required_affected_checks,
+            &policy.negative_checks,
+            &policy.minimum_score,
+        ))
+        .expect("canonical policy digest")
+    };
+    policy.required_identity.policy_digest =
+        policy_digest_for(admiralty_runtime::audits::AUDIT_POLICY_VERSION, &policy);
 
     let identity = policy.required_identity.clone();
     let evidence = StagedAuditEvidence {
@@ -125,6 +129,23 @@ fn p09_p16_round8_captain_orchestrator_receipt_qualification() {
         ],
         evidence_refs: vec![d('e')],
     };
+
+    // The old fixture hard-coded v2 while runtime policy is v3. Keep v2 as
+    // an explicit rejected control; do not weaken the protected digest check.
+    let mut legacy_policy = policy.clone();
+    legacy_policy.required_identity.policy_digest = policy_digest_for(2, &legacy_policy);
+    let mut legacy_evidence = evidence.clone();
+    legacy_evidence.identity = legacy_policy.required_identity.clone();
+    for result in &mut legacy_evidence.check_results {
+        result.identity = legacy_policy.required_identity.clone();
+    }
+    assert_eq!(
+        AuditRegistry::default()
+            .evaluate(&scope, &legacy_policy, &legacy_evidence)
+            .expect_err("legacy policy must stay denied")
+            .0,
+        "policy content does not match its protected digest"
+    );
 
     let mut captain = AuditRegistry::default();
     let first = captain
