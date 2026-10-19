@@ -130,7 +130,7 @@ fn guard_rejects_new_python_even_if_it_adds_its_own_exception() {
             "| `new.py` | self-approved |",
             "| `new.py` | 1 | tool | retire | ADM-PY02 |"
         )
-        .unwrap_err()
+        .expect_err("a new Python file cannot approve itself")
         .contains("net-new Python")
     );
 }
