@@ -17,6 +17,7 @@ use super::{
         self, CurrentAdmission, DispatchAdmission, DispatchClock, DispatchIntent, DispatchOutcome,
         DurableIntent, LaunchRequest, NativeRuntimeExecutor, RuntimeReceipt,
     },
+    native_codex_plan::NativeCodexSlotAdmission,
     native_executor::{
         ClosedExecution, NativeExecutionPlan, NativeExecutor, PendingDiagnostics,
         native_resource_claims_digest,
@@ -32,6 +33,7 @@ use admiralty_runtime::{
 use admiralty_store::{
     Store,
     admission_reservations::{ReservationCommand, ReservationProof, validate_command},
+    inference_slots::{SlotEvent, SlotHold},
     outbox::MAX_LEASE_SECONDS,
 };
 use std::{
@@ -75,6 +77,13 @@ struct RetainedBudget {
     expected: Reservation,
 }
 
+struct RetainedSlot {
+    admission: NativeCodexSlotAdmission,
+    expected: SlotHold,
+    pool_key: String,
+    revision: u64,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LoopError {
     InvalidConfiguration,
@@ -106,6 +115,21 @@ pub struct RejectedAdmission {
 impl std::fmt::Debug for RejectedAdmission {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RejectedAdmission")
+            .field("reason", &self.reason)
+            .finish_non_exhaustive()
+    }
+}
+
+/// A refused slotted admission returns both original ownership capabilities.
+/// This does not release an existing hold or authorize a different attempt.
+pub struct RejectedSlotAdmission {
+    pub reason: LoopError,
+    pub plan: Box<NativeExecutionPlan>,
+    pub slot: NativeCodexSlotAdmission,
+}
+impl std::fmt::Debug for RejectedSlotAdmission {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RejectedSlotAdmission")
             .field("reason", &self.reason)
             .finish_non_exhaustive()
     }
@@ -164,6 +188,7 @@ struct RetainedRun {
     contract_revision: u32,
     durable: Option<DurableIntent>,
     budget: Option<RetainedBudget>,
+    slot: Option<RetainedSlot>,
     phase: Phase,
     receipt: Option<RuntimeReceipt>,
     // Independent of closure/buffer phase; only a confirmed fenced ACK sets it.
@@ -248,6 +273,107 @@ impl NativeTaskLoop {
         self.admit_mode(request, plan, admission, Some(budget))
     }
 
+    /// Use the original private Codex preparation binding. Public request/model
+    /// strings cannot create this value. Current Store policies remain separate
+    /// from the factory's inert binding and are sampled again on every retry.
+    pub fn admit_slotted(
+        &mut self,
+        request: LaunchRequest,
+        plan: NativeExecutionPlan,
+        admission: &impl CurrentAdmission,
+        slot: NativeCodexSlotAdmission,
+    ) -> Result<AdmissionStatus, RejectedSlotAdmission> {
+        let inputs = slot.inputs();
+        let budget = NativeBudgetAdmission {
+            command: inputs.budget_command.clone(),
+            proof: Arc::clone(&inputs.budget_proof),
+        };
+        let checked = self.preflight(&request, &plan).and_then(|revision| {
+            if !slot.matches_plan(&request, &plan) {
+                return Err(LoopError::InvalidBinding);
+            }
+            self.validate_budget(&request, &plan, &budget)?;
+            let SlotEvent::Hold { hold_id, claim } = &inputs.slot_command.event else {
+                return Err(LoopError::InvalidBinding);
+            };
+            let ledger = self
+                .store
+                .inference_slot_ledger(Arc::clone(&inputs.slot_proof))
+                .map_err(|_| LoopError::StoreUnavailable)?;
+            let pool = ledger
+                .pools
+                .get(&claim.pool_id)
+                .ok_or(LoopError::InvalidBinding)?;
+            if pool.generation != claim.generation {
+                return Err(LoopError::InvalidBinding);
+            }
+            let slot_revision = inputs
+                .slot_command
+                .expected_ledger_revision
+                .checked_add(1)
+                .ok_or(LoopError::InvalidBinding)?;
+            Ok((
+                revision,
+                SlotHold {
+                    id: hold_id.clone(),
+                    claim: claim.clone(),
+                },
+                pool.capacity_key.clone(),
+                slot_revision,
+            ))
+        });
+        let (revision, expected_slot, pool_key, slot_revision) = match checked {
+            Ok(checked) => checked,
+            Err(reason) => {
+                return Err(RejectedSlotAdmission {
+                    reason,
+                    plan: Box::new(plan),
+                    slot,
+                });
+            }
+        };
+        let Some(budget_revision) = budget.command.expected_ledger_revision.checked_add(1) else {
+            return Err(RejectedSlotAdmission {
+                reason: LoopError::InvalidBinding,
+                plan: Box::new(plan),
+                slot,
+            });
+        };
+        let mut expected_budget = plan.reservation.clone();
+        expected_budget.revision = budget_revision;
+        if let Err(failure) = self.executor.try_register_plan(plan) {
+            let (_, plan) = failure.into_parts();
+            return Err(RejectedSlotAdmission {
+                reason: LoopError::RegistrationRejected,
+                plan: Box::new(plan),
+                slot,
+            });
+        }
+        let run_id = request.run_id.clone();
+        self.runs.insert(
+            run_id.clone(),
+            RetainedRun {
+                request,
+                contract_revision: revision,
+                durable: None,
+                budget: Some(RetainedBudget {
+                    admission: budget,
+                    expected: expected_budget,
+                }),
+                slot: Some(RetainedSlot {
+                    admission: slot,
+                    expected: expected_slot,
+                    pool_key,
+                    revision: slot_revision,
+                }),
+                phase: Phase::AdmissionUncertain,
+                receipt: None,
+                effect_recorded: false,
+            },
+        );
+        Ok(self.admit_retained(&run_id, admission))
+    }
+
     fn admit_mode(
         &mut self,
         request: LaunchRequest,
@@ -305,6 +431,7 @@ impl NativeTaskLoop {
                 contract_revision: revision,
                 durable: None,
                 budget,
+                slot: None,
                 phase: Phase::AdmissionUncertain,
                 receipt: None,
                 effect_recorded: false,
@@ -345,28 +472,47 @@ impl NativeTaskLoop {
             revision: run.contract_revision,
             inner: admission,
         };
-        let result = match &run.budget {
-            Some(budget) => controller::admit_one_reserved(
+        let result = if let Some(slot) = &run.slot {
+            controller::admit_one_slotted(
                 &self.store,
                 &scoped,
                 &run.request,
-                budget.admission.command.clone(),
-                Arc::clone(&budget.admission.proof),
+                clone_slot_inputs(slot),
             )
             .map(|result| {
                 (
                     result.intent,
                     Some(result.reservation.receipt.ledger_revision),
+                    Some(result.slot.receipt.ledger_revision),
                 )
-            }),
-            None => controller::admit_one(&self.store, &scoped, &run.request)
-                .map(|intent| (intent, None)),
+            })
+        } else {
+            match &run.budget {
+                Some(budget) => controller::admit_one_reserved(
+                    &self.store,
+                    &scoped,
+                    &run.request,
+                    budget.admission.command.clone(),
+                    Arc::clone(&budget.admission.proof),
+                )
+                .map(|result| {
+                    (
+                        result.intent,
+                        Some(result.reservation.receipt.ledger_revision),
+                        None,
+                    )
+                }),
+                None => controller::admit_one(&self.store, &scoped, &run.request)
+                    .map(|intent| (intent, None, None)),
+            }
         };
         match result {
-            Ok((durable, budget_revision)) => {
+            Ok((durable, budget_revision, slot_revision)) => {
                 if run.budget.as_ref().is_some_and(|budget| {
                     budget_revision != Some(budget.expected.revision)
                         || !budget_current(&self.store, budget)
+                }) || run.slot.as_ref().is_some_and(|slot| {
+                    slot_revision != Some(slot.revision) || !slot_current(&self.store, slot)
                 }) {
                     // The atomic write may already be durable. Retain all
                     // custody; no ordinary admission or registration fallback.
@@ -409,6 +555,7 @@ impl NativeTaskLoop {
             store: &self.store,
             durable,
             budget: run.budget.as_ref(),
+            slot: run.slot.as_ref(),
         };
         let runtime = RecordingRuntime {
             executor: &self.executor,
@@ -641,6 +788,31 @@ fn budget_current(store: &Store, budget: &RetainedBudget) -> bool {
         .is_ok_and(|ledger| ledger.reservations.get(&budget.expected.id) == Some(&budget.expected))
 }
 
+fn clone_slot_inputs(slot: &RetainedSlot) -> admiralty_store::BudgetAndSlotAdmission {
+    let inputs = slot.admission.inputs();
+    admiralty_store::BudgetAndSlotAdmission {
+        budget_command: inputs.budget_command.clone(),
+        budget_proof: Arc::clone(&inputs.budget_proof),
+        slot_command: inputs.slot_command.clone(),
+        slot_proof: Arc::clone(&inputs.slot_proof),
+    }
+}
+
+fn slot_current(store: &Store, slot: &RetainedSlot) -> bool {
+    store
+        .inference_slot_ledger(Arc::clone(&slot.admission.inputs().slot_proof))
+        .is_ok_and(|ledger| {
+            ledger.holds.get(&slot.expected.id) == Some(&slot.expected)
+                && ledger
+                    .pools
+                    .get(&slot.expected.claim.pool_id)
+                    .is_some_and(|pool| {
+                        pool.capacity_key == slot.pool_key
+                            && pool.generation == slot.expected.claim.generation
+                    })
+        })
+}
+
 fn ack_state(run: &RetainedRun) -> EffectAckState {
     if run.effect_recorded {
         EffectAckState::Recorded
@@ -712,6 +884,7 @@ struct ScopedDispatch<'a, A> {
     store: &'a Store,
     durable: &'a DurableIntent,
     budget: Option<&'a RetainedBudget>,
+    slot: Option<&'a RetainedSlot>,
 }
 impl<A: DispatchAdmission> DispatchAdmission for ScopedDispatch<'_, A> {
     fn authorize_dispatch(&self, task: &TaskView, intent: &DispatchIntent) -> Result<(), String> {
@@ -728,20 +901,37 @@ impl<A: DispatchAdmission> DispatchAdmission for ScopedDispatch<'_, A> {
                 revision: self.revision,
                 inner: self.inner,
             };
-            let replay = controller::admit_one_reserved(
-                self.store,
-                &current,
-                self.request,
-                budget.admission.command.clone(),
-                Arc::clone(&budget.admission.proof),
-            )
-            .map_err(|_| "current budget dispatch admission denied".to_owned())?;
+            let (replay_intent, replay_reservation, replay_slot) = if let Some(slot) = self.slot {
+                let replay = controller::admit_one_slotted(
+                    self.store,
+                    &current,
+                    self.request,
+                    clone_slot_inputs(slot),
+                )
+                .map_err(|_| "current slotted dispatch admission denied".to_owned())?;
+                (replay.intent, replay.reservation, Some(replay.slot))
+            } else {
+                let replay = controller::admit_one_reserved(
+                    self.store,
+                    &current,
+                    self.request,
+                    budget.admission.command.clone(),
+                    Arc::clone(&budget.admission.proof),
+                )
+                .map_err(|_| "current budget dispatch admission denied".to_owned())?;
+                (replay.intent, replay.reservation, None)
+            };
             let mut expected = self.durable.clone();
             expected.duplicate = true;
-            if replay.intent != expected
-                || !replay.reservation.replayed
-                || replay.reservation.receipt.ledger_revision != budget.expected.revision
+            if replay_intent != expected
+                || !replay_reservation.replayed
+                || replay_reservation.receipt.ledger_revision != budget.expected.revision
                 || !budget_current(self.store, budget)
+                || self.slot.is_some_and(|slot| {
+                    replay_slot.as_ref().is_none_or(|result| {
+                        !result.replayed || result.receipt.ledger_revision != slot.revision
+                    }) || !slot_current(self.store, slot)
+                })
             {
                 return Err("frozen budget dispatch binding differs".into());
             }
