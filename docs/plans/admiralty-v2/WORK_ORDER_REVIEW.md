@@ -87,7 +87,7 @@ The integrator reads in this order. Each worker receives its assigned subpacket,
 | WO3: read-only compatibility parser | P13 | New `crates/admiralty-core/src/import/todoq.rs`, synthetic `tests/fixtures/todoq/` | Frozen WO1; no live queue writes |
 | WO4: scheduling profile | P14/P09 | New `crates/admiralty-core/src/scheduling_profile.rs`, new core `tests/scheduling_profile.rs` | Frozen WO1 schedule contract |
 | WO5: delivery projection | P19/P25/P29 | New `crates/admiralty-core/src/delivery.rs`, new core `tests/delivery_projection.rs` | Frozen WO1 IDs; existing verification/publication contracts |
-| WO6: operator journey | P11/P13/P29/P30 | New CLI `src/intake.rs`; new dashboard `src/ui/{Intake,Attention,Delivery}.tsx` and named tests | Stable WO2/WO5 API; split CLI and React lanes |
+| WO6: operator journey | P11/P13/P29/P30 | Actual CLI `crates/admiralty-cli/src/work_order_intake.rs` and `tests/work_order_intake_cli.rs`; dashboard `src/ui/Intake.tsx`; remaining new Attention/Delivery views | Stable WO2/WO5 API; split CLI and React lanes |
 
 WO2/WO3/WO4/WO5 may run in parallel after WO1 freeze because their write scopes are disjoint. Schema, Store wiring and route registration stay serialized with integration. WO6 can build fixture-only UI early, but cannot present fixture state as live or enable remote mutations before service authorization exists. Trusted offline commands retain the private Store ownership boundary above. No concurrent edits to `App.tsx`, `main.rs`, migrations with the same number, or testkit registration. Do not dispatch speculative duplicate builders into the same tree.
 
@@ -140,12 +140,24 @@ Validate `rtk proxy cargo test -p admiralty-core --test delivery_projection --lo
 
 ### WO6 — Simple operator journey without dashboard regressions
 
-1. CLI lane adds proposed `intake preview`, `intake record`, `work-order show` and bounded all-state search through existing writer/authorization APIs. Registration/help never launches work; no direct DB mutations beside Store. Use structured arguments/files, not interpolated shell strings.
+Current component evidence (2026-10-19): merged PR115 adds actual offline
+`intake preview/capture/record/show-capture/show/duplicates`, registered in
+`crates/admiralty-cli/src/main.rs`. Five actual binary cases and strict CLI
+all-target Clippy pass, including private diagnostics, current scope/replay,
+missing/live-owned DB denial and zero task/message/outbox effects. See
+`receipts/integration/native-work-order-cli-20261019T0727Z.json`. Existing raw
+React intake and private native browser capture are integrated separately.
+Enrichment/duplicate/attention/delivery UI, configured production intake and full
+request-to-delivery qualification remain open; this does not accept WO6 or parents.
+
+1. CLI commands use existing writer/authorization APIs and structured protected files, not interpolated shell strings. Registration/help never launches work; no direct DB mutations beside Store. Extend only missing operator cases against the actual registered targets rather than rebuilding the obsolete proposed command names.
 2. React lane builds new components against frozen generated contracts. Preview shows request boundaries, proposed outcomes, unresolved criteria/scope and historical duplicate candidates; record returns an immutable receipt. Do not make a human resolve harmless advisory matches repeatedly when current policy already authorizes the selection.
 3. Add Needs attention and delivery drill-down as ordinary project/global saved views. Show reason/owner/age/freshness/evidence/next authorized action, unknown states and per-target delivery. Keep keyboard/URL navigation and source scope. Integrator wires routes and navigation after both lanes freeze.
 4. Preserve the black dense live console, colored models, owner/Grok hierarchy, Admiral/Commodore terminology, temporal plots and `/legacy/`. Render imported prose safely. CLI/React tests must verify no hidden dispatch or publication occurs while previewing/recording.
 
 Validate the existing CLI offline round-trip suite, new CLI intake round-trips, React typecheck and targeted `intake`, `attention`, `delivery`, `hierarchy` and `temporal-plots` tests plus build. Add corresponding named E2E flows only when the authorized service journey exists; fixture-only UI passes are insufficient for live acceptance.
+
+The actual new CLI target is `cargo test -p admiralty-cli --test work_order_intake_cli --locked -- --test-threads=1`. Preview/record test results are component evidence, not provider or delivery receipts.
 
 ## 6. Integration validation and handoff
 
