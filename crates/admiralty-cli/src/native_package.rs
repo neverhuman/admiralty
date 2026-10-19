@@ -28,7 +28,7 @@ const GENERATED_GUARD_ENTRY: &[u8] =
     include_bytes!("../../../packages/contracts/generated/validators.mjs");
 // This deliberately exact allowlist is reviewed with the public generator. A
 // release never discovers dependencies by traversing a source directory.
-const GENERATED_GUARD_MODULES: [(&str, &[u8]); 10] = [
+const GENERATED_GUARD_MODULES: [(&str, &[u8]); 19] = [
     (
         "validators-base.mjs",
         include_bytes!("../../../packages/contracts/generated/validators-base.mjs"),
@@ -70,6 +70,46 @@ const GENERATED_GUARD_MODULES: [(&str, &[u8]); 10] = [
     (
         "validators-views-snapshot.mjs",
         include_bytes!("../../../packages/contracts/generated/validators-views-snapshot.mjs"),
+    ),
+    (
+        "validators-intake-batch.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-intake-batch.mjs"),
+    ),
+    (
+        "validators-source-provenance.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-source-provenance.mjs"),
+    ),
+    (
+        "validators-intake-preview.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-intake-preview.mjs"),
+    ),
+    (
+        "validators-work-order-revision.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-work-order-revision.mjs"),
+    ),
+    (
+        "validators-record-intake-request.mjs",
+        include_bytes!(
+            "../../../packages/contracts/generated/validators-record-intake-request.mjs"
+        ),
+    ),
+    (
+        "validators-record-intake-receipt.mjs",
+        include_bytes!(
+            "../../../packages/contracts/generated/validators-record-intake-receipt.mjs"
+        ),
+    ),
+    (
+        "validators-delivery-requirement.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-delivery-requirement.mjs"),
+    ),
+    (
+        "validators-duplicate-query.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-duplicate-query.mjs"),
+    ),
+    (
+        "validators-duplicate-page.mjs",
+        include_bytes!("../../../packages/contracts/generated/validators-duplicate-page.mjs"),
     ),
 ];
 type FileIdentity = (u64, u64, u64, i64, i64, i64, i64, u64);
@@ -1074,7 +1114,7 @@ import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 const guards = await import(pathToFileURL(process.argv[1]).href);
 const fixtures = JSON.parse(process.argv[2]);
-assert.equal(Object.keys(guards).filter(name => name.startsWith('validate')).length, 13);
+assert.equal(Object.keys(guards).filter(name => name.startsWith('validate')).length, 22);
 for (const [name, value] of Object.entries(fixtures)) assert.equal(guards[`validate${name}`](value), true, name);
 const task = fixtures.Workplan.tasks[0];
 assert.equal(guards.validateTaskContract(task), true);
@@ -1088,7 +1128,12 @@ assert.equal(fixtures.VerificationReceipt.checks[0].exit_code, null);
 assert.equal(guards.validateInterfaceContract({...fixtures.InterfaceContract,revision:'18446744073709551616'}), false);
 assert.equal(guards.validateInterfaceContract({...fixtures.InterfaceContract,revision:9007199254740992}), false);
 assert.equal(guards.validateViewsSnapshot({schema_version:1,revision:'demo',simulated:true,observed_utc:'unknown',projects:[],agents:[],sources:[]}),true);
-console.log('all 13 staged public guards passed real import, closed-input and precision checks');
+for (const authority_generation of ['0', '01', '18446744073709551616', 9007199254740992]) {
+  assert.equal(guards.validateRecordIntakeRequest({...fixtures.RecordIntakeRequest,authority_generation}),false);
+}
+assert.equal(guards.validateRecordIntakeRequest({...fixtures.RecordIntakeRequest,acceptance_granted:true}),false);
+assert.equal(guards.validateDeliveryRequirement({...fixtures.DeliveryRequirement,execution_qualified:true}),false);
+console.log('all 22 staged public guards passed real import, closed-input and precision checks');
 "#;
         let stdout_path = root.path().join("node-guard-stdout.log");
         let stderr_path = root.path().join("node-guard-stderr.log");
@@ -1148,7 +1193,7 @@ console.log('all 13 staged public guards passed real import, closed-input and pr
             "real staged guard smoke failed: {}",
             read_output(&stderr_path)?
         );
-        assert!(read_output(&stdout_path)?.contains("all 13 staged public guards passed"));
+        assert!(read_output(&stdout_path)?.contains("all 22 staged public guards passed"));
         Ok(())
     }
 
