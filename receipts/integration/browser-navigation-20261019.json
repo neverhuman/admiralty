@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "scope": "Source-qualified browser harness/document deadlines and owned fixture cleanup; not production adoption or full release",
+  "recorded_utc": "2026-10-19T18:40:27.915244+00:00",
+  "source_commit": "9c36435c8ce72ea039b5946cea56ebaade9f90c3",
+  "base_commit": "551253108fef5f8cf5e00b77c715dcac44c9a422",
+  "changed_paths": [
+    {
+      "path": "apps/dashboard/e2e/browser-harness.ts",
+      "sha256": "8342eafc466f14ff85cc2717c2c7640e7add8dd34a7001cf5a4e2b273e22b73e"
+    },
+    {
+      "path": "apps/dashboard/e2e/dashboard-e2e.e2e.ts",
+      "sha256": "d35145bc7bd31c7e79df160a5b722f33346a5f2effffb143e621eadc369cf052"
+    },
+    {
+      "path": "apps/dashboard/e2e/public-views.e2e.ts",
+      "sha256": "a8744bc28e736173807636dacdcd66cee45e551ec7d43c8b3b57742350e4ccaa"
+    }
+  ],
+  "original_failure": {
+    "run_id": 39302569957,
+    "job_id": 118231278412,
+    "head": "551253108fef5f8cf5e00b77c715dcac44c9a422",
+    "url": "https://github.com/neverhuman/admiralty/actions/runs/39302569957/job/118231278412",
+    "passed": 21,
+    "failed": 2,
+    "failures": [
+      "Legacy scale journey: document readiness after10s, body empty; underlying browser/host scheduling cause unknown",
+      "Public Git/Atlas journey: explicit30s outer timeout; CI cleanup also reported an orphaned owned admiraltyd"
+    ],
+    "log_truncated": false,
+    "raw_log_bytes": 67166
+  },
+  "changes": [
+    "Explicit30s document-ready stage inside existing90s test budget; every DOM/auth/visibility/axe assertion retained",
+    "CDP navigation errorText/download results fail with exact bounded diagnostics; document failure captures URL/readiness/root state",
+    "Real browser unsafe-loopback-port denial control; no external traffic or no-sandbox flags",
+    "Public-view outer budget90s matches suite; shared idempotent afterEach/finally cleanup awaits in-flight bounded native/browser acquisition and prevents late acquisition after close"
+  ],
+  "validation": {
+    "base": "551253108fef5f8cf5e00b77c715dcac44c9a422",
+    "recorded_utc": "2026-10-19T18:39:46.995686+00:00",
+    "binary": "/private/tmp/admiralty-native-dogfood-target/debug/admiraltyd",
+    "binary_sha256": "d935e0166258e43ac3bfcd582106cddc9c1e03d8577986b93206175c9ca90aee",
+    "binary_hash_unchanged": true,
+    "observer": "/private/tmp/admiralty-native-dogfood-target/debug/admiralty-observe",
+    "observer_sha256": "252ec8fa313a38c83ab90208b6406624b016ca1c820ee649a97b64a6935197fc",
+    "results": [
+      {
+        "argv": [
+          "pnpm",
+          "--dir",
+          "apps/dashboard",
+          "exec",
+          "tsc",
+          "-p",
+          "e2e/tsconfig.json",
+          "--noEmit"
+        ],
+        "exit_code": 0,
+        "seconds": 0.391,
+        "log": "/private/tmp/admiralty-browser-followup-custody-0.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "argv": [
+          "pnpm",
+          "--dir",
+          "apps/dashboard",
+          "test",
+          "--run",
+          "--config",
+          "e2e/vitest.config.ts"
+        ],
+        "exit_code": 0,
+        "seconds": 30.775,
+        "log": "/private/tmp/admiralty-browser-followup-custody-1.log",
+        "sha256": "62ced82800add00b5508e83c5b778397e3bd6c4ef4e66769abfbe7201d731990"
+      }
+    ]
+  },
+  "final_browser_result": {
+    "files_passed": 6,
+    "tests_passed": 24,
+    "failed": 0,
+    "environment": "Actual macOS Chrome and exact pinned local Rust binaries; synthetic observations; not live fleet adoption"
+  },
+  "failed_draft": {
+    "browser_passed": 23,
+    "browser_failed": 1,
+    "cause": "Root validation invocation omitted ADMIRALTY_E2E_OBSERVER_BIN; observer spawn returned statusnull/ENOENT before collection",
+    "repair": "Provide already-built observer path; no source change for invocation error",
+    "log": "receipts/integration/artifacts/browser-navigation-20261019/admiralty-browser-followup-3.log.gz"
+  },
+  "validation_reuse": {
+    "dashboard_typecheck_and_build": "Pass before final public-fixture cleanup edit; production app source unchanged; final E2E typecheck and all24browser cases pass after that edit",
+    "native_binary": "Pinned daemon from earlier353fa969 source; all production Rust unchanged since then, only Rust fixture/test repairs followed; hash checked before/after. No new-source Rust build claimed.",
+    "prior_24_case_pass": "Before in-flight startup cleanup refinement; final24case pass separate, nonadditive"
+  },
+  "hosted_ci": "Fresh exact-head and receiving-main success required; original main browser failure retained",
+  "production_observation": {
+    "cutover": "Existing sole owner attempted5512531, blocked at daemon launch and rolled back18:36:07Z; Root did not control services",
+    "error_observed": "Shared primary log includes AlreadyOwned; ownership cause not established by this read"
+  },
+  "acceptance": {
+    "production_supervisor_adoption": false,
+    "native_execution_qualified": false,
+    "full_release": false,
+    "accepted_parents": [
+      "P00",
+      "P01"
+    ],
+    "other_parent_count_open": 30
+  },
+  "artifacts": [
+    {
+      "path": "receipts/integration/artifacts/browser-navigation-20261019/admiralty-receiving-main-browser-5512531.log.gz",
+      "sha256": "0160ea3f2411819a977eed52dff0d007108d98612455aa8c097015801711678e",
+      "bytes": 16341
+    },
+    {
+      "path": "receipts/integration/artifacts/browser-navigation-20261019/admiralty-browser-followup-0.log.gz",
+      "sha256": "8ffe8427a6047e2a90e5203efe419bad1f828dd29d0da0dc33d54a387f283265",
+      "bytes": 77
+    },
+    {
+      "path": "receipts/integration/artifacts/browser-navigation-20261019/admiralty-browser-followup-1.log.gz",
+      "sha256": "a6d13d7eceb71edae80a6c6400d20a19ae8048a64cf872bfb1635fbfb3f36f08",
+      "bytes": 53
+    },
+    {
+      "path": "receipts/integration/artifacts/browser-navigation-20261019/admiralty-browser-followup-2.log.gz",
+      "sha256": "bb99f29c46b49388ed412cc183be7d41ad0224bb1fc5d2ba589472ef70bdb050",
+      "bytes": 661
+    },
+    {
+      "path": "receipts/integration/artifacts/browser-navigation-20261019/admiralty-browser-followup-3.log.gz",
+      "sha256": "fb9f0d399fa68785488680c5b1e3fd8d0c05c28fcc55b260a0f5169cb030da18",
+      "bytes": 647
+    },
+    {
+      "path": "receipts/integration/artifacts/browser-navigation-20261019/admiralty-browser-followup-validation.json.gz",
+      "sha256": "ff7111cbdfc724b4db9a538c2b6fb458e7929435ad5247411b846bbe802865b6",
+      "bytes": 665
+    },
+    {
+      "path": "receipts/integration/artifacts/browser-navigation-20261019/admiralty-browser-followup-final-0.log.gz",
+      "sha256": "a66fbd9f6fd6bf8b6296c4b005509053c528bde178cfc67ce39ed2331504aac6",
+      "bytes": 59
+    },
+    {
+      "path": "receipts/integration/artifacts/browser-navigation-20261019/admiralty-browser-followup-final-1.log.gz",
+      "sha256": "99d6d1409f51d24964679d0199ae2f339d774ed61c31c9315455fe5814ec65ff",
+      "bytes": 257
+    },
+    {
+      "path": "receipts/integration/artifacts/browser-navigation-20261019/admiralty-browser-followup-final-validation.json.gz",
+      "sha256": "2f9410224ffa7b4a2c012007c27fcd3337e72bd5f0b63a4c8d56d87620e19249",
+      "bytes": 613
+    },
+    {
+      "path": "receipts/integration/artifacts/browser-navigation-20261019/admiralty-browser-followup-custody-0.log.gz",
+      "sha256": "7839c8bf69ffa2e274c59f9e2dd2150a053e073968d5074202097842ead0fd32",
+      "bytes": 61
+    },
+    {
+      "path": "receipts/integration/artifacts/browser-navigation-20261019/admiralty-browser-followup-custody-1.log.gz",
+      "sha256": "2e95a31578997a28ab0328868a3e745ed48f325041a429df1a31890c77e4dba9",
+      "bytes": 258
+    },
+    {
+      "path": "receipts/integration/artifacts/browser-navigation-20261019/admiralty-browser-followup-custody-validation.json.gz",
+      "sha256": "78851079c80d3f310e4bd144673efb3193f1ba989686afc34532daee60bac51a",
+      "bytes": 618
+    }
+  ]
+}
