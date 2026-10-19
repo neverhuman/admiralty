@@ -4,6 +4,7 @@ pub mod attention;
 pub mod context_renders;
 pub mod custody;
 pub mod inbox;
+pub mod intake;
 pub mod outbox;
 pub mod questions;
 pub mod workplans;
@@ -71,6 +72,8 @@ pub enum StoreError {
     ContextRender(#[from] context_renders::ContextRenderError),
     #[error(transparent)]
     Attention(#[from] attention::AttentionError),
+    #[error(transparent)]
+    Intake(#[from] intake::IntakeStoreError),
     #[error(transparent)]
     Inbox(#[from] inbox::InboxError),
     #[error("store already has an owner")]
@@ -155,6 +158,21 @@ pub trait LifecycleAuthority: Send + Sync {
 }
 
 enum Request {
+    RecordIntake {
+        request: Box<admiralty_core::intake::RecordIntakeRequest>,
+        reply: Reply<intake::IntakeRecordResult>,
+    },
+    GetWorkOrder {
+        scope: Box<admiralty_core::intake::AuthorizedIntakeScope>,
+        id: String,
+        revision: Option<u32>,
+        reply: Reply<Option<intake::RegisteredWorkOrder>>,
+    },
+    FindDuplicateCandidates {
+        scope: Box<admiralty_core::intake::AuthorizedIntakeScope>,
+        query: Box<admiralty_core::intake::DuplicateQuery>,
+        reply: Reply<admiralty_core::intake::DuplicatePage>,
+    },
     RegisterAttention {
         request: Box<attention::AttentionDefinition>,
         reply: Reply<attention::AttentionRegistration>,
@@ -309,7 +327,7 @@ pub struct Store {
 
 impl Store {
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
-        Self::open_configured(path.as_ref(), None)
+        Self::open_configured(path.as_ref(), None, None)
     }
 
     /// Trusted composition boundary. Default `open` denies native mutations.
@@ -317,12 +335,22 @@ impl Store {
         path: impl AsRef<Path>,
         authority: Arc<dyn LifecycleAuthority>,
     ) -> Result<Self> {
-        Self::open_configured(path.as_ref(), Some(authority))
+        Self::open_configured(path.as_ref(), Some(authority), None)
+    }
+
+    /// Trusted startup-only composition; default constructors preserve denial.
+    pub fn open_with_authorities(
+        path: impl AsRef<Path>,
+        lifecycle: Option<Arc<dyn LifecycleAuthority>>,
+        intake: Option<Arc<dyn intake::IntakeAuthority>>,
+    ) -> Result<Self> {
+        Self::open_configured(path.as_ref(), lifecycle, intake)
     }
 
     fn open_configured(
         path: &Path,
         authority: Option<Arc<dyn LifecycleAuthority>>,
+        intake_authority: Option<Arc<dyn intake::IntakeAuthority>>,
     ) -> Result<Self> {
         let path = canonical_database_path(path)?;
         let mut lock_path = path.as_os_str().to_os_string();
@@ -344,6 +372,7 @@ impl Store {
             .spawn(move || match Writer::open(&path, lock) {
                 Ok(mut writer) => {
                     writer.lifecycle_authority = authority;
+                    writer.intake_authority = intake_authority;
                     if ready_tx.send(Ok(())).is_ok() {
                         writer.run(receiver, writer_changes);
                     }
@@ -374,6 +403,42 @@ impl Store {
             .send(make(sender))
             .map_err(|_| StoreError::Closed)?;
         receiver.recv().map_err(|_| StoreError::Closed)?
+    }
+
+    pub fn record_intake(
+        &self,
+        request: admiralty_core::intake::RecordIntakeRequest,
+    ) -> Result<intake::IntakeRecordResult> {
+        intake::validate_record_request(&request)?;
+        self.ask(|reply| Request::RecordIntake {
+            request: Box::new(request),
+            reply,
+        })
+    }
+    /// Trusted scoped read seam; a public ScopeSnapshot grants nothing.
+    pub fn get_work_order(
+        &self,
+        scope: admiralty_core::intake::AuthorizedIntakeScope,
+        id: String,
+        revision: Option<u32>,
+    ) -> Result<Option<intake::RegisteredWorkOrder>> {
+        self.ask(|reply| Request::GetWorkOrder {
+            scope: Box::new(scope),
+            id,
+            revision,
+            reply,
+        })
+    }
+    pub fn find_duplicate_candidates(
+        &self,
+        scope: admiralty_core::intake::AuthorizedIntakeScope,
+        query: admiralty_core::intake::DuplicateQuery,
+    ) -> Result<admiralty_core::intake::DuplicatePage> {
+        self.ask(|reply| Request::FindDuplicateCandidates {
+            scope: Box::new(scope),
+            query: Box::new(query),
+            reply,
+        })
     }
 
     pub fn append(
@@ -1141,6 +1206,7 @@ struct Writer {
     pending_inbox: inbox::PendingInboxIndex,
     generation: String,
     lifecycle_authority: Option<Arc<dyn LifecycleAuthority>>,
+    intake_authority: Option<Arc<dyn intake::IntakeAuthority>>,
     _lock: File,
 }
 
@@ -1182,6 +1248,7 @@ impl Writer {
         workplans::initialize(&connection)?;
         context_renders::initialize(&connection)?;
         attention::initialize(&connection)?;
+        intake::initialize(&connection)?;
         let generation = connection
             .query_row(
                 "SELECT value FROM metadata WHERE key='recovery_generation'",
@@ -1212,6 +1279,7 @@ impl Writer {
             pending_inbox,
             generation,
             lifecycle_authority: None,
+            intake_authority: None,
             _lock: lock,
         })
     }
@@ -1219,6 +1287,54 @@ impl Writer {
     fn run(&mut self, receiver: mpsc::Receiver<Request>, changes: tokio::sync::watch::Sender<()>) {
         while let Ok(request) = receiver.recv() {
             match request {
+                Request::RecordIntake { request, reply } => {
+                    let result = self
+                        .intake_authority
+                        .as_ref()
+                        .ok_or(intake::IntakeStoreError::Denied)
+                        .and_then(|authority| authority.authorize(&request))
+                        .and_then(|context| {
+                            let existing = request
+                                .selected_tasks
+                                .iter()
+                                .filter_map(|s| self.projection.tasks.get(&s.task.task_id))
+                                .map(|task| {
+                                    content_digest(&task.contract)
+                                        .map(|digest| (task.contract.task_id.clone(), digest))
+                                })
+                                .collect::<std::result::Result<BTreeMap<_, _>, _>>()?;
+                            intake::record(&mut self.connection, *request, context, &existing)
+                        })
+                        .map_err(StoreError::from);
+                    let _ = reply.send(result);
+                }
+                Request::GetWorkOrder {
+                    scope,
+                    id,
+                    revision,
+                    reply,
+                } => {
+                    let _ = reply.send(
+                        intake::get_work_order(&mut self.connection, &scope, &id, revision)
+                            .map_err(StoreError::from),
+                    );
+                }
+                Request::FindDuplicateCandidates {
+                    scope,
+                    query,
+                    reply,
+                } => {
+                    let _ = reply.send(
+                        intake::find_duplicate_candidates(
+                            &mut self.connection,
+                            &scope,
+                            &query,
+                            &self.projection,
+                        )
+                        .map_err(StoreError::from),
+                    );
+                }
+
                 Request::RegisterAttention { request, reply } => {
                     let _ = reply.send(
                         attention::register(&mut self.connection, *request)
@@ -1734,6 +1850,7 @@ impl Writer {
     fn rebuild(&mut self) -> Result<Snapshot> {
         context_renders::validate_all(&self.connection)?;
         attention::validate_all(&self.connection)?;
+        intake::validate_all(&self.connection)?;
         let projection = replay(&self.connection)?;
         let pending_inbox = inbox::PendingInboxIndex::from_projection(&projection)?;
         workplans::validate_task_contracts(
@@ -1754,6 +1871,7 @@ impl Writer {
     fn backup(&self, destination: &Path) -> Result<Snapshot> {
         context_renders::validate_all(&self.connection)?;
         attention::validate_all(&self.connection)?;
+        intake::validate_all(&self.connection)?;
         // Hard-link publication is atomic and refuses an existing destination.
         // Staging and destination share a directory, so publication cannot cross filesystems.
         let parent = destination
