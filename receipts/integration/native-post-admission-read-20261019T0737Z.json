@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "started_utc": "2026-10-19T07:36:30.096Z",
+  "observed_utc": "2026-10-19T07:36:30.782Z",
+  "verification": "post-rollout-CAS bounded read only; no full manifest hashes/browser check",
+  "health": {
+    "native_execution_qualified": false,
+    "status": "ok",
+    "version": "0.1.0"
+  },
+  "legacy_parsed": true,
+  "collector": {
+    "acceptance_authority": false,
+    "duration_ms": 17762,
+    "implementation": "rust",
+    "model_turns": 0,
+    "observed_utc": "2026-10-19T07:36:29Z",
+    "read_only_sources": true,
+    "version": "0.1.0"
+  },
+  "history_displayed_rows": 256,
+  "project_keys": [
+    "dope",
+    "jarambit",
+    "joil",
+    "jopedime"
+  ],
+  "previously_observed_processes": {
+    "daemon": {
+      "pid": 3152134,
+      "executable": null
+    },
+    "observer": {
+      "pid": 3151000,
+      "executable": null
+    }
+  },
+  "retired_owned_python_pattern_pids": [],
+  "full_manifest_hash_verification": false,
+  "browser_qualification": false,
+  "original_history_timestamp_remeasured": false,
+  "source_or_model_identity_inferred": false,
+  "service_control": false
+}

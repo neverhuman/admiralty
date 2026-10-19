@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T07:33:16.969Z",
+  "receiving_main": "fcd35569ccfed7429e1bb4b22dfcb7dc142f9700",
+  "before_sha256": "e919843111da6a654ea11b6c4aebe5f09e9fc504747409a04ab8a9236cf9998d",
+  "after_sha256": "4ea0d717994e4d3761ff436061afe6854d2dd086d1529e991bac9e47090639ac",
+  "archive": "/home/ubuntu/admiralty-v2-build/receipts/rollout-corrections/20261019T073316Z",
+  "verified_artifact_manifest": [
+    {
+      "name": "native-work-order-cli-20261019T0727Z.json",
+      "sha256": "bfff963755963a9ea0011f244aa35fb523a49227e98973ee05fa9c0e063d675e",
+      "bytes": 3505
+    },
+    {
+      "name": "native-durable-admission-20261019T0730Z.json",
+      "sha256": "ff99cc3c84b626d4fc00b56dfe78297d72a0dbd95bb8538d3ea58d046b482e51",
+      "bytes": 6476
+    },
+    {
+      "name": "adm-admission-store-final.log",
+      "sha256": "785c1b49067e640db3946b9582891a09af50f769e6eef90b0c9361e31b39afce",
+      "bytes": 1780
+    },
+    {
+      "name": "adm-admission-controller-final.log",
+      "sha256": "4d452a88bb25311cee36e2aee7efd4b6068237db976534b7ed208c04d3692836",
+      "bytes": 1488
+    },
+    {
+      "name": "adm-admission-history-unit-final.log",
+      "sha256": "16002cb05855cb42540b4cbe407bb842efff2293b18ef74eecb65cec9615b5ff",
+      "bytes": 507
+    },
+    {
+      "name": "adm-admission-clippy-final.log",
+      "sha256": "8e585eab6996eb9766ca43669eaf0d14f21f321c26d5394e792cb3f0546c8c74",
+      "bytes": 286
+    },
+    {
+      "name": "adm-admission-wo-cli-composed.log",
+      "sha256": "f9f74e328aedbd007c1a6bfdfe2194f1390e5e94111258b7dd0026e335e6e420",
+      "bytes": 1222
+    },
+    {
+      "name": "adm-wo-cli-final.log",
+      "sha256": "73b0179886897688f30227de6816989e39243e6e5faa5f14104248b75930cfd7",
+      "bytes": 800
+    },
+    {
+      "name": "adm-wo-cli-clippy-cleared.log",
+      "sha256": "6bb150a0785a456f0f651105b49eb81105b67a4d7d753599f310fa8cc559e427",
+      "bytes": 270
+    },
+    {
+      "name": "adm-wo-cli-canary-before.log",
+      "sha256": "6554428abd46cf2ac8fed94df45d20f6152a9e039f563747ae4583c288f36b96",
+      "bytes": 992
+    },
+    {
+      "name": "adm-admission-controller.log",
+      "sha256": "71c65f88856cf1a9f61c489cf8c6c88332f3d521096cb97ed4c97aa38d29dd2e",
+      "bytes": 2229
+    },
+    {
+      "name": "adm-ci-a9e-rust-39212711288.log",
+      "sha256": "6f7ff35162a4b735ce97f7b4363c5d10803d7d37912f06435f0facfc1e765118",
+      "bytes": 188735
+    }
+  ],
+  "all_32_parent_statuses_and_criteria_preserved": true,
+  "foundation_and_unrelated_packets_byte_identical": true,
+  "all_prior_evidence_preserved": true,
+  "producer_source_and_history_objects_byte_identical": true,
+  "only_integrator_metadata_and_additive_component_evidence_changed": true,
+  "accepted": [
+    "P00",
+    "P01"
+  ],
+  "remaining_parents": 30,
+  "native_execution_qualified": false,
+  "production_observed_revision": "6395f8c76146e5b74e2a8ab3c039987ac70aecb8",
+  "production_observed_utc": "2026-10-19T06:53:06.631Z",
+  "production_issuer_created": false,
+  "provider_grants": 0,
+  "service_control": false
+}

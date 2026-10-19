@@ -6,7 +6,23 @@ neverhumanbot approval and matched-head rebase. Red/queued CI is never green.
 One cleanup lane takes this list after remaining cutover implementation lands;
 build failures remain immediate work.
 
-Latest later observation: maina9e0f557 workflow39212711288/job117933239732
+Latest observation: mainfcd35569 Rust workflow39216521388 failed the new offline
+intake CLI suite:2passed/3failed with `database parent must not be group/world
+writable`. The preview path used an unrestricted tempfile directory under Linux
+umask002. Actual failure log `/private/tmp/adm-ci-fcd-rust-39216521388.log`
+SHA-256 `4dc84f161beadee0617c127b4f06d03990891299f3052f870ce207cfdf391993`
+is retained. This production feature bug is being repaired immediately with
+atomic0700 directory creation and actual child-umask002 regression cases;
+Store guards, global umask and shared service settings remain unchanged. Exact
+fcd browser/accessibility workflow39216521433 passed. Exact repair7f203848 now
+passes all5binary cases under child umask002 on actual Linux, one capped fresh
+build07:57:33–08:02:45Z, jobs1/private TMP/unique target. Raw log SHA-256
+`beffc690244c001a5d85048d13e296ebe1cda6898db15df64dce9d7d9cfdf7b1`;
+see [repair receipt](receipts/integration/native-intake-cli-linux-repair-20261019T0804Z.json).
+Independent source review is clear; Mac5cases/strict Clippy/fmt passed separately.
+Later hosted outcomes remain separate; the failed workflow is not relabelled green.
+
+Historical later observation: maina9e0f557 workflow39212711288/job117933239732
 passed contracts, formatting and strict workspace Clippy, then failed
 `actual_producer_capture_failure_cannot_yield_typed_transcript` at
 `native_executor.rs:2319` with the controlled child capture deadline:

@@ -6,6 +6,33 @@ This additive update retains the full audit below at its original source/time.
 Only P00/P01 are fully accepted; all30 other parents remain open. Do not rebuild
 the following later integrated components or infer that they are live:
 
+**07:59Z correction to the older snapshots below:** PR115/116 are merged into
+`fcd35569ccfed7429e1bb4b22dfcb7dc142f9700`; an independent read now verifies
+that exact source running on the primary ports, all15manifest/file/proc hashes,
+health/UI/feed200,18891redirect307, Rust producer0model turns and no retired
+owned Python. This includes the raw-intake contrast repair. Latest broader Rust
+CI exposed a new real offline-preview permission bug (2CLI cases pass,3fail),
+repaired in candidate7f203848 with atomic0700 creation and child-umask002 tests:
+all5actual Linux binary cases pass in one capped fresh build, plus separate
+Mac5cases/strict checks and independent source review. Receipt
+`native-intake-cli-linux-repair-20261019T0804Z.json` preserves the original failed
+workflow and scoped repair; the same oldfcd source's browser CI passed.
+Source-specific earlier passing cases remain historical evidence.
+
+The actual SC-DEC-155/156 written order at06:47Z was discovered after the prior
+authority snapshot: it grants one fresh bounded diagnostic and serial backup
+deployment coverage through885617.adm_p18a_conflicts while the Commodore is quota
+blocked. Root still performs no primary service control. SC155 has now been
+consumed once: exact6e diagnostic exited17 at07:48Z, dispatch was not durably
+acknowledged and the toy source is unchanged. Read-only inspection at07:56Z
+found the same unit failed with timeout, recorded PID absent and durable outbox
+unknown with its recovery handle retained. Provider/model/usage/billing and
+closure remain unknown; no retry or grant reuse is permitted. See the scoped
+`native-sc155-diagnostic-failure-20261019T0759Z.json` receipt. Persisting failure
+diagnostics is ready independent code work; actual provider acceptance remains
+open. The older no-handoff/no-new-grant statements below describe their original
+observations and are superseded by this correction.
+
 | Later source/evidence | What is implemented; what remains |
 | --- | --- |
 | PR110–114, receiving maina9e0f557 | Private scoped native intake HTTP/config, raw React capture and actual private Rust/browser retry/readback with repaired axe contrast; private integrity-pinned installer including separate Linux evidence. See the corresponding committed `native-intake-*`, `native-private-install-*` and `native-install-linux-*` receipts. No live intake config/issuer, full enriched/delivery UI, provider or full P30 acceptance. |

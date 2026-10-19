@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T07:36:29.517Z",
+  "before_sha256": "4ea0d717994e4d3761ff436061afe6854d2dd086d1529e991bac9e47090639ac",
+  "after_sha256": "0fdefa2d4f844b7c62239c23524d643a1ad3a34aed8378066d68357365ce822d",
+  "archive": "/home/ubuntu/admiralty-v2-build/receipts/rollout-corrections/20261019T073629Z",
+  "correction": "Latest-source deployment not independently verified; absence of new proof does not establish a service transition.",
+  "all_packets_byte_identical": true,
+  "producer_source_and_history_byte_identical": true,
+  "original_reconciliation_archived": true,
+  "service_control": false,
+  "parent_acceptance_changed": false,
+  "provider_grants": 0
+}
