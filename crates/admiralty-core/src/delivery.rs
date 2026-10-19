@@ -137,7 +137,10 @@ pub struct AttestedObservation {
 }
 
 impl AttestedObservation {
-    /// Construct a content-bound attestation record for a verified [`DeliveryObservation`].
+    /// Compute a content-consistency pin for a claimed observation. This helper
+    /// authenticates no producer or evidence custody. A trusted caller must
+    /// independently admit the observation before adding this pin to its
+    /// context; never create trusted admission from request JSON with this call.
     pub fn for_observation(obs: &DeliveryObservation) -> Result<Self> {
         obs.validate()?;
         let ObservationTrust::ClaimedEvidence {
@@ -216,10 +219,11 @@ impl AttestedObservation {
 
 /// Caller-supplied non-Deserialize verified check receipt binding.
 ///
-/// Wraps a [`ValidatedReceipt`] together with the [`VerificationInputs`] and
-/// negative-check outcome verified by `verification::validate_receipt`. It is
-/// input to `Check` stage evaluation only and never grants execution authority
-/// or task acceptance.
+/// Carries a [`ValidatedReceipt`] and caller-supplied input/negative-check
+/// sidecars. Evaluation requires the input digest retained inside the actual
+/// validator result, so a different sidecar cannot repair a foreign receipt.
+/// The validator proves consistency only; independent caller admission is still
+/// required. This never grants execution authority or task acceptance.
 ///
 /// ```compile_fail
 /// use admiralty_core::delivery::AttestedCheckReceipt;
@@ -1545,6 +1549,8 @@ pub fn project_delivery(
     let mut repo_landed = Vec::new();
     let mut repo_unlanded = Vec::new();
     let mut repo_uncertain = Vec::new();
+    let mut required_merge_landed = false;
+    let mut required_merge_unlanded = false;
 
     for target in &requirement.targets {
         let obs_list = valid_by_target
@@ -1552,6 +1558,25 @@ pub fn project_delivery(
             .map(Vec::as_slice)
             .unwrap_or(&[]);
         let projected = evaluate_target(context, target, obs_list, &mut pending_attention);
+        // Global repository diagnostics retain optional and pre-merge targets.
+        // Their absence of a merge cannot add a requirement the frozen target
+        // contract did not select. Unknown external outcomes remain blocked.
+        if target.target_kind == DeliveryTargetKind::Repository
+            && matches!(
+                target.requirement,
+                TargetRequirement::Required {
+                    stage: DeliveryStage::Merged
+                }
+            )
+        {
+            match &projected.external_outcome {
+                ExternalOutcomeState::Merged { .. } => required_merge_landed = true,
+                ExternalOutcomeState::Unlanded { .. } | ExternalOutcomeState::Clear {} => {
+                    required_merge_unlanded = true;
+                }
+                ExternalOutcomeState::Uncertain { .. } => {}
+            }
+        }
         if target.target_kind == DeliveryTargetKind::Repository
             && !matches!(target.requirement, TargetRequirement::NotApplicable { .. })
         {
@@ -1630,10 +1655,7 @@ pub fn project_delivery(
     let has_uncertain_outcome = target_projections
         .iter()
         .any(|t| matches!(t.external_outcome, ExternalOutcomeState::Uncertain { .. }));
-    let has_partial_landing = matches!(
-        multi_repo_landing,
-        MultiRepoLandingState::PartialLanding { .. }
-    );
+    let has_partial_landing = required_merge_landed && required_merge_unlanded;
     let has_required_target = requirement
         .targets
         .iter()
@@ -2081,7 +2103,10 @@ fn evaluate_target(
                 && &inputs.source_tree_sha == source_tree_sha
                 && canonical_impl
                     .is_none_or(|(_, _, art)| inputs.source_artifact_digest.as_str() == art)
-                && attested_receipt.validated_receipt.receipt_digest() == receipt_digest;
+                && attested_receipt.validated_receipt.receipt_digest() == receipt_digest
+                && crate::content_digest(inputs).is_ok_and(|digest| {
+                    digest == attested_receipt.validated_receipt.validated_inputs_digest()
+                });
             let validated_ok = attested_receipt.validated_receipt.all_checks_passed()
                 && attested_receipt.negative_checks_passed;
             if commit_matches

@@ -2088,3 +2088,282 @@ fn permutation_invariance_and_full_bundle_identity_comparison_across_stage_order
     assert_eq!(proj_fwd.projection_digest, proj_rev.projection_digest);
     assert_eq!(proj_fwd.attention_items[0].facts.len(), 63);
 }
+
+// INDEPENDENT REVIEW: an opaque receipt must remain bound to the inputs actually validated.
+#[test]
+fn reviewer_counterexample_receipt_cannot_be_rebound_by_mutable_inputs() {
+    let task = task_contract();
+    let requirement = DeliveryRequirement {
+        schema_version: 1,
+        task_id: task.task_id.clone(),
+        contract_revision: task.revision,
+        contract_digest: content_digest(&task).expect("contract digest"),
+        generation: 1,
+        targets: vec![DeliveryTarget {
+            id: "repo-main".into(),
+            target_kind: DeliveryTargetKind::Repository,
+            requirement: TargetRequirement::Required {
+                stage: DeliveryStage::Merged,
+            },
+        }],
+    };
+    let mut observations = full_repo_observations(
+        &task,
+        &requirement,
+        "repo-main",
+        "receipt-rebind",
+        IntentStage::ReconciledSuccess,
+    );
+    let mut ctx = context_for(
+        task.clone(),
+        requirement.clone(),
+        ResponsibleActor::RoleQueue {
+            role: ResponsibleRole::Commodore,
+        },
+        110,
+        &observations,
+    );
+    let expected_inputs_b = ctx
+        .attested_check_receipts
+        .values()
+        .next()
+        .expect("original receipt")
+        .inputs
+        .clone();
+    // This opaque receipt was actually validated for source A=5/tree6, not current source B=1/tree2.
+    let mut foreign_a = build_attested_check_receipt(
+        &task,
+        &requirement,
+        "receipt-foreign-source-a",
+        &oid('5'),
+        &oid('6'),
+    );
+    assert_ne!(
+        foreign_a.inputs.source_commit_sha,
+        expected_inputs_b.source_commit_sha
+    );
+    let foreign_digest = foreign_a.validated_receipt.receipt_digest().to_owned();
+    // Public sidecar fields allow substitution without revalidating the opaque receipt.
+    foreign_a.inputs = expected_inputs_b;
+    if let StageObservationDetail::Check { receipt_digest, .. } = &mut observations[1].detail {
+        *receipt_digest = foreign_digest.clone();
+    } else {
+        panic!("check fixture");
+    }
+    ctx.attested_observations = attest_observations(&observations);
+    ctx.attested_check_receipts.clear();
+    ctx.attested_check_receipts
+        .insert(foreign_digest, foreign_a);
+    let actual =
+        project_delivery(&ctx, &batch_for(observations)).expect("bounded consistent input shapes");
+    assert!(
+        !actual.overall_satisfied,
+        "receipt validated for source A was rebound with mutable source-B inputs and satisfied Merged"
+    );
+    assert_ne!(actual.targets[0].stages.check, StageEvaluation::Verified);
+}
+
+#[test]
+fn reviewer_counterexample_optional_repository_must_not_block_required_delivery() {
+    let task = task_contract();
+    let requirement = DeliveryRequirement {
+        schema_version: 1,
+        task_id: task.task_id.clone(),
+        contract_revision: task.revision,
+        contract_digest: content_digest(&task).expect("contract digest"),
+        generation: 1,
+        targets: vec![
+            DeliveryTarget {
+                id: "repo-required".into(),
+                target_kind: DeliveryTargetKind::Repository,
+                requirement: TargetRequirement::Required {
+                    stage: DeliveryStage::Merged,
+                },
+            },
+            DeliveryTarget {
+                id: "repo-optional".into(),
+                target_kind: DeliveryTargetKind::Repository,
+                requirement: TargetRequirement::Optional {
+                    stage: DeliveryStage::Merged,
+                },
+            },
+        ],
+    };
+    let observations = full_repo_observations(
+        &task,
+        &requirement,
+        "repo-required",
+        "optional-review",
+        IntentStage::ReconciledSuccess,
+    );
+    let ctx = context_for(
+        task,
+        requirement,
+        ResponsibleActor::RoleQueue {
+            role: ResponsibleRole::Commodore,
+        },
+        110,
+        &observations,
+    );
+    let actual = project_delivery(&ctx, &batch_for(observations)).expect("bounded valid facts");
+    assert!(matches!(
+        actual.targets[0].completion,
+        TargetCompletionState::Satisfied { .. }
+    ));
+    assert!(matches!(
+        actual.targets[1].completion,
+        TargetCompletionState::OptionalPending { .. }
+    ));
+    assert!(
+        actual.overall_satisfied,
+        "optional unlanded repository vetoed the independently satisfied required delivery"
+    );
+}
+
+#[test]
+fn required_pre_merge_stage_does_not_gain_an_implicit_merge_requirement() {
+    for stage in [DeliveryStage::Candidate, DeliveryStage::Verified] {
+        let task = task_contract();
+        let requirement = DeliveryRequirement {
+            schema_version: 1,
+            task_id: task.task_id.clone(),
+            contract_revision: task.revision,
+            contract_digest: content_digest(&task).expect("contract"),
+            generation: 1,
+            targets: vec![
+                DeliveryTarget {
+                    id: "repo-merged".into(),
+                    target_kind: DeliveryTargetKind::Repository,
+                    requirement: TargetRequirement::Required {
+                        stage: DeliveryStage::Merged,
+                    },
+                },
+                DeliveryTarget {
+                    id: "repo-pre-merge".into(),
+                    target_kind: DeliveryTargetKind::Repository,
+                    requirement: TargetRequirement::Required { stage },
+                },
+            ],
+        };
+        let mut observations = full_repo_observations(
+            &task,
+            &requirement,
+            "repo-merged",
+            "required-merged",
+            IntentStage::ReconciledSuccess,
+        );
+        observations.extend(
+            full_repo_observations(
+                &task,
+                &requirement,
+                "repo-pre-merge",
+                "required-pre-merge",
+                IntentStage::ReconciledSuccess,
+            )
+            .into_iter()
+            .filter(|observation| {
+                matches!(
+                    observation.detail,
+                    StageObservationDetail::Implementation { .. }
+                        | StageObservationDetail::Check { .. }
+                )
+            }),
+        );
+        let context = context_for(
+            task,
+            requirement,
+            ResponsibleActor::RoleQueue {
+                role: ResponsibleRole::Commodore,
+            },
+            110,
+            &observations,
+        );
+        let actual =
+            project_delivery(&context, &batch_for(observations)).expect("bounded stage facts");
+        assert!(
+            actual
+                .targets
+                .iter()
+                .all(|target| matches!(target.completion, TargetCompletionState::Satisfied { .. }))
+        );
+        assert!(
+            actual.overall_satisfied,
+            "selected candidate/verified stage must not require an unselected merge"
+        );
+        assert!(
+            matches!(
+                actual.multi_repo_landing,
+                MultiRepoLandingState::PartialLanding { .. }
+            ),
+            "retain observed landing diagnostic even when not a selected requirement"
+        );
+        assert!(
+            !actual.acceptance_granted()
+                && !actual.dispatch_authorized()
+                && !actual.release_authorized()
+        );
+    }
+}
+
+#[test]
+fn optional_target_unknown_external_effect_still_blocks_completion() {
+    let task = task_contract();
+    let requirement = DeliveryRequirement {
+        schema_version: 1,
+        task_id: task.task_id.clone(),
+        contract_revision: task.revision,
+        contract_digest: content_digest(&task).expect("contract"),
+        generation: 1,
+        targets: vec![
+            DeliveryTarget {
+                id: "repo-required".into(),
+                target_kind: DeliveryTargetKind::Repository,
+                requirement: TargetRequirement::Required {
+                    stage: DeliveryStage::Merged,
+                },
+            },
+            DeliveryTarget {
+                id: "repo-optional".into(),
+                target_kind: DeliveryTargetKind::Repository,
+                requirement: TargetRequirement::Optional {
+                    stage: DeliveryStage::Merged,
+                },
+            },
+        ],
+    };
+    let mut observations = full_repo_observations(
+        &task,
+        &requirement,
+        "repo-required",
+        "known-required",
+        IntentStage::ReconciledSuccess,
+    );
+    observations.extend(full_repo_observations(
+        &task,
+        &requirement,
+        "repo-optional",
+        "unknown-optional",
+        IntentStage::Ambiguous,
+    ));
+    let context = context_for(
+        task,
+        requirement,
+        ResponsibleActor::RoleQueue {
+            role: ResponsibleRole::Commodore,
+        },
+        110,
+        &observations,
+    );
+    let actual =
+        project_delivery(&context, &batch_for(observations)).expect("bounded unknown effect");
+    assert!(!actual.overall_satisfied);
+    assert!(matches!(
+        actual.completion_state,
+        DeliveryCompletionState::BlockedByUncertainOutcome
+    ));
+    assert!(
+        !actual.acceptance_granted()
+            && !actual.dispatch_authorized()
+            && !actual.release_authorized()
+    );
+}

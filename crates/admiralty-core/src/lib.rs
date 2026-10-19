@@ -32,6 +32,7 @@ pub fn content_digest<T: serde::Serialize>(value: &T) -> Result<String, serde_js
 pub mod config;
 pub mod conflicts;
 pub mod coordination;
+pub mod delivery;
 pub mod economics;
 pub mod excursions;
 pub mod governor;
