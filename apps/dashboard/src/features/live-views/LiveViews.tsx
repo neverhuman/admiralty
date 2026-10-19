@@ -160,7 +160,11 @@ export default function LiveViews({
             role="status"
           >
             <i />
-            {feed.state === "connected"
+            {feed.publicFallback
+              ? "Public producer view · access needed for native assignments"
+              : feed.sessionAccessRequired
+                ? "Session access required"
+                : feed.state === "connected"
               ? "Connected"
               : feed.state === "paused"
                 ? "Access / retry needed"
@@ -183,14 +187,26 @@ export default function LiveViews({
           demonstration is synthetic.
         </div>
       )}
-      {feed.error && (
+      {feed.publicFallback && (
+        <div className="lv-demo" role="status">
+          <span>Showing the explicitly public producer snapshot. Private native assignments are unavailable; source timestamps are preserved.</span>
+          {feed.error && <span>{feed.error}. Last public source timestamps are unchanged.</span>}
+          <button onClick={onAccess} className="lv-button">
+            Connect session access
+          </button>
+          <button onClick={feed.retry} className="lv-button">
+            Retry private feed
+          </button>
+        </div>
+      )}
+      {feed.error && !feed.publicFallback && (
         <div className="lv-error" role="status">
           <span>{feed.error}. Source times preserved.</span>
           <button onClick={onAccess} className="lv-button">
-            Session access
+            {feed.sessionAccessRequired ? "Connect session access" : "Session access"}
           </button>
           <button onClick={feed.retry} className="lv-button">
-            Retry feed
+            {feed.sessionAccessRequired ? "Retry private feed" : "Retry feed"}
           </button>
         </div>
       )}

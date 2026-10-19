@@ -4,6 +4,7 @@ import {
   age,
   isStale,
   parseViews,
+  projectPublicLegacyViews,
   watchViews,
   type ViewAgent,
   type ViewsSnapshot,
@@ -67,8 +68,35 @@ const repository = (): GitRepository => ({
     },
   ],
 });
+const publicLegacy = () => ({
+  generated_utc: "2026-10-19T13:14:42Z",
+  host: "node-a",
+  order: ["project-a"],
+  project_catalog: [{ id: "project-a", name: "Project A" }],
+  projects: { "project-a": { total: 3, stages: { done: 2, blocked: 1 } } },
+  agents: [{ id: "123.worker-a", screen: "worker-a", host: "node-a", project: "project-a", state: "unknown", model: "unknown", model_source: "not observed", observed_utc: "2026-10-19T13:14:12Z" }],
+  remote_screens: [{ id: "remote-b", screen: "worker-b", host: "node-b", project: "unassigned", state: "unknown" }],
+  git: {},
+});
 
 describe("visual truth and deterministic geometry", () => {
+  it("projects only explicit public producer fields and preserves source times", () => {
+    const source = publicLegacy(), projected = projectPublicLegacyViews(source);
+    expect(projected.observed_utc).toBe(source.generated_utc);
+    expect(projected.projects).toEqual([{ id: "project-a", name: "Project A", task_count: 3 }]);
+    expect(projected.agents).toMatchObject([
+      { id: "screen:node-a:123.worker-a", project_id: "project-a", presence: "observed", state: "unknown", observed_utc: "2026-10-19T13:14:12Z" },
+      { id: "screen:node-b:worker-b", project_id: null, presence: "unobserved", state: "unknown", observed_utc: source.generated_utc },
+    ]);
+    expect(projected.agents[0].model).toBeUndefined();
+    expect(projected.agents.some((agent) => agent.role === "assignment")).toBe(false);
+    expect(projected.sources.find((item) => item.id === "native")?.state).toBe("unavailable");
+  });
+  it("rejects an invalid public Git payload instead of partially rendering it", () => {
+    const source = publicLegacy();
+    source.git = { "project-a": { instance_id: "repo", node: "node-a", observed_utc: source.generated_utc, shallow: false, truncated: false, refs: [], checkouts: [], commits: [{ oid: "bad", parents: [], subject: "bad", committed_utc: source.generated_utc }] } };
+    expect(() => projectPublicLegacyViews(source)).toThrow("Invalid Git identity");
+  });
   it("keeps all merge parents left of children despite skewed dates and unordered input", () => {
     const repo = repository(),
       layout = layoutGit(repo);
@@ -261,7 +289,7 @@ describe("atomic authenticated visual feed", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(server.onSnapshot).toHaveBeenLastCalledWith(next);
   });
-  it("pauses on auth failure and cancels retry/unmounted callbacks", async () => {
+  it("checks the public route after auth failure, then pauses and cancels callbacks", async () => {
     const onState = vi.fn(),
       onSnapshot = vi.fn(),
       fetcher = vi
@@ -269,10 +297,71 @@ describe("atomic authenticated visual feed", () => {
         .mockResolvedValue(new Response("", { status: 401 }));
     const stop = watchViews({ fetcher, onState, onSnapshot, onError: vi.fn() });
     stops.push(stop);
-    await vi.advanceTimersByTimeAsync(60_000);
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls[0][0]).toBe("/v2/views/events");
+    expect(fetcher.mock.calls[1][0]).toBe("/v1/legacy");
+    expect(new Headers(fetcher.mock.calls[1][1]?.headers).has("Authorization")).toBe(false);
     expect(onState).toHaveBeenLastCalledWith("paused");
     stop();
+    expect(onSnapshot).not.toHaveBeenCalled();
+  });
+  it("uses only public legacy reads after private auth denial and accepts a refreshed token", async () => {
+    const publicSnapshot = publicLegacy(), callbacks = {
+      onSnapshot: vi.fn(), onState: vi.fn(), onError: vi.fn(),
+      onSessionAccessRequired: vi.fn(), onPublicFallback: vi.fn(),
+    };
+    const publicFetcher = vi.fn<typeof fetch>(async (input) =>
+      String(input) === "/v2/views/events"
+        ? new Response("", { status: 401 })
+        : new Response(JSON.stringify(publicSnapshot), { headers: { "Content-Type": "application/json" } }),
+    );
+    const stopPublic = watchViews({ token: "expired-token", fetcher: publicFetcher, ...callbacks });
+    stops.push(stopPublic);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(publicFetcher).toHaveBeenCalledTimes(2);
+    expect(new Headers(publicFetcher.mock.calls[0][1]?.headers).get("Authorization")).toBe("Bearer expired-token");
+    expect(new Headers(publicFetcher.mock.calls[1][1]?.headers).has("Authorization")).toBe(false);
+    expect(callbacks.onSnapshot).toHaveBeenCalledWith(expect.objectContaining({
+      observed_utc: publicSnapshot.generated_utc,
+      sources: expect.arrayContaining([expect.objectContaining({ id: "native", state: "unavailable" })]),
+    }));
+    expect(callbacks.onSessionAccessRequired).toHaveBeenLastCalledWith(true);
+    expect(callbacks.onPublicFallback).toHaveBeenLastCalledWith(true);
+
+    const channels: ReadableStreamDefaultController<Uint8Array>[] = [];
+    const privateFetcher = vi.fn<typeof fetch>(async () => new Response(
+      new ReadableStream<Uint8Array>({ start(controller) { channels.push(controller); } }),
+      { headers: { "Content-Type": "text/event-stream" } },
+    ));
+    const stopPrivate = watchViews({ token: "refreshed-token", fetcher: privateFetcher, ...callbacks });
+    stops.push(stopPrivate);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(new Headers(privateFetcher.mock.calls[0][1]?.headers).get("Authorization")).toBe("Bearer refreshed-token");
+    channels[0].enqueue(new TextEncoder().encode(`event: views\nid: cut-1\ndata: ${JSON.stringify(fixture())}\n\n`));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(callbacks.onSnapshot).toHaveBeenLastCalledWith(fixture());
+    expect(callbacks.onSessionAccessRequired).toHaveBeenLastCalledWith(false);
+    expect(callbacks.onPublicFallback).toHaveBeenLastCalledWith(false);
+    stopPublic();
+    stopPrivate();
+  });
+  it("aborts an old public fallback and ignores its late response after access changes", async () => {
+    let finishLegacy!: (response: Response) => void;
+    let legacySignal: AbortSignal | undefined;
+    const onSnapshot = vi.fn(), onState = vi.fn(), onError = vi.fn();
+    const oldFetcher = vi.fn<typeof fetch>((input, init) => {
+      if (String(input) === "/v2/views/events") return Promise.resolve(new Response("", { status: 401 }));
+      legacySignal = init?.signal ?? undefined;
+      return new Promise((resolve) => { finishLegacy = resolve; });
+    });
+    const stopOld = watchViews({ token: "old-token", fetcher: oldFetcher, onSnapshot, onState, onError });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(oldFetcher).toHaveBeenCalledTimes(2);
+    stopOld();
+    expect(legacySignal?.aborted).toBe(true);
+    finishLegacy(new Response(JSON.stringify(publicLegacy()), { headers: { "Content-Type": "application/json" } }));
+    await vi.advanceTimersByTimeAsync(0);
     expect(onSnapshot).not.toHaveBeenCalled();
   });
   it("bounds reconnect storms even when each short connection sends a valid snapshot", async () => {
