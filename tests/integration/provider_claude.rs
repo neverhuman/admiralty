@@ -33,8 +33,7 @@ fn real_303_continuity_preserves_session_model_and_terminal_usage() {
     let result: Value = serde_json::from_slice(
         resumed
             .split(|b| *b == b'\n')
-            .filter(|l| !l.is_empty())
-            .next_back()
+            .rfind(|l| !l.is_empty())
             .expect("terminal result"),
     )
     .expect("JSON result");
