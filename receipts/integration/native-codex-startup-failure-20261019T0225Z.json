@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T02:44:45.416Z",
+  "scope": "One manually authorized isolated Codex startup attempt; no model identity or coding acceptance established",
+  "fixture": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-20261019T0224Z",
+  "source_revision": "7159a0218f1105e125f8ccc310abfa3492982a5e",
+  "binary_sha256": "d02361038373591ee6a7073251589e9704a1013cde61c2c484aa6a54aada07e3",
+  "request": {
+    "bytes": 17700,
+    "sha256": "716ce940ca571ba31b519ec798b5d410fa705fd6882e3726ccdc2be997d15926"
+  },
+  "launch": {
+    "at": "2026-10-19T02:25:12.052Z",
+    "cpu_sample_ms": 1500,
+    "cpu_mean_percent": 45.0354609929078
+  },
+  "exit": {
+    "at": "2026-10-19T02:25:31.473Z",
+    "probe_code": 17,
+    "child_code": 1,
+    "signal": null
+  },
+  "diagnostic": "Actual CLI startup output records nucleo ThreadPoolBuildError: IOError code11 WouldBlock/Resource temporarily unavailable, followed by thread/start failure. Historical cause is not proven; no safety limit increased.",
+  "requested_model": "gpt-6-luna",
+  "model_observed": null,
+  "unit_observation": {
+    "result": "exit-code",
+    "exec_main_status": 1,
+    "memory_peak_reported_bytes": 5222400,
+    "allowed_cpus": "0-1",
+    "tasks_max": 32,
+    "active_state": "failed",
+    "sub_state": "failed",
+    "tasks_current": "not set"
+  },
+  "evidence": {
+    "fixture/failure.json": {
+      "bytes": 415,
+      "sha256": "4cf1665a03d74ce8d92a12cca632caabf309454748071741792ac2e87561723b"
+    },
+    "operator-exit.json": {
+      "bytes": 57,
+      "sha256": "cbd074e60011055b1af26a0a6f35d210c1129b0878526c6bbfed6bbb324994f4"
+    },
+    "run.stderr": {
+      "bytes": 80,
+      "sha256": "4b2638dd7e6df2ae98b306d10428461ed5dca07f723e73820989cad0963ce70d"
+    },
+    "run.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "output.journal": {
+      "bytes": 562,
+      "sha256": "1c5b4fed55d9bacb54789a6ac6aba0d777e351c4e76f53d6649e6468e53546da"
+    }
+  },
+  "owned_slice_empty": true,
+  "automatic_retry": false,
+  "authorization_consumed": true,
+  "accepted": false,
+  "coding_provider_qualified": false,
+  "native_execution_qualified": false,
+  "next_action": "Preserve immutable failed fixture/grant; independently reviewed mitigation requires fresh source/build/request and one-run operator authorization. Never retry this fixture."
+}

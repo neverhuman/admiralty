@@ -1393,3 +1393,53 @@ host CPU sample45.04% and empty owned slice. Source7159a02/binaryd0236103,
 CPU0–1,512MiB,32tasks,120seconds/maxconcurrency1 remain pinned. This start alone
 establishes no provider identity, acceptance or qualification; outcomes must be
 read from actual capture/check/Store evidence. Prior failed grants remain consumed.
+
+### Intake, authenticated attention and bounded provider startup — 2026-10-19T02:50Z
+
+PR97 received23cb1ec70474f1febb7c325eb1128a8082c9ce55, PR96 received
+5126af0e388061690aa45bf3c758afe5b9db80a6 and PR94 received
+f655b15922810c0e8155c5714e8125b11ad0794d, all after exact-head neverhumanbot
+approval and matched-head rebase. Ready CI-profile work was rebased with both
+ledger histories preserved; no new CI cleanup worker or suite repetition was
+used. At this snapshot the repository has no open PRs. Commodore reports PR95
+35e58904 live since02:23:42Z,14manifest entries,13plots/profile; this is distinct
+from root's historical independent779 verification. Latest deployment recheck
+and further current-main redeployment remain Commodore's single-writer scope.
+
+Registered intake now preserves one PlainText request, splits only explicit
+JsonBatch, binds every policy cap, uses exact decimal generation strings and
+retains immutable format metadata. Nineteen registered tests pass. The new
+attention bridge requires an opaque authenticated actor, current credential
+scope, separate default-deny action policy and exact stored context/facts/task
+binding; five real Store/auth/context/outbox tests and server build pass.
+Request-context and pending batch references are distinct, and policy is checked
+before enqueue rather than atomically with Store commit. These activation gaps
+remain explicit; no route/provider transport or startup action issuer is enabled.
+
+The0224 actual Codex attempt failed CLI startup at02:25:31Z with nucleo
+ThreadPoolBuildError/WouldBlock; no model identity or acceptance was established.
+[Failure evidence](../../../receipts/integration/native-codex-startup-failure-20261019T0225Z.json)
+preserves hashes and consumed grant. A narrow independently reviewed child-local
+TOKIO_WORKER_THREADS=2 request is bound in fresh authorization; only canonical1/2
+is accepted. It does not loosen32tasks/512MiB/CPU0–1/120seconds or host85%cap.
+Twelve resource-gate tests and fifteen actual example component tests pass.
+Linux sourceefc67de built successfully to7cf7eb35; code trees are identical after
+rebasing ontof655b159, as computed in
+[the component receipt](../../../receipts/integration/intake-attention-thread-budget-20261019T0245Z.json).
+
+Fresh0245 request17727bytes/afe58fab was independently inspected and authorized
+once at02:46:54Z after measured CPU51.30% and empty owned slice. It also failed
+CLI startup with the same nucleo error, exiting17 at02:47:16Z. That grant is
+consumed and fixture retained; the requested async-pool setting did not resolve
+this observed case. No provider turn, qualified identity, immutable coding
+candidate or acceptance is claimed. Source/help diagnosis continues without new
+provider grants or changes to resource limits. Pure source checks are not a
+substitute for that missing execution chain.
+
+WO2 atomic inline enriched-JSON record has11new Store and4existing workplan
+checks, but independent review found duplicate-query integrity validation missing
+before returned candidates. The owner is repairing that exact read path with
+post-open corruption regressions before integration. Artifact claims and raw
+unenriched prose remain explicit unsupported cases, not inferred tasks. Accepted
+parents remain2/32, general autonomous execution false, and CI cleanup remains
+deferred under the current human ruling.

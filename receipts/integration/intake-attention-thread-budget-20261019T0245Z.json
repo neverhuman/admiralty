@@ -1,0 +1,415 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T02:46:08.040Z",
+  "base_revision": "f655b15922810c0e8155c5714e8125b11ad0794d",
+  "integration_source": "c22de2141eac6c430de4b044379c5341e78b8ffb",
+  "linux_build_source": "efc67de5b5f0c0d8759c012da3aad017dcf46ce1",
+  "unchanged_runtime_trees": {
+    "crates": "0505f308b7c8d562a09c94bbf6818126bf55335e",
+    "apps": "e609ff631e1806eb58c49367925cec641656fcfd",
+    "packages": "052850771597620fa342478d96aac23728ba7f13"
+  },
+  "scope": "Registered inert work-order intake, default-deny scoped attention recording bridge and requested bounded Tokio async-worker count; no production issuer",
+  "source_sha256": {
+    "crates/admiralty-core/src/lib.rs": "c3ddbfff9da1f5792befbca7c1f705107c7336db5efa9038a0960d3aa9b872dd",
+    "crates/admiralty-core/src/intake.rs": "c87754dabd98cdae68b9299402a7d64cf1ddc23b8a2e67adcb9db012a624b281",
+    "crates/admiralty-core/tests/intake_contracts.rs": "be73b94a5b21b8df0e3b38a9fa1adc82119cdbf8b59fb61df9e37aa7656e7a56",
+    "crates/admiralty-runtime/src/resource_gate.rs": "c943f3b3fdecae9fbe0259e9e6df350a168ee268a6da4e94ea99d0acbf673cfc",
+    "crates/admiralty-server/src/lib.rs": "870679e4845e763b3c1fa152bbd7029886f4e0472d03f6fe80da4502d86e7724",
+    "crates/admiralty-server/src/native_attention.rs": "b72db33eef962451f245c1b8eefc2a43c47ddabf0a7d75640fbaec239c2c93cf",
+    "crates/admiralty-server/examples/native_task_loop_probe.rs": "eb6e5b40bd0f3c2a5368baff89c705a39db94e6f914250d1f9a1e6da871f846b"
+  },
+  "checks": [
+    {
+      "command": "cargo test -p admiralty-core --test intake_contracts --locked",
+      "log": "target/quality/intake-integrated-smoke.log",
+      "sha256": "2ff2ddeab87841ffb70b8e2c96ca28a1f11c445ce8a7487969261034c7df0594",
+      "exit_code": 0,
+      "passed": 19,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "note": "Component-only; no aggregate full-source/hosted qualification claimed"
+    },
+    {
+      "command": "cargo test -p admiralty-runtime resource_gate::tests --locked",
+      "log": "target/quality/provider-thread-budget-tests.log",
+      "sha256": "33311906d091b60e4fcf97c92d579bf4a008856afbe6b14496f9ddccb41cd85f",
+      "exit_code": 0,
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 172,
+      "note": "Component-only; no aggregate full-source/hosted qualification claimed"
+    },
+    {
+      "command": "cargo test -p admiralty-server --example native_task_loop_probe --locked",
+      "log": "target/quality/provider-budget-example-smoke.log",
+      "sha256": "b58f0cd7acf1cd3575afedae4b937e54ec1039df447110762dc4c52b963c4126",
+      "exit_code": 0,
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "note": "Component-only; no aggregate full-source/hosted qualification claimed"
+    }
+  ],
+  "worker_receipts": [
+    {
+      "path": "/private/tmp/adm-wo1-proof-7svigivx/receipt.json",
+      "sha256": "e2f8782b840c4cf273c4dee8f5ca69fc5b689642a1afb3a48424c13b681ee814",
+      "contents": {
+        "schema_version": 1,
+        "packet": "WO1",
+        "kind": "inert-intake-contract-preview-component",
+        "base_commit": "99f4e26cebfab97afa661ed05aea6192bfd5935c",
+        "source_commit": "f8161bb57d38090db58672eae8177edaabf1acf3",
+        "owned_paths": {
+          "crates/admiralty-core/src/intake.rs": "face7aa2bdc326f427f02252796bc26786f92ed255bf9226a310be3e1e5ee332",
+          "crates/admiralty-core/tests/intake_contracts.rs": "0c6f73cc5cc54e0bd96d823c24e15a5ceb4219433d0debade2caf75a4b404c55"
+        },
+        "required_root_registration": "pub mod intake; in crates/admiralty-core/src/lib.rs",
+        "temporary_registration": "The real module was temporarily registered in this isolated lib.rs for actual compilation/tests; that3line local-only delta was restored before final2file commit. Root must register production export and generate schemas.",
+        "actual_checks": [
+          {
+            "argv": [
+              "rtk",
+              "proxy",
+              "cargo",
+              "test",
+              "-p",
+              "admiralty-core",
+              "--test",
+              "intake_contracts",
+              "--locked"
+            ],
+            "cwd": "/private/tmp/admiralty-wo1-intake-99f4e26",
+            "exit": 0,
+            "passed": 15,
+            "failed": 0,
+            "ignored": 0,
+            "raw_log": "/private/tmp/adm-wo1-proof-7svigivx/intake-contracts.log",
+            "raw_log_sha256": "1923a97219ceefac9ec97ec4be39ce32a942e100c1a863dc99259b8d1f285ab7"
+          },
+          {
+            "argv": [
+              "rtk",
+              "proxy",
+              "cargo",
+              "clippy",
+              "-p",
+              "admiralty-core",
+              "--all-targets",
+              "--locked",
+              "--",
+              "-D",
+              "warnings"
+            ],
+            "exit": 0,
+            "evidence": "actual tool session4575 final exit0, unchanged frozen production and tests"
+          },
+          {
+            "argv": [
+              "rtk",
+              "proxy",
+              "rustfmt",
+              "--check",
+              "--edition",
+              "2024",
+              "crates/admiralty-core/src/intake.rs",
+              "crates/admiralty-core/tests/intake_contracts.rs"
+            ],
+            "exit": 0
+          },
+          {
+            "argv": [
+              "rtk",
+              "proxy",
+              "git",
+              "diff",
+              "--cached",
+              "--check"
+            ],
+            "exit": 0
+          }
+        ],
+        "environment": {
+          "TMPDIR": "/private/tmp/adm-native-4pbrtc1l",
+          "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/wo1-intake",
+          "CARGO_BUILD_JOBS": "1",
+          "RUST_TEST_THREADS": "1"
+        },
+        "limits": {
+          "raw_source_and_record_wire_bytes": 1048576,
+          "plain_text_single_request_bytes": 1048576,
+          "json_item_text_bytes_explicit_policy": 65536,
+          "requests": 256,
+          "total_outcomes": 1000,
+          "spans_per_outcome": 64,
+          "constraints_per_item_or_outcome": 32,
+          "delivery_targets": 32,
+          "duplicate_page_items": 100,
+          "json_depth": 32,
+          "json_nodes": 32768,
+          "aggregate_streamed_typed_bytes": 8388608
+        },
+        "failed_evidence": [
+          {
+            "initial_test_run": "11pass/1fail",
+            "actual_bug": "serde internally tagged unit Unknown accepted extra payload fields despite deny_unknown_fields",
+            "repair": "no-payload tagged alternatives changed to empty struct variants; explicit regression covers delivery/requester/duplicate coverage"
+          },
+          {
+            "initial_strict_clippy": "collapsible-if warning in production plus strict test unwrap/default-initializer/format lints",
+            "repair": "collapsed condition; meaningful expect messages and direct struct defaults; no lint allowances added"
+          }
+        ],
+        "boundary_guarantees": [
+          "No prose decomposition, criteria/authority/dependency/requester inference or formatting heuristics.",
+          "Raw item-object spans are original UTF8 byte offsets, not decoded text offsets; outcome spans must remain inside own raw item.",
+          "Raw/canonical/outcome/manifest identities have separate hash domains; canonical preserves decoded text/negations/units/task criteria/checks/constraints while manifest also pins source offsets/provenance/current supplied scope/policy.",
+          "Independent scope/policy are non-Deserialize trusted Rust inputs; public ScopeSnapshot/record/provenance are data only.",
+          "TargetRequirement distinguishes unknown/required/optional/not-applicable with exact task-contract revision+digest and target generation; noTaskContractv1 edits.",
+          "DuplicateQuery/Page binds query identity and visible complete/partial/incomplete coverage, exact collisions differ from advisory matches; no fuzzy matching or Store scan.",
+          "Typed record validators are shape/binding checks; writer must recompute exact preview/outcome selection, current scope/policy andCAS, immutable replay and actual source+pin custody in one transaction."
+        ],
+        "claims": {
+          "WO1_interface_candidate": true,
+          "independent_review_pending": true,
+          "production_registered": false,
+          "schemas_generated": false,
+          "Store_intake_implemented": false,
+          "dispatch_or_acceptance_grant": false,
+          "provider_or_fleet_calls": false,
+          "P02_P06_P13_accepted": false
+        }
+      }
+    },
+    {
+      "path": "/private/tmp/adm-wo1-policy-generation-proof-b185hebm/receipt.json",
+      "sha256": "0908e92406b973645745d9483eea24b913e8b77482671d17f171f41014b54c20",
+      "contents": {
+        "schema_version": 1,
+        "kind": "wo1-policy-generation-explicit-format-repair",
+        "recorded_utc": "2026-10-19T02:24:02.276556+00:00",
+        "base_commit": "f8161bb57d38090db58672eae8177edaabf1acf3",
+        "source_commit": "c02f8264b0d1a38e8944a1e2696e6b15b0246e4d",
+        "worktree": "/private/tmp/admiralty-wo1-intake-99f4e26",
+        "branch": "codex/wo1-intake-contracts",
+        "source": [
+          {
+            "path": "crates/admiralty-core/src/intake.rs",
+            "sha256": "c87754dabd98cdae68b9299402a7d64cf1ddc23b8a2e67adcb9db012a624b281"
+          },
+          {
+            "path": "crates/admiralty-core/tests/intake_contracts.rs",
+            "sha256": "be73b94a5b21b8df0e3b38a9fa1adc82119cdbf8b59fb61df9e37aa7656e7a56"
+          }
+        ],
+        "prior_proof": {
+          "path": "/private/tmp/adm-wo1-proof-7svigivx/receipt.json",
+          "sha256": "e2f8782b840c4cf273c4dee8f5ca69fc5b689642a1afb3a48424c13b681ee814",
+          "preserved_unchanged": true
+        },
+        "registration": {
+          "actual_temporary_registered": true,
+          "root_export_excluded_restored": true,
+          "required": "pub mod intake; in admiralty-core/src/lib.rs",
+          "registered_lib": "/private/tmp/adm-wo1-policy-generation-proof-b185hebm/registered-core-lib.rs",
+          "registered_lib_sha256": "f79e2bc65e771639836c6048f386e17f44629f1f1c863bc13d49cf3764b8e74e",
+          "patch": "/private/tmp/adm-wo1-policy-generation-proof-b185hebm/core-registration.patch",
+          "patch_sha256": "1a6a90a951392f956f290ba01e7d6f9a29b2c81700ed1c3ed832b13947dded0d"
+        },
+        "changes": [
+          "IntakePolicy Serialize-only trusted input has validated, domain-separated identity_digest binding revision and ALL4caps; no Deserialize/authority grant.",
+          "IntakePreview.policy_digest is manifest-bound; RecordIntakeRequest.policy_digest is required and validate_with_policy compares exact trusted CURRENT policy revision+digest.",
+          "Public ScopeSnapshot/RecordIntakeRequest authority_generation retain Rustu64 but serde wire requires canonical positive decimal strings; exact existing DecimalU64 range schema excludes0. Trusted AuthorizedIntakeScope staysu64.",
+          "WorkOrderRevision.format is REQUIRED explicit immutable metadata, never inferred/try-both. PlainText record cannot select request_index other than0; full record identity includes chosen format."
+        ],
+        "checks": [
+          {
+            "name": "intake-format-policy-generation-final",
+            "argv": [
+              "cargo",
+              "test",
+              "-p",
+              "admiralty-core",
+              "--test",
+              "intake_contracts",
+              "--locked"
+            ],
+            "exit": 0,
+            "seconds": 7.011,
+            "log": "/private/tmp/adm-wo1-policy-generation-proof-b185hebm/intake-format-policy-generation-final.log",
+            "sha256": "8390ef4475b26e09fb97ed1cfc284577f5c0ddbd2531fb15c98fa832817ae088",
+            "passed": 19,
+            "failed": 0,
+            "ignored": 0,
+            "filtered_out": 0
+          },
+          {
+            "name": "strict-core-clippy-final",
+            "argv": [
+              "cargo",
+              "clippy",
+              "-p",
+              "admiralty-core",
+              "--all-targets",
+              "--locked",
+              "--",
+              "-D",
+              "warnings"
+            ],
+            "exit": 0,
+            "seconds": 5.705,
+            "log": "/private/tmp/adm-wo1-policy-generation-proof-b185hebm/strict-core-clippy-final.log",
+            "sha256": "4d1fbe5d8fe4cfbd6f028db80c35146edebfd34ee7b3af5d73c030f97dae52da"
+          },
+          {
+            "name": "fmt-final",
+            "argv": [
+              "cargo",
+              "fmt",
+              "--all",
+              "--",
+              "--check"
+            ],
+            "exit": 0,
+            "seconds": 1.043,
+            "log": "/private/tmp/adm-wo1-policy-generation-proof-b185hebm/fmt-final.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "name": "diff-check-final",
+            "argv": [
+              "git",
+              "diff",
+              "--check"
+            ],
+            "exit": 0,
+            "seconds": 0.015,
+            "log": "/private/tmp/adm-wo1-policy-generation-proof-b185hebm/diff-check-final.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "new_regressions": [
+          "Same policy revision and source fits ALL4distinct tighter-cap policies: raw/canonical content identities stay same, exact policy+manifest digest change; old preview/current-policy record validation refuses.",
+          "9007199254740993 andu64MAX roundtrip through public preview/record wire as exact strings and preserve actual trusted generation comparison; schema explicitlystring with positive range.",
+          "Numeric/null/array/empty/zero/leading-zero/signed/decimal/exponential/whitespace/overflow generation wire refuses in both outer request and nested scope.",
+          "Identical JSON-looking bytes explicitlyPlainText yield1request, explicitlyJsonBatch yield2; canonical/manifest differ, format tampering fails source verification, record identities differ, PlainText nonzero selection and missing format refuse."
+        ],
+        "failed_evidence": [
+          {
+            "log": "/private/tmp/adm-wo1-policy-generation-proof-b185hebm/intake-repair-tests-initial.log",
+            "sha256": "aca1f9381cec80476ea7c8ce45449c204dce72cb1ca1c00f107527c284d0d04f",
+            "interpretation": "Temporary one-line registration initially preceded crate inner doc and failed compilation; registration placement repaired, no production/test assertion weakening."
+          }
+        ],
+        "environment": {
+          "TMPDIR": "/private/tmp/adm-native-4pbrtc1l",
+          "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/wo1-intake",
+          "CARGO_BUILD_JOBS": 1,
+          "RUST_TEST_THREADS": 1
+        },
+        "limits": [
+          "Only2owned files committed; root must register module/schema roots/regenerate TS/runtime guards and qualify aggregate source. Direct schema assertions are not exported-schema/runtime-Ajv qualification.",
+          "Record.validate() and parse_record_request() remain structural. WO2 MUST call validate_with_policy independently supplied current trustedpolicy and re-preview original source using EXACT work_order.format/current authorizedscope, verify selected outcomes/manifest/custody, immutable replay and both CAS in sole writer.",
+          "No source text/snapshot/digest grants authority; no Store implementation, dispatch, provider/fleet/credential/service/CI effects.",
+          "No unchanged whole-workspace test run. All19target tests actually ran with no filter; strict core all-target Clippy and full formatting pass.",
+          "WO1 interface integration and P02/P06/P13 parent acceptance remain separate; no parent status promoted."
+        ]
+      }
+    },
+    {
+      "path": "target/quality/native-attention/receipt.json",
+      "sha256": "25c6ed3d5204b895f037ef74139c655a4f011b90ed1cb7f7eef2a1203a65f500",
+      "contents": {
+        "schema_version": 1,
+        "kind": "native_attention_component_own_smoke",
+        "created_utc": "2026-10-19T02:31:55.815572+00:00",
+        "base_head": "23cb1ec70474f1febb7c325eb1128a8082c9ce55",
+        "owned_source": "crates/admiralty-server/src/native_attention.rs",
+        "registration_owner": "root",
+        "artifacts": {
+          "crates/admiralty-server/src/native_attention.rs": {
+            "bytes": 32485,
+            "sha256": "b72db33eef962451f245c1b8eefc2a43c47ddabf0a7d75640fbaec239c2c93cf"
+          },
+          "crates/admiralty-server/src/lib.rs": {
+            "bytes": 25330,
+            "sha256": "870679e4845e763b3c1fa152bbd7029886f4e0472d03f6fe80da4502d86e7724"
+          },
+          "target/quality/native-attention/own-smoke.log": {
+            "bytes": 1014,
+            "sha256": "d2ef4cfd0c3926c3ed9a6b0ac7837f51234d43d703980d0c248f9271dc140c48"
+          },
+          "target/quality/native-attention/own-build.log": {
+            "bytes": 180,
+            "sha256": "5d0048b3dcf48e9a8f33b258c11d973bde559eba07425d037ec4c48bb71e23e6"
+          }
+        },
+        "commands": [
+          {
+            "command": "cargo test --locked --offline -p admiralty-server --lib native_attention::tests -- --nocapture",
+            "exit_code": 0,
+            "passed": 5,
+            "failed": 0,
+            "ignored": 0,
+            "jobs": 1
+          },
+          {
+            "command": "cargo build --locked --offline -p admiralty-server",
+            "exit_code": 0,
+            "jobs": 1
+          }
+        ],
+        "execution_environment": {
+          "platform": "macOS",
+          "TMPDIR": "/private/tmp/admiralty-native-capture-private",
+          "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/native-capture"
+        },
+        "limits": [
+          "Recording bridge only; no startup action-policy issuer, authenticated route or runtime safe-turn caller installed.",
+          "Request_context is not evidence that all separately retained delivery.refs were compiled into its capsule.",
+          "Policy rechecks occur before Store enqueue and are not linearizable with Store commit; writer-bound current-policy composition is required for activation.",
+          "No provider/Screen input, actual delivery/application ACK, context baseline advance or execution authority.",
+          "No parent-packet acceptance or hosted CI-green claim."
+        ]
+      }
+    }
+  ],
+  "review": {
+    "intake": "audit_evidence original review and root inspected repaired policy/generation/format source; actual19registered tests",
+    "native_attention": "audit_evidence clear frozen b72db33e plus serverlib",
+    "thread_environment": "audit_product clear; final changes from reviewed hashes are wording-only corrections to unproven mitigation claim"
+  },
+  "linux_build": {
+    "archive_sha256": "ef48fed2ddbfa5e6db61b512fc34b2dc215495c6dba308be61062b92cd60250f",
+    "exit_code": 0,
+    "binary_sha256": "7cf7eb350383a969118c712be71f586ce40c845c5ab8b0b17142154d8908a16c",
+    "binary_bytes": 56859264,
+    "cargo_build_jobs": 1,
+    "registered_cpu_scope": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "observed_cpu_mean_percent": 45.07042253521127,
+    "log": "/home/ubuntu/admiralty-v2-build/logs/codex-probe-efc67de-build.log"
+  },
+  "limitations": [
+    "Intake is pure Rust registration; no public schema generation, Store record, enrichment UI or dispatch acceptance claimed",
+    "Explicit policy/config digest and precision-safe generations bind data, not authorization",
+    "Attention bridge records only: request_context is independent from batch refs, whole-batch context verification and writer-bound current policy remain activation gates",
+    "TOKIO_WORKER_THREADS accepts only1or2 and requests default async-worker count; explicit provider builders/separate pools may ignore it",
+    "CPU0..1/512MiB/32tasks/120seconds/one-run kernel/authorization bounds unchanged",
+    "No actual provider identity or completed coding acceptance from these component checks",
+    "No whole P02/P05/P06/P13 or general native execution acceptance"
+  ],
+  "coding_provider_qualified": false,
+  "native_execution_qualified": false,
+  "parent_packet_acceptance": false
+}

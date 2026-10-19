@@ -154,6 +154,13 @@ The owned primary deployment now uses the native Rust observer; the old Admiralt
 
 General coding-provider execution, production controller/issuer composition, atomic model-budget/capacity admission and full rollout acceptance remain separate gates. A trusted local task coordinator now composes prepared plans, exact-key durable dispatch and the required observed-start Store sink. Unknown acknowledgments keep completion custody held. These components do not install a general executor at startup. P00/P01 foundation criteria are accepted with source-bound evidence; the other thirty parent packets remain open. Passing component checks alone do not complete them.
 
+New Rust [work-order intake contracts](docs/operators/work-order-intake.md)
+preserve request boundaries and exact source/policy bindings. The Store's
+[durable attention journal](docs/operators/compact-attention.md) preserves budgets
+and atomically records compact wake intents across retries. Its authenticated
+recording bridge is default-deny; production delivery and autonomous execution
+remain separate activation gates.
+
 See the [source-pinned remaining-work audit](docs/plans/admiralty-v2/REMAINING_20261019.md), [release scope and remaining gates](docs/operators/release-status.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [master plan](docs/plans/admiralty-v2/MASTER_PLAN.md) and [work packets](docs/plans/admiralty-v2/WORK_PACKETS.md). Historical deployment information remains in [the compatibility inventory](docs/operators/legacy-inventory.md).
 
 Backups and isolated restore rehearsals are available through `admiralty recover`. Restart admission remains a proposal; it cannot reactivate an unknown session. `admiralty release stage` and [the deterministic packager](docs/operators/source-package.md) stage explicit inputs without installing, signing, publishing or qualifying a release.
