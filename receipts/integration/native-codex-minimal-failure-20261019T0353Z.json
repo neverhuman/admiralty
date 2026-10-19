@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T03:55:47.559Z",
+  "source_revision": "8e99eaac1ab72a6debf55bf2d442462568ca8b4f",
+  "scope": "One fresh minimal-HOME actual Codex probe under SC-DEC-130/133",
+  "fixture": "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-20261019T0349Z",
+  "request": {
+    "bytes": 17747,
+    "sha256": "fe2e9000ee30fe2005640ccd59aecd99f5d766470afac0c29a8355a43b95564b",
+    "nonce": "db4ab07f-9a89-4d02-8bbb-87e417e33260"
+  },
+  "binary": {
+    "sha256": "sha256:2eb63289cd5269c06836b8a0519d7ab23d679e21e06c54b0f012fa00f4688d9e",
+    "size_bytes": 61407440
+  },
+  "authorization": {
+    "approved_utc": "2026-10-19T03:52:34.968Z",
+    "grant_consumed": true,
+    "attempts": 1,
+    "parent_cgroup": "0::/jarambit.slice/jarambit-evo.slice/jr-adm-luna-probe-caller-709634-1792381953.scope\n",
+    "cpu_percent_at_gate": 69.10639640350185,
+    "mem_available_kib_at_gate": 49373416,
+    "child_slice": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/admiralty.slice/admiralty-native.slice/admiralty-native-probe.slice",
+    "limits": {
+      "cpus": [
+        0,
+        1
+      ],
+      "memory_bytes": 536870912,
+      "max_tasks": 32,
+      "timeout_seconds": 120,
+      "concurrency": 1
+    }
+  },
+  "outcome": {
+    "finished_utc": "2026-10-19T03:53:03.776Z",
+    "code": 17,
+    "signal": null,
+    "error": null,
+    "request_sha256": "fe2e9000ee30fe2005640ccd59aecd99f5d766470afac0c29a8355a43b95564b",
+    "grant_consumed": true
+  },
+  "error": "Native task-loop proof did not qualify: provider execution produced no source changes relative to pinned base commit (stage: SourcePreflight)",
+  "observed_protocol": {
+    "event_types": [
+      "thread.started",
+      "turn.started",
+      "item.completed",
+      "item.started",
+      "item.completed",
+      "item.started",
+      "item.completed",
+      "item.started",
+      "item.completed",
+      "item.completed",
+      "turn.completed"
+    ],
+    "output_records": 14,
+    "output_raw_bytes": 2752,
+    "tool_commands": [
+      {
+        "command": "/bin/bash -lc 'cat src/main.rs'",
+        "status": "failed",
+        "exit_code": -1,
+        "output": "Failed to create unified exec process: Resource temporarily unavailable (os error 11)"
+      },
+      {
+        "command": "/bin/bash -lc 'cat src/main.rs'",
+        "status": "failed",
+        "exit_code": -1,
+        "output": "Failed to create unified exec process: Resource temporarily unavailable (os error 11)"
+      },
+      {
+        "command": "/bin/bash -lc pwd",
+        "status": "failed",
+        "exit_code": -1,
+        "output": "Failed to create unified exec process: Resource temporarily unavailable (os error 11)"
+      }
+    ],
+    "usage_reported": {
+      "input_tokens": 60843,
+      "cached_input_tokens": 53120,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 228,
+      "reasoning_output_tokens": 33
+    },
+    "provider_process_started": true,
+    "provider_model_observed": null,
+    "requested_model": "gpt-6-luna",
+    "requested_effort": "medium",
+    "coding_provider_qualified": false
+  },
+  "artifacts": {
+    "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-20261019T0349Z/run.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-20261019T0349Z/run.stderr": {
+      "bytes": 142,
+      "sha256": "64d09039c9025936fbae290d2c3d879d46c6c75d806e2b6457d1615618ff8a51"
+    },
+    "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-20261019T0349Z/run-exit.json": {
+      "bytes": 187,
+      "sha256": "5c164288cb7b4594a8faaf80b0cf85b7e9684b575dcdf770f1316ead4952f9b0"
+    },
+    "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-20261019T0349Z/operator-decision.json": {
+      "bytes": 1995,
+      "sha256": "a42dbb6acc2fedcc7317cdd4a5d6e43455c9549af9a85b305f2e909e72cfcf96"
+    },
+    "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-20261019T0349Z/fixture/failure.json": {
+      "bytes": 415,
+      "sha256": "4cf1665a03d74ce8d92a12cca632caabf309454748071741792ac2e87561723b"
+    },
+    "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-20261019T0349Z/fixture/worker-spool/cx-73c5f48eb5e8ef42ea208f359966092f33d1e100ea2b7fa6b8fd436109c0f03b/output.journal": {
+      "bytes": 2934,
+      "sha256": "62b3aa14cd121ca2a2313afabcfa9e8ca54fef6b5a0193e1c274b931d8f6ddf3"
+    },
+    "/home/ubuntu/admiralty-v2-build/private-config/native-codex-qualification-20261019T0349Z/fixture/run-started.json": {
+      "bytes": 155,
+      "sha256": "2487fa318d09be786496b11f172c670bb2d5cc37926635bde8a8fa71a51eadd3"
+    }
+  },
+  "retained_unknowns": [
+    "EAGAIN does not independently identify TasksMax, memory, user or kernel resource cause; no limit raised",
+    "Reported CLI turn/usage is not billing settlement or authenticated model identity",
+    "No changed-source candidate or independent check/Store acceptance established",
+    "First parent preflight refused before grant because root compared raw registry hash with canonical serialized artifact hash; no provider launch, corrected raw hash and exact CLI flag before sole grant"
+  ],
+  "limits": [
+    "No credential bytes read/copied by root; existing auth symlink remains shared writable",
+    "No network/credential sandbox qualification",
+    "No retry/reused grant or service/cap modifications",
+    "General native execution remains false"
+  ],
+  "parent_acceptance": false,
+  "native_execution_qualified": false
+}

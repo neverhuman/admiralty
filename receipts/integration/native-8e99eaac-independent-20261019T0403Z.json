@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T04:01:42.470Z",
+  "source_revision": "8e99eaac1ab72a6debf55bf2d442462568ca8b4f",
+  "verification": "root independent file hashes, proc exe and public live endpoints",
+  "manifest_sha256": "3f4ad2f7274e492322c85d0eef06eb792ef32c2dfb3910a57f75f2b87aefffac",
+  "manifest_entries": 14,
+  "files": [
+    {
+      "path": "react/index.html",
+      "sha256": "2927b1ff4342dbe83cb237df3b26ffdb506a9440ef0ea5d3dae5f404b482a33a"
+    },
+    {
+      "path": "react/status.json",
+      "sha256": "ccb1d8c8a8e9eb66977141ff24868f60414d6b8904d0894f25bf750f42cb2f42"
+    },
+    {
+      "path": "react/brand/admiralty-source.png",
+      "sha256": "86f3f016a3d2562cc82da3191ce472e77e81726a65f69ccb4a840145e89aaef9"
+    },
+    {
+      "path": "react/brand/grokbot.png",
+      "sha256": "d0c1fb552fa44d28af99e4a8918ad43960e4b5c15db05d1ef4331dad66d206e2"
+    },
+    {
+      "path": "react/assets/CommandJourneys-CNJQAezd.js",
+      "sha256": "421d0804ae24f3e3fffd47deb0abae91df2baf8da27f15586f99e336c14b0e73"
+    },
+    {
+      "path": "react/assets/LiveViews-DYlE9izN.js",
+      "sha256": "61f1e03c7b6cc9a0e427f81eba6940beafaaba6e9258e218b402ee71383d03da"
+    },
+    {
+      "path": "react/assets/LiveViews-DgA8tN2b.css",
+      "sha256": "5687219571507edddc4698a65e3fab13cb49a760173b37d84b5bf97e90f47580"
+    },
+    {
+      "path": "react/assets/index-C0ohzedu.css",
+      "sha256": "00a0e0f6944bb2515c32e5df7130ad6ec37a25f278047e995ae8c273f0197a42"
+    },
+    {
+      "path": "react/assets/index-C4SDXSsE.js",
+      "sha256": "d76cdc3b0a05d794f5c9d3dade4abf194194be35b2bb2cdcd010e5809c8f7988"
+    },
+    {
+      "path": "dashboard/index.html",
+      "sha256": "28d8a78eb67f744ae849ade1f4a94948a1ae816891e3397241e6381e186075ed"
+    },
+    {
+      "path": "bin/admiralty",
+      "sha256": "ea817805f1ee1728f590b07591ae2b8b28319cdad2b25814dfa385eec605463b"
+    },
+    {
+      "path": "bin/admiralty-node",
+      "sha256": "7bfb76638853fb64876fb8987fff22dad9f534b0b6713182c3651ccf5c2c78a7"
+    },
+    {
+      "path": "bin/admiralty-observe",
+      "sha256": "55044f05df55e21bee11bf403f579df59db6cdfb6e022a2dfcab870b682794e1"
+    },
+    {
+      "path": "bin/admiraltyd",
+      "sha256": "9c59e5f7ac31b88662d69310626f1ecb91afaf106266de78dea57decde575607"
+    }
+  ],
+  "processes": [
+    {
+      "pid": 180456,
+      "name": "admiraltyd",
+      "exe": "/home/ubuntu/admiralty-v2-build/deployments/8e99eaac1ab72a6debf55bf2d442462568ca8b4f/bin/admiraltyd",
+      "start_ticks": "56692077"
+    },
+    {
+      "pid": 178558,
+      "name": "admiralty-observe",
+      "exe": "/home/ubuntu/admiralty-v2-build/deployments/8e99eaac1ab72a6debf55bf2d442462568ca8b4f/bin/admiralty-observe",
+      "start_ticks": "56691924"
+    }
+  ],
+  "health": {
+    "native_execution_qualified": false,
+    "status": "ok",
+    "version": "0.1.0"
+  },
+  "http": {
+    "ui": 200,
+    "redirect_18891": 307,
+    "legacy": 200
+  },
+  "legacy": {
+    "collector": {
+      "acceptance_authority": false,
+      "duration_ms": 17262,
+      "implementation": "rust",
+      "model_turns": 0,
+      "observed_utc": "2026-10-19T04:01:37Z",
+      "read_only_sources": true,
+      "version": "0.1.0"
+    },
+    "history_displayed_rows": 256,
+    "original_first_history_timestamp": null,
+    "projects": [
+      "dope",
+      "jarambit",
+      "joil",
+      "jopedime"
+    ]
+  },
+  "retired_owned_python_pids": [],
+  "native_execution_qualified": false,
+  "no_service_control": true
+}

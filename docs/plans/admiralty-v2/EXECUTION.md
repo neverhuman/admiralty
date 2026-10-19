@@ -1575,3 +1575,42 @@ health/UI/feed200 and18891redirect307. Earlier90e PID disappearance coincided
 with newer deployments, not a proven crash. No retired owned Python producer
 was found. [Independent deployment evidence](../../../receipts/integration/native-40501925-independent-20261019T0337Z.json)
 leaves general coding execution false and accepted parents2/32 unchanged.
+
+### Core integration and actual provider failure — 2026-10-19T04:05Z
+
+Qualified source04d334650fda018ee7acc88980c5c3f143948a6d composes the additive
+v2 coordination header/public root, pure bundled-timezone scheduling and inert
+todoq snapshot importer. Root tests pass73 core cases,10 native-package cases,
+3 CLI-public fixtures and14 contract runtime cases with a real TypeScript
+consumer, strict core/CLI Clippy, formatting and both23-root drift checks.
+Independent aggregate review verifies all27 receipt artifact hashes,63 unchanged
+prior generated leaves and unchanged prior dependency version/checksum tuples.
+[Source-bound receipt](../../../receipts/integration/core-contracts-20261019T0405Z.json)
+retains failed bootstrap/schema-representation attempts and worker regressions.
+Review reproduced and repaired three scheduling zone/range failures and the
+importer's page-local source binding defect. No bus, scheduler, credential,
+provider or publication service is activated by these pure contracts.
+
+Root independently verified deployed8e99eaac at04:01:42Z: all14 file hashes,
+both actual native process paths/start ticks, health/UI/feed200 and18891redirect307.
+No retired owned Python producer was found. [Live proof](../../../receipts/integration/native-8e99eaac-independent-20261019T0403Z.json)
+is separate from the newer source integration.
+
+Admiral SC-DEC-133 explicitly resolved the single fixed-toy two-tier containment
+route: parent through fleetcap, child under unchanged native user-slice caps.
+Root built source8e99eaac through fleetcap and inspected one fresh0349 fixture.
+The exact fe2e9000 request was authorized once03:52:34Z at hostCPU69.1064% and
+MemAvailable49373416KiB, with CPUs0,1/512MiB/32tasks/120s/concurrency1.
+The minimal-HOME CLI starts and completes a turn, but three shell commands fail
+unified-exec EAGAIN. It creates no changed source; the probe exits17 at03:53:03Z.
+Its grant is consumed and will not be reused. [Failure evidence](../../../receipts/integration/native-codex-minimal-failure-20261019T0353Z.json)
+retains exact request/binary/journal hashes and reported usage. Requested model
+remains distinct from unverified observed identity. Retired cgroups retain no
+counter proving the resource cause; no cap was raised or automatic retry issued.
+
+Current disjoint lanes: S1 delivery/attention projection; S2 scoped work-order
+service with current writer-turn authorization; local writer-bound attention
+proof, bounded native resource diagnostics and Rust native archive. Root owns
+shared registration/dependencies/source integration/rollout; Commodore alone
+deploys. Parent acceptance remains2/32 and native coding execution false. CI
+cleanup stays deferred; current hosted results never replace source-bound proof.
