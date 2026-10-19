@@ -1730,3 +1730,71 @@ launched zero tests; evidence is retained for an absolute-toolchain retry.
 S1/S2 repairs remain with their existing owners; their earlier passing tests do
 not clear the independently failing counterexamples. Accepted parents remain2/32,
 general native coding false. Non-build CI remains on the single cleanup backlog.
+
+### PR107 merge, independent deployment and rollout reconciliation — 04:55Z
+
+PR107 merged04:53:21Z after exact cb21e6f approval at04:53:08Z; receivingmain
+is586f8c91770bcd2f0da0b90e441c2be2ccb28141. Root's
+[independent b864 proof](../../../receipts/integration/native-b86439f2-independent-20261019T0453Z.json)
+observes04:53:41.003Z: all14 manifest hashes, exact daemon443726/start57090988
+and observer441687/start57090827 executable paths, health/UI/feed200,
+18891redirect307, Rust observer0 model turns,256 displayed history rows and no
+retired owned Python PID. First original history timestamp remains unmeasured.
+This verifies the running b864 release, separately from newer desired586f8c9.
+Commodore's Screen footer labels Gemini4Argon; the same hardcopy reports quota
+exhaustion. Root notified the Admiral for sole-deployer coverage without paid
+upgrade, service control or substituting a configured label for qualified model
+identity. Healthy b864 remains the last independently observed deployment.
+
+The [04:55 rollout CAS](../../../receipts/integration/rollout-reconciliation-20261019T0455Z.json)
+archives the prior bytes, checks all four transferred receipt hashes, and records
+PR105–107 component checkpoints55/34/22 actual local cases. All32 parent states,
+foundation packets, unrelated packets and historical evidence remain preserved.
+These checkpoints expose implementation progress without converting partial
+components to full P02–P31 acceptance. Accepted parents remain2/32 and native
+coding qualification false; the older0349 provider grant stays consumed.
+
+Next bounded work retains S1's delivery and S2's intake repairs with their
+existing owners. Root delegates a separate immutable provider-reported native
+usage/correction journal; no normalization, billing, model qualification,
+budget reservation, settlement, dispatch or production issuer is inferred.
+Migration0008 and shared Store registration remain exclusively root-owned.
+Linux instrumented-probe build-only retry is serialized behind the current
+synthetic archive qualification, with unchanged source,600-second limit,
+fleetcap and fresh resource gates. No new provider request or grant is prepared.
+
+### Delivery projection integration and further negative cases — 05:07Z
+
+Root integrates S1's frozen4cac3ab candidate, whose actual base isb86439f248c3
+(the original handoff printed a different suffix). Its original four independent
+counterexamples now pass. Further review reproduced two additional failures:
+a real validated receipt for sourceA could be paired with mutable sourceB inputs,
+and an optional unmerged repository blocked a satisfied required target. Root
+repairs both in the integration branch. The validator privately retains its
+actual checked-input digest without changing the original six-field serialized
+report; delivery compares that digest with the complete sidecar. Optional and
+pre-merge target diagnostics remain visible without adding an unselected merge
+requirement. Unknown external effects still block, including optional targets.
+
+The [integrated receipt](../../../receipts/integration/delivery-projection-20261019T0507Z.json)
+pins source39eb43d51f70ca5e84d1a5608ecc24e7e4586d2d:22 actual delivery cases,
+14 receipt-validator cases,4 compile-fail docs, strict Core all-target Clippy,
+formatting and independent final-source review pass. Original red logs and the
+new receipt-rebinding/optional-target failures remain retained. Root's two added
+tests initially accessed private fields; their E0616 log is preserved and the
+tests now use the existing getters, with no visibility or authority changes.
+Content-pin constructors are explicitly consistency helpers; independently
+trusted caller admission/custody remains required. This registers a pure module,
+not a Store/router/publisher/dashboard activation or WO5/parent acceptance.
+
+The instrumented6e Linux probe build now succeeds,140.47seconds on the second
+serialized capped attempt, binarySHA256
+63ff88d6a32f0546d4aec528e38bd473348e6ebf033da9878082b6173254fe56.
+No binary/provider execution, preparation, fresh grant or qualification follows.
+SC-DEC133 authorized exactly one consumed run, not a blanket permit; the observed
+Admiral and Commodore quota failures do not extend it. Other source work advances.
+Linux archive testing atb864 instead found12passed/8failed: a manifest created
+underumask077 is0600 while the unchanged archive validator correctly requires0644.
+The owned fix uses the retained manifest FD before sync and is separately reviewed
+and tested; Linux archive/install qualification remains pending. The preserved
+passing Mac archive receipt remains historical and does not overwrite this result.

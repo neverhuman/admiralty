@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T04:55:27.051Z",
+  "receiving_main": "586f8c91770bcd2f0da0b90e441c2be2ccb28141",
+  "before_sha256": "40720da38221f31a8cb303299e44681391e351b893d8621ec41531926ff60ca3",
+  "after_sha256": "2ef431f2de58779ebc02ea9e1dece889d48d97a2cb8fd4832dc0ffb794042f97",
+  "archive": "/home/ubuntu/admiralty-v2-build/receipts/rollout-corrections/20261019T045527Z",
+  "receipt_hashes_verified": [
+    {
+      "name": "attention-resource-20261019T0440Z.json",
+      "sha256": "7aa8c6d01984c8bccf6b955586261b60966901a60caab0289d73fd30558b3fb1"
+    },
+    {
+      "name": "native-archive-20261019T0436Z.json",
+      "sha256": "5acd33ce477c0e0008630a1933234b5031a0786663d2d619aaf7752d22c8951c"
+    },
+    {
+      "name": "safe-turn-context-20261019T0452Z.json",
+      "sha256": "95eec3b644855f873398fc9df8b0c5eb395ab9fe738faeb75f3ead27a02d94eb"
+    },
+    {
+      "name": "native-b86439f2-independent-20261019T0453Z.json",
+      "sha256": "9db4f98ef307744f9dc2848907a5bbe373093c10e6d5b09536ba3402dfe0e7f2"
+    }
+  ],
+  "live_proof": {
+    "source": "b86439f248c3d70398f1757f3ec07676e1a54df6",
+    "observed_utc": "2026-10-19T04:53:41.003Z",
+    "sha256": "9db4f98ef307744f9dc2848907a5bbe373093c10e6d5b09536ba3402dfe0e7f2"
+  },
+  "all_parent_statuses_preserved": true,
+  "foundation_packets_byte_identical": true,
+  "unrelated_packets_byte_identical": true,
+  "all_original_history_source_timestamps_preserved": true,
+  "new_observation_basis": "actual PR105-107 merged source/component proofs and root independent b864 live verification; not clock-only freshness",
+  "accepted": [
+    "P00",
+    "P01"
+  ],
+  "remaining_parents": 30,
+  "native_execution_qualified": false,
+  "provider_grants_this_reconciliation": 0,
+  "provider_qualified": false,
+  "service_control": false
+}
