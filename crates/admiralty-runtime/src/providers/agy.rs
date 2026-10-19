@@ -189,3 +189,84 @@ pub fn parse_stream(bytes: &[u8]) -> Result<Vec<Observation>, AgyError> {
     decoder.finish()?;
     Ok(observations)
 }
+
+/// Decode the captured 1.4.2 native failure dialect (`event`, not the historical
+/// synthetic `type` envelope). A complete same-conversation ERROR is required.
+/// Successful transport, auth, usage, resume and permission semantics stay unknown.
+pub fn parse_failure_capture(
+    version: &str,
+    bytes: &[u8],
+) -> Result<process::FailureObservation, AgyError> {
+    qualify(version, "")?;
+    let values = super::observation::decode_complete(bytes)?;
+    let mut conversation: Option<String> = None;
+    let mut failure = None;
+    for (index, value) in values.iter().enumerate() {
+        if value.get("type").is_some() {
+            return Err(AgyError::InvalidProfile);
+        }
+        let event = value
+            .get("event")
+            .and_then(Value::as_str)
+            .ok_or(AgyError::InvalidProfile)?;
+        let (id, error) = match event {
+            "init" if index == 0 => {
+                if !value.get("init").is_some_and(Value::is_object) {
+                    return Err(AgyError::InvalidProfile);
+                }
+                (value.get("conversation_id"), None)
+            }
+            "step_update" if conversation.is_some() => {
+                let step = value
+                    .get("step_update")
+                    .filter(|v| v.is_object())
+                    .ok_or(AgyError::InvalidProfile)?;
+                (step.get("conversation_id"), None)
+            }
+            "result" if conversation.is_some() && index + 1 == values.len() => {
+                let result = value
+                    .get("result")
+                    .filter(|v| v.is_object())
+                    .ok_or(AgyError::InvalidProfile)?;
+                if result.get("status").and_then(Value::as_str) != Some("ERROR") {
+                    return Err(AgyError::InvalidProfile);
+                }
+                let message = result
+                    .get("error")
+                    .and_then(Value::as_str)
+                    .filter(|s| !s.trim().is_empty())
+                    .ok_or(AgyError::InvalidProfile)?;
+                (result.get("conversation_id"), Some(message))
+            }
+            _ => return Err(AgyError::InvalidProfile),
+        };
+        let id = id
+            .and_then(Value::as_str)
+            .filter(|id| {
+                !id.is_empty()
+                    && id.len() <= 128
+                    && !id.chars().any(|c| c.is_control() || c.is_whitespace())
+            })
+            .ok_or(AgyError::InvalidProfile)?;
+        if conversation
+            .as_deref()
+            .is_some_and(|expected| expected != id)
+        {
+            return Err(AgyError::InvalidProfile);
+        }
+        conversation = Some(id.into());
+        if let Some(message) = error {
+            failure = Some(process::FailureObservation {
+                kind: if message.contains("Individual quota reached") {
+                    process::ReportedFailureKind::QuotaExhausted
+                } else {
+                    process::ReportedFailureKind::Other
+                },
+                message: message.into(),
+                session_id: conversation.clone(),
+                event_count: values.len(),
+            });
+        }
+    }
+    failure.ok_or(AgyError::InvalidProfile)
+}
