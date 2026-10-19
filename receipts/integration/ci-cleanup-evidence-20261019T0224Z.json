@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T02:23:48.008Z",
+  "policy": "Jepson0212 code-first, one deferred cleanup backlog; actual failures are not green",
+  "failures": [
+    {
+      "job": "117850259638",
+      "raw_sha256": "15936a2e6a7111b48a90717fa5542d83f73ceaab469775befd250afe07e6b086",
+      "archive": "receipts/integration/ci-failure-117850259638.log.gz",
+      "archive_sha256": "1860110a63993e162e09bdaee1de99a74d226e41bf2c8ff2b13bf3183f1089aa"
+    },
+    {
+      "job": "117853119416",
+      "raw_sha256": "14b4da2523d190844696a08b92bcd9fd86b311bb62d626db70a3b9bbe490f8e0",
+      "archive": "receipts/integration/ci-failure-117853119416.log.gz",
+      "archive_sha256": "d90806185479a3ce4e006f34e2b2ff67cb722c84d5df822c337fc29d753601fa"
+    }
+  ],
+  "repair_wip": {
+    "path": "/private/tmp/admiralty-linux-fixtures-32dea09",
+    "branch": "codex/linux-fixture-capture-repairs",
+    "state": "uncommitted preserved test-only proposal; not tested or qualified"
+  }
+}

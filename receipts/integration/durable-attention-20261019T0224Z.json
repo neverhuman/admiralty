@@ -1,0 +1,221 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T02:23:47.997Z",
+  "base_revision": "35e58904b2e5f9215d48329962f1514a2cf86610",
+  "qualified_source": "8ab95f2ffc5826b6102f4352a17cbcf4845ee57b",
+  "worker_commit": "abc34f68c5bdfb7bf107b0f3920a7fb9b1fbc945",
+  "source_sha256": {
+    "crates/admiralty-store/src/attention.rs": "67119d928a1d5fa1d077e25524e992c2c12b0c624573b74b3aadb1bb40781454",
+    "crates/admiralty-store/migrations/0005_attention_journal.sql": "19cd88d11813a7a032140db5e699d752aeccbdbea899b1eed2d0aabf761b197b",
+    "crates/admiralty-store/tests/attention_journal.rs": "4d6425811441ddc1867094fa18d60d15a62df11db0271421fbc2f2ec0ad2719d",
+    "crates/admiralty-store/src/lib.rs": "c4a77bf9e26ba4fbd3ef3c452f88374fda81d2c384fa39264b6bf1ca3a796444"
+  },
+  "scope": "Registered real Store sole-writer durable attention journal and atomic outbox wake intent; no transport activation",
+  "checks": [
+    {
+      "command": "cargo test -p admiralty-store --test attention_journal --locked",
+      "exit_code": 0,
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "log": "target/quality/attention-integrated-smoke.log",
+      "sha256": "e588eef82a17e514372240cb91c32781bd5dde9e4092003009a27735870e81bd"
+    }
+  ],
+  "worker_receipt": {
+    "sha256": "4e0013f4fe1e5f64f514edc4ff96bb313664a87057f24dda09acecbfb5a8bfeb",
+    "contents": {
+      "schema_version": 1,
+      "kind": "attention-journal-durable-component-validation",
+      "recorded_utc": "2026-10-19T02:10:31.943579+00:00",
+      "source_commit": "abc34f68c5bdfb7bf107b0f3920a7fb9b1fbc945",
+      "base_commit": "99f4e26cebfab97afa661ed05aea6192bfd5935c",
+      "worktree": "/private/tmp/admiralty-attention-journal-99f4e26",
+      "branch": "codex/attention-journal",
+      "scope": [
+        {
+          "path": "crates/admiralty-store/src/attention.rs",
+          "sha256": "67119d928a1d5fa1d077e25524e992c2c12b0c624573b74b3aadb1bb40781454",
+          "bytes": 25326
+        },
+        {
+          "path": "crates/admiralty-store/migrations/0005_attention_journal.sql",
+          "sha256": "19cd88d11813a7a032140db5e699d752aeccbdbea899b1eed2d0aabf761b197b",
+          "bytes": 2108
+        },
+        {
+          "path": "crates/admiralty-store/tests/attention_journal.rs",
+          "sha256": "4d6425811441ddc1867094fa18d60d15a62df11db0271421fbc2f2ec0ad2719d",
+          "bytes": 29360
+        }
+      ],
+      "registration": {
+        "state": "real Store registration was temporarily present for all listed checks; lib.rs excluded from source commit and restored after checks",
+        "patch": "/private/tmp/adm-attention-journal-proof-99f4e26/store-registration.patch",
+        "patch_sha256": "765678c5b8bc00ab2ea751fb9ed99e729d9fcee2a92b29389795d066634e8cc5",
+        "registered_lib": "/private/tmp/adm-attention-journal-proof-99f4e26/registered-store-lib.rs",
+        "registered_lib_sha256": "c4a77bf9e26ba4fbd3ef3c452f88374fda81d2c384fa39264b6bf1ca3a796444",
+        "required_calls": [
+          "pub mod attention",
+          "StoreError::Attention conversion",
+          "RegisterAttention/ApplyAttention/AttentionStatus Requests on sole writer",
+          "register_attention/apply_attention/attention_status public preflight + ask",
+          "Writer::open attention::initialize after outbox init",
+          "rebuild and backup attention::validate_all before projection/publication"
+        ]
+      },
+      "environment": {
+        "tmpdir": "/private/tmp/adm-native-4pbrtc1l",
+        "cargo_target_dir": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/attention-journal",
+        "cargo_build_jobs": 1,
+        "rust_test_threads": 1
+      },
+      "checks": [
+        {
+          "name": "attention-boxed-final",
+          "argv": [
+            "cargo",
+            "test",
+            "-p",
+            "admiralty-store",
+            "--test",
+            "attention_journal",
+            "--locked"
+          ],
+          "exit": 0,
+          "seconds": 9.127,
+          "log": "/private/tmp/adm-attention-journal-proof-99f4e26/attention-boxed-final.log",
+          "log_sha256": "382b52ef779ee7301aa923c448d8b2b36e39f85049dbdff20c5eb80b4ea2dd85",
+          "actual_passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "filtered_out": 0
+        },
+        {
+          "name": "store-strict-clippy-final",
+          "argv": [
+            "cargo",
+            "clippy",
+            "-p",
+            "admiralty-store",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit": 0,
+          "seconds": 3.787,
+          "log": "/private/tmp/adm-attention-journal-proof-99f4e26/store-strict-clippy-final.log",
+          "log_sha256": "0a972e00d0fa15ede5d9c4583db34cfa480b772b257a416c850d6ba302fa26a2"
+        },
+        {
+          "name": "coordination-delivery",
+          "argv": [
+            "cargo",
+            "test",
+            "-p",
+            "admiralty-testkit",
+            "--test",
+            "coordination_delivery",
+            "--locked"
+          ],
+          "exit": 0,
+          "seconds": 42.031,
+          "log": "/private/tmp/adm-attention-journal-proof-99f4e26/coordination-delivery.log",
+          "log_sha256": "e85f448fc85333c3b9329c4ca415db7e392e1b7f7a1690018c6de0ed16f93bf7",
+          "actual_passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "filtered_out": 0
+        },
+        {
+          "name": "format",
+          "argv": [
+            "cargo",
+            "fmt",
+            "--all",
+            "--",
+            "--check"
+          ],
+          "exit": 0,
+          "seconds": 1.07,
+          "log": "/private/tmp/adm-attention-journal-proof-99f4e26/format.log",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "store-affected-frozen",
+          "argv": [
+            "cargo",
+            "test",
+            "-p",
+            "admiralty-store",
+            "--locked"
+          ],
+          "exit": 0,
+          "log": "/private/tmp/adm-attention-journal-proof-99f4e26/store-affected-frozen.log",
+          "actual_passed": 129,
+          "failed": 0,
+          "ignored": 0,
+          "log_sha256": "ef22e4cdc77956900ca5ce9e3f50169f4fabf33f4dcefe29dfa995bd53843cbe"
+        }
+      ],
+      "invariants_demonstrated": [
+        "Immutable project/root/epoch/config/predeclared recipients; existing journal cannot be replaced/reset",
+        "Both accepted observe and take_delivery commands/ticks replay through actual AttentionGovernor",
+        "Original immutable receipt bytes/digest/batch/tick/outbox ID retained on historical exact retry; only outer replayed changes",
+        "Expected-prior CAS, concurrent Store calls, command/source collision, cross-project and caller root/recipient/epoch changes refuse",
+        "New Wake and NEW outbox enqueue co-commit through existing transaction helper; even ExistingExact foreign rows refuse",
+        "Late injected journal SQL failure rolls back outbox, decision, head and governor budget consumption",
+        "Consumed ordinary/reserve budget survives actual Store reopen/rebuild/backup; unknown outbox remains unknown with no re-enqueue",
+        "Progress storm coalesces governor references while accepted input history and protected blocker/question transitions remain recorded",
+        "Independent recipient reserves, unknown/backwards ticks, source capacity and 64-journal limit without eviction/reset",
+        "Canonical sequence/projection/command/receipt/outbox identity validation and bounded borrowed stored text; corrupt/oversized/wrong-type fixtures refuse reopen/rebuild/backup",
+        "Borrowed whole wake envelope checked against16KiB before Value allocation, caller metadata4KiB; rejected envelope does not consume budget"
+      ],
+      "preserved_failed_evidence": [
+        {
+          "path": "/private/tmp/adm-attention-journal-proof-99f4e26/attention-tests-initial.log",
+          "sha256": "a0bc47dcbfcae859815434d923dd59b90468e2d02a574622ab3b5a658cf7453e"
+        },
+        {
+          "path": "/private/tmp/adm-attention-journal-proof-99f4e26/attention-tests-repaired.log",
+          "sha256": "a0050c28959188d6cb25121dff69ed0ec676a8a3fc4546736032bb711071fdb4"
+        },
+        {
+          "path": "/private/tmp/adm-attention-journal-proof-99f4e26/store-strict-clippy.log",
+          "sha256": "4f2cd2e8dca07bbdf7e3bcfdb58bb952126331711522872b4751a167391d3635"
+        }
+      ],
+      "failure_interpretation": "Initial two focused runs exposed fixture expectations (progress-only pending count, invalid contract digest, envelope-size threshold), repaired without weakening governor. Strict Clippy rejected an oversized enum; boxed Observe payload preserves JSON wire bytes. Initial ValueRef null API compile failure was observed in tool output; no persistent log was fabricated.",
+      "limits": [
+        "Component tests use real Store writer requests through excluded temporary registration; source commit alone is intentionally not registered. Root must integrate exact registration and requalify aggregate source.",
+        "Trusted Store seam is not caller/source authentication, route authorization, execution/provider authority, transport/application ACK or provider context delivery.",
+        "One fixed project/root per journal, up to16 declared recipients; budgets are per journal and recipient, not a global cross-project Admiral budget.",
+        "No journal reset/retirement/compaction or checkpoint authority; explicit global backpressure64 journals/4096 commands/8MiB command+receipt JSON. Row/counter caps do not qualify SQLite/WAL/disk growth.",
+        "Source evidence is retained as bounded immutable references; artifact custody/availability and source grant verification remain external.",
+        "Logical ticks and outbox schedules are caller-recorded inputs; no wall-clock inference, unknown zero-fill, token/cost/savings or acceptance inference.",
+        "Unkeyed digests do not authenticate a database owner able to rewrite all evidence and constraints.",
+        "SQL faults/corruptions are controlled fixture injections, not a complete power-loss/fsync crash qualification.",
+        "No remote/fleet/provider/credential/service effects, CI trigger, whole-workspace rerun or live governor activation.",
+        "P05/P06 and all wider parent acceptance remain open."
+      ]
+    }
+  },
+  "independent_review": {
+    "reviewer": "audit_runtime",
+    "source": "abc34f68c5bdfb7bf107b0f3920a7fb9b1fbc945 plus exact lib registration patch",
+    "result": "clear",
+    "patch_sha256": "765678c5b8bc00ab2ea751fb9ed99e729d9fcee2a92b29389795d066634e8cc5"
+  },
+  "limitations": [
+    "Trusted authenticated current scope/logical clock/source permission remain external; this API grants none",
+    "No safe-turn provider input, Screen stuffing, delivery or application ACK established",
+    "Budget is per journal/recipient; no global fleet budget/reset/retirement or disk/WAL/performance qualification",
+    "P05/P06 parent acceptance and general native execution remain false"
+  ],
+  "native_execution_qualified": false,
+  "parent_packet_acceptance": false,
+  "provider_turns": 0
+}
