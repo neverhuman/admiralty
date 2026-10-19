@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-19T18:14:26.325208+00:00",
+  "scope": "Shared-runner umask fixture repair; production custody policy unchanged",
+  "prior_pr_head": "1760a782840cf5d045d31d48632e112c6069b7a4",
+  "tested_source": "36de63448c45cc4de698958c37a935634e69b0eb",
+  "cwd": "/Users/bentaylor/.codex/worktrees/native-dogfood-release/admiralty",
+  "paths": {
+    "crates/admiralty-store/src/admission_fence_store_tests.rs": "5822401c003cb96da2772089df2059509ac329a20aca23b78a7b8ef6f7eb9e9e",
+    "crates/admiralty-store/tests/admission_atomic_claim.rs": "9a025ca43d403dfb77c9ee10eb1d0ccf05c1f20eaef4b31b16a3ced6cf14e5ae",
+    "crates/admiralty-store/tests/admission_reservations.rs": "0978cb62b272ab3ea67b4c1d4d169eb34f026defba8410ada563201b0957c8db",
+    "crates/admiralty-store/tests/support/mod.rs": "01876195b068c549cd7e7a049139b0367375d27f85fe6aea976a7e8f78291e9e",
+    "tests/integration/peer_handoff.rs": "ab0aeaee039e2b3fd027a71501fb2b25f0dba10fc02f0acd626d45de64390b00"
+  },
+  "production_source_changed": false,
+  "environment": {
+    "CARGO_TARGET_DIR": "/private/tmp/admiralty-native-dogfood-target",
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "RUST_TEST_THREADS": "1",
+    "TMPDIR": "/private/tmp/admiralty-native-dogfood-private",
+    "child_umask": "0002"
+  },
+  "sequence": [
+    {
+      "source": "1760a782840cf5d045d31d48632e112c6069b7a4",
+      "evidence": "Hosted rust job118213117304 and local exact umask0002 reproduction both failed all four admission-fence Store fixtures at the parent custody guard.",
+      "result": "failed"
+    },
+    {
+      "source": "8c5d94f0cdb11b07ed3e8d7b7ba2a880e3b48d0e",
+      "command": "cargo test --workspace --locked --no-fail-fast (child umask0002)",
+      "exit_code": 101,
+      "passed_executions": 1689,
+      "failed_executions": 13,
+      "ignored_executions": 5,
+      "completed_targets": 164,
+      "meaning": "Fixed fence fixtures pass; full sweep found nine atomic-claim, three reservation and one peer-handoff fixture with the same default-directory-mode defect."
+    },
+    {
+      "source": "36de63448c45cc4de698958c37a935634e69b0eb",
+      "command": "cargo test -p admiralty-store --test admission_atomic_claim --test admission_reservations --locked (child umask0002)",
+      "exit_code": 0,
+      "passed": 15
+    },
+    {
+      "source": "36de63448c45cc4de698958c37a935634e69b0eb",
+      "command": "cargo test -p admiralty-testkit --test peer_handoff --locked (child umask0002)",
+      "exit_code": 0,
+      "passed": 3
+    },
+    {
+      "source": "36de63448c45cc4de698958c37a935634e69b0eb",
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0
+    },
+    {
+      "source": "36de63448c45cc4de698958c37a935634e69b0eb",
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0
+    }
+  ],
+  "guard_preservation": "Fixtures request0700 atomically with tempfile::Builder. No Store guard, authority policy, SQL/replay/collision assertion, oracle, byte limit or runtime grant is changed. Tests retain their original assertions. No process-global umask mutation is used inside test threads.",
+  "source_reuse": "After1760a782, only these five fixture/support files changed before this receipt. Other local passes and hosted native/server/thread-bound/browser passes retain their original exact source attribution; totals across runs are nonadditive.",
+  "hosted_prior_head": {
+    "contracts": "success",
+    "browser_attempt1": {
+      "job": 118213115416,
+      "result": "failure",
+      "reason": "10s Chrome --version preflight timeout124; no browser tests ran",
+      "cause": "unknown"
+    },
+    "browser_attempt2": {
+      "job": 118216589595,
+      "result": "success",
+      "passed": 23,
+      "browser": "Google Chrome for Testing145.0.7632.6",
+      "source_changed": false
+    },
+    "rust": {
+      "job": 118213117304,
+      "result": "failure",
+      "server_passed": 108,
+      "server_ignored": 2,
+      "linux_actual_binary_thread_bound_case": "passed",
+      "store_passed": 112,
+      "store_failed": 4,
+      "log_truncated": true
+    }
+  },
+  "artifacts": [
+    {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-fence-umask002-before.log.gz",
+      "sha256": "d614bc8f6059a90b0d825ea72c5c569fb6c38f0d539fdd4a138e431db1fdad87",
+      "raw_sha256": "87c0b48f4c27634e0f4b118d695282ae7233fb49dfb67cd54c1e1086e12379fd"
+    },
+    {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-workspace-umask002.log.gz",
+      "sha256": "5c053655637112daf10a7ded320be9c126acb82dfb33714f8f74bcad2a9f2569",
+      "raw_sha256": "79da2b2fb3d094664bae069e41f657fa49cdc624294c033b1869ccba1e3ab903"
+    },
+    {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-admission-umask002-final.log.gz",
+      "sha256": "1e7ff92ce449dcaa720087e35fcd4594b2f55aff32802ff6fd63ecccb1997fbd",
+      "raw_sha256": "cba225cd88a14bf653c819bac1fce62caddcaac6397ab4e5c425b173a44c1273"
+    },
+    {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-peer-umask002-final.log.gz",
+      "sha256": "84e06ef3f63a3783d743313efe7b7c96f0c3f6dc874828edb760cbb093671db9",
+      "raw_sha256": "a7efa363287caf40aff74900664cf76dcd3693c021f06dd34a3275b0b35fe337"
+    },
+    {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-native-dogfood-clippy-umask-fix.log.gz",
+      "sha256": "6bf7980c0dda9973794dec3bb720e2d1d0d840622a6fa63841cb8f1caf75f707",
+      "raw_sha256": "6a7c91844fa95f7cc1ea614f86c03509cd0e44cddf376d5f86dc3bba1994a7f1"
+    },
+    {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-pr156-rust-attempt1-tail.log.gz",
+      "sha256": "6678a37cc390bd61d37023ec29182285fbe3cb71a2aa2af286afa87708d15890",
+      "raw_sha256": "9f297668657a7a1e5a8dc95d011c027778d98ee0d62138ee1237c2ba59492d60"
+    },
+    {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-pr156-browser-attempt1.log.gz",
+      "sha256": "9984dc66234ecee13cdecadad33136844fdda52fc1753031a5d7aa19052c7144",
+      "raw_sha256": "d5abe52cc74c03069dfb68cdcc28d0055e43152b7108fe41e68d0f237463dfe1"
+    },
+    {
+      "path": "receipts/integration/artifacts/native-coordination-20261019/admiralty-pr156-browser-attempt2.log.gz",
+      "sha256": "6717ac4f1785481d23aaf7dbeb1ae5679da4f20247f9535fbe20fd90509af8b1",
+      "raw_sha256": "b6f4fc8f3cfd655dcb863d38e95f471809ec11d0732f4451afcb19f9c3d01e8f"
+    }
+  ],
+  "limits": [
+    "Fresh exact-head Linux CI is required after this repair.",
+    "This follow-up does not promote packet acceptance, activate production routes or authorize provider work.",
+    "No claim that the initial Chrome preflight timeout has a proven root cause."
+  ]
+}
