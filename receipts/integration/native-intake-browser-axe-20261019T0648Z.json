@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "kind": "actual_native_raw_intake_browser_and_pinned_axe_qualification",
+  "recorded_utc": "2026-10-19T06:49:46.935Z",
+  "executed_test_revision": "4c5b2fdbf8e74a0224e1a7ec5a6a6ebfc2005c89",
+  "integration_revision": "4c5b2fdbf8e74a0224e1a7ec5a6a6ebfc2005c89",
+  "base_main": "6395f8c76146e5b74e2a8ab3c039987ac70aecb8",
+  "author_final_revision": "bb3b26ba33e8b746c0528951f7bc303c454a5ad6",
+  "source": [
+    {
+      "path": "apps/dashboard/e2e/intake.e2e.ts",
+      "bytes": 23641,
+      "sha256": "d2b81b3be6ca6fba7dc63eec3893bddd25ecde7b388d7946eb17ab9e170afa14"
+    },
+    {
+      "path": "apps/dashboard/src/ui/Intake.tsx",
+      "bytes": 32026,
+      "sha256": "86c945477e66bf603d1a8317721367ce78a48b1fa41de4705e0301df92e58813"
+    },
+    {
+      "path": ".github/workflows/dashboard-e2e.yml",
+      "bytes": 7160,
+      "sha256": "b6f9f860c76991f1a9c09a875254a101ba3fddc211fa4b5afb197d4283cadcac"
+    }
+  ],
+  "checks": {
+    "actual_browser_cases": 1,
+    "failed": 0,
+    "skipped": 0,
+    "duration_seconds": 2.15,
+    "e2e_typescript_exit": 0,
+    "actionlint_with_actual_custom_runner_labels_exit": 0,
+    "first_actionlint_without_custom_labels": "existing lan-ci/browser158 unrecognized; no other finding; retained tool output",
+    "new_workflow_wiring": "export hash of actual newly built admiraltyd to GITHUB_ENV; existing assertions, real backend, runner labels, sandbox, axe and deadlines unchanged",
+    "axe": {
+      "version": "4.14.0",
+      "source_sha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+      "violations": 0,
+      "incomplete": 0,
+      "passes": 29,
+      "inapplicable": 34
+    }
+  },
+  "command": {
+    "started_utc": "2026-10-19T06:44:48.236Z",
+    "finished_utc": "2026-10-19T06:44:50.896Z",
+    "args": [
+      "--filter",
+      "@admiralty/dashboard",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "e2e/vitest.config.ts",
+      "e2e/intake.e2e.ts"
+    ],
+    "binary": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/context-integrated-final/debug/admiraltyd",
+    "binary_sha256": "7f414502f9ddbbe098ee33e2692ca42073503bccf4508274f7c8c117faa50eaa",
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "raw_log_sha256": "53d68c1b0d5cc06b84e0f04ee3c845a6d1d11320df056c43e3ea688b912a379e"
+  },
+  "artifacts": [
+    {
+      "path": "target/quality/intake-native-browser-root-axe-attempt3.log",
+      "bytes": 207,
+      "sha256": "53d68c1b0d5cc06b84e0f04ee3c845a6d1d11320df056c43e3ea688b912a379e"
+    },
+    {
+      "path": "target/quality/intake-native-browser-root-axe-attempt3-command.json",
+      "bytes": 592,
+      "sha256": "d0528588dcb774465eb64520c4e654f2deaefde8c6d831c3ac428b983f9725d2"
+    },
+    {
+      "path": "target/quality/intake-contrast-typecheck.log",
+      "bytes": 24,
+      "sha256": "5cfb036289d819b2a87e947d65f4532031dd37753f3cf2def0f77d398eea1737"
+    },
+    {
+      "path": "target/quality/intake-browser-e2e-typecheck-final.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/quality/intake-browser-final-pid-observation.json",
+      "bytes": 121,
+      "sha256": "f086a4a7d6d85944465c180b183653adf62d448709676253647a6c88a5fc0026"
+    },
+    {
+      "path": "/private/tmp/adm-intake-browser-AycNlu/browser-proof.json",
+      "bytes": 11320,
+      "sha256": "02088f9dbb9da4dcdd74e873d89de194ec858fee12b613b8e1554a2936829261"
+    },
+    {
+      "path": "/private/tmp/adm-intake-browser-AycNlu/native-exit.json",
+      "bytes": 247,
+      "sha256": "9707d647f4e566a4cf18994e33e91127129f29a2323d90c6f8923657963ccfba"
+    }
+  ],
+  "actual_native_binary": {
+    "path": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/context-integrated-final/debug/admiraltyd",
+    "sha256": "7f414502f9ddbbe098ee33e2692ca42073503bccf4508274f7c8c117faa50eaa",
+    "build_command": "cargo build -p admiralty-server --bin admiraltyd --locked",
+    "build_exit": 0,
+    "build_elapsed_seconds": 0.45,
+    "server_core_store_and_workspace_manifest_bytes_identical_to": "b976b4f5e2fa69685d59a7ca4c83da258418f5b3",
+    "reproducible_build_attestation": false
+  },
+  "production_frontend": {
+    "indexHtml": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <meta name=\"theme-color\" content=\"#0b1220\" />\n    <meta name=\"description\" content=\"Read-only Admiralty fleet overview\" />\n    <title>Admiralty · Fleet overview</title>\n    <script type=\"module\" crossorigin src=\"/assets/index-BV0BmOq_.js\"></script>\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-C0ohzedu.css\">\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>\n",
+    "assets": [
+      "CommandJourneys-DK6T-aIV.js",
+      "Intake-CUnTgt1t.js",
+      "LiveViews-CV9iWv1b.js",
+      "LiveViews-DgA8tN2b.css",
+      "index-BV0BmOq_.js",
+      "index-C0ohzedu.css"
+    ],
+    "sourceDigest": "sha256:412b6492728937983b89387585b840108e9cc8a66036d5f0b9b5502baa28d840",
+    "bundleDigest": "sha256:798681f673c58a3f035228ee0844d2c4ca22b0cf5466c85a77b08b1eb7c5961f",
+    "mode": "production",
+    "nodeEnv": "production"
+  },
+  "observations": {
+    "synthetic_input": true,
+    "actual_rust_server_and_browser": true,
+    "provider_or_model_turn": false,
+    "transport": {
+      "requests": [
+        {
+          "path": "/v2/intake/preview",
+          "body": "{\"project_id\":\"my-project\",\"root_id\":\"my-root\",\"format\":\"plain_text\",\"provenance\":{\"schema_version\":1,\"source_id\":\"browser-unicode-source\",\"revision\":\"draft-one\",\"captured_at\":\"2026-10-19T13:25:00.000Z\",\"requester\":{\"kind\":\"unknown\"},\"origin\":null},\"source_payload\":{\"kind\":\"inline_utf8\",\"text\":\"Preserve this entire original request as one.\\n\\n第二段 — keep Unicode 🧭 and é.\\nNo task contract is inferred.\"}}"
+        },
+        {
+          "path": "/v2/intake/captures",
+          "body": "{\"schema_version\":1,\"command_id\":\"6a595df8-6bb2-44a3-a43a-585d3c49119e\",\"capture_id\":\"browser-unicode-capture\",\"revision\":1,\"expected_revision\":0,\"parent_receipt_digest\":null,\"scope\":{\"principal\":\"operator\",\"project_id\":\"my-project\",\"root_id\":\"my-root\",\"authority_ref\":\"intake:operator-v1\",\"authority_generation\":\"1\"},\"format\":\"plain_text\",\"provenance\":{\"schema_version\":1,\"source_id\":\"browser-unicode-source\",\"revision\":\"draft-one\",\"captured_at\":\"2026-10-19T13:25:00.000Z\",\"requester\":{\"kind\":\"unknown\"},\"origin\":null},\"source_payload\":{\"kind\":\"inline_utf8\",\"text\":\"Preserve this entire original request as one.\\n\\n第二段 — keep Unicode 🧭 and é.\\nNo task contract is inferred.\"},\"preview_manifest_digest\":\"sha256:10c698971be80a6e41f6a875fbf6601cf0cebfc5cfecf07515d6ce4fbf4054d6\",\"policy_revision\":\"intake-v1\",\"policy_digest\":\"sha256:649bf971572ce06b93a3d3986c1e0ed4c7d50d5d1a37aaf8f3dad4804877cf57\"}"
+        },
+        {
+          "path": "/v2/intake/captures",
+          "body": "{\"schema_version\":1,\"command_id\":\"6a595df8-6bb2-44a3-a43a-585d3c49119e\",\"capture_id\":\"browser-unicode-capture\",\"revision\":1,\"expected_revision\":0,\"parent_receipt_digest\":null,\"scope\":{\"principal\":\"operator\",\"project_id\":\"my-project\",\"root_id\":\"my-root\",\"authority_ref\":\"intake:operator-v1\",\"authority_generation\":\"1\"},\"format\":\"plain_text\",\"provenance\":{\"schema_version\":1,\"source_id\":\"browser-unicode-source\",\"revision\":\"draft-one\",\"captured_at\":\"2026-10-19T13:25:00.000Z\",\"requester\":{\"kind\":\"unknown\"},\"origin\":null},\"source_payload\":{\"kind\":\"inline_utf8\",\"text\":\"Preserve this entire original request as one.\\n\\n第二段 — keep Unicode 🧭 and é.\\nNo task contract is inferred.\"},\"preview_manifest_digest\":\"sha256:10c698971be80a6e41f6a875fbf6601cf0cebfc5cfecf07515d6ce4fbf4054d6\",\"policy_revision\":\"intake-v1\",\"policy_digest\":\"sha256:649bf971572ce06b93a3d3986c1e0ed4c7d50d5d1a37aaf8f3dad4804877cf57\"}"
+        },
+        {
+          "path": "/v2/intake/captures/browser-unicode-capture",
+          "body": "{\"project_id\":\"my-project\",\"root_id\":\"my-root\",\"revision\":1}"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/v2/intake/preview",
+          "body": "{\"schema_version\":1,\"data\":{\"schema_version\":1,\"parser_revision\":\"wo1-json-raw-spans-v1\",\"policy_revision\":\"intake-v1\",\"policy_digest\":\"sha256:649bf971572ce06b93a3d3986c1e0ed4c7d50d5d1a37aaf8f3dad4804877cf57\",\"format\":\"plain_text\",\"raw_digest\":\"sha256:194b6898ebc407ede9192828cee03f108a3e398678763b0ee9ef232c66a163ed\",\"canonical_digest\":\"sha256:a5ef5b883192bee8d72f5a91541a6f810c61c85176ca590b5aeb550b56f5a5c5\",\"raw_byte_length\":117,\"provenance\":{\"schema_version\":1,\"source_id\":\"browser-unicode-source\",\"revision\":\"draft-one\",\"captured_at\":\"2026-10-19T13:25:00.000Z\",\"requester\":{\"kind\":\"unknown\"},\"origin\":null},\"authorized_scope\":{\"principal\":\"operator\",\"project_id\":\"my-project\",\"root_id\":\"my-root\",\"authority_ref\":\"intake:operator-v1\",\"authority_generation\":\"1\"},\"requests\":[{\"index\":0,\"raw_span\":{\"start\":0,\"end\":117},\"text\":\"Preserve this entire original request as one.\\n\\n第二段 — keep Unicode 🧭 and é.\\nNo task contract is inferred.\",\"title\":null,\"rationale\":null,\"requested_timing\":null,\"constraints\":[],\"claimed_project_id\":null,\"outcomes\":[],\"unresolved\":[\"attribution_unknown\",\"outcome_unknown\",\"criteria_unknown\"]}],\"manifest_digest\":\"sha256:10c698971be80a6e41f6a875fbf6601cf0cebfc5cfecf07515d6ce4fbf4054d6\"},\"execution_granted\":false,\"acceptance_granted\":false}"
+        },
+        {
+          "path": "/v2/intake/captures",
+          "body": "{\"schema_version\":1,\"data\":{\"receipt\":{\"schema_version\":1,\"command_id\":\"6a595df8-6bb2-44a3-a43a-585d3c49119e\",\"capture_id\":\"browser-unicode-capture\",\"revision\":1,\"request_digest\":\"sha256:38b7de2d3f55b9aa8ac75ee12f8c1323e020a26b98f43e7d2887756121ad7bbb\",\"raw_digest\":\"sha256:194b6898ebc407ede9192828cee03f108a3e398678763b0ee9ef232c66a163ed\",\"canonical_digest\":\"sha256:a5ef5b883192bee8d72f5a91541a6f810c61c85176ca590b5aeb550b56f5a5c5\",\"preview_manifest_digest\":\"sha256:10c698971be80a6e41f6a875fbf6601cf0cebfc5cfecf07515d6ce4fbf4054d6\",\"parent_receipt_digest\":null},\"receipt_digest\":\"sha256:19a33c18ac0e2cd20270ba549482fb1ee9f1fa1e875d0414312d0b5b6f38a03f\",\"replayed\":false},\"execution_granted\":false,\"acceptance_granted\":false}"
+        },
+        {
+          "path": "/v2/intake/captures",
+          "body": "{\"schema_version\":1,\"data\":{\"receipt\":{\"schema_version\":1,\"command_id\":\"6a595df8-6bb2-44a3-a43a-585d3c49119e\",\"capture_id\":\"browser-unicode-capture\",\"revision\":1,\"request_digest\":\"sha256:38b7de2d3f55b9aa8ac75ee12f8c1323e020a26b98f43e7d2887756121ad7bbb\",\"raw_digest\":\"sha256:194b6898ebc407ede9192828cee03f108a3e398678763b0ee9ef232c66a163ed\",\"canonical_digest\":\"sha256:a5ef5b883192bee8d72f5a91541a6f810c61c85176ca590b5aeb550b56f5a5c5\",\"preview_manifest_digest\":\"sha256:10c698971be80a6e41f6a875fbf6601cf0cebfc5cfecf07515d6ce4fbf4054d6\",\"parent_receipt_digest\":null},\"receipt_digest\":\"sha256:19a33c18ac0e2cd20270ba549482fb1ee9f1fa1e875d0414312d0b5b6f38a03f\",\"replayed\":true},\"execution_granted\":false,\"acceptance_granted\":false}"
+        },
+        {
+          "path": "/v2/intake/captures/browser-unicode-capture",
+          "body": "{\"schema_version\":1,\"data\":{\"request\":{\"schema_version\":1,\"command_id\":\"6a595df8-6bb2-44a3-a43a-585d3c49119e\",\"capture_id\":\"browser-unicode-capture\",\"revision\":1,\"expected_revision\":0,\"parent_receipt_digest\":null,\"scope\":{\"principal\":\"operator\",\"project_id\":\"my-project\",\"root_id\":\"my-root\",\"authority_ref\":\"intake:operator-v1\",\"authority_generation\":\"1\"},\"format\":\"plain_text\",\"provenance\":{\"schema_version\":1,\"source_id\":\"browser-unicode-source\",\"revision\":\"draft-one\",\"captured_at\":\"2026-10-19T13:25:00.000Z\",\"requester\":{\"kind\":\"unknown\"},\"origin\":null},\"source_payload\":{\"kind\":\"inline_utf8\",\"text\":\"Preserve this entire original request as one.\\n\\n第二段 — keep Unicode 🧭 and é.\\nNo task contract is inferred.\"},\"preview_manifest_digest\":\"sha256:10c698971be80a6e41f6a875fbf6601cf0cebfc5cfecf07515d6ce4fbf4054d6\",\"policy_revision\":\"intake-v1\",\"policy_digest\":\"sha256:649bf971572ce06b93a3d3986c1e0ed4c7d50d5d1a37aaf8f3dad4804877cf57\"},\"preview\":{\"schema_version\":1,\"parser_revision\":\"wo1-json-raw-spans-v1\",\"policy_revision\":\"intake-v1\",\"policy_digest\":\"sha256:649bf971572ce06b93a3d3986c1e0ed4c7d50d5d1a37aaf8f3dad4804877cf57\",\"format\":\"plain_text\",\"raw_digest\":\"sha256:194b6898ebc407ede9192828cee03f108a3e398678763b0ee9ef232c66a163ed\",\"canonical_digest\":\"sha256:a5ef5b883192bee8d72f5a91541a6f810c61c85176ca590b5aeb550b56f5a5c5\",\"raw_byte_length\":117,\"provenance\":{\"schema_version\":1,\"source_id\":\"browser-unicode-source\",\"revision\":\"draft-one\",\"captured_at\":\"2026-10-19T13:25:00.000Z\",\"requester\":{\"kind\":\"unknown\"},\"origin\":null},\"authorized_scope\":{\"principal\":\"operator\",\"project_id\":\"my-project\",\"root_id\":\"my-root\",\"authority_ref\":\"intake:operator-v1\",\"authority_generation\":\"1\"},\"requests\":[{\"index\":0,\"raw_span\":{\"start\":0,\"end\":117},\"text\":\"Preserve this entire original request as one.\\n\\n第二段 — keep Unicode 🧭 and é.\\nNo task contract is inferred.\",\"title\":null,\"rationale\":null,\"requested_timing\":null,\"constraints\":[],\"claimed_project_id\":null,\"outcomes\":[],\"unresolved\":[\"attribution_unknown\",\"outcome_unknown\",\"criteria_unknown\"]}],\"manifest_digest\":\"sha256:10c698971be80a6e41f6a875fbf6601cf0cebfc5cfecf07515d6ce4fbf4054d6\"},\"receipt\":{\"schema_version\":1,\"command_id\":\"6a595df8-6bb2-44a3-a43a-585d3c49119e\",\"capture_id\":\"browser-unicode-capture\",\"revision\":1,\"request_digest\":\"sha256:38b7de2d3f55b9aa8ac75ee12f8c1323e020a26b98f43e7d2887756121ad7bbb\",\"raw_digest\":\"sha256:194b6898ebc407ede9192828cee03f108a3e398678763b0ee9ef232c66a163ed\",\"canonical_digest\":\"sha256:a5ef5b883192bee8d72f5a91541a6f810c61c85176ca590b5aeb550b56f5a5c5\",\"preview_manifest_digest\":\"sha256:10c698971be80a6e41f6a875fbf6601cf0cebfc5cfecf07515d6ce4fbf4054d6\",\"parent_receipt_digest\":null},\"receipt_digest\":\"sha256:19a33c18ac0e2cd20270ba549482fb1ee9f1fa1e875d0414312d0b5b6f38a03f\"},\"execution_granted\":false,\"acceptance_granted\":false}"
+        }
+      ],
+      "dropped": 1
+    },
+    "exact_retry_body": true,
+    "first_committed_response_dropped": true,
+    "replay_receipt_matches": true,
+    "recorded_original_unicode_read": true,
+    "spa_pending_survives_navigation": true,
+    "main_and_intake_credentials_independent": true,
+    "secrets_in_url_storage_markup_or_transport_proof": false,
+    "native_tasks_before": [],
+    "native_tasks_after": [],
+    "native_messages_before_and_after": 0,
+    "no_general_outbox_inspection_claim": true
+  },
+  "owned_child": {
+    "code": null,
+    "signal": "SIGTERM",
+    "owned_child_pid": 60163,
+    "confirmed": true,
+    "stderrOverflow": false,
+    "stderr": "Admiralty listening on http://127.0.0.1:60922 (native commands enabled; execution requires admitted controller)\n",
+    "pid_absent_after_test": true,
+    "root_pid_absence_observed_utc": "2026-10-19T06:46:08.561Z",
+    "pid_start_or_model_identity_qualification": false
+  },
+  "limits": {
+    "browser_version_not_retained": true,
+    "axe_not_run_in_this_new_case": false,
+    "failure_diagnostic_branch_not_exercised": false,
+    "real_provider": false,
+    "production_issuer_or_token": false,
+    "global_service_control": false,
+    "page_reload_recovery": false,
+    "full_parent_acceptance": false,
+    "native_execution_qualified": false
+  },
+  "independent_review": {
+    "verdict": "CLEAR",
+    "artifact": {
+      "path": "/private/tmp/adm-intake-ui-review-vl8o_4dk/review-root-final-4c5b2fd.json",
+      "bytes": 8654,
+      "sha256": "bafd908cd0703da8718bf23bfcada2739f677acdcabb178898ff4a9d7b37aa11"
+    }
+  },
+  "accessibility": {
+    "url": "http://127.0.0.1:60922/#/intake",
+    "timestamp": "2026-10-19T06:44:50.810Z",
+    "testEngine": {
+      "name": "axe-core",
+      "version": "4.14.0"
+    },
+    "sourceSha256": "20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878",
+    "violations": [],
+    "incomplete": [],
+    "passesCount": 29,
+    "inapplicableCount": 34
+  },
+  "prior_evidence": [
+    {
+      "path": "receipts/integration/native-intake-browser-20261019T0636Z.json",
+      "bytes": 15301,
+      "sha256": "3e1b2d7d63c495de106345f914b3b07389dc25d23afdf977fe80c775fc2fea63"
+    },
+    {
+      "path": "target/quality/intake-native-browser-root-axe-attempt2.log",
+      "bytes": 2218,
+      "sha256": "211e8eade4e9ca0fa35b483206dbf21582112506eb3980581bcdfa115137e5e2"
+    },
+    {
+      "path": "/private/tmp/adm-intake-browser-1dxzLJ/browser-failure-proof.json",
+      "bytes": 9404,
+      "sha256": "b72693d6c62cd618f0ce75048b891584716e8bd26b661a9b073685367543c0cb"
+    },
+    {
+      "path": "/private/tmp/adm-intake-browser-1dxzLJ/native-exit.json",
+      "bytes": 247,
+      "sha256": "26324330428f4b1ac8477649c718a260aea2ab7b6638ab75e9fcd7d299df25bc"
+    }
+  ],
+  "repair": {
+    "failed_source": "0b4a3c8db0c1d4e1453a51a44319ee6a7668e492",
+    "actual_failed_cases": 1,
+    "finding": "pinned axe color-contrast: Owner access and Preview exact source used #ddd on default #efefef, ratio1.18:1",
+    "change": "explicit dark background/light foreground on six scoped intake actions only",
+    "api_or_state_changed": false,
+    "axe_rules_or_deadlines_weakened": false
+  }
+}
