@@ -525,6 +525,7 @@ fn record() -> RecordIntakeRequest {
         expected_plan_revision: 0,
         preview_manifest_digest: p.manifest_digest,
         policy_revision: p.policy_revision,
+        policy_digest: p.policy_digest,
         authority_generation: 7,
         work_order: WorkOrderRevision {
             schema_version: 1,
@@ -540,6 +541,7 @@ fn record() -> RecordIntakeRequest {
             raw_digest: p.raw_digest,
             canonical_digest: p.canonical_digest,
             parser_revision: p.parser_revision,
+            format: p.format,
             source_payload: SourcePayload::InlineUtf8 { text: raw.into() },
         },
         selected_tasks: vec![SelectedTask {
@@ -661,4 +663,251 @@ fn outcome_collection_and_typed_contract_bounds_precede_hash_or_clone() {
         ),
         Err(IntakeError::TextTooLarge { limit: 3 })
     );
+}
+
+#[test]
+fn all_policy_caps_bind_preview_and_record_even_when_revision_label_is_unchanged() {
+    let original_policy = IntakePolicy::default();
+    let raw = b"small request";
+    let original = preview_intake(
+        raw,
+        IntakeFormat::PlainText,
+        &provenance(),
+        &scope(),
+        &original_policy,
+    )
+    .expect("original policy preview");
+    assert_eq!(
+        original.policy_digest,
+        original_policy.identity_digest().expect("policy identity")
+    );
+    let record = record();
+    record
+        .validate_with_policy(&original_policy)
+        .expect("exact current policy");
+    let policies = [
+        IntakePolicy {
+            max_source_bytes: 128,
+            ..original_policy.clone()
+        },
+        IntakePolicy {
+            max_requests: 1,
+            ..original_policy.clone()
+        },
+        IntakePolicy {
+            max_outcomes: 1,
+            ..original_policy.clone()
+        },
+        IntakePolicy {
+            max_json_item_text_bytes: 16,
+            ..original_policy.clone()
+        },
+    ];
+    for policy in policies {
+        assert_eq!(policy.revision, original_policy.revision);
+        let changed = preview_intake(
+            raw,
+            IntakeFormat::PlainText,
+            &provenance(),
+            &scope(),
+            &policy,
+        )
+        .expect("request still fits this tighter policy");
+        assert_eq!(changed.raw_digest, original.raw_digest);
+        assert_eq!(changed.canonical_digest, original.canonical_digest);
+        assert_ne!(changed.policy_digest, original.policy_digest);
+        assert_ne!(changed.manifest_digest, original.manifest_digest);
+        assert_eq!(
+            original.verify_source(raw, &scope(), &policy),
+            Err(IntakeError::Binding)
+        );
+        assert_eq!(
+            record.validate_with_policy(&policy),
+            Err(IntakeError::Binding)
+        );
+    }
+    let mut changed = record.clone();
+    changed.policy_digest = content_digest(&"different policy").expect("digest");
+    assert_eq!(
+        changed.validate_with_policy(&original_policy),
+        Err(IntakeError::Binding)
+    );
+    changed.policy_digest = "not-a-digest".into();
+    assert_eq!(changed.validate(), Err(IntakeError::Binding));
+    let invalid = IntakePolicy {
+        max_outcomes: 0,
+        ..original_policy
+    };
+    assert_eq!(invalid.identity_digest(), Err(IntakeError::Bound));
+}
+
+#[test]
+fn public_authority_generations_roundtrip_as_exact_positive_decimal_strings() {
+    for generation in [9_007_199_254_740_993, u64::MAX] {
+        let current = AuthorizedIntakeScope {
+            authority_generation: generation,
+            ..scope()
+        };
+        let raw = b"Do not remove the check; 5 ms";
+        let p = preview_intake(
+            raw,
+            IntakeFormat::PlainText,
+            &provenance(),
+            &current,
+            &IntakePolicy::default(),
+        )
+        .expect("large generation preview");
+        let encoded = serde_json::to_value(&p).expect("public preview serialization");
+        assert_eq!(
+            encoded["authorized_scope"]["authority_generation"],
+            json!(generation.to_string())
+        );
+        let decoded: IntakePreview =
+            serde_json::from_value(encoded).expect("exact preview counter decode");
+        assert_eq!(decoded.authorized_scope.authority_generation, generation);
+        decoded
+            .verify_source(raw, &current, &IntakePolicy::default())
+            .expect("exact current generation");
+        let mut request = record();
+        request.authority_generation = generation;
+        request.work_order.scope = p.authorized_scope;
+        request.preview_manifest_digest = p.manifest_digest;
+        request
+            .validate_with_policy(&IntakePolicy::default())
+            .expect("large current binding");
+        let encoded = serde_json::to_value(&request).expect("public request serialization");
+        assert_eq!(
+            encoded["authority_generation"],
+            json!(generation.to_string())
+        );
+        assert_eq!(
+            encoded["work_order"]["scope"]["authority_generation"],
+            json!(generation.to_string())
+        );
+        let decoded = parse_record_request(&serde_json::to_vec(&encoded).expect("wire bytes"))
+            .expect("exact request counter decode");
+        assert_eq!(decoded, request);
+    }
+    let schema = serde_json::to_value(schemars::schema_for!(ScopeSnapshot)).expect("scope schema");
+    let counter = &schema["properties"]["authority_generation"]["allOf"];
+    assert_eq!(counter[0]["type"], "string");
+    assert!(
+        counter[0]["pattern"]
+            .as_str()
+            .is_some_and(|pattern| !pattern.is_empty())
+    );
+    assert_eq!(counter[1]["not"]["const"], "0");
+    let schema =
+        serde_json::to_value(schemars::schema_for!(RecordIntakeRequest)).expect("request schema");
+    assert_eq!(
+        schema["properties"]["authority_generation"]["allOf"][0]["type"],
+        "string"
+    );
+}
+
+#[test]
+fn generation_wire_rejects_numbers_zero_overflow_and_noncanonical_strings() {
+    let snapshot = preview(b"one request", IntakeFormat::PlainText)
+        .expect("preview")
+        .authorized_scope;
+    let invalid = [
+        json!(0),
+        json!(1),
+        json!(9_007_199_254_740_993_u64),
+        json!(null),
+        json!([]),
+        json!(""),
+        json!("0"),
+        json!("01"),
+        json!("+1"),
+        json!("-1"),
+        json!("1.0"),
+        json!("1e3"),
+        json!(" 1"),
+        json!("1 "),
+        json!("1\n"),
+        json!("18446744073709551616"),
+    ];
+    for value in invalid {
+        let mut wire = serde_json::to_value(&snapshot).expect("snapshot wire");
+        wire["authority_generation"] = value.clone();
+        assert!(
+            serde_json::from_value::<ScopeSnapshot>(wire).is_err(),
+            "snapshot must reject {value}"
+        );
+        let mut wire = serde_json::to_value(record()).expect("record wire");
+        wire["authority_generation"] = value.clone();
+        assert!(
+            parse_record_request(&serde_json::to_vec(&wire).expect("wire bytes")).is_err(),
+            "record must reject {value}"
+        );
+        wire["authority_generation"] = json!("7");
+        wire["work_order"]["scope"]["authority_generation"] = value.clone();
+        assert!(
+            parse_record_request(&serde_json::to_vec(&wire).expect("wire bytes")).is_err(),
+            "nested scope must reject {value}"
+        );
+    }
+}
+
+#[test]
+fn explicit_record_format_keeps_json_looking_plaintext_one_request_and_pins_identity() {
+    let raw =
+        br#"{"schema_version":1,"items":[{"text":"first request"},{"text":"second request"}]}"#;
+    let plain = preview(raw, IntakeFormat::PlainText).expect("explicit plaintext");
+    let batch = preview(raw, IntakeFormat::JsonBatch).expect("explicit JSON batch");
+    assert_eq!(plain.requests.len(), 1);
+    assert_eq!(plain.requests[0].text.as_bytes(), raw);
+    assert_eq!(batch.requests.len(), 2);
+    assert_eq!(plain.raw_digest, batch.raw_digest);
+    assert_ne!(plain.canonical_digest, batch.canonical_digest);
+    assert_ne!(plain.manifest_digest, batch.manifest_digest);
+    let mut tampered = batch.clone();
+    tampered.format = IntakeFormat::PlainText;
+    assert_eq!(
+        tampered.verify_source(raw, &scope(), &IntakePolicy::default()),
+        Err(IntakeError::Binding)
+    );
+
+    // This exercises the record contract's metadata/shape binding only. A WO2
+    // writer must still re-preview actual source and check selected outcomes.
+    let mut request = record();
+    request.work_order.source_payload = SourcePayload::InlineUtf8 {
+        text: std::str::from_utf8(raw).expect("UTF8").into(),
+    };
+    request.work_order.raw_digest = plain.raw_digest;
+    request.work_order.canonical_digest = plain.canonical_digest;
+    request.work_order.format = plain.format;
+    request.preview_manifest_digest = plain.manifest_digest;
+    request
+        .validate_with_policy(&IntakePolicy::default())
+        .expect("plaintext metadata binding");
+    let plain_identity = content_digest(&request).expect("plaintext record identity");
+    let wire = serde_json::to_vec(&request).expect("wire");
+    assert_eq!(
+        parse_record_request(&wire)
+            .expect("explicit format retained")
+            .work_order
+            .format,
+        IntakeFormat::PlainText
+    );
+    request.selected_tasks[0].binding.request_index = 1;
+    assert_eq!(request.validate(), Err(IntakeError::Binding));
+    request.work_order.format = batch.format;
+    request.work_order.canonical_digest = batch.canonical_digest;
+    request.preview_manifest_digest = batch.manifest_digest;
+    request
+        .validate_with_policy(&IntakePolicy::default())
+        .expect("batch permits explicit later request index");
+    assert_ne!(
+        content_digest(&request).expect("batch record identity"),
+        plain_identity
+    );
+    let mut wire = serde_json::to_value(&request).expect("wire");
+    assert_eq!(wire["work_order"]["format"], "json_batch");
+    wire["work_order"]
+        .as_object_mut()
+        .expect("object")
+        .remove("format");
+    assert!(parse_record_request(&serde_json::to_vec(&wire).expect("wire bytes")).is_err());
 }
