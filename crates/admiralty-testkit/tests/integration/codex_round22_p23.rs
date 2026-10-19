@@ -54,8 +54,14 @@ fn p23_round22_canary_smoke_release_package_qualification() {
             consumed_binding: None,
         },
     };
-    let mut registry = apply(&NodeRegistry::default(), &token, &scope, &controller, Some(1))
-        .expect("issue scoped canary credential");
+    let mut registry = apply(
+        &NodeRegistry::default(),
+        &token,
+        &scope,
+        &controller,
+        Some(1),
+    )
+    .expect("issue scoped canary credential");
     let enrollment = EnrollmentEvent::Enrolled {
         event_id: "round22-node-enrolled".into(),
         token_id: "round22-token".into(),
@@ -70,8 +76,8 @@ fn p23_round22_canary_smoke_release_package_qualification() {
     };
     let enrollment = decode_event(&serde_json::to_vec(&enrollment).expect("encode enrollment"))
         .expect("decode enrollment wire event");
-    registry = apply(&registry, &enrollment, &scope, &controller, Some(2))
-        .expect("enroll canary node");
+    registry =
+        apply(&registry, &enrollment, &scope, &controller, Some(2)).expect("enroll canary node");
 
     let mut events = vec![token, enrollment];
     for tick in 3..=5 {
@@ -111,7 +117,10 @@ fn p23_round22_canary_smoke_release_package_qualification() {
         apply(&registry, &foreign_heartbeat, &scope, &foreign, Some(6)),
         Err(NodeError::ForeignScope)
     );
-    assert_eq!(registry, before_rejection, "rejected canary probe is fail-closed");
+    assert_eq!(
+        registry, before_rejection,
+        "rejected canary probe is fail-closed"
+    );
 
     let package = ReleasePackage {
         qualification: "p23-round22-canary-smoke".into(),
@@ -120,8 +129,7 @@ fn p23_round22_canary_smoke_release_package_qualification() {
     };
     let encoded = serde_json::to_vec(&package).expect("encode release package");
     let package_digest = content_digest(&encoded).expect("release package digest");
-    let decoded: ReleasePackage =
-        serde_json::from_slice(&encoded).expect("decode release package");
+    let decoded: ReleasePackage = serde_json::from_slice(&encoded).expect("decode release package");
     let replayed = serde_json::to_vec(&decoded).expect("re-encode release package");
     assert_eq!(encoded, replayed, "release package encoding is stable");
     assert_eq!(
@@ -139,8 +147,14 @@ fn p23_round22_canary_smoke_release_package_qualification() {
             consumed_binding: None,
         },
     };
-    let issued = apply(&NodeRegistry::default(), &expired_token, &scope, &controller, Some(1))
-        .expect("record expiring token");
+    let issued = apply(
+        &NodeRegistry::default(),
+        &expired_token,
+        &scope,
+        &controller,
+        Some(1),
+    )
+    .expect("record expiring token");
     let expired_enrollment = EnrollmentEvent::Enrolled {
         event_id: "round22-expired-enrollment".into(),
         token_id: "round22-expired".into(),

@@ -6,6 +6,8 @@ pub mod native_install;
 pub mod native_intake;
 pub mod native_package;
 pub mod native_recovery;
+#[cfg(unix)]
+mod node;
 pub mod work_order_intake;
 mod workplans;
 use admiralty_core::{
@@ -80,6 +82,9 @@ struct Cli {
 enum Command {
     /// Narrow authenticated agent tools, CLI JSON fallback and MCP stdio.
     AgentTools(agent_tools::AgentToolsArgs),
+    /// Enroll nodes, deliver authenticated observations and transfer artifacts.
+    #[cfg(unix)]
+    Node(node::NodeArgs),
     /// Run an isolated fake fleet. No accounts, real providers or live projects.
     Demo {
         #[arg(long, default_value = "127.0.0.1:18892")]
@@ -732,6 +737,8 @@ fn seed_demo(store: &Store) -> CliResult<()> {
 
 async fn run(cli: Cli) -> CliResult<()> {
     match cli.command {
+        #[cfg(unix)]
+        Command::Node(args) => node::run(args)?,
         Command::Demo {
             listen,
             assets,

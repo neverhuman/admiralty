@@ -1,6 +1,4 @@
-//! P23 acceptance harness for the node enrollment API currently present on main.
-//! The authenticated transport and durable transfer modules are not implemented yet;
-//! these checks cover the real enrollment reducer and preserve the disabled runner gate.
+//! P23 enrollment contracts plus actual mTLS, durable replay and transfer acceptance.
 
 use admiralty_core::nodes::{
     DecimalU64, EnrollmentEvent, EnrollmentToken, NodeError, NodeId, NodeIdentity, NodeRegistry,
@@ -432,6 +430,434 @@ fn strict_event_decoder_rejects_unknown_fields() {
 }
 
 #[test]
-fn node_runner_remains_unqualified_without_authenticated_transport() {
+fn node_transport_receipt_does_not_grant_managed_execution() {
     const { assert!(!MANAGED_EXECUTION_QUALIFIED) };
+}
+
+#[cfg(unix)]
+mod authenticated {
+    use super::scope;
+    use admiralty_core::nodes::DecimalU64;
+    use admiralty_runtime::fleet::{
+        digest,
+        enrollment::{Controller, Credentials, Inventory},
+        transfer::{Chunk, Manifest},
+        transport::{self, Ack, Request, Response, Spool},
+    };
+    use std::{io, net::TcpListener, path::Path};
+
+    fn inventory() -> Inventory {
+        Inventory {
+            cpu_millis: 2000,
+            memory_bytes: DecimalU64::new(1_000_000),
+            spool_bytes: DecimalU64::new(1_000_000),
+            runners: vec!["isolated-oci".into()],
+        }
+    }
+
+    fn credentials() -> Credentials {
+        Credentials::generate(
+            "localhost",
+            digest(&serde_json::to_vec(&inventory()).expect("inventory")),
+        )
+        .expect("key and certificate")
+    }
+
+    fn enroll(root: &Path, node: &Credentials) {
+        let mut controller = Controller::open(root).expect("controller");
+        let (token, secret) = controller.issue(scope(), 1, 60).expect("issue");
+        assert!(
+            controller
+                .enroll(
+                    &token,
+                    &"0".repeat(64),
+                    &node.identity,
+                    &node.certificate,
+                    &inventory(),
+                    2
+                )
+                .is_err()
+        );
+        controller
+            .enroll(
+                &token,
+                &secret,
+                &node.identity,
+                &node.certificate,
+                &inventory(),
+                2,
+            )
+            .expect("enroll");
+        drop(controller);
+        let mut controller = Controller::open(root).expect("reopen durable registry");
+        controller
+            .enroll(
+                &token,
+                &secret,
+                &node.identity,
+                &node.certificate,
+                &inventory(),
+                3,
+            )
+            .expect("lost enrollment response retry");
+        let different = credentials();
+        assert!(
+            controller
+                .enroll(
+                    &token,
+                    &secret,
+                    &different.identity,
+                    &different.certificate,
+                    &inventory(),
+                    3
+                )
+                .is_err()
+        );
+    }
+
+    fn exchange(
+        root: &Path,
+        server: &Credentials,
+        client: &Credentials,
+        request: &Request,
+        after_handshake: impl FnOnce(),
+    ) -> (io::Result<Response>, io::Result<()>) {
+        let controller = Controller::open(root).expect("controller config");
+        let config = transport::server_config(
+            server,
+            controller.certificates().expect("certificate inventory"),
+        )
+        .expect("mandatory mutual TLS");
+        drop(controller);
+        let listener = TcpListener::bind("127.0.0.1:0").expect("loopback listener");
+        let address = listener.local_addr().expect("address");
+        let root = root.to_owned();
+        let handle = std::thread::spawn(move || {
+            let mut controller = Controller::open(&root)?;
+            transport::serve_once(listener.accept()?.0, config, &mut controller)
+        });
+        let result = (|| {
+            let config = transport::client_config(client, server.certificate.clone())?;
+            let mut stream = transport::connect(address, "localhost".into(), config)?;
+            after_handshake();
+            transport::write_frame(&mut stream, request)?;
+            transport::read_frame(&mut stream)
+        })();
+        (result, handle.join().expect("server thread"))
+    }
+
+    fn ack(response: Response) -> Ack {
+        match response {
+            Response::Ack(ack) => ack,
+            _ => panic!("expected durable observation acknowledgement"),
+        }
+    }
+
+    #[test]
+    fn persistent_uuid_key_certificate_and_expiring_one_use_enrollment() {
+        let scratch = tempfile::tempdir().expect("scratch");
+        let root = scratch.path().join("identity");
+        let capability = digest(&serde_json::to_vec(&inventory()).expect("inventory"));
+        let first = Credentials::load_or_create(&root, "localhost", capability.clone())
+            .expect("initial identity");
+        let second =
+            Credentials::load_or_create(&root, "localhost", capability).expect("restart identity");
+        assert_eq!(first.identity, second.identity);
+        assert_eq!(first.certificate, second.certificate);
+        first.validate().expect("matching persistent private key");
+        second.validate().expect("matching restored private key");
+        let root = scratch.path().join("controller");
+        enroll(&root, &first);
+        let mut controller = Controller::open(&root).expect("controller");
+        let (id, secret) = controller.issue(scope(), 4, 1).expect("short token");
+        let third = credentials();
+        assert!(
+            controller
+                .enroll(
+                    &id,
+                    &secret,
+                    &third.identity,
+                    &third.certificate,
+                    &inventory(),
+                    5
+                )
+                .is_err()
+        );
+        assert!(
+            !controller
+                .registry()
+                .expect("registry")
+                .nodes
+                .contains_key(&third.identity.node_id)
+        );
+    }
+
+    #[test]
+    fn actual_mutual_tls_replays_gaps_and_lost_acks_after_both_sides_restart() {
+        let scratch = tempfile::tempdir().expect("scratch");
+        let root = scratch.path().join("controller");
+        let node = credentials();
+        let server = credentials();
+        enroll(&root, &node);
+        let spool_root = scratch.path().join("spool");
+        let mut spool = Spool::open(&spool_root).expect("producer spool");
+        let first = spool
+            .append(node.identity.clone(), scope(), b"first".to_vec())
+            .expect("durable first");
+        let second = spool
+            .append(node.identity.clone(), scope(), b"second".to_vec())
+            .expect("durable second");
+        let (response, result) = exchange(
+            &root,
+            &server,
+            &node,
+            &Request::Observe(second.clone()),
+            || {},
+        );
+        result.expect("gap response");
+        let gap = ack(response.expect("gap acknowledgement"));
+        assert_eq!(gap.through, DecimalU64::new(0));
+        assert_eq!(gap.replay_from, Some(DecimalU64::new(1)));
+        let (response, result) = exchange(
+            &root,
+            &server,
+            &node,
+            &Request::Observe(first.clone()),
+            || {},
+        );
+        result.expect("first persisted");
+        assert_eq!(
+            ack(response.expect("first ACK")).through,
+            DecimalU64::new(1)
+        );
+        // Deliberately lose the ACK: reload both durable sides and replay.
+        drop(spool);
+        let mut spool = Spool::open(&spool_root).expect("restart producer");
+        assert_eq!(
+            spool.pending().expect("pending"),
+            vec![first.clone(), second.clone()]
+        );
+        let (response, result) = exchange(
+            &root,
+            &server,
+            &node,
+            &Request::Observe(first.clone()),
+            || {},
+        );
+        result.expect("identical replay");
+        spool
+            .acknowledge(&ack(response.expect("replayed ACK")))
+            .expect("scoped acknowledgement");
+        assert_eq!(spool.pending().expect("pending"), vec![second.clone()]);
+        let mut collision = first;
+        collision.payload = b"changed".to_vec();
+        let (response, result) =
+            exchange(&root, &server, &node, &Request::Observe(collision), || {});
+        assert!(response.is_err());
+        assert!(result.is_err());
+        let (response, result) = exchange(&root, &server, &node, &Request::Observe(second), || {});
+        result.expect("gap repaired");
+        let final_ack = ack(response.expect("final ACK"));
+        let mut forged = final_ack.clone();
+        forged.stream = digest(b"foreign stream");
+        assert!(spool.acknowledge(&forged).is_err());
+        spool.acknowledge(&final_ack).expect("drain exact producer");
+        assert!(spool.pending().expect("drained").is_empty());
+    }
+
+    #[test]
+    fn certificate_revocation_rotation_reboot_and_foreign_scope_fail_closed() {
+        let scratch = tempfile::tempdir().expect("scratch");
+        let root = scratch.path().join("controller");
+        let node = credentials();
+        let server = credentials();
+        enroll(&root, &node);
+        let mut spool = Spool::open(&scratch.path().join("spool")).expect("spool");
+        let observation = spool
+            .append(node.identity.clone(), scope(), b"observation".to_vec())
+            .expect("append");
+        let stranger = credentials();
+        let (response, result) = exchange(
+            &root,
+            &server,
+            &stranger,
+            &Request::Observe(observation.clone()),
+            || {},
+        );
+        assert!(response.is_err());
+        assert!(result.is_err());
+        let mut foreign = observation.clone();
+        foreign.scope.task_id = admiralty_core::TaskId::new("foreign-task").expect("task");
+        let (response, result) = exchange(&root, &server, &node, &Request::Observe(foreign), || {});
+        assert!(response.is_err());
+        assert!(result.is_err());
+        // The stale TLS trust snapshot still accepts the cryptographic handshake;
+        // revocation committed before the frame writer turn must reject receipt.
+        let (response, result) = exchange(
+            &root,
+            &server,
+            &node,
+            &Request::Observe(observation.clone()),
+            || {
+                Controller::open(&root)
+                    .expect("operator")
+                    .revoke(&node.identity.node_id, 4)
+                    .expect("revoke connected peer");
+            },
+        );
+        assert!(response.is_err());
+        assert!(result.is_err());
+        let mut reboot = credentials();
+        reboot.identity.node_id = node.identity.node_id.clone();
+        reboot.identity.generation = DecimalU64::new(2);
+        let mut controller = Controller::open(&root).expect("operator");
+        let (token, secret) = controller.issue(scope(), 5, 60).expect("reboot token");
+        controller
+            .enroll(
+                &token,
+                &secret,
+                &reboot.identity,
+                &reboot.certificate,
+                &inventory(),
+                6,
+            )
+            .expect("reboot re-enrollment");
+        assert!(controller.receive(&node.certificate, &observation).is_err());
+        let mut fresh = observation;
+        fresh.identity = reboot.identity.clone();
+        let (response, result) = exchange(
+            &root,
+            &server,
+            &reboot,
+            &Request::Observe(fresh.clone()),
+            || {},
+        );
+        result.expect("fresh boot TLS");
+        response.expect("fresh boot receipt");
+        let mut rotated = credentials();
+        rotated.identity = controller
+            .rotate(&reboot.identity.node_id, &rotated.certificate, 7)
+            .expect("rotate");
+        assert_eq!(rotated.identity.generation, DecimalU64::new(3));
+        assert!(controller.receive(&reboot.certificate, &fresh).is_err());
+        fresh.identity = rotated.identity.clone();
+        let (response, result) =
+            exchange(&root, &server, &rotated, &Request::Observe(fresh), || {});
+        result.expect("rotated TLS");
+        response.expect("rotated receipt");
+    }
+
+    #[test]
+    fn partial_artifact_transfer_restarts_checks_custody_and_never_exposes_bad_bytes() {
+        let scratch = tempfile::tempdir().expect("scratch");
+        let root = scratch.path().join("controller");
+        let node = credentials();
+        let server = credentials();
+        enroll(&root, &node);
+        let bytes = b"durable artifact";
+        let manifest = Manifest {
+            transfer_id: uuid::Uuid::new_v4().to_string(),
+            identity: node.identity.clone(),
+            scope: scope(),
+            digest: digest(bytes),
+            size: DecimalU64::new(bytes.len() as u64),
+        };
+        let mut chunk = Chunk {
+            manifest: manifest.clone(),
+            offset: DecimalU64::new(0),
+            bytes: bytes[..4].to_vec(),
+            finish: false,
+        };
+        let mut controller = Controller::open(&root).expect("operator");
+        assert!(controller.transfer(&node.certificate, &chunk).is_err());
+        controller
+            .grant_transfer(&node.certificate, &manifest)
+            .expect("explicit local custody grant");
+        assert!(controller.artifact(&manifest).is_err());
+        drop(controller);
+        let (response, result) = exchange(
+            &root,
+            &server,
+            &node,
+            &Request::Transfer(chunk.clone()),
+            || {},
+        );
+        result.expect("partial persisted");
+        response.expect("partial ACK");
+        // Repeat a range after a lost response and actual database reopen.
+        let (response, result) = exchange(
+            &root,
+            &server,
+            &node,
+            &Request::Transfer(chunk.clone()),
+            || {},
+        );
+        result.expect("range replay");
+        response.expect("range ACK");
+        chunk.offset = DecimalU64::new(4);
+        chunk.bytes = vec![b'x'; bytes.len() - 4];
+        chunk.finish = true;
+        let (response, result) = exchange(
+            &root,
+            &server,
+            &node,
+            &Request::Transfer(chunk.clone()),
+            || {},
+        );
+        assert!(response.is_err());
+        assert!(result.is_err());
+        let controller = Controller::open(&root).expect("reopen after failed finish");
+        assert!(controller.artifact(&manifest).is_err());
+        drop(controller);
+        chunk.bytes = bytes[4..].to_vec();
+        let (response, result) = exchange(
+            &root,
+            &server,
+            &node,
+            &Request::Transfer(chunk.clone()),
+            || {},
+        );
+        result.expect("digest checked finish");
+        response.expect("complete ACK");
+        let mut controller = Controller::open(&root).expect("restart consumer");
+        assert_eq!(
+            controller.artifact(&manifest).expect("verified artifact"),
+            bytes
+        );
+        chunk.bytes[0] ^= 1;
+        assert!(controller.transfer(&node.certificate, &chunk).is_err());
+        controller
+            .revoke(&node.identity.node_id, 4)
+            .expect("revoke transfer sender");
+        chunk.bytes = bytes[4..].to_vec();
+        assert!(controller.transfer(&node.certificate, &chunk).is_err());
+    }
+
+    #[test]
+    fn framing_and_spool_backpressure_preserve_unacknowledged_observations() {
+        let mut oversized = &(u32::MAX.to_be_bytes())[..];
+        assert!(transport::read_frame::<Request>(&mut oversized).is_err());
+        let scratch = tempfile::tempdir().expect("scratch");
+        let node = credentials();
+        let mut spool = Spool::open(&scratch.path().join("spool")).expect("spool");
+        for _ in 0..1024 {
+            spool
+                .append(node.identity.clone(), scope(), vec![1])
+                .expect("within bounded spool");
+        }
+        assert!(
+            spool
+                .append(node.identity.clone(), scope(), vec![2])
+                .is_err()
+        );
+        drop(spool);
+        assert_eq!(
+            Spool::open(&scratch.path().join("spool"))
+                .expect("restart")
+                .pending()
+                .expect("retained evidence")
+                .len(),
+            1024
+        );
+    }
 }

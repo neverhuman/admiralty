@@ -14,6 +14,12 @@ fs2.workspace = true
 rustix.workspace = true
 tempfile.workspace = true
 sha2.workspace = true
+uuid.workspace = true
+rusqlite.workspace = true
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
+rcgen = { version = "0.14.10", default-features = false, features = ["ring", "crypto"] }
+x509-parser = "0.18.1"
+clap.workspace = true
 [[example]]
 name = "codex_qualification"
 test = true
