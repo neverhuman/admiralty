@@ -1,0 +1,665 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-19T03:39:02.084Z",
+  "base_revision": "40501925ae2a8906532ed5f709cda83a5898c675",
+  "qualified_source": "6f76ed29e2d11278d9834be408f11f98a1b9c019",
+  "scope": "Composed question Store writer, frozen intake public contracts and paired native package closure",
+  "worker_candidates": {
+    "question": "4cc2032a08334a76fbbd75b313523b6f60286820",
+    "public_intake": "29fc0841042ef7a24855581d710ad652738587e6"
+  },
+  "artifacts": {
+    "crates/admiralty-cli/src/main.rs": {
+      "bytes": 53100,
+      "sha256": "d524824902cd291ba942750f4127b50fbff5d03e5474ea4230f9e2d5e77cf696"
+    },
+    "crates/admiralty-cli/src/native_package.rs": {
+      "bytes": 50139,
+      "sha256": "54d35cb0d2261951250c509bbce899743ca08a975a195f49019b0f48bb0cc3d7"
+    },
+    "scripts/contracts/generate.mjs": {
+      "bytes": 13641,
+      "sha256": "015f5a8a5fd70f95f04582d2ba420e7dca6056903159ca920cc75c065ec5919d"
+    },
+    "crates/admiralty-store/src/questions.rs": {
+      "bytes": 87868,
+      "sha256": "9a076e388394d03afe108520a438a7bc4ba968ae6301192c4d9adba315672368"
+    },
+    "crates/admiralty-store/src/lib.rs": {
+      "bytes": 115032,
+      "sha256": "5a364bee291905f4aa377df7c6413814e16845eb81d9cf4e11cc68baa238f2bf"
+    },
+    "crates/admiralty-store/tests/question_store.rs": {
+      "bytes": 19402,
+      "sha256": "99f2a37d0736901431599eefda151d3ad3fd14ba317a626e240059c98419a66c"
+    },
+    "target/quality/question-writer-integrated.log": {
+      "bytes": 4373,
+      "sha256": "47e05990609676d1d5d53271087e0e601814b47344a822e9318dc589d288efe3"
+    },
+    "target/quality/question-writer-integrated-clippy.log": {
+      "bytes": 283,
+      "sha256": "2cd33d03c0fe4c83a7da7f937497d70339b9738f68df3f98558ca67773636d16"
+    },
+    "target/quality/intake-package-integrated.log": {
+      "bytes": 3298,
+      "sha256": "cfaf9f734cc859e46772dc9bf9f6722ac9299528bb4ce2ace7e3c0076f864d75"
+    },
+    "target/quality/intake-schema-integrated.log": {
+      "bytes": 1093,
+      "sha256": "2d4e1e782a483f0f67c4f5e2679d2559a571b2d98aa9ba28b98b3d888dafd3d5"
+    },
+    "target/quality/intake-ts-drift-integrated.log": {
+      "bytes": 78,
+      "sha256": "e1ed2f73908176c72bb6661502a802ac18d6e2b12004e626478e43cf71512dbe"
+    },
+    "target/quality/intake-contract-runtime-integrated.log": {
+      "bytes": 1431,
+      "sha256": "0143348be63e1e9cbf94f49362d0631a385b4825ce0dd1ddd7352b5d7d370be0"
+    },
+    "target/quality/intake-package-clippy.log": {
+      "bytes": 388,
+      "sha256": "074e8d0132ff59fd884fa16a0b981c2b54665c21bbca5378e253767231f5e1cd"
+    },
+    "target/quality/intake-package-fmt.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "checks": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-store",
+        "--test",
+        "question_store",
+        "--test",
+        "intake_capture",
+        "--test",
+        "work_order_intake",
+        "--test",
+        "workplan_registry",
+        "--locked"
+      ],
+      "qualified_source": "177b6ceb65ee1c0b302ba48b9508e922ec92f5bf",
+      "receiving_store_sources_unchanged": true,
+      "passed": 40,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "exit_code": 0,
+      "log": "target/quality/question-writer-integrated.log"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "admiralty-cli",
+        "--bin",
+        "admiralty",
+        "--locked",
+        "native_package::tests"
+      ],
+      "qualified_source": "6f76ed29e2d11278d9834be408f11f98a1b9c019",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 34,
+      "exit_code": 0,
+      "log": "target/quality/intake-package-integrated.log"
+    },
+    {
+      "argv": [
+        "cargo",
+        "run",
+        "-p",
+        "admiralty-cli",
+        "--locked",
+        "--",
+        "contracts",
+        "check"
+      ],
+      "qualified_source": "6f76ed29e2d11278d9834be408f11f98a1b9c019",
+      "public_roots": 22,
+      "drift": false,
+      "exit_code": 0,
+      "log": "target/quality/intake-schema-integrated.log"
+    },
+    {
+      "argv": [
+        "node",
+        "scripts/contracts/generate.mjs",
+        "--check"
+      ],
+      "qualified_source": "6f76ed29e2d11278d9834be408f11f98a1b9c019",
+      "public_roots": 22,
+      "drift": false,
+      "exit_code": 0,
+      "log": "target/quality/intake-ts-drift-integrated.log"
+    },
+    {
+      "argv": [
+        "node",
+        "--test",
+        "packages/contracts/runtime.test.mjs"
+      ],
+      "qualified_source": "6f76ed29e2d11278d9834be408f11f98a1b9c019",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "includes_real_typescript_consumer": true,
+      "exit_code": 0,
+      "log": "target/quality/intake-contract-runtime-integrated.log"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "-p",
+        "admiralty-cli",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "qualified_source": "6f76ed29e2d11278d9834be408f11f98a1b9c019",
+      "exit_code": 0,
+      "log": "target/quality/intake-package-clippy.log"
+    },
+    {
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "qualified_source": "6f76ed29e2d11278d9834be408f11f98a1b9c019",
+      "exit_code": 0,
+      "log": "target/quality/intake-package-fmt.log"
+    }
+  ],
+  "reviews": [
+    {
+      "reviewer": "audit_runtime",
+      "scope": "frozen question module/tests + registration",
+      "result": "clear"
+    },
+    {
+      "reviewer": "audit_product",
+      "scope": "root StoreAuthorities composition and public generator/native closure at6f76ed29",
+      "result": "clear",
+      "new_duplicate_test_runs": false
+    }
+  ],
+  "worker_export_receipt": {
+    "sha256": "4f42e12a7bbfdecea02321312d3e4b086714f8b9c5b29511664ba8b8df452ce8",
+    "contents": {
+      "packet": "Existing public intake contract pipeline completion",
+      "base_revision": "1d00b08f07b53bf32c6d2e513185b6a741da726f",
+      "candidate_commit": "29fc0841042ef7a24855581d710ad652738587e6",
+      "worktree": "/private/tmp/admiralty-contracts-ebc5a8d",
+      "branch": "codex/intake-public-contracts",
+      "observed_utc": "2026-10-19T03:26:17.722099+00:00",
+      "public_roots": [
+        "IntakeBatch",
+        "SourceProvenance",
+        "IntakePreview",
+        "WorkOrderRevision",
+        "RecordIntakeRequest",
+        "RecordIntakeReceipt",
+        "DeliveryRequirement",
+        "DuplicateQuery",
+        "DuplicatePage"
+      ],
+      "source_invariants": {
+        "base": "1d00b08f07b53bf32c6d2e513185b6a741da726f",
+        "owned_files_sha256": {
+          "crates/admiralty-cli/src/main.rs": "d524824902cd291ba942750f4127b50fbff5d03e5474ea4230f9e2d5e77cf696",
+          "scripts/contracts/generate.mjs": "015f5a8a5fd70f95f04582d2ba420e7dca6056903159ca920cc75c065ec5919d",
+          "packages/contracts/README.md": "6084215ea0df1639989fc1e02c0892b14cb9395970e6174e816ba6aea584bb99",
+          "packages/contracts/package.json": "38f449978f8feab08cb5bcf84b5447a8969fb3dc9d892faf16616159c87c2a4e",
+          "packages/contracts/fixtures/public-roots.json": "fcfcbb88ae91b27c1ad8a66de572c30c6e195eb31cb26006b717a1730e27b86a",
+          "packages/contracts/index.ts": "588ee0bdeefa3b2f4841373da4f5ba800fe1eb24057b872036bcd134d3e45fc8",
+          "packages/contracts/runtime.test.mjs": "b5af37856033913f98a6b2ce2b80d74f1011d730ed06e55b6272447b103fe699",
+          "packages/contracts/typecheck.ts": "b90aae78c391b800fe17af635c78f46345f19a5487f334bde18acf0f29955c73",
+          "packages/contracts/generated/validators.mjs": "882021c16aeb020cc66523dc7081d19252ab23ed3ecb03fb066115687f2445f0",
+          "packages/contracts/generated/validators.d.mts": "5eae5b8344b68e0f3c2b424d7e6db7e5ee9216858b2750f9b54f4de7f53a412d",
+          "schemas/intake-batch.schema.json": "a2142b402d6ab14748a86a495eea700a3e2d1aec1170798b54a443c8538889ee",
+          "packages/contracts/generated/intake-batch.ts": "acd55d9d0a3ac9f20e83acdc2c86805b9e6825e7ce9b133b27f641b6bf0e9182",
+          "packages/contracts/generated/validators-intake-batch.mjs": "5958254cdfd6dba966981920781005775d8492a95f8fa57130f65b991c89499d",
+          "schemas/source-provenance.schema.json": "fdf044edf34227c4e15c89268a9ed7ef0894b611fd05eb0529263f7310511555",
+          "packages/contracts/generated/source-provenance.ts": "02bf7024d129aa5be50a1d7700741089fe1d144c4bb58b241c394caeab8e77bd",
+          "packages/contracts/generated/validators-source-provenance.mjs": "8c70bfc4152ced5b874e3fdca52d3728290fe9a8df6e9d08f5cf428a668869d1",
+          "schemas/intake-preview.schema.json": "48a4c8b3a1c7c61a136f62d5ba66517e3fcc1566a694dc915bd5aef176482a9e",
+          "packages/contracts/generated/intake-preview.ts": "e1a06bbdd0da37be3ee5a1650575354e570ad25d9365c3e882ab78d784c74883",
+          "packages/contracts/generated/validators-intake-preview.mjs": "ee50745157dbd809fe3b6fae50eab83bcfb578a17d980e1efe74f913032e37cb",
+          "schemas/work-order-revision.schema.json": "488e7432b5943d7b1ab8ed128b8446f56484dc2542ff486d33eb63e0722c2cf7",
+          "packages/contracts/generated/work-order-revision.ts": "36fb74b53de2673ed88d997fbb390f3aec6e4c48e6d9536797c53d475c8defd9",
+          "packages/contracts/generated/validators-work-order-revision.mjs": "1db742f4e91c499b88ed992e78d37c87bf5a1de90f6bdb8e9a944ba2533ad241",
+          "schemas/record-intake-request.schema.json": "c9089f4c598d4bdb76a8f6db25accc9e3f646087c6f4545b3e24397408b1facf",
+          "packages/contracts/generated/record-intake-request.ts": "24cae9d9bc8f39c23560d044fff87b5a44aa2248647eb6d3cf9e602a34acab76",
+          "packages/contracts/generated/validators-record-intake-request.mjs": "c9bff7e7336da2bcd6a3f60950b1b1ac73cd57a53100623f46b9b79519e80ffd",
+          "schemas/record-intake-receipt.schema.json": "97bea61493a09eb65dbcfe8c1fe6b4afd9ebc314719f3e4a27d1202ccfe4f664",
+          "packages/contracts/generated/record-intake-receipt.ts": "abdeaad5a85a3f2907b0803ff5df2b1414556deda2331444ccb9aa746d3bcc49",
+          "packages/contracts/generated/validators-record-intake-receipt.mjs": "d863a5b64ef876e5c126b95f8cc951057309fedccb6024259f735056da08599f",
+          "schemas/delivery-requirement.schema.json": "455b23d3281d24ff73efc53d01aada5f68606f0544eca9f6d3e1b846a386640c",
+          "packages/contracts/generated/delivery-requirement.ts": "2b146978b7a6df5cf9a5e9406535c0de06834a375d61bee21908ffcac2b69a8f",
+          "packages/contracts/generated/validators-delivery-requirement.mjs": "afb43e8726a9bc4d9696ac9c29b417679fb194926f159bb08f3f563b483ba86b",
+          "schemas/duplicate-query.schema.json": "05f2d879c43053199ce430a5e737a9b3267c782c0bbdbf9788e6fd51026fc6b7",
+          "packages/contracts/generated/duplicate-query.ts": "2d3e6e19226a332113f7d85694fde75bc483507e704059e256eaba7e397909ca",
+          "packages/contracts/generated/validators-duplicate-query.mjs": "7ab1a8da2f8ce40cad5a66bfaf48ff3eaf9f59eb8c050acac1f8c2802c9156f0",
+          "schemas/duplicate-page.schema.json": "ee2c91378916e7b8a3b75c9432db3b5ea0aa623ff6b755d9c95dce09398cef2b",
+          "packages/contracts/generated/duplicate-page.ts": "89c32aa39a0c394d9ab0ee71688bcbfc2dfbd49eb71cd07378eb9e62848726a5",
+          "packages/contracts/generated/validators-duplicate-page.mjs": "bebe9402206810825d98e53d95658135a146c0fa5754c32122a1a9cca43724e2"
+        },
+        "all_old_schemas_types_and_individual_guards_identical": true,
+        "additive_shared_generated_entries": [
+          "packages/contracts/generated/validators.mjs",
+          "packages/contracts/generated/validators.d.mts"
+        ],
+        "old_package_exports_preserved": true,
+        "sideEffects_unchanged_false": true,
+        "trusted_scope_and_policy_not_exported": true,
+        "new_pure_guard_modules": [
+          "validators-intake-batch.mjs",
+          "validators-source-provenance.mjs",
+          "validators-intake-preview.mjs",
+          "validators-work-order-revision.mjs",
+          "validators-record-intake-request.mjs",
+          "validators-record-intake-receipt.mjs",
+          "validators-delivery-requirement.mjs",
+          "validators-duplicate-query.mjs",
+          "validators-duplicate-page.mjs"
+        ]
+      },
+      "source_invariants_sha256": "020818d7ff930f8ffab8db2caa2dbdb505d5124ee6d65fad242a8b8375a64f32",
+      "checks": [
+        {
+          "argv": [
+            "cargo",
+            "run",
+            "-p",
+            "admiralty-cli",
+            "--locked",
+            "--",
+            "contracts",
+            "export"
+          ],
+          "exit": 0,
+          "seconds": 65.62352462485433,
+          "name": "schema-export",
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/schema-export.log",
+          "log_sha256": "2bf68d316af1c1ee3f4475e677e0a23f00259c89ba7d7bac1f32170c049608b1"
+        },
+        {
+          "argv": [
+            "pnpm",
+            "--config.verify-deps-before-run=false",
+            "contracts:generate"
+          ],
+          "exit": 0,
+          "seconds": 0.8433239166624844,
+          "name": "typescript-generate-fixed",
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/typescript-generate-fixed.log",
+          "log_sha256": "e5ef6d26f6a6783f41a53e1ebee4437e7db1a4768308b4f8d37a8dbf44c49313"
+        },
+        {
+          "argv": [
+            "cargo",
+            "test",
+            "-p",
+            "admiralty-core",
+            "--test",
+            "intake_contracts",
+            "--locked"
+          ],
+          "exit": 0,
+          "seconds": 20.21723558427766,
+          "name": "core-intake",
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/core-intake.log",
+          "log_sha256": "ac51eea311b0a33f7dc93209fb537455c8e3cf09d1d644a7b4fc20c1e7b5438d",
+          "actual_rust_summaries": [
+            {
+              "passed": 19,
+              "failed": 0,
+              "ignored": 0,
+              "filtered_out": 0
+            }
+          ]
+        },
+        {
+          "argv": [
+            "cargo",
+            "test",
+            "-p",
+            "admiralty-cli",
+            "--bin",
+            "admiralty",
+            "--locked",
+            "tests::public_"
+          ],
+          "exit": 0,
+          "seconds": 0.23216529097408056,
+          "name": "cli-public-scoped",
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/cli-public-scoped.log",
+          "log_sha256": "20dbdc9edceb99e21ed962e516084eb18c8459c408203f7b1a611be271d2b6d4",
+          "actual_rust_summaries": [
+            {
+              "passed": 3,
+              "failed": 0,
+              "ignored": 0,
+              "filtered_out": 41
+            }
+          ]
+        },
+        {
+          "argv": [
+            "cargo",
+            "test",
+            "-p",
+            "admiralty-cli",
+            "--bin",
+            "admiralty",
+            "--locked",
+            "tests::schema_check_detects_missing_and_modified_files"
+          ],
+          "exit": 0,
+          "seconds": 0.506288125179708,
+          "name": "cli-schema-drift-test",
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/cli-schema-drift-test.log",
+          "log_sha256": "f1ef02f790daa0b5d8a7561b67bfbfc1a3062f11c93b99643450a4cb3200d333",
+          "actual_rust_summaries": [
+            {
+              "passed": 1,
+              "failed": 0,
+              "ignored": 0,
+              "filtered_out": 43
+            }
+          ]
+        },
+        {
+          "argv": [
+            "cargo",
+            "test",
+            "-p",
+            "admiralty-cli",
+            "--bin",
+            "admiralty",
+            "--locked",
+            "tests::shared_decimal_counter_fixtures_match_exact_rust_wire_range"
+          ],
+          "exit": 0,
+          "seconds": 0.08046850003302097,
+          "name": "cli-shared-decimal",
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/cli-shared-decimal.log",
+          "log_sha256": "3c7218b773a37b8e59fe0bdb12a20cb1af6bbe157e88ffb91777b9bd2634187f",
+          "actual_rust_summaries": [
+            {
+              "passed": 1,
+              "failed": 0,
+              "ignored": 0,
+              "filtered_out": 43
+            }
+          ]
+        },
+        {
+          "argv": [
+            "cargo",
+            "run",
+            "-p",
+            "admiralty-cli",
+            "--locked",
+            "--",
+            "contracts",
+            "check"
+          ],
+          "exit": 0,
+          "seconds": 2.151375999674201,
+          "name": "rust-schema-drift",
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/rust-schema-drift.log",
+          "log_sha256": "01f738c5873b0c7480e72e4dcbac508429bf98de377af7a6ee09537bc8b30ff8"
+        },
+        {
+          "argv": [
+            "cargo",
+            "clippy",
+            "-p",
+            "admiralty-cli",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit": 0,
+          "seconds": 25.709681499749422,
+          "name": "cli-strict-clippy",
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/cli-strict-clippy.log",
+          "log_sha256": "afb7b76ebf1f7911a2b6801fdf221b402ee9e40e18b6b8b72bb4ece4d6edb5bc"
+        },
+        {
+          "argv": [
+            "cargo",
+            "fmt",
+            "--all",
+            "--",
+            "--check"
+          ],
+          "exit": 0,
+          "seconds": 1.1407975000329316,
+          "name": "format",
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/format.log",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "argv": [
+            "pnpm",
+            "--config.verify-deps-before-run=false",
+            "contracts:check"
+          ],
+          "exit": 0,
+          "seconds": 0.9296587500721216,
+          "name": "contracts-drift",
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/contracts-drift.log",
+          "log_sha256": "2e59ee0f3a4140b858021272dab3e4bc965d48f0c7e6d0b7612136a5e5b7d319"
+        },
+        {
+          "argv": [
+            "pnpm",
+            "--config.verify-deps-before-run=false",
+            "--dir",
+            "packages/contracts",
+            "test"
+          ],
+          "exit": 0,
+          "seconds": 3.0305363326333463,
+          "name": "contracts-runtime-with-tooling",
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/contracts-runtime-with-tooling.log",
+          "log_sha256": "6f481615e01a1b629b78de7ab0ee1cb92f1c236ecd452f5b4dbb313699850c3e",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "includes_real_typescript_consumer": true
+        }
+      ],
+      "preserved_failed_evidence": [
+        {
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/typescript-generate.log",
+          "sha256": "e5813ded6b753985a4fe515aef9e4af8277c9f3cd3adf9cb43b0afe2409f763a",
+          "interpretation": "pnpm11 automatically attempted dependency install and aborted before module removal on non-TTY; subsequent commands explicitly disable before-run install and reuse pinned dependencies"
+        },
+        {
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/typescript-generate-no-install.log",
+          "sha256": "5242209bed45650cdc440ac09c37937112ab3f0b39cabf33d728b5514a961a06",
+          "interpretation": "Existing generator misclassified a domain property named format as a schema annotation; schema-map traversal repaired, strict unsupported-annotation regression retained"
+        },
+        {
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/contracts-runtime.log",
+          "sha256": "58e829c3706a223dcaa6f303e3a02ae898da61a3edb2da74ec4380f99425a054",
+          "interpretation": "Local TypeScript tool discovery missing in isolated checkout; actual existing dashboard tooling supplied via NODE_PATH, no dependency installation"
+        },
+        {
+          "log": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/cli-public-fixtures.log",
+          "sha256": "9794ea2db604b1f61cd6253b7232cec2ed56fcb6969e7703ad8db6b966cf3957",
+          "interpretation": "Broad filter also selected actual native_package staged closure; three intended CLI fixtures pass, packaging rejects nine unknown siblings until separately owned paired root repair"
+        }
+      ],
+      "environment": {
+        "platform": "darwin",
+        "architecture": "arm64",
+        "cargo_target_dir": "/Users/bentaylor/Documents/ChatGPT/admiralty/target/public-intake-contracts",
+        "cargo_build_jobs": 1,
+        "rust_test_threads": 1,
+        "canonical_owner_only_tmpdir": "/private/tmp/adm-intake-contracts-1d00b08-k3u_msvm/tmp",
+        "pnpm_command_local_verify_deps_before_run": false,
+        "existing_dashboard_tooling_NODE_PATH": "/Users/bentaylor/Documents/ChatGPT/admiralty/apps/dashboard/node_modules",
+        "dependency_install_or_purge_completed": false
+      },
+      "trusted_inputs_not_exported": [
+        "AuthorizedIntakeScope",
+        "IntakePolicy"
+      ],
+      "scope_unchanged": [
+        "core intake/wire behavior",
+        "Store/server/action authorities",
+        "CLI execution",
+        "UI",
+        "rollout",
+        "execution ledger",
+        "CI",
+        "dependency versions/lockfiles"
+      ],
+      "paired_root_packaging_dependency": {
+        "required": true,
+        "file": "crates/admiralty-cli/src/native_package.rs",
+        "exact_new_siblings": [
+          "validators-intake-batch.mjs",
+          "validators-source-provenance.mjs",
+          "validators-intake-preview.mjs",
+          "validators-work-order-revision.mjs",
+          "validators-record-intake-request.mjs",
+          "validators-record-intake-receipt.mjs",
+          "validators-delivery-requirement.mjs",
+          "validators-duplicate-query.mjs",
+          "validators-duplicate-page.mjs"
+        ],
+        "current_observation": "Existing actual staged real generated closure test rejects the new unknown dependencies; not passing until separate root integration",
+        "preserve": [
+          "explicit per-module byte/hash allowlist",
+          "all siblings explicit and hash-bound",
+          "missing-sibling before staging refusal",
+          "unknown-loader/path refusal",
+          "real staged Node import and runtime guards"
+        ]
+      },
+      "limits": [
+        "Generated guards validate existing Rust structural schemas, not semantic byte/depth/count bounds, source hashes, policy/scope authentication, CAS, custody, delivery, dispatch or acceptance.",
+        "Canonical positive u64 generation string schema enforced without coercion: zero, numbers, leading zeros and overflow reject; large values retain exact bytes.",
+        "ArtifactClaim and attribution remain untrusted data; a structurally valid altered policy digest may pass schema validation but fails current Rust policy validation.",
+        "No core domain models invented or changed; parent P02/P06/P13 acceptance remains separate.",
+        "No provider/fleet/credential/service/CI activity, broad unchanged suites, or production activation by this packet.",
+        "Native package closure integration is an actual outstanding source dependency, not silently skipped qualification."
+      ],
+      "tracked_worktree_clean": true,
+      "untracked_preserved": [
+        "pre-existing .private-tmp/",
+        "local node_modules symlink to existing shared dependency installation; no shared mutation"
+      ]
+    }
+  },
+  "export_invariants": {
+    "sha256": "020818d7ff930f8ffab8db2caa2dbdb505d5124ee6d65fad242a8b8375a64f32",
+    "contents": {
+      "base": "1d00b08f07b53bf32c6d2e513185b6a741da726f",
+      "owned_files_sha256": {
+        "crates/admiralty-cli/src/main.rs": "d524824902cd291ba942750f4127b50fbff5d03e5474ea4230f9e2d5e77cf696",
+        "scripts/contracts/generate.mjs": "015f5a8a5fd70f95f04582d2ba420e7dca6056903159ca920cc75c065ec5919d",
+        "packages/contracts/README.md": "6084215ea0df1639989fc1e02c0892b14cb9395970e6174e816ba6aea584bb99",
+        "packages/contracts/package.json": "38f449978f8feab08cb5bcf84b5447a8969fb3dc9d892faf16616159c87c2a4e",
+        "packages/contracts/fixtures/public-roots.json": "fcfcbb88ae91b27c1ad8a66de572c30c6e195eb31cb26006b717a1730e27b86a",
+        "packages/contracts/index.ts": "588ee0bdeefa3b2f4841373da4f5ba800fe1eb24057b872036bcd134d3e45fc8",
+        "packages/contracts/runtime.test.mjs": "b5af37856033913f98a6b2ce2b80d74f1011d730ed06e55b6272447b103fe699",
+        "packages/contracts/typecheck.ts": "b90aae78c391b800fe17af635c78f46345f19a5487f334bde18acf0f29955c73",
+        "packages/contracts/generated/validators.mjs": "882021c16aeb020cc66523dc7081d19252ab23ed3ecb03fb066115687f2445f0",
+        "packages/contracts/generated/validators.d.mts": "5eae5b8344b68e0f3c2b424d7e6db7e5ee9216858b2750f9b54f4de7f53a412d",
+        "schemas/intake-batch.schema.json": "a2142b402d6ab14748a86a495eea700a3e2d1aec1170798b54a443c8538889ee",
+        "packages/contracts/generated/intake-batch.ts": "acd55d9d0a3ac9f20e83acdc2c86805b9e6825e7ce9b133b27f641b6bf0e9182",
+        "packages/contracts/generated/validators-intake-batch.mjs": "5958254cdfd6dba966981920781005775d8492a95f8fa57130f65b991c89499d",
+        "schemas/source-provenance.schema.json": "fdf044edf34227c4e15c89268a9ed7ef0894b611fd05eb0529263f7310511555",
+        "packages/contracts/generated/source-provenance.ts": "02bf7024d129aa5be50a1d7700741089fe1d144c4bb58b241c394caeab8e77bd",
+        "packages/contracts/generated/validators-source-provenance.mjs": "8c70bfc4152ced5b874e3fdca52d3728290fe9a8df6e9d08f5cf428a668869d1",
+        "schemas/intake-preview.schema.json": "48a4c8b3a1c7c61a136f62d5ba66517e3fcc1566a694dc915bd5aef176482a9e",
+        "packages/contracts/generated/intake-preview.ts": "e1a06bbdd0da37be3ee5a1650575354e570ad25d9365c3e882ab78d784c74883",
+        "packages/contracts/generated/validators-intake-preview.mjs": "ee50745157dbd809fe3b6fae50eab83bcfb578a17d980e1efe74f913032e37cb",
+        "schemas/work-order-revision.schema.json": "488e7432b5943d7b1ab8ed128b8446f56484dc2542ff486d33eb63e0722c2cf7",
+        "packages/contracts/generated/work-order-revision.ts": "36fb74b53de2673ed88d997fbb390f3aec6e4c48e6d9536797c53d475c8defd9",
+        "packages/contracts/generated/validators-work-order-revision.mjs": "1db742f4e91c499b88ed992e78d37c87bf5a1de90f6bdb8e9a944ba2533ad241",
+        "schemas/record-intake-request.schema.json": "c9089f4c598d4bdb76a8f6db25accc9e3f646087c6f4545b3e24397408b1facf",
+        "packages/contracts/generated/record-intake-request.ts": "24cae9d9bc8f39c23560d044fff87b5a44aa2248647eb6d3cf9e602a34acab76",
+        "packages/contracts/generated/validators-record-intake-request.mjs": "c9bff7e7336da2bcd6a3f60950b1b1ac73cd57a53100623f46b9b79519e80ffd",
+        "schemas/record-intake-receipt.schema.json": "97bea61493a09eb65dbcfe8c1fe6b4afd9ebc314719f3e4a27d1202ccfe4f664",
+        "packages/contracts/generated/record-intake-receipt.ts": "abdeaad5a85a3f2907b0803ff5df2b1414556deda2331444ccb9aa746d3bcc49",
+        "packages/contracts/generated/validators-record-intake-receipt.mjs": "d863a5b64ef876e5c126b95f8cc951057309fedccb6024259f735056da08599f",
+        "schemas/delivery-requirement.schema.json": "455b23d3281d24ff73efc53d01aada5f68606f0544eca9f6d3e1b846a386640c",
+        "packages/contracts/generated/delivery-requirement.ts": "2b146978b7a6df5cf9a5e9406535c0de06834a375d61bee21908ffcac2b69a8f",
+        "packages/contracts/generated/validators-delivery-requirement.mjs": "afb43e8726a9bc4d9696ac9c29b417679fb194926f159bb08f3f563b483ba86b",
+        "schemas/duplicate-query.schema.json": "05f2d879c43053199ce430a5e737a9b3267c782c0bbdbf9788e6fd51026fc6b7",
+        "packages/contracts/generated/duplicate-query.ts": "2d3e6e19226a332113f7d85694fde75bc483507e704059e256eaba7e397909ca",
+        "packages/contracts/generated/validators-duplicate-query.mjs": "7ab1a8da2f8ce40cad5a66bfaf48ff3eaf9f59eb8c050acac1f8c2802c9156f0",
+        "schemas/duplicate-page.schema.json": "ee2c91378916e7b8a3b75c9432db3b5ea0aa623ff6b755d9c95dce09398cef2b",
+        "packages/contracts/generated/duplicate-page.ts": "89c32aa39a0c394d9ab0ee71688bcbfc2dfbd49eb71cd07378eb9e62848726a5",
+        "packages/contracts/generated/validators-duplicate-page.mjs": "bebe9402206810825d98e53d95658135a146c0fa5754c32122a1a9cca43724e2"
+      },
+      "all_old_schemas_types_and_individual_guards_identical": true,
+      "additive_shared_generated_entries": [
+        "packages/contracts/generated/validators.mjs",
+        "packages/contracts/generated/validators.d.mts"
+      ],
+      "old_package_exports_preserved": true,
+      "sideEffects_unchanged_false": true,
+      "trusted_scope_and_policy_not_exported": true,
+      "new_pure_guard_modules": [
+        "validators-intake-batch.mjs",
+        "validators-source-provenance.mjs",
+        "validators-intake-preview.mjs",
+        "validators-work-order-revision.mjs",
+        "validators-record-intake-request.mjs",
+        "validators-record-intake-receipt.mjs",
+        "validators-delivery-requirement.mjs",
+        "validators-duplicate-query.mjs",
+        "validators-duplicate-page.mjs"
+      ]
+    }
+  },
+  "native_package": {
+    "validator_leaf_count": 19,
+    "public_root_guards": 22,
+    "exact_allowlist": true,
+    "discovery_or_loader_widening": false,
+    "actual_staged_node_import": true
+  },
+  "environment": {
+    "platform": "darwin",
+    "architecture": "arm64",
+    "jobs": 1,
+    "test_threads": 1,
+    "TMPDIR": "/private/tmp/adm-native-4pbrtc1l",
+    "CARGO_TARGET_DIR": "/Users/bentaylor/Documents/ChatGPT/admiralty/target"
+  },
+  "limits": [
+    "No production issuer, HTTP intake/question route, outbox dispatch, provider delivery or effective decision authority",
+    "Structural guards do not establish semantic validity, trusted scope/policy, custody, CAS or acceptance",
+    "36 original schema/type/individual-validator artifacts byte-identical; unchanged v1 contracts",
+    "Worker earlier broad152 Store result predates final guards; not final-source coverage",
+    "Initial schema-map format traversal and package closure failures retained in embedded worker receipt; paired root package repair now passes",
+    "No parent P02/P05/P13 acceptance or general coding execution qualification"
+  ],
+  "parent_acceptance": false,
+  "native_execution_qualified": false,
+  "provider_turns": 0
+}

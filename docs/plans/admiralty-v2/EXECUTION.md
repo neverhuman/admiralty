@@ -1536,3 +1536,42 @@ Production coding execution remains false. Both previous provider grants are
 consumed. Minimal auth-profile metadata passes, but no new provider grant was
 issued while coordinating its existing dedicated slice with the newly observed
 fleetcap wrapper requirement. Other implementation continues independently.
+
+### Questions, public intake and native package closure — 2026-10-19T03:40Z
+
+Source6f76ed29e2d11278d9834be408f11f98a1b9c019 composes the existing question
+journal with startup-only current authority on the sole Store writer. Original
+contract/provenance and immutable retry receipts survive contract revisions;
+fresh stale actions/reads deny. `StoreAuthorities` preserves the lifecycle,
+enriched-intake and raw-capture policies alongside questions. No production
+issuer, route, autoanswer, effective decision or outbox dispatch is activated.
+
+Nine frozen intake roots now use the existing Rust schema, TypeScript and
+runtime-guard pipeline. All36 prior schema/type/individual-validator outputs
+retain their bytes. The native packager adds nine exact validator siblings,
+retains unknown loader/path rejection and imports the real staged22-root entry
+in Node. The generator now distinguishes a domain field named `format` from a
+schema annotation; genuine unsupported annotations still fail.
+
+The composed source passes40 focused Store checks,10 native-package checks,
+13 contract runtime checks including the actual TypeScript consumer, both
+22-root drift checks, strict Store/CLI Clippy and formatting. Independent review
+clears the question module, composed startup plumbing and paired generator/
+package closure. [Source-bound evidence](../../../receipts/integration/question-intake-package-20261019T0340Z.json)
+retains earlier failed evidence and the narrower scope of historical tests.
+
+The [P02 criterion audit](../../../receipts/integration/p02-criterion-audit-20261019T0330Z.json)
+does not accept P02: deterministic reducer/configuration and the22-root export
+pass, while the complete coordination/cursor/interface inventory and scheduling/
+delivery amendments remain open. Local disjoint workers own the additive v2
+envelope, bundled-timezone scheduling and verified-dialect read-only todoq
+import. The existing Gemini S1 lane owns pure delivery/attention projections.
+Root owns shared module/dependency/schema integration. No CI cleanup worker is
+assigned; CI failures remain on the canonical backlog.
+
+Root independently verified live40501925ae2a8906532ed5f709cda83a5898c675
+at03:37:53Z: all14 deployment hashes, both current executable paths/start ticks,
+health/UI/feed200 and18891redirect307. Earlier90e PID disappearance coincided
+with newer deployments, not a proven crash. No retired owned Python producer
+was found. [Independent deployment evidence](../../../receipts/integration/native-40501925-independent-20261019T0337Z.json)
+leaves general coding execution false and accepted parents2/32 unchanged.
