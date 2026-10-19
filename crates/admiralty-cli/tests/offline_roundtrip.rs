@@ -675,6 +675,51 @@ fn offline_task_message_and_restart_roundtrip_preserves_scope_without_activation
 }
 
 #[test]
+fn workplan_source_preview_exposes_reviewable_markdown_and_typed_toml() {
+    let fixture = private_fixture_root();
+    let root = fixture.path();
+    let markdown = root.join("tasks.md");
+    write_private(
+        &markdown,
+        b"| id | title | status |\n| --- | --- | --- |\n| T1 | explicit task | PASS |\n",
+    );
+    let result = invoke_json(
+        root,
+        string_args(&[
+            "workplan",
+            "preview",
+            "--file",
+            &markdown.display().to_string(),
+            "--format",
+            "markdown",
+        ]),
+    );
+    assert_eq!(result["source"]["observed_tasks"][0]["original_id"], "T1");
+    assert_eq!(
+        result["source"]["observed_tasks"][0]["legacy_status"],
+        "PASS"
+    );
+    assert!(result["source"]["canonical_workplan"].is_null());
+    assert_eq!(result["execution_started"], false);
+    let toml = root.join("plan.toml");
+    write_private(&toml, b"schema_version = 1\nplan_id = 'empty'\nrevision = 1\nproject_id = 'project'\ntasks = []\n");
+    let result = invoke_json(
+        root,
+        string_args(&[
+            "workplan",
+            "preview",
+            "--file",
+            &toml.display().to_string(),
+            "--format",
+            "toml",
+        ]),
+    );
+    assert_eq!(result["source"]["canonical_workplan"]["plan_id"], "empty");
+    assert_eq!(result["source"]["execution_granted"], false);
+    assert_eq!(fs::read_dir(root).expect("fixture files").count(), 2);
+}
+
+#[test]
 fn workplan_cli_preserves_preview_and_durable_revisions_without_task_submission() {
     let fixture = private_fixture_root();
     let root = fixture.path();

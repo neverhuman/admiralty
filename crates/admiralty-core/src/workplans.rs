@@ -1,4 +1,5 @@
-//! Bounded, preview-only import of JSON workplans.
+//! Bounded, preview-only import of workplans.
+pub mod source;
 use crate::{ProjectId, TaskContract, TaskId, content_digest};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

@@ -228,3 +228,105 @@ fn cyclic_dependencies_are_rejected_before_import() {
         Err(WorkplanError::DependencyCycle)
     );
 }
+
+#[test]
+fn typed_toml_and_json_preserve_canonical_identity_but_bind_original_source() {
+    use admiralty_core::workplans::source::{PlanSource, preview_source};
+    let json =
+        br#"{"schema_version":1,"plan_id":"empty","revision":1,"project_id":"project","tasks":[]}"#;
+    let toml = b"schema_version = 1\nplan_id = 'empty'\nrevision = 1\nproject_id = 'project'\ntasks = []\n";
+    let a = preview_source(json, PlanSource::Json).expect("typed JSON");
+    let b = preview_source(toml, PlanSource::Toml).expect("typed TOML");
+    assert_eq!(a.canonical_workplan, b.canonical_workplan);
+    assert_eq!(a.canonical_digest, b.canonical_digest);
+    assert_ne!(a.source_digest, b.source_digest);
+    assert_eq!(b, preview_source(toml, PlanSource::Toml).expect("replay"));
+    assert!(!b.execution_granted);
+    let invalid = [toml.as_slice(), b"legacy_status = 'PASS'\n"].concat();
+    assert!(preview_source(&invalid, PlanSource::Toml).is_err());
+}
+
+#[test]
+fn typed_toml_checks_real_task_contracts_and_dependency_cycles() {
+    use admiralty_core::workplans::source::{PlanSource, preview_source};
+    let task = r#"
+[[tasks]]
+schema_version = 1
+project_id = 'project'
+root_id = 'root'
+task_id = 'TASK'
+revision = 1
+title = 'Original task'
+objective = 'Preserve a complete typed contract'
+non_goals = []
+owned_paths = ['src']
+forbidden_paths = []
+read_first = []
+dependencies = []
+criteria = [{ id = 'c', text = 'Check passes', check_ids = ['unit'] }]
+checks = [{ id = 'unit', program = 'cargo', args = ['test'], cwd = '.', timeout_secs = 30 }]
+authority_ref = 'fixture'
+max_attempts = 1
+simulated = true
+"#;
+    let source = format!(
+        "schema_version = 1\nplan_id = 'plan'\nrevision = 1\nproject_id = 'project'\n{task}"
+    );
+    let preview = preview_source(source.as_bytes(), PlanSource::Toml).expect("complete task");
+    let plan = preview.canonical_workplan.expect("canonical workplan");
+    assert_eq!(plan.tasks[0].task_id.as_str(), "TASK");
+    let bytes = serde_json::to_vec(&plan).expect("JSON contract");
+    let json_preview = preview_source(&bytes, PlanSource::Json).expect("same validation");
+    assert_eq!(preview.canonical_digest, json_preview.canonical_digest);
+    let cycle = source.replace("dependencies = []", "dependencies = ['TASK']");
+    assert!(preview_source(cycle.as_bytes(), PlanSource::Toml).is_err());
+    let missing = source.replace("check_ids = ['unit']", "check_ids = ['unknown']");
+    assert!(preview_source(missing.as_bytes(), PlanSource::Toml).is_err());
+}
+
+#[test]
+fn markdown_retains_original_ids_spans_and_unknown_acceptance_for_review() {
+    use admiralty_core::workplans::source::{PlanSource, preview_source};
+    let source = "# Plan 🧭\r\n| id | title | dependencies | owned_paths | criteria | status |\r\n| --- | --- | --- | --- | --- | --- |\r\n| TASK-1 | Vérify | TASK-0 | src | tests pass | PASS |\r\n- [x] completed\r\n";
+    let preview = preview_source(source.as_bytes(), PlanSource::Markdown).expect("preview");
+    let task = &preview.observed_tasks[0];
+    assert_eq!(task.original_id, "TASK-1");
+    assert_eq!(task.dependencies, ["TASK-0"]);
+    assert_eq!(task.criteria, ["tests pass"]);
+    assert_eq!(task.owned_paths, ["src"]);
+    assert_eq!(task.legacy_status.as_deref(), Some("PASS"));
+    assert!(
+        source[task.source_span.start as usize..task.source_span.end as usize]
+            .starts_with("| TASK-1 |")
+    );
+    assert!(preview.canonical_workplan.is_none());
+    assert!(preview.canonical_digest.is_none());
+    assert_eq!(preview.diagnostics.len(), 2);
+    assert!(!preview.execution_granted);
+    assert_eq!(
+        preview,
+        preview_source(source.as_bytes(), PlanSource::Markdown).expect("replay")
+    );
+}
+
+#[test]
+fn markdown_code_blocks_duplicate_ids_and_ambiguous_rows_do_not_become_contracts() {
+    use admiralty_core::workplans::source::{PlanSource, preview_source};
+    let source = b"```md\n| id | title |\n| hidden | never import |\n```\n| id | title |\n| A | one |\n| A | two |\n| B | extra | column |\n";
+    let result = preview_source(source, PlanSource::Markdown).expect("bounded preview");
+    assert_eq!(result.observed_tasks.len(), 2);
+    assert!(
+        result
+            .diagnostics
+            .iter()
+            .any(|d| d.reason.contains("duplicate original"))
+    );
+    assert!(
+        result
+            .diagnostics
+            .iter()
+            .any(|d| d.reason.contains("ambiguous table"))
+    );
+    assert!(result.canonical_workplan.is_none());
+    assert!(preview_source(&vec![b' '; MAX_WORKPLAN_BYTES + 1], PlanSource::Markdown).is_err());
+}
