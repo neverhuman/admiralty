@@ -1,4 +1,5 @@
 //! Single-owner durable event store. Replay only applies the pure domain reducer.
+pub mod admission_fence;
 pub mod admission_reservations;
 pub mod artifacts;
 pub mod attention;
@@ -186,6 +187,8 @@ pub enum StoreError {
     #[error(transparent)]
     InferenceSlot(#[from] inference_slots::SlotStoreError),
     #[error(transparent)]
+    AdmissionFence(#[from] admission_fence::FenceError),
+    #[error(transparent)]
     Inbox(#[from] inbox::InboxError),
     #[error("store already has an owner")]
     AlreadyOwned,
@@ -305,6 +308,9 @@ pub struct StoreAuthorities {
     pub attention: Option<Arc<dyn attention::AttentionAuthority>>,
     pub reservations: Option<Arc<dyn admission_reservations::ReservationAuthority>>,
     pub inference_slots: Option<Arc<dyn inference_slots::InferenceSlotAuthority>>,
+    /// Optional retained policy lease for an explicit admission-only profile.
+    /// No request can select/replace it; absent preserves sampled semantics.
+    pub admission_fence: Option<Arc<dyn admission_fence::AdmissionCommitFence>>,
 }
 
 enum Request {
@@ -688,6 +694,7 @@ impl Store {
                     writer.attention_authority = authorities.attention;
                     writer.reservation_authority = authorities.reservations;
                     writer.inference_slot_authority = authorities.inference_slots;
+                    writer.admission_fence = authorities.admission_fence;
                     if ready_tx.send(Ok(())).is_ok() {
                         writer.run(receiver, writer_changes);
                     }
@@ -1685,6 +1692,7 @@ struct Writer {
     attention_authority: Option<Arc<dyn attention::AttentionAuthority>>,
     reservation_authority: Option<Arc<dyn admission_reservations::ReservationAuthority>>,
     inference_slot_authority: Option<Arc<dyn inference_slots::InferenceSlotAuthority>>,
+    admission_fence: Option<Arc<dyn admission_fence::AdmissionCommitFence>>,
     _lock: File,
 }
 
@@ -1776,6 +1784,7 @@ impl Writer {
             attention_authority: None,
             reservation_authority: None,
             inference_slot_authority: None,
+            admission_fence: None,
             _lock: lock,
         })
     }
@@ -1804,6 +1813,12 @@ impl Writer {
                     reply,
                 } => {
                     let result = (|| {
+                        // This optional profile has no independently installed
+                        // setup/mutation issuer. A write proof for an atomic
+                        // admission cannot be downgraded to standalone work.
+                        if self.admission_fence.is_some() {
+                            return Err(admission_fence::FenceError::Denied.into());
+                        }
                         if !matches!(command.event, inference_slots::SlotEvent::SetPool { .. }) {
                             return Err(StoreError::Invalid(
                                 "inference holds require atomic admission".into(),
@@ -1880,6 +1895,9 @@ impl Writer {
                     reply,
                 } => {
                     let result = (|| {
+                        if self.admission_fence.is_some() {
+                            return Err(admission_fence::FenceError::Denied.into());
+                        }
                         if command.launch_intent_digest.is_some() {
                             return Err(StoreError::Invalid(
                                 "launch-bound reservation requires the atomic claim path".into(),
@@ -2439,6 +2457,15 @@ impl Writer {
         )>,
         slot: Option<(&inference_slots::SlotCommand, &inference_slots::SlotProof)>,
     ) -> Result<AdmissionAppendReceipt> {
+        // Once trusted startup selects the protected profile, omitting the
+        // slotted mode cannot consume an issued budget proof via a weaker path.
+        // The unfenced ordinary/budget-only profile remains compatible.
+        if self.admission_fence.is_some()
+            && matches!(input.event, DomainEvent::TaskClaimed { .. })
+            && (reservation.is_none() || slot.is_none())
+        {
+            return Err(admission_fence::FenceError::Denied.into());
+        }
         if let Some((slot, _)) = slot {
             let (budget, _) = reservation
                 .ok_or_else(|| StoreError::Invalid("slot admission requires budget".into()))?;
@@ -2454,10 +2481,7 @@ impl Writer {
             observed_utc,
             intent,
         } = input;
-        let tx = self
-            .connection
-            .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        if let Some((command, proof)) = reservation {
+        if let Some((command, _)) = reservation {
             validate_reserved_claim(&source, &event, command)?;
             if command.launch_intent_digest.as_deref()
                 != intent.as_ref().map(|v| v.intent_digest.as_str())
@@ -2466,6 +2490,40 @@ impl Writer {
                     "reservation is not bound to the exact launch intent".into(),
                 ));
             }
+        }
+        // Clone before borrowing the connection. The lease borrows this local
+        // Arc, never the mutable Writer, and lives across every transaction
+        // outcome (including replay, incident-only commit, rollback/error).
+        let fence = self.admission_fence.clone();
+        let _admission_guard = match (&fence, reservation, slot) {
+            (Some(fence), Some((budget, budget_proof)), Some((slot, slot_proof))) => {
+                Some(fence.try_acquire(
+                    &admission_fence::AdmissionFenceBinding {
+                        source: &source,
+                        source_seq,
+                        event: &event,
+                        event_digest: &incoming_digest,
+                        observed_utc: &observed_utc,
+                        effect: intent.as_ref().map(|v| LifecycleEffect {
+                            idempotency_key: &v.idempotency_key,
+                            payload: &v.payload,
+                            payload_digest: &v.payload_digest,
+                            intent_digest: &v.intent_digest,
+                            not_before: v.not_before,
+                        }),
+                        budget,
+                        slot,
+                    },
+                    budget_proof.as_ref(),
+                    slot_proof.as_ref(),
+                )?)
+            }
+            _ => None,
+        };
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if let Some((command, proof)) = reservation {
             let task = reservation_task_id(command).and_then(|id| self.projection.tasks.get(id));
             // Protected requests may not even publish collision incidents
             // after revocation. The ordinary append path remains unchanged.
