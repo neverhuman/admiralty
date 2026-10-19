@@ -532,6 +532,17 @@ pub fn propose_placement_recorded(
                 reject("continuation spool reserve insufficient");
                 continue;
             }
+            // The recorded permit reserve is a requirement, not proof that
+            // those bytes remain free after disconnected spool growth.
+            let required_spool = p
+                .spool_reserve
+                .parse()?
+                .max(p.minimum_spool_reserve.parse()?);
+            if !matches!(&o.spool_free.value, Known::Known { value } if value.parse()? >= required_spool)
+            {
+                reject("continuation spool reserve depleted");
+                continue;
+            }
             Some(p.permit_id.clone())
         };
         let locality_score = request
