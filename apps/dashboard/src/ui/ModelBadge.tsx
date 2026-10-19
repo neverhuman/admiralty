@@ -3,13 +3,14 @@ import './legacy-hierarchy.css';
 export type ModelBadgeProps = { model: string; effort?: string; tier?: string };
 
 /** Color describes a reported model family; it grants no routing or execution authority. */
-export function modelFamily(model: string): 'local' | 'luna' | 'sol' | 'astra' | 'gemini' | 'claude' | 'unknown' {
+export function modelFamily(model: string): 'local' | 'luna' | 'sol' | 'astra' | 'gemini' | 'claude' | 'grok' | 'unknown' {
   const name = model.toLowerCase();
   if (/\bastra\b/.test(name)) return 'astra';
   if (/\bluna\b/.test(name)) return 'luna';
   if (/\b(sol|terra)\b/.test(name)) return 'sol';
   if (/\bgemini\b|^agy(?:\s|\/|$)/.test(name)) return 'gemini';
   if (/\bclaude\b/.test(name)) return 'claude';
+  if (/\bgrok\b/.test(name)) return 'grok';
   if (/\bornith\b|\blocal\b|\bollama\b|\blm[ -]?studio\b|\bllama\.cpp\b|\bvllm\b/.test(name)) return 'local';
   return 'unknown';
 }

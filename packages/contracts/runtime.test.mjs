@@ -110,7 +110,7 @@ test('standalone package entry has no compiler dependency and exports supported 
   assert.equal(SUPPORTED_SCHEMA_VERSION, 1);
   const generated = path.join(root, 'packages/contracts/generated');
   const runtimeModules = (await readdir(generated)).filter(name => /^validators(?:-[a-z-]+)?\.mjs$/.test(name));
-  assert.equal(runtimeModules.length, 10, 'compatibility entry, shared base and eight separate public roots');
+  assert.equal(runtimeModules.length, 11, 'compatibility entry, shared base and nine separate public roots');
   for (const name of runtimeModules) {
     const source = await readFile(path.join(generated, name), 'utf8');
     assert.doesNotMatch(source, /\brequire\s*\(|\bimport\s|\beval\s*\(|\bnew Function\s*\(/, name);
@@ -228,7 +228,7 @@ function rejectUnchanged(validate, value) {
 
 test('all eight public roots share Rust roundtrip fixtures and package guards', async () => {
   const publicApi = await import('@admiralty/contracts');
-  assert.equal(Object.keys(CONTRACT_SCHEMA_FINGERPRINTS).length, 12);
+  assert.equal(Object.keys(CONTRACT_SCHEMA_FINGERPRINTS).length, 13);
   assert.deepEqual(Object.keys(publicFixtures).sort(), Object.keys(publicValidators).sort());
   for (const [name, validate] of Object.entries(publicValidators)) {
     const fixture = structuredClone(publicFixtures[name]);

@@ -7,3 +7,5 @@
 .legacy-alert-task-ids{font-family:ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere}
 .app.theme-light .legacy-alert.legacy-alert-evidence,.app.theme-light.fleet-console .legacy-alert.legacy-alert-evidence{background:#edf4ff;border-color:#8daed3;color:#1e3f66}
 .app.theme-light .legacy-alert.legacy-alert-warning,.app.theme-light.fleet-console .legacy-alert.legacy-alert-warning{background:#fff8e7;border-color:#bea76d;color:#5c4813}
+
+.legacy-live-link{color:#8fc2ff;font-size:12px}.app.theme-light .legacy-live-link{color:#205a9e}

@@ -1,0 +1,828 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRoute } from "../../router";
+import {
+  age,
+  type GitCheckout,
+  type ViewProject,
+  type ViewsSnapshot,
+} from "./feed";
+import { layoutGit, type GitLayout } from "./geometry";
+import { useSize, type Selection } from "./LiveViews";
+import { changeParams, palette } from "./FleetAtlas";
+
+let viewMemory = { zoom: 0.9, left: 0, top: 0, follow: true, inventory: false };
+const colors = [
+  palette.gemini,
+  palette.claude,
+  palette.luna,
+  palette.sol,
+  palette.local,
+  palette.astra,
+];
+function shortRef(ref: string) {
+  return ref.replace(/^refs\/(heads|remotes|tags)\//, "");
+}
+function working(checkout: GitCheckout) {
+  const s = checkout.status;
+  return !s
+    ? "working state unknown"
+    : s.conflicts
+      ? `${s.conflicts} conflicts`
+      : s.staged + s.unstaged + s.untracked
+        ? `${s.staged} staged · ${s.unstaged} unstaged · ${s.untracked} untracked entries`
+        : "clean (submodules excluded)";
+}
+function GitCanvas({
+  project,
+  layout,
+  zoom,
+  left,
+  top,
+  width,
+  height,
+  selection,
+  onSelect,
+}: {
+  project: ViewProject;
+  layout: GitLayout;
+  zoom: number;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  selection: Selection | null;
+  onSelect: (s: Selection) => void;
+}) {
+  const ref = useRef<HTMLCanvasElement>(null),
+    [hover, setHover] = useState("");
+  const selected =
+    selection?.kind === "commit" && selection.project.id === project.id
+      ? selection.commit.oid
+      : selection?.kind === "checkout" && selection.project.id === project.id
+        ? selection.checkout.head
+        : null;
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ratio = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.ceil(width * ratio);
+    canvas.height = Math.ceil(height * ratio);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(ratio, ratio);
+    ctx.clearRect(0, 0, width, height);
+    const styles = getComputedStyle(canvas),
+      text = styles.getPropertyValue("--lv-text").trim() || "#dce5ef",
+      muted = styles.getPropertyValue("--lv-muted").trim() || "#98a8bb",
+      line = styles.getPropertyValue("--lv-line").trim() || "#273446";
+    ctx.strokeStyle = line;
+    ctx.lineWidth = 0.6;
+    ctx.setLineDash([2, 6]);
+    for (let x = 32 - (left % (72 * zoom)); x < width; x += 72 * zoom) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    const screen = (m: { x: number; y: number }) => ({
+      x: m.x * zoom - left,
+      y: m.y * zoom - top,
+    });
+    for (const m of layout.marks) {
+      const c = screen(m);
+      for (const id of m.commit.parents) {
+        const p = layout.byOid.get(id);
+        if (!p) {
+          if (c.x > -60 && c.x < width + 60 && c.y > -40 && c.y < height + 40) {
+            ctx.strokeStyle = muted;
+            ctx.setLineDash([3, 4]);
+            ctx.beginPath();
+            ctx.moveTo(c.x - 28, c.y);
+            ctx.lineTo(c.x - 8, c.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.font = "11px ui-monospace,monospace";
+            ctx.fillStyle = muted;
+            ctx.fillText("…", c.x - 40, c.y + 4);
+          }
+          continue;
+        }
+        const a = screen(p);
+        if (
+          Math.max(a.x, c.x) < -50 ||
+          Math.min(a.x, c.x) > width + 50 ||
+          Math.max(a.y, c.y) < -50 ||
+          Math.min(a.y, c.y) > height + 50
+        )
+          continue;
+        ctx.strokeStyle = colors[m.lane % colors.length];
+        ctx.globalAlpha = 0.6;
+        ctx.lineWidth = 1.7;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        const bend = Math.max(20, (c.x - a.x) / 2);
+        ctx.bezierCurveTo(a.x + bend, a.y, c.x - bend, c.y, c.x, c.y);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    }
+    for (const m of layout.marks) {
+      const c = screen(m);
+      if (c.x < -40 || c.x > width + 40 || c.y < -40 || c.y > height + 40)
+        continue;
+      const color = colors[m.lane % colors.length];
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, m.commit.parents.length > 1 ? 6 : 4, 0, Math.PI * 2);
+      ctx.fill();
+      if (selected === m.commit.oid) {
+        ctx.strokeStyle = text;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, 10, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (zoom >= 0.65) {
+        ctx.fillStyle = muted;
+        ctx.font = "11px ui-monospace,monospace";
+        ctx.fillText(m.commit.oid.slice(0, 7), c.x + 11, c.y + 4);
+      }
+      const refs =
+        project.git?.refs.filter((r) => r.commit_oid === m.commit.oid) ?? [];
+      if (refs.length) {
+        const label = refs
+          .map((r) => shortRef(r.name))
+          .join(" · ")
+          .slice(0, 42);
+        ctx.font = "600 11px ui-monospace,monospace";
+        const w = Math.min(270, ctx.measureText(label).width + 16);
+        ctx.fillStyle = line;
+        ctx.beginPath();
+        ctx.roundRect(c.x - 8, c.y - 30, w, 20, 4);
+        ctx.fill();
+        ctx.fillStyle = color;
+        ctx.fillText(label, c.x, c.y - 16);
+      }
+      const trees =
+        project.git?.checkouts.filter((t) => t.head === m.commit.oid) ?? [];
+      if (trees.length) {
+        ctx.strokeStyle = palette.sol;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(c.x, c.y + 10);
+        ctx.lineTo(c.x + 5, c.y + 16);
+        ctx.lineTo(c.x, c.y + 22);
+        ctx.lineTo(c.x - 5, c.y + 16);
+        ctx.closePath();
+        ctx.stroke();
+        const dirty = trees.some(
+          (t) =>
+            t.status &&
+            t.status.staged + t.status.unstaged + t.status.untracked > 0,
+        );
+        if (dirty) {
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(c.x + 6, c.y + 16);
+          ctx.lineTo(c.x + 24, c.y + 16);
+          ctx.stroke();
+          ctx.strokeRect(c.x + 24, c.y + 12, 8, 8);
+          ctx.setLineDash([]);
+        }
+      }
+    }
+  }, [project, layout, zoom, left, top, width, height, selected]);
+  const nearest = (x: number, y: number) => {
+    let distance = 24,
+      found: null | (typeof layout.marks)[number] = null;
+    for (const m of layout.marks) {
+      const d = Math.hypot(m.x * zoom - left - x, m.y * zoom - top - y);
+      if (d < distance) {
+        distance = d;
+        found = m;
+      }
+    }
+    return found;
+  };
+  return (
+    <>
+      <canvas
+        ref={ref}
+        style={{ left, top: top + 48, width, height }}
+        className="git-canvas"
+        tabIndex={0}
+        role="img"
+        aria-label={`${project.name}: ${layout.marks.length} commits. Arrow keys navigate ancestry; Enter inspects. Full details available in Commit inventory.`}
+        onPointerMove={(e) => {
+          const r = e.currentTarget.getBoundingClientRect(),
+            mark = nearest(e.clientX - r.left, e.clientY - r.top);
+          setHover(
+            mark
+              ? `${mark.commit.oid.slice(0, 10)} · ${mark.commit.subject}`
+              : "",
+          );
+        }}
+        onPointerLeave={() => setHover("")}
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect(),
+            mark = nearest(e.clientX - r.left, e.clientY - r.top);
+          if (mark) onSelect({ kind: "commit", project, commit: mark.commit });
+        }}
+        onKeyDown={(e) => {
+          if (
+            ![
+              "ArrowLeft",
+              "ArrowRight",
+              "ArrowUp",
+              "ArrowDown",
+              "Enter",
+            ].includes(e.key)
+          )
+            return;
+          e.preventDefault();
+          const current =
+            layout.byOid.get(selected ?? "") ?? layout.marks.at(-1);
+          if (!current) return;
+          let next = current;
+          if (e.key === "ArrowLeft")
+            next = layout.byOid.get(current.commit.parents[0]) ?? current;
+          if (e.key === "ArrowRight")
+            next =
+              layout.marks.find((m) =>
+                m.commit.parents.includes(current.commit.oid),
+              ) ?? current;
+          if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+            const index = layout.marks.indexOf(current);
+            next =
+              layout.marks[
+                Math.max(
+                  0,
+                  Math.min(
+                    layout.marks.length - 1,
+                    index + (e.key === "ArrowUp" ? -1 : 1),
+                  ),
+                )
+              ];
+          }
+          onSelect({ kind: "commit", project, commit: next.commit });
+        }}
+      />
+      {hover && (
+        <div
+          className="git-hover"
+          style={{ left: left + 12, top: top + height - 30 }}
+        >
+          {hover}
+        </div>
+      )}
+    </>
+  );
+}
+export default function GitFlow({
+  snapshot,
+  paused,
+  onPause: setPaused,
+  selection,
+  onSelect,
+  now,
+}: {
+  snapshot: ViewsSnapshot;
+  paused: ViewsSnapshot | null;
+  onPause: (value: ViewsSnapshot | null) => void;
+  selection: Selection | null;
+  onSelect: (s: Selection | null) => void;
+  now: number;
+}) {
+  const route = useRoute(),
+    filter =
+      route.params.get("scope") ??
+      (route.params.has("focus") ? "" : (route.params.get("project") ?? "")),
+    query = route.params.get("q") ?? "";
+  const [zoom, setZoom] = useState(viewMemory.zoom),
+    [scroll, setScroll] = useState({
+      left: viewMemory.left,
+      top: viewMemory.top,
+    }),
+    [inventory, setInventory] = useState(viewMemory.inventory),
+    [shown, setShown] = useState(100),
+    [follow, setFollow] = useState(viewMemory.follow);
+  const frozen = paused ?? snapshot,
+    viewport = useSize<HTMLDivElement>(),
+    scrollRef = useRef<HTMLDivElement>(null),
+    manual = useRef(false),
+    previous = useRef(snapshot.revision),
+    [changes, setChanges] = useState(0);
+  const projects = useMemo(
+    () =>
+      frozen.projects.filter(
+        (p) =>
+          (!filter || p.id === filter) &&
+          (!query ||
+            [
+              p.name,
+              p.id,
+              ...(p.git?.refs.map((r) => r.name) ?? []),
+              ...(p.git?.commits.map((c) => `${c.oid} ${c.subject}`) ?? []),
+            ]
+              .join(" ")
+              .toLowerCase()
+              .includes(query.toLowerCase())),
+      ),
+    [frozen, filter, query],
+  );
+  const bands = useMemo(() => {
+    let top = 0;
+    return projects.map((project) => {
+      const layout = project.git ? layoutGit(project.git) : null;
+      const height = layout ? layout.height * zoom + 76 : 180;
+      const row = { project, layout, top, height };
+      top += height;
+      return row;
+    });
+  }, [projects, zoom]);
+  const width = Math.max(
+      680,
+      ...bands.map((b) => (b.layout?.width ?? 680) * zoom),
+    ),
+    height = bands.reduce((n, b) => n + b.height, 0);
+  const restored = useRef(false);
+  useEffect(() => {
+    if (viewport.width > 0 && scrollRef.current && !restored.current) {
+      restored.current = true;
+      scrollRef.current.scrollLeft = scroll.left;
+      scrollRef.current.scrollTop = scroll.top;
+    }
+  }, [viewport.width]);
+  useEffect(() => {
+    viewMemory = {
+      zoom,
+      left: scroll.left,
+      top: scroll.top,
+      follow,
+      inventory,
+    };
+  }, [zoom, scroll, follow, inventory]);
+  const latest = () => {
+    const el = scrollRef.current;
+    if (el) {
+      el.scrollLeft = el.scrollWidth - el.clientWidth;
+      setScroll({ left: el.scrollLeft, top: el.scrollTop });
+    }
+    setChanges(0);
+  };
+  useEffect(() => {
+    if (follow && !paused) latest();
+  }, [width, follow, paused]);
+  useEffect(() => {
+    if (previous.current !== snapshot.revision) {
+      if (!follow || paused) setChanges((n) => n + 1);
+      previous.current = snapshot.revision;
+    }
+  }, [snapshot.revision, follow, paused]);
+  const focusId = route.params.get("focus") ?? "",
+    branch = route.params.get("branch") ?? "";
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const band = bands.find(
+      (b) =>
+        b.project.git?.commits.some((c) => c.oid === focusId) ||
+        b.project.git?.checkouts.some(
+          (c) => c.id === focusId || (branch && c.branch === branch),
+        ),
+    );
+    if (!band?.layout) return;
+    const tree = band.project.git?.checkouts.find(
+      (t) => t.id === focusId || (branch && t.branch === branch),
+    );
+    const mark = band.layout.byOid.get(tree?.head ?? focusId);
+    if (mark) {
+      setFollow(false);
+      el.scrollLeft = Math.max(0, mark.x * zoom - (el.clientWidth - 240) / 2);
+      el.scrollTop = band.top;
+      setScroll({ left: el.scrollLeft, top: el.scrollTop });
+    }
+  }, [focusId, branch]);
+  const commits = bands
+    .flatMap((b) =>
+      (b.layout?.marks ?? []).map((m) => ({
+        project: b.project,
+        commit: m.commit,
+      })),
+    )
+    .reverse();
+  const allCommits = projects.reduce(
+      (n, p) => n + (p.git?.commits.length ?? 0),
+      0,
+    ),
+    checkouts = projects.reduce(
+      (n, p) => n + (p.git?.checkouts.length ?? 0),
+      0,
+    );
+  return (
+    <section className="git-view" aria-label="Git Flow">
+      <div className="lv-toolbar">
+        <label className="lv-search">
+          <span aria-hidden="true" data-icon="⌕" />
+          <input
+            aria-label="Search Git projects and commits"
+            placeholder="Find project, branch, commit…"
+            value={query}
+            onChange={(e) => {
+              changeParams({ q: e.target.value });
+              setShown(100);
+            }}
+          />
+        </label>
+        <select
+          aria-label="Filter Git project"
+          value={filter}
+          onChange={(e) =>
+            changeParams({
+              project: e.target.value,
+              scope: e.target.value,
+              focus: undefined,
+              branch: undefined,
+            })
+          }
+        >
+          <option value="">All projects</option>
+          {frozen.projects.map((p) => (
+            <option value={p.id} key={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        <span className="lv-axis-pill">ANCESTRY → COMMIT ORDER</span>
+        <span className="lv-toolbar-spacer" />
+        <button
+          className={`lv-button ${inventory ? "active" : ""}`}
+          aria-pressed={inventory}
+          onClick={() => setInventory(!inventory)}
+        >
+          {inventory ? "⑂ Graph" : "☷ Inventory"}
+        </button>
+        <button
+          className="lv-button"
+          onClick={() => {
+            if (paused) {
+              setPaused(null);
+              setChanges(0);
+            } else setPaused(snapshot);
+          }}
+        >
+          {paused ? "▶ Resume live" : "Ⅱ Pause"}
+        </button>
+        <button
+          className={`lv-button ${follow ? "active" : ""}`}
+          aria-pressed={follow}
+          onClick={() => {
+            setFollow(!follow);
+            if (!follow) latest();
+          }}
+        >
+          Follow latest
+        </button>
+      </div>
+      <div className="git-ruler">
+        <div>
+          <span className="git-axis-icon" aria-hidden="true" data-icon="⑂" />
+          <b>{projects.length}</b> projects <span> / </span>
+          <b>{allCommits}</b> commits <span> / </span>
+          <b>{checkouts}</b> checkouts
+        </div>
+        <span>
+          Parents always precede children. Each repository has its own
+          coordinates.
+        </span>
+        <div className="git-zoom">
+          <button
+            aria-label="Zoom Git out"
+            onClick={() => {
+              setFollow(false);
+              setZoom((z) => Math.max(0.2, z / 1.2));
+            }}
+          >
+            <span data-icon="−" aria-hidden="true" />
+          </button>
+          <span>{Math.round(zoom * 100)}%</span>
+          <button
+            aria-label="Zoom Git in"
+            onClick={() => setZoom((z) => Math.min(2, z * 1.2))}
+          >
+            <span data-icon="+" aria-hidden="true" />
+          </button>
+          <button
+            onClick={() => {
+              setZoom(
+                Math.max(
+                  0.2,
+                  Math.min(
+                    1,
+                    (viewport.width - 280) /
+                      Math.max(
+                        680,
+                        ...bands.map((b) => b.layout?.width ?? 680),
+                      ),
+                  ),
+                ),
+              );
+              setFollow(false);
+              if (scrollRef.current) scrollRef.current.scrollLeft = 0;
+            }}
+          >
+            Fit
+          </button>
+          <button onClick={latest}>Latest →</button>
+        </div>
+      </div>
+      {paused && (
+        <div className="lv-paused">
+          Historical inspection paused at this observed snapshot. New source
+          changes accumulate without moving the view.
+        </div>
+      )}
+      {changes > 0 && (
+        <button
+          className="git-new-changes"
+          onClick={() => {
+            setPaused(null);
+            setFollow(true);
+            latest();
+          }}
+        >
+          {changes} new source cuts · Return to latest →
+        </button>
+      )}
+      {inventory ? (
+        <div className="git-inventory">
+          <div className="git-inventory-checkouts">
+            <h2>Checkouts & worktrees</h2>
+            {projects.map((p) => (
+              <section key={p.id}>
+                <h3>{p.name}</h3>
+                {p.git?.checkouts.length ? (
+                  p.git.checkouts.map((c) => (
+                    <button
+                      className="git-checkout-row"
+                      key={c.id}
+                      onClick={() =>
+                        onSelect({ kind: "checkout", project: p, checkout: c })
+                      }
+                    >
+                      <span
+                        className="git-checkout-glyph"
+                        aria-hidden="true"
+                        data-icon="◇"
+                      />
+                      <span>
+                        <b>{c.name}</b>
+                        <small>
+                          {c.kind} ·{" "}
+                          {c.branch ??
+                            (c.detached ? "detached HEAD" : "unborn HEAD")}
+                        </small>
+                      </span>
+                      <code>{c.head?.slice(0, 8) ?? "No commit"}</code>
+                      <small>{working(c)}</small>
+                    </button>
+                  ))
+                ) : (
+                  <p>Git checkouts not observed.</p>
+                )}
+              </section>
+            ))}
+          </div>
+          <h2>Commit inventory · {commits.length} loaded</h2>
+          <p>
+            Search checks every loaded commit. Window boundaries remain
+            explicit; this is not a complete historical repository export.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Commit</th>
+                <th>Project / subject</th>
+                <th>Parents</th>
+                <th>Committer time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {commits.slice(0, shown).map(({ project, commit: c }) => (
+                <tr key={`${project.id}:${c.oid}`}>
+                  <td>
+                    <button
+                      className="lv-text-button"
+                      onClick={() =>
+                        onSelect({ kind: "commit", project, commit: c })
+                      }
+                    >
+                      {c.oid.slice(0, 10)}
+                    </button>
+                  </td>
+                  <td>
+                    {project.name}
+                    <small>{c.subject}</small>
+                  </td>
+                  <td>
+                    {c.parents.map((p) => p.slice(0, 7)).join(", ") ||
+                      "Root / shallow boundary"}
+                  </td>
+                  <td>{c.committed_utc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {commits.length > shown && (
+            <button
+              className="lv-button"
+              onClick={() => setShown((n) => n + 200)}
+            >
+              Show next {Math.min(200, commits.length - shown)} commits
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="git-surface" ref={viewport.ref}>
+          <div
+            className="git-scroll"
+            ref={scrollRef}
+            onWheel={(e) => {
+              if (e.deltaX || e.shiftKey) manual.current = true;
+            }}
+            onPointerDown={() => {
+              manual.current = true;
+            }}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              setScroll({ left: el.scrollLeft, top: el.scrollTop });
+              if (manual.current) {
+                setFollow(false);
+                manual.current = false;
+              }
+            }}
+          >
+            <div
+              className="git-world"
+              style={{
+                width: width + 240,
+                height: Math.max(height, viewport.height),
+              }}
+            >
+              {bands.map((b) => {
+                const localTop = Math.max(0, scroll.top - b.top - 64),
+                  visibleHeight = Math.max(
+                    1,
+                    Math.min(b.height - 64 - localTop, viewport.height),
+                  );
+                const inViewport =
+                  b.top + b.height >= scroll.top - 200 &&
+                  b.top <= scroll.top + viewport.height + 200;
+                return (
+                  <section
+                    key={b.project.id}
+                    className="git-band"
+                    style={{ height: b.height }}
+                    aria-label={`${b.project.name} repository`}
+                  >
+                    <div className="git-gutter">
+                      <header>
+                        <span className="git-project-symbol">
+                          {b.project.name.slice(0, 1).toUpperCase()}
+                        </span>
+                        <div>
+                          <h2>{b.project.name}</h2>
+                          <span>
+                            {b.project.git?.node ?? "Source not configured"}
+                          </span>
+                        </div>
+                      </header>
+                      <div className="git-source-age">
+                        {b.project.git
+                          ? age(b.project.git.observed_utc, now)
+                          : "No Git observation"}
+                      </div>
+                      {b.project.git?.error && (
+                        <p className="git-source-error">
+                          {b.project.git.error}
+                        </p>
+                      )}
+                      <div className="git-checkout-list">
+                        {b.project.git?.checkouts.slice(0, 8).map((c) => (
+                          <button
+                            key={c.id}
+                            onClick={() =>
+                              onSelect({
+                                kind: "checkout",
+                                project: b.project,
+                                checkout: c,
+                              })
+                            }
+                          >
+                            <span aria-hidden="true" data-icon="◇" />
+                            <div>
+                              <b>
+                                {c.branch ??
+                                  (c.detached
+                                    ? "Detached HEAD"
+                                    : "Unborn HEAD")}
+                              </b>
+                              <small>
+                                {c.name} · {working(c)}
+                              </small>
+                            </div>
+                            {c.locked && (
+                              <span title="Administrative lock">⚿</span>
+                            )}
+                          </button>
+                        ))}
+                        {(b.project.git?.checkouts.length ?? 0) > 8 && (
+                          <button onClick={() => setInventory(true)}>
+                            View all {b.project.git?.checkouts.length} checkouts
+                            →
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div
+                      className="git-graph-field"
+                      style={{ height: b.height }}
+                    >
+                      <div
+                        className="git-band-caption"
+                        style={{ left: scroll.left + 16 }}
+                      >
+                        <span>
+                          {b.project.git
+                            ? `${b.project.git.refs.length} refs · ${b.project.git.commits.length} commits`
+                            : "NOT OBSERVED"}
+                        </span>
+                        {b.project.git?.shallow && <b>SHALLOW ANCESTRY</b>}
+                        {b.project.git?.truncated && <b>BOUNDED WINDOW</b>}
+                        {!!b.layout?.boundaries && (
+                          <span>{b.layout.boundaries} parent boundaries</span>
+                        )}
+                      </div>
+                      {b.layout && b.project.git?.commits.length ? (
+                        inViewport && (
+                          <GitCanvas
+                            project={b.project}
+                            layout={b.layout}
+                            zoom={zoom}
+                            left={scroll.left}
+                            top={localTop}
+                            width={Math.max(1, viewport.width - 240)}
+                            height={visibleHeight}
+                            selection={selection}
+                            onSelect={onSelect}
+                          />
+                        )
+                      ) : (
+                        <div
+                          className="git-no-data"
+                          style={{ left: scroll.left + 40 }}
+                        >
+                          <span aria-hidden="true" data-icon="⑂" />
+                          <h3>
+                            {b.project.git
+                              ? b.project.git.error
+                                ? "Git source unavailable"
+                                : "No committed history yet"
+                              : "Git repository not observed"}
+                          </h3>
+                          <p>
+                            {b.project.git?.error
+                              ? "Last successful facts are retained when available."
+                              : b.project.git
+                                ? "Unborn and empty repositories remain represented."
+                                : "Enable the Rust observer for this project. Remote-only branches remain unobserved."}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                );
+              })}
+              {!bands.length && (
+                <div className="lv-empty">
+                  <h2>No matching projects</h2>
+                  <p>
+                    Clear project or search filters to see all repositories.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="lv-view-note">
+        <span>
+          <i className="git-legend-dot" /> Commit &nbsp; ─ Actual parent &nbsp;
+          ◇ Checkout HEAD &nbsp; ▫ Working changes &nbsp; ⋯ Missing ancestry
+        </span>
+        <span>Scroll vertically for projects · horizontally for history</span>
+      </div>
+    </section>
+  );
+}

@@ -25,4 +25,6 @@ export type { ConfigLayerReceipt } from './generated/config-layer-receipt.js';
 export type * as ConfigLayerReceiptTypes from './generated/config-layer-receipt.js';
 export type { ProvenanceOrigin, ProvenanceContribution } from './generated/provenance-contribution.js';
 export type * as ProvenanceContributionTypes from './generated/provenance-contribution.js';
-export { validateTaskContract, validateCoordinationMessage, validateDomainEvent, validateDomainEventV2, validateWorkplan, validateVerificationReceipt, validateVerificationPolicy, validateInterfaceContract, validateConfigLayer, validateConfigPatch, validateConfigLayerReceipt, validateProvenanceContribution, SUPPORTED_SCHEMA_VERSION, CONTRACT_SCHEMA_FINGERPRINTS } from './generated/validators.mjs';
+export type { ViewPresence, ViewRole, ViewsSnapshot, ViewAgent, ViewProject, GitRepository, GitCheckout, GitWorkingState, GitCommit, GitRef, ViewSource } from './generated/views-snapshot.js';
+export type * as ViewsSnapshotTypes from './generated/views-snapshot.js';
+export { validateTaskContract, validateCoordinationMessage, validateDomainEvent, validateDomainEventV2, validateWorkplan, validateVerificationReceipt, validateVerificationPolicy, validateInterfaceContract, validateConfigLayer, validateConfigPatch, validateConfigLayerReceipt, validateProvenanceContribution, validateViewsSnapshot, SUPPORTED_SCHEMA_VERSION, CONTRACT_SCHEMA_FINGERPRINTS } from './generated/validators.mjs';

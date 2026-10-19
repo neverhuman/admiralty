@@ -1,0 +1,424 @@
+{
+  "$defs": {
+    "GitCheckout": {
+      "additionalProperties": false,
+      "properties": {
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "detached": {
+          "type": "boolean"
+        },
+        "head": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "prunable": {
+          "type": "boolean"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GitWorkingState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "detached",
+        "locked",
+        "prunable"
+      ],
+      "type": "object"
+    },
+    "GitCommit": {
+      "additionalProperties": false,
+      "properties": {
+        "committed_utc": {
+          "type": "string"
+        },
+        "oid": {
+          "type": "string"
+        },
+        "parents": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "subject": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "oid",
+        "parents",
+        "subject",
+        "committed_utc"
+      ],
+      "type": "object"
+    },
+    "GitRef": {
+      "additionalProperties": false,
+      "properties": {
+        "commit_oid": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "oid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "oid",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "GitRepository": {
+      "additionalProperties": false,
+      "properties": {
+        "checkouts": {
+          "items": {
+            "$ref": "#/$defs/GitCheckout"
+          },
+          "type": "array"
+        },
+        "commits": {
+          "items": {
+            "$ref": "#/$defs/GitCommit"
+          },
+          "type": "array"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "node": {
+          "type": "string"
+        },
+        "observed_utc": {
+          "type": "string"
+        },
+        "refs": {
+          "items": {
+            "$ref": "#/$defs/GitRef"
+          },
+          "type": "array"
+        },
+        "shallow": {
+          "type": "boolean"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "instance_id",
+        "node",
+        "observed_utc",
+        "shallow",
+        "truncated",
+        "commits",
+        "refs",
+        "checkouts"
+      ],
+      "type": "object"
+    },
+    "GitWorkingState": {
+      "additionalProperties": false,
+      "properties": {
+        "conflicts": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "staged": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unstaged": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "untracked": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "staged",
+        "unstaged",
+        "untracked",
+        "conflicts"
+      ],
+      "type": "object"
+    },
+    "ViewAgent": {
+      "additionalProperties": false,
+      "properties": {
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "effort": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model_observed_utc": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model_source": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "node": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "observed_utc": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "presence": {
+          "$ref": "#/$defs/ViewPresence"
+        },
+        "project_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "requested_model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "role": {
+          "$ref": "#/$defs/ViewRole"
+        },
+        "source": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "task": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "role",
+        "presence",
+        "state",
+        "model_source",
+        "source"
+      ],
+      "type": "object"
+    },
+    "ViewPresence": {
+      "enum": [
+        "observed",
+        "unobserved",
+        "ended"
+      ],
+      "type": "string"
+    },
+    "ViewProject": {
+      "additionalProperties": false,
+      "properties": {
+        "git": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GitRepository"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "task_count": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "ViewRole": {
+      "enum": [
+        "owner",
+        "watcher",
+        "admiral",
+        "commodore",
+        "worker",
+        "assignment"
+      ],
+      "type": "string"
+    },
+    "ViewSource": {
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "observed_utc": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "state",
+        "coverage"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "agents": {
+      "items": {
+        "$ref": "#/$defs/ViewAgent"
+      },
+      "type": "array"
+    },
+    "observed_utc": {
+      "type": "string"
+    },
+    "projects": {
+      "items": {
+        "$ref": "#/$defs/ViewProject"
+      },
+      "type": "array"
+    },
+    "revision": {
+      "type": "string"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "simulated": {
+      "type": "boolean"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/ViewSource"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "revision",
+    "simulated",
+    "observed_utc",
+    "projects",
+    "agents",
+    "sources"
+  ],
+  "title": "ViewsSnapshot",
+  "type": "object"
+}

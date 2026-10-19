@@ -56,6 +56,40 @@ registered resource limits, unrelated jobs and preserved work remain in force.
 | P30 | in_progress | release + integration review | reviewed `17c7a76d` | Explicit-input archive builder passes 10 checks; clean-install, signed distribution, rights and complete operator paths pending |
 | P31 | in_progress | integration + qualification review | reviewed `455ee5f4` | Isolated binary smoke and offline controlled provider harness are integrated; real provider, soak, savings, restore and fleet cutover gates remain open |
 
+## Git Flow and Fleet Atlas — source implementation, 18 October 2026 MDT
+
+The isolated `codex/live-git-fleet` branch implements the worker-ready
+[LIVE_VIEWS_PLAN](LIVE_VIEWS_PLAN.md) and [operator contract](../../operators/live-views.md).
+It extends the existing native observer, authenticated Rust API and React console.
+Git Flow retains original ordered parents (including shallow boundaries), refs,
+main/linked/detached/unborn checkouts and bounded working-state observations.
+Fleet Atlas retains configured roles, observed process identities, native task
+assignments, unassigned agents, exact model reports and source coverage as
+separate facts. Both views share current-state SSE snapshots, deep links,
+inspectors, equivalent inventories and full-window presentation.
+
+The integration base is `3fdb10189322962bb91eadfbcb111f483697a688`; the original
+inspection base was `d7ced28bbcb71471a105752f0e035e4f714abc27`. One browser-harness
+interface overlap was resolved by retaining upstream optional evaluation timeouts
+and adding screenshot capture. Upstream browser diagnostics were preserved.
+
+Focused proof includes real temporary Git fork/merge/worktree/shallow fixtures,
+authenticated API snapshot/change/reconnect/source-failure tests, 112 dashboard
+unit tests, a 500-agent complete-census browser journey, real temporary repository
+commit → Rust observer → Rust server → built UI, and zero-violation/zero-incomplete
+pinned axe audits for both themes, graph/roster/inventory and mobile/reduced-motion
+surfaces. Final source-bound commands, exact results, hashes and repair history
+will be recorded in the LV receipt after the integrated checks finish.
+
+This adds current, bounded observation views. It does not close any P00–P31
+parent, qualify arbitrary fleet history replay, enumerate opaque provider
+children, install remote Git transport, certify performance targets or deploy
+production services. Native execution authority and acceptance semantics remain
+outside this change.
+
+Integration update: concurrent main advances required a fresh `codex/live-git-fleet-ready` branch based on `b2b9e7a6c33bd57fd7b56079a846482f7ea25964`; no published history was rewritten. The first rebase actually used `a3b0b661a2071cab1e87e64956b7bd88de6771e8` after the shared remote ref advanced, superseding the initially observed `3fdb101` baseline. Original validation failures are retained: generated guard ordering was repaired, and macOS qualification uses a canonical private TMPDIR to avoid `/var` symlink ancestors.
+
+
 ## Receipt template
 
 Save at `receipts/<packet>/<actual-commit>.json`; do not create an example file with invented commit hashes. Large raw output belongs in artifacts, not this table.
