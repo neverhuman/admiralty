@@ -7,8 +7,8 @@
   "base_sha": "99f4e26cebfab97afa661ed05aea6192bfd5935c",
   "inspection_base_sha": "d7ced28bbcb71471a105752f0e035e4f714abc27",
   "head_sha": "a21532a3147e7a30d47caf02f18d27fa05fb5545",
-  "branch": "codex/live-git-fleet-final",
-  "pull_request": "https://github.com/neverhuman/admiralty/pull/95",
+  "branch": "codex/live-view-review-repairs",
+  "pull_request": "https://github.com/neverhuman/admiralty/pull/96",
   "integration_candidate": {
     "head_sha": "a21532a3147e7a30d47caf02f18d27fa05fb5545",
     "base_sha": "99f4e26cebfab97afa661ed05aea6192bfd5935c",
@@ -1823,7 +1823,8 @@
     "Rust observer plus shared authenticated SSE and atomic current-state replacement; no retained replay claim.",
     "Canvas Git topology and stable DOM/SVG fleet; no graph runtime dependency.",
     "Earlier unpublished receiving-tree proof and current direct clean source-head qualification are both preserved. Source was refreshed onto current main after ledger rebase conflict and the upstream sha2 dependency addition; upstream probe/example bytes are preserved. No published history was rewritten.",
-    "Receipt is a documentation follow-up; runtime object identities must match qualification before merge."
+    "Receipt is a documentation follow-up; runtime object identities must match qualification before merge.",
+    "PR95 merged frozen32dea091 into35e5890 while later user-authorized read-only review repairs were finishing. PR96 carries those repairs and preserves all twelve qualified runtime objects. Source tests remain pinned to a21532a; integration headcc3ee42 has the exact ecb1bff tree."
   ],
   "limitations": [
     "Configured local repositories and discoverable supplied observations only; unconfigured remote DAGs and opaque provider children remain unknown.",
@@ -2465,5 +2466,17 @@
   "blockers": [
     "Exact-final-head independent review and hosted CI remain pending at receipt creation."
   ],
-  "next_action": "Commit evidence-only follow-up, publish the final PR, verify prospective runtime objects unchanged, obtain exact-head neverhumanbot approval and use normal matched-head rebase merge; record actual resulting main SHA and runtime-object comparison."
+  "next_action": "Commit evidence-only follow-up, publish the final PR, verify prospective runtime objects unchanged, obtain exact-head neverhumanbot approval and use normal matched-head rebase merge; record actual resulting main SHA and runtime-object comparison.",
+  "integration_followup": {
+    "head_sha": "cc3ee42e0b603cdf0703a34a7fba5b67154b6640",
+    "branch": "codex/live-view-review-repairs",
+    "base_sha": "35e58904b2e5f9215d48329962f1514a2cf86610",
+    "tree_sha": "217c6bff7ea652474e290bf02322f3be2236a8cc",
+    "qualified_source": "a21532a3147e7a30d47caf02f18d27fa05fb5545",
+    "prior_candidate": "ecb1bffda59e2ccc91b69746f082093603ab63eb",
+    "base_tree_matches_merged_pr95_head": true,
+    "all12_qualified_runtime_objects_match": true,
+    "pull_request": "https://github.com/neverhuman/admiralty/pull/96",
+    "recorded_utc": "2026-10-19T02:24:02.351288+00:00"
+  }
 }

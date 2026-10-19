@@ -1,0 +1,26 @@
+{
+  "packet": "LV-integration-followup",
+  "state": "review",
+  "head_sha": "cc3ee42e0b603cdf0703a34a7fba5b67154b6640",
+  "base_sha": "35e58904b2e5f9215d48329962f1514a2cf86610",
+  "source_qualification": "a21532a3147e7a30d47caf02f18d27fa05fb5545",
+  "pull_request": "https://github.com/neverhuman/admiralty/pull/96",
+  "runtime_objects": {
+    "apps": "e609ff631e1806eb58c49367925cec641656fcfd",
+    "crates": "8df81d82c53189f961122ceceae0a95afa708391",
+    "packages": "052850771597620fa342478d96aac23728ba7f13",
+    "schemas": "f12eb6a5a96990f34626d34b2a028cfb608db0e4",
+    "scripts": "a1f6aa1bcfc93a2b87b891708e38e16845804532",
+    ".github": "a2a8984a883f0da068dc2571856e6c10836f278c",
+    "Cargo.toml": "ed7245d8a14b4b55fb21a958c346796e65355a04",
+    "Cargo.lock": "1897ce6e83514d36400275eab10b5e949ecba9db",
+    "package.json": "c912fa8998901a6c06da27a0f8e8dd11f78c5fb8",
+    "pnpm-lock.yaml": "1847f8d43b375e51e2ff84e03cad429cbf4be9db",
+    "pnpm-workspace.yaml": "345f731c8f2ea0eea442b7c0c9c83b28fe7685ee",
+    "rust-toolchain.toml": "12dd5258cd08aebcc0bf38ac6675cb74cb6ec69a"
+  },
+  "runtime_objects_match": true,
+  "qualified_source_receipt": "docs/plans/admiralty-v2/receipts/LV/a21532a3147e7a30d47caf02f18d27fa05fb5545.json",
+  "base_views_merge": "35e58904b2e5f9215d48329962f1514a2cf86610",
+  "explanation": "Integration candidate tree equals ecb1bff, and every runtime object equals the directly tested a21532a source. Earlier PR95 approval applies only to32dea091; exact PR96 approval remains required."
+}

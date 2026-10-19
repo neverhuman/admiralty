@@ -58,7 +58,9 @@ registered resource limits, unrelated jobs and preserved work remain in force.
 
 ## Git Flow and Fleet Atlas — qualified source, 19 October 2026 UTC
 
-[PR95](https://github.com/neverhuman/admiralty/pull/95), branch `codex/live-git-fleet-final` implements the worker-ready
+Merged [PR95](https://github.com/neverhuman/admiralty/pull/95) introduced the base
+views at `35e5890`; [PR96](https://github.com/neverhuman/admiralty/pull/96), branch
+`codex/live-view-review-repairs`, implements the worker-ready
 [LIVE_VIEWS_PLAN](LIVE_VIEWS_PLAN.md) and [operator contract](../../operators/live-views.md).
 Source `a21532a3147e7a30d47caf02f18d27fa05fb5545`, based on main
 `99f4e26cebfab97afa661ed05aea6192bfd5935c`, was qualified directly from a clean
@@ -67,7 +69,9 @@ stores exact commands, computed hashes, failed runs/repairs and screenshots.
 Earlier PR86/88/93 candidates and the `9cde56d` receipt remain historical evidence.
 The final source preserves the upstream native task-loop probe, `sha2`
 dependency, browser form deadlines and CI resource limits. Published histories
-are preserved. The final review-repair head follows this evidence-only commit.
+are preserved. PR95 merged its frozen head before the later repairs were published. PR96
+starts on `35e5890` and retains the exact `ecb1bff` tree; its twelve runtime
+objects match qualified source `a21532a`. This correction changes evidence only.
 
 Git Flow retains original ordered parents, shallow boundaries, refs and
 main/linked/detached/unborn checkouts with bounded working-state observations.
