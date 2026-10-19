@@ -3,9 +3,9 @@ pub const MANAGED_EXECUTION_QUALIFIED: bool = false;
 
 pub mod agent_tools;
 pub mod execution;
-pub mod integration;
 #[cfg(unix)]
 pub mod fleet;
+pub mod integration;
 pub mod session;
 pub mod trusted_checks;
 
