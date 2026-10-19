@@ -79,6 +79,12 @@ The React detailed view retains project evidence, screen tails, raw records, den
 
 Native changes use one authenticated event stream. The compatibility feed refreshes every 15 seconds without routine model turns. Missing measurements remain unknown; an idle Screen is not evidence that a task finished.
 
+## Live Git and agent views
+
+**Git Flow** shows every observed project with left-to-right Git ancestry, branch tips, linked/detached checkouts and working changes. **Fleet Atlas** connects the Owner, Grokbot, Admiral, project Commodores and all discoverable worker identities on a zoomable full-window map. Both share authenticated live observations, searchable inventories and evidence inspectors. Configured roles, native task assignments and observed processes stay distinct.
+
+Open `#/git` or `#/atlas` after connecting the Rust observer. `pnpm demo` includes isolated synthetic versions of both views. See [live views](docs/operators/live-views.md) for source setup, controls, collection limits and qualification boundaries, and the [implementation plan](docs/plans/admiralty-v2/LIVE_VIEWS_PLAN.md) for architecture and follow-on packets.
+
 ## Run the native coordinator
 
 Build the service, CLI and static dashboard:

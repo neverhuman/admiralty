@@ -1,0 +1,13 @@
+{
+  "head_sha": "9cde56d59fdd1f74f622db938c230c7eed7b8ece",
+  "base_sha": "779a008f9660e3fa1c8e9f308aae8229a263e547",
+  "tree_sha": "db0ca43058a27876a9da04c71d15e82c6650365e",
+  "qualified_commit": "bc4db8358e0cc1d17abbc8a278cc22e11d5eaabb",
+  "predecessor_head": "e9b0c1d9991a16d9f6b99306896d315d38f2e098",
+  "branch": "codex/live-git-fleet-integrate",
+  "superseded_pull_requests": [
+    86,
+    88
+  ],
+  "pull_request": "https://github.com/neverhuman/admiralty/pull/93"
+}
