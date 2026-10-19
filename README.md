@@ -142,7 +142,7 @@ Admiral and Commodore are role labels, not model names or fixed machine identiti
 
 ## Current release status
 
-The primary web service is Rust/React. A real, isolated Linux deterministic integration exercised admission, owned service observation and closure, positive and negative checks, immutable custody, trusted Store acceptance, exact retry, revocation denial and reopen replay. Its [source-attributed receipt](receipts/integration/eb62f5f635bea46e98c76e91499b56b4c7673849.json) records exactly what ran.
+The primary web service is Rust/React. A real, isolated Linux task-loop integration exercised atomic claim/start, durable dispatch acknowledgment, owned service closure, changed-source publication, actual compilation, distinct positive and wrong-oracle checks, trusted Store acceptance, exact retry, revocation denial and reopen replay. Its [source-attributed receipt](receipts/integration/native-task-loop-linux-20261019T0053Z.json) records the passing run and preserved failed predecessor. The fixed deterministic child does not qualify a coding provider.
 
 The owned primary deployment now uses the native Rust observer; the old Admiralty Python collector, rollout observer and restart wrapper were archived and retired. Original historical timestamps and all thirteen plots are retained. Shared fleet management and unrelated projects are outside that retirement.
 
