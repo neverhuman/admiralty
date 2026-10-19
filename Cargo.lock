@@ -125,6 +125,7 @@ name = "admiralty-store"
 version = "0.1.0"
 dependencies = [
  "admiralty-core",
+ "admiralty-runtime",
  "fs2",
  "rusqlite",
  "rustix",

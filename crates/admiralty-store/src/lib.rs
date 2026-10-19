@@ -1,4 +1,5 @@
 //! Single-owner durable event store. Replay only applies the pure domain reducer.
+pub mod admission_reservations;
 pub mod artifacts;
 pub mod attention;
 pub mod context_renders;
@@ -36,6 +37,50 @@ fn reject_raw_lifecycle(event: &DomainEvent) -> Result<()> {
     if matches!(event, DomainEvent::TaskLifecycle { .. }) {
         return Err(StoreError::Invalid(
             "native lifecycle requires the configured authority command path".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn reservation_task_id(command: &admission_reservations::ReservationCommand) -> Option<&TaskId> {
+    use admiralty_runtime::reservations::ReservationEvent;
+    match &command.event {
+        ReservationEvent::Reserve { scope, .. } => Some(&scope.task_id),
+        ReservationEvent::RequestStop { binding, .. } => Some(&binding.scope.task_id),
+        _ => None,
+    }
+}
+
+fn validate_reserved_claim(
+    source: &SourceIdentity,
+    event: &DomainEvent,
+    command: &admission_reservations::ReservationCommand,
+) -> Result<()> {
+    use admiralty_runtime::reservations::ReservationEvent;
+    let DomainEvent::TaskClaimed {
+        task_id,
+        revision,
+        attempt_id,
+        owner,
+    } = event
+    else {
+        return Err(StoreError::Invalid(
+            "budgeted admission requires an exact task claim".into(),
+        ));
+    };
+    let ReservationEvent::Reserve { scope, .. } = &command.event else {
+        return Err(StoreError::Invalid(
+            "task claim requires a new reservation".into(),
+        ));
+    };
+    if source != &command.source
+        || task_id != &scope.task_id
+        || *revision != scope.contract_revision
+        || attempt_id != &scope.attempt_id
+        || owner != &scope.owner
+    {
+        return Err(StoreError::Invalid(
+            "claim and reservation identities differ".into(),
         ));
     }
     Ok(())
@@ -83,6 +128,8 @@ pub enum StoreError {
     #[error(transparent)]
     Usage(#[from] usage_observations::UsageError),
     #[error(transparent)]
+    Reservation(#[from] admission_reservations::ReservationStoreError),
+    #[error(transparent)]
     Inbox(#[from] inbox::InboxError),
     #[error("store already has an owner")]
     AlreadyOwned,
@@ -122,6 +169,14 @@ pub struct AppendReceipt {
     pub event_seq: String,
     pub source_contiguous_seq: String,
     pub duplicate: bool,
+}
+
+/// Durable admission only: this receipt does not grant provider execution,
+/// qualify a model, settle billing or reserve fleet inference capacity.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ReservedClaimReceipt {
+    pub claim: AppendReceipt,
+    pub reservation: admission_reservations::ReservationResult,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -176,9 +231,25 @@ pub struct StoreAuthorities {
     pub questions: Option<Arc<dyn questions::QuestionAuthority>>,
     pub usage: Option<Arc<dyn usage_observations::UsageAuthority>>,
     pub attention: Option<Arc<dyn attention::AttentionAuthority>>,
+    pub reservations: Option<Arc<dyn admission_reservations::ReservationAuthority>>,
 }
 
 enum Request {
+    RecordReservation {
+        command: Box<admission_reservations::ReservationCommand>,
+        proof: admission_reservations::ReservationProof,
+        reply: Reply<admission_reservations::ReservationResult>,
+    },
+    ReadReservationLedger {
+        proof: admission_reservations::ReservationProof,
+        reply: Reply<admiralty_runtime::reservations::ReservationLedger>,
+    },
+    ClaimWithReservation {
+        input: Box<AppendInput>,
+        command: Box<admission_reservations::ReservationCommand>,
+        proof: admission_reservations::ReservationProof,
+        reply: Reply<ReservedClaimReceipt>,
+    },
     RecordUsage {
         request: Box<usage_observations::UsageCommand>,
         proof: usage_observations::UsageProof,
@@ -528,6 +599,7 @@ impl Store {
                     writer.question_authority = authorities.questions;
                     writer.usage_authority = authorities.usage;
                     writer.attention_authority = authorities.attention;
+                    writer.reservation_authority = authorities.reservations;
                     if ready_tx.send(Ok(())).is_ok() {
                         writer.run(receiver, writer_changes);
                     }
@@ -643,6 +715,58 @@ impl Store {
         reject_raw_lifecycle(&event)?;
         let intent = outbox::prepare_intent(&intent)?;
         self.append_inner(source, event, observed_utc, Some(intent))
+    }
+
+    /// Commit an exact TaskClaimed event, launch intent and budget reservation
+    /// under one sole-writer transaction. The opaque proof is checked against
+    /// startup-installed current authority on new writes and exact retries.
+    /// An ordinary claim or separately recorded reservation cannot be upgraded
+    /// into this atomic path by replaying its identity.
+    pub fn claim_with_reservation(
+        &self,
+        source: SourceIdentity,
+        event: DomainEvent,
+        observed_utc: String,
+        intent: outbox::OutboxIntent,
+        command: admission_reservations::ReservationCommand,
+        proof: admission_reservations::ReservationProof,
+    ) -> Result<ReservedClaimReceipt> {
+        admission_reservations::validate_command(&command)?;
+        validate_reserved_claim(&source, &event, &command)?;
+        let input = Self::prepare_append(
+            source,
+            event,
+            observed_utc,
+            Some(outbox::prepare_intent(&intent)?),
+        )?;
+        self.ask(|reply| Request::ClaimWithReservation {
+            input: Box::new(input),
+            command: Box::new(command),
+            proof,
+            reply,
+        })
+    }
+
+    /// Protected reservation journal operation. This never queues a launch;
+    /// standalone reservations cannot later be attached to an atomic claim.
+    pub fn record_reservation(
+        &self,
+        command: admission_reservations::ReservationCommand,
+        proof: admission_reservations::ReservationProof,
+    ) -> Result<admission_reservations::ReservationResult> {
+        admission_reservations::validate_command(&command)?;
+        self.ask(|reply| Request::RecordReservation {
+            command: Box::new(command),
+            proof,
+            reply,
+        })
+    }
+
+    pub fn reservation_ledger(
+        &self,
+        proof: admission_reservations::ReservationProof,
+    ) -> Result<admiralty_runtime::reservations::ReservationLedger> {
+        self.ask(|reply| Request::ReadReservationLedger { proof, reply })
     }
 
     /// One authorized CAS and its optional effect intent commit atomically.
@@ -1318,6 +1442,7 @@ fn request_digest(
 }
 
 struct CheckedEvent {
+    source: SourceIdentity,
     event: DomainEvent,
     payload: String,
     digest: String,
@@ -1397,6 +1522,7 @@ fn checked_event(connection: &Connection, sequence: i64) -> Result<CheckedEvent>
         }
     }
     Ok(CheckedEvent {
+        source,
         event,
         payload,
         digest: expected,
@@ -1416,6 +1542,7 @@ struct Writer {
     question_authority: Option<Arc<dyn questions::QuestionAuthority>>,
     usage_authority: Option<Arc<dyn usage_observations::UsageAuthority>>,
     attention_authority: Option<Arc<dyn attention::AttentionAuthority>>,
+    reservation_authority: Option<Arc<dyn admission_reservations::ReservationAuthority>>,
     _lock: File,
 }
 
@@ -1461,6 +1588,7 @@ impl Writer {
         intake_capture::initialize(&connection)?;
         questions::initialize(&connection)?;
         usage_observations::initialize(&connection)?;
+        admission_reservations::initialize(&connection)?;
         let generation = connection
             .query_row(
                 "SELECT value FROM metadata WHERE key='recovery_generation'",
@@ -1497,6 +1625,7 @@ impl Writer {
             question_authority: None,
             usage_authority: None,
             attention_authority: None,
+            reservation_authority: None,
             _lock: lock,
         })
     }
@@ -1504,6 +1633,80 @@ impl Writer {
     fn run(&mut self, receiver: mpsc::Receiver<Request>, changes: tokio::sync::watch::Sender<()>) {
         while let Ok(request) = receiver.recv() {
             match request {
+                Request::ReadReservationLedger { proof, reply } => {
+                    let _ = reply.send(
+                        self.reservation_authority
+                            .as_deref()
+                            .ok_or(admission_reservations::ReservationStoreError::Denied)
+                            .and_then(|authority| {
+                                admission_reservations::read_authorized(
+                                    &self.connection,
+                                    authority,
+                                    proof.as_ref(),
+                                )
+                            })
+                            .map_err(StoreError::from),
+                    );
+                }
+                Request::RecordReservation {
+                    command,
+                    proof,
+                    reply,
+                } => {
+                    let result = (|| {
+                        if command.launch_intent_digest.is_some() {
+                            return Err(StoreError::Invalid(
+                                "launch-bound reservation requires the atomic claim path".into(),
+                            ));
+                        }
+                        let task = reservation_task_id(&command)
+                            .and_then(|id| self.projection.tasks.get(id));
+                        let tx = self
+                            .connection
+                            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+                        let result = admission_reservations::apply_in_transaction(
+                            &tx,
+                            &command,
+                            self.reservation_authority.as_deref(),
+                            proof.as_ref(),
+                            task,
+                        )?;
+                        admission_reservations::reauthorize_in_transaction(
+                            &tx,
+                            &command,
+                            self.reservation_authority.as_deref(),
+                            proof.as_ref(),
+                            task,
+                        )?;
+                        tx.commit()?;
+                        Ok(result)
+                    })();
+                    let _ = reply.send(result);
+                }
+                Request::ClaimWithReservation {
+                    input,
+                    command,
+                    proof,
+                    reply,
+                } => {
+                    let result = self
+                        .append_transaction(*input, Some((&command, &proof)))
+                        .and_then(|(claim, reservation)| {
+                            Ok(ReservedClaimReceipt {
+                                claim,
+                                reservation: reservation.ok_or_else(|| {
+                                    StoreError::Invalid("missing admission receipt".into())
+                                })?,
+                            })
+                        });
+                    if result
+                        .as_ref()
+                        .is_ok_and(|receipt| !receipt.claim.duplicate)
+                    {
+                        changes.send_modify(|_| ());
+                    }
+                    let _ = reply.send(result);
+                }
                 Request::RecordUsage {
                     request,
                     proof,
@@ -1982,6 +2185,21 @@ impl Writer {
     }
 
     fn append(&mut self, input: AppendInput) -> Result<AppendReceipt> {
+        self.append_transaction(input, None)
+            .map(|(receipt, _)| receipt)
+    }
+
+    fn append_transaction(
+        &mut self,
+        input: AppendInput,
+        reservation: Option<(
+            &admission_reservations::ReservationCommand,
+            &admission_reservations::ReservationProof,
+        )>,
+    ) -> Result<(
+        AppendReceipt,
+        Option<admission_reservations::ReservationResult>,
+    )> {
         let AppendInput {
             source,
             source_seq,
@@ -1994,6 +2212,26 @@ impl Writer {
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if let Some((command, proof)) = reservation {
+            validate_reserved_claim(&source, &event, command)?;
+            if command.launch_intent_digest.as_deref()
+                != intent.as_ref().map(|v| v.intent_digest.as_str())
+            {
+                return Err(StoreError::Invalid(
+                    "reservation is not bound to the exact launch intent".into(),
+                ));
+            }
+            let task = reservation_task_id(command).and_then(|id| self.projection.tasks.get(id));
+            // Protected requests may not even publish collision incidents
+            // after revocation. The ordinary append path remains unchanged.
+            admission_reservations::reauthorize_in_transaction(
+                &tx,
+                command,
+                self.reservation_authority.as_deref(),
+                proof.as_ref(),
+                task,
+            )?;
+        }
         let existing: Option<i64> = tx.query_row(
             "SELECT seq FROM domain_events WHERE producer_id=?1 AND incarnation=?2 AND producer_seq=?3",
             params![source.producer_id, source.incarnation, source_seq], |row| row.get(0)).optional()?;
@@ -2036,16 +2274,90 @@ impl Writer {
                     &conflicting_identity,
                     &observed_utc,
                 )?;
+                if let Some((command, proof)) = reservation {
+                    let task =
+                        reservation_task_id(command).and_then(|id| self.projection.tasks.get(id));
+                    admission_reservations::reauthorize_in_transaction(
+                        &tx,
+                        command,
+                        self.reservation_authority.as_deref(),
+                        proof.as_ref(),
+                        task,
+                    )?;
+                }
                 tx.commit()?;
                 return Err(source_collision(&source));
             }
+            let association: Option<(String, String, String)> = tx.query_row(
+                "SELECT command_id,command_digest,receipt_digest FROM event_reservation_associations WHERE event_seq=?1",
+                [seq], |row| Ok((stored_text(row,0,128)?, stored_text(row,1,71)?, stored_text(row,2,71)?)),
+            ).optional()?;
+            let reservation_result = match (reservation, association) {
+                (None, None) => {
+                    let protected: Option<String> = tx.query_row(
+                        "SELECT command_json FROM admission_reservation_commands WHERE source_key=?1",
+                        [serde_json::to_string(&source)?], |row| stored_text(row,0,admission_reservations::MAX_COMMAND_BYTES),
+                    ).optional()?;
+                    if protected
+                        .as_deref()
+                        .map(serde_json::from_str::<admission_reservations::ReservationCommand>)
+                        .transpose()?
+                        .is_some_and(|command| command.launch_intent_digest.is_some())
+                    {
+                        return Err(StoreError::Invalid(
+                            "protected claim is missing its immutable reservation association"
+                                .into(),
+                        ));
+                    }
+                    None
+                }
+                (Some((command, proof)), Some((id, command_digest, receipt_digest))) => {
+                    if id != command.command_id
+                        || command_digest != admission_reservations::validate_command(command)?
+                    {
+                        return Err(StoreError::Invalid(
+                            "atomic admission identity collision".into(),
+                        ));
+                    }
+                    let task =
+                        reservation_task_id(command).and_then(|id| self.projection.tasks.get(id));
+                    let result = admission_reservations::apply_in_transaction(
+                        &tx,
+                        command,
+                        self.reservation_authority.as_deref(),
+                        proof.as_ref(),
+                        task,
+                    )?;
+                    if !result.replayed || result.receipt_digest != receipt_digest {
+                        return Err(StoreError::Invalid(
+                            "atomic admission journal binding is corrupt".into(),
+                        ));
+                    }
+                    admission_reservations::reauthorize_in_transaction(
+                        &tx,
+                        command,
+                        self.reservation_authority.as_deref(),
+                        proof.as_ref(),
+                        task,
+                    )?;
+                    Some(result)
+                }
+                _ => {
+                    return Err(StoreError::Invalid(
+                        "ordinary and budgeted claims cannot be interchanged".into(),
+                    ));
+                }
+            };
             let contiguous: i64 = tx.query_row("SELECT contiguous_seq FROM producer_watermarks WHERE producer_id=?1 AND incarnation=?2",
                 params![source.producer_id, source.incarnation], |row| row.get(0)).optional()?.unwrap_or(0);
-            return Ok(AppendReceipt {
-                event_seq: seq.to_string(),
-                source_contiguous_seq: contiguous.to_string(),
-                duplicate: true,
-            });
+            return Ok((
+                AppendReceipt {
+                    event_seq: seq.to_string(),
+                    source_contiguous_seq: contiguous.to_string(),
+                    duplicate: true,
+                },
+                reservation_result,
+            ));
         }
         if let DomainEvent::TaskSubmitted { contract } = &event {
             workplans::validate_task_contract_in_transaction(&tx, contract)?;
@@ -2063,18 +2375,65 @@ impl Writer {
                 outbox::EnqueueResult::Inserted { id } => associated_intent = Some((id, intent)),
                 outbox::EnqueueResult::ExistingExact { .. } => {
                     tx.execute("INSERT INTO outbox_integrity_incidents(idempotency_key,original_digest,conflicting_digest) VALUES(?1,?2,?2)", params![intent.idempotency_key, intent.intent_digest])?;
+                    if let Some((command, proof)) = reservation {
+                        let task = reservation_task_id(command)
+                            .and_then(|id| self.projection.tasks.get(id));
+                        admission_reservations::reauthorize_in_transaction(
+                            &tx,
+                            command,
+                            self.reservation_authority.as_deref(),
+                            proof.as_ref(),
+                            task,
+                        )?;
+                    }
                     tx.commit()?;
                     return Err(StoreError::Outbox(outbox::OutboxError::IdentityCollision));
                 }
                 outbox::EnqueueResult::Collision => {
+                    if let Some((command, proof)) = reservation {
+                        let task = reservation_task_id(command)
+                            .and_then(|id| self.projection.tasks.get(id));
+                        admission_reservations::reauthorize_in_transaction(
+                            &tx,
+                            command,
+                            self.reservation_authority.as_deref(),
+                            proof.as_ref(),
+                            task,
+                        )?;
+                    }
                     tx.commit()?;
                     return Err(StoreError::Outbox(outbox::OutboxError::IdentityCollision));
                 }
             }
         }
+        // No reservation is staged until all incident-only early commits have
+        // finished. A later journal/policy/SQL failure rolls back this new
+        // outbox row together with the reservation, event and associations.
+        let reservation_result = if let Some((command, proof)) = reservation {
+            let task = reservation_task_id(command).and_then(|id| self.projection.tasks.get(id));
+            let result = admission_reservations::apply_in_transaction(
+                &tx,
+                command,
+                self.reservation_authority.as_deref(),
+                proof.as_ref(),
+                task,
+            )?;
+            if result.replayed {
+                return Err(StoreError::Invalid(
+                    "a standalone reservation cannot be attached to a new claim".into(),
+                ));
+            }
+            Some(result)
+        } else {
+            None
+        };
         tx.execute("INSERT INTO domain_events(producer_id,incarnation,producer_seq,digest,observed_utc,payload) VALUES(?1,?2,?3,?4,?5,?6)",
             params![source.producer_id, source.incarnation, source_seq, incoming_digest, observed_utc, payload])?;
         let seq = tx.last_insert_rowid();
+        if let (Some((command, _)), Some(result)) = (reservation, &reservation_result) {
+            tx.execute("INSERT INTO event_reservation_associations(event_seq,command_id,command_digest,receipt_digest) VALUES(?1,?2,?3,?4)",
+                params![seq, command.command_id, admission_reservations::validate_command(command)?, result.receipt_digest])?;
+        }
         if let Some((intent_id, intent)) = associated_intent {
             tx.execute("INSERT INTO event_outbox_associations(event_seq,outbox_intent_id,idempotency_key,payload_digest,not_before,intent_digest) VALUES(?1,?2,?3,?4,?5,?6)",
                 params![seq, intent_id, intent.idempotency_key, intent.payload_digest, intent.not_before, intent.intent_digest])?;
@@ -2093,14 +2452,27 @@ impl Writer {
         }
         tx.execute("INSERT INTO producer_watermarks(producer_id,incarnation,contiguous_seq) VALUES(?1,?2,?3) ON CONFLICT(producer_id,incarnation) DO UPDATE SET contiguous_seq=excluded.contiguous_seq",
             params![source.producer_id, source.incarnation, contiguous])?;
+        if let Some((command, proof)) = reservation {
+            let task = reservation_task_id(command).and_then(|id| self.projection.tasks.get(id));
+            admission_reservations::reauthorize_in_transaction(
+                &tx,
+                command,
+                self.reservation_authority.as_deref(),
+                proof.as_ref(),
+                task,
+            )?;
+        }
         tx.commit()?;
         self.projection = next_projection;
         self.pending_inbox.apply_prepared(pending_update);
-        Ok(AppendReceipt {
-            event_seq: seq.to_string(),
-            source_contiguous_seq: contiguous.to_string(),
-            duplicate: false,
-        })
+        Ok((
+            AppendReceipt {
+                event_seq: seq.to_string(),
+                source_contiguous_seq: contiguous.to_string(),
+                duplicate: false,
+            },
+            reservation_result,
+        ))
     }
 
     fn snapshot(&self) -> Result<Snapshot> {
@@ -2193,6 +2565,7 @@ impl Writer {
         intake_capture::validate_all(&self.connection)?;
         questions::validate_all(&self.connection)?;
         usage_observations::validate_all(&self.connection)?;
+        admission_reservations::validate_all(&self.connection)?;
         let projection = replay(&self.connection)?;
         let pending_inbox = inbox::PendingInboxIndex::from_projection(&projection)?;
         workplans::validate_task_contracts(
@@ -2217,6 +2590,8 @@ impl Writer {
         intake_capture::validate_all(&self.connection)?;
         questions::validate_all(&self.connection)?;
         usage_observations::validate_all(&self.connection)?;
+        admission_reservations::validate_all(&self.connection)?;
+        let _ = replay(&self.connection)?;
         // Hard-link publication is atomic and refuses an existing destination.
         // Staging and destination share a directory, so publication cannot cross filesystems.
         let parent = destination
@@ -2275,18 +2650,104 @@ fn replay_inner(connection: &Connection) -> Result<Projection> {
             reason: "orphaned event/effect binding".into(),
         });
     }
+    let mut reserved = reserved_claim_bindings(connection)?;
     let mut projection = Projection::default();
     let mut statement = connection.prepare("SELECT seq FROM domain_events ORDER BY seq")?;
     let mut rows = statement.query([])?;
     while let Some(row) = rows.next()? {
         let seq: i64 = row.get(0)?;
         let checked = checked_event(connection, seq)?;
+        if let Some(command) = reserved.remove(&seq) {
+            validate_reserved_claim(&checked.source, &checked.event, &command)?;
+            let Some(task_id) = reservation_task_id(&command) else {
+                return Err(StoreError::Invalid("reserved claim has no task".into()));
+            };
+            let task = projection.tasks.get(task_id).ok_or_else(|| {
+                StoreError::Invalid("reserved claim has no original task contract".into())
+            })?;
+            let admiralty_runtime::reservations::ReservationEvent::Reserve { scope, .. } =
+                &command.event
+            else {
+                return Err(StoreError::Invalid(
+                    "reserved claim is not a reservation".into(),
+                ));
+            };
+            if task.contract.project_id != scope.project_id
+                || task.contract.root_id != scope.root_id
+                || content_digest(&task.contract)? != scope.contract_digest
+                || command.launch_intent_digest.as_deref()
+                    != checked.intent.as_ref().map(|v| v.intent_digest.as_str())
+            {
+                return Err(StoreError::Invalid(
+                    "reserved claim historical scope/effect mismatch".into(),
+                ));
+            }
+        }
         projection = reduce(&projection, &checked.event).map_err(|error| StoreError::Replay {
             sequence: seq.to_string(),
             reason: error.to_string(),
         })?;
     }
+    if !reserved.is_empty() {
+        return Err(StoreError::Invalid(
+            "orphaned reserved claim binding".into(),
+        ));
+    }
     Ok(projection)
+}
+
+/// Check both directions; deleting an association cannot make a protected
+/// launch appear ordinary, and a standalone reservation cannot gain a launch.
+fn reserved_claim_bindings(
+    connection: &Connection,
+) -> Result<BTreeMap<i64, admission_reservations::ReservationCommand>> {
+    let orphaned: bool = connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM event_reservation_associations a LEFT JOIN admission_reservation_commands c ON c.command_id=a.command_id LEFT JOIN domain_events e ON e.seq=a.event_seq WHERE c.command_id IS NULL OR e.seq IS NULL)",
+        [], |row| row.get(0),
+    )?;
+    if orphaned {
+        return Err(StoreError::Invalid(
+            "orphaned reservation association".into(),
+        ));
+    }
+    let mut result = BTreeMap::new();
+    let mut query = connection.prepare("SELECT c.command_json,c.command_digest,c.receipt_digest,a.event_seq,a.command_digest,a.receipt_digest FROM admission_reservation_commands c LEFT JOIN event_reservation_associations a ON a.command_id=c.command_id ORDER BY c.seq LIMIT 8193")?;
+    let mut rows = query.query([])?;
+    let mut count = 0;
+    while let Some(row) = rows.next()? {
+        count += 1;
+        if count > 8192 {
+            return Err(StoreError::Invalid(
+                "reservation association bound exceeded".into(),
+            ));
+        }
+        let command: admission_reservations::ReservationCommand = serde_json::from_str(
+            &stored_text(row, 0, admission_reservations::MAX_COMMAND_BYTES)?,
+        )?;
+        let command_digest = stored_text(row, 1, 71)?;
+        let receipt_digest = stored_text(row, 2, 71)?;
+        let event_seq: Option<i64> = row.get(3)?;
+        match (command.launch_intent_digest.as_ref(), event_seq) {
+            (None, None) => {}
+            (Some(_), Some(seq)) if seq > 0 => {
+                if admission_reservations::validate_command(&command)? != command_digest
+                    || stored_text(row, 4, 71)? != command_digest
+                    || stored_text(row, 5, 71)? != receipt_digest
+                    || result.insert(seq, command).is_some()
+                {
+                    return Err(StoreError::Invalid(
+                        "reservation association digest mismatch".into(),
+                    ));
+                }
+            }
+            _ => {
+                return Err(StoreError::Invalid(
+                    "missing or unexpected reservation association".into(),
+                ));
+            }
+        }
+    }
+    Ok(result)
 }
 
 #[cfg(test)]

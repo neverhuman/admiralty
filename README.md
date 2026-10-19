@@ -134,6 +134,12 @@ Create your model policy from [the example registry](configs/examples/models.jso
 
 The registry supports OpenAI-compatible endpoints, configured OpenCode SSH profiles and Codex CLI model definitions. Set your own model below Luna in tier order to prefer it. Capacity pressure waits by default; expensive fallback and escalation require explicit policy. Setup errors and missing input do not silently escalate. Endpoint or credential references do not establish a working provider, and self-hosted cost remains unknown until measured. See [OpenCode SSH qualification](docs/operators/opencode-ssh.md).
 
+Native [durable budget admission](docs/architecture/durable-admission.md) can commit
+a task claim, exact launch intent and budget reservation atomically under a
+startup-installed current policy. Retries preserve the original receipt;
+unknown liabilities remain reserved. Production budget issuance, global model
+capacity, real provider execution and settlement remain separate rollout work.
+
 Workplans can be previewed and registered as immutable revisions in an exclusively owned offline database:
 
 ```sh
