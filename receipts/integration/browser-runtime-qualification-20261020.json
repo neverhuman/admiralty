@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "kind": "browser_runtime_source_qualification",
+  "source_base_commit": "75c073d70924da14eaab5e83c90d3b0e6bc9fdbd",
+  "candidate_files_sha256": {
+    ".github/workflows/dashboard-e2e.yml": "9cd00e9f87572cb4b5a4c6cfbd65adc24a18bd1e8562d9681a05fdb00ed62d8d",
+    "apps/dashboard/e2e/browser-harness.ts": "60ffc93267993a8f7eda679ac428b908bf2b8d1a8a90d42c4deb390e125449ce",
+    "apps/dashboard/e2e/dashboard-e2e.e2e.ts": "28db36c4aebb29d9958dd1d39e2ac469e3d561680dc3201fa862defb7855a668"
+  },
+  "original_hosted_result": {
+    "head": "75c073d70924da14eaab5e83c90d3b0e6bc9fdbd",
+    "job_id": 118459248208,
+    "tests_passed": 30,
+    "tests_failed": 2,
+    "failures": [
+      "forced startup stall: direct child stateZ without observed Node exit; retained custody and refused retry",
+      "Atlas: Page.navigate exceeded both 20000ms attempt budgets"
+    ],
+    "root_cause": "unproven; unchanged source passes locally with same Node and Chromium versions"
+  },
+  "unchanged_linux_control": {
+    "exit": 0,
+    "tests_passed": 32,
+    "test_files_passed": 7,
+    "node": "24.22.0",
+    "browser": "Chrome145.0.7632.6 via aa-exec chrome; no setuid helper; OS sandbox intact",
+    "started_utc": "2026-10-20T05:03:19.518970+00:00",
+    "completed_utc": "2026-10-20T05:04:18.889859+00:00",
+    "log_sha256": "148d389717a0a6f45139c9cd70d258f7762d90483589cd053f750d3ec414dba7"
+  },
+  "candidate_linux_control": {
+    "exit": 0,
+    "tests_passed": 32,
+    "test_files_passed": 7,
+    "node": "24.22.0",
+    "browser": "Chrome155.0.8059.84 via aa-exec chrome; no setuid helper; OS sandbox intact",
+    "started_utc": "2026-10-20T05:05:41.990486+00:00",
+    "completed_utc": "2026-10-20T05:06:29.768236+00:00",
+    "log_sha256": "c3b9847932a2a6e71d22126885b03a655eba0330fe22f9641017d32bd2a65912",
+    "executed_file_hashes": {
+      "apps/dashboard/e2e/browser-harness.ts": "60ffc93267993a8f7eda679ac428b908bf2b8d1a8a90d42c4deb390e125449ce",
+      "apps/dashboard/e2e/dashboard-e2e.e2e.ts": "28db36c4aebb29d9958dd1d39e2ac469e3d561680dc3201fa862defb7855a668"
+    }
+  },
+  "pinned_archive": {
+    "url": "https://storage.googleapis.com/chrome-for-testing-public/155.0.8059.84/linux64/chrome-linux64.zip",
+    "sha256": "cf0f049892dea22e6a6db26d47ed0d7776b7158edcbec4634086633df8bafcbc",
+    "size_bytes": 199014491,
+    "version": "Google Chrome for Testing 155.0.8059.84",
+    "channel_reference": "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json",
+    "channel_manifest_timestamp": "2026-10-19T20:21:17.975Z"
+  },
+  "actual_workflow_provision_control": {
+    "exit": 0,
+    "initial_browser": "cached Chromium145.0.7632.6",
+    "selected_browser_version": "155.0.8059.84",
+    "script_sha256": "001da4d643125d07143295f68863dd22a6ab24efd888d3f0eb0700219bcabaac",
+    "log_sha256": "8a8041f9d53c3d4ad407e2a192ca02d784e41dc45d9021d4f298b14925c5885a"
+  },
+  "evidence_archive_sha256": "523686ad4a94ad082e37b6c3cc5551bc212ada8d3cbcefbd692070fcdb0df7e0",
+  "limits": [
+    "Private finite source copy on two owned Linux CPUs; not hosted qualification or deployment.",
+    "Actual aa-exec chrome transition and full OS sandbox retained. Local userns restriction0 differs from hosted1.",
+    "An earlier local run used an excessively long TMPDIR and failed before startup; original logs retained separately from the hosted failure.",
+    "No deadline, test assertion, retry ceiling, process reaping or group-custody requirement was relaxed.",
+    "Final exact-head local matrix, bot review and hosted checks are subsequent gates."
+  ],
+  "native_acceptance": false,
+  "full_release_acceptance": false,
+  "independent_review": {
+    "requested_model": "gpt-6-luna medium",
+    "sha256": "e8f1b19224e29001c017668a4f6721a80caee1a088fe4c163b40da3bff0db54c",
+    "tests_executed": 0,
+    "source_blockers_confirmed": 0,
+    "qualification_blocker": "Changed harness auto-selection requires userns restriction1, whereas local Linux reports0. Actual hosted qualification remains open and required before merge.",
+    "disposition": "Retain as a qualification limit; do not claim hosted failure root cause or native/full release acceptance. Required hosted browser check must pass on exact pushed head."
+  }
+}

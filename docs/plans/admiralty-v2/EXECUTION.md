@@ -3119,3 +3119,25 @@ The conditional balance-range observation preserves the preexisting reader's
 string bounds; the native quota producer already rejects negative/nonfinite
 balances. A later generic observed-sample label avoids calling a fully covered
 sample partial; final-head local and hosted checks follow that small UI/doc delta.
+
+### Browser qualification runtime follow-up — October20
+
+Hosted75c073d passes Rust, contracts, security and the advisory audit, but browser
+qualification fails30/32: the forced startup-stall control retains a direct child
+in custody without an observed exit, and Atlas navigation exceeds both existing
+CDP deadlines. Unchanged75 passes all32 locally on Linux with Node24.22.0,
+Chromium145 and the actual AppArmor chrome transition. The hosted root cause
+remains unproven. An earlier local attempt failed because its temporary path
+exceeded Linux's socket limit; that separate failure is preserved.
+
+The candidate pins Node24.22.0 and a SHA256-verified Chrome for Testing155 archive
+in private hosted scratch, records runtime/resource diagnostics and asserts the
+actual CDP version. It removes the synchronous `/bin/true` sandbox probe while
+other owned browsers are live; the actual browser handshake still qualifies the
+transition. Full sandboxing, deadlines, retry limits and process/group custody
+remain required. The candidate passes all32 Linux browser tests and the actual
+provisioning step selects the pinned browser despite a preexisting145 selection.
+The [file-bound receipt](../../../receipts/integration/browser-runtime-qualification-20261020.json)
+records exact source/log/archive hashes and the local-versus-hosted sandbox
+difference. Exact-head local CI, independent review and hosted qualification
+follow; these observations do not establish production deployment or acceptance.

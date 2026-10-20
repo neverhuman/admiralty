@@ -1694,18 +1694,12 @@ async function launchBrowserHarnessAttempt(
     existsSync('/usr/bin/aa-exec') &&
     existsSync('/etc/apparmor.d/chrome')
   ) {
-    try {
-      const probe = spawnSync('/usr/bin/aa-exec', ['-p', 'chrome', '--', '/bin/true'], {
-        encoding: 'utf8',
-      });
-      if (probe.status === 0) {
-        spawnCommand = '/usr/bin/aa-exec';
-        spawnArgs = ['-p', 'chrome', '--', binaryPath, ...browserArgs];
-        aaExecProfile = 'chrome';
-      }
-    } catch {
-      // Fall back to direct binaryPath spawn and preserve truthful launch diagnostics if unsupported
-    }
+    // The actual browser handshake qualifies this transition and preserves its
+    // stderr on failure. A synchronous /bin/true probe cannot qualify Chromium
+    // and blocks the event loop while other owned browsers may need reaping.
+    spawnCommand = '/usr/bin/aa-exec';
+    spawnArgs = ['-p', 'chrome', '--', binaryPath, ...browserArgs];
+    aaExecProfile = 'chrome';
   }
 
   // Launch with OS sandbox intact (never pass --no-sandbox or --disable-setuid-sandbox).

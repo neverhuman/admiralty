@@ -475,6 +475,9 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
       expect(axeBundle.sha256).toBe(PINNED_AXE_CORE_SHA256);
 
       expect(browser.browserVersion.product).toMatch(/Chrome\//);
+      if (process.env.ADMIRALTY_E2E_BROWSER_VERSION) {
+        expect(browser.browserVersion.product).toBe(`Chrome/${process.env.ADMIRALTY_E2E_BROWSER_VERSION}`);
+      }
       expect(browser.browserVersion.protocolVersion).toBeTruthy();
 
       // Verify maxStartupAttempts (finite integer in 1..2) and startupTimeoutMs validation
