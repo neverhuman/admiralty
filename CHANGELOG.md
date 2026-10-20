@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Compress linear Git history into expandable ranges while preserving topology
+  anchors and the complete commit inventory. Add project Captain/Admiral chat
+  with durable inbox delivery/replies and Rust Git health findings over cached
+  observations. Protected role enrollment is required for live chat and alerts.
+
 - Display reported partial hygiene audit ranges and known subtotals in live
   cards, hierarchy and history, with original audit times. Keep final scores
   unknown until the missing measurements are available. Use the same two-decimal

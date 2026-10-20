@@ -425,7 +425,10 @@ export default function GitFlow({
           (needle && `${c.oid} ${c.subject}`.toLowerCase().includes(needle))
         ));
       }).map((c) => c.oid));
-      const layout = project.git ? layoutGit(project.git, revealed, zoom) : null;
+      const collapsedOids = new Set(project.git?.commits
+        .filter((commit) => collapsed.has(`${project.id}:${commit.oid}`))
+        .map((commit) => commit.oid));
+      const layout = project.git ? layoutGit(project.git, revealed, zoom, collapsedOids) : null;
       const height = Math.max(
         chatMemory.projects.get(project.id)?.open || healthOpen.has(project.id) ? 480 : 180,
         layout ? layout.height * zoom + 76 : 180,
@@ -437,10 +440,16 @@ export default function GitFlow({
   }, [projects, zoom, expanded, collapsed, focusId, focusProject, selectedOid, selectedProject, query, chatMemory, chatRevision, healthOpen]);
   useEffect(() => {
     if (!focusId) return;
+    // A new explicit focus reveals its whole range; routine source updates do not reset manual intent.
+    const reveal = new Set<string>();
+    for (const project of frozen.projects) {
+      if (focusProject && project.id !== focusProject) continue;
+      const range = project.git ? layoutGit(project.git).byOid.get(focusId)?.range : undefined;
+      for (const oid of range?.commits.map((commit) => commit.oid) ?? [focusId])
+        reveal.add(`${project.id}:${oid}`);
+    }
     setCollapsed((before) => {
-      const next = new Set([...before].filter((key) =>
-        focusProject ? key !== `${focusProject}:${focusId}` : !key.endsWith(`:${focusId}`),
-      ));
+      const next = new Set([...before].filter((key) => !reveal.has(key)));
       return next.size === before.size ? before : next;
     });
   }, [focusId, focusProject]);
@@ -521,14 +530,16 @@ export default function GitFlow({
   const appliedFocus = useRef("");
   useEffect(() => {
     const el = scrollRef.current;
-    const key = `${focusId}:${branch}`;
+    const key = JSON.stringify([focusProject, focusId, branch]);
     if (!el || appliedFocus.current === key) return;
     if (!focusId && !branch) { appliedFocus.current = key; return; }
     const band = bands.find(
       (b) =>
-        b.project.git?.commits.some((c) => c.oid === focusId) ||
-        b.project.git?.checkouts.some(
-          (c) => c.id === focusId || (branch && c.branch === branch),
+        (!focusProject || b.project.id === focusProject) && (
+          b.project.git?.commits.some((c) => c.oid === focusId) ||
+          b.project.git?.checkouts.some(
+            (c) => c.id === focusId || (branch && c.branch === branch),
+          )
         ),
     );
     if (!band?.layout) return;
@@ -543,7 +554,7 @@ export default function GitFlow({
       el.scrollTop = band.top;
       setScroll({ left: el.scrollLeft, top: el.scrollTop });
     }
-  }, [focusId, branch, bands, zoom, inventory]);
+  }, [focusId, focusProject, branch, bands, zoom, inventory]);
   const commits = bands
     .flatMap((b) =>
       (b.layout?.orderedCommits ?? []).map((commit) => ({
@@ -607,14 +618,20 @@ export default function GitFlow({
         {!inventory && <button className="lv-button" onClick={() => {
           setFollow(false);
           const all = projects.flatMap((p) => p.git?.commits.map((c) => `${p.id}:${c.oid}`) ?? []);
-          if (bands.some((b) => b.layout?.ranges.some((r) => !r.expanded))) {
-            setCollapsed(new Set());
-            setExpanded(new Set(all));
-          } else {
-            setCollapsed(new Set(all));
-            setExpanded(new Set());
-            onSelect(null);
-          }
+          const expand = bands.some((b) => b.layout?.ranges.some((r) => !r.expanded));
+          setCollapsed((before) => {
+            const next = new Set(before);
+            for (const key of all) if (expand) next.delete(key); else next.add(key);
+            return next;
+          });
+          setExpanded((before) => {
+            const next = new Set(before);
+            for (const key of all) if (expand) next.add(key); else next.delete(key);
+            return next;
+          });
+          if (!expand && selection?.kind === "commit" && bands.some((band) =>
+            band.project.id === selection.project.id && band.layout?.ranges.some((range) =>
+              range.commits.some((commit) => commit.oid === selection.commit.oid)))) onSelect(null);
         }}>
           {bands.some((b) => b.layout?.ranges.some((r) => !r.expanded)) ? "Expand all" : "Collapse linear"}
         </button>}

@@ -374,6 +374,120 @@ describe("built live views against the real Rust server", () => {
     expect(await browser.evaluate(`document.querySelector('.git-band:nth-child(2) .git-canvas').getAttribute('aria-label')`)).toContain("1 collapsed ranges");
     server.writeLegacySnapshot(sourceFixture());
   });
+  it.each(["root", "tag", "tip", "checkout"] as const)("preserves protected %s selection when collapsing linear ranges", async (kind) => {
+    const source = sourceFixture(), repo = source.git.harbor, template = repo.commits[0];
+    const oid = (n: number) => ((n * 2654435761) >>> 0).toString(16).padStart(8, "0").padEnd(40, "0");
+    repo.commits = Array.from({ length: 40 }, (_, i) => ({ ...template, oid: oid(i + 1), parents: i ? [oid(i)] : [], subject: `Protected history ${i + 1}` }));
+    repo.refs = [{ name: "refs/tags/milestone", oid: oid(20), commit_oid: oid(20), kind: "tag" }];
+    repo.checkouts = [{ ...repo.checkouts[0], id: "protected-tree", name: "protected-checkout", head: oid(30), branch: "protected/checkout" }];
+    server.writeLegacySnapshot(source);
+    await connect("git");
+    await browser.waitForText("40 commits");
+    await browser.waitForText("protected-checkout");
+    await browser.clickButtonByText("Inventory");
+    if (kind === "checkout") await browser.clickButtonByText("protected-checkout");
+    else await browser.clickButtonByText(oid(kind === "root" ? 1 : kind === "tag" ? 20 : 40).slice(0, 10));
+    await browser.waitForSelector(".lv-inspector");
+    const selected = await browser.evaluate<string>(`location.hash`);
+    await browser.clickButtonByText("Graph");
+    await browser.clickButtonByText("Expand all");
+    await browser.clickButtonByText("Collapse linear");
+    await browser.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+    expect(await browser.evaluate(`Boolean(document.querySelector('.lv-inspector'))`), "A visible topology anchor must retain its inspector").toBe(true);
+    expect(await browser.evaluate(`location.hash`)).toBe(selected);
+    expect(await browser.evaluate(`document.querySelectorAll('.git-commit-range[aria-expanded="false"]').length`)).toBeGreaterThan(0);
+    server.writeLegacySnapshot(sourceFixture());
+  });
+  it("keeps manually collapsed matching ranges closed across live tip growth", async () => {
+    const source = sourceFixture(), repo = source.git.harbor, template = repo.commits[0];
+    const oid = (n: number) => ((n * 2654435761) >>> 0).toString(16).padStart(8, "0").padEnd(40, "0");
+    repo.refs = []; repo.checkouts = [];
+    repo.commits = Array.from({ length: 20 }, (_, i) => ({ ...template, oid: oid(i + 1), parents: i ? [oid(i)] : [], subject: `Matching history ${i + 1}` }));
+    server.writeLegacySnapshot(source);
+    await connect("git");
+    await browser.clickButtonByText("Follow latest");
+    await browser.fillInputByLabel("Search Git projects and commits", "Matching history");
+    await browser.waitForSelector('.git-commit-range[aria-expanded="true"]');
+    await browser.evaluate(`document.querySelector('.git-commit-range').click()`);
+    await browser.waitForSelector('.git-commit-range[aria-expanded="false"]');
+    repo.commits.push({ ...template, oid: oid(21), parents: [oid(20)], subject: "Matching history 21" });
+    server.writeLegacySnapshot(source);
+    await browser.waitForText("21 commits");
+    await browser.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+    expect(await browser.evaluate(`document.querySelector('.git-commit-range')?.getAttribute('aria-expanded')`), "An unchanged search must not reopen a manually collapsed growing range").toBe("false");
+    expect(await browser.evaluate(`document.querySelector('.git-commit-range')?.textContent`)).toContain("19 hidden");
+    await browser.clickButtonByText("Inventory");
+    await browser.clickButtonByText(oid(10).slice(0, 10));
+    await browser.waitForSelector(".lv-inspector");
+    await browser.clickButtonByText("Graph");
+    await browser.waitForSelector('.git-canvas[aria-label*="0 collapsed ranges"]');
+    await browser.clickButtonByText("Collapse linear");
+    await browser.waitForSelector('.git-commit-range[aria-expanded="false"]');
+    expect(await browser.evaluate(`Boolean(document.querySelector('.lv-inspector'))`)).toBe(false);
+    await browser.fillInputByLabel("Search Git projects and commits", "Matching history 1");
+    await browser.waitForSelector('.git-commit-range[aria-expanded="true"]');
+    server.writeLegacySnapshot(sourceFixture());
+  });
+  it.each(["direct", "switch-project"] as const)("focuses shared commits in the requested project (%s)", async (mode) => {
+    const source = sourceFixture(), repo = source.git.harbor, template = repo.commits[0];
+    const oid = (n: number) => ((n * 2654435761) >>> 0).toString(16).padStart(8, "0").padEnd(40, "0");
+    repo.refs = []; repo.checkouts = [];
+    repo.commits = Array.from({ length: 20 }, (_, i) => ({ ...template, oid: oid(i + 1), parents: i ? [oid(i)] : [], subject: `Shared history ${i + 1}` }));
+    Object.assign(source.git, { observatory: { ...structuredClone(repo), instance_id: "second-repository" } });
+    const fillers = Array.from({ length: 8 }, (_, i) => `focus-filler-${i}`);
+    const tail = Array.from({ length: 8 }, (_, i) => `focus-tail-${i}`);
+    for (const id of [...fillers, ...tail]) Object.assign(source.projects, { [id]: { name: id } });
+    source.order = ["harbor", ...fillers, "observatory", ...tail];
+    server.writeLegacySnapshot(source);
+    const focus = oid(10);
+    await connect(`git?project=${mode === "direct" ? "observatory" : "harbor"}&focus=${focus}`);
+    if (mode === "switch-project") {
+      await browser.waitForSelector('.git-band[aria-label="Harbor repository"] .git-canvas[aria-label*="0 collapsed ranges"]');
+      await browser.evaluate(`location.hash=${JSON.stringify(`#/git?project=observatory&focus=${focus}`)}`);
+    }
+    await browser.waitForSelector(".lv-inspector");
+    await browser.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+    const state = await browser.evaluate<{ top: number; targetTop: number; inspector: string }>(`(() => {
+      const scroll=document.querySelector('.git-scroll'), band=document.querySelector('.git-band[aria-label="Observatory repository"]');
+      return {top:scroll.scrollTop,targetTop:band.offsetTop,inspector:document.querySelector('.lv-inspector')?.textContent ?? ''};
+    })()`);
+    expect(state.inspector).toContain("Observatory");
+    expect(state.targetTop).toBeGreaterThan(1000);
+    expect(state.top, "Camera must reach the explicitly requested project, including identical-OID project switches").toBeGreaterThanOrEqual(state.targetTop - 2);
+    server.writeLegacySnapshot(sourceFixture());
+  });
+  it("preserves filtered-out project expansion and collapse intent during global controls", async () => {
+    const source = sourceFixture(), repo = source.git.harbor, template = repo.commits[0];
+    const oid = (n: number) => ((n * 2654435761) >>> 0).toString(16).padStart(8, "0").padEnd(40, "0");
+    repo.refs = []; repo.checkouts = [];
+    repo.commits = Array.from({ length: 20 }, (_, i) => ({ ...template, oid: oid(i + 1), parents: i ? [oid(i)] : [], subject: `Scoped history ${i + 1}` }));
+    Object.assign(source.git, { observatory: { ...structuredClone(repo), instance_id: "second-scoped-repository" } });
+    server.writeLegacySnapshot(source);
+    await connect("git");
+    await browser.waitForText("40 commits");
+    await browser.waitForSelector('.git-band:nth-child(2) .git-commit-range');
+    async function filter(project: string) {
+      await browser.evaluate(`(() => {const select=document.querySelector('select[aria-label="Filter Git project"]');select.value=${JSON.stringify(project)};select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+      await browser.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+    }
+    await browser.evaluate(`document.querySelector('.git-band:first-child .git-commit-range').click()`);
+    await browser.waitForSelector('.git-band:first-child .git-commit-range[aria-expanded="true"]');
+    await filter("observatory");
+    await browser.clickButtonByText("Expand all");
+    await browser.clickButtonByText("Collapse linear");
+    await filter("");
+    expect(await browser.evaluate(`document.querySelector('.git-band:first-child .git-commit-range')?.getAttribute('aria-expanded')`), "Global controls must preserve hidden-project expansion").toBe("true");
+    await browser.fillInputByLabel("Search Git projects and commits", "Scoped history");
+    await browser.evaluate(`document.querySelector('.git-band:first-child .git-commit-range').click()`);
+    await browser.waitForSelector('.git-band:first-child .git-commit-range[aria-expanded="false"]');
+    await filter("observatory");
+    await browser.clickButtonByText("Collapse linear");
+    await browser.clickButtonByText("Expand all");
+    await filter("");
+    expect(await browser.evaluate(`document.querySelector('.git-band:first-child .git-commit-range')?.getAttribute('aria-expanded')`), "Global controls must preserve hidden-project manual collapse").toBe("false");
+    expect(await browser.evaluate(`document.querySelector('.git-band:nth-child(2) .git-commit-range')?.getAttribute('aria-expanded')`)).toBe("true");
+    server.writeLegacySnapshot(sourceFixture());
+  });
   it("preserves Git offsets and follows new commits after Inventory", async () => {
     const long = sourceFixture(),
       oid = (n: number) => n.toString(16).padStart(40, "0"),

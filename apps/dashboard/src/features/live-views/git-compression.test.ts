@@ -40,6 +40,27 @@ describe("maximal linear Git compression", () => {
     expect(updated.ranges[0].expanded).toBe(true);
     expect(updated.marks).toHaveLength(21);
   });
+  it("keeps a manually collapsed growing range closed despite new automatic matches", () => {
+    const initial = layoutGit(chain(20));
+    const collapsed = new Set(initial.ranges[0].commits.map((commit) => commit.oid));
+    const repo = chain(21), matching = new Set(repo.commits.map((commit) => commit.oid));
+    const updated = layoutGit(repo, matching, 1, collapsed);
+    expect(updated.ranges[0].expanded).toBe(false);
+    expect(updated.ranges[0].commits).toHaveLength(19);
+    expect(updated.marks).toHaveLength(3);
+    expect(updated.orderedCommits).toHaveLength(21);
+    expect(updated.byOid.size).toBe(21);
+  });
+  it("keeps manual collapse local to its range when refs split a history", () => {
+    const repo = chain(40);
+    repo.refs = [{ name: "refs/tags/split", oid: oid(20), commit_oid: oid(20), kind: "tag" }];
+    const collapsed = new Set(layoutGit(repo).ranges[0].commits.map((commit) => commit.oid));
+    const matching = new Set(repo.commits.map((commit) => commit.oid));
+    const layout = layoutGit(repo, matching, 1, collapsed);
+    expect(layout.ranges.map((range) => range.expanded)).toEqual([false, true]);
+    expect(layout.byOid.get(oid(20))?.range).toBeUndefined();
+    expect(layout.orderedCommits).toHaveLength(40);
+  });
   it("preserves refs, tags and detached checkout heads as visible anchors", () => {
     const repo = chain(40);
     repo.refs = [10, 20].map((i) => ({ name: `refs/tags/v${i}`, oid: oid(i), commit_oid: oid(i), kind: "tag" }));
