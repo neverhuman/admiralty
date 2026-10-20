@@ -3205,3 +3205,16 @@ limits. Its evidence commit follows the tested source. Existing PR163's owner is
 the receiving integration route; no duplicate PR or production controller is
 created. Exact-head review/hosted gates, sequential combination with collapse,
 deployment, protected role enrollment and a real role round trip remain separate.
+
+Publication follow-up: branch `codex/git-protector-chat` was pushed with source
+and evidence tip `b47fc42`; a read-only remote-ref check confirmed it. Final
+handoff `GPC-SOURCE-20261020-0731Z` was durably appended/read back at07:32:44UTC
+in the Admiral inbox, DOPE captain COMMS and Admiralty captain/integration-owner
+COMMS. The single bounded07:33:37 check found no matching final-source reply;
+the earlier Admiral audit/custody acknowledgment remains distinct. The
+[delivery receipt](../../../receipts/integration/git-protector-chat-role-delivery-20261020.json)
+preserves the exact handoff and evidence. No duplicate pointer or process effect
+accompanied it. DOPE PR290 independently advanced to `5701ba33`, one repair
+commit after the audited worker; its CPU run was still in progress at07:33:30.
+Static inspection of that delta does not inherit the earlier source's tests or
+its saved CPU failure. Review/merge/deployment remain with the receiving owners.
