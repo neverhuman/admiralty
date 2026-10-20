@@ -3217,3 +3217,12 @@ malformed-source, compact-recovery and UI diagnostics cover this real failure.
 Both new negative controls fail the original e6763bb. The limit is retained;
 no stale value is relabeled current and Root performs no role/status/config
 writes. Final exact-head qualification follows this source change.
+
+The sole Admiral publisher compacted the status to25582bytes and retained the
+raw audit receipts. The actual06:14:54Z producer again contains all five partial
+ranges and original06:00–06:02 audit clocks. Root's first04faee0 whole-matrix run
+stopped at strict Clippy because the new fleet fixture used11 unwrap calls;
+these now use descriptive expect failures, retaining every assertion and lint
+policy. Runtime source is unchanged by that correction. Publisher guidance
+records the existing128KiB bound, byte validation and immutable detail references
+to prevent repeat overflow. Final exact-head gates remain required.

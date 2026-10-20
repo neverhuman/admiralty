@@ -141,6 +141,13 @@ Per project, check (read-only commands; captains do the fixing):
 - **Lanes far behind the integration head:** `git rev-list --count <lane>..<integration-branch>` (behind) — flag >20 commits or >2 h since last rebase.
 - **Score 0-100 per captain:** start 100; -10 per stale merged worktree (max -30); -10 per lane with uncommitted work >45 min (max -30); -10 per lane >20 behind (max -20); -20 if temp/scratch grew >10 GB since last check or a scratch cap was hit. Grade A ≥85, B ≥70, C ≥50, D <50.
 - Record in `super_captain_LOG.md` (a "Hygiene" table per check) and in `super_captain_status.json` → `captains.<x>.hygiene = {"score":n,"grade":"A|B|C|D","stale_merged_worktrees":n,"uncommitted_over_45m":n,"lanes_behind":n,"temp_growth_gb":x|null,"notes":["..."]}`.
+- Keep the published status JSON within the observer's **128 KiB** byte limit;
+  prefer compact summaries below64KiB. Serialize and check bytes before writing,
+  retaining the previous readable status if the candidate exceeds the limit.
+  Store raw audit/worktree/process evidence in immutable receipts and include
+  their paths/hashes in the summary. Preserve per-project `observed_utc`; when
+  measurements are incomplete, publish null score/grade plus the supported
+  `possible_score_range`, `known_component_subtotal` and missing components.
 - Nudge the responsible captain with the exact worktrees/lanes. **Repeat offenders** (grade C/D two checks in a row, or the same item unfixed after a nudge): escalate — a firmer nudge with a deadline of the next check, recorded as an action; on the third strike, use your proxy authority to order a specific fix (record it as a decision). Never fix it yourself and never delete anything yourself.
 
 

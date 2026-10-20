@@ -1369,42 +1369,53 @@ mod tests {
 
     #[tokio::test]
     async fn admiral_status_overflow_and_parse_errors_are_visible_and_compact_audits_recover() {
-        let temp = tempfile::tempdir().unwrap();
+        let temp = tempfile::tempdir().expect("private audit fixture directory");
         let config: ObserveConfig =
             serde_json::from_value(json!({"schema_version":1,"node_id":"n",
             "output_dir":temp.path(),"coordination_dir":temp.path(),"projects":[]}))
-            .unwrap();
+            .expect("audit fixture configuration");
         let path = temp.path().join("super_captain_status.json");
         let mut compact = json!({"captains":{"p":{"hygiene":{"score":null,"grade":null,
             "possible_score_range":[30,80],"known_component_subtotal":80,
             "observed_utc":"2026-10-20T06:02:00Z"}}}});
         compact["embedded_evidence"] = json!("x".repeat(250_000));
-        std::fs::write(&path, serde_json::to_vec(&compact).unwrap()).unwrap();
+        std::fs::write(
+            &path,
+            serde_json::to_vec(&compact).expect("oversized audit JSON"),
+        )
+        .expect("write oversized audit fixture");
         let oversized = admiral_observation(&config, &[]).await;
         assert!(oversized["status"].is_null());
         assert!(
             oversized["status_error"]
                 .as_str()
-                .unwrap()
+                .expect("oversized audit diagnostic")
                 .contains("byte limit")
         );
         assert!(
             oversized["status_error"]
                 .as_str()
-                .unwrap()
+                .expect("oversized audit diagnostic")
                 .contains("128 KiB")
         );
-        std::fs::write(&path, b"{").unwrap();
+        std::fs::write(&path, b"{").expect("write malformed audit fixture");
         let malformed = admiral_observation(&config, &[]).await;
         assert!(malformed["status"].is_null());
         assert!(
             malformed["status_error"]
                 .as_str()
-                .unwrap()
+                .expect("malformed audit diagnostic")
                 .contains("unavailable")
         );
-        compact.as_object_mut().unwrap().remove("embedded_evidence");
-        std::fs::write(&path, serde_json::to_vec(&compact).unwrap()).unwrap();
+        compact
+            .as_object_mut()
+            .expect("audit object")
+            .remove("embedded_evidence");
+        std::fs::write(
+            &path,
+            serde_json::to_vec(&compact).expect("compact audit JSON"),
+        )
+        .expect("write compact audit fixture");
         let recovered = admiral_observation(&config, &[]).await;
         assert!(recovered["status_error"].is_null());
         let hygiene = &recovered["status"]["captains"]["p"]["hygiene"];
