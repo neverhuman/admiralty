@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-20T02:33:37.150601+00:00",
+  "scope": "Linux history cron wrapper custody; explicit unsupported-platform refusal",
+  "source_files": [
+    {
+      "path": "tools/history_export_cron.sh",
+      "sha256": "797e93d7ada10c90ea7a932101ad26f0f34dfc1c2a7b6c62b722c7d36e987cf1"
+    },
+    {
+      "path": "tests/integration/python_policy.rs",
+      "sha256": "fa0ae83b73860d82bb89a91ef92fba7c6e22244fb63cc48f7fc4439c34af18f9"
+    }
+  ],
+  "original_failures": [
+    {
+      "source_commit": "6cc64b7961f3fbc235355a95007dadf09010c906",
+      "command": [
+        "pnpm",
+        "check"
+      ],
+      "exit_code": 101,
+      "failed_check": "sc186o_history_export_cron_custody_and_allowlist_against_local_bare_remote",
+      "reason": "Missing Linux flock on macOS was misreported as successful lock contention."
+    },
+    {
+      "command": "new unsupported-host refusal test with original wrapper bytes",
+      "exit_code": 101,
+      "log_sha256": "f46edf8117eeb9c5a8f7cbd239a26a6eb6a49ce9eac9489fcc13af2d59da0ca0"
+    }
+  ],
+  "macos_scoped": {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "admiralty-testkit",
+      "--test",
+      "python_policy"
+    ],
+    "exit_code": 0,
+    "passed": 6,
+    "log_sha256": "6ffe115e4a4122235f156aab5656ce7f082d7ed84d714dc2e6c73e5de12737d9",
+    "limits": "Linux-only publication fixture does not execute on macOS; actual unsupported-host refusal executes instead."
+  },
+  "linux_actual_wrapper": {
+    "observed_utc": "2026-10-20T02:32:58.572489+00:00",
+    "wrapper_sha256": "797e93d7ada10c90ea7a932101ad26f0f34dfc1c2a7b6c62b722c7d36e987cf1",
+    "cases": [
+      {
+        "case": "clean",
+        "exit_code": 0,
+        "pass": true,
+        "remote_changed": true
+      },
+      {
+        "case": "staged_unrelated",
+        "exit_code": 1,
+        "pass": true,
+        "remote_changed": false
+      },
+      {
+        "case": "staged_allowed",
+        "exit_code": 1,
+        "pass": true,
+        "remote_changed": false
+      },
+      {
+        "case": "dirty_allowed",
+        "exit_code": 1,
+        "pass": true,
+        "remote_changed": false
+      },
+      {
+        "case": "untracked_tmp",
+        "exit_code": 1,
+        "pass": true,
+        "remote_changed": false
+      },
+      {
+        "case": "export_unknown",
+        "exit_code": 1,
+        "pass": true,
+        "remote_changed": false
+      },
+      {
+        "case": "export_failure",
+        "exit_code": 1,
+        "pass": true,
+        "remote_changed": false
+      },
+      {
+        "case": "contended_lock",
+        "exit_code": 0,
+        "pass": true,
+        "remote_changed": false
+      }
+    ],
+    "scope": "Fresh isolated local bare remotes, exact wrapper bytes, no GitHub or production mutation. This is not the hosted Rust fixture."
+  },
+  "full_ci": "pending exact candidate run",
+  "full_release_accepted": false,
+  "native_execution_qualified": false
+}

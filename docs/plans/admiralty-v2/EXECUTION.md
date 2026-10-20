@@ -3014,3 +3014,16 @@ separate. One actual production role cycle is now demonstrated by the
 without publishing raw messages or granting native execution. Legacy wake-up,
 production admission/provider/closure/recovery/distribution and full parent
 acceptance remain open; P00/P01 alone remain accepted.
+
+## History export platform and lock failure, 20 October 2026 UTC
+
+Full local CI at `6cc64b7` caught the Linux cron wrapper treating missing
+`flock` on macOS as successful lock contention. The wrapper now refuses
+unsupported hosts and missing required tools before effects, and reserves
+exit75 for actual lock contention; other lock errors fail. The original Linux
+publication/custody test remains platform-specific; macOS executes a real
+no-effects refusal test. All six policy tests pass on macOS, the old wrapper
+fails the new control, and exact repaired wrapper bytes pass eight isolated
+Linux publication/preservation/lock cases. The [receipt](../../../receipts/integration/history-export-platform-20261020.json)
+preserves scope, hashes and original failures. Final whole local CI and hosted
+checks still follow; no parent or release acceptance changes.
