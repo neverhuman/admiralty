@@ -1018,6 +1018,7 @@
   position: relative;
   flex: 1;
   min-height: 200px;
+  overflow: hidden;
 }
 .git-scroll {
   position: absolute;
@@ -1205,16 +1206,16 @@
 
 /* Project chat lives in viewport coordinates, separate from the scrolling graph. */
 .git-chat-overlays {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 5;
-  overflow: hidden;
+  display: contents;
 }
 .git-chat-anchor {
   position: absolute;
   right: 14px;
   width: min(340px, calc(100% - 28px));
+  z-index: 5;
+  pointer-events: none;
+  background: var(--lv-panel);
+  border-radius: 12px;
 }
 .git-chat {
   pointer-events: auto;

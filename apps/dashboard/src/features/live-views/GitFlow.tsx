@@ -738,9 +738,7 @@ export default function GitFlow({
                   >
                     <div className="git-gutter">
                       <header>
-                        <span className="git-project-symbol">
-                          {b.project.name.slice(0, 1).toUpperCase()}
-                        </span>
+                        <span className="git-project-symbol" aria-hidden="true" data-icon={b.project.name.slice(0, 1).toUpperCase()} />
                         <div>
                           <h2>{b.project.name}</h2>
                           <span>

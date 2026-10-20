@@ -1203,47 +1203,6 @@
   "tests_run_by_auditor": [],
   "validation": "JSON parse, source/receipt/log SHA verification; no product behavior claims from graph inspection.",
   "messaging": {
-    "last_acknowledgment_check": {
-      "at_utc": "2026-10-20T06:47:23.814794+00:00",
-      "captain_log_new_bytes": 0,
-      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "admiral_capture_sha256": "ff90a655459be68e670f5be7dfa7c508b761cc79310f0b618f2d437a0fec6a3a",
-      "admiral_alert_still_queued": true,
-      "captain_acknowledged": false,
-      "admiral_acknowledged": false
-    },
-    "final_bounded_coordination_check": {
-      "at_utc": "2026-10-20T06:50:48.203584+00:00",
-      "files": [
-        {
-          "role": "captain",
-          "path": "/home/ubuntu/dope/COMMS.md",
-          "offset_before": 839651,
-          "offset_after": 839651,
-          "new_bytes": 0,
-          "new_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "matching_sections": []
-        },
-        {
-          "role": "admiral_inbox",
-          "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_INBOX.md",
-          "offset_before": 116995,
-          "offset_after": 121668,
-          "new_bytes": 4673,
-          "new_sha256": "5f2d2ec7de38f92aaab7098c6c31c58dabba8ec40aaf0abab6a2bccf7e9e0d69",
-          "matching_sections": []
-        },
-        {
-          "role": "admiral_decisions",
-          "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_DECISIONS.md",
-          "offset_before": 668829,
-          "offset_after": 668829,
-          "new_bytes": 0,
-          "new_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "matching_sections": []
-        }
-      ]
-    },
     "authorization": "Direct user authorization relayed by parent agent: talk/work with captain and admiral so both aware.",
     "captain": {
       "screen": "2716151.captain_dope",
@@ -1257,7 +1216,7 @@
       "empty_composer_verified": true,
       "descendant_verified": true,
       "queue_visible": true,
-      "acknowledgment": "pending"
+      "acknowledgment": "Acknowledged full notice in DOPE COMMS at 06:52:16Z; repeated with custody disposition at 07:03:46Z; SC-DEC-CADENCE-0700-CUSTODY recorded."
     },
     "delivery": {
       "at_utc": "2026-10-20T06:40:23.909363+00:00",
@@ -1307,8 +1266,174 @@
       "queue_tab_exit": 0,
       "queue_postflight_sha256": "45892ad3cffad8b9fece6707a1ca61ff39fb528637c11f329c32feafca5b52aa"
     },
-    "captain_status": "Durable COMMS delivery; active headless process prevents concurrent resume or shell prose injection; direct consumption pending.",
+    "captain_status": "Existing exact captain queue reported accepted by Admiral; direct captain consumption/acknowledgment not established. No duplicate resume or shell injection.",
     "message_id": "DOPE-GIT-AUDIT-20261020-0637Z",
-    "responses": []
+    "responses": [
+      {
+        "role": "Admiral",
+        "message_id": "DOPE-GIT-AUDIT-20261020-0637Z",
+        "evidence": {
+          "at_utc": "2026-10-20T07:22:43.910804+00:00",
+          "ack_entries": [
+            {
+              "path": "/home/ubuntu/dope/COMMS.md",
+              "byte_start": 841643,
+              "byte_end": 842247,
+              "sha256": "26e2419e6e65c7446e8836ddfac13e24066d6a37ff43c73b84cb260b9fa057f4",
+              "at_utc": "2026-10-20T06:52:16.359500+00:00"
+            },
+            {
+              "path": "/home/ubuntu/dope/COMMS.md",
+              "byte_start": 843693,
+              "byte_end": 845423,
+              "sha256": "6b218575a153d67ebca33a01dd24b0fcb8407fd9b092d2f2605a92e3d173bec5",
+              "at_utc": "2026-10-20T07:03:46.197474+00:00"
+            }
+          ],
+          "custody_receipt": {
+            "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/CODEX_SOL_RESTART_20261020/fleet-cadence-0658/DOPE_CANONICAL_OWNER_INTENT_AND_PRESERVATION_ACK.json",
+            "sha256": "7fc1a059dada7d185e34eb6daf702362e8a7235758ade5f0f75eafa7ff1bb77e",
+            "top_level_keys": [
+              "actual_utc",
+              "message_id",
+              "canonical_checkout",
+              "HEAD",
+              "branch",
+              "staged_paths",
+              "staged_additions",
+              "staged_deletions",
+              "index_sha256",
+              "index_mtime_utc",
+              "historical_index_author",
+              "historical_index_intent",
+              "responsible_integration_custody_steward",
+              "CWD_UID_are_not_authorship_proof",
+              "source_or_index_mutated",
+              "preserved_index",
+              "preserved_deltas",
+              "untracked_and_ignored",
+              "next_checkpoint"
+            ]
+          },
+          "decision": {
+            "id": "SC-DEC-CADENCE-0700-CUSTODY",
+            "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_DECISIONS.md",
+            "byte_start": 669654,
+            "byte_end": 670556,
+            "sha256": "29f5142003537b40ad8289acf848acb03b1dad5755bfa215ba61ce2a362c09e2"
+          }
+        },
+        "summary": {
+          "notice_read": true,
+          "existing_root_assigned_integration_and_custody_steward": true,
+          "historical_index_author": null,
+          "historical_index_intent": null,
+          "canonical_mutation_owner": "unresolved",
+          "old_spec_disposition": "historically_superseded_no_replay",
+          "bridge_disposition": "same_main_tree_no_replay",
+          "captain_exact_queue": "accepted_consumption_unverified",
+          "source_or_index_mutation_by_notifier": false
+        },
+        "owner_report": {
+          "actual_utc": "2026-10-20T07:03:46.197474+00:00",
+          "message_id": "DOPE-GIT-AUDIT-20261020-0637Z",
+          "HEAD": "192c46f1eed43b0897a36dd6f2cb182d3214edeb",
+          "branch": "main",
+          "staged_paths": 43,
+          "staged_additions": 196,
+          "staged_deletions": 6659,
+          "index_sha256": "c2235409ed6c2fd272ae99b537c77ba81673e685e702983ed122e6d7cd702517",
+          "index_mtime_utc": "2026-10-19T03:09:27.087316+00:00",
+          "historical_index_author": null,
+          "historical_index_intent": null,
+          "responsible_integration_custody_steward": "ExistingRoot soleintegrationowner; canonicalmutationownershipUNRESOLVED",
+          "CWD_UID_are_not_authorship_proof": true,
+          "source_or_index_mutated": false,
+          "preserved_index": {
+            "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/CODEX_SOL_RESTART_20261020/fleet-cadence-0658/DOPE_CANONICAL_INDEX_EXACT_BYTES.preserved",
+            "sha256": "c2235409ed6c2fd272ae99b537c77ba81673e685e702983ed122e6d7cd702517"
+          },
+          "preserved_deltas": {
+            "STAGED_BINARY.patch": {
+              "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/CODEX_SOL_RESTART_20261020/fleet-cadence-0658/DOPE_CANONICAL_STAGED_BINARY.patch",
+              "sha256": "9f11a0de55ea577c3cb42866cfd8c8af53551a96a06c896973ad3bd1ebb0ce2d"
+            },
+            "UNSTAGED_BINARY.patch": {
+              "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/CODEX_SOL_RESTART_20261020/fleet-cadence-0658/DOPE_CANONICAL_UNSTAGED_BINARY.patch",
+              "sha256": "ec6722ebcc21af6dba8e3b997387588ab39b7c63d9e8b3c89a166e562ef54112"
+            }
+          },
+          "untracked_and_ignored": "Remain in place; no bulkread/copy/cleanup/deletion. Completeownerinventoryrequired beforefuturecorrection"
+        },
+        "verification_scope": "Custody receipt bytes were independently hashed; referenced preserved-index/patch payload hashes are owner-reported and were not independently rehashed by this auditor."
+      }
+    ],
+    "last_acknowledgment_check": {
+      "at_utc": "2026-10-20T06:47:23.814794+00:00",
+      "captain_log_new_bytes": 0,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "admiral_capture_sha256": "ff90a655459be68e670f5be7dfa7c508b761cc79310f0b618f2d437a0fec6a3a",
+      "admiral_alert_still_queued": true,
+      "captain_acknowledged": false,
+      "admiral_acknowledged": false
+    },
+    "final_bounded_coordination_check": {
+      "at_utc": "2026-10-20T06:50:48.203584+00:00",
+      "files": [
+        {
+          "role": "captain",
+          "path": "/home/ubuntu/dope/COMMS.md",
+          "offset_before": 839651,
+          "offset_after": 839651,
+          "new_bytes": 0,
+          "new_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "matching_sections": []
+        },
+        {
+          "role": "admiral_inbox",
+          "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_INBOX.md",
+          "offset_before": 116995,
+          "offset_after": 121668,
+          "new_bytes": 4673,
+          "new_sha256": "5f2d2ec7de38f92aaab7098c6c31c58dabba8ec40aaf0abab6a2bccf7e9e0d69",
+          "matching_sections": []
+        },
+        {
+          "role": "admiral_decisions",
+          "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_DECISIONS.md",
+          "offset_before": 668829,
+          "offset_after": 668829,
+          "new_bytes": 0,
+          "new_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "matching_sections": []
+        }
+      ]
+    },
+    "final_handoff_routes": {
+      "admiral": {
+        "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_INBOX.md",
+        "lock": "/home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_INBOX.md.lock"
+      },
+      "dope_captain": {
+        "path": "/home/ubuntu/dope/COMMS.md",
+        "lock": "/home/ubuntu/dope/COMMS.md.lock"
+      },
+      "admiralty_captain": {
+        "path": "/home/ubuntu/admiralty-v2-build/COMMS.md",
+        "lock": "/home/ubuntu/admiralty-v2-build/COMMS.md.lock",
+        "brief_path": "/home/ubuntu/xbabe2_kicker/captains-20261017/agy_captain_admiralty_BRIEF.md",
+        "brief_sha256": "d5a4abb47afca340e12c0a6815a13fb9d0bae44fe6ea2d96397d629139c001a7"
+      },
+      "integration": {
+        "pr": 163,
+        "url": "https://github.com/neverhuman/admiralty/pull/163",
+        "head": "2763be549442c5a5cb98576f6bb4c279bcceedef",
+        "reported_utc": "2026-10-20T07:21:38.075631+00:00",
+        "source": "Existing Root handoff in Admiral inbox; no fresh GitHub verification by this auditor.",
+        "status": "Owner reports full local qualification and exact-head approval; five hosted gates still running at observation.",
+        "policy": "Wait receiving-main; existing integrator sequentially reconciles overlapping git-linear-collapse and git-protector-chat in GitFlow.tsx/CSS; no duplicate PR or source writer.",
+        "final_notice_sent": false
+      }
+    }
   }
 }
