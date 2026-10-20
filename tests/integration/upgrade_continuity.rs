@@ -102,11 +102,10 @@ fn supported_snapshot_versions_keep_fence_session_effect_and_compatibility_block
         assert!(compatible.resume_proposed, "schema {version}");
         assert!(!compatible.restore_authorized() && !compatible.effects_authorized());
 
-        let mut blocked = Vec::new();
-        blocked.push((
+        let mut blocked = vec![(
             plan_recovery(&manifest, &observation, None),
             Blocker::MissingExternalFence,
-        ));
+        )];
         let mut changed_fence = fence.clone();
         changed_fence.new_generation = changed_fence.old_generation.clone();
         blocked.push((
