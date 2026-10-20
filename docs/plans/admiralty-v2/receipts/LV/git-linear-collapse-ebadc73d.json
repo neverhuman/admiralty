@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "feature": "Git Flow maximal linear commit ranges",
+  "recorded_utc": "2026-10-20T07:00:24.290042+00:00",
+  "base_commit": "6e974790371454f60bcf946d69b388927dacfa56",
+  "source_commit": "ebadc73d74154050ea49b623bc81b9e788e32d95",
+  "source_tree": "28185259cb9fa52b89deff8757d784bc6e11b9f5",
+  "branch": "codex/git-linear-collapse",
+  "source_paths": {
+    "apps/dashboard/e2e/live-views.e2e.ts": {
+      "blob": "b977d3745c6e1721af44e1144f9e1d2e0c2f3223",
+      "sha256": "afb3058517e8c658868d2632fb1d04399b0c09cdc58ecffd3e7c054b0f524621"
+    },
+    "apps/dashboard/src/features/live-views/GitFlow.tsx": {
+      "blob": "63fc6043f5dbd6ef53e30c75b3b90dd35880cc18",
+      "sha256": "92478f3f6049b1e2c85114a156bd0a8779f435e75b2df57dfbf63af903b276c1"
+    },
+    "apps/dashboard/src/features/live-views/geometry.ts": {
+      "blob": "fd87932ae504c588260cdba6c1d98688520da11d",
+      "sha256": "33fef4fa3f84bf2ee6ae30c54edda86a4a91ec464b70e62ac5d10dc3d09d184d"
+    },
+    "apps/dashboard/src/features/live-views/git-compression.test.ts": {
+      "blob": "011a9b8ee765044d7dc60de093eaf9892bdfbd10",
+      "sha256": "16d4d59f91a1891cb176c74a4c51ea914b69b8f847f2c71d9b9273e9ae46a4f1"
+    },
+    "apps/dashboard/src/features/live-views/live-views.css": {
+      "blob": "24859b751e3e7ecc5bfdaf5762409bd558308d9d",
+      "sha256": "56fe5678ca1a5993a3bfdffbafb4920bf040d1a5c7b0f4d66ccb562ab87d4854"
+    },
+    "docs/operators/live-views.md": {
+      "blob": "17aa68f453142cc69fe00146a07889e45948bf35",
+      "sha256": "4f645dd33ba2da36cc4252e94a1b503f598f023b7330c90676a2aa33487d4d3d"
+    }
+  },
+  "behavior": [
+    "Collapse maximal unadorned linear interiors of at least four commits; retain forks, merges, roots, tips, missing parents, refs/tags and checkout HEADs.",
+    "Show first/last hidden hash and exact count; native focusable buttons expand/contract; preserve horizontal anchor and disable follow on manual inspection.",
+    "Keep complete inventory and deterministic ancestry; per-project expansion survives live tip growth; scoped selection/search reveals ranges without undoing manual collapse."
+  ],
+  "validation": [
+    {
+      "source_commit": "c36e934a69df040545c1a30e0de58e549310f90d",
+      "command": "scripts/check/all.sh",
+      "exit_code": 0,
+      "passed_stages": 20,
+      "raw_logs": "/private/tmp/adm.3E1rf0/logs",
+      "environment": {
+        "node": "24.19.0",
+        "rust": "1.95.0",
+        "pnpm": "11.15.1",
+        "build_jobs": 2,
+        "rust_test_threads": 1
+      },
+      "summaries": {
+        "dashboard_unit": 213,
+        "browser": 34
+      }
+    },
+    {
+      "source_commit": "ebadc73d74154050ea49b623bc81b9e788e32d95",
+      "commands": [
+        "pnpm --dir apps/dashboard typecheck",
+        "pnpm --dir apps/dashboard test --run",
+        "pnpm --dir apps/dashboard exec tsc -p e2e/tsconfig.json --noEmit",
+        "pnpm --dir apps/dashboard build",
+        "pnpm --dir apps/dashboard test --run --config e2e/vitest.config.ts"
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "dashboard_unit": 213,
+      "browser": 34,
+      "raw_logs": "/private/tmp/git-linear-collapse-final-ui",
+      "logs_sha256": {
+        "browser-pinned.log": "04c24e5db92260a094021643c347573ef0a31d4fe028173d240abbdc32b29bc4",
+        "browser.log": "f31433988b95f27e54e5475fdf9dbbadc9371d2070c30437b897ba928b087bce",
+        "build.log": "5f5fa1057b316a7ff939b9bdd459693b2150403cceb72168ee47c1f32f7a8df2",
+        "e2e-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "head.txt": "a3758dd5d378ce50d4ffd9bbcb597308b9838cbc3bd6e61b877c6447edd79402",
+        "pinned-environment.log": "752b4f2efb58a68376e72c28963c40a52467027f5f20ddff447d703b064dca12",
+        "typecheck.log": "5cfb036289d819b2a87e947d65f4532031dd37753f3cf2def0f77d398eea1737",
+        "unit.log": "cf0ef94fffa619cd495a088be90c17994e6a8adf9db4dd93b847ae9c6c07d06e"
+      },
+      "native_binary_pin": [
+        "head=ebadc73d74154050ea49b623bc81b9e788e32d95",
+        "binary_sha256=35f6e89531982da3f25567a07676146e384ec6342f9a85900be9c2f6a66e68f1"
+      ],
+      "unchanged_from_full_pass": {
+        "crates": "eae9ea63877dc2881893dbdfc001e522a7fc8979",
+        "tests": "93878cb13a2fcc12c47113435dfec348971f4673",
+        "scripts": "91f326bef49cd48415f79394b99cbedf8cf3e220",
+        "packages": "3403a998a90e419abf2c00ab5895cff143637b90",
+        "Cargo.toml": "4da9657730c4b7a143d940a2ef16c7528c5482f3",
+        "Cargo.lock": "3795b84d96a144c02e1071ab53f98e5139539d1c"
+      }
+    }
+  ],
+  "mock_coverage": [
+    "1,000-commit chain becomes two anchors and one 998-commit bubble",
+    "100 seeded DAGs preserve loaded external parent ordering",
+    "forks, octopus merges, refs/tags, detached HEADs, shallow/truncated boundaries, disconnected histories and short-chain guards",
+    "keyboard expand/contract, selected-commit collapse, temporary search reveal, inventory pagination, live count growth, shared-object project isolation, dark/light axe checks and desktop/narrow/mobile screenshots"
+  ],
+  "failed_runs_preserved": [
+    {
+      "logs": "/private/tmp/adm.jrbkGI/logs/20.log",
+      "cause": "Selected-commit clear could re-expand collapsed range through asynchronous route updates. Fixed, regression now passes."
+    },
+    {
+      "logs": "/private/tmp/git-linear-collapse-final-ui/browser.log",
+      "cause": "Ad-hoc rerun omitted mandatory native binary SHA256; two fixtures correctly refused setup. Reran full suite with computed exact pin; 34 pass."
+    }
+  ],
+  "preview": {
+    "path": "docs/plans/admiralty-v2/receipts/LV/git-linear-collapse-ebadc73d.png",
+    "sha256": "a98a2487af0a466e34f9dce290de3842a76d91c2b1e58a872a62684be762587c",
+    "synthetic": true
+  },
+  "coordination": {
+    "notice": "/home/ubuntu/xbabe2_kicker/captains-20261017/ROOT_GIT_LINEAR_COLLAPSE_20261020.md",
+    "admiral_ack": "/home/ubuntu/xbabe2_kicker/captains-20261017/ROOT_GIT_LINEAR_COLLAPSE_REPLY_20261020.md",
+    "captain_notice": "locked append to agy_captain_admiralty_LOG.md; session observed quota-blocked",
+    "review": "Existing reviewer reserved by Admiral; no independent approval claimed"
+  },
+  "limits": [
+    "Source candidate only; PR163 owns sole integration slot. Final receiving-base rebase and required qualification remain pending.",
+    "No feature PR, native reviewer approval, merge, deployment or production qualification claimed.",
+    "Receipt-only follow-up commit does not alter tested source blobs."
+  ]
+}
