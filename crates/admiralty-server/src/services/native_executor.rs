@@ -2379,6 +2379,82 @@ mod tests {
             .expect("create private fixture");
         root
     }
+    #[cfg(target_os = "linux")]
+    fn capture_overflow_fixture() -> PathBuf {
+        fn require_tmpfs(path: &Path) -> u128 {
+            let stats = rustix::fs::statfs(path)
+                .expect("Linux capture overflow prerequisite: statfs failed");
+            assert_eq!(
+                stats.f_type, 0x0102_1994,
+                "Linux capture overflow prerequisite: {path:?} must be on tmpfs"
+            );
+            let space = rustix::fs::statvfs(path)
+                .expect("Linux capture overflow prerequisite: statvfs failed");
+            u128::from(space.f_bavail)
+                .checked_mul(u128::from(space.f_frsize))
+                .expect("Linux capture overflow prerequisite: tmpfs free-space overflow")
+        }
+
+        let shm = Path::new("/dev/shm");
+        let canonical_shm = fs::canonicalize(shm)
+            .expect("Linux capture overflow prerequisite: canonicalize /dev/shm");
+        let shm_metadata = fs::symlink_metadata(&canonical_shm)
+            .expect("Linux capture overflow prerequisite: inspect canonical /dev/shm");
+        assert!(
+            shm_metadata.is_dir() && !shm_metadata.file_type().is_symlink(),
+            "Linux capture overflow prerequisite: canonical /dev/shm must be a real directory"
+        );
+        const REQUIRED_FREE_BYTES: u128 = 32 * 1024 * 1024;
+        assert!(
+            require_tmpfs(&canonical_shm) >= REQUIRED_FREE_BYTES,
+            "Linux capture overflow prerequisite: /dev/shm needs at least 32 MiB free"
+        );
+        let euid = rustix::process::geteuid().as_raw();
+
+        let root = canonical_shm.join(format!("native-capture-failed-{}", uuid::Uuid::new_v4()));
+        fs::DirBuilder::new()
+            .mode(0o700)
+            .create(&root)
+            .expect("Linux capture overflow prerequisite: create private /dev/shm fixture");
+        let metadata = fs::symlink_metadata(&root)
+            .expect("Linux capture overflow prerequisite: inspect private fixture");
+        assert!(
+            metadata.is_dir() && !metadata.file_type().is_symlink(),
+            "Linux capture overflow prerequisite: fixture must be a real directory"
+        );
+        assert_eq!(
+            fs::canonicalize(&root)
+                .expect("Linux capture overflow prerequisite: canonicalize fixture"),
+            root,
+            "Linux capture overflow prerequisite: fixture path must remain canonical"
+        );
+        assert_eq!(
+            root.parent(),
+            Some(canonical_shm.as_path()),
+            "Linux capture overflow prerequisite: fixture must be directly under /dev/shm"
+        );
+        assert_eq!(
+            metadata.uid(),
+            euid,
+            "Linux capture overflow prerequisite: fixture must be owned by effective UID"
+        );
+        assert_eq!(
+            metadata.permissions().mode() & 0o7777,
+            0o700,
+            "Linux capture overflow prerequisite: fixture permissions must be exactly 0700"
+        );
+        assert!(
+            require_tmpfs(&root) >= REQUIRED_FREE_BYTES,
+            "Linux capture overflow prerequisite: fixture tmpfs needs at least 32 MiB free"
+        );
+        root
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    fn capture_overflow_fixture() -> PathBuf {
+        private_fixture("native-capture-failed")
+    }
+
     fn journal_fixture() -> PathBuf {
         private_fixture("native-journal-test")
     }
@@ -2589,7 +2665,7 @@ mod tests {
 
     #[test]
     fn actual_producer_capture_failure_cannot_yield_typed_transcript() {
-        let root = private_fixture("native-capture-failed");
+        let root = capture_overflow_fixture();
         // Exceed SessionHost's bounded journal with an actual local producer;
         // no synthesized CaptureState or completion flag can qualify this run.
         let host = capture_child(&root, "failed", "/usr/bin/head -c 9000000 /dev/zero");
@@ -2598,9 +2674,22 @@ mod tests {
         // boundaries. It tests capture failure, not a five-second storage SLA.
         // Keep all real byte limits, failure assertions and child-exit checks.
         let observed = completed_status_with_timeout(&host, "failed", Duration::from_secs(30));
+        assert!(observed.exit.is_some(), "the actual producer child exited");
         assert!(observed.capture_failed);
         assert_eq!(observed.capture_state, CaptureState::Failed);
-        assert!(collect_output(&host, "failed", &observed, 16 * 1024 * 1024).is_err());
+        assert!(observed.output_offset > 0);
+        assert!(observed.output_offset <= 8 * 1024 * 1024);
+        assert_eq!(observed.final_output_offset, None);
+        let retained = host
+            .tail("failed", 0, 1)
+            .expect("read actual acknowledged output prefix");
+        assert_eq!(retained.next_offset, 1);
+        assert_eq!(retained.chunks[0].offset, 0);
+        assert_eq!(retained.chunks[0].bytes, [0]);
+        assert!(matches!(
+            collect_output(&host, "failed", &observed, 16 * 1024 * 1024),
+            Err(NativeExecutorError::LaunchUnknown)
+        ));
         drop(host);
         fs::remove_dir_all(root).expect("owned capture cleanup");
     }
