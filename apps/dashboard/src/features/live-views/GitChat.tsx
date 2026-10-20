@@ -161,9 +161,9 @@ export default function GitChat({
         update((prior) => ({ ...prior, open: next }));
         onToggle(next);
       }}>
-        <span aria-hidden="true">◌</span>
+        <span aria-hidden="true" data-icon="◌" />
         <span>{projectName} · Chat</span>
-        <span aria-hidden="true">{record.open ? "−" : "+"}</span>
+        <span aria-hidden="true" data-icon={record.open ? "−" : "+"} />
       </button>
       {record.open && <div id={panelId} className="git-chat-panel">
         <div className="git-chat-destination">
