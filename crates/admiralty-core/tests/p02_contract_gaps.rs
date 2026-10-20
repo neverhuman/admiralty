@@ -309,6 +309,74 @@ fn execution_requirements_v2_validates_contract_binding_shell_boundary_and_env_a
             .contains("CARGO_BUILD_JOBS,RUST_TEST_THREADS")
     );
 
+    for deadline in [
+        "".to_owned(),
+        "Z".to_owned(),
+        "not-a-timeZ".to_owned(),
+        "2026-13-20T12:34:56Z".to_owned(),
+        "2026-10-00T12:34:56Z".to_owned(),
+        "2026-02-30T12:34:56Z".to_owned(),
+        "2025-02-29T12:34:56Z".to_owned(),
+        "2026-10-20T25:34:56Z".to_owned(),
+        "2026-10-20T12:60:00Z".to_owned(),
+        "2026-10-20T12:34:56".to_owned(),
+        "2026-10-20T12:34:56+00:00".to_owned(),
+        "2026-10-20T12:34:56+01:00Z".to_owned(),
+        "2026-10-20\nT12:34:56Z".to_owned(),
+        "\u{0085}2026-10-20T12:34:56Z".to_owned(),
+        format!("{}Z", "0".repeat(64)),
+    ] {
+        let mut invalid_deadline = valid_reqs.clone();
+        invalid_deadline.deadline_utc = deadline.clone();
+        assert!(
+            invalid_deadline.validate().is_err(),
+            "invalid UTC deadline must fail: {deadline:?}"
+        );
+        assert!(
+            invalid_deadline
+                .validate_against_contract(&contract)
+                .is_err(),
+            "invalid UTC deadline cannot bind a contract: {deadline:?}"
+        );
+        assert!(
+            invalid_deadline.compile_capsule_binding(&contract).is_err(),
+            "invalid UTC deadline cannot produce a capsule: {deadline:?}"
+        );
+    }
+
+    for deadline in [
+        "2026-10-19T18:00:00Z",
+        "2026-10-20T12:34:56Z",
+        "2024-02-29T12:34:56Z",
+        "2026-10-20T12:34:56.123456789Z",
+    ] {
+        let mut valid_deadline = valid_reqs.clone();
+        valid_deadline.deadline_utc = deadline.to_owned();
+        let wire = serde_json::to_vec(&valid_deadline).expect("canonical requirements wire");
+        let expected_digest = content_digest(&valid_deadline).expect("requirements digest");
+        let binding = valid_deadline
+            .compile_capsule_binding(&contract)
+            .expect("valid UTC deadline");
+        assert_eq!(binding.requirements_digest, expected_digest);
+        assert_eq!(
+            binding.placement_request_digest, capsule.placement_request_digest,
+            "deadline parsing must not change placement identity"
+        );
+        let decoded: ExecutionRequirementsV2 =
+            serde_json::from_slice(&wire).expect("roundtrip unchanged requirements");
+        assert_eq!(decoded.deadline_utc, deadline);
+        assert_eq!(serde_json::to_vec(&decoded).expect("unchanged wire"), wire);
+        assert_eq!(
+            decoded
+                .compile_capsule_binding(&contract)
+                .expect("valid roundtrip capsule"),
+            binding
+        );
+        if deadline == valid_reqs.deadline_utc {
+            assert_eq!(binding, capsule, "original valid capsule stays unchanged");
+        }
+    }
+
     // Secret-bearing env allowlist entry must be rejected.
     let mut secret_env = valid_reqs.clone();
     secret_env
