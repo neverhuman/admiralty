@@ -333,6 +333,36 @@ describe("built live views against the real Rust server", () => {
     await browser.setViewportSize(1440, 1000);
     server.writeLegacySnapshot(sourceFixture());
   }, 60_000);
+  it("reveals the short range beside a focused commit on a lower lane", async () => {
+    const source = sourceFixture(), repo = source.git.harbor, template = repo.commits[0];
+    const oid = (n: number) => n.toString(16).padStart(8, "0").padEnd(40, "0");
+    repo.commits = [{ ...template, oid: oid(1), parents: [], subject: "Shared fork" }];
+    for (let branch = 0; branch < 20; branch++) for (let i = 0; i < 4; i++) {
+      const id = 100 + branch * 10 + i;
+      repo.commits.push({ ...template, oid: oid(id), parents: [oid(i ? id - 1 : 1)], subject: `Branch ${branch} commit ${i}` });
+    }
+    const focus = oid(290), first = oid(291), last = oid(292);
+    repo.refs = [{ name: "refs/heads/main", oid: focus, commit_oid: focus, kind: "branch" }];
+    repo.checkouts = [];
+    server.writeLegacySnapshot(source);
+    await browser.setViewportSize(1440, 1000);
+    await connect(`git?scope=harbor&project=harbor&focus=${focus}`);
+    await browser.waitForSelector('.git-canvas[aria-label*="81 commits"]');
+    await browser.waitForSelector(".lv-inspector");
+    const selector = `.git-commit-range[title^="${first} → ${last}"]`;
+    await browser.waitForSelector(selector);
+    const target = await browser.evaluate<{ top: number; visible: boolean; intended: boolean }>(`(() => {
+      const b=document.querySelector(${JSON.stringify(selector)}), r=b.getBoundingClientRect();
+      const view=document.querySelector('.git-scroll').getBoundingClientRect();
+      return {top:document.querySelector('.git-scroll').scrollTop,visible:r.top>=view.top && r.bottom<=view.bottom,intended:b.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))};
+    })()`);
+    expect(target.top).toBeGreaterThan(400);
+    expect(target.visible).toBe(true);
+    expect(target.intended).toBe(true);
+    expect(await browser.evaluate(`document.querySelector('.lv-inspector').textContent`)).toContain(focus);
+    await browser.captureScreenshot(join(evidence, "git-focused-lower-lane.png"));
+    server.writeLegacySnapshot(sourceFixture());
+  });
   it("compresses long histories into accessible reversible ranges and keeps inventory complete", async () => {
     const source = sourceFixture();
     const repo = source.git.harbor;

@@ -557,7 +557,7 @@ export default function GitFlow({
       appliedFocus.current = key;
       setFollow(false);
       el.scrollLeft = Math.max(0, mark.x * zoom - (el.clientWidth - 240) / 2);
-      el.scrollTop = band.top;
+      el.scrollTop = Math.max(band.top, band.top + 48 + mark.y * zoom - el.clientHeight / 2);
       setScroll({ left: el.scrollLeft, top: el.scrollTop });
     }
   }, [focusId, focusProject, branch, bands, zoom, inventory]);
