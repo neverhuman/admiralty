@@ -480,9 +480,10 @@ fn notify_health(
     project: &str,
     report: &admiralty_core::git_health::GitHealthReport,
 ) -> Result<()> {
+    let delivery_key = deterministic_id(&[project, &target.id]);
     let (episode, notified) = {
         let _lock = lock(&target.directory)?;
-        let path = target.directory.join(format!("health-{project}.json"));
+        let path = target.directory.join(format!("health-{delivery_key}.json"));
         let previous: Option<HealthDeliveryState> = if path.try_exists()? {
             Some(read(&path)?)
         } else {
@@ -550,7 +551,7 @@ fn notify_health(
         true,
     )?;
     let _lock = lock(&target.directory)?;
-    let path = target.directory.join(format!("health-{project}.json"));
+    let path = target.directory.join(format!("health-{delivery_key}.json"));
     let mut state: HealthDeliveryState = read(&path)?;
     if state.episode == episode && state.fingerprint == report.fingerprint {
         state.notified = true;
@@ -823,6 +824,11 @@ mod tests {
         assert_eq!(inbox(&directory).expect("new episode").len(), 2);
         refresh(&service, &source_path).expect("restart stable");
         assert_eq!(inbox(&directory).expect("dedup episode").len(), 2);
+        let mut rotated = service.config.clone().expect("configured");
+        rotated.targets[0].id = "new-captain-incarnation".into();
+        notify_health(&rotated, &rotated.targets[0], "dope", &report)
+            .expect("new target current alert");
+        assert_eq!(inbox(&directory).expect("target rotation").len(), 3);
     }
     #[test]
     fn failed_destination_does_not_starve_other_captains() {
