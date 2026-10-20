@@ -12,6 +12,13 @@ fi
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT_DIR}"
 
+# Validate scratch before querying dependencies; this denial is independently testable.
+scratch_parent="${TMPDIR:-/tmp}"
+if [[ -L "${scratch_parent}" ]]; then
+  echo "[security-supply-chain] FAIL: scratch parent '${scratch_parent}' must not be a symlink" >&2
+  exit 1
+fi
+
 for req_tool in cargo actionlint gitleaks; do
   if ! command -v "${req_tool}" >/dev/null 2>&1; then
     echo "[security-supply-chain] FAIL: required tool '${req_tool}' is missing from PATH (no missing-tool skip allowed)" >&2
@@ -46,11 +53,6 @@ actionlint -config-file .github/actionlint.yaml
 gitleaks git --no-banner --redact --log-opts="-1" .
 
 echo "[security-supply-chain] 3. Emitting deterministic dependency & provenance digest receipt..."
-scratch_parent="${TMPDIR:-/tmp}"
-if [[ -L "${scratch_parent}" ]]; then
-  echo "[security-supply-chain] FAIL: scratch parent '${scratch_parent}' must not be a symlink" >&2
-  exit 1
-fi
 out_dir="$(mktemp -d "${scratch_parent%/}/admiralty-sec-supply-chain.XXXXXX")"
 if [[ -L "${out_dir}" ]] || [[ "$(dir_mode_octal "${out_dir}")" != "700" ]]; then
   echo "[security-supply-chain] FAIL: output directory '${out_dir}' is not a private 0700 non-symlink directory" >&2
