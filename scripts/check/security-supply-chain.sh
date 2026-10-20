@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Enforced scope: Cargo.lock/pnpm-lock.yaml integrity, cargo metadata --locked,
 # workflow permissions & checkout credential persistence, actionlint (.github/actionlint.yaml),
-# gitleaks git commit scan, and SHA-256 provenance digest in a fresh 0700 private directory.
+# gitleaks git range/merge-diff scan, and SHA-256 provenance digest in a fresh 0700 private directory.
 # Note: cargo audit, pnpm audit, pip-audit, and grype are NOT claimed by this script and remain
 # open in receipts/integration/jankurai-triage-20261019.json until provisioned on all LAN runners.
 set -euo pipefail
@@ -19,7 +19,7 @@ if [[ -L "${scratch_parent}" ]]; then
   exit 1
 fi
 
-for req_tool in cargo actionlint gitleaks; do
+for req_tool in cargo git actionlint gitleaks; do
   if ! command -v "${req_tool}" >/dev/null 2>&1; then
     echo "[security-supply-chain] FAIL: required tool '${req_tool}' is missing from PATH (no missing-tool skip allowed)" >&2
     exit 1
@@ -50,7 +50,28 @@ for wf in .github/workflows/*.yml; do
   grep -q "persist-credentials: false" "${wf}"
 done
 actionlint -config-file .github/actionlint.yaml
-gitleaks git --no-banner --redact --log-opts="-1" .
+# GitHub test merges have no patch under plain `git log -1 -p`. Scan the
+# complete trusted event range, including merge-parent diffs. Without an event
+# base (for example local/manual runs), inspect the latest commit's merge diffs.
+scan_log_opts="-1 -m"
+scan_base="${ADMIRALTY_SECURITY_SCAN_BASE:-}"
+if [[ -n "$scan_base" ]]; then
+  if [[ ! "$scan_base" =~ ^([0-9a-f]{40}|[0-9a-f]{64})$ ]]; then
+    echo "[security-supply-chain] FAIL: scan base must be a complete Git object ID" >&2
+    exit 1
+  fi
+  if [[ "$scan_base" =~ ^0+$ ]]; then
+    # First push of a ref has no predecessor; inspect its complete reachable history.
+    scan_log_opts="HEAD -m"
+  else
+    if ! git cat-file -e "$scan_base^{commit}" || ! git merge-base --is-ancestor "$scan_base" HEAD; then
+      echo "[security-supply-chain] FAIL: scan base must be an available ancestor commit" >&2
+      exit 1
+    fi
+    scan_log_opts="$scan_base..HEAD -m"
+  fi
+fi
+gitleaks git --no-banner --redact --log-opts="$scan_log_opts" .
 
 echo "[security-supply-chain] 3. Emitting deterministic dependency & provenance digest receipt..."
 out_dir="$(mktemp -d "${scratch_parent%/}/admiralty-sec-supply-chain.XXXXXX")"

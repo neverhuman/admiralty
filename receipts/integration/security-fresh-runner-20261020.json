@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-20T02:49:51.820836+00:00",
+  "scope": "Required security-lane fresh-runner dependencies, independent scratch rejection and complete event-range secret scan",
+  "source_files": [
+    {
+      "path": ".github/workflows/security.yml",
+      "sha256": "dd170920acffffdef3453b427bf7183e86818f0173da9033f147c9e9a132197a"
+    },
+    {
+      "path": "scripts/check/security-supply-chain.sh",
+      "sha256": "7b51a9e234f2672b8524252db34fdec295c8d689f2eff3b64fef599989ff34d5"
+    },
+    {
+      "path": "tests/integration/python_policy.rs",
+      "sha256": "4816ba6912f99b7044f507fc98a0817a86fd939651e0a91d634548ad868aff31"
+    }
+  ],
+  "original_hosted_failure": {
+    "pr": 162,
+    "head": "cedc1712024830ae2f6a72bb0464944da586e2f7",
+    "job": {
+      "id": 118423725178,
+      "head_sha": "cedc1712024830ae2f6a72bb0464944da586e2f7",
+      "name": "security-supply-chain",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    "run_id": 39360003478,
+    "log_sha256": "344527ce272c67950b4319eb5f07df5fd40dc3d547c33b191910cc863bf06d44",
+    "cause": "Fresh security VM had no Cargo; scanner provisioning itself succeeded."
+  },
+  "scratch_control": {
+    "negative_old_order_exit": 101,
+    "positive_policy_exit": 0,
+    "policy_passed": 6,
+    "old_order_log_sha256": "9b9479147f9305d6c194440d2f7fe1c62d9d7ff4209caded080ff912229897d2",
+    "fixed_log_sha256": "c6380bf8015909d9b127a3b9d8efd626add62e6907c6cb1880fa977a83920f05",
+    "source_script_sha256": "29d9932603ed8c2e4a06362df1ab4fa8326a7005d64fe5642b043a89e2cd1822"
+  },
+  "merge_scan_control": {
+    "scope": "synthetic private local Git merge with disposable random non-provider fixture, no real credential or remote",
+    "last_merge_only": {
+      "name": "last-merge-only",
+      "exit_code": 0,
+      "log_sha256": "36f732dd6eed039be98919cf985980ee9f7a94e6b94732adf1422e45f1371a6d"
+    },
+    "false_pass": "Zero commits and zero bytes scanned by plain latest-merge-only invocation."
+  },
+  "repaired_actual_script_controls": {
+    "scope": "Exact repaired script with real cargo metadata, actionlint and gitleaks, private synthetic Git fixture only; no production or GitHub mutations",
+    "script_sha256": "7b51a9e234f2672b8524252db34fdec295c8d689f2eff3b64fef599989ff34d5",
+    "cases": [
+      {
+        "case": "full-candidate-range",
+        "exit_code": 1,
+        "expected_exit": 1,
+        "pass": true,
+        "log_sha256": "86101612a8cadeaacad248504c3002d9639f16759ad63b68a0a24d308b707b9b",
+        "expected_cause_observed": "leaks found"
+      },
+      {
+        "case": "invalid-base",
+        "exit_code": 1,
+        "expected_exit": 1,
+        "pass": true,
+        "log_sha256": "dd9493d6e3cbd12a2c8fae57385c84755ab7ed13bcf1055289eda0feafef0733",
+        "expected_cause_observed": "scan base must be"
+      },
+      {
+        "case": "missing-base",
+        "exit_code": 1,
+        "expected_exit": 1,
+        "pass": true,
+        "log_sha256": "dc6cc3a21f0d7dc7d244f6efa00d236609733b8bf7476db76b04bc97ae45b95a",
+        "expected_cause_observed": "scan base must be"
+      },
+      {
+        "case": "nonancestor-base",
+        "exit_code": 1,
+        "expected_exit": 1,
+        "pass": true,
+        "log_sha256": "864b47ef7acaf4f6d517bc203dff47d3e1acd81cae2a816af9c742a556d0b5b5",
+        "expected_cause_observed": "scan base must be"
+      },
+      {
+        "case": "first-push-zero-base",
+        "exit_code": 1,
+        "expected_exit": 1,
+        "pass": true,
+        "log_sha256": "757a34e30c3f1b5cae5f28d7c9c11105cf3c6cf26d541fe4f0e57a6c238dde7d",
+        "expected_cause_observed": "leaks found"
+      },
+      {
+        "case": "manual-latest-benign",
+        "exit_code": 0,
+        "expected_exit": 0,
+        "pass": true,
+        "log_sha256": "6ff6d6debc6a5c77a071393e7f23daeb89ef4549de0d690244360f63fddfa13b",
+        "expected_cause_observed": "[security-supply-chain] PASS"
+      },
+      {
+        "case": "manual-merge-parent-diffs",
+        "exit_code": 1,
+        "expected_exit": 1,
+        "pass": true,
+        "log_sha256": "4e82e4ce7ddf27abc51758bc28f4a24fa0ccfe5129abad1a6af72975ab3c2bf5",
+        "expected_cause_observed": "leaks found"
+      }
+    ]
+  },
+  "qualification_limits": [
+    "Local real cargo metadata/actionlint/gitleaks controls; actual fresh-VM follow-up pending.",
+    "No claim of cargo audit, pnpm audit, pip-audit or grype enforcement by this script.",
+    "No original failure or historical finding erased; no broad secret ignore."
+  ],
+  "full_local_ci": "pending exact final candidate",
+  "full_release_accepted": false,
+  "native_execution_qualified": false
+}

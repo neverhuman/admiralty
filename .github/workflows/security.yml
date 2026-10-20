@@ -27,6 +27,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Prepare private test scratch outside the checkout
         run: |
           umask 077
@@ -75,4 +77,6 @@ jobs:
           fi
           printf '%s\n' "${bin_dir}" >> "$GITHUB_PATH"
       - name: Run enforced workflow, secret, and lockfile supply-chain checks (actionlint, gitleaks, cargo metadata --locked)
+        env:
+          ADMIRALTY_SECURITY_SCAN_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: bash tools/security-lane.sh
