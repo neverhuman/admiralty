@@ -111,6 +111,9 @@ struct Fixture {
     raw_hash: String,
 }
 fn fixture() -> Fixture {
+    fixture_with_observer_and_license(false)
+}
+fn fixture_with_observer_and_license(include_observer: bool) -> Fixture {
     let root = tempfile::Builder::new()
         .prefix("native-archive-cli-")
         .permissions(fs::Permissions::from_mode(0o700))
@@ -120,7 +123,7 @@ fn fixture() -> Fixture {
                 .expect("canonical private tmp"),
         )
         .expect("private fixture");
-    let sources = [
+    let mut sources = vec![
         (
             "target/release/admiralty",
             b"synthetic binary payload".as_slice(),
@@ -147,6 +150,16 @@ fn fixture() -> Fixture {
             0o644,
         ),
     ];
+    if include_observer {
+        sources.extend([
+            (
+                "target/release/admiralty-observe",
+                b"synthetic observer payload".as_slice(),
+                0o755,
+            ),
+            ("LICENSE", b"owned root license".as_slice(), 0o644),
+        ]);
+    }
     let mut inputs = Vec::new();
     for (source, bytes, mode) in sources {
         let path = root.path().join(source);
@@ -224,6 +237,37 @@ fn archive_args(f: &Fixture, output: &Path, raw_hash: &str) -> Vec<String> {
         "--output".into(),
         text(output),
     ]
+}
+#[test]
+fn actual_archive_preserves_explicit_observer_and_root_license() {
+    let f = fixture_with_observer_and_license(true);
+    let output = f.root.path().join("observer.tar.gz");
+    let result = invoke(f.root.path(), &archive_args(&f, &output, &f.raw_hash));
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let bytes = fs::read(output).expect("archive bytes");
+    let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(bytes.as_slice()));
+    let mut found = 0;
+    for entry in archive.entries().expect("entries") {
+        let mut entry = entry.expect("entry");
+        let path = entry.path().expect("path").into_owned();
+        let expected = match path.to_str().expect("ASCII path") {
+            "bin/admiralty-observe" => Some((b"synthetic observer payload".as_slice(), 0o755)),
+            "share/doc/admiralty/LICENSE" => Some((b"owned root license".as_slice(), 0o644)),
+            _ => None,
+        };
+        if let Some((expected, mode)) = expected {
+            assert_eq!(entry.header().mode().expect("mode"), mode);
+            let mut actual = Vec::new();
+            entry.read_to_end(&mut actual).expect("contents");
+            assert_eq!(actual, expected);
+            found += 1;
+        }
+    }
+    assert_eq!(found, 2);
 }
 #[test]
 fn actual_archive_cli_creates_truthful_receipt_and_exact_extractable_bytes() {

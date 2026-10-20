@@ -113,12 +113,15 @@ struct Fixture {
     raw_hash: String,
 }
 fn fixture() -> Fixture {
+    fixture_with_observer_and_license(false)
+}
+fn fixture_with_observer_and_license(include_observer: bool) -> Fixture {
     let root = tempfile::Builder::new()
         .prefix("install-cli-")
         .permissions(fs::Permissions::from_mode(0o700))
         .tempdir_in(std::env::temp_dir().canonicalize().expect("canonical tmp"))
         .expect("private fixture");
-    let sources = [
+    let mut sources = vec![
         (
             "target/release/admiralty",
             b"never execute this fixture".as_slice(),
@@ -146,6 +149,16 @@ fn fixture() -> Fixture {
             0o644,
         ),
     ];
+    if include_observer {
+        sources.extend([
+            (
+                "target/release/admiralty-observe",
+                b"never execute observer fixture".as_slice(),
+                0o755,
+            ),
+            ("LICENSE", b"owned root license".as_slice(), 0o644),
+        ]);
+    }
     let mut inputs = vec![];
     for (source, bytes, mode) in sources {
         let path = root.path().join(source);
@@ -320,6 +333,19 @@ fn verify_success(f: &Fixture) {
 #[test]
 fn actual_rust_stage_archive_install_children_report_only_installed_bytes() {
     verify_success(&fixture());
+}
+#[test]
+fn actual_installer_accepts_observer_and_root_license_without_executing_them() {
+    let f = fixture_with_observer_and_license(true);
+    verify_success(&f);
+    assert_eq!(
+        fs::read(f.destination.join("bin/admiralty-observe")).expect("observer"),
+        b"never execute observer fixture"
+    );
+    assert_eq!(
+        fs::read(f.destination.join("share/doc/admiralty/LICENSE")).expect("license"),
+        b"owned root license"
+    );
 }
 #[test]
 fn actual_installer_normalizes_owned_modes_in_single_umask077_child() {

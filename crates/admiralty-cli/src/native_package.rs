@@ -622,9 +622,15 @@ fn package_destination(source: &str) -> Result<(String, InputKind), PackageError
     }
 
     let (destination, kind) = match components.as_slice() {
-        ["target", "release", binary] if *binary == "admiralty" || *binary == "admiraltyd" => {
+        ["target", "release", binary]
+            if matches!(*binary, "admiralty" | "admiraltyd" | "admiralty-observe") =>
+        {
             (format!("bin/{binary}"), InputKind::Binary)
         }
+        ["LICENSE"] => (
+            "share/doc/admiralty/LICENSE".to_owned(),
+            InputKind::Documentation,
+        ),
         ["apps", "dashboard", "dist", rest @ ..] if !rest.is_empty() => (
             format!("share/admiralty/dashboard/{}", rest.join("/")),
             InputKind::Dashboard,
@@ -1420,6 +1426,85 @@ console.log('all 23 staged public guards passed real import, closed-input and pr
             let bytes = fs::read(output.join(&entry.archive_path)).expect("staged file");
             assert_eq!(digest(&bytes), entry.sha256);
             assert_eq!(bytes.len() as u64, entry.size);
+        }
+    }
+
+    #[test]
+    fn observer_and_root_license_round_trip_with_exact_modes() {
+        let (root, mut inputs) = fixture();
+        for (source, bytes, mode) in [
+            (
+                "target/release/admiralty-observe",
+                b"observer".as_slice(),
+                0o755,
+            ),
+            ("LICENSE", b"owned license".as_slice(), 0o644),
+        ] {
+            fs::write(root.path().join(source), bytes).expect("explicit additional source");
+            inputs.push(PackageInput {
+                source: source.into(),
+                expected_sha256: digest(bytes),
+                mode,
+            });
+        }
+        let output = root.path().join("observer-bundle");
+        let receipt = stage(root.path(), &output, &inputs).expect("complete observer bundle");
+        validate_staged_manifest(&receipt.manifest).expect("archive/install manifest policy");
+        for (path, expected, mode) in [
+            ("bin/admiralty-observe", b"observer".as_slice(), 0o755),
+            (
+                "share/doc/admiralty/LICENSE",
+                b"owned license".as_slice(),
+                0o644,
+            ),
+        ] {
+            assert_eq!(fs::read(output.join(path)).expect("staged bytes"), expected);
+            assert_eq!(
+                fs::metadata(output.join(path)).expect("mode").mode() & 0o7777,
+                mode
+            );
+        }
+
+        for (source, mode) in [
+            ("target/release/admiralty-observe", 0o644),
+            ("LICENSE", 0o755),
+        ] {
+            let mut wrong_mode = inputs.clone();
+            wrong_mode
+                .iter_mut()
+                .find(|input| input.source == source)
+                .expect("input")
+                .mode = mode;
+            let rejected = root.path().join(format!("wrong-mode-{mode}"));
+            assert!(stage(root.path(), &rejected, &wrong_mode).is_err());
+            assert!(!rejected.exists());
+        }
+
+        fs::write(root.path().join("docs/LICENSE"), b"second license").expect("alias source");
+        inputs.push(PackageInput {
+            source: "docs/LICENSE".into(),
+            expected_sha256: digest(b"second license"),
+            mode: 0o644,
+        });
+        let collision = root.path().join("license-alias-collision");
+        assert!(stage(root.path(), &collision, &inputs).is_err());
+        assert!(!collision.exists());
+    }
+
+    #[test]
+    fn observer_and_license_admission_does_not_allow_other_root_or_binary_paths() {
+        for source in [
+            "target/release/other-tool",
+            "target/release/Admiralty-observe",
+            "target/release/admiralty-observe/extra",
+            "target/debug/admiralty-observe",
+            "license",
+            "LICENSE.txt",
+            "README.md",
+            ".env",
+            "private/config.json",
+        ] {
+            assert!(package_destination(source).is_err(), "reject {source}");
         }
     }
 
