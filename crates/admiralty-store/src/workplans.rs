@@ -794,13 +794,21 @@ pub fn validate_task_contracts<'a>(
     }
     connection_assumptions(connection)?;
     let tx = Transaction::new_unchecked(connection, TransactionBehavior::Deferred)?;
-    validate_task_contracts_inner(&tx, contracts, |tx, project, plan| {
+    validate_task_contracts_in_transaction(&tx, contracts)?;
+    tx.commit()?;
+    Ok(())
+}
+
+pub(crate) fn validate_task_contracts_in_transaction<'a>(
+    tx: &Transaction<'_>,
+    contracts: impl IntoIterator<Item = &'a TaskContract>,
+) -> Result<()> {
+    connection_assumptions(tx)?;
+    validate_task_contracts_inner(tx, contracts, |tx, project, plan| {
         validate_plan(tx, project, plan)?
             .ok_or(WorkplanStoreError::Integrity("retained task plan missing"))?;
         Ok(())
-    })?;
-    tx.commit()?;
-    Ok(())
+    })
 }
 
 fn validate_task_contracts_inner<'a>(
