@@ -1,0 +1,767 @@
+{
+  "$defs": {
+    "AcceptanceCriterion": {
+      "additionalProperties": false,
+      "properties": {
+        "check_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "check_ids"
+      ],
+      "type": "object"
+    },
+    "AttemptId": {
+      "type": "string"
+    },
+    "AttemptOutcomeRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt_id": {
+          "$ref": "#/$defs/AttemptId"
+        },
+        "attempt_index": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "candidate_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "closure_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "contract_digest": {
+          "type": "string"
+        },
+        "contract_revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "decision_evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CandidateDecisionEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "owner": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "project_id": {
+          "$ref": "#/$defs/ProjectId"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "root_id": {
+          "$ref": "#/$defs/RootId"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "started": {
+          "type": "boolean"
+        },
+        "status": {
+          "$ref": "#/$defs/AttemptOutcomeStatus"
+        },
+        "superseded_by_retry": {
+          "type": "boolean"
+        },
+        "task_id": {
+          "$ref": "#/$defs/TaskId"
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "root_id",
+        "task_id",
+        "contract_revision",
+        "contract_digest",
+        "attempt_id",
+        "attempt_index",
+        "owner",
+        "started",
+        "status",
+        "superseded_by_retry"
+      ],
+      "type": "object"
+    },
+    "AttemptOutcomeStatus": {
+      "enum": [
+        "unknown",
+        "succeeded",
+        "failed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "CandidateDecisionEvidence": {
+      "additionalProperties": false,
+      "description": "Bind trusted verifier execution and custody to the exact candidate. Digests\nand names alone are claims; Store's configured authority must authenticate\nthese against the runtime's non-deserializable execution evidence.",
+      "properties": {
+        "closure_digest": {
+          "description": "Independent supervisor closure/fencing evidence, not the check receipt.",
+          "type": "string"
+        },
+        "contract_digest": {
+          "type": "string"
+        },
+        "custody_digest": {
+          "type": "string"
+        },
+        "receipt_digest": {
+          "type": "string"
+        },
+        "source_commit_sha": {
+          "type": "string"
+        },
+        "source_tree_sha": {
+          "type": "string"
+        },
+        "verification_policy_digest": {
+          "type": "string"
+        },
+        "verifier": {
+          "$ref": "#/$defs/PrincipalId"
+        }
+      },
+      "required": [
+        "contract_digest",
+        "verification_policy_digest",
+        "receipt_digest",
+        "custody_digest",
+        "closure_digest",
+        "source_commit_sha",
+        "source_tree_sha",
+        "verifier"
+      ],
+      "type": "object"
+    },
+    "CheckSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "program": {
+          "type": "string"
+        },
+        "timeout_secs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "program",
+        "args",
+        "cwd",
+        "timeout_secs"
+      ],
+      "type": "object"
+    },
+    "CoordinationMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_ref": {
+          "type": "string"
+        },
+        "causation_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MessageId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "context_epoch": {
+          "type": "string"
+        },
+        "message_id": {
+          "$ref": "#/$defs/MessageId"
+        },
+        "payload": {
+          "$ref": "#/$defs/MessagePayload"
+        },
+        "project_id": {
+          "$ref": "#/$defs/ProjectId"
+        },
+        "recipient": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sender": {
+          "$ref": "#/$defs/PrincipalId"
+        }
+      },
+      "required": [
+        "schema_version",
+        "message_id",
+        "project_id",
+        "sender",
+        "recipient",
+        "context_epoch",
+        "authority_ref",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "MessageId": {
+      "type": "string"
+    },
+    "MessagePayload": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "contract_digest": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "task_assigned",
+              "type": "string"
+            },
+            "revision": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            }
+          },
+          "required": [
+            "kind",
+            "task_id",
+            "revision",
+            "contract_digest"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "question",
+              "type": "string"
+            },
+            "options": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "question": {
+              "type": "string"
+            },
+            "requirement": {
+              "type": "string"
+            },
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            }
+          },
+          "required": [
+            "kind",
+            "task_id",
+            "requirement",
+            "question",
+            "options"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "type": "string"
+            },
+            "decision_ref": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "const": "answer",
+              "type": "string"
+            },
+            "question_id": {
+              "$ref": "#/$defs/MessageId"
+            }
+          },
+          "required": [
+            "kind",
+            "question_id",
+            "answer"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "artifact_ref": {
+              "type": "string"
+            },
+            "interface_revision": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "artifact_ready",
+              "type": "string"
+            },
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            }
+          },
+          "required": [
+            "kind",
+            "task_id",
+            "artifact_ref",
+            "interface_revision"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "candidate_ref": {
+              "type": "string"
+            },
+            "failed_check": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "const": "handoff",
+              "type": "string"
+            },
+            "next_action": {
+              "type": "string"
+            },
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            }
+          },
+          "required": [
+            "kind",
+            "task_id",
+            "candidate_ref",
+            "next_action"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "PrincipalId": {
+      "type": "string"
+    },
+    "ProjectId": {
+      "type": "string"
+    },
+    "Projection": {
+      "properties": {
+        "acknowledgments": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "messages": {
+          "additionalProperties": {
+            "$ref": "#/$defs/CoordinationMessage"
+          },
+          "type": "object"
+        },
+        "tasks": {
+          "additionalProperties": {
+            "$ref": "#/$defs/TaskView"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "tasks",
+        "messages",
+        "acknowledgments"
+      ],
+      "type": "object"
+    },
+    "RootId": {
+      "type": "string"
+    },
+    "SchedulingState": {
+      "enum": [
+        "blocked",
+        "ready",
+        "claimed",
+        "running",
+        "awaiting_verification",
+        "accepted",
+        "failed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "TaskAttemptOutcomeLedger": {
+      "additionalProperties": false,
+      "properties": {
+        "active_attempt_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AttemptId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempt_order": {
+          "items": {
+            "$ref": "#/$defs/AttemptId"
+          },
+          "type": "array"
+        },
+        "current_contract_digest": {
+          "type": "string"
+        },
+        "current_contract_revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_attempts": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "outcomes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/AttemptOutcomeRecord"
+          },
+          "type": "object"
+        },
+        "pending_cancel_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "project_id": {
+          "$ref": "#/$defs/ProjectId"
+        },
+        "root_id": {
+          "$ref": "#/$defs/RootId"
+        },
+        "scheduling": {
+          "$ref": "#/$defs/TaskSchedulingDimension"
+        },
+        "schema_version": {
+          "const": 1,
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "task_id": {
+          "$ref": "#/$defs/TaskId"
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "root_id",
+        "task_id",
+        "current_contract_revision",
+        "current_contract_digest",
+        "max_attempts",
+        "scheduling",
+        "attempt_order",
+        "outcomes"
+      ],
+      "type": "object"
+    },
+    "TaskContract": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_ref": {
+          "type": "string"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/CheckSpec"
+          },
+          "type": "array"
+        },
+        "criteria": {
+          "items": {
+            "$ref": "#/$defs/AcceptanceCriterion"
+          },
+          "type": "array"
+        },
+        "dependencies": {
+          "items": {
+            "$ref": "#/$defs/TaskId"
+          },
+          "type": "array"
+        },
+        "forbidden_paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "max_attempts": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "non_goals": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "owned_paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "project_id": {
+          "$ref": "#/$defs/ProjectId"
+        },
+        "read_first": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "root_id": {
+          "$ref": "#/$defs/RootId"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "simulated": {
+          "type": "boolean"
+        },
+        "task_id": {
+          "$ref": "#/$defs/TaskId"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "root_id",
+        "task_id",
+        "revision",
+        "title",
+        "objective",
+        "non_goals",
+        "owned_paths",
+        "forbidden_paths",
+        "read_first",
+        "dependencies",
+        "criteria",
+        "checks",
+        "authority_ref",
+        "max_attempts",
+        "simulated"
+      ],
+      "type": "object"
+    },
+    "TaskId": {
+      "type": "string"
+    },
+    "TaskLifecycleView": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/PrincipalId"
+          },
+          "type": "object"
+        },
+        "closure_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "decision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CandidateDecisionEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "revision",
+        "attempts"
+      ],
+      "type": "object"
+    },
+    "TaskSchedulingDimension": {
+      "enum": [
+        "blocked",
+        "ready",
+        "claimed",
+        "running",
+        "awaiting_decision",
+        "closed"
+      ],
+      "type": "string"
+    },
+    "TaskView": {
+      "properties": {
+        "attempt_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AttemptId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidate_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "contract": {
+          "$ref": "#/$defs/TaskContract"
+        },
+        "lifecycle": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TaskLifecycleView"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Absent for unchanged v1 projections; any native metadata requires v2."
+        },
+        "owner": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PrincipalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/SchedulingState"
+        }
+      },
+      "required": [
+        "contract",
+        "state"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Deterministic projection of both the closed v1 `Projection` and the independent\nper-task `TaskAttemptOutcomeLedger` map across an ordered event stream.",
+  "properties": {
+    "projection": {
+      "$ref": "#/$defs/Projection"
+    },
+    "task_ledgers": {
+      "additionalProperties": {
+        "$ref": "#/$defs/TaskAttemptOutcomeLedger"
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "projection",
+    "task_ledgers"
+  ],
+  "title": "AttemptOutcomeProjection",
+  "type": "object"
+}

@@ -115,7 +115,7 @@ test('standalone package entry has no compiler dependency and exports supported 
   assert.equal(SUPPORTED_SCHEMA_VERSION, 1);
   const generated = path.join(root, 'packages/contracts/generated');
   const runtimeModules = (await readdir(generated)).filter(name => /^validators(?:-[a-z0-9-]+)?\.mjs$/.test(name));
-  assert.equal(runtimeModules.length, 21, 'compatibility entry, shared base and nineteen separate public roots');
+  assert.equal(runtimeModules.length, 26, 'compatibility entry, shared base and twenty-four separate public roots');
   for (const name of runtimeModules) {
     const source = await readFile(path.join(generated, name), 'utf8');
     assert.doesNotMatch(source, /\brequire\s*\(|\bimport\s|\beval\s*\(|\bnew Function\s*\(/, name);

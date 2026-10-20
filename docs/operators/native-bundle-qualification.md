@@ -6,7 +6,9 @@ The observer installs as `bin/admiralty-observe`; the license installs as
 `share/doc/admiralty/LICENSE`. Executables require 0755 and documentation 0644.
 Unknown binaries and arbitrary root files remain rejected. Supplying both
 `LICENSE` and `docs/LICENSE` collides at the destination and fails before staging.
-Older native bundles remain accepted under the existing policy.
+Previously staged content still undergoes the installing binary's source-bound
+guard checks. A bundle with older generated guards can require its matching
+reviewed installer; the path addition does not waive those checks.
 
 ## Preparing inputs
 

@@ -1,0 +1,250 @@
+{
+  "$defs": {
+    "AttemptId": {
+      "type": "string"
+    },
+    "AttemptOutcomeRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt_id": {
+          "$ref": "#/$defs/AttemptId"
+        },
+        "attempt_index": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "candidate_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "closure_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "contract_digest": {
+          "type": "string"
+        },
+        "contract_revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "decision_evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CandidateDecisionEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "owner": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "project_id": {
+          "$ref": "#/$defs/ProjectId"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "root_id": {
+          "$ref": "#/$defs/RootId"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "started": {
+          "type": "boolean"
+        },
+        "status": {
+          "$ref": "#/$defs/AttemptOutcomeStatus"
+        },
+        "superseded_by_retry": {
+          "type": "boolean"
+        },
+        "task_id": {
+          "$ref": "#/$defs/TaskId"
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "root_id",
+        "task_id",
+        "contract_revision",
+        "contract_digest",
+        "attempt_id",
+        "attempt_index",
+        "owner",
+        "started",
+        "status",
+        "superseded_by_retry"
+      ],
+      "type": "object"
+    },
+    "AttemptOutcomeStatus": {
+      "enum": [
+        "unknown",
+        "succeeded",
+        "failed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "CandidateDecisionEvidence": {
+      "additionalProperties": false,
+      "description": "Bind trusted verifier execution and custody to the exact candidate. Digests\nand names alone are claims; Store's configured authority must authenticate\nthese against the runtime's non-deserializable execution evidence.",
+      "properties": {
+        "closure_digest": {
+          "description": "Independent supervisor closure/fencing evidence, not the check receipt.",
+          "type": "string"
+        },
+        "contract_digest": {
+          "type": "string"
+        },
+        "custody_digest": {
+          "type": "string"
+        },
+        "receipt_digest": {
+          "type": "string"
+        },
+        "source_commit_sha": {
+          "type": "string"
+        },
+        "source_tree_sha": {
+          "type": "string"
+        },
+        "verification_policy_digest": {
+          "type": "string"
+        },
+        "verifier": {
+          "$ref": "#/$defs/PrincipalId"
+        }
+      },
+      "required": [
+        "contract_digest",
+        "verification_policy_digest",
+        "receipt_digest",
+        "custody_digest",
+        "closure_digest",
+        "source_commit_sha",
+        "source_tree_sha",
+        "verifier"
+      ],
+      "type": "object"
+    },
+    "PrincipalId": {
+      "type": "string"
+    },
+    "ProjectId": {
+      "type": "string"
+    },
+    "RootId": {
+      "type": "string"
+    },
+    "TaskId": {
+      "type": "string"
+    },
+    "TaskSchedulingDimension": {
+      "enum": [
+        "blocked",
+        "ready",
+        "claimed",
+        "running",
+        "awaiting_decision",
+        "closed"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "active_attempt_id": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AttemptId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "attempt_order": {
+      "items": {
+        "$ref": "#/$defs/AttemptId"
+      },
+      "type": "array"
+    },
+    "current_contract_digest": {
+      "type": "string"
+    },
+    "current_contract_revision": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "max_attempts": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "outcomes": {
+      "additionalProperties": {
+        "$ref": "#/$defs/AttemptOutcomeRecord"
+      },
+      "type": "object"
+    },
+    "pending_cancel_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "project_id": {
+      "$ref": "#/$defs/ProjectId"
+    },
+    "root_id": {
+      "$ref": "#/$defs/RootId"
+    },
+    "scheduling": {
+      "$ref": "#/$defs/TaskSchedulingDimension"
+    },
+    "schema_version": {
+      "const": 1,
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "task_id": {
+      "$ref": "#/$defs/TaskId"
+    }
+  },
+  "required": [
+    "schema_version",
+    "project_id",
+    "root_id",
+    "task_id",
+    "current_contract_revision",
+    "current_contract_digest",
+    "max_attempts",
+    "scheduling",
+    "attempt_order",
+    "outcomes"
+  ],
+  "title": "TaskAttemptOutcomeLedger",
+  "type": "object"
+}
