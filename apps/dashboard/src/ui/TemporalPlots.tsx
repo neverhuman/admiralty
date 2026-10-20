@@ -133,6 +133,14 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
     ci: projects.map(id => ({ id, label: projectName(id), color: projectColor(id), points: rows.map(row => ({ time: Number(row.ts), state: text(data(data(row.proj)[id]).ci) || 'unknown' })) })) },
     (() => {
       const current = projects.map(id => ({ id, ...hygieneForProject(id) }));
+      const seriesIds = new Set(projects);
+      const partialSeriesId = (project: string, bound: number): string => {
+        const base = JSON.stringify(['hygiene-partial', project, bound]);
+        let id = base, suffix = 0;
+        while (seriesIds.has(id)) id = `${base}:${++suffix}`;
+        seriesIds.add(id);
+        return id;
+      };
       const times = current.map(item => item.at).filter(Boolean).sort();
       const values = current.map(item => {
         if (item.value === undefined) return { label: projectName(item.id), value: 'Not reported by Admiral', color: projectColor(item.id) };
@@ -145,7 +153,7 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
       return { ...make('hygiene', 'Hygiene score per Commodore', values,
         [...series(projects, (row, id) => hygieneScore(data(row.hyg)[id]), projectName, projectColor).map(item => ({ ...item, projectId: item.id })),
           ...projects.filter(id => rows.some(row => hygieneRange(data(row.hyg)[id]) !== null)).flatMap(id =>
-            [0, 1].map(bound => ({ id: `${id}-partial-${bound}`, projectId: id, label: `${projectName(id)} · partial ${bound === 0 ? 'minimum' : 'maximum'}`, color: projectColor(id),
+            [0, 1].map(bound => ({ id: partialSeriesId(id, bound), projectId: id, label: `${projectName(id)} · partial ${bound === 0 ? 'minimum' : 'maximum'}`, color: projectColor(id),
               points: rows.map(row => ({ time: Number(row.ts), value: hygieneRange(data(row.hyg)[id])?.[bound] ?? null })) })))].map(item => {
           const points = item.points.map((point, index) => {
             const row = rows[index];

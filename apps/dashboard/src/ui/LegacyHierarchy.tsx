@@ -46,8 +46,10 @@ function WorkerRows({ workers }: { workers: Data[] }) {
   return <>{workers.slice(0, shown).map((worker, index) => <Worker key={`${screenName(worker)}:${text(worker.host ?? worker.node)}:${index}`} record={worker} />)}{workers.length > shown && <button className="legacy-hierarchy-more" onClick={() => setShown(count => count + 40)}>Show more screens ({workers.length - shown})</button>}</>;
 }
 function Hygiene({ value, observedAt }: { value: unknown; observedAt: unknown }) {
-  const hygiene = data(value), grade = text(hygiene.grade), scoreNumber = hygieneScore(value);
-  const score = scoreNumber !== null ? formatMeasurement(scoreNumber) : hygienePartialLabel(value) || '';
+  const hygiene = data(value), scoreNumber = hygieneScore(value);
+  const partial = scoreNumber === null ? hygienePartialLabel(value) : null;
+  const grade = partial ? '' : text(hygiene.grade);
+  const score = scoreNumber !== null ? formatMeasurement(scoreNumber) : partial || '';
   const atText = text(observedAt);
   const atDate = typeof observedAt === 'number' && Number.isFinite(observedAt)
     ? new Date(observedAt * 1000).getTime() : Date.parse(atText);
