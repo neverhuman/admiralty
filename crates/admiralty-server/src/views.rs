@@ -29,13 +29,24 @@ struct Cut {
 
 pub(crate) struct ViewsHub {
     current: watch::Sender<Option<Arc<Cut>>>,
+    initialized: watch::Sender<bool>,
     started: OnceCell<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
+    #[cfg(test)]
+    first_projection_gate: std::sync::Mutex<Option<FirstProjectionGate>>,
+}
+#[cfg(test)]
+struct FirstProjectionGate {
+    started: tokio::sync::oneshot::Sender<()>,
+    release: std::sync::mpsc::Receiver<()>,
 }
 impl ViewsHub {
     pub(crate) fn new() -> Arc<Self> {
         Arc::new(Self {
             current: watch::channel(None).0,
+            initialized: watch::channel(false).0,
             started: OnceCell::new(),
+            #[cfg(test)]
+            first_projection_gate: std::sync::Mutex::new(None),
         })
     }
     async fn start(
@@ -44,16 +55,30 @@ impl ViewsHub {
         config: ServerConfig,
         shutdown: watch::Receiver<bool>,
     ) {
+        let mut initialized = self.initialized.subscribe();
         self.started
             .get_or_init(|| async {
-                update(self, &store, &config).await;
+                // This initializer has no suspension point after spawning:
+                // custody is registered before the request waits for readiness.
                 let weak = Arc::downgrade(self);
+                let ready = self.initialized.clone();
                 let task = tokio::spawn(async move {
+                    if !*shutdown.borrow()
+                        && let Some(hub) = weak.upgrade()
+                    {
+                        update(&hub, &store, &config).await;
+                    }
+                    ready.send_replace(true);
                     serve_updates(weak, store, config, shutdown).await;
                 });
                 tokio::sync::Mutex::new(Some(task))
             })
             .await;
+        while !*initialized.borrow_and_update() {
+            if initialized.changed().await.is_err() {
+                break;
+            }
+        }
     }
 
     pub(crate) async fn shutdown(&self) -> Result<(), tokio::task::JoinError> {
@@ -112,7 +137,18 @@ fn claim_project(claims: &mut ProjectClaims, id: &str, project: Option<&str>) {
 async fn update(hub: &ViewsHub, store: &Store, config: &ServerConfig) {
     let store = store.clone();
     let config = config.clone();
+    #[cfg(test)]
+    let gate = hub
+        .first_projection_gate
+        .lock()
+        .expect("test gate mutex")
+        .take();
     let result = tokio::task::spawn_blocking(move || {
+        #[cfg(test)]
+        if let Some(gate) = gate {
+            let _ = gate.started.send(());
+            let _ = gate.release.recv_timeout(Duration::from_secs(5));
+        }
         let native = store
             .snapshot()
             .map_err(|_| "Native projection unavailable")?;
@@ -1067,6 +1103,88 @@ pub(crate) async fn events(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn cancelled_first_request_cannot_escape_projection_shutdown_join() {
+        let directory = private_fixture_dir();
+        let path = directory.path().join("cancelled-first.sqlite");
+        let store = Store::open(&path).expect("owned Store");
+        let hub = ViewsHub::new();
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel();
+        let (release, blocked) = std::sync::mpsc::channel();
+        *hub.first_projection_gate.lock().expect("gate mutex") = Some(FirstProjectionGate {
+            started: started_tx,
+            release: blocked,
+        });
+        let (shutdown, receiver) = watch::channel(false);
+        let requesting_hub = hub.clone();
+        let requesting_store = store.clone();
+        let request = tokio::spawn(async move {
+            requesting_hub
+                .start(
+                    requesting_store,
+                    ServerConfig {
+                        listen: "127.0.0.1:0".parse().expect("loopback"),
+                        simulated: true,
+                        token: None,
+                        assets: None,
+                        legacy: None,
+                        models_file: None,
+                    },
+                    receiver,
+                )
+                .await;
+        });
+        tokio::time::timeout(Duration::from_secs(2), started_rx)
+            .await
+            .expect("blocking projection started")
+            .expect("gate signal");
+        request.abort();
+        assert!(request.await.expect_err("request cancelled").is_cancelled());
+        drop(store);
+        assert!(
+            Store::open(&path).is_err(),
+            "blocking projection retains Store custody"
+        );
+        shutdown.send_replace(true);
+        let stopping_hub = hub.clone();
+        let mut stopping = tokio::spawn(async move { stopping_hub.shutdown().await });
+        let completed_while_blocked =
+            match tokio::time::timeout(Duration::from_millis(100), &mut stopping).await {
+                Ok(result) => {
+                    result.expect("shutdown task").expect("updater join");
+                    true
+                }
+                Err(_) => false,
+            };
+        release.send(()).expect("release owned projection");
+        if !completed_while_blocked {
+            tokio::time::timeout(Duration::from_secs(2), stopping)
+                .await
+                .expect("bounded join")
+                .expect("shutdown task")
+                .expect("updater join");
+        }
+        drop(hub);
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+        let reopened = loop {
+            if let Ok(store) = Store::open(&path) {
+                break store;
+            }
+            if tokio::time::Instant::now() >= deadline {
+                panic!(
+                    "Store custody remains; preserved {}",
+                    directory.keep().display()
+                );
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        };
+        assert!(reopened.snapshot().is_ok());
+        assert!(
+            !completed_while_blocked,
+            "shutdown must join even after its first requesting handler is cancelled"
+        );
+    }
 
     #[tokio::test]
     async fn shutdown_joins_updater_before_releasing_store_custody() {
