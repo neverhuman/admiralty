@@ -8,6 +8,15 @@ existing executable. From the repository root, run:
 rtk proxy pnpm check
 ```
 
+Hosted browser qualification pins Node24.22.0 and Chrome for Testing155.0.8059.84
+for Linux x64. It downloads the exact archive into private job scratch, verifies
+SHA256 before extraction and asserts the browser's actual CDP version. Runner
+caches and a floating stable channel do not select the qualification browser.
+When updating it, qualify the replacement locally and update both the version
+and archive hash in `.github/workflows/dashboard-e2e.yml`. A local run may use
+another installed browser; set `ADMIRALTY_E2E_BROWSER_VERSION` to require an
+exact CDP version and retain the actual version with its evidence.
+
 The command installs frozen JavaScript dependencies and runs formatting, strict
 workspace Clippy, all Rust tests, legacy and audit tests, fixture verification,
 release-package and canary self-tests, actual native binary builds and smoke,

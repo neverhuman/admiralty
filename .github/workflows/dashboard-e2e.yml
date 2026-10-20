@@ -30,7 +30,7 @@ jobs:
           printf 'TMPDIR=%s\n' "$scratch" >> "$GITHUB_ENV"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: '24'
+          node-version: '24.22.0'
       - name: Install pinned Rust and build native observation binaries from exact checked-out source
         env:
           CARGO_PROFILE_DEV_DEBUG: '0'
@@ -60,68 +60,37 @@ jobs:
           printf 'ADMIRALTY_E2E_ADMIRALTYD_SHA256=%s\n' "$native_binary_sha256" >> "$GITHUB_ENV"
           printf 'ADMIRALTY_E2E_OBSERVER_BIN=%s\n' "$GITHUB_WORKSPACE/target/debug/admiralty-observe" >> "$GITHUB_ENV"
           sha256sum "$GITHUB_WORKSPACE/target/debug/admiraltyd" "$GITHUB_WORKSPACE/target/debug/admiralty-observe"
-      - name: Verify or provision qualified Chromium/Chrome binary in job scratch
+      - name: Provision hash-pinned Chrome for Testing in private job scratch
         run: |
           set -euo pipefail
-          browser_bin=""
-          # Executability alone does not qualify a wrapper or installed browser.
-          # Preserve each failed probe and try the remaining actual candidates.
-          probe_browser() {
-            local candidate="$1" version_out probe_exit
-            if version_out=$(timeout 10s "$candidate" --version 2>&1); then
-              case "$version_out" in
-                *Chrome*|*Chromium*)
-                  printf 'verified_browser=%s version=%s\n' "$candidate" "$version_out"
-                  browser_bin="$candidate"
-                  return 0 ;;
-              esac
-              printf 'rejected_browser=%s unexpected_version=%s\n' "$candidate" "$version_out" >&2
-            else
-              probe_exit=$?
-              printf 'rejected_browser=%s probe_exit=%s diagnostic=%s\n' "$candidate" "$probe_exit" "$version_out" >&2
-            fi
-            return 1
-          }
-          for candidate in \
-            "${ADMIRALTY_BROWSER_BINARY:-}" \
-            /opt/google/chrome/chrome \
-            /usr/bin/google-chrome-stable \
-            /usr/bin/google-chrome \
-            /usr/bin/chromium \
-            /usr/bin/chromium-browser \
-            "$HOME"/.cache/ms-playwright/chromium-*/chrome-linux64/chrome \
-            "$HOME"/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell; do
-            if [ -n "$candidate" ] && [ -x "$candidate" ]; then
-              if probe_browser "$candidate"; then break; fi
-            fi
-          done
-          if [ -z "$browser_bin" ]; then
-            install -d -m 700 "$RUNNER_TEMP/adm-chrome"
-            npx --yes @puppeteer/browsers@2.5.0 install chrome@stable --path "$RUNNER_TEMP/adm-chrome"
-            for candidate in "$RUNNER_TEMP"/adm-chrome/chrome/*/chrome-linux64/chrome; do
-              if [ -x "$candidate" ]; then
-                if probe_browser "$candidate"; then break; fi
-              fi
-            done
-          fi
-          if [ -z "$browser_bin" ] || [ ! -x "$browser_bin" ]; then
-            echo "ERROR: No qualified Chromium/Chrome binary available on runner $RUNNER_NAME" >&2
-            exit 1
-          fi
-          for sandbox_candidate in \
-            "$(dirname "$browser_bin")/chrome_sandbox" \
-            "$(dirname "$browser_bin")/chrome-sandbox" \
-            /opt/google/chrome/chrome-sandbox; do
-            if [ -u "$sandbox_candidate" ] && [ -x "$sandbox_candidate" ]; then
-              printf 'CHROME_DEVEL_SANDBOX=%s\n' "$sandbox_candidate" >> "$GITHUB_ENV"
-              printf 'verified_setuid_sandbox=%s\n' "$sandbox_candidate"
-              break
+          # Cached executables and a floating stable channel made qualification
+          # depend on the selected runner. Update version and archive hash together.
+          browser_version=155.0.8059.84
+          browser_dir=$(mktemp -d "$RUNNER_TEMP/adm-chrome.XXXXXX")
+          archive="$browser_dir/chrome-linux64.zip"
+          curl --proto '=https' --proto-redir '=https' --tlsv1.2 \
+            --fail --silent --show-error --location --connect-timeout 10 \
+            --max-time 120 --max-filesize 536870912 --output "$archive" \
+            "https://storage.googleapis.com/chrome-for-testing-public/$browser_version/linux64/chrome-linux64.zip"
+          printf '%s  %s\n' cf0f049892dea22e6a6db26d47ed0d7776b7158edcbec4634086633df8bafcbc "$archive" | sha256sum --check --status
+          unzip -q "$archive" -d "$browser_dir"
+          browser_bin="$browser_dir/chrome-linux64/chrome"
+          test -x "$browser_bin"
+          version_out=$(timeout 10s "$browser_bin" --version)
+          test "${version_out% }" = "Google Chrome for Testing $browser_version"
+          printf 'verified_browser=%s version=%s\n' "$browser_bin" "$browser_version"
+          sha256sum "$browser_bin"
+          node -p 'JSON.stringify({execPath:process.execPath,versions:process.versions})'
+          for resource in cpu.max memory.max pids.max; do
+            if [ -r "/sys/fs/cgroup/$resource" ]; then
+              printf '%s=%s\n' "$resource" "$(cat "/sys/fs/cgroup/$resource")"
             fi
           done
           printf 'apparmor_restrict_unprivileged_userns=%s unprivileged_userns_clone=%s\n' \
             "$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null || echo unavailable)" \
             "$(cat /proc/sys/kernel/unprivileged_userns_clone 2>/dev/null || echo unavailable)"
           printf 'ADMIRALTY_BROWSER_BINARY=%s\n' "$browser_bin" >> "$GITHUB_ENV"
+          printf 'ADMIRALTY_E2E_BROWSER_VERSION=%s\n' "$browser_version" >> "$GITHUB_ENV"
       - name: Prepare pinned pnpm in job scratch
         run: |
           install -d -m 700 "$RUNNER_TEMP/admiralty-pnpm"
