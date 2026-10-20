@@ -1852,7 +1852,10 @@ impl Writer {
                 "database schema is newer than this executable".into(),
             ));
         }
-        connection.execute_batch(include_str!("../migrations/0001_foundation.sql"))?;
+        // Keep the foundation atomic and avoid a FULL-sync commit per DDL statement.
+        let foundation = Transaction::new_unchecked(&connection, TransactionBehavior::Immediate)?;
+        foundation.execute_batch(include_str!("../migrations/0001_foundation.sql"))?;
+        foundation.commit()?;
         // Storage initialization only. Startup/replay never reserves or delivers
         // an outbox intent; explicit trusted-clock helpers remain separate.
         outbox::initialize(&connection)?;
@@ -1866,11 +1869,15 @@ impl Writer {
         intake::initialize(&connection)?;
         intake_capture::initialize(&connection)?;
         questions::initialize(&connection)?;
-        subscriptions::initialize(&connection)?;
-        usage_observations::initialize(&connection)?;
-        admission_reservations::initialize(&connection)?;
-        inference_slots::initialize(&connection)?;
-        let generation = connection
+        // These initializers use the supplied connection without opening nested
+        // transactions. Commit their schema, initial ledgers and generation once;
+        // an incompatible final schema rolls this whole new tail back.
+        let startup = Transaction::new_unchecked(&connection, TransactionBehavior::Immediate)?;
+        subscriptions::initialize(&startup)?;
+        usage_observations::initialize(&startup)?;
+        admission_reservations::initialize(&startup)?;
+        inference_slots::initialize(&startup)?;
+        let generation = startup
             .query_row(
                 "SELECT value FROM metadata WHERE key='recovery_generation'",
                 [],
@@ -1881,13 +1888,14 @@ impl Writer {
             Some(value) => value,
             None => {
                 let value = uuid::Uuid::new_v4().to_string();
-                connection.execute(
+                startup.execute(
                     "INSERT INTO metadata(key,value) VALUES('recovery_generation',?1)",
                     [&value],
                 )?;
                 value
             }
         };
+        startup.commit()?;
         let projection = replay(&connection)?;
         questions::validate_all(&connection)?;
         subscriptions::validate_all(&connection)?;
@@ -3512,6 +3520,88 @@ mod tests {
         }
         directory
     }
+    #[test]
+    fn foundation_schema_failure_rolls_back_all_new_foundation_objects() {
+        let directory = private_tempdir();
+        let path = directory.path().join("foundation-failure.sqlite");
+        drop(super::private_file(&path, true).expect("private database"));
+        let connection = Connection::open(&path).expect("fixture connection");
+        connection
+            .execute_batch("CREATE VIEW domain_events AS SELECT 1 AS incompatible;")
+            .expect("incompatible existing object");
+        drop(connection);
+        assert!(
+            Store::open(&path).is_err(),
+            "incompatible schema must be refused"
+        );
+        let inspected = Connection::open(&path).expect("inspect preserved database");
+        let metadata_count: i64 = inspected
+            .query_row(
+                "SELECT count(*) FROM sqlite_schema WHERE name='metadata'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("foundation object count");
+        assert_eq!(
+            metadata_count, 0,
+            "failed foundation must not leave partial DDL"
+        );
+        let view_count: i64 = inspected
+            .query_row(
+                "SELECT count(*) FROM sqlite_schema WHERE name='domain_events' AND type='view'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("original conflicting object");
+        assert_eq!(view_count, 1);
+        let version: i64 = inspected
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .expect("schema version");
+        assert_eq!(version, 0);
+    }
+
+    #[test]
+    fn late_startup_schema_failure_rolls_back_the_whole_new_tail() {
+        let directory = private_tempdir();
+        let path = directory.path().join("tail-failure.sqlite");
+        drop(super::private_file(&path, true).expect("private database"));
+        let connection = Connection::open(&path).expect("fixture connection");
+        connection
+            .execute_batch("CREATE TABLE inference_slot_ledger(incompatible TEXT) STRICT;")
+            .expect("incompatible existing ledger");
+        drop(connection);
+        assert!(
+            Store::open(&path).is_err(),
+            "incompatible final ledger must be refused"
+        );
+        let inspected = Connection::open(&path).expect("inspect preserved database");
+        for name in [
+            "coordination_subscriptions",
+            "usage_observation_origins",
+            "admission_reservation_ledger",
+        ] {
+            let count: i64 = inspected
+                .query_row(
+                    "SELECT count(*) FROM sqlite_schema WHERE name=?1",
+                    [name],
+                    |row| row.get(0),
+                )
+                .expect("tail object count");
+            assert_eq!(
+                count, 0,
+                "failed startup must not leave partial tail object {name}"
+            );
+        }
+        let sql: String = inspected
+            .query_row(
+                "SELECT sql FROM sqlite_schema WHERE name='inference_slot_ledger'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("original ledger schema");
+        assert!(sql.contains("incompatible TEXT"));
+    }
+
     #[test]
     fn wal_fix_version_gate() {
         for version in [3_044_006, 3_044_007, 3_050_007, 3_051_003, 3_052_000] {
