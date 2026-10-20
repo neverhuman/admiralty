@@ -26,6 +26,9 @@ struct Args {
     /// Optional private intake credentials, scoped grants, policies and local origins.
     #[arg(long, requires = "native_config")]
     intake_config: Option<PathBuf>,
+    /// Protected project-to-role inbox routes. Commands are agent instructions, never shell input.
+    #[arg(long)]
+    operator_chat_config: Option<PathBuf>,
     /// Optional old-port compatibility redirect served by this Rust binary.
     #[arg(long)]
     redirect_listen: Option<SocketAddr>,
@@ -35,6 +38,11 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let args = Args::parse();
     let token = admiralty_server::startup::read_private_token(&args.token_file)?;
+    let chat = args
+        .operator_chat_config
+        .as_deref()
+        .map(admiralty_server::operator_chat::load)
+        .transpose()?;
     // Validate the complete independent intake configuration before any Store
     // opens. No grants are installed when this option is absent.
     let intake = args
@@ -71,6 +79,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     public_read: args.legacy_public_read,
                 },
             );
+    let chat_routes = admiralty_server::operator_chat::router(
+        token.clone(),
+        chat,
+        legacy.as_ref().map(|c| c.status_file.clone()),
+    );
+    let native_routes = Some(native_routes.unwrap_or_default().merge(chat_routes));
     let primary = admiralty_server::serve_with_work_order_routes(
         store,
         admiralty_server::ServerConfig {

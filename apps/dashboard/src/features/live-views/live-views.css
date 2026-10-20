@@ -1202,6 +1202,238 @@
   margin: 6px 0;
   color: var(--lv-muted);
 }
+
+/* Project chat lives in viewport coordinates, separate from the scrolling graph. */
+.git-chat-overlays {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+}
+.git-chat-anchor {
+  position: absolute;
+  right: 14px;
+  width: min(340px, calc(100% - 28px));
+}
+.git-chat {
+  pointer-events: auto;
+  max-height: inherit;
+  overflow: hidden;
+  border: 1px solid var(--lv-line);
+  border-radius: 12px;
+  background: var(--lv-panel);
+  box-shadow: 0 8px 26px #0005;
+  color: var(--lv-text);
+  opacity: 0.86;
+  transition: opacity 120ms ease;
+  font-size: 11px;
+}
+.git-chat:hover,
+.git-chat:focus-within {
+  opacity: 1;
+}
+.git-chat-toggle {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.git-chat-toggle > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.git-chat-panel {
+  flex: 1;
+  min-height: 0;
+  max-height: inherit;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  border-top: 1px solid var(--lv-line);
+  padding: 10px;
+}
+.git-chat.is-open {
+  display: flex;
+  flex-direction: column;
+}
+.git-chat-destination label,
+.git-chat-compose-head label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.git-chat select,
+.git-chat textarea {
+  color: var(--lv-text);
+  border: 1px solid var(--lv-line);
+  background: var(--lv-bg);
+  border-radius: 5px;
+  font: inherit;
+  padding: 6px;
+  min-width: 0;
+}
+.git-chat-destination select {
+  flex: 1;
+  width: 100%;
+}
+.git-chat-destination > small {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--lv-muted);
+  margin-top: 6px;
+}
+.git-chat small {
+  font-size: 10px;
+  line-height: 1.5;
+}
+.git-chat-simulation {
+  display: block;
+  color: #dfbd72;
+  margin-top: 5px;
+}
+.git-chat-notice {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--lv-line);
+  border-radius: 5px;
+  color: var(--lv-text);
+  line-height: 1.5;
+}
+.git-chat-access {
+  margin-top: 6px;
+}
+.git-chat-timeline {
+  max-height: 160px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  margin: 10px 0;
+  line-height: 1.5;
+}
+.git-chat-timeline > p {
+  color: var(--lv-muted);
+  margin: 4px 0;
+}
+.git-chat-timeline article {
+  border: 1px solid var(--lv-line);
+  border-radius: 6px;
+  padding: 7px;
+  margin-bottom: 7px;
+  overflow-wrap: anywhere;
+}
+.git-chat-incoming {
+  background: var(--lv-bg);
+}
+.git-chat-timeline article p {
+  white-space: pre-wrap;
+  margin: 4px 0;
+}
+.git-chat-timeline article small,
+.git-chat-timeline article time {
+  display: block;
+  color: var(--lv-muted);
+}
+.git-chat-timeline article time {
+  font-size: 9px;
+  margin-top: 4px;
+}
+.git-chat-compose-head,
+.git-chat-compose-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.git-chat-compose-head small,
+.git-chat-compose-foot small {
+  color: var(--lv-muted);
+}
+.git-chat-compose-label {
+  display: block;
+  margin: 8px 0 5px;
+}
+.git-chat textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  max-height: 160px;
+  min-height: 56px;
+}
+.git-chat-compose-foot {
+  align-items: flex-end;
+  margin-top: 8px;
+}
+.git-chat-compose-foot .lv-button {
+  flex: none;
+}
+.git-chat .over-limit {
+  color: #ff9494;
+}
+.git-health {
+  border: 1px solid var(--lv-line);
+  border-radius: 5px;
+  margin-bottom: 14px;
+  font-size: 10px;
+  color: var(--lv-text);
+}
+.git-health summary {
+  cursor: pointer;
+  padding: 7px;
+  overflow-wrap: anywhere;
+}
+.git-health-attention summary {
+  color: #e8bd87;
+}
+.git-health-healthy summary {
+  color: #7cddb2;
+}
+.git-health-detail {
+  padding: 0 7px 7px;
+  max-height: 240px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.git-health-detail article {
+  border-top: 1px solid var(--lv-line);
+  padding: 7px 0;
+}
+.git-health-detail code {
+  font-size: 9px;
+}
+.git-health-detail article code {
+  display: block;
+}
+.theme-light .git-health-attention summary {
+  color: #83500e;
+}
+.theme-light .git-health-healthy summary {
+  color: #176344;
+}
+@media (hover: none), (pointer: coarse) {
+  .git-chat {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .git-chat {
+    transition: none;
+  }
+}
 .git-new-changes {
   position: absolute;
   top: 116px;

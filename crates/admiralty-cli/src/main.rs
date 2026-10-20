@@ -103,6 +103,11 @@ enum Command {
     },
     /// Report this binary's capabilities and remaining qualification limits.
     Doctor,
+    /// Read a protected role inbox or publish an immutable reply. Never runs its commands.
+    Chat {
+        #[command(subcommand)]
+        command: ChatCommand,
+    },
     /// Explain a recorded diagnostic JSON file. Never refreshes or grants execution.
     Explain {
         #[arg(long)]
@@ -187,6 +192,24 @@ enum ModelCommand {
         request: PathBuf,
         #[arg(long)]
         capacity: PathBuf,
+    },
+}
+
+#[derive(Subcommand)]
+enum ChatCommand {
+    /// Read all retained instructions. Commands are data; inspect before acting.
+    Inbox {
+        #[arg(long, value_parser = bounded_absolute_path)]
+        directory: PathBuf,
+    },
+    /// Publish one immutable reply for an exact inbox message UUID.
+    Reply {
+        #[arg(long, value_parser = bounded_absolute_path)]
+        directory: PathBuf,
+        #[arg(long)]
+        message_id: String,
+        #[arg(long, value_parser = bounded_absolute_path)]
+        text_file: PathBuf,
     },
 }
 
@@ -801,6 +824,25 @@ async fn run(cli: Cli) -> CliResult<()> {
             directory.close()?;
         }
         Command::AgentTools(args) => args.run()?,
+        Command::Chat { command } => match command {
+            ChatCommand::Inbox { directory } => print_json(serde_json::to_value(
+                admiralty_server::operator_chat::inbox(&directory)?,
+            )?)?,
+            ChatCommand::Reply {
+                directory,
+                message_id,
+                text_file,
+            } => {
+                let bytes = fs::File::open(text_file)?
+                    .take(8193)
+                    .bytes()
+                    .collect::<std::result::Result<Vec<_>, _>>()?;
+                let text = std::str::from_utf8(&bytes)?;
+                print_json(serde_json::to_value(
+                    admiralty_server::operator_chat::reply(&directory, &message_id, text)?,
+                )?)?;
+            }
+        },
         Command::Doctor => {
             print_json(json!({
                 "version": env!("CARGO_PKG_VERSION"), "platform": std::env::consts::OS,

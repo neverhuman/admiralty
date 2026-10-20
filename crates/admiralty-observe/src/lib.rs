@@ -3,6 +3,7 @@
 pub mod config;
 pub mod fleet;
 pub mod git;
+pub mod git_health;
 pub mod history;
 pub mod io;
 pub mod projects;
@@ -48,7 +49,13 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
             .map(|p| json!({"id":p.id,"name":p.name}))
             .collect::<Vec<_>>()
     );
-    snapshot["git"] = serde_json::to_value(git::collect(config).await)?;
+    let previous = io::read_json(&config.output_dir.join("status.json"), 32 * 1024 * 1024).ok();
+    let repositories = git::collect(config).await;
+    let (git_health, git_health_alerts) =
+        git_health::collect(config, &repositories, previous.as_ref());
+    snapshot["git"] = serde_json::to_value(repositories)?;
+    snapshot["git_health"] = serde_json::to_value(git_health)?;
+    snapshot["git_health_alerts"] = serde_json::to_value(git_health_alerts)?;
     match usage::collect(config, &snapshot).await {
         Ok(fields) => {
             if let Some(fields) = fields.as_object() {

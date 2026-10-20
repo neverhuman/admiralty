@@ -42,6 +42,40 @@ pub struct ProjectConfig {
     #[serde(default)]
     pub worker_prefixes: Vec<String>,
     pub coordination_log: Option<PathBuf>,
+    /// Explicit integration policy; absent means health checks are disabled.
+    #[serde(default)]
+    pub git_health: Option<GitHealthPolicy>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct GitHealthPolicy {
+    pub integration_ref: String,
+    #[serde(default = "divergence_threshold")]
+    pub divergence_threshold: u32,
+}
+
+fn divergence_threshold() -> u32 {
+    20
+}
+
+/// Match Git's full-ref restrictions without accepting revision expressions.
+fn integration_ref_valid(name: &str) -> bool {
+    (name.starts_with("refs/heads/") || name.starts_with("refs/remotes/"))
+        && name.len() <= 512
+        && !name.ends_with('/')
+        && !name.ends_with('.')
+        && !name.contains("..")
+        && !name.contains("@{")
+        && !name.contains("//")
+        && name
+            .split('/')
+            .all(|s| !s.is_empty() && !s.starts_with('.') && !s.ends_with(".lock"))
+        && name.chars().all(|c| {
+            !c.is_control()
+                && !c.is_whitespace()
+                && !matches!(c, '~' | '^' | ':' | '?' | '*' | '[' | '\\')
+        })
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -129,6 +163,12 @@ impl ObserveConfig {
             return Err("owner display name is invalid".into());
         }
         for p in &self.projects {
+            if p.git_health.as_ref().is_some_and(|policy| {
+                !integration_ref_valid(&policy.integration_ref)
+                    || policy.divergence_threshold > 100_000
+            }) {
+                return Err("Git health requires a full branch ref and a bounded threshold".into());
+            }
             if !id(&p.id)
                 || !projects.insert(&p.id)
                 || !absolute(&p.repository)
@@ -209,6 +249,52 @@ fn validate_private(path: &std::path::Path, directory: bool) -> crate::Result<()
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn git_health_policy_requires_explicit_full_ref_and_bounded_threshold() {
+        let mut value = json!({"schema_version":1,"node_id":"local","output_dir":"/owned",
+            "projects":[{"id":"project","name":"Project","repository":"/repo","tracker":{},
+                "git_health":{"integration_ref":"refs/heads/main"}}]});
+        let config: ObserveConfig = serde_json::from_value(value.clone()).expect("config");
+        assert!(config.validate().is_ok());
+        assert_eq!(
+            config.projects[0]
+                .git_health
+                .as_ref()
+                .expect("policy")
+                .divergence_threshold,
+            20
+        );
+        for name in [
+            "main",
+            "HEAD",
+            "refs/heads/main~1",
+            "refs/heads/main..other",
+            "refs/heads/a.lock",
+            "refs/heads/a\\b",
+            "refs/heads/a b",
+            "refs/heads/.hidden",
+            "refs/heads/a//b",
+            "refs/heads/a@{1}",
+        ] {
+            value["projects"][0]["git_health"]["integration_ref"] = json!(name);
+            assert!(
+                serde_json::from_value::<ObserveConfig>(value.clone())
+                    .expect("config")
+                    .validate()
+                    .is_err(),
+                "{name}"
+            );
+        }
+        value["projects"][0]["git_health"] =
+            json!({"integration_ref":"refs/remotes/origin/trunk","divergence_threshold":100_001});
+        assert!(
+            serde_json::from_value::<ObserveConfig>(value)
+                .expect("config")
+                .validate()
+                .is_err()
+        );
+    }
 
     #[test]
     fn transports_cannot_impersonate_local_or_duplicate_node_identity() {
