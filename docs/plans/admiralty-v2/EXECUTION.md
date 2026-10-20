@@ -3106,3 +3106,16 @@ invocation and exit propagation. Existing sessions require observed-footer
 preflight and a session-only switch; escalation requires objective failure
 evidence and a small handoff. These are development routing controls, not
 qualified native execution. P00/P01 remain the only accepted parents.
+
+Clean `ce5504ac077f1826bd4ec0d086d90f8d76c7eafd` passes the complete20-stage
+local matrix:1,735 Rust executions, five existing ignored helpers,197 dashboard
+unit and32 browser/harness tests. The [source-bound receipt](../../../receipts/integration/live-trends-display-20261020.json)
+retains every compressed-log hash and the original CDP negative control. The
+full23-commit security range also passes at887c5ac; the later delta only improves
+fixture diagnostics/formatting. The original887 Clippy and5f9 formatting failures
+are preserved. Two independent Luna source reviews cover declared nonauthor
+UI and observer/harness scopes at887; neither ran tests or granted acceptance.
+The conditional balance-range observation preserves the preexisting reader's
+string bounds; the native quota producer already rejects negative/nonfinite
+balances. A later generic observed-sample label avoids calling a fully covered
+sample partial; final-head local and hosted checks follow that small UI/doc delta.

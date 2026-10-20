@@ -33,6 +33,15 @@ function snapshot() {
 }
 
 describe('dense temporal dashboard strip', () => {
+  it('does not label a fully covered cost sample as partial', () => {
+    const source = snapshot();
+    source.token_efficiency = { cost_index_vs_all_luna: 1.25, cost_index_observed_vs_all_luna: 1.25,
+      cost_index_note: 'Full measured token coverage', cost_index_observed_note: 'Same observed events' };
+    const cost = buildTemporalMetrics(source).metrics[0];
+    expect(cost.values.map(value => value.value)).toEqual(['1.25×', '1.25× observed']);
+    expect(cost.values.map(value => value.label).join(' ')).not.toContain('partial');
+    expect(cost.series.map(value => value.label).join(' ')).not.toContain('partial');
+  });
   it('never resurrects historical full cost after the current producer explicitly reports unknown', () => {
     const source = snapshot();
     source.token_efficiency = { cost_index_vs_all_luna: null, cost_index_observed_vs_all_luna: 1.234567 };
@@ -186,7 +195,7 @@ describe('dense temporal dashboard strip', () => {
     expect(yieldMetric.series.find(item => item.id === 'yield-main-full')!.points.map(point => point.value)).toEqual([40, null]);
 
     const html = renderToStaticMarkup(<><TemporalPlots snapshot={source} /><TokenEfficiency snapshot={source} /></>);
-    expect(html).toContain('Observed sample · partial');
+    expect(html).toContain('Observed sample');
     expect(html).toContain('Partial priced Codex sample');
     expect(html).toContain('≥ 120 observed');
     expect(html).toContain('Observed-sample main yield');

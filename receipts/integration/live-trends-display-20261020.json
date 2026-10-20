@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "kind": "live_trends_display_and_development_routing_source_qualification",
+  "measured_source_commit": "ce5504ac077f1826bd4ec0d086d90f8d76c7eafd",
+  "measured_source_tree": "021f2eb10d366afb1aecf29bca4045e2329442f7",
+  "started_utc": "2026-10-20T04:35:01.145913+00:00",
+  "completed_utc": "2026-10-20T04:38:40.703275+00:00",
+  "command": [
+    "pnpm",
+    "check"
+  ],
+  "exit_code": 0,
+  "tracked_clean": true,
+  "platform": "macOS arm64",
+  "rust_passed": 1735,
+  "rust_ignored": 5,
+  "rust_targets": 167,
+  "dashboard_unit_passed": 197,
+  "browser_passed": 32,
+  "node": "24.19.0",
+  "rust": "1.95.0",
+  "pnpm": "11.15.1",
+  "display_fraction_digits_max": 2,
+  "stored_observations_rounded": false,
+  "full_coverage_inferred_from_partial": false,
+  "synthetic_hygiene_scores": false,
+  "regressions": [
+    "CDP timeout distinguished from unobserved DOM absence without increasing160ms deadline",
+    "all four reported trend cards covered by mock browser data",
+    "current observed token counts before history sampling",
+    "explicit unknown never resurrects older full cost",
+    "hygiene audit clock survives polling and duplicate samples",
+    "exact decimal-string balance formatting and numeric source display without source mutation",
+    "fixed Luna medium fresh development launcher rejects overrides and preserves configuration"
+  ],
+  "negative_control": {
+    "original_source": "7559cbb106d0335b625862b70896c67ce14e57aa",
+    "expected_failure_exit": 1,
+    "log_sha256": "2e12df55d5d0e3df5518f1bb2f9f7db2899987a455bd59af2930543108402ac5"
+  },
+  "logs": [
+    {
+      "name": "01.log.gz",
+      "sha256": "73ac7756c2665808957e91b0981d23bd8c040e1f5ebaaae42a4c9d8fdf606d5a",
+      "compressed_sha256": "705c4b45ed409760b952b0c2f8dbb3e1eb829c44bfa448a8a3040e965dc28497"
+    },
+    {
+      "name": "02.log.gz",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "compressed_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    {
+      "name": "03.log.gz",
+      "sha256": "8a8f9ce435da408a3d7cd6cbf4769f9edf03f2f17cc3265bcb325cddb1cf93d1",
+      "compressed_sha256": "214778de651c40a4293e1fae4419a52e228ca6bab5e5993687e0967b0d83eafd"
+    },
+    {
+      "name": "04.log.gz",
+      "sha256": "5d1f38908a3ddf8e58985d0111577656521a52951ea303d1144490dbbe68be02",
+      "compressed_sha256": "a0613ee51777125871a1129600b63525ce6af556b1c38119e79dcb1ff0db60e8"
+    },
+    {
+      "name": "05.log.gz",
+      "sha256": "ac39c60d852c0482f3e5cd6146ad1feefb05f845f931258399c981716bfb32e3",
+      "compressed_sha256": "13d9a53e65ab0c7e0eea9b600288e68c0963ec9851cf0a5b7a4da713d6f4fef5"
+    },
+    {
+      "name": "06.log.gz",
+      "sha256": "b32db69f7d5cf9b8f1a0082d26f919abca4823b41c598b03b7d07db1900405aa",
+      "compressed_sha256": "98fbbbed1dbe5c5b492f7881d5db05fea985ccb5ccc6aac609c1cf3a37a89c99"
+    },
+    {
+      "name": "07.log.gz",
+      "sha256": "0e0184a1f618d4faddb38ee3729d4242d23b5874a383d5bc176d8da72931000f",
+      "compressed_sha256": "1747316a712e21b44de58a7233b4fc6c6ef64627aee5f0de7aab0590a20729d2"
+    },
+    {
+      "name": "08.log.gz",
+      "sha256": "819303235c8993f5baf737a87e64f4630deca9107ca08af4026973e1c7ad8c4b",
+      "compressed_sha256": "94af795d90371da4812339a8f496e1ffe35982acd12136814167502b24ced8ea"
+    },
+    {
+      "name": "09.log.gz",
+      "sha256": "aebec5b801bc9a4d54105ef892a43f34caeac32227c305e1321e4b2bcd632f8e",
+      "compressed_sha256": "28d24a15479916a2f25df8d01b40e4afb55a9573d41ff0f2897cb302584ddb8c"
+    },
+    {
+      "name": "10.log.gz",
+      "sha256": "998d692bc6c193170718172c2133f0c9541ce5df9dbdba7fc355d5e4f8858a8d",
+      "compressed_sha256": "54b96ca664d3c2a4a5f210733024b4fb367482b520d18617333aea2e64945d21"
+    },
+    {
+      "name": "11.log.gz",
+      "sha256": "dfff9b27c59f337c31849cebb31bd5d3d3c818bc9dc18351ae73af965dd25d62",
+      "compressed_sha256": "5d7e5d44d7020e2e1f621e0ebb26231db2d407b77249c17987d48ae86f672d89"
+    },
+    {
+      "name": "12.log.gz",
+      "sha256": "8c9b7b89255e45b286320ce1da7ec4d6b8fbb2cbb4e69c7da7333c7cb3bd479f",
+      "compressed_sha256": "3175c9009130b02eae25d61775f220b5a057e4b39fd3c7ca01096eee63de1d79"
+    },
+    {
+      "name": "13.log.gz",
+      "sha256": "217a27a6700351aca4cde48752d84901bc7bbd849444577952ab8f4991c1c0c1",
+      "compressed_sha256": "6bb4a88bbaee8c9ff90c9ca8a6fec24da0617d36ac159f3032d097de9653b1a4"
+    },
+    {
+      "name": "14.log.gz",
+      "sha256": "ed37f6143bf3d8a0e0169e1b46fee44c01d4d90a8b02d1a2e5893762befa2c9f",
+      "compressed_sha256": "210ae39e66e7cf8af0a403361d295ce56e44b02936818514738304611286165d"
+    },
+    {
+      "name": "15.log.gz",
+      "sha256": "5cfb036289d819b2a87e947d65f4532031dd37753f3cf2def0f77d398eea1737",
+      "compressed_sha256": "decff4e40f51c23a3fb129535a1238d4f5debb9bdcfdfb7174096fbe5d4a48b0"
+    },
+    {
+      "name": "16.log.gz",
+      "sha256": "07a32b5d434fbf4e1ae511829c3f28cecfd1f12f8d668be499fdaf17b2639306",
+      "compressed_sha256": "cefe113714aef2e2f613886758751147b2b835ab4ae0d2d0c91563a04ac2707b"
+    },
+    {
+      "name": "17.log.gz",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "compressed_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    {
+      "name": "18.log.gz",
+      "sha256": "b0bc281a5be6c5dbee01cb6654067aa97fac39349200d2341e2e767c18e47afc",
+      "compressed_sha256": "09709bdf85c8cb3a3c5b42e19a33170d6bf4aa355628f501799f1faa6d7913cc"
+    },
+    {
+      "name": "19.log.gz",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "compressed_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    {
+      "name": "20.log.gz",
+      "sha256": "c9fc557fe4a441bc6846e065cc0a59a863d9ed2d207fdae46093b362147bdffd",
+      "compressed_sha256": "de4372b5c029ea026339b1c19cb226d78d800016afb5ad8270914e03e70a8717"
+    },
+    {
+      "name": "commands.log.gz",
+      "sha256": "ae31b72ceaf0882a653f710db8012f8b22d2363715389045d5e8d4caafda2466",
+      "compressed_sha256": "384b7745a867d85469ff4b3e96f3f08ff7f0bff2752bb660ff7e6863f0e22319"
+    },
+    {
+      "name": "environment.log.gz",
+      "sha256": "69863c41ecb55f99c16f1b93a63b78685601b0a900d1be73935503ec477fdb0b",
+      "compressed_sha256": "275ad2f4d4d785fe5a7ab7038ff634f3c2a94e7151498cf512a24822122b51bb"
+    }
+  ],
+  "native_provider_execution_qualified": false,
+  "parent_acceptance_changed": false,
+  "deployed_by_this_receipt": false,
+  "full_release": false,
+  "limits": [
+    "Measured code revision excludes this receipt and subsequent generic sample-label wording/test; final-head local matrix and hosted checks are separate",
+    "Independent Luna source reviews cover887c5ac declared nonauthor scopes, no reviewer execution",
+    "Balance string bounds are unchanged from prior reader; native producer rejects negative/nonfinite balances",
+    "Original CI, lint, formatting and negative-control failures remain retained",
+    "Production source/availability and actual main merge must be verified separately"
+  ]
+}

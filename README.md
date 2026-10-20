@@ -12,7 +12,7 @@ The operating model is **Owner → Admiral → Commodores → task workers**. Th
 
 **Release status: source preview, version `0.1.0`.** The real-data dashboard, credential-free demo and scoped coordination tools are available. General managed coding execution and the full native major release are still under qualification. The [release checklist](docs/contributors/community-readiness.md) separates demonstrated behavior from remaining gates.
 
-The [latest source qualification](receipts/integration/community-release-startup-20261020.json) records the complete local application matrix, Linux Store/signal tests and a real macOS private release-bundle round trip. Its exact source and platform limits are explicit.
+The [dashboard and routing qualification](receipts/integration/live-trends-display-20261020.json) records the complete local application matrix and mock trend coverage. The [bundle qualification](receipts/integration/community-release-startup-20261020.json) adds Linux Store/signal tests and a real macOS private release-bundle round trip. Exact source revisions and platform limits are explicit.
 
 [Quickstart](#quickstart) · [Production walkthroughs](#see-the-production-console) · [Documentation](#documentation) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [MIT License](LICENSE)
 
