@@ -52,6 +52,14 @@ export type CommitMark = Point & {
   commit: GitCommit;
   lane: number;
   rank: number;
+  range?: CommitRange;
+};
+export type CommitRange = {
+  id: string;
+  commits: GitCommit[];
+  expanded: boolean;
+  x: number;
+  y: number;
 };
 export type GitLayout = {
   marks: CommitMark[];
@@ -59,9 +67,11 @@ export type GitLayout = {
   width: number;
   height: number;
   boundaries: number;
+  ranges: CommitRange[];
+  orderedCommits: GitCommit[];
 };
 /** Kahn's algorithm retains every loaded parent and ignores misleading commit dates. */
-export function layoutGit(repo: GitRepository): GitLayout {
+function layoutGitCommits(repo: GitRepository) {
   const commits = new Map(repo.commits.map((c) => [c.oid, c]));
   const children = new Map<string, string[]>(),
     indegree = new Map<string, number>();
@@ -110,6 +120,87 @@ export function layoutGit(repo: GitRepository): GitLayout {
     width: Math.max(680, 200 + maxRank * 72),
     height: Math.max(180, 100 + Math.max(0, ...marks.map((m) => m.lane)) * 40),
     boundaries,
+  };
+}
+/** Collapse only unadorned 1-parent/1-child interiors, never topology anchors.
+ * Every loaded OID maps to its visible mark; the source commits stay untouched.
+ */
+export function layoutGit(
+  repo: GitRepository,
+  expandedOids: ReadonlySet<string> = new Set(),
+  zoom = 1,
+): GitLayout {
+  const raw = layoutGitCommits(repo);
+  const children = new Map<string, string[]>();
+  for (const c of repo.commits)
+    for (const p of c.parents) {
+      const list = children.get(p) ?? [];
+      list.push(c.oid);
+      children.set(p, list);
+    }
+  const anchors = new Set([
+    ...repo.refs.map((r) => r.commit_oid),
+    ...repo.checkouts.flatMap((c) => c.head ? [c.head] : []),
+  ]);
+  const eligible = (m: CommitMark) =>
+    !anchors.has(m.commit.oid) &&
+    m.commit.parents.length === 1 &&
+    raw.byOid.has(m.commit.parents[0]) &&
+    children.get(m.commit.oid)?.length === 1;
+  const ranges: CommitRange[] = [];
+  const membership = new Map<string, CommitRange>();
+  for (const mark of raw.marks) {
+    if (!eligible(mark) || membership.has(mark.commit.oid)) continue;
+    const chain = [mark.commit];
+    let next = raw.byOid.get(children.get(mark.commit.oid)![0]);
+    while (next && eligible(next)) {
+      chain.push(next.commit);
+      next = raw.byOid.get(children.get(next.commit.oid)![0]);
+    }
+    // A bubble is wider than two or three ordinary commit columns.
+    if (chain.length < 4) continue;
+    const range: CommitRange = {
+      id: `${repo.instance_id}:${chain[0].oid}:${chain.at(-1)!.oid}`,
+      commits: chain,
+      expanded: chain.some((c) => expandedOids.has(c.oid)),
+      x: 0, y: 0,
+    };
+    ranges.push(range);
+    for (const c of chain) membership.set(c.oid, range);
+  }
+  const marks: CommitMark[] = [];
+  const byOid = new Map<string, CommitMark>();
+  const laneEnds = new Map<number, number>();
+  const radius = (m: CommitMark) => m.range ? 152 / zoom : 0;
+  for (const source of raw.marks) {
+    const range = membership.get(source.commit.oid);
+    if (range && !range.expanded && range.commits[0].oid !== source.commit.oid) {
+      byOid.set(source.commit.oid, byOid.get(range.commits[0].oid)!);
+      continue;
+    }
+    const mark = { ...source, range: range && !range.expanded ? range : undefined };
+    if (ranges.length) mark.y = 44 / Math.min(1, zoom) + mark.lane * Math.max(40, 54 / zoom);
+    const parents = source.commit.parents.flatMap((id) => {
+      const parent = byOid.get(id);
+      return parent ? [parent] : [];
+    });
+    mark.x = Math.max(64 + radius(mark), (laneEnds.get(mark.lane) ?? -48) + 112 + radius(mark), ...parents.map((p) => p.x + radius(p) + 112 + radius(mark)));
+    if (range?.expanded && range.commits[0].oid === mark.commit.oid) {
+      range.x = mark.x;
+      range.y = mark.y;
+    } else if (mark.range) {
+      mark.range.x = mark.x;
+      mark.range.y = mark.y;
+    }
+    laneEnds.set(mark.lane, mark.x + radius(mark));
+    marks.push(mark);
+    byOid.set(mark.commit.oid, mark);
+  }
+  return {
+    ...raw, marks, byOid, ranges,
+    orderedCommits: raw.marks.map((m) => m.commit),
+    height: Math.max(180, ...marks.map((m) => m.y + 100)),
+    width: Math.max(680, ...marks.map((m) => m.x + radius(m) + 140)),
   };
 }
 export type AtlasNode = Box & { agent: ViewAgent };

@@ -282,6 +282,92 @@ describe("built live views against the real Rust server", () => {
     ).toBe(true);
     await browser.pressKey("Escape");
   });
+  it("compresses long histories into accessible reversible ranges and keeps inventory complete", async () => {
+    const source = sourceFixture();
+    const repo = source.git.harbor;
+    const oid = (n: number) => ((n * 2654435761) >>> 0).toString(16).padStart(8, "0").padEnd(40, "0");
+    const template = repo.commits[0];
+    repo.refs = [];
+    repo.checkouts = [];
+    repo.commits = Array.from({ length: 200 }, (_, i) => ({
+      ...template, oid: oid(i + 1), parents: i ? [oid(i)] : [], subject: `Linear commit ${i + 1}`,
+    }));
+    server.writeLegacySnapshot(source);
+    await connect("git");
+    if (await browser.evaluate(`Boolean(document.querySelector('.git-inventory'))`))
+      await browser.clickButtonByText("Graph");
+    await browser.waitForSelector('.git-commit-range[aria-expanded="false"]');
+    await browser.waitForText("198 hidden");
+    expect(await browser.evaluate(`document.querySelector('.git-scroll').scrollWidth`)).toBeLessThan(2000);
+    expect(await browser.evaluate(`document.querySelector('.git-canvas').getAttribute('aria-label')`)).toContain("200 commits, 1 collapsed ranges");
+    await browser.captureScreenshot(join(evidence, "git-compressed.png"));
+    await browser.evaluate(`document.querySelector('.git-commit-range').focus()`);
+    await browser.pressKey("Enter");
+    await browser.waitForSelector('.git-commit-range[aria-expanded="true"]');
+    expect(await browser.evaluate(`document.querySelector('.git-scroll').scrollWidth`)).toBeGreaterThan(15000);
+    await browser.captureScreenshot(join(evidence, "git-expanded.png"));
+    await browser.pressKey("Enter");
+    await browser.waitForSelector('.git-commit-range[aria-expanded="false"]');
+    expect(await browser.evaluate(`document.querySelector('.git-scroll').scrollWidth`)).toBeLessThan(2000);
+    await browser.clickButtonByText("Inventory");
+    expect(await browser.evaluate(`document.querySelectorAll('.git-inventory tbody tr').length`)).toBe(100);
+    await browser.clickButtonByText("Show next");
+    expect(await browser.evaluate(`document.querySelectorAll('.git-inventory tbody tr').length`)).toBe(200);
+    await browser.clickButtonByText(oid(80).slice(0, 10));
+    await browser.waitForSelector('.lv-inspector');
+    await browser.clickButtonByText("Graph");
+    await browser.clickButtonByText("Collapse linear");
+    await browser.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+    await browser.waitForSelector('.git-commit-range[aria-expanded="false"]');
+    await browser.fillInputByLabel("Search Git projects and commits", "Linear commit 80");
+    await browser.waitForSelector('.git-commit-range[aria-expanded="true"]');
+    await browser.fillInputByLabel("Search Git projects and commits", "");
+    await browser.waitForText("198 hidden");
+    repo.commits.push({ ...template, oid: oid(201), parents: [oid(200)], subject: "New live tip" });
+    server.writeLegacySnapshot(source);
+    await browser.waitForText("199 hidden");
+    expect(await browser.evaluate(`document.querySelector('.git-canvas').getAttribute('aria-label')`)).toContain("201 commits");
+    const report = await browser.runAxeAudit();
+    expect(report.violations).toEqual([]);
+    await browser.clickButtonByAriaLabel("Switch to light theme");
+    expect((await browser.runAxeAudit()).violations).toEqual([]);
+    await browser.captureScreenshot(join(evidence, "git-compressed-light.png"));
+    await browser.clickButtonByAriaLabel("Switch to dark theme");
+    await browser.setViewportSize(640, 844);
+    await browser.clickButtonByText("Fit");
+    await browser.waitForSelector('.git-commit-range');
+    expect(await browser.evaluate(`(() => { const r = document.querySelector('.git-commit-range').getBoundingClientRect(); return r.width; })()`)).toBe(304);
+    await browser.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+    await browser.captureScreenshot(join(evidence, "git-compressed-narrow.png"));
+    await browser.setViewportSize(390, 844);
+    await browser.evaluate(`document.querySelector('.git-scroll').scrollLeft = 200`);
+    await browser.waitForSelector('.git-commit-range');
+    await browser.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+    expect(await browser.evaluate(`(() => { const b = document.querySelector('.git-commit-range'); return b.scrollWidth <= b.clientWidth; })()`)).toBe(true);
+    await browser.captureScreenshot(join(evidence, "git-compressed-mobile.png"));
+    await browser.setViewportSize(1440, 1000);
+    server.writeLegacySnapshot(sourceFixture());
+  }, 60_000);
+  it("keeps expansion independent for projects sharing commit objects", async () => {
+    await browser.setViewportSize(1440, 1000);
+    const source = sourceFixture();
+    const repo = source.git.harbor, template = repo.commits[0];
+    const oid = (n: number) => n.toString(16).padStart(40, "0");
+    repo.refs = []; repo.checkouts = [];
+    repo.commits = Array.from({ length: 20 }, (_, i) => ({
+      ...template, oid: oid(i + 1), parents: i ? [oid(i)] : [],
+    }));
+    Object.assign(source.git, { observatory: structuredClone(repo) });
+    server.writeLegacySnapshot(source);
+    await connect("git");
+    if (await browser.evaluate(`Boolean(document.querySelector('.git-inventory'))`))
+      await browser.clickButtonByText("Graph");
+    await browser.waitForSelector('.git-band:nth-child(2) .git-commit-range[aria-expanded="false"]');
+    await browser.evaluate(`document.querySelector('.git-band:first-child .git-commit-range').click()`);
+    await browser.waitForSelector('.git-band:first-child .git-commit-range[aria-expanded="true"]');
+    expect(await browser.evaluate(`document.querySelector('.git-band:nth-child(2) .git-commit-range').getAttribute('aria-expanded')`)).toBe("false");
+    server.writeLegacySnapshot(sourceFixture());
+  });
   it("preserves Git offsets and follows new commits after Inventory", async () => {
     const long = sourceFixture(),
       oid = (n: number) => n.toString(16).padStart(40, "0"),
@@ -307,6 +393,7 @@ describe("built live views against the real Rust server", () => {
     )
       await browser.clickButtonByText("Graph");
     await browser.waitForSelector(".git-scroll");
+    await browser.clickButtonByText("Expand all");
     expect(
       await browser.evaluate<number>(
         `document.querySelector('.git-scroll').scrollWidth`,
