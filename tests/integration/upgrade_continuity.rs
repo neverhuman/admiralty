@@ -1,5 +1,8 @@
 use admiralty_core::{DomainEvent, SourceIdentity};
-use admiralty_runtime::recovery::{Compatibility, plan_recovery};
+use admiralty_runtime::recovery::{
+    Blocker, Compatibility, DecimalU64, Reconciliation, SessionCustody, manifest_digest,
+    plan_recovery,
+};
 use admiralty_store::Store;
 use admiralty_testkit::clock::{ClockError, FakeClock};
 use admiralty_testkit::task_fixture;
@@ -83,6 +86,97 @@ fn tampered_backup_manifest_digest_blocks_upgrade_continuity() {
     assert!(!proposal.resume_proposed);
     assert!(!proposal.restore_authorized());
     assert!(!proposal.effects_authorized());
+}
+
+#[test]
+fn supported_snapshot_versions_keep_fence_session_effect_and_compatibility_blocks() {
+    for version in [1, 2] {
+        let (mut manifest, mut observation, mut fence) =
+            recovery_fixture::valid_recovery_evidence();
+        manifest.schema_version = version;
+        manifest.manifest_digest = manifest_digest(&manifest).expect("versioned manifest identity");
+        observation.manifest_digest = manifest.manifest_digest.clone();
+        fence.manifest_digest = manifest.manifest_digest.clone();
+        let compatible = plan_recovery(&manifest, &observation, Some(&fence))
+            .expect("supported snapshot schema");
+        assert!(compatible.resume_proposed, "schema {version}");
+        assert!(!compatible.restore_authorized() && !compatible.effects_authorized());
+
+        let mut blocked = Vec::new();
+        blocked.push((
+            plan_recovery(&manifest, &observation, None),
+            Blocker::MissingExternalFence,
+        ));
+        let mut changed_fence = fence.clone();
+        changed_fence.new_generation = changed_fence.old_generation.clone();
+        blocked.push((
+            plan_recovery(&manifest, &observation, Some(&changed_fence)),
+            Blocker::StaleExternalGeneration,
+        ));
+        for fenced in [None, Some(false)] {
+            changed_fence = fence.clone();
+            changed_fence.old_executor_fenced = fenced;
+            blocked.push((
+                plan_recovery(&manifest, &observation, Some(&changed_fence)),
+                Blocker::OldExecutorNotFenced,
+            ));
+        }
+        let mut changed = observation.clone();
+        changed.session_custody = SessionCustody::Unknown;
+        blocked.push((
+            plan_recovery(&manifest, &changed, Some(&fence)),
+            Blocker::UnknownSessionCustody,
+        ));
+        for (state, blocker) in [
+            (Reconciliation::Unknown, Blocker::UnknownRemoteMutation),
+            (
+                Reconciliation::Unresolved,
+                Blocker::UnresolvedRemoteMutation,
+            ),
+        ] {
+            changed = observation.clone();
+            changed.unresolved_effects = state;
+            blocked.push((plan_recovery(&manifest, &changed, Some(&fence)), blocker));
+        }
+        for (state, blocker) in [
+            (Compatibility::Unknown, Blocker::UnknownCompatibility),
+            (
+                Compatibility::Incompatible,
+                Blocker::IncompatibleActiveBundle,
+            ),
+        ] {
+            changed = observation.clone();
+            changed.compatibility = state;
+            blocked.push((plan_recovery(&manifest, &changed, Some(&fence)), blocker));
+        }
+        changed = observation.clone();
+        changed.observed_bundle_digests.clear();
+        blocked.push((
+            plan_recovery(&manifest, &changed, Some(&fence)),
+            Blocker::UnknownCompatibility,
+        ));
+        changed = observation.clone();
+        changed.snapshot_watermark = DecimalU64::new(1);
+        blocked.push((
+            plan_recovery(&manifest, &changed, Some(&fence)),
+            Blocker::ObservationMismatch,
+        ));
+        changed = observation.clone();
+        changed.available_artifacts.clear();
+        blocked.push((
+            plan_recovery(&manifest, &changed, Some(&fence)),
+            Blocker::MissingArtifact(manifest.artifact_closure[0].closure_id.clone()),
+        ));
+        for (result, blocker) in blocked {
+            let proposal = result.expect("unsafe evidence returns a named blocker");
+            assert!(
+                proposal.blockers.contains(&blocker),
+                "schema {version}: {blocker:?}"
+            );
+            assert!(!proposal.resume_proposed);
+            assert!(!proposal.restore_authorized() && !proposal.effects_authorized());
+        }
+    }
 }
 
 #[test]

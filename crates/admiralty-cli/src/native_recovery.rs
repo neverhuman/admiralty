@@ -931,6 +931,11 @@ mod tests {
     fn manifest_for_receipt(receipt: &NativeBackupReceipt) -> RecoveryResult<BackupManifest> {
         use admiralty_runtime::recovery::{ArtifactRecord, DecimalU64, artifact_closure_id};
         let mut artifacts = Vec::new();
+        let active_bundles: Vec<_> = receipt
+            .artifact_closure
+            .iter()
+            .map(|entry| entry.sha256.clone())
+            .collect();
         for entry in receipt
             .artifact_closure
             .iter()
@@ -953,7 +958,7 @@ mod tests {
             "schema_version":receipt.schema_version,"snapshot_watermark":receipt.source_cursor.event_seq,
             "snapshot_digest":receipt.database.sha256,"snapshot_size":receipt.database.size_bytes.to_string(),
             "recovery_generation":"1","artifact_closure":artifacts,
-            "active_bundle_digests":[receipt.artifact_closure[0].sha256],"manifest_digest":""
+            "active_bundle_digests":active_bundles,"manifest_digest":""
         }))?;
         manifest.manifest_digest = admiralty_runtime::recovery::manifest_digest(&manifest)?;
         Ok(manifest)
@@ -1200,6 +1205,98 @@ mod tests {
         let backup = root.path().join("v2-backup.sqlite");
         let receipt = create_online_backup(&store, &backup, &objects, &[])?;
         assert_eq!(receipt.schema_version, 2);
+        let mut manifest = manifest_for_receipt(&receipt)?;
+        manifest.scope.contract_digest = content_digest(&task.contract)?;
+        manifest.manifest_digest = admiralty_runtime::recovery::manifest_digest(&manifest)?;
+        verify_recovery_manifest(&backup, &receipt, &objects, &manifest)?;
+        let observation: RecoveryObservation = serde_json::from_value(json!({
+            "scope":manifest.scope,"manifest_digest":manifest.manifest_digest,
+            "snapshot_digest":manifest.snapshot_digest,"snapshot_size":manifest.snapshot_size,
+            "snapshot_watermark":manifest.snapshot_watermark,"backup_generation":"1","current_generation":"1",
+            "old_executor_incarnation":"backup-executor","observed_bundle_digests":manifest.active_bundle_digests,
+            "available_artifacts":manifest.artifact_closure,"compatibility":"compatible",
+            "unresolved_effects":"clear","session_custody":"reconciled"
+        }))?;
+        let fence: ExternalFence = serde_json::from_value(json!({
+            "scope":manifest.scope,"manifest_digest":manifest.manifest_digest,
+            "old_executor_incarnation":"backup-executor","new_executor_incarnation":"new-executor",
+            "old_generation":"1","new_generation":"2",
+            "external_receipt_digest":format!("sha256:{}", "c".repeat(64)),"old_executor_fenced":true
+        }))?;
+        let (proposal, admission) = propose_native_restart_admission(
+            &manifest,
+            &observation,
+            &fence,
+            &TestAuthority(true),
+            false,
+        )?;
+        assert!(proposal.resume_proposed && admission.proposed);
+        assert!(!proposal.restore_authorized() && !proposal.effects_authorized());
+
+        let receipt_file = root.path().join("v2-receipt.json");
+        let manifest_file = root.path().join("v2-manifest.json");
+        let observation_file = root.path().join("v2-observation.json");
+        let fence_file = root.path().join("v2-fence.json");
+        for (path, value) in [
+            (&receipt_file, serde_json::to_value(&receipt)?),
+            (&manifest_file, serde_json::to_value(&manifest)?),
+            (&observation_file, serde_json::to_value(&observation)?),
+            (&fence_file, serde_json::to_value(&fence)?),
+        ] {
+            write_new_private_file(path, &serde_json::to_vec(&value)?)?;
+        }
+        let preflight = run(RecoveryArgs {
+            command: RecoveryCommand::Preflight {
+                backup: backup.clone(),
+                receipt: receipt_file,
+                objects: root.path().join("v2-objects"),
+                manifest: manifest_file,
+                observation: observation_file,
+                fence: fence_file,
+            },
+        })?;
+        assert_eq!(preflight["backup_verified"], true);
+        assert_eq!(preflight["proposal"]["resume_proposed"], true);
+        assert_eq!(preflight["proposal"]["blockers"], json!([]));
+        assert_eq!(preflight["admission"]["proposed"], false);
+        assert_eq!(preflight["admission"]["externally_verified"], false);
+        assert_eq!(
+            preflight["admission"]["unknown_live_legacy_jobs_held"],
+            true
+        );
+        assert_eq!(preflight["native_execution_qualified"], false);
+        assert_eq!(preflight["proposal"]["restore_authorized"], false);
+        assert_eq!(preflight["proposal"]["effects_authorized"], false);
+        assert_eq!(preflight["restore_authorized"], false);
+        assert_eq!(preflight["effects_authorized"], false);
+
+        for mutation in 0..8 {
+            let mut changed = manifest.clone();
+            match mutation {
+                0 | 7 => changed.schema_version = 1,
+                1 => changed.schema_version = 3,
+                2 => changed.snapshot_watermark = admiralty_runtime::recovery::DecimalU64::new(99),
+                3 => changed.snapshot_digest = format!("sha256:{}", "f".repeat(64)),
+                4 => changed.snapshot_size = admiralty_runtime::recovery::DecimalU64::new(1),
+                5 => changed.artifact_closure.clear(),
+                _ => changed
+                    .artifact_closure
+                    .push(changed.artifact_closure[0].clone()),
+            }
+            if mutation != 7 {
+                changed.manifest_digest = admiralty_runtime::recovery::manifest_digest(&changed)?;
+            }
+            assert!(
+                verify_recovery_manifest(&backup, &receipt, &objects, &changed).is_err(),
+                "v2 backup mutation {mutation}"
+            );
+        }
+        let mut tampered_bytes = fs::read(&backup)?;
+        tampered_bytes[0] ^= 1;
+        let tampered_backup = root.path().join("v2-tampered.sqlite");
+        write_new_private_file(&tampered_backup, &tampered_bytes)?;
+        assert!(verify_recovery_manifest(&tampered_backup, &receipt, &objects, &manifest).is_err());
+
         let scratch = root.path().join("v2-rehearsal");
         fs::create_dir(&scratch)?;
         fs::set_permissions(&scratch, fs::Permissions::from_mode(0o700))?;
@@ -1216,6 +1313,20 @@ mod tests {
             SchedulingState::Cancelled
         );
         assert!(!restored.restore_authorized && !restored.effects_authorized);
+        assert_eq!(restored.source_cursor, receipt.source_cursor);
+        assert_eq!(
+            restored.restored_cursor.event_seq,
+            receipt.source_cursor.event_seq
+        );
+        assert_ne!(
+            restored.restored_cursor.recovery_generation,
+            receipt.source_cursor.recovery_generation
+        );
+        assert_eq!(
+            store.snapshot()?,
+            expected,
+            "preflight/rehearsal never changes the source"
+        );
         Ok(())
     }
 
