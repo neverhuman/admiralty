@@ -4,6 +4,7 @@ import { data, hierarchyCaptains, list, number, text, type Data, type LegacySnap
 import { ModelBadge } from './ModelBadge';
 import { useProfile } from '../profile';
 import { ProfileAvatar } from './Profile';
+import { formatMeasurement } from '../formatNumbers';
 import './legacy-hierarchy.css';
 
 const endedStates = new Set(['finished', 'gone', 'dead', 'exited']);
@@ -43,13 +44,30 @@ function WorkerRows({ workers }: { workers: Data[] }) {
   const [shown, setShown] = useState(40);
   return <>{workers.slice(0, shown).map((worker, index) => <Worker key={`${screenName(worker)}:${text(worker.host ?? worker.node)}:${index}`} record={worker} />)}{workers.length > shown && <button className="legacy-hierarchy-more" onClick={() => setShown(count => count + 40)}>Show more screens ({workers.length - shown})</button>}</>;
 }
-function Hygiene({ value }: { value: unknown }) {
-  const hygiene = data(value), grade = text(hygiene.grade), score = text(hygiene.score);
-  if (!grade && !score) return null;
+function Hygiene({ value, observedAt }: { value: unknown; observedAt: unknown }) {
+  const hygiene = data(value), grade = text(hygiene.grade), rawScore = hygiene.score;
+  const scoreNumber = typeof rawScore === 'number' ? rawScore
+    : typeof rawScore === 'string' && /^-?\d+(?:\.\d+)?$/.test(rawScore) ? Number(rawScore) : null;
+  const score = scoreNumber !== null && Number.isFinite(scoreNumber) ? formatMeasurement(scoreNumber) : text(rawScore);
+  const atText = text(observedAt);
+  const atDate = typeof observedAt === 'number' && Number.isFinite(observedAt)
+    ? new Date(observedAt * 1000).getTime() : Date.parse(atText);
+  const hasTime = Number.isFinite(atDate);
+  const sourceTime = hasTime ? typeof observedAt === 'number' ? new Date(atDate).toISOString() : atText : '';
+  const sourceAge = hasTime ? (() => {
+    const elapsed = (Date.now() - atDate) / 1000;
+    if (elapsed < -30) return 'future source time';
+    const seconds = Math.max(0, elapsed);
+    return seconds < 120 ? 'under 2m old' : seconds < 3600 ? `${Math.floor(seconds / 60)}m old`
+      : seconds < 86400 ? `${formatMeasurement(seconds / 3600, 0)}h old` : `${formatMeasurement(seconds / 86400, 0)}d old`;
+  })() : 'age unknown';
+  if (!grade && !score) return <div className="legacy-hierarchy-hygiene" title={sourceTime ? `Admiral status source ${sourceTime} · ${sourceAge}` : 'No hygiene result was reported by Admiral'}>Hygiene <b className="legacy-hierarchy-unknown">Not reported by Admiral</b></div>;
   const color = ['A', 'B'].includes(grade) ? 'good' : grade === 'C' ? 'warn' : ['D', 'E', 'F'].includes(grade) ? 'bad' : 'unknown';
-  return <div className="legacy-hierarchy-hygiene" title={list(hygiene.notes).map(text).join('; ')}>Hygiene <b className={`legacy-hierarchy-${color}`}>{[grade, score].filter(Boolean).join(' ')}</b></div>;
+  const notes = list(hygiene.notes).map(text).filter(Boolean).join('; ');
+  const source = sourceTime ? `Admiral status source ${sourceTime} · ${sourceAge}` : 'Admiral source age unknown';
+  return <div className="legacy-hierarchy-hygiene" title={[notes, source].filter(Boolean).join(' · ')}>Hygiene <b className={`legacy-hierarchy-${color}`}>{[grade, score].filter(Boolean).join(' ')}</b> <small>{sourceAge}</small></div>;
 }
-function Captain({ captain, project, status }: { captain: Data; project: Data; status: Data }) {
+function Captain({ captain, project, status, statusMtime }: { captain: Data; project: Data; status: Data; statusMtime: unknown }) {
   const workers = list(captain.workers).map(data), live = workers.filter(worker => !endedStates.has(reportedState(worker)));
   const ended = workers.filter(worker => endedStates.has(reportedState(worker)));
   const summary = new Map<string, number>();
@@ -62,7 +80,8 @@ function Captain({ captain, project, status }: { captain: Data; project: Data; s
       <ModelBadge model={text(captain.model) || 'unknown'} effort={text(captain.effort)} tier={text(captain.tier)} />
       <div className="legacy-hierarchy-screen legacy-hierarchy-muted">{screenName(captain)} <Host record={captain} /></div>
       {(done !== null || total !== null || inProgress !== null) && <div className="legacy-hierarchy-progress">{done !== null ? `${done}/${total ?? '?'} done` : total !== null ? `${total} tasks · done not reported` : ''}{inProgress !== null && <span className="legacy-hierarchy-warn">{done !== null || total !== null ? ' · ' : ''}{inProgress} in progress</span>}</div>}
-      <Hygiene value={captain.hygiene ?? status.hygiene} />
+      <Hygiene value={status.hygiene ?? captain.hygiene}
+        observedAt={status.hygiene != null ? status.status_mtime_utc ?? status.mtime_utc ?? statusMtime : captain.hygiene_at ?? captain.hyg_at} />
       {summary.size > 0 && <div className="legacy-hierarchy-worker-summary">{[...summary].map(([reported, count]) => <span key={reported} title={`${count} screen(s), producer state: ${reported}`}><i aria-hidden="true" className={`legacy-hierarchy-dot legacy-hierarchy-dot--${stateClass(reported)}`} /><span>{count} {reported}</span></span>)}</div>}
       {!workers.length && <div className="legacy-hierarchy-muted">No workers reported</div>}
     </header>
@@ -93,7 +112,7 @@ export function LegacyHierarchy({ snapshot }: { snapshot: LegacySnapshot }) {
     </div></div>
     {captains.length > 0 ? <div className="legacy-hierarchy-columns-scroll"><div className="legacy-hierarchy-columns" style={{ gridTemplateColumns: `repeat(${captains.length}, minmax(150px, 1fr))` }}>{captains.map((captain, index) => {
       const key = text(captain.key ?? captain.project ?? captain.id);
-      return <Captain key={`${key}:${index}`} captain={captain} project={data(snapshot.projects[key] ?? (key === rolloutId ? rollout : undefined))} status={data(data(superStatus.captains)[key])} />;
+      return <Captain key={`${key}:${index}`} captain={captain} project={data(snapshot.projects[key] ?? (key === rolloutId ? rollout : undefined))} status={data(data(superStatus.captains)[key])} statusMtime={superSource.status_mtime_utc} />;
     })}</div></div> : <div className="legacy-hierarchy-muted">No Commodores reported.</div>}
     {unassigned.length > 0 && <details className="legacy-hierarchy-unassigned"><summary>Producer unassigned screens ({unassigned.length})</summary><WorkerRows workers={unassigned} /></details>}
     <div className="legacy-hierarchy-legend"><span><i className="legacy-hierarchy-dot legacy-hierarchy-dot--active" />active</span><span><i className="legacy-hierarchy-dot legacy-hierarchy-dot--idle" />idle</span><span><i className="legacy-hierarchy-dot legacy-hierarchy-dot--blocked" />blocked / quota</span><span><i className="legacy-hierarchy-dot legacy-hierarchy-dot--remote" />remote</span><span><i className="legacy-hierarchy-dot legacy-hierarchy-dot--unknown" />unknown</span><span>State and model labels are producer observations.</span></div>
