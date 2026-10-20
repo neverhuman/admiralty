@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { data, list, number, text, type Data, type LegacySnapshot } from '../legacy';
 import { formatCompactMeasurement, formatMeasurement } from '../formatNumbers';
 import { observedTokenSample } from '../usageMetrics';
+import { hygienePartialLabel, hygieneRange, hygieneScore } from '../hygieneMetrics';
 import './temporal-plots.css';
 
 type Point = { time: number; value: number | null };
@@ -27,16 +28,6 @@ const compact = (value: unknown): string => {
 const utc = (value: number) => new Date(value * 1000).toISOString();
 const sourceTime = (row: Data) => numeric(row.ts) !== null && Number.isFinite(new Date(Number(row.ts) * 1000).getTime()) ? utc(Number(row.ts)) : '';
 const validIsoTime = (value: unknown): string => typeof value === 'string' && Number.isFinite(Date.parse(value)) ? value : '';
-const hygieneScore = (value: unknown): number | null => {
-  const record = data(value);
-  const raw = record.score ?? value;
-  if (typeof raw === 'string' && raw.trim() !== '') {
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100 ? parsed : null;
-  }
-  const score = numeric(raw);
-  return score !== null && score <= 100 ? score : null;
-};
 const ageText = (iso: string): string => {
   const at = Date.parse(iso);
   if (!Number.isFinite(at)) return 'age unknown';
@@ -74,8 +65,8 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
   const hygieneStatusByProject = data(hygieneStatus.captains);
   const hygieneForProject = (id: string) => {
     const live = data(data(hygieneStatusByProject[id]).hygiene);
-    if (hygieneScore(live) !== null || text(live.grade)) return { value: live, at: validIsoTime(live.observed_utc) || hygieneStatusTime, live: true };
-    const row = [...rows].reverse().find(candidate => hygieneScore(data(candidate.hyg)[id]) !== null || text(data(data(candidate.hyg)[id]).grade));
+    if (hygieneScore(live) !== null || hygieneRange(live) !== null || text(live.grade)) return { value: live, at: validIsoTime(live.observed_utc) || hygieneStatusTime, live: true };
+    const row = [...rows].reverse().find(candidate => hygieneScore(data(candidate.hyg)[id]) !== null || hygieneRange(data(candidate.hyg)[id]) !== null || text(data(data(candidate.hyg)[id]).grade));
     if (!row) return { value: undefined, at: '', live: false };
     const atByProject = data(row.hyg_at);
     const at = Object.hasOwn(row, 'hyg_at') ? numeric(atByProject[id]) : numeric(row.ts);
@@ -146,21 +137,24 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
       const values = current.map(item => {
         if (item.value === undefined) return { label: projectName(item.id), value: 'Not reported by Admiral', color: projectColor(item.id) };
         const record = data(item.value), score = hygieneScore(item.value), grade = text(record.grade);
-        const measured = score === null ? grade || 'unknown' : formatMeasurement(score);
+        const measured = score === null ? hygienePartialLabel(item.value) || grade || 'unknown' : formatMeasurement(score);
         const age = item.at ? ageText(item.at) : 'age unknown';
         return { label: `${projectName(item.id)} · ${item.live ? 'current status' : 'history'} at ${item.at || 'unknown source time'}`,
           value: `${measured} · ${age}`, color: projectColor(item.id) };
       });
       return { ...make('hygiene', 'Hygiene score per Commodore', values,
-        series(projects, (row, id) => hygieneScore(data(row.hyg)[id]), projectName, projectColor).map(item => {
+        [...series(projects, (row, id) => hygieneScore(data(row.hyg)[id]), projectName, projectColor).map(item => ({ ...item, projectId: item.id })),
+          ...projects.filter(id => rows.some(row => hygieneRange(data(row.hyg)[id]) !== null)).flatMap(id =>
+            [0, 1].map(bound => ({ id: `${id}-partial-${bound}`, projectId: id, label: `${projectName(id)} · partial ${bound === 0 ? 'minimum' : 'maximum'}`, color: projectColor(id),
+              points: rows.map(row => ({ time: Number(row.ts), value: hygieneRange(data(row.hyg)[id])?.[bound] ?? null })) })))].map(item => {
           const points = item.points.map((point, index) => {
             const row = rows[index];
-            const reportTime = Object.hasOwn(row, 'hyg_at') ? numeric(data(row.hyg_at)[item.id]) : point.time;
+            const reportTime = Object.hasOwn(row, 'hyg_at') ? numeric(data(row.hyg_at)[item.projectId]) : point.time;
             return { time: reportTime ?? point.time, value: reportTime === null ? null : point.value };
           }).sort((a, b) => a.time - b.time);
           return { ...item, points: points.filter((point, index) => index === 0 || point.time !== points[index - 1].time || point.value !== points[index - 1].value) };
         }),
-        current.some(item => item.value === undefined) ? 'Not reported by Admiral means no current or retained score was supplied. Historical values retain their original per-project source time.' : 'Scores retain their per-project source times; no synthetic score is inferred.',
+        'Ranges are partial audits, not final scores. Missing audit components must be measured before a final score is available. Not reported by Admiral means no current or retained score or range was supplied. Original per-project audit times are retained.',
         times.at(-1) || ''), max: 100 };
     })(),
     (() => {
