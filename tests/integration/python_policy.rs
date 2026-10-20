@@ -562,6 +562,9 @@ fn sc186o_security_supply_chain_fails_closed_on_missing_scanner_or_symlink_tmpdi
     let sym_res = Command::new("/bin/bash")
         .arg(&script_path)
         .env("TMPDIR", &sym_tmp)
+        // Scratch validation must not depend on installed scanner availability.
+        .env("ADMIRALTY_SECURITY_NO_DEFAULT_PATH", "1")
+        .env("PATH", &empty_bin)
         .output()
         .expect("run security-supply-chain with symlink TMPDIR");
     assert!(!sym_res.status.success());
