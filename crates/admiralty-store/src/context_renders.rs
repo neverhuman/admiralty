@@ -360,11 +360,9 @@ fn bounds(connection: &Connection) -> Result<()> {
     }
     Ok(())
 }
-pub(crate) fn initialize(connection: &Connection) -> Result<()> {
-    let tx = Transaction::new_unchecked(connection, TransactionBehavior::Immediate)?;
+pub(crate) fn initialize_in_transaction(tx: &Transaction<'_>) -> Result<()> {
     tx.execute_batch(include_str!("../migrations/0004_context_renders.sql"))?;
-    tx.commit()?;
-    validate_all(connection)
+    validate_all(tx)
 }
 fn read_record(row: &rusqlite::Row<'_>) -> rusqlite::Result<(String, String, u32, String, String)> {
     Ok((

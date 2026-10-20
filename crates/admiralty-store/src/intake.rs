@@ -295,11 +295,10 @@ fn bounds(c: &Connection) -> Result<()> {
     }
     Ok(())
 }
-pub(crate) fn initialize(c: &Connection) -> Result<()> {
-    let tx = Transaction::new_unchecked(c, TransactionBehavior::Immediate)?;
+pub(crate) fn initialize_in_transaction(tx: &Transaction<'_>) -> Result<()> {
     tx.execute_batch(include_str!("../migrations/0006_work_order_intake.sql"))?;
-    tx.commit()?;
-    validate_all(c)
+    bounds(tx)?;
+    validate_all_in_transaction(tx)
 }
 fn scope_from(request: &RecordIntakeRequest, policy: &PolicySnapshot) -> AuthorizedIntakeContext {
     let s = &request.work_order.scope;
@@ -670,6 +669,11 @@ pub(crate) fn get_work_order(
 pub(crate) fn validate_all(c: &Connection) -> Result<()> {
     bounds(c)?;
     let tx = Transaction::new_unchecked(c, TransactionBehavior::Deferred)?;
+    validate_all_in_transaction(&tx)?;
+    tx.commit()?;
+    Ok(())
+}
+fn validate_all_in_transaction(tx: &Transaction<'_>) -> Result<()> {
     let orphan:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM work_order_intake_sources s LEFT JOIN work_order_intake_revisions r USING(source_key) WHERE r.source_key IS NULL)",[],|r|r.get(0))?;
     if orphan {
         return Err(IntakeStoreError::Integrity);
@@ -686,7 +690,7 @@ pub(crate) fn validate_all(c: &Connection) -> Result<()> {
             ProjectId::new(stored_text(r, 0, 128)?).map_err(|_| IntakeStoreError::Integrity)?;
         let root = RootId::new(stored_text(r, 1, 128)?).map_err(|_| IntakeStoreError::Integrity)?;
         let id = stored_text(r, 2, 128)?;
-        validate_order(&tx, &project, &root, &id)?;
+        validate_order(tx, &project, &root, &id)?;
     }
     drop(rows);
     drop(q);
@@ -703,7 +707,6 @@ pub(crate) fn validate_all(c: &Connection) -> Result<()> {
             return Err(IntakeStoreError::Integrity);
         }
     }
-    tx.commit()?;
     Ok(())
 }
 

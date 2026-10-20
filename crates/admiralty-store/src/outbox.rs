@@ -84,8 +84,13 @@ pub fn initialize(connection: &Connection) -> Result<()> {
     // new_unchecked preserves the public &Connection signature; SQLite rejects
     // an accidental nested transaction before any DDL executes.
     let tx = Transaction::new_unchecked(connection, TransactionBehavior::Immediate)?;
-    tx.execute_batch(include_str!("../migrations/0002_outbox.sql"))?;
+    initialize_in_transaction(&tx)?;
     tx.commit()?;
+    Ok(())
+}
+
+pub(crate) fn initialize_in_transaction(tx: &Transaction<'_>) -> Result<()> {
+    tx.execute_batch(include_str!("../migrations/0002_outbox.sql"))?;
     Ok(())
 }
 

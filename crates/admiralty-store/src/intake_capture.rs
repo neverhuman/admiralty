@@ -326,12 +326,11 @@ fn bounds(c: &Connection) -> Result<()> {
     }
     Ok(())
 }
-pub(crate) fn initialize(c: &Connection) -> Result<()> {
-    let tx = Transaction::new_unchecked(c, TransactionBehavior::Immediate)?;
+pub(crate) fn initialize_in_transaction(tx: &Transaction<'_>) -> Result<()> {
     tx.execute_batch(MIGRATION)?;
-    verify_schema(&tx)?;
-    tx.commit()?;
-    validate_all(c)
+    verify_schema(tx)?;
+    bounds(tx)?;
+    validate_all_in_transaction(tx)
 }
 struct RevisionRow {
     request: String,
@@ -545,6 +544,11 @@ pub(crate) fn validate_all(c: &Connection) -> Result<()> {
     verify_schema(c)?;
     bounds(c)?;
     let tx = Transaction::new_unchecked(c, TransactionBehavior::Deferred)?;
+    validate_all_in_transaction(&tx)?;
+    tx.commit()?;
+    Ok(())
+}
+fn validate_all_in_transaction(tx: &Transaction<'_>) -> Result<()> {
     let mut q=tx.prepare("SELECT project_id,root_id,capture_id FROM main.intake_capture_heads ORDER BY project_id,root_id,capture_id LIMIT 129")?;
     let mut rows = q.query([])?;
     while let Some(r) = rows.next()? {
@@ -552,7 +556,7 @@ pub(crate) fn validate_all(c: &Connection) -> Result<()> {
         let root = RootId::new(stored_text(r, 1, 128)?).map_err(|_| CaptureError::Integrity)?;
         let id = stored_text(r, 2, 128)?;
         identifier(&id)?;
-        validate_capture(&tx, &p, &root, &id)?.ok_or(CaptureError::Integrity)?;
+        validate_capture(tx, &p, &root, &id)?.ok_or(CaptureError::Integrity)?;
     }
     drop(rows);
     drop(q);
@@ -568,6 +572,5 @@ pub(crate) fn validate_all(c: &Connection) -> Result<()> {
             return Err(CaptureError::Integrity);
         }
     }
-    tx.commit()?;
     Ok(())
 }

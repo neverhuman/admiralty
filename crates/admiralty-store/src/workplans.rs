@@ -137,10 +137,17 @@ pub fn initialize(connection: &Connection) -> Result<()> {
     connection.pragma_update(None, "foreign_keys", true)?;
     connection_assumptions(connection)?;
     let tx = Transaction::new_unchecked(connection, TransactionBehavior::Immediate)?;
+    initialize_in_transaction(&tx)?;
+    tx.commit()?;
+    Ok(())
+}
+
+pub(crate) fn initialize_in_transaction(tx: &Transaction<'_>) -> Result<()> {
+    connection_assumptions(tx)?;
     for (_, _, sql) in SCHEMA {
         tx.execute_batch(sql)?;
     }
-    verify_schema(&tx)?;
+    verify_schema(tx)?;
     for (kind, table, _) in SCHEMA {
         if *kind != "table" {
             continue;
@@ -152,7 +159,6 @@ pub fn initialize(connection: &Connection) -> Result<()> {
             return Err(WorkplanStoreError::Integrity("foreign key closure"));
         }
     }
-    tx.commit()?;
     Ok(())
 }
 fn normalized_sql(sql: &str) -> String {
