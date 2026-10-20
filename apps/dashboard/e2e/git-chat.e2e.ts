@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { launchBrowserHarness, startDashboardTestServer, REPO_ROOT, type BrowserHarness, type DashboardTestServer } from "./browser-harness";
@@ -9,11 +9,32 @@ describe("built per-project Git operator chat", () => {
   async function select(label: string, value: string) {
     await browser.evaluate(`(() => {const element=document.querySelector('select[aria-label=' + CSS.escape(${JSON.stringify(label)}) + ']');if (!element) throw Error('Select missing');element.value=${JSON.stringify(value)};element.dispatchEvent(new Event('change',{bubbles:true}));})()`);
   }
+  async function inputState() {
+    return browser.evaluate<{ hover: boolean; noHover: boolean; fine: boolean; coarse: boolean; touchPoints: number; hovered: boolean; focused: boolean; opacity: string }>(`(() => {
+      const chat=document.querySelector('.git-chat');
+      return {hover:matchMedia('(hover:hover)').matches,noHover:matchMedia('(hover:none)').matches,
+        fine:matchMedia('(pointer:fine)').matches,coarse:matchMedia('(pointer:coarse)').matches,
+        touchPoints:navigator.maxTouchPoints,hovered:chat.matches(':hover'),focused:chat.matches(':focus-within'),opacity:getComputedStyle(chat).opacity};
+    })()`);
+  }
+  async function expectOpacity(opacity: string) {
+    expect(await browser.evaluate(`new Promise(resolve => {
+      const until=Date.now()+1500, check=()=>{const current=getComputedStyle(document.querySelector('.git-chat')).opacity;
+        current===${JSON.stringify(opacity)} || Date.now()>=until ? resolve(current) : setTimeout(check,16)};check();
+    })`)).toBe(opacity);
+  }
   beforeAll(async () => {
     mkdirSync(evidence, { recursive: true });
     server = await startDashboardTestServer();
-    browser = await launchBrowserHarness();
+    browser = await launchBrowserHarness({ desktopInput: true });
+  }, 30_000);
+  beforeEach(async () => {
+    // Reset page/fixture and native input state so no test depends on a previous
+    // chat being opened, an access token, or a mobile pointer configuration.
+    await browser.resetPage();
     await browser.setViewportSize(1440, 1000);
+    await browser.emulateTouchInput(false);
+    await browser.movePointer(1, 1);
     await browser.goto(`${server.baseUrl}/#/detail`);
     await browser.evaluate(`(() => {
       const original = window.fetch.bind(window), stamp = new Date().toISOString();
@@ -46,7 +67,7 @@ describe("built per-project Git operator chat", () => {
           if (!message) {message = {...request, state:'delivered',created_utc:new Date().toISOString(),detail:'Delivered to target inbox; acknowledgment and execution are separate.'}; window.__chatStored.push(message)}
           if (window.__chatMode === 'hold-post') return new Promise(resolve => {window.__chatResolvePost = () => resolve(Response.json(message))});
           if (window.__chatMode === 'deny-post') return Response.json({}, {status:403});
-          if (window.__chatRequests.length === 1) throw new TypeError('Synthetic lost response');
+          if (window.__loseFirstResponse && window.__chatRequests.length === 1) throw new TypeError('Synthetic lost response');
           window.__release = true;
           return Response.json(message);
         }
@@ -68,6 +89,7 @@ describe("built per-project Git operator chat", () => {
   afterAll(async () => { await browser?.close(); await server?.close(); });
 
   it("floats through horizontal pan, focuses fully, and retries the exact routed command", async () => {
+    await browser.evaluate(`window.__loseFirstResponse=true;`);
     expect(await browser.evaluate(`window.__chatGetCount`)).toBe(0);
     await browser.clickButtonByText("Expand all");
     expect(await browser.evaluate(`(() => {const scroll=document.querySelector('.git-scroll');return scroll.scrollWidth > scroll.clientWidth})()`)).toBe(true);
@@ -76,12 +98,27 @@ describe("built per-project Git operator chat", () => {
     await browser.evaluate(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))`);
     expect(await browser.evaluate<number>(`document.querySelector('.git-scroll').scrollLeft`)).toBeGreaterThan(0);
     expect(await browser.evaluate(`(() => {const box=document.querySelector('.git-chat').getBoundingClientRect();return {left:box.left,right:box.right}})()`)).toEqual(before);
-    expect(await browser.evaluate(`getComputedStyle(document.querySelector('.git-chat')).opacity`)).toBe("0.86");
+    await browser.evaluate(`document.activeElement?.blur()`);
+    await browser.movePointer(1, 1);
+    await expectOpacity("0.86");
+    const idle = await inputState();
+    expect(idle).toEqual({hover:true,noHover:false,fine:true,coarse:false,touchPoints:0,hovered:false,focused:false,opacity:"0.86"});
+    console.log("CHAT_DESKTOP_IDLE", idle);
+    const hoverPoint = await browser.evaluate<{ x: number; y: number }>(`(() => {const box=document.querySelector('.git-chat-toggle').getBoundingClientRect();return {x:box.left+box.width/2,y:box.top+box.height/2}})()`);
+    await browser.movePointer(hoverPoint.x, hoverPoint.y);
+    await expectOpacity("1");
+    const hovered = await inputState();
+    expect(hovered).toMatchObject({hovered:true,focused:false,opacity:"1"});
+    console.log("CHAT_DESKTOP_HOVER", hovered);
+    await browser.movePointer(1, 1);
+    await expectOpacity("0.86");
     await browser.clickButtonByText("DOPE · Chat");
     await browser.waitForText("Exact target: captain:dope");
     await browser.evaluate(`document.querySelector('.git-chat textarea').focus()`);
-    await browser.evaluate(`new Promise(resolve=>setTimeout(resolve,160))`);
-    expect(await browser.evaluate(`getComputedStyle(document.querySelector('.git-chat')).opacity`)).toBe("1");
+    await expectOpacity("1");
+    const focused = await inputState();
+    expect(focused).toMatchObject({hovered:false,focused:true,opacity:"1"});
+    console.log("CHAT_DESKTOP_FOCUS", focused);
     await select("DOPE chat kind", "command");
     await browser.fillInputByLabel("DOPE chat text", "Inspect these split branches; propose a merge plan.");
     await browser.clickButtonByText("Send command");
@@ -103,6 +140,9 @@ describe("built per-project Git operator chat", () => {
   });
 
   it("keeps project drafts, pauses sending and exposes cached health evidence", async () => {
+    await browser.clickButtonByText("DOPE · Chat");
+    await browser.waitForText("Exact target: captain:dope");
+    await select("DOPE chat destination", "admiral:global");
     await browser.fillInputByLabel("DOPE chat text", "Unsubmitted DOPE draft");
     await select("Filter Git project", "other");
     await browser.clickButtonByText("Other · Chat");
@@ -149,6 +189,13 @@ describe("built per-project Git operator chat", () => {
     expect(await browser.evaluate(`document.querySelector('.git-chat textarea').value`)).toBe("");
     expect(await browser.evaluate(`document.querySelectorAll('.git-chat-timeline article').length`)).toBe(0);
     await browser.setViewportSize(390, 844);
+    await browser.emulateTouchInput(true);
+    await browser.movePointer(1, 1);
+    await browser.evaluate(`document.activeElement?.blur()`);
+    await expectOpacity("1");
+    const touch = await inputState();
+    expect(touch).toEqual({hover:false,noHover:true,fine:false,coarse:true,touchPoints:1,hovered:false,focused:false,opacity:"1"});
+    console.log("CHAT_TOUCH_IDLE", touch);
     await browser.evaluate(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))`);
     const bounds = await browser.evaluate<{ left: number; right: number }>(`(() => {const box=document.querySelector('.git-chat').getBoundingClientRect();return {left:box.left,right:box.right}})()`);
     expect(bounds.left).toBeGreaterThanOrEqual(0);
