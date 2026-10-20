@@ -3561,7 +3561,7 @@ mod tests {
     }
 
     #[test]
-    fn late_startup_schema_failure_rolls_back_the_whole_new_tail() {
+    fn late_startup_schema_failure_rolls_back_all_new_schema_families() {
         let directory = private_tempdir();
         let path = directory.path().join("tail-failure.sqlite");
         drop(super::private_file(&path, true).expect("private database"));
@@ -3576,6 +3576,12 @@ mod tests {
         );
         let inspected = Connection::open(&path).expect("inspect preserved database");
         for name in [
+            "metadata",
+            "outbox_intents",
+            "event_request_bindings",
+            "workplan_registry_plans",
+            "excursion_commands",
+            "durable_questions",
             "coordination_subscriptions",
             "usage_observation_origins",
             "admission_reservation_ledger",
@@ -3589,9 +3595,13 @@ mod tests {
                 .expect("tail object count");
             assert_eq!(
                 count, 0,
-                "failed startup must not leave partial tail object {name}"
+                "failed startup must not leave partial schema object {name}"
             );
         }
+        let version: i64 = inspected
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .expect("rolled back schema version");
+        assert_eq!(version, 0);
         let sql: String = inspected
             .query_row(
                 "SELECT sql FROM sqlite_schema WHERE name='inference_slot_ledger'",

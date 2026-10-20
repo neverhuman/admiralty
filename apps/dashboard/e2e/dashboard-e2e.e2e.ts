@@ -717,7 +717,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
       // Chromium refuses this unsafe loopback port before opening a connection.
       // Its errorText is a successful CDP response, not a protocol rejection.
       await expect(browser.goto('http://127.0.0.1:1/')).rejects.toThrow(
-        /Navigation to http:\/\/127\.0\.0\.1:1\/ failed after 2 attempts.*Page\.navigate failed: net::ERR_UNSAFE_PORT/,
+        /Navigation to http:\/\/127\.0\.0\.1:1\/ failed after 2 attempts[\s\S]*attempt 2: Page\.navigate failed: net::ERR_UNSAFE_PORT/,
       );
     },
     90_000,
