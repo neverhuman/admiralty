@@ -79,13 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     public_read: args.legacy_public_read,
                 },
             );
-    let chat_routes = admiralty_server::operator_chat::router(
-        token.clone(),
-        chat,
-        legacy.as_ref().map(|c| c.status_file.clone()),
-    );
-    let native_routes = Some(native_routes.unwrap_or_default().merge(chat_routes));
-    let primary = admiralty_server::serve_with_work_order_routes(
+    let primary = admiralty_server::serve_with_operator_chat(
         store,
         admiralty_server::ServerConfig {
             listen: args.listen,
@@ -97,6 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         },
         native_routes,
         intake_routes,
+        chat,
     );
     match args.redirect_listen {
         Some(listen) => tokio::select! {

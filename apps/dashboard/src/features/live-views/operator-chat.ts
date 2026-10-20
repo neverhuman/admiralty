@@ -1,5 +1,5 @@
 export const CHAT_TEXT_BYTES = 8 * 1024;
-const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 
 export type ChatTarget = { id: string; role: "admiral" | "captain"; label: string };
 export type ChatMessage = {

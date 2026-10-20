@@ -872,8 +872,30 @@ pub async fn serve_with_work_order_routes(
     native_routes: Option<Router>,
     intake: Option<services::work_order_routes::WorkOrderRouteState>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    serve_with_operator_chat(store, config, native_routes, intake, None).await
+}
+
+/// Role inboxes are independently enrolled; mounting observation routes never
+/// installs a native execution grant. Start their watcher only after binding.
+pub async fn serve_with_operator_chat(
+    store: Store,
+    config: ServerConfig,
+    native_routes: Option<Router>,
+    intake: Option<services::work_order_routes::WorkOrderRouteState>,
+    chat: Option<operator_chat::Configuration>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if config.simulated && chat.is_some() {
+        return Err("demo mode cannot enroll live operator chat targets".into());
+    }
     let listen = config.listen;
     let native_commands = native_routes.is_some() || intake.is_some();
+    let chat_enabled = chat.is_some();
+    let chat_source = (!config.simulated).then(|| {
+        (
+            config.token.clone().unwrap_or_default(),
+            config.legacy.as_ref().map(|c| c.status_file.clone()),
+        )
+    });
     let (shutdown_tx, _) = tokio::sync::watch::channel(false);
     let views = views::ViewsHub::new();
     let app = app_with_work_order_routes_and_shutdown(
@@ -885,8 +907,14 @@ pub async fn serve_with_work_order_routes(
         views.clone(),
     )?;
     let listener = tokio::net::TcpListener::bind(listen).await?;
+    let app = match chat_source {
+        Some((token, source)) => app.merge(operator_chat::router(token, chat, source)),
+        None => app,
+    };
     let mode = if native_commands {
         "native commands enabled; execution requires admitted controller"
+    } else if chat_enabled {
+        "operator chat enabled; native execution disabled"
     } else {
         "read-only; native execution disabled"
     };
