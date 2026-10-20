@@ -200,7 +200,10 @@ impl ExecutionRequirementsV2 {
                 "invalid base_commit_sha",
             ));
         }
-        if !valid_label(&self.deadline_utc, 64) || !self.deadline_utc.ends_with('Z') {
+        if !valid_label(&self.deadline_utc, 64)
+            || !self.deadline_utc.ends_with('Z')
+            || self.deadline_utc.parse::<jiff::Timestamp>().is_err()
+        {
             return Err(ExecutionRequirementsError::Invalid(
                 "deadline_utc must be a bounded UTC timestamp ending in Z",
             ));
