@@ -3203,3 +3203,17 @@ incorrectly matched raw HTML against adjacent visible words; it was corrected
 to inspect rendered text, and is excluded from regression proof. All18 temporal
 tests pass after restoration. The earlier0939eb5 full20 matrix passed before
 these changes; the corrected exact head requires its own full qualification.
+
+The corrected e6763bb passes the whole20-stage local matrix and its independent
+Luna follow-up reports both findings resolved with no remaining source finding.
+During live verification, a fresh five-project audit expanded the valid Admiral
+status file to258124bytes, beyond the observer's unchanged128KiB source limit;
+the actual06:08:21Z producer therefore contained status:null. Root notified the
+sole Admiral publisher to keep the detailed evidence immutable and publish a
+compact summary with receipt references. Source now reports bounded-read/parse
+errors explicitly; trend cards distinguish unavailable status from an absent
+report and preserve any historical audit's original clock. New mocked overflow,
+malformed-source, compact-recovery and UI diagnostics cover this real failure.
+Both new negative controls fail the original e6763bb. The limit is retained;
+no stale value is relabeled current and Root performs no role/status/config
+writes. Final exact-head qualification follows this source change.
