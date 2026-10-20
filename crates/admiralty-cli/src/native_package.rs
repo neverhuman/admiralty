@@ -150,6 +150,11 @@ const GENERATED_GUARD_MODULES: [(&str, &[u8]); 25] = [
 ];
 type FileIdentity = (u64, u64, u64, i64, i64, i64, i64, u64);
 
+#[cfg(test)]
+pub(super) fn generated_guard_fixture_names() -> impl Iterator<Item = &'static str> {
+    std::iter::once("validators.mjs").chain(GENERATED_GUARD_MODULES.iter().map(|(name, _)| *name))
+}
+
 /// One explicitly selected source file and its expected raw-byte SHA-256.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

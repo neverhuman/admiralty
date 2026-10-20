@@ -1474,31 +1474,8 @@ mod tests {
         let (root, mut inputs) = fixture(false);
         let generated =
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/contracts/generated");
-        let names = [
-            "validators.mjs",
-            "validators-base.mjs",
-            "validators-workplan.mjs",
-            "validators-verification-receipt.mjs",
-            "validators-verification-policy.mjs",
-            "validators-interface-contract.mjs",
-            "validators-config-layer.mjs",
-            "validators-config-patch.mjs",
-            "validators-config-layer-receipt.mjs",
-            "validators-provenance-contribution.mjs",
-            "validators-views-snapshot.mjs",
-            "validators-intake-batch.mjs",
-            "validators-source-provenance.mjs",
-            "validators-intake-preview.mjs",
-            "validators-work-order-revision.mjs",
-            "validators-record-intake-request.mjs",
-            "validators-record-intake-receipt.mjs",
-            "validators-delivery-requirement.mjs",
-            "validators-duplicate-query.mjs",
-            "validators-duplicate-page.mjs",
-            "validators-coordination-envelope-v2.mjs",
-        ];
         inputs.retain(|entry| entry.source != "packages/contracts/generated/validators.mjs");
-        for name in names {
+        for name in crate::native_package::generated_guard_fixture_names() {
             let bytes = fs::read(generated.join(name)).expect("exact local generated source");
             let source = format!("packages/contracts/generated/{name}");
             let path = root.path().join(&source);
@@ -1617,6 +1594,9 @@ mod tests {
                 count += 1;
             }
         }
-        assert_eq!(count, 21);
+        assert_eq!(
+            count,
+            crate::native_package::generated_guard_fixture_names().count()
+        );
     }
 }
