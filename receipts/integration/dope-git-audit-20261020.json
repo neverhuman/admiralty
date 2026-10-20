@@ -7,6 +7,20 @@
     "inventory": "2026-10-20T06:33:24.675888+00:00",
     "fast_probe": "2026-10-20T06:37:14.845776+00:00"
   },
+  "git_probe_index_assurance": {
+    "remote_git_argv_prefix": [
+      "git",
+      "--no-optional-locks",
+      "-C",
+      "<observed_worktree>"
+    ],
+    "remote_status_optional_index_refresh_disabled": true,
+    "initial_local_status_command": "rtk git status --short --branch",
+    "initial_local_status_explicit_optional_lock_guard": false,
+    "before_after_index_hashes_captured": false,
+    "intentional_index_staging_or_content_edits": false,
+    "assurance": "Remote optional index refresh was disabled for Git probes. Initial local status may refresh index metadata. No byte-identical index or metadata preservation claim is independently established."
+  },
   "scope": {
     "project": "DOPE",
     "primary_remote": "https://github.com/neverhuman/dope.git",
@@ -1197,6 +1211,38 @@
       "admiral_alert_still_queued": true,
       "captain_acknowledged": false,
       "admiral_acknowledged": false
+    },
+    "final_bounded_coordination_check": {
+      "at_utc": "2026-10-20T06:50:48.203584+00:00",
+      "files": [
+        {
+          "role": "captain",
+          "path": "/home/ubuntu/dope/COMMS.md",
+          "offset_before": 839651,
+          "offset_after": 839651,
+          "new_bytes": 0,
+          "new_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "matching_sections": []
+        },
+        {
+          "role": "admiral_inbox",
+          "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_INBOX.md",
+          "offset_before": 116995,
+          "offset_after": 121668,
+          "new_bytes": 4673,
+          "new_sha256": "5f2d2ec7de38f92aaab7098c6c31c58dabba8ec40aaf0abab6a2bccf7e9e0d69",
+          "matching_sections": []
+        },
+        {
+          "role": "admiral_decisions",
+          "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_DECISIONS.md",
+          "offset_before": 668829,
+          "offset_after": 668829,
+          "new_bytes": 0,
+          "new_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "matching_sections": []
+        }
+      ]
     },
     "authorization": "Direct user authorization relayed by parent agent: talk/work with captain and admiral so both aware.",
     "captain": {

@@ -270,7 +270,9 @@ export default function LiveViews({
               onAccess={onAccess}
               chatScopeEpoch={feed.scopeEpoch}
               healthEnabled={feed.state === "connected" && !feed.publicFallback && !feed.sessionAccessRequired && !snapshot.simulated}
-              chatDisabledReason={visiblePausedGit
+              chatDisabledReason={snapshot.simulated
+                ? "Operator chat is disabled for simulated observations."
+                : visiblePausedGit
                 ? "Resume live observations before sending. This Git graph is paused."
                 : feed.publicFallback || feed.sessionAccessRequired
                   ? "Connect private session access before sending."

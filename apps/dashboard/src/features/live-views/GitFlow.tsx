@@ -332,7 +332,7 @@ export default function GitFlow({
   chatDisabledReason: string;
   healthEnabled: boolean;
 }) {
-  const chatMemory = useMemo(() => createChatMemory(), [token, chatScopeEpoch]);
+  const chatMemory = useMemo(() => createChatMemory(), [token, chatScopeEpoch, snapshot.simulated]);
   const [chatRevision, setChatRevision] = useState(0);
   const [healthOpen, setHealthOpen] = useState<ReadonlySet<string>>(new Set());
   const health = useGitHealth(token, chatScopeEpoch, healthEnabled && !paused);
@@ -886,7 +886,7 @@ export default function GitFlow({
                   projectName={band.project.name}
                   token={token}
                   memory={chatMemory}
-                  active={visible}
+                  active={visible && !snapshot.simulated}
                   disabledReason={chatDisabledReason}
                   onAccess={onAccess}
                   onToggle={() => setChatRevision((revision) => revision + 1)}
