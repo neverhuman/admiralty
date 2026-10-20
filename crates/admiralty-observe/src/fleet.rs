@@ -1004,8 +1004,13 @@ async fn admiral_observation(config: &ObserveConfig, screens: &[Value]) -> Value
     let mut result = json!({"screen":observed.unwrap_or_else(||json!({"name":config.admiral_screen,"alive":null})),"status":null,"log_tail":[],"decisions":[],"checks_logged":null,"decisions_total":null,"ticker":{"alive":null}});
     if let Some(dir) = &config.coordination_dir {
         let status_path = dir.join("super_captain_status.json");
-        if let Ok(status) = crate::io::read_json(&status_path, 128 * 1024) {
-            result["status"] = sanitize_value(status, 0);
+        match crate::io::read_json(&status_path, 128 * 1024) {
+            Ok(status) => result["status"] = sanitize_value(status, 0),
+            Err(error) => {
+                result["status_error"] = json!(crate::io::clean(&format!(
+                    "Admiral status unavailable (128 KiB source limit): {error}"
+                )));
+            }
         }
         result["status_mtime_utc"] =
             crate::io::mtime_utc(&status_path).map_or(Value::Null, |v| json!(v));
@@ -1360,6 +1365,52 @@ mod tests {
                 .expect("source")
                 .starts_with("cached")
         );
+    }
+
+    #[tokio::test]
+    async fn admiral_status_overflow_and_parse_errors_are_visible_and_compact_audits_recover() {
+        let temp = tempfile::tempdir().unwrap();
+        let config: ObserveConfig =
+            serde_json::from_value(json!({"schema_version":1,"node_id":"n",
+            "output_dir":temp.path(),"coordination_dir":temp.path(),"projects":[]}))
+            .unwrap();
+        let path = temp.path().join("super_captain_status.json");
+        let mut compact = json!({"captains":{"p":{"hygiene":{"score":null,"grade":null,
+            "possible_score_range":[30,80],"known_component_subtotal":80,
+            "observed_utc":"2026-10-20T06:02:00Z"}}}});
+        compact["embedded_evidence"] = json!("x".repeat(250_000));
+        std::fs::write(&path, serde_json::to_vec(&compact).unwrap()).unwrap();
+        let oversized = admiral_observation(&config, &[]).await;
+        assert!(oversized["status"].is_null());
+        assert!(
+            oversized["status_error"]
+                .as_str()
+                .unwrap()
+                .contains("byte limit")
+        );
+        assert!(
+            oversized["status_error"]
+                .as_str()
+                .unwrap()
+                .contains("128 KiB")
+        );
+        std::fs::write(&path, b"{").unwrap();
+        let malformed = admiral_observation(&config, &[]).await;
+        assert!(malformed["status"].is_null());
+        assert!(
+            malformed["status_error"]
+                .as_str()
+                .unwrap()
+                .contains("unavailable")
+        );
+        compact.as_object_mut().unwrap().remove("embedded_evidence");
+        std::fs::write(&path, serde_json::to_vec(&compact).unwrap()).unwrap();
+        let recovered = admiral_observation(&config, &[]).await;
+        assert!(recovered["status_error"].is_null());
+        let hygiene = &recovered["status"]["captains"]["p"]["hygiene"];
+        assert!(hygiene["score"].is_null());
+        assert_eq!(hygiene["possible_score_range"], json!([30, 80]));
+        assert_eq!(hygiene["observed_utc"], "2026-10-20T06:02:00Z");
     }
 
     #[test]

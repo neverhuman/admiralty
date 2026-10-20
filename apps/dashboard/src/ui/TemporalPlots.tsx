@@ -61,6 +61,7 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
     ({ id, title, values, series: graph, note, sourceTime: at, min: 0 });
   const tiers = unique(['luna', 'sol', 'astra', 'claude', 'agy', ...rows.flatMap(row => Object.keys(data(row.tiers)))]);
   const hygieneStatus = data(data(snapshot.super_captain).status);
+  const hygieneStatusError = text(data(snapshot.super_captain).status_error);
   const hygieneStatusTime = validIsoTime(data(snapshot.super_captain).status_mtime_utc ?? hygieneStatus.status_mtime_utc);
   const hygieneStatusByProject = data(hygieneStatus.captains);
   const hygieneForProject = (id: string) => {
@@ -143,7 +144,7 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
       };
       const times = current.map(item => item.at).filter(Boolean).sort();
       const values = current.map(item => {
-        if (item.value === undefined) return { label: projectName(item.id), value: 'Not reported by Admiral', color: projectColor(item.id) };
+        if (item.value === undefined) return { label: projectName(item.id), value: hygieneStatusError ? 'Admiral status unavailable' : 'Not reported by Admiral', color: projectColor(item.id) };
         const record = data(item.value), score = hygieneScore(item.value), grade = text(record.grade);
         const measured = score === null ? hygienePartialLabel(item.value) || grade || 'unknown' : formatMeasurement(score);
         const age = item.at ? ageText(item.at) : 'age unknown';
@@ -162,7 +163,7 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
           }).sort((a, b) => a.time - b.time);
           return { ...item, points: points.filter((point, index) => index === 0 || point.time !== points[index - 1].time || point.value !== points[index - 1].value) };
         }),
-        'Ranges are partial audits, not final scores. Missing audit components must be measured before a final score is available. Not reported by Admiral means no current or retained score or range was supplied. Original per-project audit times are retained.',
+        [hygieneStatusError, 'Ranges are partial audits, not final scores. Missing audit components must be measured before a final score is available. Not reported by Admiral means no current or retained score or range was supplied. Original per-project audit times are retained.'].filter(Boolean).join(' · '),
         times.at(-1) || ''), max: 100 };
     })(),
     (() => {

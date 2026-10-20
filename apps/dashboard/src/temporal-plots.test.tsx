@@ -147,6 +147,17 @@ describe('dense temporal dashboard strip', () => {
     expect(visible).toContain('0.02% observed-sample integration yield');
     expect(visible).toContain('0.42% observed-sample coverage');
   });
+  it('explains unavailable Admiral status while keeping retained audit values at their original time', () => {
+    const source = snapshot(); source.super_captain = { status: null,
+      status_error: 'Admiral status unavailable (128 KiB source limit): source exceeds configured byte limit',
+      status_mtime_utc: source.generated_utc };
+    source.history = { rows: [{ ts: 1792321200, hyg_at: { alpha: 1792321140 }, hyg: { alpha: 72 } }] };
+    const metric = buildTemporalMetrics(source).metrics.find(item => item.id === 'hygiene')!;
+    expect(metric.values[0].value).toContain('72');
+    expect(metric.values[0].label).toContain('history at 2026-10-18T10:59:00.000Z');
+    expect(metric.values[1].value).toBe('Admiral status unavailable');
+    expect(metric.note).toContain('source exceeds configured byte limit');
+  });
   it('restores all thirteen old metrics from the actual collector field names', () => {
     const model = buildTemporalMetrics(snapshot());
     expect(model.metrics.map(metric => metric.id)).toEqual(['cost-index', 'luna-failures', 'burn-up', 'in-progress', 'agent-tiers',
