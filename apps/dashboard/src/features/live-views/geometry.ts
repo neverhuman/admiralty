@@ -124,11 +124,13 @@ function layoutGitCommits(repo: GitRepository) {
 }
 /** Collapse only unadorned 1-parent/1-child interiors, never topology anchors.
  * Every loaded OID maps to its visible mark; the source commits stay untouched.
+ * Manual collapse wins across a growing range until explicit user intent clears it.
  */
 export function layoutGit(
   repo: GitRepository,
   expandedOids: ReadonlySet<string> = new Set(),
   zoom = 1,
+  collapsedOids: ReadonlySet<string> = new Set(),
 ): GitLayout {
   const raw = layoutGitCommits(repo);
   const children = new Map<string, string[]>();
@@ -162,7 +164,8 @@ export function layoutGit(
     const range: CommitRange = {
       id: `${repo.instance_id}:${chain[0].oid}:${chain.at(-1)!.oid}`,
       commits: chain,
-      expanded: chain.some((c) => expandedOids.has(c.oid)),
+      expanded: chain.some((c) => expandedOids.has(c.oid)) &&
+        !chain.some((c) => collapsedOids.has(c.oid)),
       x: 0, y: 0,
     };
     ranges.push(range);

@@ -1,6 +1,6 @@
 # Git Flow and Fleet Atlas
 
-Open **Git Flow** or **Fleet Atlas** in the dashboard navigation. Direct routes are `#/git` and `#/atlas`. Existing detail, workplans, commands and models remain available. Both views are read-only. Private native reads use the same in-memory session token as other native API reads.
+Open **Git Flow** or **Fleet Atlas** in the dashboard navigation. Direct routes are `#/git` and `#/atlas`. Existing detail, workplans, commands and models remain available. Graphs and Atlas show observations. Git Flow additionally offers project-scoped [Captain/Admiral chat](operator-chat.md) and [Git health](git-health.md); live delivery requires protected role enrollment. Private reads and chat use the same in-memory owner session token as other native API requests.
 
 ## Connect real sources
 

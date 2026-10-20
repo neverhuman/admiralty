@@ -69,9 +69,12 @@ describe("built per-project Git operator chat", () => {
 
   it("floats through horizontal pan, focuses fully, and retries the exact routed command", async () => {
     expect(await browser.evaluate(`window.__chatGetCount`)).toBe(0);
+    await browser.clickButtonByText("Expand all");
+    expect(await browser.evaluate(`(() => {const scroll=document.querySelector('.git-scroll');return scroll.scrollWidth > scroll.clientWidth})()`)).toBe(true);
     const before = await browser.evaluate<{ left: number; right: number }>(`(() => {const box=document.querySelector('.git-chat').getBoundingClientRect();return {left:box.left,right:box.right}})()`);
     await browser.evaluate(`(() => {const scroll=document.querySelector('.git-scroll');scroll.scrollLeft=900;scroll.dispatchEvent(new Event('scroll',{bubbles:true}));})()`);
     await browser.evaluate(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))`);
+    expect(await browser.evaluate<number>(`document.querySelector('.git-scroll').scrollLeft`)).toBeGreaterThan(0);
     expect(await browser.evaluate(`(() => {const box=document.querySelector('.git-chat').getBoundingClientRect();return {left:box.left,right:box.right}})()`)).toEqual(before);
     expect(await browser.evaluate(`getComputedStyle(document.querySelector('.git-chat')).opacity`)).toBe("0.86");
     await browser.clickButtonByText("DOPE · Chat");
