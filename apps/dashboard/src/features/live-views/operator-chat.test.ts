@@ -63,6 +63,29 @@ describe("project operator chat transport", () => {
     await expect(postOperatorChat({ ...request, text: "   " }, undefined, signal, fetcher)).rejects.toThrow("8192");
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
+  it("loads the complete 100-message and 100-reply server window with maximal JSON escaping", async () => {
+    const escaped = '"'.repeat(CHAT_TEXT_BYTES);
+    const base = snapshot();
+    const window = {
+      ...base,
+      messages: Array.from({ length: 100 }, (_, index) => ({ ...delivered, id: `message:${index}`, text: escaped })),
+      responses: Array.from({ length: 100 }, (_, index) => ({ ...base.responses[0], id: `reply:${index}`, text: escaped })),
+    };
+    const encodedBytes = textBytes(JSON.stringify(window));
+    expect(encodedBytes).toBeGreaterThan(2 * 1024 * 1024);
+    expect(encodedBytes).toBeLessThan(4 * 1024 * 1024);
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json(window));
+    const loaded = await loadOperatorChat(request.project_id, undefined, new AbortController().signal, fetcher);
+    expect(loaded.messages).toHaveLength(100);
+    expect(loaded.responses).toHaveLength(100);
+    expect(loaded.messages.every((message) => message.text === escaped)).toBe(true);
+    expect(loaded.responses.every((reply) => reply.text === escaped)).toBe(true);
+  });
+  it("rejects chat responses exceeding the 4 MiB transport bound", async () => {
+    const oversized = { ...snapshot(), padding: " ".repeat(4 * 1024 * 1024) };
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json(oversized));
+    await expect(loadOperatorChat(request.project_id, undefined, new AbortController().signal, fetcher)).rejects.toThrow("API response too large");
+  });
   it("retains project drafts only within the current access scope", () => {
     const scope = createChatMemory();
     scope.projects.set("dope", { ...newProjectChat(), draft: "private draft", targetId: "captain:dope", messages: [delivered] });
