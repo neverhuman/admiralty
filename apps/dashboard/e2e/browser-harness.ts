@@ -1445,6 +1445,8 @@ export interface BrowserHarness {
   goto(url: string): Promise<void>;
   setViewportSize(width: number, height: number): Promise<void>;
   emulateReducedMotion(reduce: boolean): Promise<void>;
+  emulateTouchInput(enabled: boolean): Promise<void>;
+  movePointer(x: number, y: number): Promise<void>;
   evaluate<T>(expression: string, timeoutMs?: number): Promise<T>;
   captureScreenshot(path: string): Promise<void>;
   waitForText(expectedText: string, timeoutMs?: number): Promise<void>;
@@ -1461,6 +1463,8 @@ export interface BrowserHarness {
 }
 
 export interface LaunchBrowserHarnessOptions {
+  /** Opt-in mouse capabilities; headless Linux may otherwise report no pointing device. */
+  desktopInput?: boolean;
   /** Test-only attempt adapter for custody propagation; never launches an OS process. */
   _testLaunchAttempt?: (attempt: number) => Promise<BrowserHarness>;
   startupTimeoutMs?: number;
@@ -1694,6 +1698,9 @@ async function launchBrowserHarnessAttempt(
     `--user-data-dir=${profileDir}`,
     '--window-size=1440,900',
     '--remote-debugging-pipe',
+    ...(options?.desktopInput
+      ? ['--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4']
+      : []),
   ];
 
   // On Ubuntu 24.04 runners where apparmor_restrict_unprivileged_userns=1 and /opt/google/chrome/chrome
@@ -2181,6 +2188,13 @@ async function launchBrowserHarnessAttempt(
         },
         sessionId,
       );
+    },
+    async emulateTouchInput(enabled: boolean) {
+      await sendCdp('Emulation.setTouchEmulationEnabled', { enabled, maxTouchPoints: 1 }, sessionId);
+    },
+    async movePointer(x: number, y: number) {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error('Pointer coordinates must be finite');
+      await sendCdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, pointerType: 'mouse' }, sessionId);
     },
     evaluate,
     async captureScreenshot(path: string) {

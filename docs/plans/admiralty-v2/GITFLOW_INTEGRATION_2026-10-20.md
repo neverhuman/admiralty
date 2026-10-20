@@ -210,3 +210,64 @@ neverhumanbot approved its exact head. Receiving main
 is clear. Move the unpublished candidate onto that actual main before freezing
 the full local check. Final source and check/PR/review/merge evidence will be
 recorded in the execution ledger, source receipt and retained final merge proof.
+
+
+## GFI05 — explicit browser input qualification after the first hosted run
+
+The first published candidate `fc47aae825b242b99e0058f6045a14349de378ba`
+passes the complete Mac matrix, but hosted browser job118533143687 in
+run39394318694 fails two of47 assertions: idle opacity expected0.86 receives1,
+then a dependent test cannot find the unopened textarea. The exact original log
+is retained in `/private/tmp/gitflow-unified.7utu6i/ci-browser-failure/` and a HOLD
+is delivered to the captain and Admiral. No approval or merge of that head is
+allowed. Prior source/evidence remains dated; do not rewrite the failure.
+
+Objective: explicitly qualify desktop mouse hover, keyboard focus and the
+existing opaque touch fallback across Chromium hosts. Non-goals: changing the
+product opacity/CSS to satisfy a fixture, relaxing either opacity assertion,
+skipping tests or masking a dependent failure with retries. Chromium input
+capability defaults differ by host; a DOM click does not establish pointer
+location or capability. Touch emulation disabled restores host defaults rather
+than proving a fine hover pointer.
+
+Read first, in order: `e2e/git-chat.e2e.ts`, `e2e/browser-harness.ts` launch/CDP
+transport and BrowserHarness type, `live-views.css` chat input-media rules,
+`e2e/vitest.config.ts`, then the hosted failure and pinned browser workflow.
+These paths are relative to `apps/dashboard/` except the workflow. The UI lane
+exclusively owns the two e2e TypeScript files. The integrator owns this plan,
+execution ledger, proof, commits, matrix and PR operations. Other product source,
+CSS, credentials, protected inboxes and runner processes remain outside this
+repair's write scope. No concurrent build or shared harness writer is assigned.
+
+1. Preserve the original fixture and failed hosted log before edits. Reproduce
+   the capability mismatch with observed matchMedia/pseudo state; distinguish
+   direct opacity failure from the subsequent missing textarea.
+2. Add a typed, opt-in desktop input launch configuration to the existing
+   Chromium harness. Establish fine-pointer/hover Blink settings at launch for
+   this suite; retain existing defaults for every other caller. Keep argv
+   arrays, the existing approved binary selection and private process custody.
+   Record primary Chromium source for the settings/enum values in proof.
+3. Add narrow typed CDP helpers for real mouse movement and touch emulation.
+   Confirm actual matchMedia results after each mode change; do not assume a
+   successful protocol return proves the requested CSS state.
+4. Make each chat test establish its own fixture/open/destination state. Exercise
+   idle desktop alpha with pointer outside and focus absent; real hover and
+   keyboard focus must each reach opacity1. Exercise touch/no-hover opacity1,
+   then restore desktop state and verify it. Retain real-pan/route/UUID retry,
+   auth-race, simulation, project isolation, narrow-screen and axe assertions.
+5. Run pinned Node24 focused typechecks/browser tests against the production
+   build. Inspect the complete shared harness delta and default caller behavior.
+   Commit the repair plus this plan, freeze code, then run all20 `pnpm check`
+   stages before updating the PR. Retain original and repaired evidence with
+   exact source/tree, versions, commands, capability values and hashes.
+6. Add a separate follow-up source-bound receipt and refresh the immutable
+   base/head/tree/bundle/path manifest. Inform the same reserved independent
+   reviewer of the new exact head; require delta coverage and current-head CI,
+   actual eligible approval and ordinary matched rebase merge. An old source
+   review or local-only pass cannot release the HOLD.
+
+Stop publication on unproved input capability, changed shared defaults,
+weakened assertions, cleanup leaks, failed required checks or mismatched review
+head. Preserve independent review progress on unchanged source, but do not
+transfer an old-head approval. This follow-up changes test portability and
+isolation; production code changes require a concrete newly demonstrated bug.
