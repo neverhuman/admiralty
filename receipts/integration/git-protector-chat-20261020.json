@@ -1,0 +1,556 @@
+{
+  "schema_version": 1,
+  "kind": "git_protector_chat_local_source_qualification",
+  "recorded_utc": "2026-10-20T07:30:26.396565+00:00",
+  "source": {
+    "commit": "91eae7345bd1bf0554a073d763ee9fa37f164706",
+    "tree": "fa2de2af571791b116a7a316347dc8f6f7f584e4",
+    "integration_baseline": "6e974790371454f60bcf946d69b388927dacfa56",
+    "initial_checkout_baseline": "c58a67c095248ab3a3c7dd5ba9568422575ad751",
+    "branch": "codex/git-protector-chat",
+    "cwd": "/Users/bentaylor/.codex/worktrees/git-protector-chat/admiralty",
+    "clean_at_full_matrix_start": true,
+    "evidence_commit_is_not_the_tested_source": true
+  },
+  "full_local_matrix": {
+    "command": "rtk proxy env PATH=/Users/bentaylor/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH ADMIRALTY_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target pnpm check",
+    "cwd": "/Users/bentaylor/.codex/worktrees/git-protector-chat/admiralty",
+    "exit_code": 0,
+    "stages_passed": 20,
+    "environment": {
+      "path": "/private/tmp/adm.JrlpoP/logs/environment.log",
+      "bytes": 246,
+      "sha256": "84111306311dc56e91c3e9e257a4f7808e79a087ad2b292f63dc418aa64e9061"
+    },
+    "commands": {
+      "path": "/private/tmp/adm.JrlpoP/logs/commands.log",
+      "bytes": 1437,
+      "sha256": "f57987ce4398e01d60c8c24ab1dc6511c4ecb6a32f272d748a8a39dcc390a499"
+    },
+    "stage_results": [
+      {
+        "stage": 1,
+        "command": "pnpm install --frozen-lockfile --ignore-scripts ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/01.log",
+          "bytes": 85,
+          "sha256": "a5697a4cadc14161efacc48606b5c31e69055a6f3f57f469637fae0b2b07c740"
+        }
+      },
+      {
+        "stage": 2,
+        "command": "cargo fmt --all -- --check ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/02.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "stage": 3,
+        "command": "cargo clippy --workspace --all-targets --locked -- -D warnings ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/03.log",
+          "bytes": 60,
+          "sha256": "2447604722be766dc4e29325d52364dad83978b8633350c3ed30d280b609c7a1"
+        }
+      },
+      {
+        "stage": 4,
+        "command": "cargo test --workspace --locked ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/04.log",
+          "bytes": 205049,
+          "sha256": "67d7af38db48d97c48f99b6a834c623b43251f8d4a6678720242a920c8262c22"
+        }
+      },
+      {
+        "stage": 5,
+        "command": "python3 -m unittest discover -s tests/legacy -v ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/05.log",
+          "bytes": 14446,
+          "sha256": "50e835623143bc6480fb2595d2cd7ccb494f4c32ae0e4cea5d2b511cd0b4501b"
+        }
+      },
+      {
+        "stage": 6,
+        "command": "python3 -m unittest discover -s tests -p test_sc_audit\\*.py -v ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/06.log",
+          "bytes": 57944,
+          "sha256": "3628aff14757444119f05434c3452d1cf2e4ed116e8ec00467c2460d76787161"
+        }
+      },
+      {
+        "stage": 7,
+        "command": "python3 tests/fixtures/legacy/verify.py ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/07.log",
+          "bytes": 961,
+          "sha256": "0e0184a1f618d4faddb38ee3729d4242d23b5874a383d5bc176d8da72931000f"
+        }
+      },
+      {
+        "stage": 8,
+        "command": "python3 scripts/release/package.py --self-test ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/08.log",
+          "bytes": 1451,
+          "sha256": "c414065345419e22ebb7f4e39cdef2f30b38b5c46e9d05866d999d4f635285c2"
+        }
+      },
+      {
+        "stage": 9,
+        "command": "python3 scripts/check/canary-smoke.py --self-test ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/09.log",
+          "bytes": 3820,
+          "sha256": "e5d16d6cdfdd952760e90c98b9f37fc11f9560f637887b0c68ebfefe8aca370e"
+        }
+      },
+      {
+        "stage": 10,
+        "command": "cargo build -p admiralty-server -p admiralty-cli -p admiralty-observe --locked ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/10.log",
+          "bytes": 60,
+          "sha256": "8a10254974bbd1a52574924f2ba6e2e78269a27b8d61c996e00c4498f15edb56"
+        }
+      },
+      {
+        "stage": 11,
+        "command": "python3 scripts/check/canary-smoke.py --admiraltyd-binary /Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd --admiralty-binary /Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty --scratch-root /private/tmp/adm.JrlpoP/canary ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/11.log",
+          "bytes": 1564,
+          "sha256": "856098acac7b75a81f1644148041970be8411adc9eeb66b4470c6a14c93d6242"
+        }
+      },
+      {
+        "stage": 12,
+        "command": "cargo run -p admiralty-cli --locked -- contracts check ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/12.log",
+          "bytes": 1310,
+          "sha256": "9f36074b0882d1c610b4661a71c05e3ac9ba449227a5b56f90ba6d7c51be6606"
+        }
+      },
+      {
+        "stage": 13,
+        "command": "pnpm contracts:check ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/13.log",
+          "bytes": 124,
+          "sha256": "217a27a6700351aca4cde48752d84901bc7bbd849444577952ab8f4991c1c0c1"
+        }
+      },
+      {
+        "stage": 14,
+        "command": "pnpm --dir packages/contracts test ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/14.log",
+          "bytes": 1681,
+          "sha256": "20f64ec7d87f29d7b6373858a34af0eebe60a17f5d8ef037c8390404524c80db"
+        }
+      },
+      {
+        "stage": 15,
+        "command": "pnpm --dir apps/dashboard typecheck ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/15.log",
+          "bytes": 24,
+          "sha256": "5cfb036289d819b2a87e947d65f4532031dd37753f3cf2def0f77d398eea1737"
+        }
+      },
+      {
+        "stage": 16,
+        "command": "pnpm --dir apps/dashboard test --run ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/16.log",
+          "bytes": 259,
+          "sha256": "85af6e62384943da9026f589b67b85f1ee9df7371f7843273fc7b6ab840dc121"
+        }
+      },
+      {
+        "stage": 17,
+        "command": "pnpm --dir apps/dashboard exec tsc -p e2e/tsconfig.json --noEmit ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/17.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "stage": 18,
+        "command": "env NODE_ENV=production pnpm --dir apps/dashboard build ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/18.log",
+          "bytes": 1372,
+          "sha256": "a31b253410a793798e5325102531c419ca19f841df8570e88f2e9c9efad58057"
+        }
+      },
+      {
+        "stage": 19,
+        "command": "node -e const\\ fs=require\\(\\\"node:fs\\\"\\)\\,crypto=require\\(\\\"node:crypto\\\"\\)\\;if\\(crypto.createHash\\(\\\"sha256\\\"\\).update\\(fs.readFileSync\\(\\\"node_modules/axe-core/axe.min.js\\\"\\)\\).digest\\(\\\"hex\\\"\\)\\!==\\\"20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878\\\"\\)process.exit\\(1\\) ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/19.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "stage": 20,
+        "command": "pnpm --dir apps/dashboard test --run --config e2e/vitest.config.ts ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.JrlpoP/logs/20.log",
+          "bytes": 259,
+          "sha256": "d6697c2f5d8a6584cd75efe8820371e2cb6578314e3989228fecd5a27a703324"
+        }
+      }
+    ],
+    "tests": {
+      "rust_passed": 1759,
+      "rust_failed": 0,
+      "rust_ignored": 6,
+      "rust_targets": 167,
+      "dashboard_passed": 208,
+      "dashboard_files": 21,
+      "browser_passed": 37,
+      "browser_files": 8,
+      "strict_axe_violations": 0,
+      "strict_axe_incomplete": 0
+    }
+  },
+  "toolchain": {
+    "rustc": "1.95.0 (59807616e 2026-04-14) Homebrew",
+    "node": "24.19.0",
+    "pnpm": "11.15.1",
+    "platform": "macOS-15.7.5-arm64-arm-64bit-Mach-O",
+    "build_jobs": 2,
+    "rust_test_threads": 1,
+    "dev_and_test_debug": 0
+  },
+  "native_operator_chat_smoke": {
+    "receipt": {
+      "path": "/Users/bentaylor/.codex/worktrees/git-protector-chat/admiralty/receipts/integration/operator-chat-startup-20261020.json",
+      "bytes": 16165,
+      "sha256": "007ae532d3d15c2e955eb01070e431d39213a5da06f01e6184c105c6e86217db"
+    },
+    "checks_passed": 29,
+    "live_roles_used": false,
+    "owned_daemons_stopped": true,
+    "ports_closed": true,
+    "binary_hashes": {
+      "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd": {
+        "sha256_before": "61e960c52145dc48035b41ab7c5191d14c0c71c66fae475ff199db91c961b89c",
+        "bytes": 37509872,
+        "sha256_after": "61e960c52145dc48035b41ab7c5191d14c0c71c66fae475ff199db91c961b89c",
+        "stable_during_smoke": true
+      },
+      "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty": {
+        "sha256_before": "0cb95c0adae5f34dbbeb631c4c2d664532e22e701b4a1e3d036fa9d34cdada26",
+        "bytes": 49564560,
+        "sha256_after": "0cb95c0adae5f34dbbeb631c4c2d664532e22e701b4a1e3d036fa9d34cdada26",
+        "stable_during_smoke": true
+      }
+    }
+  },
+  "performance": {
+    "command": "rtk proxy env CARGO_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target CARGO_BUILD_JOBS=2 CARGO_PROFILE_TEST_DEBUG=0 RUST_TEST_THREADS=1 cargo test -p admiralty-core git_health::tests::benchmark_64_checkouts_512_commits --locked -- --ignored --nocapture",
+    "exit_code": 0,
+    "log": {
+      "path": "/private/tmp/adm.JrlpoP/logs/git-health-benchmark.log",
+      "bytes": 3548,
+      "sha256": "75b83940d19d67a36eb3a9e209bca1f8dfbfcc9f1344aa7f10e36cc6d67eb82d"
+    },
+    "profile": "test unoptimized; not release or fleet SLA",
+    "checkouts": 64,
+    "commits": 512,
+    "refs": 65,
+    "evaluations": 100,
+    "total_seconds": 5.608702125,
+    "mean_ms": 56.087021,
+    "git_subprocesses": 0,
+    "historical_debug_benchmark": "Earlier73.181703ms result was a prior source and transcript-only; superseded by this final-source measurement."
+  },
+  "browser_screenshots": [
+    {
+      "path": "/Users/bentaylor/.codex/worktrees/git-protector-chat/admiralty/target/git-chat-evidence/project-chat.png",
+      "bytes": 127093,
+      "sha256": "bd953b329f0620d3595005bcc8c6e061bf77e091fd9d01b4a4c36271a1d631d0"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/worktrees/git-protector-chat/admiralty/target/git-chat-evidence/project-chat-mobile.png",
+      "bytes": 66157,
+      "sha256": "91de0d2ec3aab296d0550208a839b1a7860c77114bdf9c5f3a3759689d851981"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/worktrees/git-protector-chat/admiralty/target/git-chat-evidence/git-health.png",
+      "bytes": 75240,
+      "sha256": "bd834c656391ef21a325dd39030dfc2b424fc1986a8821ad07e8506bfb139e49"
+    }
+  ],
+  "audit_receipt": {
+    "path": "/Users/bentaylor/.codex/worktrees/git-protector-chat/admiralty/receipts/integration/dope-git-audit-20261020.json",
+    "bytes": 73758,
+    "sha256": "809df657c3116ad0dfd5871cdd939a9dd2d10ef2c55048ff704898e8a5f93660"
+  },
+  "role_coordination": {
+    "user_authorized": true,
+    "audit_notice": "DOPE-GIT-AUDIT-20261020-0637Z",
+    "admiral_full_notification_ack_utc": "2026-10-20T06:52:00Z",
+    "admiral_custody_ack_utc": "2026-10-20T07:03:00Z",
+    "ack_times_precision": "Coordination entries record minutes; exact text/digests retained in audit receipt.",
+    "captain_queue_accepted": true,
+    "captain_consumption_verified": false,
+    "canonical_historical_author_intent_and_mutation_owner": "UNKNOWN",
+    "final_source_notice": "pending publication; final delivery evidence will follow"
+  },
+  "integration": {
+    "owner_route": "Existing Admiralty Root integration owner through captain COMMS and Admiral inbox",
+    "existing_pr": "https://github.com/neverhuman/admiralty/pull/163",
+    "existing_pr_head_observed_0728_utc": "2763be549442c5a5cb98576f6bb4c279bcceedef",
+    "feature_in_that_pr": false,
+    "duplicate_pr_created": false,
+    "receiving_order": "Current PR163 finishes its exact-head hosted/review gates; receiving main; sequential rebase/integration of this lane and codex/git-linear-collapse; combined qualification; sole controller deploys/enrolls.",
+    "overlap": [
+      "apps/dashboard/src/features/live-views/GitFlow.tsx",
+      "apps/dashboard/src/features/live-views/live-views.css"
+    ],
+    "combined_merge_instructions": "docs/plans/admiralty-v2/GIT_PROTECTOR_CHAT_PLAN.md#receiving-owner-packet-after-current-pr163"
+  },
+  "source_files": [
+    {
+      "path": "Cargo.lock",
+      "sha256": "8ef22cafa0e09d5f94308b78a2498187a6c9af8cb5eda6f1ca5177d990239dbf"
+    },
+    {
+      "path": "PY_TO_RUST_PLAN.md",
+      "sha256": "020ff3d69092e0bba905901e4d769316e7c14b2d492c9077634a99504a7ab3bb"
+    },
+    {
+      "path": "apps/dashboard/e2e/git-chat.e2e.ts",
+      "sha256": "6a9ca4854f42426b1d9174355af3ccbe3ea0f0559ccdc62eb67f1c76a1d48d99"
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/GitChat.tsx",
+      "sha256": "304f561cc34601d6261778fd012a75c2a6a5485bbf7f943bc3d9c8ca02f9abf6"
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/GitFlow.tsx",
+      "sha256": "e645225e9b035ac3e7186f7417efb1e225a643247c50b995f10228581563fdb7"
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/LiveViews.tsx",
+      "sha256": "51fb14aa7030ef192bc5915a24e37e2023a017c437251185344134265785ef18"
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/gitHealth.test.ts",
+      "sha256": "695fb37cfb7c0c13dfc3bc82025d8fd68fdc6e6c856d1c84ce887bf61aa08ad0"
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/gitHealth.ts",
+      "sha256": "fb9e4295608431b1743eb0cb089af87fb1507cb28bff797739e47d257cbd7ea0"
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/live-views.css",
+      "sha256": "ea4e5f5d98b25c26c494ae3352d8501e5f186e2d35ce5f3e18aba7b6386d2cf3"
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/operator-chat.test.ts",
+      "sha256": "32e62b4e194014af7115bc77f8490eb9a6bbcf5f042dbe91ff208c35b455be47"
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/operator-chat.ts",
+      "sha256": "57367f6db92851a082c6c3c9ce003689ddf8cb9abe6a12474edb0e0aa9f268de"
+    },
+    {
+      "path": "apps/dashboard/src/ui/App.tsx",
+      "sha256": "a9f335b3ff233c0062f3ad3e52c853e8dfba034b6af896ca61c20c4f4cc3bbd0"
+    },
+    {
+      "path": "crates/admiralty-cli/src/main.rs",
+      "sha256": "7cbfd271575081fa5cdd0c61f4c37dd5edbff4b57549a7c47bcb6a91fceece3b"
+    },
+    {
+      "path": "crates/admiralty-core/src/git_health.rs",
+      "sha256": "f2f71f9eefd4350011da72009b18da3341edd31df09f6873b13a7b2455211000"
+    },
+    {
+      "path": "crates/admiralty-core/src/lib.rs",
+      "sha256": "7888d145240023f6bf42b166599321acd8f76cba22324361b4b4b469234131b3"
+    },
+    {
+      "path": "crates/admiralty-observe/src/config.rs",
+      "sha256": "5a5679fddbdc32cb4ad562a0d5c22231b38065baa2733e19563de06c03e1c070"
+    },
+    {
+      "path": "crates/admiralty-observe/src/git_health.rs",
+      "sha256": "8617bcfd698beafae16ccfba1be5d05a7da3ce4bf1199b6c7981c3b4d518a33a"
+    },
+    {
+      "path": "crates/admiralty-observe/src/lib.rs",
+      "sha256": "797f8a68f0575f29c3b4b706cfd3c2b820ce8a7e4f352816f35a713212477a3a"
+    },
+    {
+      "path": "crates/admiralty-observe/src/projects.rs",
+      "sha256": "11dfa9980ba83968a6e9375c33154c0d9eae1f13bba86f698c9b994158f8e2d4"
+    },
+    {
+      "path": "crates/admiralty-server/Cargo.toml",
+      "sha256": "25688e8bd5ac82afbc3d56d5174c63be7143613aecdc1dcd7c4f9344692e2021"
+    },
+    {
+      "path": "crates/admiralty-server/src/lib.rs",
+      "sha256": "00ddc142a7bf93b39230ab6beb7a8588243ac175802018bb125cc0026e85d4c1"
+    },
+    {
+      "path": "crates/admiralty-server/src/main.rs",
+      "sha256": "3adf5cdf25d1563e9ace6f839d5abd8c5280b421c2299c0634915cbe8656001c"
+    },
+    {
+      "path": "crates/admiralty-server/src/operator_chat.rs",
+      "sha256": "e97d9d54e745ef4dd0f98707998ebdfa9cef908097c66460b2906f9742599ebc"
+    },
+    {
+      "path": "docs/operators/git-health.md",
+      "sha256": "e455ee0d613ebe7ea7cacb024ca909cb592b349075d94cf9587696cc0574c09a"
+    },
+    {
+      "path": "docs/operators/operator-chat.md",
+      "sha256": "88807f7e1507434e5d627290b94f73bb09a369e95213fbef21869ab717631682"
+    },
+    {
+      "path": "docs/plans/admiralty-v2/DOPE_GIT_AUDIT_2026-10-20.md",
+      "sha256": "05e7c1ade09a761dc35efe1b239ff371f7534661fb29f290d12943d08388407d"
+    },
+    {
+      "path": "docs/plans/admiralty-v2/GIT_PROTECTOR_CHAT_PLAN.md",
+      "sha256": "cdb60e52730eed79336e72b6bed55f8f1765296539870f0d255f08242f09616b"
+    },
+    {
+      "path": "receipts/integration/dope-git-audit-20261020.json",
+      "sha256": "809df657c3116ad0dfd5871cdd939a9dd2d10ef2c55048ff704898e8a5f93660"
+    },
+    {
+      "path": "scripts/check/canary-smoke.py",
+      "sha256": "aa85223333ac000d53797d3da7cbb867128a2af0f5bd24d9fb4382762ec3c948"
+    }
+  ],
+  "preserved_failures": [
+    {
+      "log_root": "/private/tmp/adm.gZmdzy/logs",
+      "environment": {
+        "path": "/private/tmp/adm.gZmdzy/logs/environment.log",
+        "bytes": 246,
+        "sha256": "dc8df824e84d68f04285393bfc1f69a5d0d4e52a35acee1aa42a513bd59b1a54"
+      },
+      "failure_log": {
+        "path": "/private/tmp/adm.gZmdzy/logs/03.log",
+        "bytes": 6908,
+        "sha256": "bbc7c2ef1ee6ef648dfb4965560a0cb1da91f776d091377e18375aa11aae8d46"
+      },
+      "reason": "strict Clippy: owned needless borrow and loop form; repaired"
+    },
+    {
+      "log_root": "/private/tmp/adm.Cmj8KP/logs",
+      "environment": {
+        "path": "/private/tmp/adm.Cmj8KP/logs/environment.log",
+        "bytes": 246,
+        "sha256": "e75d905552f5c320e00ca4a62b358426ddd27f8b159d8de28c529b93e1289900"
+      },
+      "failure_log": {
+        "path": "/private/tmp/adm.Cmj8KP/logs/09.log",
+        "bytes": 4568,
+        "sha256": "b988e87ddbbabd5921030742b0e0504d8f4fe1af6afdf4d49e6959eb036676e2"
+      },
+      "reason": "retained canary self-test child readiness race; explicit readiness repaired, assertions retained"
+    },
+    {
+      "log_root": "/private/tmp/adm.tbhwQ1/logs",
+      "environment": {
+        "path": "/private/tmp/adm.tbhwQ1/logs/environment.log",
+        "bytes": 246,
+        "sha256": "ad577600e5f8a8767758be5cf87c4cf4685af4a76e1238dba5eb66f4def240cc"
+      },
+      "failure_log": {
+        "path": "/private/tmp/adm.tbhwQ1/logs/04.log",
+        "bytes": 198428,
+        "sha256": "4cdf22f3d95a3f00cad5e9e81b7f911c4ab9c0a733765e8704f7913d2f1b9b42"
+      },
+      "reason": "Python policy inventory line count after retained test repair; inventoried exact count updated"
+    },
+    {
+      "log_root": "/private/tmp/adm.7cndMq/logs",
+      "environment": {
+        "path": "/private/tmp/adm.7cndMq/logs/environment.log",
+        "bytes": 246,
+        "sha256": "db7cd58e6b17dc4736d1f34c7453769a03d1d4d2c6685dd88deb29819c9cbff3"
+      },
+      "failure_log": {
+        "path": "/private/tmp/adm.7cndMq/logs/11.log",
+        "bytes": 985,
+        "sha256": "843800bc85a10409bdb4da0ea61abfc5b853725f9b4855cc2204c24376d6efe2"
+      },
+      "reason": "chat route incorrectly counted as native execution; server wiring separated, native gate retained"
+    },
+    {
+      "log_root": "/private/tmp/adm.XjzpYG/logs",
+      "environment": {
+        "path": "/private/tmp/adm.XjzpYG/logs/environment.log",
+        "bytes": 246,
+        "sha256": "d5ab697e9f556824d345979b619867d338d654fa07f281fdf765da7363b8cebe"
+      },
+      "failure_log": {
+        "path": "/private/tmp/adm.XjzpYG/logs/20.log",
+        "bytes": 13501,
+        "sha256": "61868ba3cf0ef8293f8fe3229714763fae1398a6193001d7cdc7ea874d923e8d"
+      },
+      "reason": "2 axe incomplete failures from full-viewport overlay and unknown backdrop; bounded layers and decorative glyphs repaired, gates unchanged"
+    }
+  ],
+  "other_prior_limits": [
+    "Host default Node25 preflight failed; final uses required Node24.",
+    "An earlier private smoke harness variable shadowed its HTTP module; excluded as product evidence; later29-check receipt supersedes it.",
+    "Scoped UI repair checks12browser/208unit/typecheck are transcript-only; final full matrix provides retained raw logs."
+  ],
+  "completion": {
+    "audit_and_worker_plan": true,
+    "source_implemented": true,
+    "local_qualification": true,
+    "published": false,
+    "review_and_merge": false,
+    "live_deployment": false,
+    "role_enrollment_roundtrip": false,
+    "dope_source_reconciliation": false
+  },
+  "limits": [
+    "No Linux-only qualification, hosted CI or pinned Jankurai run was performed for this feature source on this Mac.",
+    "No DOPE code, ref, index staging, process or worktree administration was intentionally changed; initial Mac status may refresh index metadata as disclosed in audit.",
+    "No live dashboard service/configuration restart or live chat enrollment was performed.",
+    "Delivered is durable inbox publication; it does not prove read, execution or task acceptance.",
+    "Fast Git health uses bounded observed topology and status; patch equivalence/regression/merge safety requires deeper explicit review.",
+    "Original dirty Admiralty checkout and independent collapse lane preserved; this unmerged worktree retained."
+  ]
+}
