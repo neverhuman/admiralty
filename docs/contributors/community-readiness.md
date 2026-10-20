@@ -5,7 +5,7 @@ has an MIT license, contribution guidance, a credential-free synthetic demo and
 private vulnerability reporting. A source preview is available; the complete
 managed native major release is not yet qualified or published.
 
-This page records the community-facing boundary on **19 October 2026**. The
+This page records the community-facing boundary on **20 October 2026**. The
 [execution ledger](../plans/admiralty-v2/EXECUTION.md) owns source-specific
 acceptance and supersedes historical summaries. See the
 [operator release status](../operators/release-status.md) for current operational
@@ -42,6 +42,15 @@ For local validation, install Chrome or Chromium and run `pnpm check`.
 [Local CI](../operators/local-ci.md) documents its full matrix, private logs,
 pinned browser support and build-cache selection. A successful local run does
 not establish Linux-only tests, a hosted result or a deployed binary.
+
+The separate security workflow provisions the pinned Rust toolchain and required
+scanners in fresh job scratch. It checks dependency metadata and workflows,
+then scans the complete GitHub event range, including merge-parent diffs.
+A manual/local run without `ADMIRALTY_SECURITY_SCAN_BASE` checks the latest
+commit and its merge diffs. An explicit base must be an available ancestor Git
+object ID. The [qualification receipt](../../receipts/integration/security-fresh-runner-20261020.json)
+preserves the original provisioning failure and synthetic false-pass control;
+this lane does not claim all dependency or image scanners.
 
 ## Available workflows
 
