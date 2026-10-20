@@ -7,9 +7,31 @@ CLONE=${ADMIRALTY_HISTORY_CLONE:-/home/ubuntu/.admiralty-history}
 LOG=${ADMIRALTY_HISTORY_LOG:-/home/ubuntu/xbabe2_kicker/captains-dashboard/history_export.log}
 LOCK=${ADMIRALTY_HISTORY_LOCK:-/tmp/admiralty_history_export.lock}
 export PATH=/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin HOME=/home/ubuntu
+# flock/ionice are part of this Linux cron job's custody boundary. A missing
+# locking command must never be reported as a successful contended-lock skip.
+if [ "$(uname -s)" != Linux ]; then
+  echo "history export requires Linux with flock and ionice" >&2
+  exit 1
+fi
+for required_tool in flock git nice ionice python3; do
+  if ! command -v "$required_tool" >/dev/null 2>&1; then
+    echo "history export missing required tool: $required_tool" >&2
+    exit 1
+  fi
+done
 exec >>"$LOG" 2>&1
 exec 9>"$LOCK"
-flock -n 9 || { echo "$(date -u +%FT%TZ) skip: previous run still active"; exit 0; }
+if flock -n -E 75 9; then
+  :
+else
+  lock_status=$?
+  if [ "$lock_status" -eq 75 ]; then
+    echo "$(date -u +%FT%TZ) skip: previous run still active"
+    exit 0
+  fi
+  echo "history export could not establish lock custody (exit $lock_status)" >&2
+  exit "$lock_status"
+fi
 echo "$(date -u +%FT%TZ) start"
 [ -d "$CLONE/.git" ] || git clone -q https://github.com/neverhuman/admiralty.git "$CLONE" || exit 1
 cd "$CLONE" || exit 1

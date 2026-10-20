@@ -228,6 +228,7 @@ fn sc186o_token_yield_parameterized_sql_rejects_injection_metacharacters() {
     assert!(off > 0 && size > 0);
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn sc186o_history_export_cron_custody_and_allowlist_against_local_bare_remote() {
     use std::os::unix::fs::PermissionsExt;
@@ -485,6 +486,28 @@ fn sc186o_history_export_cron_custody_and_allowlist_against_local_bare_remote() 
             "data/history/timeseries/history_2026-10-19.jsonl".to_owned()
         ]
     );
+}
+
+#[cfg(not(target_os = "linux"))]
+#[test]
+fn linux_history_export_refuses_unsupported_host_before_any_git_or_lock_effect() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let directory = tempfile::tempdir().expect("private history fixture");
+    let log = directory.path().join("history.log");
+    let lock = directory.path().join("history.lock");
+    let clone = directory.path().join("must-not-be-created");
+    let result = Command::new("bash")
+        .arg(root.join("tools/history_export_cron.sh"))
+        .env("ADMIRALTY_HISTORY_CLONE", &clone)
+        .env("ADMIRALTY_HISTORY_LOG", &log)
+        .env("ADMIRALTY_HISTORY_LOCK", &lock)
+        .output()
+        .expect("run Linux-only history wrapper");
+    assert!(!result.status.success());
+    assert!(String::from_utf8_lossy(&result.stderr).contains("requires Linux"));
+    assert!(!clone.exists());
+    assert!(!log.exists());
+    assert!(!lock.exists());
 }
 
 #[test]

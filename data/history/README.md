@@ -86,3 +86,8 @@ Optional fields when present: `class`, `attempt`, `minutes`. Exact duplicate lin
 - **Exception to the PR rule:** these data-only commits are pushed **directly to `main` as jepsontaylor**, with no PR or review. All code (including the exporter itself) still goes through the normal PR flow: neverhumanbot approves the exact head, then `gh pr merge --rebase --match-head-commit`.
 - Log: `~/xbabe2_kicker/captains-dashboard/history_export.log` (not in git).
 - To stop it, remove the `history_export_cron.sh` line from `crontab -e`.
+
+The automated `tools/history_export_cron.sh` publisher is a Linux cron utility.
+It requires `flock`, `ionice`, `nice`, Git and Python 3 and refuses unsupported
+hosts or missing tools before acquiring a lock or modifying a checkout. A
+contended lock is a successful no-op only after the locking tool is available.
