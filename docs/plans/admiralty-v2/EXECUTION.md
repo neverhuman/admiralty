@@ -3141,3 +3141,33 @@ The [file-bound receipt](../../../receipts/integration/browser-runtime-qualifica
 records exact source/log/archive hashes and the local-versus-hosted sandbox
 difference. Exact-head local CI, independent review and hosted qualification
 follow; these observations do not establish production deployment or acceptance.
+
+### Atomic startup and replay validation — October20
+
+Hosted dd4cf1c passes Rust, contracts, security and the advisory audit but fails
+two browser cases. One assertion used single-line matching across multiline
+retry diagnostics despite an actual final unsafe-port denial; it now retains
+both diagnostics and still requires the final observed denial. The native
+intake fixture again exceeds its unchanged eight-second readiness deadline.
+
+Store startup previously made eleven independent durable schema commits.
+Root's stronger last-schema rollback test fails that source with earlier
+metadata left installed. An existing Luna lane supplied seven caller-owned
+initializer helpers; Root integrated them with one Immediate transaction.
+An additional actual negative shows that committing before replay could retain
+a recreated table after invalid history was refused. Replay, questions,
+subscriptions, pending inbox construction and workplan validation now finish
+before the same commit. Standalone public APIs retain their guards; no SQL,
+durability, authority or migration-order relaxation is applied. The initial
+replay-corruption fixture failed its own FK insertion and is explicitly excluded
+from negative proof; corrected v2 demonstrates the old rollback defect.
+
+Exact70fb5e6 passes239 Store tests, strict Store Clippy and all32 Linux browser
+cases. Two controlled fresh-Store measurements fall from2.76–3.17s to about0.11s;
+fsync/fdatasync calls including orderly drop fall from19 to9. The
+[file-bound receipt](../../../receipts/integration/atomic-store-startup-20261020.json)
+retains source/log hashes, both valid negatives, the excluded fixture failure,
+dependency equality and measurement/platform limits. Independent review and the
+final whole matrix/hosted gates remain separate. Production stays on the last
+qualified main until ordinary merge and the sole controller's serial cutover;
+P03 and full native release acceptance remain false.

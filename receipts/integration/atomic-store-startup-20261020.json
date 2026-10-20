@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "kind": "atomic_store_startup_source_qualification",
+  "source_commit": "70fb5e6def40234f8d3f0ed0a51db710763d6dea",
+  "source_tree": "5cbb8cb2bfd94b50ad84588dc1bb22ad5d6e3d7a",
+  "source_files_sha256": {
+    "crates/admiralty-store/src/lib.rs": "9ea7a8a3a15275f0c21698470953edb05e8f72601841c8fa723a73000868b36f",
+    "crates/admiralty-store/src/outbox.rs": "b52fa8681b88098e93d2ae0464fec1ffecfe14255a98345d6fb6da2d184a99e3",
+    "crates/admiralty-store/src/workplans.rs": "e50043bc495a7616dcb355763f6195cb6b2160cc86c1be9a20c4a1c75393db95",
+    "crates/admiralty-store/src/context_renders.rs": "0887335f9b595e59841a09454658717621ce6e6e30797e3650cf36661b90dbe7",
+    "crates/admiralty-store/src/attention.rs": "571610b72db3f432f024400192683651d58d53d9bb20e3ba63327340412a8ec5",
+    "crates/admiralty-store/src/intake.rs": "e8244462383f685fae41959b8e109ac4ef89f8451d15791e6da5fa96b981e795",
+    "crates/admiralty-store/src/intake_capture.rs": "151cf7d98e33f395aeda1feb73da896dcf44f4c537e291646147bb4f259f2b87",
+    "crates/admiralty-store/src/questions.rs": "e4dd48ee5fde97320eb0c0dc9ca83aa0d225561c5076bde6fc1bb28693826282",
+    "apps/dashboard/e2e/browser-harness.ts": "c1c2d6a118a725c582990451ada4b130f5ae82e38e3652a9c1508397c4a0b34b",
+    "apps/dashboard/e2e/dashboard-e2e.e2e.ts": "3681eaa462172242324f75a5253ce2a3403cfb38cc013be5fc861ce539acd92e"
+  },
+  "behavior": [
+    "One Immediate transaction owns every startup schema initializer, recovery generation, replay and startup validation before commit.",
+    "Public standalone initializer/validator APIs retain their signatures, guards and own transactions.",
+    "WAL, synchronous FULL, foreign keys, SQL bytes/order, single-writer custody and authority boundaries remain required.",
+    "Late schema and replay failures roll back newly created objects; existing conflicting objects/history and generation remain intact."
+  ],
+  "store_tests": {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "admiralty-store"
+    ],
+    "exit": 0,
+    "passed": 239,
+    "failed": 0,
+    "log_sha256": "9cea2b75ba8e2068f8ef9d1b16b282b8a6e10b828f40a33cae16187cd36c0766",
+    "bytes": 24549
+  },
+  "scoped_clippy": {
+    "command": [
+      "cargo",
+      "clippy",
+      "--locked",
+      "-p",
+      "admiralty-store",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "exit": 0,
+    "evidence": "Observed tool return; subsequent canonical full matrix retains its own workspace Clippy log."
+  },
+  "negative_controls": [
+    {
+      "source": "dd4cf1c plus the strengthened late-schema test",
+      "expected_exit": 101,
+      "observed_assertion": "failed startup must not leave partial schema object metadata",
+      "log_sha256": "edc89595ae1f2768feadf0d652b895b606e0f563d78beaf36fafc571f7be372e",
+      "bytes": 1065
+    },
+    {
+      "source": "9a813cf plus the corrected private replay-corruption fixture",
+      "expected_exit": 101,
+      "observed_assertion": "failed replay must roll back newly recreated schema",
+      "log_sha256": "5c7b1ded0efaa8a65d26d3ad60ba00d441faea2e3043c1bba7afa300a1f7ff24",
+      "bytes": 1099
+    }
+  ],
+  "invalid_initial_replay_fixture": {
+    "status": "excluded from regression proof: fixture insertion failed because FK was enabled; corrected private fixture v2 is above",
+    "log_sha256": "9bc1810da16a123b85bd06a708b62134596ba0c1d7e53c9330212eb894dba3b2",
+    "bytes": 1140
+  },
+  "linux_fresh_store_probe": {
+    "baseline_source": "Store code shared by75c073d and dd4cf1c",
+    "candidate_source": "70fb5e6def40234f8d3f0ed0a51db710763d6dea",
+    "baseline": [
+      {
+        "command": "finite Store::open+drop under strace fsync/fdatasync",
+        "exit": 0,
+        "stdout": "{\"opened_micros\":2761035}\n",
+        "stderr": "",
+        "private_state": "/tmp/adm-sync-old-kbr218cd",
+        "fsync_calls": 19,
+        "trace_sha256": "19b66298d3e2b79c464b4a46fa01e0a44872b0ed262025858e453b291a515f85"
+      },
+      {
+        "command": "finite Store::open+drop under strace fsync/fdatasync",
+        "exit": 0,
+        "stdout": "{\"opened_micros\":3174483}\n",
+        "stderr": "",
+        "private_state": "/tmp/adm-sync-old-jsv0cuoz",
+        "fsync_calls": 19,
+        "trace_sha256": "7b69544acb061d28a7713aa2f514ce9f5f8a349c2086b6e18919f6c208ec369e"
+      }
+    ],
+    "candidate": [
+      {
+        "exit": 0,
+        "stdout": "{\"opened_micros\":113583}\n",
+        "stderr": "",
+        "private_state": "/tmp/adm-sync-new-r1eq60kt",
+        "fsync_calls": 9,
+        "trace_sha256": "c0a1601d10aa0cc691e73429e83baeb33194305fdcc7b9b955bfa10dff29d94e"
+      },
+      {
+        "exit": 0,
+        "stdout": "{\"opened_micros\":114094}\n",
+        "stderr": "",
+        "private_state": "/tmp/adm-sync-new-59za0if1",
+        "fsync_calls": 9,
+        "trace_sha256": "ce02feab4a627ef9946138b2ecbc6388c8c42bf8ad3d53093ba5cacc3d3a426e"
+      }
+    ],
+    "probe_dependency_comparison": {
+      "probe_dependency_delta_from_workspace": [],
+      "matching": true
+    },
+    "measurement_scope": "Two fresh Store::open timings per source under strace on the same two reserved CPUs; fsync/fdatasync counts include open and orderly drop. Not a production page-load or tail-latency claim."
+  },
+  "linux_browser": {
+    "source": "70fb5e6def40234f8d3f0ed0a51db710763d6dea",
+    "command": [
+      "pnpm",
+      "--dir",
+      "apps/dashboard",
+      "test",
+      "--run",
+      "--config",
+      "e2e/vitest.config.ts"
+    ],
+    "exit": 0,
+    "tests_passed": 32,
+    "test_files_passed": 7,
+    "node": "24.22.0",
+    "chrome": "155.0.8059.84",
+    "normal_user_sandbox": "actual aa-exec chrome; local userns restriction0, hosted restriction1 remains a required separate check",
+    "native_binary_sha256": "627e7a3ca1b8291a61caaace4f10b24e77df8bb4c68953e441a2f4f9cb046d61",
+    "log_sha256": "53e4df8eb6bc67a4e282d77d9c99a0ca16acfe9cc79d6725a8b30df1f1fadc06",
+    "started_utc": "2026-10-20T05:35:03.500582+00:00",
+    "completed_utc": "2026-10-20T05:35:46.986048+00:00"
+  },
+  "evidence_archive_sha256": "8725e1e7be2d66bfa4ac59e3771c5884cfc058b3869b97951c8e790a87eb387b",
+  "independent_review": "Exact70fb5e6 source review requested separately; prior artifact-path stop preserved, corrected attempt2 pending.",
+  "limits": [
+    "Subsequent clean exact-head full local CI, exact-head bot approval and hosted checks are required before ordinary protected merge.",
+    "Logical schema/generation/validation transaction; opening files and configuring SQLite pragmas are not a whole-filesystem rollback guarantee.",
+    "The hosted native readiness root cause remains incompletely established; the eight-second deadline is unchanged.",
+    "No production deployment, provider qualification, parent acceptance, P03 completion or full release acceptance is conferred."
+  ],
+  "native_acceptance": false,
+  "full_release_acceptance": false
+}

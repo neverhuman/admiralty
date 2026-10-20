@@ -37,7 +37,14 @@ identified six concrete storage gaps: live writer/transaction telemetry, honest
 WAL checkpoint reporting, indexed filtered task pages, canonical migration-family
 tracking, backup schema/version binding and the complete abrupt-crash matrix.
 These require implementation and tests; provider activation is not their blocker.
-The startup repair improves two atomic schema groups without closing P03.
+The [current startup repair](../../receipts/integration/atomic-store-startup-20261020.json)
+groups schema initialization, recovery generation, replay and startup validation
+in one Immediate transaction while preserving WAL/FULL/FK. The local Linux
+fresh-Store probe measures about0.11s versus2.76–3.17s previously; sync calls
+including orderly drop fall from19 to9. Two samples per source are scoped
+measurements, not production page-load or tail-latency guarantees. Late-schema
+and replay failures roll back new objects and preserve existing history. These
+source improvements do not close the remaining P03 criteria.
 
 Production startup currently leaves general native execution unqualified. A request cannot override that boundary or install a new authority. Provider identity remains unknown unless independently observed; requested names are not observations. Credentials, private configuration, runtime data and transcripts remain outside Git.
 
