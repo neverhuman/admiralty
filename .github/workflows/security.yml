@@ -33,6 +33,25 @@ jobs:
           scratch=$(mktemp -d /tmp/adm-sec.XXXXXX)
           test "$(stat -c %a "$scratch")" = 700
           printf 'TMPDIR=%s\n' "$scratch" >> "$GITHUB_ENV"
+      - name: Install pinned Rust
+        run: |
+          export CARGO_HOME="$RUNNER_TEMP/admiralty-cargo"
+          export RUSTUP_HOME="$RUNNER_TEMP/admiralty-rustup"
+          installer_dir="$RUNNER_TEMP/admiralty-rustup-bootstrap"
+          install -d -m 700 "$CARGO_HOME" "$RUSTUP_HOME" "$installer_dir"
+          printf 'CARGO_HOME=%s\nRUSTUP_HOME=%s\n' "$CARGO_HOME" "$RUSTUP_HOME" >> "$GITHUB_ENV"
+          printf '%s\n' "$CARGO_HOME/bin" >> "$GITHUB_PATH"
+          installer="$installer_dir/rustup-init"
+          # Official versioned Rust archive and its published SHA-256 metadata:
+          # https://static.rust-lang.org/rustup/archive/1.29.0/x86_64-unknown-linux-gnu/rustup-init.sha256
+          curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --silent --show-error --location \
+            --retry 3 --retry-delay 2 --retry-max-time 120 --connect-timeout 10 --max-time 90 --max-filesize 33554432 \
+            --output "$installer" https://static.rust-lang.org/rustup/archive/1.29.0/x86_64-unknown-linux-gnu/rustup-init
+          printf '%s  %s\n' 4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10 "$installer" | sha256sum --check --status
+          chmod u+x "$installer"
+          "$installer" -y --no-modify-path --profile minimal --default-toolchain none
+          export PATH="$CARGO_HOME/bin:$PATH"
+          rustup toolchain install 1.95.0 --profile minimal
       - name: Provision pinned actionlint 1.7.8 and gitleaks 8.21.2 in private job scratch when absent
         run: |
           set -euo pipefail
