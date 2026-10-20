@@ -373,6 +373,10 @@ export function createLegacyFixture(projectCount = 4): Record<string, unknown> {
           ci: { state: i % 2 === 0 ? 'success' : 'pending' },
           exact_head_approved: i % 2 === 0,
         },
+        coord_log: {
+          mtime_utc: '2026-10-18T20:24:00Z',
+          tail: [`Coord log for ${id}`],
+        },
       };
     } else {
       projects[id] = {
@@ -398,8 +402,26 @@ export function createLegacyFixture(projectCount = 4): Record<string, unknown> {
       total: 32,
       counts: { review: 1, in_progress: 31 },
       packets: [
-        { id: 'P12', title: 'React parity and browser E2E', status: 'in_progress' },
-        { id: 'P29', title: 'Operator UX and accessibility', status: 'in_progress' },
+        {
+          id: 'P12',
+          title: 'React parity and browser E2E',
+          status: 'in_progress',
+          contract: 'full packet contract P12',
+          provenance: {
+            warnings: ['Integration provenance missing; displayed as verification recorded.'],
+            source_blob: 'full provenance blob P12',
+          },
+        },
+        {
+          id: 'P29',
+          title: 'Operator UX and accessibility',
+          status: 'in_progress',
+          contract: 'full packet contract P29',
+          provenance: {
+            warnings: [],
+            source_blob: 'full provenance blob P29',
+          },
+        },
       ],
       lanes: [
         {
@@ -517,6 +539,12 @@ export function createLegacyFixture(projectCount = 4): Record<string, unknown> {
         { host: 'xbabe1', load: [2.1, 1.9, 1.8] },
         { host: 'xbabe2', load: [3.4, 3.1, 2.9] },
       ],
+    },
+    remote_screens: [{ host: 'xbabe1', screens: ['worker_1'] }],
+    git: {
+      [order[0] ?? 'legacy-proj-001']: {
+        commits: ['git-commit-1'],
+      },
     },
     history: {
       note: 'Two-minute producer history window',
@@ -770,4 +798,79 @@ export function computeCanonicalTaskViewDigest(task: NativeTaskViewFixture): str
   return `sha256:${createHash('sha256').update(json).digest('hex')}`;
 }
 
+const INITIAL_LEGACY_PROJECT_KEYS = new Set([
+  'name',
+  'ledger_source',
+  'ledger_updated_utc',
+  'observed_utc',
+  'total',
+  'stages',
+  'counts',
+  'stage_labels',
+  'done',
+  'ip',
+  'in_progress',
+  'in_pr',
+  'blocked',
+  'ready',
+  'stalled',
+  'flags',
+  'blockers',
+  'needs_jepson',
+  'blocked_detail',
+  'recent',
+  'captain',
+  'workers',
+  'pr',
+]);
 
+const INITIAL_LEGACY_PACKET_KEYS = new Set(['id', 'title', 'status', 'provenance']);
+
+export function projectLegacyDetailSnapshot(
+  source: Record<string, unknown>,
+  initial: boolean,
+): Record<string, unknown> {
+  const root = JSON.parse(JSON.stringify(source)) as Record<string, unknown>;
+  delete root.git;
+  root.admiralty_delivery = initial ? 'initial' : 'complete';
+  if (!initial) {
+    return root;
+  }
+  delete root.history;
+  delete root.remote_screens;
+  if (root.projects && typeof root.projects === 'object' && !Array.isArray(root.projects)) {
+    const projects = root.projects as Record<string, unknown>;
+    for (const [projId, projVal] of Object.entries(projects)) {
+      if (projVal && typeof projVal === 'object' && !Array.isArray(projVal)) {
+        const filtered: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(projVal as Record<string, unknown>)) {
+          if (INITIAL_LEGACY_PROJECT_KEYS.has(k)) {
+            filtered[k] = v;
+          }
+        }
+        projects[projId] = filtered;
+      }
+    }
+  }
+  if (root.rollout && typeof root.rollout === 'object' && !Array.isArray(root.rollout)) {
+    const rollout = root.rollout as Record<string, unknown>;
+    if (Array.isArray(rollout.packets)) {
+      rollout.packets = rollout.packets.map((pkt) => {
+        if (!pkt || typeof pkt !== 'object' || Array.isArray(pkt)) return pkt;
+        const filteredPkt: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(pkt as Record<string, unknown>)) {
+          if (!INITIAL_LEGACY_PACKET_KEYS.has(k)) continue;
+          if (k === 'provenance' && v && typeof v === 'object' && !Array.isArray(v)) {
+            const prov = v as Record<string, unknown>;
+            filteredPkt.provenance =
+              prov.warnings !== undefined ? { warnings: prov.warnings } : {};
+          } else {
+            filteredPkt[k] = v;
+          }
+        }
+        return filteredPkt;
+      });
+    }
+  }
+  return root;
+}

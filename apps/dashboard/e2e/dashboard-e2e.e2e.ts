@@ -430,6 +430,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
     server.setRequireBearerToken(null);
     server.setFleet(createFleetFixture(4));
     server.setLegacy(createLegacyFixture(4), 200);
+    server.setLegacyDetailResponse(200);
     server.setModels(createModelsFixture('1'), 200);
     server.setModelsPutConflict(false);
     server.clearRequests();
@@ -699,6 +700,34 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
     },
     90_000,
   );
+
+  it('renders initial facts before delayed detail and retains the producer clock through enrichment', async () => {
+    const source = createLegacyFixture(4);
+    server.setLegacy(source);
+    server.setLegacyDetailResponse(200, 2_000);
+    await browser.goto(`${server.baseUrl}/#/detail`);
+    await browser.waitForSelector('[data-detail-phase="initial"]');
+    await browser.waitForText('Alpha Control');
+    const initial = await browser.evaluate<string>('document.querySelector(".legacy-source-status")?.textContent ?? ""');
+    expect(initial).toContain(source.generated_utc);
+    expect(await browser.evaluate<boolean>('document.body.innerText.includes("Complete producer project record")')).toBe(false);
+    await browser.waitForSelector('[data-detail-phase="complete"]');
+    expect(await browser.evaluate<string>('document.querySelector(".legacy-source-status")?.textContent ?? ""')).toContain(source.generated_utc);
+    expect(server.requests.some(request => request.pathname === '/v1/legacy/detail/initial')).toBe(true);
+    expect(server.requests.some(request => request.pathname === '/v1/legacy/detail')).toBe(true);
+  });
+
+  it('keeps initial facts and original source age visible after detail enrichment fails', async () => {
+    const source = createLegacyFixture(4);
+    server.setLegacy(source);
+    server.setLegacyDetailResponse(503);
+    await browser.goto(`${server.baseUrl}/#/detail`);
+    await browser.waitForText('Showing the last received snapshot; its original source age is preserved.');
+    await browser.waitForSelector('[data-detail-phase="initial"]');
+    await browser.waitForText('Alpha Control');
+    expect(await browser.evaluate<string>('document.querySelector(".legacy-source-status")?.textContent ?? ""')).toContain(source.generated_utc);
+    expect(await browser.evaluate<boolean>('Boolean(document.querySelector("[data-detail-phase=complete]"))')).toBe(false);
+  });
 
   it(
     'renders Legacy detailed view, project tabs, temporal plots, hierarchy, and scales across 4, 20, and 100 projects',

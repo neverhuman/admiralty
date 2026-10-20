@@ -12,12 +12,25 @@ fi
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT_DIR}"
 
-for req_tool in cargo actionlint gitleaks sha256sum; do
+for req_tool in cargo actionlint gitleaks; do
   if ! command -v "${req_tool}" >/dev/null 2>&1; then
     echo "[security-supply-chain] FAIL: required tool '${req_tool}' is missing from PATH (no missing-tool skip allowed)" >&2
     exit 1
   fi
 done
+if command -v sha256sum >/dev/null 2>&1; then
+  sha256_cmd=(sha256sum)
+elif command -v shasum >/dev/null 2>&1; then
+  sha256_cmd=(shasum -a 256)
+else
+  echo "[security-supply-chain] FAIL: required tool 'sha256sum' (or 'shasum') is missing from PATH (no missing-tool skip allowed)" >&2
+  exit 1
+fi
+
+dir_mode_octal() {
+  local target="$1"
+  stat -c %a "${target}" 2>/dev/null || stat -f %Lp "${target}" 2>/dev/null || echo "unknown"
+}
 
 echo "[security-supply-chain] 1. Checking Cargo.lock and pnpm-lock.yaml integrity..."
 test -s Cargo.lock
@@ -39,9 +52,9 @@ if [[ -L "${scratch_parent}" ]]; then
   exit 1
 fi
 out_dir="$(mktemp -d "${scratch_parent%/}/admiralty-sec-supply-chain.XXXXXX")"
-if [[ -L "${out_dir}" ]] || [[ "$(stat -c %a "${out_dir}")" != "700" ]]; then
+if [[ -L "${out_dir}" ]] || [[ "$(dir_mode_octal "${out_dir}")" != "700" ]]; then
   echo "[security-supply-chain] FAIL: output directory '${out_dir}' is not a private 0700 non-symlink directory" >&2
   exit 1
 fi
-sha256sum Cargo.lock pnpm-lock.yaml .github/workflows/*.yml > "${out_dir}/supply-chain-digests.sha256"
+"${sha256_cmd[@]}" Cargo.lock pnpm-lock.yaml .github/workflows/*.yml > "${out_dir}/supply-chain-digests.sha256"
 echo "[security-supply-chain] PASS (${out_dir}/supply-chain-digests.sha256)"

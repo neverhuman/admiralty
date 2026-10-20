@@ -32,6 +32,7 @@ import {
   createModelsFixture,
   createNativeFleetV2Fixture,
   createTaskContractFixture,
+  projectLegacyDetailSnapshot,
   fleetV1ToV2,
   serializeCanonicalTaskContract,
   type FleetFixture,
@@ -235,6 +236,7 @@ export interface DashboardTestServer {
   getFleetV2Snapshot(): NativeFleetV2Fixture;
   setFleetStatus(status: number, errorDetail?: string): void;
   setLegacy(legacy: Record<string, unknown> | null, status?: number): void;
+  setLegacyDetailResponse(status: number, delayMs?: number): void;
   setModels(models: ModelsFixture, status?: number): void;
   setModelsPutConflict(conflict: boolean): void;
   setRequireBearerToken(token: string | null): void;
@@ -328,6 +330,8 @@ export async function startDashboardTestServer(
   let fleetErrorDetail = 'Service unavailable';
   let legacy: Record<string, unknown> | null = createLegacyFixture(4);
   let legacyStatus = 200;
+  let legacyDetailStatus = 200;
+  let legacyDetailDelayMs = 0;
   let models = createModelsFixture('1');
   let modelsStatus = 200;
   let forcePutConflict = false;
@@ -892,13 +896,19 @@ export async function startDashboardTestServer(
         parsedUrl.pathname === '/v1/legacy/detail/initial'
       ) {
         if (!checkAuthorized(req, res)) return;
-        if (legacyStatus !== 200 || !legacy) {
-          sendJson(res, legacyStatus === 200 ? 404 : legacyStatus, {
-            detail: 'Legacy snapshot unavailable',
-          });
-          return;
-        }
-        sendJson(res, 200, legacy);
+        const respond = () => {
+          if (parsedUrl.pathname === '/v1/legacy/detail' && legacyDetailStatus !== 200) {
+            sendJson(res, legacyDetailStatus, { detail: 'Controlled detail enrichment failure' });
+          } else if (legacyStatus !== 200 || !legacy) {
+            sendJson(res, legacyStatus === 200 ? 404 : legacyStatus, { detail: 'Legacy snapshot unavailable' });
+          } else {
+            sendJson(res, 200, parsedUrl.pathname === '/v1/legacy'
+              ? legacy
+              : projectLegacyDetailSnapshot(legacy, parsedUrl.pathname.endsWith('/initial')));
+          }
+        };
+        if (parsedUrl.pathname === '/v1/legacy/detail' && legacyDetailDelayMs > 0) setTimeout(respond, legacyDetailDelayMs);
+        else respond();
         return;
       }
 
@@ -1033,6 +1043,11 @@ export async function startDashboardTestServer(
     setLegacy(next, status = 200) {
       legacy = next;
       legacyStatus = status;
+    },
+    setLegacyDetailResponse(status, delayMs = 0) {
+      if (!Number.isInteger(delayMs) || delayMs < 0 || delayMs > 5_000) throw new Error('Controlled detail delay must be within 0..5000ms');
+      legacyDetailStatus = status;
+      legacyDetailDelayMs = delayMs;
     },
     setModels(next, status = 200) {
       models = next;
@@ -1466,7 +1481,7 @@ export function captureOwnedProcessDiagnostics(pid: number | undefined, listenPo
       startTicks = fields[19] ?? 'unknown';
     }
   } catch {
-    state = 'exited';
+    state = 'unavailable';
   }
   try {
     exe = realpathSync(`/proc/${pid}/exe`);
@@ -1494,40 +1509,37 @@ export function captureOwnedProcessDiagnostics(pid: number | undefined, listenPo
   return `pid=${pid} state=${state} start_ticks=${startTicks} wchan=${wchan} exe=${exe} listener=${listener}`;
 }
 
-export function isProcessAlive(pid: number): boolean {
+export function isProcessAlive(pid: number, probe?: (pid: number) => void): boolean {
   const proc = process as unknown as { kill?: (targetPid: number, signal?: string | number) => boolean };
-  if (typeof proc.kill !== 'function') return false;
+  if (!probe && typeof proc.kill !== 'function') return true;
   try {
-    proc.kill(pid, 0);
-    if (process.platform === 'linux') {
-      try {
-        const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
-        const closeParen = stat.lastIndexOf(')');
-        if (closeParen !== -1 && stat.slice(closeParen + 2).startsWith('Z ')) {
-          return false;
-        }
-      } catch {
-        return false;
-      }
-    }
+    if (probe) probe(pid);
+    else proc.kill!(pid, 0);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    // Permission, procfs and IO errors do not prove exit. Zombies remain in
+    // custody until the direct ChildProcess reports that it has been reaped.
+    return (error as { code?: string }).code !== 'ESRCH';
   }
+}
+
+function observedChildExit(child: ChildProcess): boolean {
+  const status = child as unknown as { exitCode?: number | null; signalCode?: string | null };
+  return typeof status.exitCode === 'number' || typeof status.signalCode === 'string';
 }
 
 function getChildPid(child: ChildProcess): number | undefined {
   return (child as unknown as { pid?: number }).pid;
 }
 
-async function waitForOwnedProcessExit(child: ChildProcess, timeoutMs: number): Promise<void> {
+export async function waitForOwnedProcessExit(child: ChildProcess, timeoutMs: number): Promise<void> {
   const pid = getChildPid(child);
   const deadline = Date.now() + timeoutMs;
-  while (typeof pid === 'number' && isProcessAlive(pid)) {
+  while (typeof pid === 'number' && !observedChildExit(child)) {
     if (Date.now() >= deadline) {
       const diag = captureOwnedProcessDiagnostics(pid);
       throw new Error(
-        `Owned process ${pid} is still alive after ${timeoutMs}ms; retain its private files and do not retry startup [${diag}]`,
+        `Owned process ${pid} has no observed exit after ${timeoutMs}ms; retain its private files and do not retry startup [${diag}]`,
       );
     }
     await new Promise((resolve) => setTimeout(resolve, Math.min(20, Math.max(1, deadline - Date.now()))));
@@ -1535,6 +1547,8 @@ async function waitForOwnedProcessExit(child: ChildProcess, timeoutMs: number): 
 }
 
 function signalBrowserProcessGroup(child: ChildProcess, signal: 'SIGTERM' | 'SIGKILL'): void {
+  // After reaping, the numeric PID/group may belong to unrelated new work.
+  if (observedChildExit(child)) return;
   const pid = getChildPid(child);
   const proc = process as unknown as { kill?: (targetPid: number, sig?: string | number) => boolean };
   if (process.platform !== 'win32' && typeof pid === 'number' && pid > 0 && typeof proc.kill === 'function') {
@@ -1809,7 +1823,7 @@ async function launchBrowserHarnessAttempt(
           new Promise<void>((resolve) => setTimeout(resolve, 400)),
         ]);
       }
-      // Always send SIGKILL to the process group so any surviving helper (e.g. chrome_crashpad_handler) is reaped
+      // Signal only while the original direct child remains unreaped.
       signalBrowserProcessGroup(child, 'SIGKILL');
       await Promise.race([
         exitDrainPromise,
@@ -1818,6 +1832,16 @@ async function launchBrowserHarnessAttempt(
       // An error/pipe event or a timeout is not proof that the PID was reaped.
       // Never remove custody files or spawn a retry while the owned child lives.
       await waitForOwnedProcessExit(child, 5_000);
+      const groupPid = getChildPid(child);
+      if (process.platform !== 'win32' && typeof groupPid === 'number') {
+        const deadline = Date.now() + 5_000;
+        while (isProcessAlive(-groupPid)) {
+          if (Date.now() >= deadline) {
+            throw new Error(`Owned browser group ${groupPid} has not disappeared; preserve its private profile and do not retry startup`);
+          }
+          await new Promise(resolve => setTimeout(resolve, 20));
+        }
+      }
       try {
         (child as unknown as { stdout?: { destroy?: () => void } }).stdout?.destroy?.();
         (child.stderr as unknown as { destroy?: () => void } | null)?.destroy?.();

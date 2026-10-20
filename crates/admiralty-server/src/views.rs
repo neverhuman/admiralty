@@ -29,7 +29,7 @@ struct Cut {
 
 pub(crate) struct ViewsHub {
     current: watch::Sender<Option<Arc<Cut>>>,
-    started: OnceCell<()>,
+    started: OnceCell<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
 }
 impl ViewsHub {
     pub(crate) fn new() -> Arc<Self> {
@@ -38,21 +38,48 @@ impl ViewsHub {
             started: OnceCell::new(),
         })
     }
-    async fn start(self: &Arc<Self>, store: Store, config: ServerConfig) {
+    async fn start(
+        self: &Arc<Self>,
+        store: Store,
+        config: ServerConfig,
+        shutdown: watch::Receiver<bool>,
+    ) {
         self.started
             .get_or_init(|| async {
                 update(self, &store, &config).await;
                 let weak = Arc::downgrade(self);
-                tokio::spawn(async move {
-                    serve_updates(weak, store, config).await;
+                let task = tokio::spawn(async move {
+                    serve_updates(weak, store, config, shutdown).await;
                 });
+                tokio::sync::Mutex::new(Some(task))
             })
             .await;
     }
+
+    pub(crate) async fn shutdown(&self) -> Result<(), tokio::task::JoinError> {
+        if let Some(started) = self.started.get()
+            && let Some(task) = started.lock().await.take()
+        {
+            task.await?;
+        }
+        Ok(())
+    }
 }
-async fn serve_updates(hub: Weak<ViewsHub>, store: Store, config: ServerConfig) {
+async fn serve_updates(
+    hub: Weak<ViewsHub>,
+    store: Store,
+    config: ServerConfig,
+    mut shutdown: watch::Receiver<bool>,
+) {
     loop {
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        if *shutdown.borrow() {
+            break;
+        }
+        tokio::select! {
+            biased;
+            _ = shutdown.changed() => break,
+            _ = tokio::time::sleep(Duration::from_secs(2)) => {}
+        }
         let Some(hub) = hub.upgrade() else { break };
         update(&hub, &store, &config).await;
     }
@@ -959,7 +986,11 @@ pub(crate) async fn snapshot(
         .map_err(|_| error(StatusCode::TOO_MANY_REQUESTS, "Visual read limit reached"))?;
     state
         .views
-        .start(state.store.clone(), state.config.clone())
+        .start(
+            state.store.clone(),
+            state.config.clone(),
+            state.shutdown.clone(),
+        )
         .await;
     let cut = state.views.current.borrow().clone().ok_or_else(|| {
         error(
@@ -985,14 +1016,30 @@ pub(crate) async fn events(
         .map_err(|_| error(StatusCode::TOO_MANY_REQUESTS, "Visual stream limit reached"))?;
     state
         .views
-        .start(state.store.clone(), state.config.clone())
+        .start(
+            state.store.clone(),
+            state.config.clone(),
+            state.shutdown.clone(),
+        )
         .await;
     let receiver = state.views.current.subscribe();
+    let shutdown = state.shutdown.clone();
     let stream = futures_util::stream::unfold(
-        (receiver, true, permit),
-        |(mut rx, first, permit)| async move {
-            if !first && rx.changed().await.is_err() {
+        (receiver, true, permit, shutdown),
+        |(mut rx, first, permit, mut shutdown)| async move {
+            if *shutdown.borrow() {
                 return None;
+            }
+            if !first {
+                tokio::select! {
+                    biased;
+                    _ = shutdown.changed() => return None,
+                    res = rx.changed() => {
+                        if res.is_err() {
+                            return None;
+                        }
+                    }
+                }
             }
             let cut = rx.borrow_and_update().clone();
             let frame = match cut {
@@ -1004,7 +1051,7 @@ pub(crate) async fn events(
                     .event("unavailable")
                     .data("Visual projection unavailable"),
             };
-            Some((Ok::<_, Infallible>(frame), (rx, false, permit)))
+            Some((Ok::<_, Infallible>(frame), (rx, false, permit, shutdown)))
         },
     );
     Ok((
@@ -1020,6 +1067,35 @@ pub(crate) async fn events(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn shutdown_joins_updater_before_releasing_store_custody() {
+        let directory = private_fixture_dir();
+        let path = directory.path().join("joined.sqlite");
+        let store = Store::open(&path).expect("owned store");
+        let hub = ViewsHub::new();
+        let (shutdown, receiver) = watch::channel(false);
+        hub.start(
+            store.clone(),
+            ServerConfig {
+                listen: "127.0.0.1:0".parse().expect("loopback"),
+                simulated: true,
+                token: None,
+                assets: None,
+                legacy: None,
+                models_file: None,
+            },
+            receiver,
+        )
+        .await;
+        drop(store);
+        assert!(Store::open(&path).is_err(), "updater still owns the Store");
+        shutdown.send_replace(true);
+        hub.shutdown().await.expect("joined updater");
+        let reopened = Store::open(&path).expect("all updater Store references released");
+        assert!(reopened.snapshot().is_ok());
+    }
+
     fn private_fixture_dir() -> tempfile::TempDir {
         #[cfg(unix)]
         {

@@ -16,7 +16,7 @@ gates.
 | Surface | Demonstrated evidence | Remaining qualification |
 | --- | --- | --- |
 | macOS Apple Silicon | Rust source build, CLI inspection, synthetic demo, local application and browser/accessibility checks | General managed coding execution, complete installer and upgrade qualification |
-| Linux x86_64 | Deployed Rust HTTP service/observer, locked Rust/contract checks and isolated deterministic task-loop evidence | Current hosted browser failures, general managed coding execution, complete clean-machine distribution |
+| Linux x86_64 | Deployed Rust HTTP service/observer, locked Rust/contract checks, isolated browser journeys and deterministic task-loop evidence | Combined release qualification, general managed coding execution, complete clean-machine distribution |
 | Windows | No current supported release or qualification receipt | Native build, installation, runtime, browser and recovery qualification |
 | Browser | Chrome/Chromium journeys over the built React application | Other browser engines have no declared qualification receipt |
 | Remote fleet execution | Component APIs and bounded Linux execution experiments | General enrollment-to-managed-coding-to-acceptance/recovery journey |
