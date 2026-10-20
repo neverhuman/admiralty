@@ -79,6 +79,7 @@ pub struct ArtifactRecord {
 #[serde(deny_unknown_fields)]
 pub struct BackupManifest {
     pub scope: RecoveryScope,
+    /// Store snapshot/event schema, bound to the backup receipt (supported: 1 and 2).
     pub schema_version: u32,
     /// Exact store snapshot identity captured by the supported online backup.
     pub snapshot_watermark: DecimalU64,
@@ -354,7 +355,7 @@ pub fn plan_recovery(
     {
         blockers.push(Blocker::SnapshotMismatch);
     }
-    if manifest.schema_version != 1 {
+    if !matches!(manifest.schema_version, 1 | 2) {
         blockers.push(Blocker::InvalidManifest(
             "unsupported schema version".into(),
         ));
@@ -578,6 +579,41 @@ mod tests {
         assert_eq!(p.proposed_generation, Some(f.new_generation));
         assert_eq!(p.fence_receipt_digest, Some(f.external_receipt_digest));
         assert!(!p.restore_authorized && !p.effects_authorized);
+    }
+
+    #[test]
+    fn only_supported_snapshot_versions_propose_resume_and_schema_is_hash_bound() {
+        for version in [0, 1, 2, 3, u32::MAX] {
+            let (mut manifest, mut observation, mut fence, _) = fixture();
+            manifest.schema_version = version;
+            manifest.manifest_digest = manifest_digest(&manifest).expect("versioned manifest hash");
+            observation.manifest_digest = manifest.manifest_digest.clone();
+            fence.manifest_digest = manifest.manifest_digest.clone();
+            let proposal = plan_recovery(&manifest, &observation, Some(&fence))
+                .expect("schema compatibility is a named blocker");
+            let supported = matches!(version, 1 | 2);
+            assert_eq!(proposal.resume_proposed, supported, "schema {version}");
+            assert_eq!(
+                proposal.blockers.contains(&Blocker::InvalidManifest(
+                    "unsupported schema version".into()
+                )),
+                !supported,
+                "schema {version}"
+            );
+            assert!(!proposal.restore_authorized() && !proposal.effects_authorized());
+        }
+
+        let (mut manifest, observation, fence, _) = fixture();
+        manifest.schema_version = 2; // Both versions are supported, but this hash is still v1.
+        let proposal = plan_recovery(&manifest, &observation, Some(&fence))
+            .expect("changed schema remains bound by the original manifest digest");
+        assert!(
+            proposal
+                .blockers
+                .contains(&Blocker::InvalidManifest("manifest digest mismatch".into()))
+        );
+        assert!(!proposal.resume_proposed);
+        assert!(!proposal.restore_authorized() && !proposal.effects_authorized());
     }
     #[test]
     fn missing_and_changed_closure_block() {
