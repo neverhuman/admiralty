@@ -1,0 +1,526 @@
+{
+  "schema_version": 1,
+  "kind": "gitflow_unified_readme_followup_qualification",
+  "recorded_utc": "2026-10-20T09:25:11.073631+00:00",
+  "source": {
+    "commit": "2bb7f83b60422bb4d73dadb7c3fd57923d83669c",
+    "tree": "3e9bed5e82b0b50c2aad732e045137601f829129",
+    "base": "35b497838c7e78bd366f2a0fabb6a455692fd93e",
+    "prior_published_head": "71fb8c87e78ff069b8f3fb181854c54c01c5ba5d",
+    "branch": "codex/gitflow-unified",
+    "cwd": "/Users/bentaylor/.codex/worktrees/git-protector-chat/admiralty",
+    "clean_at_full_matrix_start": true,
+    "evidence_commit_is_not_tested_source": true
+  },
+  "scope": {
+    "delta_from_prior": [
+      "README.md"
+    ],
+    "application_and_test_source_changed": false,
+    "prior_changed_paths": 53,
+    "all_prior_changed_blobs_identical": true,
+    "unchanged_blobs": [
+      {
+        "path": "CHANGELOG.md",
+        "blob_oid": "4fc06868d06b53a320e6a832d872f92c8414811a"
+      },
+      {
+        "path": "Cargo.lock",
+        "blob_oid": "b1a6661bdd159bc44de7dbd115b70040d3f1826a"
+      },
+      {
+        "path": "PY_TO_RUST_PLAN.md",
+        "blob_oid": "1a47136d4e9e2958225dac76b82b65e2099e38a0"
+      },
+      {
+        "path": "apps/dashboard/e2e/browser-harness.ts",
+        "blob_oid": "2a392f3a9cd086ebc1c81269b89c477118372ca1"
+      },
+      {
+        "path": "apps/dashboard/e2e/git-chat.e2e.ts",
+        "blob_oid": "1c952f71f448a59439ea84f9c01dff82bd47de9f"
+      },
+      {
+        "path": "apps/dashboard/e2e/live-views.e2e.ts",
+        "blob_oid": "be385d6be836ffcb233f469f326f67390aee1489"
+      },
+      {
+        "path": "apps/dashboard/src/features/live-views/GitChat.tsx",
+        "blob_oid": "da32cb2ab02059929a9c5ee8de8dd600253b5f94"
+      },
+      {
+        "path": "apps/dashboard/src/features/live-views/GitFlow.tsx",
+        "blob_oid": "7b9c71d1b768fc8916ef79f56ed6d6ff6d49713b"
+      },
+      {
+        "path": "apps/dashboard/src/features/live-views/LiveViews.tsx",
+        "blob_oid": "c3a3c22e6ee23889d6c34e5ddf9e1c53e7979092"
+      },
+      {
+        "path": "apps/dashboard/src/features/live-views/geometry.ts",
+        "blob_oid": "1300c36342d045d22197c76a803cc8afc38fa273"
+      },
+      {
+        "path": "apps/dashboard/src/features/live-views/git-compression.test.ts",
+        "blob_oid": "041189614910c023a75839e5953598e011cebfcd"
+      },
+      {
+        "path": "apps/dashboard/src/features/live-views/gitHealth.test.ts",
+        "blob_oid": "53505553e62ee102c4500c1ae45f7976d4a5a228"
+      },
+      {
+        "path": "apps/dashboard/src/features/live-views/gitHealth.ts",
+        "blob_oid": "1826ca8fa8b8b00bb2017d42aec362dfc7634c24"
+      },
+      {
+        "path": "apps/dashboard/src/features/live-views/live-views.css",
+        "blob_oid": "53cc6e6d88420e5fb761c99085bf1a422fc76389"
+      },
+      {
+        "path": "apps/dashboard/src/features/live-views/operator-chat.test.ts",
+        "blob_oid": "85e4f407adaf71085830b959289a7b62d31214ee"
+      },
+      {
+        "path": "apps/dashboard/src/features/live-views/operator-chat.ts",
+        "blob_oid": "36ffbda7b20d5959b1e6a4ffd3b79da8c3ab40b8"
+      },
+      {
+        "path": "apps/dashboard/src/ui/App.tsx",
+        "blob_oid": "851def8a25b9719bce722d19eb938747f7c0554d"
+      },
+      {
+        "path": "crates/admiralty-cli/src/main.rs",
+        "blob_oid": "b80f86d9f376ba6cd965830d2c3b355967aec128"
+      },
+      {
+        "path": "crates/admiralty-core/src/git_health.rs",
+        "blob_oid": "46550df11a5ac053681ff46e66c5e874dc263da2"
+      },
+      {
+        "path": "crates/admiralty-core/src/lib.rs",
+        "blob_oid": "e1ddd455199b10cc720da5cb9bcd150ec414c6e6"
+      },
+      {
+        "path": "crates/admiralty-observe/src/config.rs",
+        "blob_oid": "247873abc3df5fb595c391c5c898e1e8373d6532"
+      },
+      {
+        "path": "crates/admiralty-observe/src/git_health.rs",
+        "blob_oid": "726a08ef1ba4ce501653a39bfe67636155f3b831"
+      },
+      {
+        "path": "crates/admiralty-observe/src/lib.rs",
+        "blob_oid": "6674cf1478d1c7ba0bfa61af10d8ebfc76e7fd16"
+      },
+      {
+        "path": "crates/admiralty-observe/src/projects.rs",
+        "blob_oid": "b6d99f98bad981e1ca96379f0457965a49726535"
+      },
+      {
+        "path": "crates/admiralty-runtime/src/execution.rs",
+        "blob_oid": "dc0cd90c1e586a9c789be8cd03bfb4ca32513997"
+      },
+      {
+        "path": "crates/admiralty-server/Cargo.toml",
+        "blob_oid": "e750655559fd557d121f0a6bd2a3ce456115a09f"
+      },
+      {
+        "path": "crates/admiralty-server/src/lib.rs",
+        "blob_oid": "07fae2c170b965d6f42810971a775fa75ee985de"
+      },
+      {
+        "path": "crates/admiralty-server/src/main.rs",
+        "blob_oid": "4b2c38ec78167a67006c5d4f6259a5d979130e6b"
+      },
+      {
+        "path": "crates/admiralty-server/src/operator_chat.rs",
+        "blob_oid": "5d485c87993a9bb148d8b48cf7dd9d82ff3cf131"
+      },
+      {
+        "path": "docs/operators/git-health.md",
+        "blob_oid": "f9f081d09adcbf510b0929bd2b8331c77a00e539"
+      },
+      {
+        "path": "docs/operators/live-views.md",
+        "blob_oid": "0b912d67b1852a37747ca1649c39858443b2d2f8"
+      },
+      {
+        "path": "docs/operators/operator-chat.md",
+        "blob_oid": "f017231374d53f37a3fe91db525bbc6239857f67"
+      },
+      {
+        "path": "docs/plans/admiralty-v2/BRANCH_RECONCILIATION_2026-10-20.md",
+        "blob_oid": "2b4e803145870f46baecb75694cfcd444345ac8f"
+      },
+      {
+        "path": "docs/plans/admiralty-v2/DOPE_GIT_AUDIT_2026-10-20.md",
+        "blob_oid": "b81cae739b0edac8646ad3b789cb2bcfbb75a9c9"
+      },
+      {
+        "path": "docs/plans/admiralty-v2/EXECUTION.md",
+        "blob_oid": "6509bd9474dedc134546101e5938d63264d12e87"
+      },
+      {
+        "path": "docs/plans/admiralty-v2/GITFLOW_INTEGRATION_2026-10-20.md",
+        "blob_oid": "8d74f271b1e7665a4433305563885f3c43ae8440"
+      },
+      {
+        "path": "docs/plans/admiralty-v2/GIT_PROTECTOR_CHAT_PLAN.md",
+        "blob_oid": "8bec5153ec583e4fdba5e9d9e5a05a66a490167d"
+      },
+      {
+        "path": "docs/plans/admiralty-v2/receipts/LV/git-linear-collapse-ebadc73d.json",
+        "blob_oid": "cd49bad15fb2ec05c486b684fed4a6a27d0cfe71"
+      },
+      {
+        "path": "docs/plans/admiralty-v2/receipts/LV/git-linear-collapse-ebadc73d.png",
+        "blob_oid": "6332bdc0030d6ae40d4fdca7d062b37b4de0e981"
+      },
+      {
+        "path": "receipts/integration/artifacts/gitflow-unified-20261020/git-health.png",
+        "blob_oid": "a0dacbca29c29e98e2e6e8ddec9e01e54216a018"
+      },
+      {
+        "path": "receipts/integration/artifacts/gitflow-unified-20261020/project-chat-mobile.png",
+        "blob_oid": "3260576762abef3c71563b3a9cd11197eab483fe"
+      },
+      {
+        "path": "receipts/integration/artifacts/gitflow-unified-20261020/project-chat.png",
+        "blob_oid": "f11f11360cb1c4d20493c637f7b8b67ecb083aea"
+      },
+      {
+        "path": "receipts/integration/artifacts/gitflow-unified-input-3171c537/git-health.png",
+        "blob_oid": "028c2ff73bfb1a93387d2548582f4502f7afe50f"
+      },
+      {
+        "path": "receipts/integration/artifacts/gitflow-unified-input-3171c537/project-chat-mobile.png",
+        "blob_oid": "085e377f6899a3db0f44e4ea80d34a30af37ae44"
+      },
+      {
+        "path": "receipts/integration/artifacts/gitflow-unified-input-3171c537/project-chat.png",
+        "blob_oid": "fac604a8de552229fd6f329ee65c0880465da89b"
+      },
+      {
+        "path": "receipts/integration/dope-git-audit-20261020.json",
+        "blob_oid": "fc488a53c9ac654926858db38779f34503cdc201"
+      },
+      {
+        "path": "receipts/integration/git-protector-chat-20261020.json",
+        "blob_oid": "745eadda8ad47e650fb63038822a229090ae3342"
+      },
+      {
+        "path": "receipts/integration/git-protector-chat-role-delivery-20261020.json",
+        "blob_oid": "a342f6b59248dea59a87303604e7fe1cb19e2583"
+      },
+      {
+        "path": "receipts/integration/gitflow-unified-20261020.json",
+        "blob_oid": "633b296557690d3dfb8de6ca910421c3a5b26a60"
+      },
+      {
+        "path": "receipts/integration/gitflow-unified-input-20261020.json",
+        "blob_oid": "0e55fcac796fe90fbd5e308b81f715a2c55cc63c"
+      },
+      {
+        "path": "receipts/integration/operator-chat-startup-20261020.json",
+        "blob_oid": "d3c6e097a93bb7b518e3434d79b55faa7611522f"
+      },
+      {
+        "path": "scripts/check/canary-smoke.py",
+        "blob_oid": "0db95cd668e30c208728eacead240deee1174ea2"
+      },
+      {
+        "path": "tests/integration/excursion_lineage.rs",
+        "blob_oid": "65f509c0b2566abe0671b6b038c4824adaf1a3e4"
+      }
+    ]
+  },
+  "readme": {
+    "repository_path": "README.md",
+    "blob_oid": "c13542acbc7766bf0801b0dd36e294ae75ab1b23",
+    "bytes": 14541,
+    "sha256": "d77d4d1bd94da37fc84ab1d761c55e8226897afcc405a7595811e2006eed931c",
+    "author_checks": {
+      "path": "/private/tmp/gitflow-readme-refresh/receipt.json",
+      "bytes": 1194,
+      "sha256": "1c49ec21d1fa6f79ae4d96bb8bc9d56d2ce77f1eeab99c7736dfd01e2c830922"
+    },
+    "independent_non_author_review": {
+      "path": "/private/tmp/admiralty-readme-review-zt10g9wh/README_REVIEW_2BB7F83B.json",
+      "bytes": 22722,
+      "sha256": "e4f4ffb4b14b3f53c49abc3bbcf850d949ea3a09f7121d3a27e7678e74a77695"
+    }
+  },
+  "full_local_matrix": {
+    "command": "rtk proxy env PATH=/Users/bentaylor/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH ADMIRALTY_TARGET_DIR=/Users/bentaylor/Documents/ChatGPT/admiralty/target pnpm check",
+    "exit_code": 0,
+    "stages_passed": 20,
+    "environment": {
+      "path": "/private/tmp/adm.my6lrN/logs/environment.log",
+      "bytes": 246,
+      "sha256": "fccdc2cc41b3099a1b4a1b9a810b2074441e811a46abfc52a3838c3d177c0dea"
+    },
+    "commands": {
+      "path": "/private/tmp/adm.my6lrN/logs/commands.log",
+      "bytes": 1437,
+      "sha256": "e1d9384cf4afdf7eb748e58dba3e485f6a426cfe834e95d0a116efc9e4905808"
+    },
+    "stage_results": [
+      {
+        "stage": 1,
+        "command": "pnpm install --frozen-lockfile --ignore-scripts ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/01.log",
+          "bytes": 85,
+          "sha256": "65cb767764ba283615994916f3c83f0cfcb12d5d34a2e945d59f5356fa3e685e"
+        }
+      },
+      {
+        "stage": 2,
+        "command": "cargo fmt --all -- --check ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/02.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "stage": 3,
+        "command": "cargo clippy --workspace --all-targets --locked -- -D warnings ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/03.log",
+          "bytes": 60,
+          "sha256": "158a7e90d711f5b4ea7049bdc68524feafa9e57f0ea9359a375775ceb2ad0db2"
+        }
+      },
+      {
+        "stage": 4,
+        "command": "cargo test --workspace --locked ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/04.log",
+          "bytes": 205911,
+          "sha256": "0a330b833a808aa41b69491fa5f596fbb980476b51073ca0741b0ab3ea80335d"
+        }
+      },
+      {
+        "stage": 5,
+        "command": "python3 -m unittest discover -s tests/legacy -v ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/05.log",
+          "bytes": 14446,
+          "sha256": "d9e97571a6489a3f9c9c07dddc1676eb240aa09b3b9838a50fe471ac7a6b9723"
+        }
+      },
+      {
+        "stage": 6,
+        "command": "python3 -m unittest discover -s tests -p test_sc_audit\\*.py -v ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/06.log",
+          "bytes": 57944,
+          "sha256": "e5f6987b8a58c09816a2b4279365c74747930987f2e0e2965c7867fca00d995f"
+        }
+      },
+      {
+        "stage": 7,
+        "command": "python3 tests/fixtures/legacy/verify.py ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/07.log",
+          "bytes": 961,
+          "sha256": "0e0184a1f618d4faddb38ee3729d4242d23b5874a383d5bc176d8da72931000f"
+        }
+      },
+      {
+        "stage": 8,
+        "command": "python3 scripts/release/package.py --self-test ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/08.log",
+          "bytes": 1451,
+          "sha256": "dc1c0e86b5bebf69a65383c1c0433b23b64783264db033f2580af36ae08963a6"
+        }
+      },
+      {
+        "stage": 9,
+        "command": "python3 scripts/check/canary-smoke.py --self-test ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/09.log",
+          "bytes": 3820,
+          "sha256": "237be879c64d301fba90ed9adf26bc6768d9d6d261d4bda8f3272e92a743ba4a"
+        }
+      },
+      {
+        "stage": 10,
+        "command": "cargo build -p admiralty-server -p admiralty-cli -p admiralty-observe --locked ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/10.log",
+          "bytes": 60,
+          "sha256": "7e8397b3c3d5ef73830e57f61ffa6f2cfd565f338d3d371aefe79dbf3b020764"
+        }
+      },
+      {
+        "stage": 11,
+        "command": "python3 scripts/check/canary-smoke.py --admiraltyd-binary /Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd --admiralty-binary /Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty --scratch-root /private/tmp/adm.my6lrN/canary ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/11.log",
+          "bytes": 1565,
+          "sha256": "add5fd6b10f1fa3f2f073e9bd42c62780a8d85b54304504c0c5e33b394e7bcd0"
+        }
+      },
+      {
+        "stage": 12,
+        "command": "cargo run -p admiralty-cli --locked -- contracts check ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/12.log",
+          "bytes": 1310,
+          "sha256": "67e7750298192bdf9d07df72d3d8df78bc2366af7c7370296dc922cd8e219461"
+        }
+      },
+      {
+        "stage": 13,
+        "command": "pnpm contracts:check ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/13.log",
+          "bytes": 124,
+          "sha256": "217a27a6700351aca4cde48752d84901bc7bbd849444577952ab8f4991c1c0c1"
+        }
+      },
+      {
+        "stage": 14,
+        "command": "pnpm --dir packages/contracts test ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/14.log",
+          "bytes": 1683,
+          "sha256": "d27a993fa8664436faf69fc07b0cc627808da549c273fe6495a41c6094168123"
+        }
+      },
+      {
+        "stage": 15,
+        "command": "pnpm --dir apps/dashboard typecheck ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/15.log",
+          "bytes": 24,
+          "sha256": "5cfb036289d819b2a87e947d65f4532031dd37753f3cf2def0f77d398eea1737"
+        }
+      },
+      {
+        "stage": 16,
+        "command": "pnpm --dir apps/dashboard test --run ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/16.log",
+          "bytes": 259,
+          "sha256": "145500647d369fad23d4883278504e9a39e2b62b5e06e729a1b20f6cbb9adb4b"
+        }
+      },
+      {
+        "stage": 17,
+        "command": "pnpm --dir apps/dashboard exec tsc -p e2e/tsconfig.json --noEmit ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/17.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "stage": 18,
+        "command": "env NODE_ENV=production pnpm --dir apps/dashboard build ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/18.log",
+          "bytes": 1372,
+          "sha256": "0502b26a30764816bb8e1334e98a9c3cb8c6062de4c5a30908ec923d21a392a5"
+        }
+      },
+      {
+        "stage": 19,
+        "command": "node -e const\\ fs=require\\(\\\"node:fs\\\"\\)\\,crypto=require\\(\\\"node:crypto\\\"\\)\\;if\\(crypto.createHash\\(\\\"sha256\\\"\\).update\\(fs.readFileSync\\(\\\"node_modules/axe-core/axe.min.js\\\"\\)\\).digest\\(\\\"hex\\\"\\)\\!==\\\"20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878\\\"\\)process.exit\\(1\\) ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/19.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "stage": 20,
+        "command": "pnpm --dir apps/dashboard test --run --config e2e/vitest.config.ts ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.my6lrN/logs/20.log",
+          "bytes": 259,
+          "sha256": "60735de85114cfe77271e6898a0fbb4e9602a5da24602a06cec494e6dc29ea77"
+        }
+      }
+    ],
+    "tests": {
+      "rust_passed": 1768,
+      "rust_failed": 0,
+      "rust_ignored": 6,
+      "rust_targets": 167,
+      "dashboard_passed": 231,
+      "dashboard_files": 22,
+      "browser_passed": 47,
+      "browser_files": 8
+    }
+  },
+  "security": {
+    "path": "/private/tmp/gitflow-unified.7utu6i/security-2bb7f83b-code.json",
+    "bytes": 435,
+    "sha256": "358080ab107a173a76ae41096e2b5657f765408eb8d9d4ecc63949958ca395a0"
+  },
+  "previous_qualification": {
+    "repository_path": "receipts/integration/gitflow-unified-input-20261020.json",
+    "source": "3171c5374b633a5ce011382b7c08b89e938d703a",
+    "receipt": {
+      "path": "/Users/bentaylor/.codex/worktrees/git-protector-chat/admiralty/receipts/integration/gitflow-unified-input-20261020.json",
+      "bytes": 37637,
+      "sha256": "ae5e290c3457307c2ee1e36198f009a0286fce997bcceb214f03d9cf257a5614"
+    },
+    "original_failures_and_receipts_preserved": true
+  },
+  "previous_hosted_ci": {
+    "head": "71fb8c87e78ff069b8f3fb181854c54c01c5ba5d",
+    "all_five_success": true,
+    "evidence": {
+      "path": "/private/tmp/gitflow-unified.7utu6i/ci-current-all-green-71fb8c87.json",
+      "bytes": 2297,
+      "sha256": "9bcd5dec6021288deb6e8283fce0ba332647a29093160a5cb5e2cc43f9a51dc6"
+    },
+    "does_not_qualify_new_head": true
+  },
+  "official_review": {
+    "same_reserved_reviewer": "/root/paper_nrs_truth",
+    "status": "IN_PROGRESS_NO_FINAL_PASS",
+    "preserve_existing_source_review": true,
+    "final_head_requires_readme_and_evidence_delta_review": true,
+    "github_approval_still_required_on_exact_final_head": true
+  },
+  "limits": [
+    "These local checks do not imply new-head hosted CI, official review completion, eligible approval, merge or deployment.",
+    "The README preserves the 19 October demo and release limitations; newer Git Flow features remain source-preview capabilities until actual deployment and enrollment.",
+    "Native protected chat smoke remains the prior 29 checks on its byte-bound binaries; the current matrix runs a fresh actual canary, without claiming 29 new smoke executions.",
+    "The prior pinned Jankurai audit is advisory with existing open findings; no strict compliance claim is made.",
+    "Foreign, dirty, ignored, unmerged and custody-held assets remain preserved."
+  ],
+  "publication_at_recording": {
+    "pr": "https://github.com/neverhuman/admiralty/pull/164",
+    "new_head_pushed": false,
+    "current_head_hosted_ci": "pending",
+    "exact_head_approval": "pending",
+    "merged": false
+  }
+}

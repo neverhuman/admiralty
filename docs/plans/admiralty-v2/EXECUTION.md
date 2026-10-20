@@ -3384,3 +3384,27 @@ remain preserved. Replacement exact-head official review, hosted CI, eligible
 approval and normal matched merge remain pending at this dated record. DOPE
 PR290 independently merged08:18:40 with its exact reviewed5701 tree; its earlier
 pending audit observations remain historical. No DOPE custody work was changed.
+
+### GFI07 — README follow-up and final source qualification
+
+The user's overnight owner request adds a current README and a 30-minute
+continuation check. Frozen code `2bb7f83b60422bb4d73dadb7c3fd57923d83669c`, tree
+`3e9bed5e82b0b50c2aad732e045137601f829129`, changes only README.md above71fb.
+All53 prior integration blobs remain identical at that tested commit. The README
+describes reversible Git compression, protected project chat and cached Rust Git
+health, links both operator guides, and preserves the historical demo and release
+limits. A non-author review finds no blocker and verifies68 relative-link
+occurrences/47 unique targets and fragments.
+
+All20 local stages pass again on clean2bb7f83:1768 Rust tests (6 existing ignores),
+231 dashboard tests and47 browser tests, strict Clippy, contracts, typechecks,
+build and a fresh actual native canary. Logs remain `/private/tmp/adm.my6lrN/logs`.
+The full receiving-base security check passes. The
+[README follow-up receipt](../../../receipts/integration/gitflow-unified-readme-20261020.json)
+binds source, logs, independent documentation review and the unchanged53 blobs.
+The prior71fb hosted head passed all five checks; it does not qualify this new
+head. The same official reviewer continues the existing source review and must
+review the README/evidence delta and approve the exact final head. Fresh hosted
+CI, actual eligible approval, normal matched merge, receiving-main checks and
+safe cleanup remain pending at this dated record. The owner continuation stays
+active until those scoped tasks are verified complete.
