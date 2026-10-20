@@ -1889,15 +1889,15 @@ impl Writer {
                 value
             }
         };
-        startup.commit()?;
-        let projection = replay(&connection)?;
-        questions::validate_all(&connection)?;
-        subscriptions::validate_all(&connection)?;
+        let projection = replay(&startup)?;
+        questions::validate_all(&startup)?;
+        subscriptions::validate_all(&startup)?;
         let pending_inbox = inbox::PendingInboxIndex::from_projection(&projection)?;
-        workplans::validate_task_contracts(
-            &connection,
+        workplans::validate_task_contracts_in_transaction(
+            &startup,
             projection.tasks.values().map(|task| &task.contract),
         )?;
+        startup.commit()?;
         Ok(Self {
             connection,
             projection,
@@ -3604,6 +3604,68 @@ mod tests {
             )
             .expect("original ledger schema");
         assert!(sql.contains("incompatible TEXT"));
+    }
+
+    #[test]
+    fn replay_failure_rolls_back_recreated_schema_and_preserves_existing_history() {
+        let directory = private_tempdir();
+        let path = directory.path().join("replay-startup-failure.sqlite");
+        drop(Store::open(&path).expect("initialize private fixture"));
+        let connection = Connection::open(&path).expect("fixture connection");
+        let generation: String = connection
+            .query_row(
+                "SELECT value FROM metadata WHERE key='recovery_generation'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("existing generation");
+        // Corrupt only this private fixture. Production startup must keep FK on.
+        connection
+            .pragma_update(None, "foreign_keys", false)
+            .expect("private corruption fixture");
+        connection
+            .execute_batch("DROP TABLE excursion_commands;")
+            .expect("missing schema fixture");
+        connection.execute(
+            "INSERT INTO event_request_bindings(event_seq,request_digest,intent_digest) VALUES(42,?1,NULL)",
+            [format!("sha256:{}", "0".repeat(64))],
+        ).expect("orphaned immutable history fixture");
+        drop(connection);
+        let error = Store::open(&path)
+            .err()
+            .expect("replay must refuse orphaned history");
+        assert!(
+            error.to_string().contains("orphaned event/effect binding"),
+            "{error}"
+        );
+        let inspected = Connection::open(&path).expect("inspect preserved database");
+        let recreated: i64 = inspected
+            .query_row(
+                "SELECT count(*) FROM sqlite_schema WHERE name='excursion_commands'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("recreated schema count");
+        assert_eq!(
+            recreated, 0,
+            "failed replay must roll back newly recreated schema"
+        );
+        let preserved: i64 = inspected
+            .query_row(
+                "SELECT count(*) FROM event_request_bindings WHERE event_seq=42",
+                [],
+                |row| row.get(0),
+            )
+            .expect("preserved original history");
+        assert_eq!(preserved, 1);
+        let after_generation: String = inspected
+            .query_row(
+                "SELECT value FROM metadata WHERE key='recovery_generation'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("preserved generation");
+        assert_eq!(after_generation, generation);
     }
 
     #[test]
