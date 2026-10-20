@@ -14,6 +14,29 @@ struct OwnedDemo {
     child: Child,
     directory: Option<tempfile::TempDir>,
 }
+impl OwnedDemo {
+    fn captured_startup(&self) -> String {
+        let Some(directory) = &self.directory else {
+            return "capture directory retained outside fixture".into();
+        };
+        let mut captures = String::new();
+        for name in ["stdout", "stderr"] {
+            let mut bytes = Vec::new();
+            let result = fs::File::open(directory.path().join(name))
+                .and_then(|file| file.take(4096).read_to_end(&mut bytes));
+            if let Err(error) = result {
+                captures.push_str(&format!(
+                    "{name}: capture unavailable ({:?}); ",
+                    error.kind()
+                ));
+            } else {
+                captures.push_str(&format!("{name}: {:?}; ", String::from_utf8_lossy(&bytes)));
+            }
+        }
+        captures
+    }
+}
+
 impl Drop for OwnedDemo {
     fn drop(&mut self) {
         if !matches!(self.child.try_wait(), Ok(Some(_))) {
@@ -101,15 +124,30 @@ fn shutdown_with_open_streams(signal: rustix::process::Signal) {
         child,
         directory: Some(directory),
     };
-    let ready_deadline = Instant::now() + Duration::from_secs(5);
+    let startup_started = Instant::now();
+    let ready_deadline = startup_started + Duration::from_secs(5);
     loop {
-        assert!(owned.child.try_wait().expect("child status").is_none());
+        let status = owned.child.try_wait().expect("child status");
+        assert!(
+            status.is_none(),
+            "demo exited before binding: {status:?}; {}",
+            owned.captured_startup()
+        );
         if TcpStream::connect_timeout(&address, Duration::from_millis(100)).is_ok() {
             break;
         }
-        assert!(Instant::now() < ready_deadline, "owned listener readiness");
+        assert!(
+            Instant::now() < ready_deadline,
+            "owned listener readiness after {:?}; {}",
+            startup_started.elapsed(),
+            owned.captured_startup()
+        );
         thread::sleep(Duration::from_millis(10));
     }
+    eprintln!(
+        "owned demo listener ready after {:?}",
+        startup_started.elapsed()
+    );
     let mut streams = [
         open_sse(address, "/v2/events"),
         open_sse(address, "/v2/views/events"),
