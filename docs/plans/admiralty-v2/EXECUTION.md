@@ -3226,3 +3226,32 @@ these now use descriptive expect failures, retaining every assertion and lint
 policy. Runtime source is unchanged by that correction. Publisher guidance
 records the existing128KiB bound, byte validation and immutable detail references
 to prevent repeat overflow. Final exact-head gates remain required.
+
+### Native capture-overflow qualification repair — October20
+
+PR163 source6c9bee9 passes the whole local20 matrix and hosted browser,
+contracts, security and advisory checks. Hosted Rust job118486084876 fails the
+existing actual-producer capture-failure test at its30-second deadline with
+Busy. Unchanged source passes on Root's reserved Linux slice in12.54s, so that
+is retained as a non-reproduction. Tracing shows1022 output-journal fdatasync
+calls consuming16.215625s; exact hosted storage latency remains unproven.
+
+An existing Luna medium worker supplied a test-only artifact using a private,
+validated Linux tmpfs fixture for this overflow case. The actual9,000,000-byte
+producer request,8MiB runtime cap,1022 durable calls and30-second deadline remain;
+the test adds real child-exit, retained-prefix, absent-watermark and exact typed
+rejection assertions. Production code and other disk-backed tests are unchanged.
+The first artifact's shell prerequisite checks were replaced with existing
+Rustix APIs. Root's first Linux runner had a template SyntaxError before tests;
+that setup failure is preserved and excluded from code/model failure evidence.
+
+The candidate passes Linux115 server library tests (two existing ignored), strict
+all-target Server Clippy, the actual Runtime capture-bound test and Mac's scoped
+capture case. Tracing still records1022 real output syncs, now0.008469s on tmpfs.
+Independent artifact review finds no production blocker and records the possible
+empty-directory retention on failed prerequisites. The
+[source-bound receipt](../../../receipts/integration/capture-overflow-fixture-20261020.json)
+preserves scope, hashes, original failure/non-reproduction and platform limits.
+Root released CPUs112,113 back to project standby; no Linux qualification job
+remains. Final local/hosted gates and actual deployment remain separate; no
+native/provider/parent/full-release acceptance is inferred.
