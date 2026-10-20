@@ -5,12 +5,13 @@ request, discussion, or commit that includes exploit details, credentials,
 tokens, private configuration, customer data, or a reproducer that exposes a
 live system.
 
-If the [GitHub Security page](https://github.com/neverhuman/admiralty/security)
-offers **Report a vulnerability**, use that private GitHub form. This policy
-does not establish whether private vulnerability reporting is enabled.
-If it does not, contact a maintainer through a privately agreed channel and
-first ask how to share details securely. Do not put vulnerability details in a
-public issue to request a contact, and do not guess or publish an email address.
+Use [GitHub private vulnerability reporting](https://github.com/neverhuman/admiralty/security/advisories/new)
+for this repository. Private vulnerability reporting was enabled and verified on
+19 October 2026. You can also reach the form from the repository's
+[Security page](https://github.com/neverhuman/admiralty/security).
+If the form is unavailable, use a privately agreed maintainer channel to ask how
+to share details securely. Do not post vulnerability details publicly to request
+a contact, and do not guess or publish an email address.
 
 Include the affected commit or release, the relevant component, impact, and a
 minimal reproduction with secrets and real user data removed. Share only the

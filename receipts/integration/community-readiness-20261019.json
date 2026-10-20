@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "scope": "Community documentation and source-base command/security review; not full release acceptance",
+  "reviewed_utc": "2026-10-20T00:56:38.740691+00:00",
+  "source_base": "b958736f36bfc656961c30af5df5499c6c1dd239",
+  "platform": "macOS arm64",
+  "versions": {
+    "rust": "1.95.0",
+    "node": "24.19.0",
+    "pnpm": "11.15.1",
+    "python": "3.14.6",
+    "linux_python_observed": "3.12.3"
+  },
+  "document_digests": {
+    "README.md": "2c53f6ed5345304e59df100be88a4e2ded5df7faa6c738b9182abdd6ac5b83c8",
+    "CONTRIBUTING.md": "7f1fa6c965dbb4d1e85500fb3f7b4a7c0a07c02101fe4716e2c78058e5d817eb",
+    "SECURITY.md": "d3414d07a28c9b15733f2c031c0a2c09668fa4b579d8a614d27bc8738fc982a5",
+    "docs/contributors/community-readiness.md": "3c1fa52149a21289499348ba5a25acafccdcec8baefba7f54510d307133ab0a4",
+    "CHANGELOG.md": "417c85c0eb987ea7b274246188aef32e8f5cfadac9adb8789e8abee64b5a03de"
+  },
+  "command_checks": [
+    {
+      "command": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "exit": 0,
+      "log_sha256": "a32365e139ad5424fe2573559eaa45bbe84a05cd95989bf9e4429da16eaf252a",
+      "warm_external_cargo_cache": true
+    },
+    {
+      "command": [
+        "cargo",
+        "run",
+        "-p",
+        "admiralty-cli",
+        "--locked",
+        "--",
+        "doctor"
+      ],
+      "exit": 0,
+      "log_sha256": "bbeb81c95d222989a9243a6d7532d739982302911ddccb89a8d7284b23c4d34f",
+      "warm_external_cargo_cache": true
+    },
+    {
+      "command": [
+        "cargo",
+        "run",
+        "-p",
+        "admiralty-cli",
+        "--locked",
+        "--",
+        "demo",
+        "--snapshot-only"
+      ],
+      "exit": 0,
+      "log_sha256": "596808a36982cf88bc26525d741557d05664f08e92bd2a9b6a2931c4893f6b8e",
+      "warm_external_cargo_cache": true
+    },
+    {
+      "command": [
+        "cargo",
+        "run",
+        "-p",
+        "admiralty-cli",
+        "--locked",
+        "--",
+        "--help"
+      ],
+      "exit": 0,
+      "log_sha256": "6158a44de3760c5c06590b1d77fcf81366e18de80ea8af431bffd2138762f97f",
+      "warm_external_cargo_cache": true
+    }
+  ],
+  "link_check": {
+    "local_links_and_media": 80,
+    "failures": 0
+  },
+  "github_markdown_render": {
+    "exit": 0,
+    "picture_blocks": 3,
+    "lossless_webp_sources": 3,
+    "reduced_motion_sources": 3,
+    "direct_demo_overview_link": true,
+    "html_sha256": "0daa993c0cd2dc2afd06853940cfca4df4f023429185e2d84d8dfa1998faf5c1"
+  },
+  "actual_demo": {
+    "source_build_started": true,
+    "health_status": 200,
+    "native_execution_qualified": false,
+    "native_snapshot_status": 200,
+    "browser_overview_projects": 2,
+    "browser_overview_tasks": 3,
+    "browser_workplans_rendered": true,
+    "browser_error": null,
+    "synthetic_data_only": true,
+    "stop_counterexample_retained": true,
+    "stop_behavior_at_source_base": "pnpm Ctrl-C stops the owned process but reports failure and may leave private synthetic state; direct CLI SIGINT waits for an active event stream to close. Startup owner was given both reproducers."
+  },
+  "public_repository_settings": {
+    "visibility": "PUBLIC",
+    "license": "MIT",
+    "latest_release_at_observation": null,
+    "private_vulnerability_reporting_enabled_and_verified": true
+  },
+  "security_snapshots": {
+    "cargo_audit_version": "0.22.1",
+    "rust_dependencies": 209,
+    "rustsec_database_commit": "999ec89d5d3f10f20be14750ec8c2d8b44e0ac9b",
+    "rust_vulnerabilities": 0,
+    "rust_warnings": 0,
+    "javascript_dependencies": 106,
+    "javascript_vulnerabilities_all_severities": 0,
+    "full_history_gitleaks_original_exit": 1,
+    "full_history_original_findings": 29,
+    "every_historical_source_occurrence_reviewed": true,
+    "unique_locations": 11,
+    "confirmed_live_credentials": 0,
+    "exact_historical_fingerprint_control_exit": 0,
+    "unrelated_synthetic_secret_control_exit": 1,
+    "unrelated_synthetic_secret_control_findings": 1,
+    "global_rule_or_path_exemption_added": false,
+    "history_rewritten": false
+  },
+  "retained_private_evidence_digests": {
+    "cargo-audit.json": "3f84e20ba767d9d8d77b7fb7f77d64dfefa7484ad4f6e4464336ecce5dc36e54",
+    "pnpm-audit.json": "cb32fad63c4811c51938e920f24397100863e72cd7cebce7f234bd1366505e12",
+    "gitleaks-history.json": "5157d19aebaddbcc7699f0854c387514f94f958dab95b2f7a5566afbd83786e1",
+    "gitleaks-history-all-findings-triage.json": "7ba27d8fe6adf90c78051a9041ba2676d1b9237ca203debf6bfd53141cbf81d5",
+    "gitleaks-negative-control-proof.json": "4c7e7ab4ef66f9bd5ff5ce4522a510112d1c20688c1128ce1ddeaef51294f90a",
+    "demo-direct-sigint-stream-control.json": "3c921c330388fefea79ee9e014337eba48cad25c7de864af15e929905f105f79",
+    "demo-sigint-with-browser-open.json": "3bfc7c73535f91c1fb8a845bbedda2615b6ddb779fb4bca8ef80f46c1c01f514",
+    "private-security-reporting.json": "995f5122de98dc3546f40ba7582fe849d33f8845fa69eeb83c860ad0369507e8"
+  },
+  "canonical_application_gate": {
+    "command": "pnpm check",
+    "result_location": "Exact integrated-head qualification belongs in the integration PR and source-bound handoff; this receipt records the narrower checks above."
+  },
+  "limitations": [
+    "Source build used an existing warm Cargo cache; no clean-machine or public binary distribution qualification.",
+    "Advisory/database scans describe the supplied lockfiles and scanner snapshots, not a security certification.",
+    "Current source and scoped coordination do not qualify general managed coding execution.",
+    "P00/P01 alone are accepted; native execution, provider/pool authority, settlement/recovery, distribution and remaining parent criteria stay open."
+  ],
+  "full_release_qualified": false,
+  "general_native_execution_qualified": false
+}

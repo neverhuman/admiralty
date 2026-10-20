@@ -12,7 +12,8 @@ Install Rust 1.95.0 with `rustfmt` and `clippy` (pinned by
 [`rust-toolchain.toml`](rust-toolchain.toml)), Node 24, pnpm 11.15.1 (pinned in
 [`package.json`](package.json)), Bash and a native C build toolchain for
 dependencies that compile native code. The retained compatibility fixture
-checks also require Python 3; native runtime and ingestion use Rust.
+checks also use Python 3.12+ (qualified on 3.12 and 3.14), as does the convenience `pnpm live` launcher.
+Native HTTP serving and ingestion use Rust.
 Install JavaScript dependencies
 from the lockfile without running dependency lifecycle scripts:
 
@@ -24,18 +25,26 @@ Use an isolated checkout and keep generated build output out of commits. The
 standard local validation entry point is:
 
 ```sh
-bash scripts/check/all.sh
+pnpm check
 ```
 
-It runs Rust formatting, locked workspace Clippy and tests, retained legacy
-fixture checks, contract validation, dashboard typechecking, dashboard tests,
-and a production dashboard build. It does not run paid provider work. CI also
-runs isolated-binary smoke checks; browser qualification runs in the separate
-dashboard workflow on its configured runner. A local pass does not establish a
-hosted result or production qualification.
+It installs frozen JavaScript dependencies and runs the complete local matrix:
+Rust formatting, strict locked workspace Clippy/tests, retained compatibility and
+audit fixtures, package/canary checks, actual native binaries and smoke checks,
+Rust/JavaScript contracts, frontend unit tests/typechecks/build, and real
+browser/accessibility journeys. Install Chrome or Chromium first;
+`ADMIRALTY_BROWSER_BINARY` can select an existing browser. It does not invoke
+paid providers. Logs and exact commands are retained in the private directory
+printed by the script. See [local CI](docs/operators/local-ci.md) for prerequisites,
+resource bounds and cache overrides.
 
-For focused changes, run the relevant checks as well as the broad script when
-practical. Examples used by CI include:
+Hosted Linux checks and the pinned Jankurai audit provide independent evidence.
+A local pass does not establish a hosted result, deployment, native execution
+qualification or a full release. An advisory audit pass does not close its
+remaining conformance findings.
+
+Run focused checks while developing, then the complete `pnpm check` before
+pushing. Useful focused commands include:
 
 ```sh
 cargo fmt --all -- --check
@@ -51,7 +60,9 @@ pnpm --dir apps/dashboard build
 Set `ADMIRALTY_TARGET_DIR` if you need Cargo output in a private scratch path;
 `scripts/check/all.sh` honors it. Keep test data and private runtime files out
 of the checkout. Do not weaken custody checks or replace source-bound fixtures
-with hand-edited output to get a passing run.
+with hand-edited output to get a passing run. New runtime and tooling use Rust;
+adding a new Python file requires an explicit maintainer exception under the
+repository's [Python migration policy](PY_TO_RUST_PLAN.md).
 
 ## Changes and review
 
@@ -68,6 +79,12 @@ commands, working directory, exit status, relevant environment, raw log
 references, test counts and limitations. Preserve failed drafts and their logs;
 do not overwrite them with a repaired run or report nested assertions as
 additional tests. Follow the packet's receipt location and validation rules.
+
+Keep dependent changes in one integration pull request; coordinate with a
+maintainer before starting a PR stack. Reuse an appropriate owned checkout,
+keep one writer per checkout, and preserve dirty, ignored or foreign work.
+Retire merged branches/worktrees only after confirming their work is integrated,
+no process uses them, and unique/private state is preserved.
 
 Open a pull request against the intended base and describe the behavior changed,
 the exact source tested, validation, and remaining limits. Repository automation
