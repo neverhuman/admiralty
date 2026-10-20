@@ -28,7 +28,7 @@ const GENERATED_GUARD_ENTRY: &[u8] =
     include_bytes!("../../../packages/contracts/generated/validators.mjs");
 // This deliberately exact allowlist is reviewed with the public generator. A
 // release never discovers dependencies by traversing a source directory.
-const GENERATED_GUARD_MODULES: [(&str, &[u8]); 20] = [
+const GENERATED_GUARD_MODULES: [(&str, &[u8]); 25] = [
     (
         "validators-base.mjs",
         include_bytes!("../../../packages/contracts/generated/validators-base.mjs"),
@@ -115,6 +115,36 @@ const GENERATED_GUARD_MODULES: [(&str, &[u8]); 20] = [
         "validators-coordination-envelope-v2.mjs",
         include_bytes!(
             "../../../packages/contracts/generated/validators-coordination-envelope-v2.mjs"
+        ),
+    ),
+    (
+        "validators-task-attempt-outcome-ledger.mjs",
+        include_bytes!(
+            "../../../packages/contracts/generated/validators-task-attempt-outcome-ledger.mjs"
+        ),
+    ),
+    (
+        "validators-attempt-outcome-projection.mjs",
+        include_bytes!(
+            "../../../packages/contracts/generated/validators-attempt-outcome-projection.mjs"
+        ),
+    ),
+    (
+        "validators-execution-requirements-v2.mjs",
+        include_bytes!(
+            "../../../packages/contracts/generated/validators-execution-requirements-v2.mjs"
+        ),
+    ),
+    (
+        "validators-execution-requirements-capsule-binding.mjs",
+        include_bytes!(
+            "../../../packages/contracts/generated/validators-execution-requirements-capsule-binding.mjs"
+        ),
+    ),
+    (
+        "validators-task-interface-contract-v2.mjs",
+        include_bytes!(
+            "../../../packages/contracts/generated/validators-task-interface-contract-v2.mjs"
         ),
     ),
 ];
@@ -207,6 +237,7 @@ enum InputKind {
     Binary,
     Dashboard,
     Schema,
+    PublicSchema,
     Guard,
     Documentation,
 }
@@ -639,6 +670,10 @@ fn package_destination(source: &str) -> Result<(String, InputKind), PackageError
             "share/admiralty/schemas/domain-event-v2.schema.json".to_owned(),
             InputKind::Schema,
         ),
+        ["schemas", name] if crate::SCHEMA_FILES.contains(name) => (
+            format!("share/admiralty/schemas/{name}"),
+            InputKind::PublicSchema,
+        ),
         ["schemas", "guards", "v2", rest @ ..] if !rest.is_empty() => (
             format!("share/admiralty/guards/v2/{}", rest.join("/")),
             InputKind::Guard,
@@ -919,8 +954,8 @@ pub(crate) fn validate_staged_manifest(manifest: &PackageManifest) -> Result<(),
             .strip_prefix("share/admiralty/dashboard/")
         {
             format!("apps/dashboard/dist/{name}")
-        } else if entry.archive_path == "share/admiralty/schemas/domain-event-v2.schema.json" {
-            "schemas/domain-event-v2.schema.json".to_owned()
+        } else if let Some(name) = entry.archive_path.strip_prefix("share/admiralty/schemas/") {
+            format!("schemas/{name}")
         } else if let Some(name) = entry
             .archive_path
             .strip_prefix("share/admiralty/guards/v2/")
@@ -1298,7 +1333,7 @@ import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 const guards = await import(pathToFileURL(process.argv[1]).href);
 const fixtures = JSON.parse(process.argv[2]);
-assert.equal(Object.keys(guards).filter(name => name.startsWith('validate')).length, 23);
+assert.equal(Object.keys(guards).filter(name => name.startsWith('validate')).length, 28);
 for (const [name, value] of Object.entries(fixtures)) assert.equal(guards[`validate${name}`](value), true, name);
 const task = fixtures.Workplan.tasks[0];
 assert.equal(guards.validateTaskContract(task), true);
@@ -1317,7 +1352,13 @@ for (const authority_generation of ['0', '01', '18446744073709551616', 900719925
 }
 assert.equal(guards.validateRecordIntakeRequest({...fixtures.RecordIntakeRequest,acceptance_granted:true}),false);
 assert.equal(guards.validateDeliveryRequirement({...fixtures.DeliveryRequirement,execution_qualified:true}),false);
-console.log('all 23 staged public guards passed real import, closed-input and precision checks');
+assert.equal(guards.validateExecutionRequirementsV2({...fixtures.ExecutionRequirementsV2,schema_version:2}),false);
+assert.equal(guards.validateTaskAttemptOutcomeLedger({...fixtures.TaskAttemptOutcomeLedger,acceptance_granted:true}),false);
+const requirements = fixtures.ExecutionRequirementsV2;
+for (const amount of ['01', '18446744073709551616', 9007199254740992]) {
+  assert.equal(guards.validateExecutionRequirementsV2({...requirements,runner:{...requirements.runner,budget_requirement:{...requirements.runner.budget_requirement,amount}}}),false);
+}
+console.log('all 28 staged public guards passed real import, closed-input and precision checks');
 "#;
         let stdout_path = root.path().join("node-guard-stdout.log");
         let stderr_path = root.path().join("node-guard-stderr.log");
@@ -1377,7 +1418,7 @@ console.log('all 23 staged public guards passed real import, closed-input and pr
             "real staged guard smoke failed: {}",
             read_output(&stderr_path)?
         );
-        assert!(read_output(&stdout_path)?.contains("all 23 staged public guards passed"));
+        assert!(read_output(&stdout_path)?.contains("all 28 staged public guards passed"));
         Ok(())
     }
 
@@ -1503,6 +1544,46 @@ console.log('all 23 staged public guards passed real import, closed-input and pr
             "README.md",
             ".env",
             "private/config.json",
+        ] {
+            assert!(package_destination(source).is_err(), "reject {source}");
+        }
+    }
+
+    #[test]
+    fn registered_public_schemas_round_trip_without_replacing_required_v2_event_schema() {
+        let (root, mut inputs) = fixture();
+        for (name, bytes) in crate::schema_documents().expect("source-owned public schemas") {
+            let source = format!("schemas/{name}");
+            if name == "domain-event-v2.schema.json" {
+                continue;
+            }
+            fs::write(root.path().join(&source), &bytes).expect("explicit schema input");
+            inputs.push(PackageInput {
+                source,
+                expected_sha256: digest(&bytes),
+                mode: 0o644,
+            });
+        }
+        let output = root.path().join("all-public-schemas");
+        let receipt = stage(root.path(), &output, &inputs).expect("registered schema bundle");
+        validate_staged_manifest(&receipt.manifest).expect("archive/install path policy");
+        assert_eq!(
+            receipt
+                .manifest
+                .entries
+                .iter()
+                .filter(|entry| entry.archive_path.starts_with("share/admiralty/schemas/"))
+                .count(),
+            crate::SCHEMA_FILES.len()
+        );
+        inputs.retain(|input| input.source != "schemas/domain-event-v2.schema.json");
+        let missing_primary = root.path().join("missing-primary-schema");
+        assert!(stage(root.path(), &missing_primary, &inputs).is_err());
+        assert!(!missing_primary.exists());
+        for source in [
+            "schemas/unknown.schema.json",
+            "schemas/task-contract.schema.json/extra",
+            "schemas/private.schema.json",
         ] {
             assert!(package_destination(source).is_err(), "reject {source}");
         }

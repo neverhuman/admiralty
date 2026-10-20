@@ -1,0 +1,208 @@
+{
+  "$defs": {
+    "BudgetRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "account_pool": {
+          "type": "string"
+        },
+        "amount": {
+          "$ref": "#/$defs/DecimalU64"
+        }
+      },
+      "required": [
+        "account_pool",
+        "amount"
+      ],
+      "type": "object"
+    },
+    "DecimalU64": {
+      "type": "string"
+    },
+    "ExecutionRunnerMode": {
+      "enum": [
+        "trusted_local_worktree",
+        "private_clone_rootless_oci"
+      ],
+      "type": "string"
+    },
+    "ExecutionRunnerRequirements": {
+      "additionalProperties": false,
+      "properties": {
+        "budget_requirement": {
+          "$ref": "#/$defs/BudgetRequirement"
+        },
+        "locality_refs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "required_capabilities": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "runner_mode": {
+          "$ref": "#/$defs/ExecutionRunnerMode"
+        }
+      },
+      "required": [
+        "runner_mode",
+        "required_capabilities",
+        "locality_refs",
+        "budget_requirement"
+      ],
+      "type": "object"
+    },
+    "ProjectId": {
+      "type": "string"
+    },
+    "RequiredDeliveryBoundary": {
+      "enum": [
+        "source_only",
+        "verified_candidate",
+        "merged_on_main",
+        "packaged",
+        "staged",
+        "canary_qualified",
+        "released_and_running"
+      ],
+      "type": "string"
+    },
+    "ResponsibleRole": {
+      "enum": [
+        "worker",
+        "verifier",
+        "auditor",
+        "captain",
+        "super_captain",
+        "owner"
+      ],
+      "type": "string"
+    },
+    "RootId": {
+      "type": "string"
+    },
+    "ShellBoundaryPolicy": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "forbid_shell",
+              "type": "string"
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "interpreter_program": {
+              "type": "string"
+            },
+            "justification": {
+              "type": "string"
+            },
+            "mode": {
+              "const": "declared_interpreter",
+              "type": "string"
+            },
+            "trust_boundary_ref": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mode",
+            "interpreter_program",
+            "trust_boundary_ref",
+            "justification"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "TaskId": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "base_commit_sha": {
+      "type": "string"
+    },
+    "contract_digest": {
+      "type": "string"
+    },
+    "contract_revision": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "deadline_utc": {
+      "type": "string"
+    },
+    "environment_allowlist": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "max_wall_clock_secs": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "project_id": {
+      "$ref": "#/$defs/ProjectId"
+    },
+    "required_delivery_stage": {
+      "$ref": "#/$defs/RequiredDeliveryBoundary"
+    },
+    "responsible_role": {
+      "$ref": "#/$defs/ResponsibleRole"
+    },
+    "root_id": {
+      "$ref": "#/$defs/RootId"
+    },
+    "runner": {
+      "$ref": "#/$defs/ExecutionRunnerRequirements"
+    },
+    "schema_version": {
+      "const": 1,
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "shell_boundary": {
+      "$ref": "#/$defs/ShellBoundaryPolicy"
+    },
+    "task_id": {
+      "$ref": "#/$defs/TaskId"
+    }
+  },
+  "required": [
+    "schema_version",
+    "project_id",
+    "root_id",
+    "task_id",
+    "contract_revision",
+    "contract_digest",
+    "base_commit_sha",
+    "runner",
+    "environment_allowlist",
+    "shell_boundary",
+    "deadline_utc",
+    "max_wall_clock_secs",
+    "responsible_role",
+    "required_delivery_stage"
+  ],
+  "title": "ExecutionRequirementsV2",
+  "type": "object"
+}

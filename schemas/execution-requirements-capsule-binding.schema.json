@@ -1,0 +1,83 @@
+{
+  "$defs": {
+    "RequiredDeliveryBoundary": {
+      "enum": [
+        "source_only",
+        "verified_candidate",
+        "merged_on_main",
+        "packaged",
+        "staged",
+        "canary_qualified",
+        "released_and_running"
+      ],
+      "type": "string"
+    },
+    "ResponsibleRole": {
+      "enum": [
+        "worker",
+        "verifier",
+        "auditor",
+        "captain",
+        "super_captain",
+        "owner"
+      ],
+      "type": "string"
+    },
+    "TaskId": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "base_commit_sha": {
+      "type": "string"
+    },
+    "contract_digest": {
+      "type": "string"
+    },
+    "contract_revision": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "placement_request_digest": {
+      "type": "string"
+    },
+    "rendered_summary": {
+      "type": "string"
+    },
+    "required_delivery_stage": {
+      "$ref": "#/$defs/RequiredDeliveryBoundary"
+    },
+    "requirements_digest": {
+      "type": "string"
+    },
+    "responsible_role": {
+      "$ref": "#/$defs/ResponsibleRole"
+    },
+    "schema_version": {
+      "const": 1,
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "task_id": {
+      "$ref": "#/$defs/TaskId"
+    }
+  },
+  "required": [
+    "schema_version",
+    "task_id",
+    "contract_revision",
+    "contract_digest",
+    "requirements_digest",
+    "placement_request_digest",
+    "base_commit_sha",
+    "responsible_role",
+    "required_delivery_stage",
+    "rendered_summary"
+  ],
+  "title": "ExecutionRequirementsCapsuleBinding",
+  "type": "object"
+}
