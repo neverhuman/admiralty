@@ -3302,3 +3302,45 @@ accompanied it. DOPE PR290 independently advanced to `5701ba33`, one repair
 commit after the audited worker; its CPU run was still in progress at07:33:30.
 Static inspection of that delta does not inherit the earlier source's tests or
 its saved CPU failure. Review/merge/deployment remain with the receiving owners.
+
+
+## GFI — unified Git Flow integration, 20 October 2026
+
+Host Mac. The ready protector/chat and linear-collapse lanes are combined on
+`codex/gitflow-unified` above actual receiving main
+`35b497838c7e78bd366f2a0fabb6a455692fd93e` after PR163 merged with green checks
+and exact-head review. Original published lane refs and foreign worktrees stay
+preserved. The detailed integration plan and branch reconciliation inventory
+record all428 refs/85 worktrees,20 dirty custody checkouts, historical aliases,
+optional old composition variants and the unaccepted unwired authority proposal.
+The deeper audit recovered the missing execution observation safety behavior
+while preserving current identity, admission and settlement APIs. The causal
+clock production guard was already present; this integration restores a distinct
+negative regression for it.
+
+Frozen code `ceb074e741ee384f8f0dc90eda4f1dcf3d0a8f69`, tree
+`2ffc8c27b7f1bc6044f613d743bd70b4d4835d23`, passes all20 local Node24/pnpm11.15.1
+matrix stages:1768 Rust tests (6 existing ignores),231 dashboard and47 browser
+tests, strict workspace Clippy, contracts, build and actual isolated binary
+canary. Logs remain `/private/tmp/adm.i7n4rR/logs`. Fresh final binaries also pass
+29 protected startup/chat/CLI checks; owned daemons stop and ports close.
+The local workflow/secret/locked dependency check passes across the full
+receiving-base range. Hosted Linux and pinned Jankurai remain separate gates.
+
+Eight controlled pre-fix browser assertions demonstrate the repaired anchor,
+manual collapse/live growth, shared-OID camera and filtered-project intent bugs.
+The historical91e screenshot paths had been overwritten by later runs; their
+original receipt hashes remain unchanged, with the retention limitation disclosed.
+Final-source PNGs are frozen in Git under
+`receipts/integration/artifacts/gitflow-unified-20261020/`.
+
+The [combined source receipt](../../../receipts/integration/gitflow-unified-20261020.json)
+records measured source/log/artifact bindings, prior failures and supplemental
+non-author source/document reviews. Its evidence-only commit follows the tested
+code. The Admiral reserved the next single integration slot and same independent
+reviewer. Final exact-head official review, hosted CI, eligible neverhumanbot
+approval, ordinary matched rebase merge and receiving-main verification remain
+pending at this record's time; they must be observed before reporting completion.
+No production deployment, enrollment, provider authority or DOPE mutation is
+inferred from these checks. Execution deadlines bound intentional polling/live
+waits; blocking kernel/filesystem/lock calls remain an explicit limitation.
