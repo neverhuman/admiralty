@@ -3344,3 +3344,43 @@ pending at this record's time; they must be observed before reporting completion
 No production deployment, enrollment, provider authority or DOPE mutation is
 inferred from these checks. Execution deadlines bound intentional polling/live
 waits; blocking kernel/filesystem/lock calls remain an explicit limitation.
+
+
+### GFI05 — explicit input and isolated browser qualification follow-up
+
+First candidate fc47 passes four hosted checks, including Linux Rust/legacy,
+contracts, security and pinned advisory Jankurai, but browser run39394318694
+reports45 passed/2 failed at the idle-opacity assertion and its dependent unopened textarea.
+The original log and role HOLD remain retained. Native touch emulation reproduces
+the original0.86/1 mismatch; the original hosted media state was not captured and
+is not invented. The repair opts this suite into explicit fine/hover input,
+uses actual CDP mouse movement and touch emulation, asserts real CSS capability
+and hover/focus states, and rebuilds every fixture after about:blank. Production
+CSS and application source remain unchanged. All prior route, retry, privacy,
+isolation and accessibility assertions stay in place.
+
+New frozen code `3171c5374b633a5ce011382b7c08b89e938d703a`, tree
+`148280b3d26b33449d0047304d721e08306a22fb`, passes all20 local stages again:
+1768 Rust tests (6 existing ignores),231 dashboard and47 browser tests, with
+strict Clippy/contracts/native canary/typechecks/build. Logs remain
+`/private/tmp/adm.u083dm/logs`. The focused5-test suite separately observes idle
+mouse0.86, real hover1, keyboard focus without hover1 and touch/no-hover idle1.
+A non-author coverage audit closes the missing source paths, including the
+one-line core module registration and shared test harness launch/custody seams.
+
+The evidence follow-up also corrects two stale Python inventory summary totals
+from11351/2293 to11370/2312; all40 inventory rows and exceptions stay unchanged.
+The six current Python policy tests pass after that correction. Exact daemon/CLI
+bytes match the prior29-check protected-chat smoke; no29 new executions are
+claimed. The current matrix separately runs its actual native binary canary.
+The pinned first-head audit remains advisory56 with80 findings/53 hard: its two
+new JSX select hits are source-reviewed SQL-detector false positives, while
+existing audit debt remains open. No strict compliance or new-head CI is inferred.
+
+The [follow-up receipt](../../../receipts/integration/gitflow-unified-input-20261020.json)
+records original/intermediate failures, repair scope, final source/log/image
+hashes, metadata correction and review boundaries. All original receipts/images
+remain preserved. Replacement exact-head official review, hosted CI, eligible
+approval and normal matched merge remain pending at this dated record. DOPE
+PR290 independently merged08:18:40 with its exact reviewed5701 tree; its earlier
+pending audit observations remain historical. No DOPE custody work was changed.
