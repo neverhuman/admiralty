@@ -1,0 +1,283 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-20T02:09:07.272816+00:00",
+  "source_commit": "62b57274e753a4b4feb9a64b07054ba8f2e8007a",
+  "scope": "current macOS arm64 host, release-profile real private bundle",
+  "file_count": 73,
+  "schema_count": 28,
+  "guard_module_count": 25,
+  "validator_root_count": 28,
+  "payload_bytes": 35441990,
+  "archive_bytes": 14469949,
+  "archive_sha256": "39d9bfe8f04f6d9878a245ae0c26487438e17d892c5652bb4e196eb8a2110230",
+  "manifest_raw_sha256": "c61e276dc47aea20cc8740a7e7a63b740d4b216d26226bad01ccb7ce3001ef73",
+  "explicit_allowlist_sha256": "a93ba94d5a6f3190255ec5b8e7d6a8e99a500b7bba7835d4f690faf5f2bcab52",
+  "reproducible_second_archive": true,
+  "all_installed_hashes_and_modes_verified": true,
+  "node_and_python_absent_from_child_path": true,
+  "commands": [
+    {
+      "label": "stage",
+      "exit_code": 0,
+      "elapsed_ms": 723.7,
+      "stdout_sha256": "27bf7c03e56706dc3d9ab0152931be59556585f9e0dc14ccbf19bb8c946c6024",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "archive",
+      "exit_code": 0,
+      "elapsed_ms": 1109.5,
+      "stdout_sha256": "b1a8092c572eb1f42aa4ae30dabafe63de3efe919448ebd638d6fe93a18228c5",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "archive-repeat",
+      "exit_code": 0,
+      "elapsed_ms": 1075.6,
+      "stdout_sha256": "73599f93438f5906b724bb873101532c2d113b76f422c7813f825062e889dbc4",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "install",
+      "exit_code": 0,
+      "elapsed_ms": 859.2,
+      "stdout_sha256": "5927a7992c29591aab187629a7acadf060d744617044bb4c92a1c5e522cd0fc5",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "no-overwrite",
+      "exit_code": 1,
+      "elapsed_ms": 5.6,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "0e214860d89ce4273130997f022faf3dcd8e3e8dea526a4eb290f07acfa71e6a"
+    },
+    {
+      "label": "tamper-rejected",
+      "exit_code": 1,
+      "elapsed_ms": 28.8,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e8caa0c2507802d238fe379d61c176c2f4fa4326eb811bbdd9c8851ed7c75013"
+    },
+    {
+      "label": "installed-doctor",
+      "exit_code": 0,
+      "elapsed_ms": 203.8,
+      "stdout_sha256": "0dca08638743ea33a07200c1ba4256b150d9dd5b25f819ee62e7ef3b5d64f24a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "installed-demo-snapshot",
+      "exit_code": 0,
+      "elapsed_ms": 25.4,
+      "stdout_sha256": "d74baed0e9b2b53932c40df57c2c31980f480d6b212e4f9c9dd5dd9d1ddfcade",
+      "stderr_sha256": "b5dcdd3e2ebf1117624687198040232cf657700f8321cd48d30a322cfe939502"
+    },
+    {
+      "label": "installed-admiraltyd-help",
+      "exit_code": 0,
+      "elapsed_ms": 145.0,
+      "stdout_sha256": "82c736fcabddfd7fee9d1dc61404bdd08c38ed93a83ee43c964b59ec9ff69d3b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "installed-admiralty-observe-help",
+      "exit_code": 0,
+      "elapsed_ms": 95.8,
+      "stdout_sha256": "3331645e400337f2e6c2ea1a0db57665bb905ac4d563bf8ffb4333493cae28fc",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "demo_journeys": [
+    {
+      "signal": "SIGINT",
+      "exit_code": 0,
+      "open_sse_families": 2,
+      "temp_cleanup": true,
+      "listener_released": true,
+      "http": [
+        {
+          "path": "/",
+          "status": 200,
+          "bytes": 539,
+          "elapsed_ms": 0.6
+        },
+        {
+          "path": "/healthz",
+          "status": 200,
+          "bytes": 68,
+          "elapsed_ms": 0.3
+        },
+        {
+          "path": "/v2/fleet",
+          "status": 200,
+          "bytes": 3216,
+          "elapsed_ms": 0.5
+        },
+        {
+          "path": "/v2/views",
+          "status": 200,
+          "bytes": 16325,
+          "elapsed_ms": 0.6
+        }
+      ]
+    },
+    {
+      "signal": "SIGTERM",
+      "exit_code": 0,
+      "open_sse_families": 2,
+      "temp_cleanup": true,
+      "listener_released": true,
+      "http": [
+        {
+          "path": "/",
+          "status": 200,
+          "bytes": 539,
+          "elapsed_ms": 0.5
+        },
+        {
+          "path": "/healthz",
+          "status": 200,
+          "bytes": 68,
+          "elapsed_ms": 0.3
+        },
+        {
+          "path": "/v2/fleet",
+          "status": 200,
+          "bytes": 3216,
+          "elapsed_ms": 0.4
+        },
+        {
+          "path": "/v2/views",
+          "status": 200,
+          "bytes": 16325,
+          "elapsed_ms": 0.5
+        }
+      ]
+    }
+  ],
+  "source_files": {
+    "crates/admiralty-cli/src/main.rs": "785bdb7608e3efd0a59619e678f4a58fa661b326674ac841c65ee7dd85127d2e",
+    "crates/admiralty-cli/src/native_package.rs": "41390dcbaba868621ff70eadfe635ca5ccde456c6eb2b8f6cac81ae58db74dcb",
+    "crates/admiralty-server/src/lib.rs": "fd757ff45055e0d4dd56fe374ea7440ad6f4dbd532e7259158b0b8e92178fad6",
+    "crates/admiralty-server/src/views.rs": "af0bd84f64759a27dfb242f7f7c0a9a5ac1539d6ed65887956a4b5fc7a8bead5",
+    "scripts/contracts/generate.mjs": "0edac7eae0d59375ff642ad76e635e234c65d5b86ddd1bcffc6aa405802cdc37",
+    "Cargo.lock": "fa9db54ff42b2eeb011e5b328e856329073ab97c3953d678bdf6d2aed31606bc",
+    "pnpm-lock.yaml": "0e118257c45b78246c250474389d088670bf7354dbbad7ed76fcb1941aa1e2c9"
+  },
+  "not_qualified": [
+    "clean machine",
+    "Linux distribution",
+    "Windows",
+    "observer live collection in empty PATH",
+    "global/service installation",
+    "upgrade with active jobs",
+    "signing/publisher provenance",
+    "SBOM/third-party notice closure",
+    "managed coding execution",
+    "full major release"
+  ],
+  "native_execution_qualified": false,
+  "full_release_qualified": false,
+  "private_report_sha256": "d5ec7a4d6edc8f05fdb9b26612ffb242e95c56938b56dd68392854d048a19edf",
+  "review_controls": {
+    "review_source": "37a27b5c926a205875d0c11263116723b2be9348",
+    "original_review_sha256": "4b024fd690320ae84100b4594264033ac5fb5ef7084717c226e298c2cfa441c1",
+    "findings": [
+      "R1: unknown browser cleanup must stop retry",
+      "R2: canceling the first projection must not escape shutdown join"
+    ],
+    "negative_controls": [
+      {
+        "finding": "R1",
+        "command": [
+          "pnpm",
+          "--dir",
+          "apps/dashboard",
+          "test",
+          "--run",
+          "--config",
+          "e2e/vitest.config.ts",
+          "e2e/process-custody.e2e.ts",
+          "-t",
+          "does not launch another attempt"
+        ],
+        "exit_code": 1,
+        "expected_semantic_failure": true,
+        "repaired_file_sha256": "87a3cafb0b78505920514ab19e60d6bf340f34ae8457767c85a04d345e7cc81f",
+        "log": "R1-negative.log"
+      },
+      {
+        "finding": "R2",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "admiralty-server",
+          "--lib",
+          "cancelled_first_request"
+        ],
+        "exit_code": 101,
+        "expected_semantic_failure": true,
+        "repaired_file_sha256": "af0bd84f64759a27dfb242f7f7c0a9a5ac1539d6ed65887956a4b5fc7a8bead5",
+        "log": "R2-negative.log"
+      }
+    ]
+  },
+  "domain_controls": {
+    "original_negative_controls": [
+      {
+        "control": "deadline",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "admiralty-core",
+          "--test",
+          "p02_contract_gaps",
+          "execution_requirements_v2_validates_contract_binding_shell_boundary_and_env"
+        ],
+        "exit_code": 101,
+        "expected_semantic_failure_seen": true,
+        "log": "deadline-original-negative.log"
+      },
+      {
+        "control": "recovery",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "admiralty-runtime",
+          "only_supported_snapshot_versions_propose_resume_and_schema_is_hash_bound"
+        ],
+        "exit_code": 101,
+        "expected_semantic_failure_seen": true,
+        "log": "recovery-original-negative.log"
+      }
+    ],
+    "corrected_scoped_tests": "Core P02, Runtime recovery, CLI recovery, upgrade/disaster and public contract tests pass; canonical private scratch is required on macOS."
+  },
+  "legacy_schemas": {
+    "retained_count": 23,
+    "raw_bytes_changed": 0,
+    "verification": "All23 read from Git3d69de6 and compared byte-for-byte to the28-root candidate output."
+  },
+  "parent_acceptance_changed": false,
+  "private_test_logs_note": "Original failures, canonical scratch correction, complete local logs and reviewer artifacts preserved privately; this sanitized receipt contains no credential/config/runtime observation data.",
+  "full_local_ci_at_artifact_observation": "Pending on final documentation/evidence commit; no full-candidate pass or hosted status inferred here.",
+  "source_demo_entrypoint": {
+    "command": [
+      "pnpm",
+      "demo"
+    ],
+    "listen_override": "owned random loopback test address",
+    "wrapper_signal": "SIGINT",
+    "wrapper_exit_code": -2,
+    "open_sse_families": 2,
+    "owned_process_group_absent": true,
+    "demo_temporary_state_removed": true,
+    "meaning": "The pnpm wrapper terminates by SIGINT; clean Rust signal shutdown was verified separately using installed release binaries."
+  }
+}

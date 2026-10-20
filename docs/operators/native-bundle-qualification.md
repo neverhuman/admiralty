@@ -65,3 +65,11 @@ collection, service installation, active-job upgrades, signing, publisher/build
 provenance, final SBOM/third-party notices and managed coding execution require
 separate qualification. Runtime execution/acceptance/activation flags stay false;
 this receipt does not accept the full major release.
+
+The [later community candidate](../../receipts/integration/community-release-candidate-20261020.json)
+contains all 28 registered public schemas and all 28 runtime validators in 73 explicit
+files. Its two complete archives are byte-identical; actual installed release
+binaries pass the same private-version checks and exit cleanly under SIGINT and
+SIGTERM while both SSE families remain open. The first-view cancellation and
+unknown-process retry failures have dedicated negative and positive controls.
+The qualification limits above still apply.
