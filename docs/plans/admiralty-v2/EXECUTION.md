@@ -3461,3 +3461,23 @@ identity and first-lane behavior. All19focused browser tests pass after this
 repair. The fd740 matrix does not qualify this successor; freeze the new source
 and repeat the complete matrix before publication/review/merge. Both original
 negatives, all historical passes and actual Chrome limits remain retained.
+
+Clean successor `e92f81ed2994db0ab6beee0492405bdc6b702a16`, tree
+`5be6994f845d6a4bd7bc887ddca3cd1855d455d2`, passes all20 local stages again:
+1768Rust tests/6existing ignores,232dashboard and50browser tests, with strict
+Clippy, contracts, typechecks, production build and actual native canary. Logs
+are `/private/tmp/adm.BNeeTq/logs`. The complete b3→e92 local security range passes.
+Actual Chrome on the captured DOPE producer now opens192c46f and its nearby
+short controls on first load without manual scrolling; real pointer33→32 and
+Enter32→33 pass with an unobstructed target and preserved inspector. The finite
+preview stops, its port closes, and its private runtime is preserved outside
+temporary storage with exact inode identity. This is source qualification, not
+the still-pending production rollout.
+
+The [source-bound short-range receipt](../../../receipts/integration/gitflow-short-ranges-20261020.json)
+records all source/log/artifact hashes, original failures, measured counts and
+limits. The following metadata-only commit adds this receipt and execution
+record. Exact-source independent review, hosted checks, actual eligible approval,
+ordinary matched merge and resulting-main/deployment verification remain pending.
+The sole controller has the original source-qualified deployment handback and
+new human escalation; no controller adoption or serialized handback is inferred.

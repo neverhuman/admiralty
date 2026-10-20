@@ -1,0 +1,402 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-20T21:58:05.730186+00:00",
+  "task": "GFI08 short Git Flow sequences and focused lower lanes",
+  "base": "b3ab31c8a0752c1d70f75830ab0ad675b9096643",
+  "qualified_code": "e92f81ed2994db0ab6beee0492405bdc6b702a16",
+  "qualified_tree": "5be6994f845d6a4bd7bc887ddca3cd1855d455d2",
+  "clean_before_and_after": true,
+  "source_files": [
+    {
+      "path": "README.md",
+      "blob": "4dc2a8942a556f7d0006e8e0bfd8a10ad15bf10a",
+      "sha256": "5695479a0aad1f076891a06b6473e720dd4e1cad90b9d7d5bf06cc19161f8806"
+    },
+    {
+      "path": "apps/dashboard/e2e/live-views.e2e.ts",
+      "blob": "6cb0c1bcec3d1f82e7a354ae0813cedd7e4468bc",
+      "sha256": "791349c2e4202611820aae126c5a8331bd41f6b5e2117cb8af66f785f887e71c"
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/GitFlow.tsx",
+      "blob": "f35ffc4604a79d4b6239ea3af73c9c45d89f790a",
+      "sha256": "243002597ae60ad252e63e48146525d06b9e012a566f589b5159c615bed33a8f"
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/geometry.ts",
+      "blob": "b323dc72d0c91ab2c17a6298201d3b8f1eaa93e0",
+      "sha256": "3b9e1157458707846706290770d80f6eb88311e38d3546db5cbf5015d62d8a03"
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/git-compression.test.ts",
+      "blob": "95f2781dc80e9de37be607e129ccbcc54c89e7c7",
+      "sha256": "78590db8f541ae4b92e1aff176142410c801655b6993412671f61693ce36bd57"
+    },
+    {
+      "path": "apps/dashboard/src/features/live-views/live-views.css",
+      "blob": "c60ed830d11f8df2f6f9c1f301ee53997ceea0d6",
+      "sha256": "f862530b329812c6c169a18a70166aa444a23225519157daa6315f0fb3e872ff"
+    },
+    {
+      "path": "docs/operators/live-views.md",
+      "blob": "b755718d61bd365c4df50861a857349e765c21ee",
+      "sha256": "f0721daf1d841f3bb9b3f99bf6f731c9ff657640e4e8c5e01f6c6043d971525a"
+    },
+    {
+      "path": "docs/plans/admiralty-v2/EXECUTION.md",
+      "blob": "709977ce274ed2397d63168821ee35311b28296e",
+      "sha256": "8fadc14dbdfae54ac9ed68fd0818578a273bf7e37b3cf614c3903d7c3e2620c5"
+    },
+    {
+      "path": "docs/plans/admiralty-v2/GITFLOW_SHORT_RANGES_2026-10-20.md",
+      "blob": "f4cb7ef6299222d0078d6b881853e3aabcda1e30",
+      "sha256": "2ff9f1dedbbab80e24b9ce2b34455b1f9f066688ed7952feece92ea07c0631af"
+    }
+  ],
+  "behavior": [
+    "Collapse at least2eligible interiors; retain genuine forks/merges/roots/tips/missing parents/refs/checkout anchors",
+    "Use compact controls sized to omitted columns; full endpoints/count in accessible metadata,24px minimum at extremezoom",
+    "Center direct selected lane vertically, clamped at project top; retain scoped focus and manual intent"
+  ],
+  "local_matrix": {
+    "command": "Node24/pnpm11.15.1 pnpm check with ADMIRALTY_TARGET_DIR=/Users/bentaylor/.codex/worktrees/git-short-ranges/admiralty/target",
+    "exit_code": 0,
+    "stages": [
+      {
+        "number": 1,
+        "command": "pnpm install --frozen-lockfile --ignore-scripts ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/01.log",
+          "bytes": 85,
+          "sha256": "f39886c89bdecc91f56848513b2cb689eb4c0e4ed134ec850db786eadca4343b"
+        }
+      },
+      {
+        "number": 2,
+        "command": "cargo fmt --all -- --check ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/02.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "number": 3,
+        "command": "cargo clippy --workspace --all-targets --locked -- -D warnings ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/03.log",
+          "bytes": 60,
+          "sha256": "658632356d3becae36d19b43fc147b50203959c9f2a14b009970de21a9cb12b0"
+        }
+      },
+      {
+        "number": 4,
+        "command": "cargo test --workspace --locked ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/04.log",
+          "bytes": 198666,
+          "sha256": "336129db305677dd4a216f58ab0275ec755c4dd5bcf3eac6120555ce51dfac08"
+        }
+      },
+      {
+        "number": 5,
+        "command": "python3 -m unittest discover -s tests/legacy -v ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/05.log",
+          "bytes": 14446,
+          "sha256": "4465ce6dfc7de2db12ccffca06470f64a37a5c6a59c1c6b342db604b3d93d762"
+        }
+      },
+      {
+        "number": 6,
+        "command": "python3 -m unittest discover -s tests -p test_sc_audit\\*.py -v ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/06.log",
+          "bytes": 57712,
+          "sha256": "5f2276e4954e24e642b1177882c1b5a9eaceb54843cc2bd7ecb77eea56b91b75"
+        }
+      },
+      {
+        "number": 7,
+        "command": "python3 tests/fixtures/legacy/verify.py ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/07.log",
+          "bytes": 961,
+          "sha256": "0e0184a1f618d4faddb38ee3729d4242d23b5874a383d5bc176d8da72931000f"
+        }
+      },
+      {
+        "number": 8,
+        "command": "python3 scripts/release/package.py --self-test ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/08.log",
+          "bytes": 1451,
+          "sha256": "df4ee2ca2e7d1905d08d20cab14a2d6c69adfcb58dbb31b863fa24d7945c1686"
+        }
+      },
+      {
+        "number": 9,
+        "command": "python3 scripts/check/canary-smoke.py --self-test ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/09.log",
+          "bytes": 3820,
+          "sha256": "be3bef9205e24a949fead479929ab5e5c197d9e25170865231ebb2b22efb2d09"
+        }
+      },
+      {
+        "number": 10,
+        "command": "cargo build -p admiralty-server -p admiralty-cli -p admiralty-observe --locked ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/10.log",
+          "bytes": 60,
+          "sha256": "8a10254974bbd1a52574924f2ba6e2e78269a27b8d61c996e00c4498f15edb56"
+        }
+      },
+      {
+        "number": 11,
+        "command": "python3 scripts/check/canary-smoke.py --admiraltyd-binary /Users/bentaylor/.codex/worktrees/git-short-ranges/admiralty/target/debug/admiraltyd --admiralty-binary /Users/bentaylor/.codex/worktrees/git-short-ranges/admiralty/target/debug/admiralty --scratch-root /private/tmp/adm.BNeeTq/canary ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/11.log",
+          "bytes": 1564,
+          "sha256": "8a9f8de8548a46947e060d1044eff7ba170d7df99df3598a5b8aa320e83b6bfa"
+        }
+      },
+      {
+        "number": 12,
+        "command": "cargo run -p admiralty-cli --locked -- contracts check ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/12.log",
+          "bytes": 1265,
+          "sha256": "8c9b7b89255e45b286320ce1da7ec4d6b8fbb2cbb4e69c7da7333c7cb3bd479f"
+        }
+      },
+      {
+        "number": 13,
+        "command": "pnpm contracts:check ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/13.log",
+          "bytes": 124,
+          "sha256": "217a27a6700351aca4cde48752d84901bc7bbd849444577952ab8f4991c1c0c1"
+        }
+      },
+      {
+        "number": 14,
+        "command": "pnpm --dir packages/contracts test ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/14.log",
+          "bytes": 1685,
+          "sha256": "6ccecf19b1c246e3849e869bdae54c695769ec0976fc0dc0c101280b480a57e4"
+        }
+      },
+      {
+        "number": 15,
+        "command": "pnpm --dir apps/dashboard typecheck ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/15.log",
+          "bytes": 24,
+          "sha256": "5cfb036289d819b2a87e947d65f4532031dd37753f3cf2def0f77d398eea1737"
+        }
+      },
+      {
+        "number": 16,
+        "command": "pnpm --dir apps/dashboard test --run ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/16.log",
+          "bytes": 257,
+          "sha256": "ee128a92631843cda0564180ee5ff487a34f52bd7646a969f7a9866754e6a64e"
+        }
+      },
+      {
+        "number": 17,
+        "command": "pnpm --dir apps/dashboard exec tsc -p e2e/tsconfig.json --noEmit ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/17.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "number": 18,
+        "command": "env NODE_ENV=production pnpm --dir apps/dashboard build ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/18.log",
+          "bytes": 1372,
+          "sha256": "602e5319d8585e9e315081f815d7ef86c3380972714810691af578c71ee515d4"
+        }
+      },
+      {
+        "number": 19,
+        "command": "node -e const\\ fs=require\\(\\\"node:fs\\\"\\)\\,crypto=require\\(\\\"node:crypto\\\"\\)\\;if\\(crypto.createHash\\(\\\"sha256\\\"\\).update\\(fs.readFileSync\\(\\\"node_modules/axe-core/axe.min.js\\\"\\)\\).digest\\(\\\"hex\\\"\\)\\!==\\\"20c09fe157a8a34a30e241aaa1fcdade657734f08ab379ecfbeb7d45cc46e878\\\"\\)process.exit\\(1\\) ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/19.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "number": 20,
+        "command": "pnpm --dir apps/dashboard test --run --config e2e/vitest.config.ts ",
+        "exit_code": 0,
+        "log": {
+          "path": "/private/tmp/adm.BNeeTq/logs/20.log",
+          "bytes": 257,
+          "sha256": "7d28de0890e187662edd269e6f69c81fc603eda65120c977bfc1039e475ffae0"
+        }
+      }
+    ],
+    "environment": {
+      "path": "/private/tmp/adm.BNeeTq/logs/environment.log",
+      "bytes": 262,
+      "sha256": "5887644234120da91028f9553df4ebb076d4c527d4cebae816b0b25f445392cf"
+    },
+    "rust": {
+      "passed": 1768,
+      "failed": 0,
+      "ignored": 6,
+      "targets": 167
+    },
+    "dashboard_passed": 232,
+    "browser_passed": 50
+  },
+  "security": {
+    "scan_base": "b3ab31c8a0752c1d70f75830ab0ad675b9096643",
+    "exit_code": 0,
+    "log": {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/e92-security-full-range.log",
+      "bytes": 519,
+      "sha256": "009a9a6d7c14d675b749cf5a4ecf88f5c553971fe722d2f308a4aaa873137720"
+    }
+  },
+  "negative_and_supplemental_evidence": [
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/short-range-negative.log",
+      "bytes": 2667,
+      "sha256": "b96ce1eb00870d2c6721c40ca09385a1c60b4518ef6823a368667f8e27142485"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/lower-lane-negative.log",
+      "bytes": 2111,
+      "sha256": "584ad8d98e5732d03891fc95e57052b48ca9fa87692a223b1340b1ebe0216c25"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/short-range-browser-focused.log",
+      "bytes": 1698,
+      "sha256": "e90f18ced83985eb10314dc0d76de266868da954e36fcb3abb4dc8e159f61e54"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/short-range-browser-focused-after-fixture-sync.log",
+      "bytes": 269,
+      "sha256": "2f46f7f5f2f82700eaee0dbff0fd3d79fcd16b05fd2e346f78672fd365d17404"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/lower-lane-focused-all.log",
+      "bytes": 269,
+      "sha256": "5b1a13ee7febe192f63eb58fcf88074da521a13e653017937b52b0fdaf5d8e5d"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/actual-public-producer.json",
+      "bytes": 1748502,
+      "sha256": "ad5da4253142a7ef665eff6064d57f0364b004ef8d5f69088bea3bfb87a52a8f"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/actual-merged-algorithm-diagnostic.json",
+      "bytes": 745,
+      "sha256": "2cda0141700d72fe28d1ea8332b120975e37dc2b59f3111bf079af05404a818d"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/repaired-actual-producer-algorithm.json",
+      "bytes": 836,
+      "sha256": "de05f39c246a498cf78069c28f3f235011567da13108366c5a2fea83f92b8fbf"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/source-preview-real-dope-controls.json",
+      "bytes": 1200,
+      "sha256": "ee4af5e75a4324669df28a70a0e657a2799294e3234b81f1d69b649595fc1aa7"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/source-preview-e92-direct-focus.json",
+      "bytes": 1006,
+      "sha256": "6261f20fea698933d0255a06a6ebdd8718c86e7d01f27a64735f78793cdb0ed1"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/source-preview-e92-direct-focus.png",
+      "bytes": 116693,
+      "sha256": "33ccc3d6f4863603e39d3fc700af35eb8e246fdd0c114ac79577412f9ddb7f5f"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/source-preview-v2-stop.json",
+      "bytes": 218,
+      "sha256": "675264dca08c90313309ddc52457f25a2f1d51cecebc834e549608f1e4459e08"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/source-preview-v3-stop.json",
+      "bytes": 218,
+      "sha256": "261c281a98dd824a3ada1987cdd6f94d9d0a83906e2649919a27c198cb54506c"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/owned-preview-temp-relocation.json",
+      "bytes": 1697,
+      "sha256": "19ff1de41e9e219fff3f216e8f95857028fc88d859f0a016a9562d268897d140"
+    },
+    {
+      "path": "/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/fd740-all20-local-source-receipt.json",
+      "bytes": 4442,
+      "sha256": "eed9656e7978a483fd5acd0572ae7e6526ee93621b60f29815496ef502c7a159"
+    }
+  ],
+  "actual_chrome_source_preview": {
+    "source": "e92f81ed2994db0ab6beee0492405bdc6b702a16",
+    "captured_producer_utc": "2026-10-20T21:28:06Z",
+    "real_pointer_expansion": "33→32collapsedranges",
+    "keyboard_Enter_recollapse": "32→33",
+    "selected_192c46f_visible_without_manual_scroll": true,
+    "prior_source_global_controls": "33→0→33; sourcecamera delta separately covered in50browser fullmatrix",
+    "all_preview_processes_stopped_ports_closed": true,
+    "production_deployment": false
+  },
+  "prior_findings": {
+    "initial_short_range_negatives": "3actual failing unit assertions before repair",
+    "initial_browser_fixture": "17/18pass, nextfixture sawprior producer; wait exactnew count, assertionsunchanged, original retained",
+    "lower_lane_negative": "Actual focused20branch test timesout under prior band-top-only camera; repaired19focused and50full browser PASS",
+    "fd740_matrix": "Actual20PASS on earlier source preserved, not transferred to this successor"
+  },
+  "publication": {
+    "new_PR": null,
+    "current_head_hosted_checks": "pending",
+    "independent_exact_source_review": "pending",
+    "eligible_bot_exact_head_approval": "pending",
+    "normal_matched_merge": "pending",
+    "resulting_main_checks": "pending",
+    "actual_production_rollout": "pending"
+  },
+  "preservation": [
+    "Original dirty checkout/foreign84worktrees and20dirtycustody retained",
+    "Original published inputproofrefs retained; no private controller/pin/template/service changes",
+    "Only own terminated preview runtime relocated by same-device/inode atomicrename"
+  ],
+  "limits": [
+    "Minimum-size target can exceed two tiny columns at extremezoom; preserve usabletarget",
+    "Captured public producer/sourcepreview/localCI is not actual production enrollment/provider/science/fullnative release",
+    "Advisory audit debt remains, no strictcompliance claim",
+    "Evidence-only successor may add this receipt and execution record; no source/test executable delta authorized without requalification"
+  ]
+}
