@@ -1063,15 +1063,34 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(cleanup_owned_child(child), "already_exited")
 
     def test_term_ignoring_child_gets_handle_bound_kill_and_is_reaped(self) -> None:
-        code = "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); print('ready',flush=True); time.sleep(30)"
+        # Deliberately slow startup proves cleanup waits for the installed
+        # handler, rather than racing a fixed sleep against interpreter startup.
+        code = "import signal,time; time.sleep(0.2); signal.signal(signal.SIGTERM, signal.SIG_IGN); print('ready',flush=True); time.sleep(30)"
         child = subprocess.Popen([sys.executable, "-c", code], stdin=subprocess.DEVNULL,
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=False)
-        time.sleep(0.1)
-        before = time.monotonic()
-        result = cleanup_owned_child(child)
-        self.assertEqual(result, "killed_after_term_timeout")
-        self.assertIsNotNone(child.returncode)
-        self.assertLess(time.monotonic() - before, TERM_WAIT_SECONDS + FINAL_WAIT_SECONDS + 1)
+                                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=False)
+        ready = threading.Event()
+        output: list[bytes] = []
+
+        def read_ready() -> None:
+            assert child.stdout is not None
+            output.append(child.stdout.read(6))
+            ready.set()
+
+        reader = threading.Thread(target=read_ready, daemon=True)
+        reader.start()
+        try:
+            self.assertTrue(ready.wait(MAX_STARTUP_SECONDS), "child did not install its SIGTERM handler")
+            self.assertEqual(output, [b"ready\n"])
+            before = time.monotonic()
+            result = cleanup_owned_child(child)
+            self.assertEqual(result, "killed_after_term_timeout")
+            self.assertIsNotNone(child.returncode)
+            self.assertLess(time.monotonic() - before, TERM_WAIT_SECONDS + FINAL_WAIT_SECONDS + 1)
+        finally:
+            cleanup_owned_child(child)
+            reader.join(timeout=FINAL_WAIT_SECONDS)
+            if child.stdout is not None:
+                child.stdout.close()
 
     def test_redaction_never_emits_generated_token(self) -> None:
         self.assertNotIn("synthetic-secret", redact(b"token=synthetic-secret", "synthetic-secret"))

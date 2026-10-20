@@ -71,13 +71,13 @@ Private `msg-UUID.json` and `reply-UUID.json` files are the durable journal and 
 
 Text is limited to 8192 UTF-8 bytes. HTTP bodies and individual files are bounded. Each target admits at most 512 messages, reserving room for replies; total directory enumeration stops at 2048 entries. HTTP history shows the latest 100 outgoing records and 100 replies across the project's routes, with `history_truncated` when older records remain. The CLI exposes retained messages. Capacity errors block new publication until the operator preserves and archives acknowledged records.
 
-Keep automatic Git-health records as durable deduplication receipts while the same fingerprint remains actionable. Archiving those records while a problem remains can cause its stable-ID notification to be published again. Do not delete uncertain or unacknowledged instructions. This version does not run automatic retention or cleanup.
+Preserve `health-UUID.json` delivery receipts when archiving acknowledged messages. They bind the project and target enrollment to the last observed fingerprint, incident episode, and notification outcome. They suppress an unchanged alert across restart even after its acknowledged message is archived. A recovery followed by the same problem starts a new episode and creates a new notification. Do not delete uncertain or unacknowledged instructions. This version does not run automatic retention or cleanup.
 
 ## Git protector delivery
 
 Enable explicit observer policy described in [git-health.md](git-health.md). The server reads the producer status once every five seconds into a shared cache. `GET /v2/git/health` reads that cache; it never invokes Git. The same loop publishes actionable reports to the configured project Captain even with no browser open.
 
-A notification ID binds project, target and report fingerprint. Unchanged findings do not create additional messages, including after server restart. A failed scan keeps its old Git timestamp; a fresh producer generation can still notify that new failure. Producer status older than 90 seconds cannot trigger new captain messages. Cache/read/delivery failures remain visible as unavailable/stale health evidence. Unknown coverage never becomes healthy.
+A notification ID binds project, target, report fingerprint and incident episode. Unchanged findings do not create additional messages, including after server restart. A failed scan keeps its old Git timestamp; a fresh producer generation can still notify that new failure. Producer status older than 90 seconds cannot trigger new captain messages. Cache/read/delivery failures remain visible as unavailable/stale health evidence. Unknown coverage never becomes healthy. A failed destination does not block notifications to other captains.
 
 ## Activation check
 
