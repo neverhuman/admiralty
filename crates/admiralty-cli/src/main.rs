@@ -833,10 +833,10 @@ async fn run(cli: Cli) -> CliResult<()> {
                 message_id,
                 text_file,
             } => {
-                let bytes = fs::File::open(text_file)?
+                let mut bytes = Vec::new();
+                fs::File::open(text_file)?
                     .take(8193)
-                    .bytes()
-                    .collect::<std::result::Result<Vec<_>, _>>()?;
+                    .read_to_end(&mut bytes)?;
                 let text = std::str::from_utf8(&bytes)?;
                 print_json(serde_json::to_value(
                     admiralty_server::operator_chat::reply(&directory, &message_id, text)?,
