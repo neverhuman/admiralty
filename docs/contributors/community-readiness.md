@@ -25,9 +25,14 @@ These rows describe executed evidence, not portability guarantees. Linux
 systemd resource/isolation claims do not transfer to macOS. An ordinary worktree
 or private file does not isolate another process running as the same OS user.
 
-The [latest source qualification](../../receipts/integration/community-release-startup-20261020.json)
+The [startup and bundle qualification](../../receipts/integration/community-release-startup-20261020.json)
 records all 20 local stages, 1,729 Rust executions (five existing ignored
 helpers), 187 dashboard unit tests and 30 browser/harness tests at `d1659f4`.
+The later [dashboard qualification](../../receipts/integration/live-trends-display-20261020.json)
+passes all20 stages at `ce5504a`, including1,735 Rust executions,197 dashboard
+units and32 browser tests. It covers observed-sample trends, source ages and a
+maximum of two display decimals. It does not establish deployment or native
+provider execution; later label/test wording and final-head checks are separate.
 Separate Linux runs passed 238 Store and two actual demo signal tests. A real
 73-file macOS release-profile bundle passed private installation and both
 open-SSE shutdown journeys. Hosted checks, delivery and remaining release gates

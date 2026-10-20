@@ -86,7 +86,7 @@ export function TokenEfficiency({ snapshot }: { snapshot: LegacySnapshot }) {
           : <>{measuredCost ? <>Measured token mix · last 15 min · {cost === null ? 'full aggregate unknown' : 'full aggregate'}</>
             : number(efficiency.cost_index_avg_output_rate) !== null ? <>{metric(efficiency.cost_index_avg_output_rate)} cr/1M output · agent weighted</>
               : cost !== null ? `Full aggregate · source ${fullCostTime || 'time unknown'}` : 'Cost basis unknown'}
-            {observedCost !== null && <> · observed sample {fmt(observedCost)}× (partial, {observedCostTime || 'source time unknown'})</>}
+            {observedCost !== null && <> · observed sample {fmt(observedCost)}× ({observedCostTime || 'source time unknown'})</>}
           </>} />
       <Kpi label="Codex burn · last 60 min" value={<>{metric(hour.credits_per_hour_est)} <span>cr/h</span></>}
         note={<><span className="te-estimate">Estimate{incomplete ? ' · priced subtotal' : ''}</span> · 15m pace {metric(quarter.credits_per_hour_est)} cr/h{quarterIncomplete ? ' (subtotal)' : ''}<br />{compact(hour.output_tokens)} out / {compact(hour.input_tokens)} in <span>· measured tokens</span></>} />

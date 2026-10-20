@@ -104,13 +104,13 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
       const hasLiveCost = numeric(te.cost_index_vs_all_luna) !== null || numeric(te.cost_index_observed_vs_all_luna) !== null;
       const values: Value[] = [];
       if (full !== null) values.push({ label: 'Full aggregate cost index', value: `${formatMeasurement(full)}×`, color: '#f2c335' });
-      if (observed !== null) values.push({ label: 'Observed sample cost index · partial coverage', value: `${formatMeasurement(observed)}× observed`, color: '#58a6ff' });
+      if (observed !== null) values.push({ label: 'Observed sample cost index', value: `${formatMeasurement(observed)}× observed`, color: '#58a6ff' });
       if (!values.length) values.push({ label: 'Cost index unknown', value: 'unknown', color: '#8b949e' });
       const note = [text(te.cost_index_note) || text(last.cost_basis),
         observed === null ? '' : text(te.cost_index_observed_note) || text(last.cost_observed_basis) || 'Observed/priced Codex samples only; partial coverage, not full spend.'].filter(Boolean).join(' · ') || 'Cost basis unknown';
       return { ...make('cost-index', 'Cost index vs all-Luna (1.0 = all Luna)', values,
         [...single('cost-full', 'Full aggregate', '#f2c335', row => row.cost_index),
-          ...single('cost-observed', 'Observed sample · partial', '#58a6ff', row => row.cost_index_observed)], note,
+          ...single('cost-observed', 'Observed sample', '#58a6ff', row => row.cost_index_observed)], note,
         hasLiveCost ? validIsoTime(snapshot.generated_utc) || historicalTime
           : historicalTime) };
     })(),
