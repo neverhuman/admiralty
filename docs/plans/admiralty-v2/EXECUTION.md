@@ -3171,3 +3171,23 @@ dependency equality and measurement/platform limits. Independent review and the
 final whole matrix/hosted gates remain separate. Production stays on the last
 qualified main until ordinary merge and the sole controller's serial cutover;
 P03 and full native release acceptance remain false.
+
+### Partial hygiene observations — October20
+
+PR162 merged normally at05:54:56Z after exact-head bot approval and all five
+hosted checks passed. Actual main6e974790 has the same tree as qualified source
+d279166; the sole adopted watcher owns production cutover. There are no other
+open PRs at that observation.
+
+The real05:55:53Z producer still reports null final hygiene scores, but supplies
+per-project possible_score_range, known_component_subtotal and an04:22:27Z audit
+clock. The UI discarded that partial observation and labeled it not reported.
+Cards and hierarchy now show the reported range/subtotal as a partial audit.
+History retains only allowlisted numeric bounds/subtotal and the original
+per-project audit time; separate minimum/maximum series do not become a final
+score. Missing/invalid/out-of-range intervals remain unknown. Original source
+fails the new partial-audit mock; the restored candidate passes15 temporal
+tests,65 observer tests and the dashboard typecheck. Whole local/hosted gates
+and actual deployment remain separate from these scoped checks. Root requested
+the existing Admiral complete missing audit measurements; no score, grade,
+source freshness or native acceptance is inferred.

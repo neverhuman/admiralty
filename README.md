@@ -85,7 +85,7 @@ These captures use the deployment's explicitly public producer view. Private nat
 
 ## What you can use today
 
-- **Fleet observations:** configured project ledgers, task stages, Git/PR evidence, agent/model observations, resource measurements and thirteen temporal plots. Live measurements display at most two decimal places. Full totals and explicitly labeled observed samples remain distinct; missing measurements and original source times remain visible.
+- **Fleet observations:** configured project ledgers, task stages, Git/PR evidence, agent/model observations, resource measurements and thirteen temporal plots. Live measurements display at most two decimal places. Full totals and explicitly labeled observed samples remain distinct. Partial hygiene audits show their reported range and known subtotal; final scores require complete audit measurements. Missing measurements and original source times remain visible.
 - **Git Flow and Fleet Atlas:** ancestry, branches, linked/detached checkouts, command relationships, searchable inventories and evidence inspectors. Requested model names, configured roles and observed processes retain distinct meanings.
 - **Scoped native coordination:** durable typed captain–admiral messages, exact retries, own-inbox application receipts, task contracts and compact context through authenticated CLI/MCP and HTTP adapters.
 - **Offline tools:** workplan previews and immutable revision registration, contract validation, backups and restore rehearsals. Release tools stage explicit inputs, create archives and install a new private version directory.

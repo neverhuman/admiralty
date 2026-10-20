@@ -84,6 +84,37 @@ describe('dense temporal dashboard strip', () => {
     expect(metric.series[0].points).toEqual([{ time: Date.parse('2026-10-18T10:00:00Z') / 1000, value: 87.654321 }]);
     expect(metric.values[0].value).toContain('87.65');
   });
+  it('reports real partial hygiene ranges in current cards and retained history without inventing a final score', () => {
+    const source = snapshot(), at = '2026-10-18T10:00:00Z';
+    const partial = { score: null, grade: null, possible_score_range: [30.123456, 80.987654], known_component_subtotal: 80.987654, observed_utc: at };
+    source.super_captain = { status_mtime_utc: source.generated_utc, status: { captains: { alpha: { hygiene: partial } } } };
+    source.hierarchy = { captains: [{ key: 'alpha', name: 'Project Alpha', workers: [] }] };
+    source.history = { rows: [1792321200, 1792321320].map(ts => ({ ts, hyg_at: { alpha: Date.parse(at) / 1000 }, hyg: { alpha: partial } })) };
+    const metric = () => buildTemporalMetrics(source).metrics.find(item => item.id === 'hygiene')!;
+    expect(metric().values[0].value).toContain('30.12–80.99 range · partial audit · known subtotal 80.99');
+    expect(metric().values[0].label).toContain(at);
+    expect(metric().series[0].points).toEqual([{ time: Date.parse(at) / 1000, value: null }]);
+    expect(metric().series.find(item => item.id === 'alpha-partial-0')!.points).toEqual([{ time: Date.parse(at) / 1000, value: 30.123456 }]);
+    expect(metric().series.find(item => item.id === 'alpha-partial-1')!.points).toEqual([{ time: Date.parse(at) / 1000, value: 80.987654 }]);
+    const html = renderToStaticMarkup(<><TemporalPlots snapshot={source} /><LegacyHierarchy snapshot={source} /></>);
+    expect(html).toContain('30.12–80.99 range');
+    expect(html).toContain('partial audit');
+    expect(html).not.toContain('30.123456');
+    expect(html).not.toContain('80.987654');
+    source.super_captain = {};
+    expect(metric().values[0].label).toContain('history at 2026-10-18T10:00:00.000Z');
+    expect(metric().values[0].value).toContain('30.12–80.99 range');
+  });
+  it('keeps malformed hygiene ranges unknown and retains a measured zero range', () => {
+    for (const range of [[90, 80], [-1, 80], [0, 101], [null, 80], ['0', 80], [0, 80, 90], []]) {
+      const source = snapshot(); source.history = { rows: [] };
+      source.super_captain = { status: { captains: { alpha: { hygiene: { score: null, possible_score_range: range, known_component_subtotal: 80 } } } } };
+      expect(buildTemporalMetrics(source).metrics.find(item => item.id === 'hygiene')!.values[0].value).toBe('Not reported by Admiral');
+    }
+    const source = snapshot(); source.history = { rows: [] };
+    source.super_captain = { status: { captains: { alpha: { hygiene: { score: null, possible_score_range: [0, 0], known_component_subtotal: 0 } } } } };
+    expect(buildTemporalMetrics(source).metrics.find(item => item.id === 'hygiene')!.values[0].value).toContain('0–0 range · partial audit · known subtotal 0');
+  });
   it('restores all thirteen old metrics from the actual collector field names', () => {
     const model = buildTemporalMetrics(snapshot());
     expect(model.metrics.map(metric => metric.id)).toEqual(['cost-index', 'luna-failures', 'burn-up', 'in-progress', 'agent-tiers',

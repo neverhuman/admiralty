@@ -30,6 +30,29 @@ fn numeric(v: &Value) -> Value {
         .unwrap_or(Value::Null)
 }
 
+/// Retain a reported partial audit without turning its interval into a score.
+fn hygiene_observation(value: &Value) -> Value {
+    let score = numeric(value.get("score").unwrap_or(value));
+    if score.as_f64().is_some_and(|n| n <= 100.0) {
+        return score;
+    }
+    let Some(range) = value["possible_score_range"]
+        .as_array()
+        .filter(|v| v.len() == 2)
+    else {
+        return Value::Null;
+    };
+    let (Some(low), Some(high)) = (numeric(&range[0]).as_f64(), numeric(&range[1]).as_f64()) else {
+        return Value::Null;
+    };
+    if low > high || high > 100.0 {
+        return Value::Null;
+    }
+    let subtotal = numeric(&value["known_component_subtotal"]);
+    json!({"score":null,"possible_score_range":[low,high],"known_component_subtotal":
+        subtotal.as_f64().filter(|n| *n <= 100.0)})
+}
+
 fn observed_yield(total: &Value) -> Value {
     let mut observed = json!({});
     for (key, source) in [
@@ -84,7 +107,13 @@ fn historical_row(value: &Value) -> Option<Value> {
             })
             .unwrap_or_default()
     };
-    let mut result = json!({"ts":at,"cost_basis":value["cost_basis"].as_str().map(io::clean),"cost_observed_basis":value["cost_observed_basis"].as_str().map(io::clean),"hygiene_note":value["hygiene_note"].as_str().map(io::clean),"tiers":numeric_map(&value["tiers"]),"hyg":numeric_map(&value["hyg"])});
+    let hygiene = value["hyg"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .map(|(id, value)| (id.clone(), hygiene_observation(value)))
+        .collect::<Map<_, _>>();
+    let mut result = json!({"ts":at,"cost_basis":value["cost_basis"].as_str().map(io::clean),"cost_observed_basis":value["cost_observed_basis"].as_str().map(io::clean),"hygiene_note":value["hygiene_note"].as_str().map(io::clean),"tiers":numeric_map(&value["tiers"]),"hyg":hygiene});
     result["hyg_at"] = json!(
         value["hyg_at"]
             .as_object()
@@ -173,9 +202,11 @@ fn row(snapshot: &Value, at: i64) -> Value {
     if let Some(source) = snapshot["projects"].as_object() {
         for (id, p) in source {
             projects.insert(id.clone(),json!({"done":numeric(&p["done"]),"total":numeric(&p["total"]),"ip":numeric(&p["counts"]["in_progress"]),"ci":p["pr"]["ci"]["state"],"pr":p["pr"]["number"],"st":p["stages"]}));
-            let h = &snapshot["super_captain"]["status"]["captains"][id]["hygiene"]["score"];
-            if !numeric(h).is_null() {
-                hygiene.insert(id.clone(), numeric(h));
+            let h = hygiene_observation(
+                &snapshot["super_captain"]["status"]["captains"][id]["hygiene"],
+            );
+            if !h.is_null() {
+                hygiene.insert(id.clone(), h);
                 hygiene_at.insert(id.clone(), hygiene_time(snapshot, id, at));
             }
         }
@@ -190,9 +221,10 @@ fn row(snapshot: &Value, at: i64) -> Value {
         if !projects.contains_key(id) {
             projects.insert(id.into(),json!({"done":numeric(&rollout["done"]),"total":numeric(&rollout["total"]),"ip":numeric(&rollout["counts"]["in_progress"]),"ci":rollout["pr"]["ci"]["state"],"pr":rollout["pr"]["number"],"st":rollout["counts"]}));
         }
-        let h = &snapshot["super_captain"]["status"]["captains"][id]["hygiene"]["score"];
-        if !numeric(h).is_null() {
-            hygiene.insert(id.into(), numeric(h));
+        let h =
+            hygiene_observation(&snapshot["super_captain"]["status"]["captains"][id]["hygiene"]);
+        if !h.is_null() {
+            hygiene.insert(id.into(), h);
             hygiene_at.insert(id.into(), hygiene_time(snapshot, id, at));
         }
     }
@@ -258,7 +290,7 @@ fn row(snapshot: &Value, at: i64) -> Value {
     let hygiene_note = if hygiene.is_empty() {
         "Not reported by Admiral: current status contains no measured hygiene score. Historical reports retain their original source age."
     } else {
-        "Reported Admiral hygiene scores; source timestamps are independent of fleet sampling."
+        "Reported Admiral hygiene scores or partial audit ranges; intervals are not final scores. Source timestamps are independent of fleet sampling."
     };
     json!({"ts":at,"cost_index":numeric(&efficiency["cost_index_vs_all_luna"]),"cost_index_observed":numeric(&efficiency["cost_index_observed_vs_all_luna"]),"cost_basis":efficiency["cost_index_note"],"cost_observed_basis":efficiency["cost_index_observed_note"],"tiers":tiers,"quota_pct":numeric(&efficiency["quota"]["used_percent"]),"credits_h":numeric(&efficiency["windows"]["60"]["credits_per_hour_est"]),"luna_fail_total":numeric(&stats["luna_failures_total"]),"luna_fp_rate":numeric(&stats["luna_first_pass_rate"]),"proj":projects,"hosts":hosts,"hyg":hygiene,"hyg_at":hygiene_at,"hygiene_note":hygiene_note,"ty":{"tok":numeric(&total["tokens"]),"out":numeric(&total["output"]),"cr":numeric(&total["credits"]),"int":numeric(&total["integration_tokens"]),"main":numeric(&total["main_tokens"]),"yi":numeric(&total["yield_integration_pct"]),"ym":numeric(&total["yield_main_pct"]),"cov":numeric(&total["coverage_pct"]),"observed":observed_yield(total),"p":project_yield}})
 }
@@ -466,6 +498,56 @@ mod tests {
         let missing = historical_row(&row(&json!({"projects":{"p":{}}}), 420)).unwrap();
         assert!(missing["hyg"]["p"].is_null());
         assert!(missing["ty"]["observed"]["tok"].is_null());
+    }
+    #[test]
+    fn partial_hygiene_survives_history_with_original_clock_and_only_allowlisted_numbers() {
+        let partial = json!({"score":null,"grade":null,"possible_score_range":[30.123456,80.987654],
+            "known_component_subtotal":80.987654,"observed_utc":"1970-01-01T00:02:00Z","private":"secret"});
+        let snapshot = json!({"projects":{"p":{}},"rollout":{"project":{"id":"p"}},"super_captain":{
+            "status_mtime_utc":"1970-01-01T00:03:00Z","status":{"captains":{"p":{"hygiene":partial}}}}});
+        let v = historical_row(&row(&snapshot, 310)).unwrap();
+        assert!(v["hyg"]["p"]["score"].is_null());
+        assert_eq!(
+            v["hyg"]["p"]["possible_score_range"],
+            json!([30.123456, 80.987654])
+        );
+        assert_eq!(v["hyg"]["p"]["known_component_subtotal"], 80.987654);
+        assert_eq!(v["hyg_at"]["p"], 120);
+        assert!(!v.to_string().contains("secret"));
+        assert_eq!(historical_row(&v).unwrap()["hyg"], v["hyg"]);
+        assert!(
+            v["hygiene_note"]
+                .as_str()
+                .unwrap()
+                .contains("not final scores")
+        );
+    }
+    #[test]
+    fn hygiene_range_validation_preserves_zero_and_refuses_invalid_intervals() {
+        for range in [
+            json!([]),
+            json!([90, 80]),
+            json!([-1, 80]),
+            json!([0, 101]),
+            json!([null, 80]),
+            json!(["0", 80]),
+            json!([0, 80, 90]),
+        ] {
+            assert!(
+                hygiene_observation(&json!({"score":null,"possible_score_range":range})).is_null()
+            );
+        }
+        let zero = hygiene_observation(
+            &json!({"score":null,"possible_score_range":[0,0],"known_component_subtotal":0}),
+        );
+        assert!(zero["score"].is_null());
+        assert_eq!(zero["possible_score_range"], json!([0.0, 0.0]));
+        assert_eq!(zero["known_component_subtotal"], 0.0);
+        assert_eq!(
+            hygiene_observation(&json!({"score":100,"possible_score_range":[30,80]})),
+            100
+        );
+        assert!(hygiene_observation(&json!({"score":101})).is_null());
     }
     fn config(root: &Path) -> ObserveConfig {
         serde_json::from_value(json!({"schema_version":1,"node_id":"node","output_dir":root,"interval_seconds":15,"projects":[],"nodes":[],"coordination_dir":null,"rollout_manifest":null,"codex_sessions":null,"claude_projects":null,"rates_dir":null,"history_source":null,"admiral_screen":null,"gh_program":null})).unwrap()

@@ -5,6 +5,7 @@ import { ModelBadge } from './ModelBadge';
 import { useProfile } from '../profile';
 import { ProfileAvatar } from './Profile';
 import { formatMeasurement } from '../formatNumbers';
+import { hygienePartialLabel, hygieneScore } from '../hygieneMetrics';
 import './legacy-hierarchy.css';
 
 const endedStates = new Set(['finished', 'gone', 'dead', 'exited']);
@@ -45,10 +46,8 @@ function WorkerRows({ workers }: { workers: Data[] }) {
   return <>{workers.slice(0, shown).map((worker, index) => <Worker key={`${screenName(worker)}:${text(worker.host ?? worker.node)}:${index}`} record={worker} />)}{workers.length > shown && <button className="legacy-hierarchy-more" onClick={() => setShown(count => count + 40)}>Show more screens ({workers.length - shown})</button>}</>;
 }
 function Hygiene({ value, observedAt }: { value: unknown; observedAt: unknown }) {
-  const hygiene = data(value), grade = text(hygiene.grade), rawScore = hygiene.score;
-  const scoreNumber = typeof rawScore === 'number' ? rawScore
-    : typeof rawScore === 'string' && /^-?\d+(?:\.\d+)?$/.test(rawScore) ? Number(rawScore) : null;
-  const score = scoreNumber !== null && Number.isFinite(scoreNumber) ? formatMeasurement(scoreNumber) : text(rawScore);
+  const hygiene = data(value), grade = text(hygiene.grade), scoreNumber = hygieneScore(value);
+  const score = scoreNumber !== null ? formatMeasurement(scoreNumber) : hygienePartialLabel(value) || '';
   const atText = text(observedAt);
   const atDate = typeof observedAt === 'number' && Number.isFinite(observedAt)
     ? new Date(observedAt * 1000).getTime() : Date.parse(atText);

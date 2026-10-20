@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Display reported partial hygiene audit ranges and known subtotals in live
+  cards, hierarchy and history, with original audit times. Keep final scores
+  unknown until the missing measurements are available.
+
 - Refresh community onboarding with a directly usable synthetic-demo link,
   current local CI/tool prerequisites, verified private vulnerability reporting,
   platform limits and evidence-based major-release gates. Production recordings
