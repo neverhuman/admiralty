@@ -30,6 +30,27 @@ fn numeric(v: &Value) -> Value {
         .unwrap_or(Value::Null)
 }
 
+fn observed_yield(total: &Value) -> Value {
+    let mut observed = json!({});
+    for (key, source) in [
+        ("tok", "tokens"),
+        ("int", "integration_tokens"),
+        ("main", "main_tokens"),
+        ("attributed", "attributed_tokens"),
+    ] {
+        observed[key] = numeric(&total[format!("lower_bound_{source}")]);
+    }
+    for (ratio, count) in [("yi", "int"), ("ym", "main"), ("cov", "attributed")] {
+        observed[ratio] = observed[count]
+            .as_f64()
+            .zip(observed["tok"].as_f64())
+            .filter(|(n, d)| *d > 0.0 && *n <= *d)
+            .map(|(n, d)| json!(100.0 * n / d))
+            .unwrap_or(Value::Null);
+    }
+    observed
+}
+
 fn load(path: &Path) -> Vec<Value> {
     if let Ok(v) = io::read_json(path, MAX_BYTES as u64)
         && let Some(rows) = v
@@ -63,9 +84,20 @@ fn historical_row(value: &Value) -> Option<Value> {
             })
             .unwrap_or_default()
     };
-    let mut result = json!({"ts":at,"cost_basis":value["cost_basis"].as_str().map(io::clean),"tiers":numeric_map(&value["tiers"]),"hyg":numeric_map(&value["hyg"])});
+    let mut result = json!({"ts":at,"cost_basis":value["cost_basis"].as_str().map(io::clean),"cost_observed_basis":value["cost_observed_basis"].as_str().map(io::clean),"hygiene_note":value["hygiene_note"].as_str().map(io::clean),"tiers":numeric_map(&value["tiers"]),"hyg":numeric_map(&value["hyg"])});
+    result["hyg_at"] = json!(
+        value["hyg_at"]
+            .as_object()
+            .into_iter()
+            .flatten()
+            .filter_map(|(id, v)| time(v)
+                .filter(|t| *t > 0 && *t <= at + 5)
+                .map(|t| (id.clone(), json!(t))))
+            .collect::<Map<_, _>>()
+    );
     for key in [
         "cost_index",
+        "cost_index_observed",
         "quota_pct",
         "credits_h",
         "luna_fail_total",
@@ -116,6 +148,15 @@ fn historical_row(value: &Value) -> Option<Value> {
         })
         .unwrap_or_default();
     ty.insert("p".into(), json!(p));
+    ty.insert(
+        "observed".into(),
+        json!(
+            ["tok", "int", "main", "attributed", "yi", "ym", "cov"]
+                .into_iter()
+                .map(|key| (key.to_owned(), numeric(&value["ty"]["observed"][key])))
+                .collect::<Map<_, _>>()
+        ),
+    );
     result["ty"] = json!(ty);
     Some(result)
 }
@@ -127,6 +168,7 @@ fn row(snapshot: &Value, at: i64) -> Value {
     let mut projects = Map::new();
     let mut hosts = Map::new();
     let mut hygiene = Map::new();
+    let mut hygiene_at = Map::new();
     let mut tiers = BTreeMap::<String, u64>::new();
     if let Some(source) = snapshot["projects"].as_object() {
         for (id, p) in source {
@@ -134,6 +176,7 @@ fn row(snapshot: &Value, at: i64) -> Value {
             let h = &snapshot["super_captain"]["status"]["captains"][id]["hygiene"]["score"];
             if !numeric(h).is_null() {
                 hygiene.insert(id.clone(), numeric(h));
+                hygiene_at.insert(id.clone(), hygiene_time(snapshot, id, at));
             }
         }
     }
@@ -150,6 +193,7 @@ fn row(snapshot: &Value, at: i64) -> Value {
         let h = &snapshot["super_captain"]["status"]["captains"][id]["hygiene"]["score"];
         if !numeric(h).is_null() {
             hygiene.insert(id.into(), numeric(h));
+            hygiene_at.insert(id.into(), hygiene_time(snapshot, id, at));
         }
     }
     for host in snapshot["global_resources"]["hosts"]
@@ -211,7 +255,20 @@ fn row(snapshot: &Value, at: i64) -> Value {
                 .collect::<Map<_, _>>()
         })
         .unwrap_or_default();
-    json!({"ts":at,"cost_index":numeric(&efficiency["cost_index_vs_all_luna"]),"cost_basis":efficiency["cost_index_note"],"tiers":tiers,"quota_pct":numeric(&efficiency["quota"]["used_percent"]),"credits_h":numeric(&efficiency["windows"]["60"]["credits_per_hour_est"]),"luna_fail_total":numeric(&stats["luna_failures_total"]),"luna_fp_rate":numeric(&stats["luna_first_pass_rate"]),"proj":projects,"hosts":hosts,"hyg":hygiene,"ty":{"tok":numeric(&total["tokens"]),"out":numeric(&total["output"]),"cr":numeric(&total["credits"]),"int":numeric(&total["integration_tokens"]),"main":numeric(&total["main_tokens"]),"yi":numeric(&total["yield_integration_pct"]),"ym":numeric(&total["yield_main_pct"]),"cov":numeric(&total["coverage_pct"]),"p":project_yield}})
+    let hygiene_note = if hygiene.is_empty() {
+        "Not reported by Admiral: current status contains no measured hygiene score. Historical reports retain their original source age."
+    } else {
+        "Reported Admiral hygiene scores; source timestamps are independent of fleet sampling."
+    };
+    json!({"ts":at,"cost_index":numeric(&efficiency["cost_index_vs_all_luna"]),"cost_index_observed":numeric(&efficiency["cost_index_observed_vs_all_luna"]),"cost_basis":efficiency["cost_index_note"],"cost_observed_basis":efficiency["cost_index_observed_note"],"tiers":tiers,"quota_pct":numeric(&efficiency["quota"]["used_percent"]),"credits_h":numeric(&efficiency["windows"]["60"]["credits_per_hour_est"]),"luna_fail_total":numeric(&stats["luna_failures_total"]),"luna_fp_rate":numeric(&stats["luna_first_pass_rate"]),"proj":projects,"hosts":hosts,"hyg":hygiene,"hyg_at":hygiene_at,"hygiene_note":hygiene_note,"ty":{"tok":numeric(&total["tokens"]),"out":numeric(&total["output"]),"cr":numeric(&total["credits"]),"int":numeric(&total["integration_tokens"]),"main":numeric(&total["main_tokens"]),"yi":numeric(&total["yield_integration_pct"]),"ym":numeric(&total["yield_main_pct"]),"cov":numeric(&total["coverage_pct"]),"observed":observed_yield(total),"p":project_yield}})
+}
+
+fn hygiene_time(snapshot: &Value, id: &str, at: i64) -> Value {
+    let admiral = &snapshot["super_captain"];
+    time(&admiral["status"]["captains"][id]["hygiene"]["observed_utc"])
+        .or_else(|| time(&admiral["status_mtime_utc"]))
+        .filter(|t| *t > 0 && *t <= at + 5)
+        .map_or(Value::Null, |t| json!(t))
 }
 
 fn bounded(mut rows: Vec<Value>) -> Vec<Value> {
@@ -352,6 +409,64 @@ fn update_at(config: &ObserveConfig, snapshot: &Value, now: i64) -> crate::Resul
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    #[test]
+    fn partial_usage_history_retains_observations_without_claiming_full_totals() {
+        let snapshot = json!({"generated_utc":"1970-01-01T00:05:10Z",
+            "projects":{"p":{}},
+            "token_efficiency":{"cost_index_vs_all_luna":null,"cost_index_observed_vs_all_luna":4.123456789,"cost_index_observed_note":"Observed sample only"},
+            "token_yield":{"total":{"tokens":null,"yield_main_pct":null,
+                "lower_bound_tokens":300,"lower_bound_integration_tokens":150,
+                "lower_bound_main_tokens":100,"lower_bound_attributed_tokens":225}}});
+        let v = historical_row(&row(&snapshot, 310)).unwrap();
+        assert!(v["cost_index"].is_null());
+        assert_eq!(v["cost_index_observed"], 4.123456789);
+        assert_eq!(v["cost_observed_basis"], "Observed sample only");
+        assert!(v["ty"]["tok"].is_null());
+        assert!(v["ty"]["ym"].is_null());
+        assert_eq!(v["ty"]["observed"]["tok"], 300);
+        assert_eq!(v["ty"]["observed"]["yi"], 50.0);
+        assert_eq!(v["ty"]["observed"]["ym"], 100.0 / 3.0);
+        assert_eq!(v["ty"]["observed"]["cov"], 75.0);
+        assert!(v["hyg"].as_object().unwrap().is_empty());
+        assert!(
+            v["hygiene_note"]
+                .as_str()
+                .unwrap()
+                .contains("Not reported by Admiral")
+        );
+    }
+    #[test]
+    fn observed_yield_zero_missing_and_invalid_denominators_remain_unknown() {
+        for total in [
+            json!({}),
+            json!({"lower_bound_tokens":0,"lower_bound_main_tokens":0}),
+            json!({"lower_bound_tokens":10,"lower_bound_main_tokens":11}),
+        ] {
+            assert!(observed_yield(&total)["ym"].is_null());
+        }
+        assert_eq!(
+            observed_yield(&json!({"lower_bound_tokens":10,"lower_bound_main_tokens":0}))["ym"],
+            0.0
+        );
+    }
+    #[test]
+    fn hygiene_history_keeps_report_clock_and_does_not_relabel_missing_scores() {
+        let snapshot = json!({"projects":{"p":{}},"super_captain":{
+            "status_mtime_utc":"1970-01-01T00:03:00Z","status":{"captains":{"p":{
+                "hygiene":{"score":87.654321,"observed_utc":"1970-01-01T00:02:00Z"}}}}}});
+        let v = historical_row(&row(&snapshot, 310)).unwrap();
+        assert_eq!(v["hyg"]["p"], 87.654321);
+        assert_eq!(v["hyg_at"]["p"], 120);
+        let sanitized = historical_row(
+            &json!({"ts":310,"hyg_at":{"p":999},"ty":{"observed":{"tok":5,"private":"secret"}}}),
+        )
+        .unwrap();
+        assert!(sanitized["hyg_at"]["p"].is_null());
+        assert!(!sanitized.to_string().contains("secret"));
+        let missing = historical_row(&row(&json!({"projects":{"p":{}}}), 420)).unwrap();
+        assert!(missing["hyg"]["p"].is_null());
+        assert!(missing["ty"]["observed"]["tok"].is_null());
+    }
     fn config(root: &Path) -> ObserveConfig {
         serde_json::from_value(json!({"schema_version":1,"node_id":"node","output_dir":root,"interval_seconds":15,"projects":[],"nodes":[],"coordination_dir":null,"rollout_manifest":null,"codex_sessions":null,"claude_projects":null,"rates_dir":null,"history_source":null,"admiral_screen":null,"gh_program":null})).unwrap()
     }

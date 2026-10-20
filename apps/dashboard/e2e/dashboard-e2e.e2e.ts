@@ -51,6 +51,20 @@ function isEventsPath(pathname: string): boolean {
 }
 
 describe('Deterministic E2E harness bounds, shipped v2 parsers, and stateful command fixtures (no browser required)', () => {
+  it('does not invent a missing DOM element when the entire control budget expires in CDP', async () => {
+    for (const stage of [fillInputByLabelStage, selectByLabelStage]) {
+      let now = 0;
+      const budgets: number[] = [];
+      await expect(stage(async <T>(_expression: string, budget: number): Promise<T> => {
+        budgets.push(budget); now += budget;
+        throw new Error(`CDP command timed out after ${budget}ms: Runtime.evaluate`);
+      }, 'Missing probe', 'value', 160, {
+        now: () => now, sleep: async ms => { now += ms; },
+      })).rejects.toThrow(/after 160ms \(reason: DOM inspection did not complete; lastEvalError: CDP command timed out after 160ms: Runtime.evaluate\)/);
+      expect(budgets).toEqual([160]);
+      expect(now).toBe(160);
+    }
+  });
   it('enforces CDP frame/buffer byte caps and safe JSON parsing without uncaught exceptions', () => {
     const messages: Array<Record<string, unknown>> = [];
     const errors: Error[] = [];
@@ -602,11 +616,12 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
       }
 
       const recordedInputBudgets: number[] = [];
+      let inputClockMs = 0;
       await expect(
         fillInputByLabelStage(
           async <T>(_expr: string, evalTimeoutMs: number): Promise<T> => {
             recordedInputBudgets.push(evalTimeoutMs);
-            await new Promise((r) => setTimeout(r, 45));
+            inputClockMs += 45;
             if (recordedInputBudgets.length === 1) {
               throw new Error('CDP Runtime.evaluate transient failure on poll 1');
             }
@@ -618,6 +633,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
           'Revise contract title',
           'Updated title',
           140,
+          { now: () => inputClockMs, sleep: async ms => { inputClockMs += ms; } },
         ),
       ).rejects.toThrow(
         /Input for label not found: Revise contract title after 140ms \(reason: label "Revise contract title" found but associated input\/textarea is missing \(for="revise-title"\); lastEvalError: CDP Runtime\.evaluate transient failure on poll 1\)/,
@@ -645,11 +661,12 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
       expect(firstFiveSecBudget).toBeLessThanOrEqual(MAX_STAGE_EVALUATE_BUDGET_MS);
 
       const recordedSelectBudgets: number[] = [];
+      let selectClockMs = 0;
       await expect(
         selectByLabelStage(
           async <T>(_expr: string, evalTimeoutMs: number): Promise<T> => {
             recordedSelectBudgets.push(evalTimeoutMs);
-            await new Promise((r) => setTimeout(r, 45));
+            selectClockMs += 45;
             if (recordedSelectBudgets.length === 1) {
               throw new Error('Runtime.evaluate timed out after 65ms');
             }
@@ -661,6 +678,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
           'Select task',
           'task-ui-cmd-999',
           140,
+          { now: () => selectClockMs, sleep: async ms => { selectClockMs += ms; } },
         ),
       ).rejects.toThrow(
         /Select for label not found: Select task \(option task-ui-cmd-999\) after 140ms \(reason: option "task-ui-cmd-999" not present in <select> \(available options: \[task-001, task-002\]\); lastEvalError: Runtime\.evaluate timed out after 65ms\)/,
@@ -673,16 +691,17 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
       }
       expect(recordedSelectBudgets[1]!).toBeLessThan(recordedSelectBudgets[0]!);
 
-      // Verify live browser.fillInputByLabel and browser.selectByLabel enforce bounded stage timeouts and preserve DOM failure context
+      // A live bounded probe may exhaust its CDP budget before a DOM result.
+      // Require the actual failure context, never infer DOM absence from a timeout.
       const liveFillStartMs = Date.now();
       await expect(browser.fillInputByLabel('Non-existent input label probe', 'val', 160)).rejects.toThrow(
-        /Input for label not found: Non-existent input label probe after 160ms \(reason: label or aria-label Non-existent input label probe not found/,
+        /Input for label not found: Non-existent input label probe after 160ms \(reason: (?:label or aria-label Non-existent input label probe not found|DOM inspection did not complete; lastEvalError: CDP command timed out after \d+ms: Runtime.evaluate)/,
       );
       expect(Date.now() - liveFillStartMs).toBeLessThan(1_500);
 
       const liveSelectStartMs = Date.now();
       await expect(browser.selectByLabel('Non-existent select label probe', 'opt-missing', 160)).rejects.toThrow(
-        /Select for label not found: Non-existent select label probe \(option opt-missing\) after 160ms \(reason: label Non-existent select label probe not found/,
+        /Select for label not found: Non-existent select label probe \(option opt-missing\) after 160ms \(reason: (?:label Non-existent select label probe not found|DOM inspection did not complete; lastEvalError: CDP command timed out after \d+ms: Runtime.evaluate)/,
       );
       expect(Date.now() - liveSelectStartMs).toBeLessThan(1_500);
     },
@@ -727,6 +746,55 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
     await browser.waitForText('Alpha Control');
     expect(await browser.evaluate<string>('document.querySelector(".legacy-source-status")?.textContent ?? ""')).toContain(source.generated_utc);
     expect(await browser.evaluate<boolean>('Boolean(document.querySelector("[data-detail-phase=complete]"))')).toBe(false);
+  });
+
+  it('renders partial live trends honestly and caps displayed measurements at two decimal places', async () => {
+    const source = createLegacyFixture(4);
+    const efficiency = source.token_efficiency as Record<string, unknown>;
+    efficiency.cost_index_vs_all_luna = null;
+    efficiency.cost_index_observed_vs_all_luna = 4.123456789;
+    efficiency.cost_index_observed_note = 'Observed sample only; partial source coverage, full fleet spend unknown.';
+    (efficiency.ledger_stats as Record<string, unknown>).luna_first_pass_rate = 96.42857142857143;
+    source.token_yield = {
+      generated_utc: source.generated_utc, usage_coverage_complete: false,
+      total: { tokens: null, integration_tokens: null, main_tokens: null,
+        yield_main_pct: null, yield_integration_pct: null, coverage_pct: null,
+        lower_bound_tokens: 300, lower_bound_integration_tokens: 150,
+        lower_bound_main_tokens: 100, lower_bound_attributed_tokens: 225 },
+    };
+    source.super_captain = { status: { captains: {} } };
+    source.history = { rows: [0, 1, 2].map(index => ({
+      ts: 1792354800 + index * 120, cost_index: null, cost_index_observed: index === 1 ? null : 4.123456789,
+      cost_observed_basis: efficiency.cost_index_observed_note,
+      hosts: { 'fixture-node': { load: 26.203125, disk: 87.64277401681029 } },
+      hyg: {}, hygiene_note: 'Not reported by Admiral',
+      ty: { tok: null, int: null, main: null, yi: null, ym: null, cov: null,
+        observed: { tok: 300, int: 150, main: 100, attributed: 225, yi: 50, ym: 100 / 3, cov: 75 } },
+    })) };
+    server.setLegacy(source);
+    await browser.goto(`${server.baseUrl}/#/detail`);
+    await browser.waitForSelector('[data-detail-phase="complete"]');
+    for (const id of ['cost-index', 'tokens', 'token-yield']) {
+      expect(await browser.evaluate<boolean>(`Boolean(document.querySelector('[data-metric="${id}"] svg'))`)).toBe(true);
+    }
+    const values = await browser.evaluate<Record<string, string>>(`Object.fromEntries(
+      [...document.querySelectorAll('[data-metric]')].map(card => [card.getAttribute('data-metric'), card.querySelector('.temporal-values')?.textContent ?? ''])
+    )`);
+    expect(values['cost-index']).toContain('4.12×');
+    expect(values['tokens']).toContain('300');
+    expect(values['token-yield']).toContain('33.33%');
+    expect(values['luna-failures']).toContain('96.43%');
+    expect(values['cpu-load']).toContain('26.2%');
+    expect(values['root-disk']).toContain('87.64%');
+    expect(values['hygiene']).toContain('Not reported by Admiral');
+    for (const value of Object.values(values)) expect(value).not.toMatch(/\d+\.\d{3,}/);
+    const costText = await browser.evaluate<string>('document.querySelector("[data-metric=cost-index]")?.textContent ?? ""');
+    expect(costText.toLowerCase()).toContain('observed');
+    const yieldText = await browser.evaluate<string>('document.querySelector("[data-metric=token-yield]")?.textContent ?? ""');
+    expect(yieldText.toLowerCase()).toContain('observed');
+    // An unknown middle sample stays a real gap, not an interpolated full-cost line.
+    expect(await browser.evaluate<number>('document.querySelectorAll("[data-metric=cost-index] circle").length')).toBe(2);
+    expect(await browser.evaluate<number>('document.querySelectorAll("[data-metric=cost-index] polyline").length')).toBe(0);
   });
 
   it(
