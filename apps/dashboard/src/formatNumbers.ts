@@ -1,4 +1,5 @@
 const MAX_FRACTION_DIGITS = 2;
+const formatters = [0, 1, 2].map(maximumFractionDigits => new Intl.NumberFormat('en-US', { maximumFractionDigits }));
 
 function digitsLimit(digits: number): number {
   return Number.isInteger(digits) ? Math.min(MAX_FRACTION_DIGITS, Math.max(0, digits)) : MAX_FRACTION_DIGITS;
@@ -7,9 +8,15 @@ function digitsLimit(digits: number): number {
 /** Format a finite measurement for display without changing its source value. */
 export function formatMeasurement(value: unknown, digits = MAX_FRACTION_DIGITS): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 'Unknown';
-  const formatted = new Intl.NumberFormat('en-US', { maximumFractionDigits: digitsLimit(digits) })
+  const formatted = formatters[digitsLimit(digits)]
     .format(Object.is(value, -0) ? 0 : value);
   return /^-0(?:\.0+)?$/.test(formatted) ? formatted.slice(1) : formatted;
+}
+
+/** Round numeric literals only in the displayed source inspector, without mutating data or string identifiers. */
+export function formatJsonMeasurements(value: unknown): string {
+  return JSON.stringify(value, null, 2)?.replace(/("(?:\\.|[^"\\])*")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
+    (token: string, quoted: string | undefined) => quoted ? token : formatMeasurement(Number(token)).replaceAll(',', '')) ?? 'Unknown';
 }
 
 /** Format decimal-string balances without converting large integer parts to Number. */

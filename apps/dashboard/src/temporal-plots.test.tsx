@@ -33,6 +33,48 @@ function snapshot() {
 }
 
 describe('dense temporal dashboard strip', () => {
+  it('never resurrects historical full cost after the current producer explicitly reports unknown', () => {
+    const source = snapshot();
+    source.token_efficiency = { cost_index_vs_all_luna: null, cost_index_observed_vs_all_luna: 1.234567 };
+    const metric = buildTemporalMetrics(source).metrics[0];
+    expect(metric.values.map(value => value.value)).toEqual(['1.23× observed']);
+    expect(metric.series[0].points.map(point => point.value)).toEqual([4.2, 4.51]);
+    const html = renderToStaticMarkup(<TokenEfficiency snapshot={source} />);
+    expect(html).toContain('Cost index · observed sample');
+    expect(html).not.toContain('4.51×');
+  });
+  it('shows current lower-bound counts and same-sample ratios before history sampling and keeps resets unknown', () => {
+    const source = snapshot(); source.history = { rows: [] };
+    source.token_yield = { generated_utc: source.generated_utc, total: {
+      tokens: null, integration_tokens: null, main_tokens: null, attributed_tokens: null,
+      lower_bound_tokens: 300, lower_bound_integration_tokens: 150, lower_bound_main_tokens: 100, lower_bound_attributed_tokens: 225,
+    } };
+    const metric = (id: string) => buildTemporalMetrics(source).metrics.find(item => item.id === id)!;
+    expect(metric('tokens').values.map(value => value.value)).toEqual(['≥ 300 observed', '≥ 150 observed', '≥ 100 observed', '≥ 225 observed']);
+    expect(metric('token-yield').values.slice(3).map(value => value.value)).toEqual(['33.33%', '50%', '75%']);
+    expect(metric('tokens').sourceTime).toBe(source.generated_utc);
+    expect(metric('tokens').series.every(item => item.points.length === 0)).toBe(true);
+    const html = renderToStaticMarkup(<TokenEfficiency snapshot={source} />);
+    expect(html).toContain('≥ 150 observed'); expect(html).toContain('observed-sample main yield');
+    const total = (source.token_yield as { total: Record<string, unknown> }).total;
+    total.lower_bound_tokens = 0; total.lower_bound_main_tokens = 0;
+    expect(metric('token-yield').values[3].value).toBe('unknown');
+    total.lower_bound_tokens = null; total.lower_bound_main_tokens = null;
+    expect(metric('tokens').values[0].value).toBe('unknown');
+    expect(metric('token-yield').values[3].value).toBe('unknown');
+  });
+  it('uses the hygiene audit clock instead of subsequent fleet or status refreshes', () => {
+    const source = snapshot();
+    source.super_captain = { status_mtime_utc: '2026-10-18T11:04:00Z', status: { captains: {
+      alpha: { hygiene: { score: 87.654321, observed_utc: '2026-10-18T10:00:00Z' } },
+    } } };
+    source.history = { rows: [1792321200, 1792321320].map(ts => ({ ts,
+      hyg_at: { alpha: Date.parse('2026-10-18T10:00:00Z') / 1000 }, hyg: { alpha: 87.654321 } })) };
+    const metric = buildTemporalMetrics(source).metrics.find(item => item.id === 'hygiene')!;
+    expect(metric.values[0].label).toContain('2026-10-18T10:00:00Z');
+    expect(metric.series[0].points).toEqual([{ time: Date.parse('2026-10-18T10:00:00Z') / 1000, value: 87.654321 }]);
+    expect(metric.values[0].value).toContain('87.65');
+  });
   it('restores all thirteen old metrics from the actual collector field names', () => {
     const model = buildTemporalMetrics(snapshot());
     expect(model.metrics.map(metric => metric.id)).toEqual(['cost-index', 'luna-failures', 'burn-up', 'in-progress', 'agent-tiers',
@@ -121,14 +163,14 @@ describe('dense temporal dashboard strip', () => {
         ty: { tok: null, int: null, main: null, ym: null, yi: null, cov: null,
           observed: { tok: 80, int: 45, main: 30, attributed: 25, ym: 0, yi: 87.64277401681029, cov: null } } },
     ] };
-    source.token_yield = { generated_utc: '2026-10-18T11:04:00Z', method: 'event counts', lower_bound_tokens: 120,
-      integration_tokens: 70, main_tokens: 50, attributed_tokens: 42,
+    source.token_yield = { generated_utc: '2026-10-18T11:04:00Z', method: 'event counts',
       total: { tokens: null, integration_tokens: null, main_tokens: null, attributed_tokens: null,
+        lower_bound_tokens: 120, lower_bound_integration_tokens: 70, lower_bound_main_tokens: 50, lower_bound_attributed_tokens: 42,
         yield_main_pct: null, yield_integration_pct: null, coverage_pct: null } };
 
     const model = buildTemporalMetrics(source).metrics;
     const cost = model.find(metric => metric.id === 'cost-index')!;
-    expect(cost.values.map(value => value.value)).toEqual(['4.25×', '1.23× observed']);
+    expect(cost.values.map(value => value.value)).toEqual(['1.23× observed']);
     expect(cost.series.map(item => item.id)).toEqual(['cost-full', 'cost-observed']);
     expect(cost.series[0].points.map(point => point.value)).toEqual([4.25, null]);
     expect(cost.series[1].points.map(point => point.value)).toEqual([null, 1.2345]);
@@ -139,7 +181,7 @@ describe('dense temporal dashboard strip', () => {
     expect(tokens.series.find(item => item.id === 'token-observed-main')!.points.map(point => point.value)).toEqual([350, 30]);
     const yieldMetric = model.find(metric => metric.id === 'token-yield')!;
     expect(yieldMetric.values.slice(0, 3).map(value => value.value)).toEqual(['unknown', 'unknown', 'unknown']);
-    expect(yieldMetric.values.slice(3).map(value => value.value)).toEqual(['0%', '87.64%', 'unknown']);
+    expect(yieldMetric.values.slice(3).map(value => value.value)).toEqual(['41.67%', '58.33%', '35%']);
     expect(yieldMetric.series.find(item => item.id === 'yield-main-observed')!.points.map(point => point.value)).toEqual([null, 0]);
     expect(yieldMetric.series.find(item => item.id === 'yield-main-full')!.points.map(point => point.value)).toEqual([40, null]);
 
@@ -159,10 +201,10 @@ describe('dense temporal dashboard strip', () => {
     source.super_captain = { status_mtime_utc: '2026-10-18T10:00:00Z', status: { captains: {
       alpha: { hygiene: { grade: 'A', score: 96.42857142857143, notes: ['reported'] } }, beta: { hygiene: null },
     } } };
-    source.history.rows = [
+    source.history = { rows: [
       { ts: 1792321200, hyg_at: { beta: 1792321140 }, hyg: { beta: 13.593749999999998 } },
       { ts: 1792321320, hyg_at: {}, hyg: {} },
-    ];
+    ] };
     const metric = buildTemporalMetrics(source).metrics.find(item => item.id === 'hygiene')!;
     expect(metric.values[0].value).toContain('96.43');
     expect(metric.values[0].label).toContain('2026-10-18T10:00:00Z');

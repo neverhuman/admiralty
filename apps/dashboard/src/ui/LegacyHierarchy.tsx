@@ -81,7 +81,7 @@ function Captain({ captain, project, status, statusMtime }: { captain: Data; pro
       <div className="legacy-hierarchy-screen legacy-hierarchy-muted">{screenName(captain)} <Host record={captain} /></div>
       {(done !== null || total !== null || inProgress !== null) && <div className="legacy-hierarchy-progress">{done !== null ? `${done}/${total ?? '?'} done` : total !== null ? `${total} tasks · done not reported` : ''}{inProgress !== null && <span className="legacy-hierarchy-warn">{done !== null || total !== null ? ' · ' : ''}{inProgress} in progress</span>}</div>}
       <Hygiene value={status.hygiene ?? captain.hygiene}
-        observedAt={status.hygiene != null ? status.status_mtime_utc ?? status.mtime_utc ?? statusMtime : captain.hygiene_at ?? captain.hyg_at} />
+        observedAt={data(status.hygiene ?? captain.hygiene).observed_utc ?? (status.hygiene != null ? status.status_mtime_utc ?? status.mtime_utc ?? statusMtime : captain.hygiene_at ?? captain.hyg_at)} />
       {summary.size > 0 && <div className="legacy-hierarchy-worker-summary">{[...summary].map(([reported, count]) => <span key={reported} title={`${count} screen(s), producer state: ${reported}`}><i aria-hidden="true" className={`legacy-hierarchy-dot legacy-hierarchy-dot--${stateClass(reported)}`} /><span>{count} {reported}</span></span>)}</div>}
       {!workers.length && <div className="legacy-hierarchy-muted">No workers reported</div>}
     </header>

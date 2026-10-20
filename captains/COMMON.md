@@ -19,6 +19,15 @@
 ## Model routing (Jepson, Oct 17 2026, 9:45 PM MDT): READ AND FOLLOW
 Read /home/ubuntu/xbabe2_kicker/captains-20261017/MODEL_ROUTING_PLAYBOOK.md on every captain start or restart. It supersedes the Oct 1 "all Codex on gpt-6.1-sol xhigh" default. Cheapest model first (gpt-6-luna medium), escalate on objective failure, astra last resort with justification, agy plans and routes only, CHANGELOG + handoff + MODEL ledger logging on every lane.
 
+For a fresh Codex development session, use `tools/codex-luna.sh EXISTING_WORKTREE`
+from this repository, including inside an already-budgeted Screen launcher. It
+pins Luna medium without changing shared configuration or accepting model
+override arguments. Before sending the next task to an existing session, check
+its actual footer at an idle boundary; reset it to Luna medium with the model
+picker's session-only `s` action. Retain objective failure evidence and a small
+handoff before any escalation. See [development routing](../docs/operators/model-routing.md).
+This development guard does not qualify native provider admission or acceptance.
+
 ## Compute: xbabe1, xbabe2, xbabe3 are all available (Jepson, Oct 17 2026, ~9:45 PM MDT)
 
 Captains may place lanes and jobs on **xbabe1, xbabe2 and xbabe3**. **Never xbabe0** — don't ssh to it, mount it, or send work there.

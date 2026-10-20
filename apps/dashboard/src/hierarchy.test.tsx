@@ -64,7 +64,8 @@ describe('source-faithful fleet hierarchy', () => {
         { key: 'unknown', name: 'Unknown project', workers: [{ screen: 'screen_only', alive: true, agent_running: false }] }] } });
     const html = renderToStaticMarkup(<LegacyHierarchy snapshot={snapshot} />);
     for (const value of ['Owner not reported', 'Watcher not reported', 'ticker not reported', '0/0 done', 'No workers reported', 'agent not running']) expect(html).toContain(value);
-    expect(html).not.toContain('Hygiene'); expect(html).not.toContain('A 100');
+    expect(html).toContain('Not reported by Admiral'); expect(html).not.toContain('A 100');
+    expect(html).not.toContain('Hygiene 0');
     expect(html).not.toContain('1 active'); expect(html).not.toContain('1 remote');
     expect(html).not.toContain('0/? done');
   });

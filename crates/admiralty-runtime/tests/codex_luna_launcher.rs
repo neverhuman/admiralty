@@ -38,6 +38,7 @@ fn run_launcher(args: &[&str], root: &Path, exit: &str) -> Output {
 
     Command::new(launcher())
         .args(args)
+        .env_clear()
         .env("PATH", mock_bin)
         .env("CODEX_HOME", &config_home)
         .env("CODEX_MODEL", "gpt-6.1-sol")
@@ -63,8 +64,8 @@ fn pins_luna_medium_canonical_directory_and_propagates_provider_status() {
 
     let output = run_launcher(&[target.to_str().unwrap()], root, "23");
     assert_eq!(output.status.code(), Some(23));
-    let argv: Vec<&[u8]> = fs::read(root.join("argv.bin"))
-        .expect("mock recorded argv")
+    let recorded = fs::read(root.join("argv.bin")).expect("mock recorded argv");
+    let argv: Vec<&[u8]> = recorded
         .split(|byte| *byte == 0)
         .filter(|arg| !arg.is_empty())
         .collect();
@@ -85,7 +86,10 @@ fn pins_luna_medium_canonical_directory_and_propagates_provider_status() {
         fs::read_to_string(root.join("cwd.txt")).expect("mock recorded cwd"),
         format!("{canonical}\n")
     );
-    assert_eq!(fs::read(&config).expect("config remains readable"), original_config);
+    assert_eq!(
+        fs::read(&config).expect("config remains readable"),
+        original_config
+    );
 }
 
 #[test]
