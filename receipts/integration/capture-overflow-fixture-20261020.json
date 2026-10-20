@@ -1,0 +1,217 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-20T07:08:51.238584+00:00",
+  "qualified_code_commit": "65d5213adaed2a8c45608da1cfb2a477359952dc",
+  "qualified_code_tree": "8aa8354ec1604670d835aed6fc746ccc917df45e",
+  "file": "crates/admiralty-server/src/services/native_executor.rs",
+  "file_sha256": "4e8b3f9ee1a31857712e0813234f0b1c1c43315f052ba05a42cb8274c790b853",
+  "production_prefix_sha256": "3af1832f92ca766984a92f600e79406e9bc8f7fb9ca99dd9eed13e547775b7f2",
+  "production_prefix_unchanged_from": "6c9bee9456976a631fe65986015826cf0a837f7c",
+  "scope": "Test module fixture and strengthened failure assertions only. No production/runtime/API/limit/durability/authority changes.",
+  "original_hosted_failure": {
+    "job": 118486084876,
+    "run": 39379809319,
+    "head": "6c9bee9456976a631fe65986015826cf0a837f7c",
+    "test": "services::native_executor::tests::actual_producer_capture_failure_cannot_yield_typed_transcript",
+    "reason": "30-second deadline: Err(Busy)",
+    "server_result": {
+      "passed": 114,
+      "failed": 1,
+      "ignored": 2
+    },
+    "private_log_sha256": "93e4dc8d4fe7c830b70a01ea7a0f2bc86daf59e4ba0280c238e97e250e39dcca"
+  },
+  "unchanged_local_linux": {
+    "test_passed": 1,
+    "test_seconds": 12.54,
+    "qualification": "non-reproduction, not a fixed original",
+    "trace": {
+      "source": "6c9bee9-original",
+      "exit_code": 0,
+      "started_utc": "2026-10-20T06:45:52.621010+00:00",
+      "completed_utc": "2026-10-20T06:46:09.374612+00:00",
+      "output_journal_sync_calls": 1022,
+      "sync_elapsed_sum_seconds": 16.215625,
+      "sync_elapsed_max_seconds": 0.432181,
+      "trace_sha256": "5c24b1eb572c91499dfadb0ed149df49546f604b173bccc0bfa73b50e5341b3b",
+      "log_sha256": "94b6784b9fb26db2fd50526040764bb15468bd2e0057082d0180c980e9cc8a2e",
+      "native_acceptance": false
+    }
+  },
+  "candidate_linux": {
+    "candidate_sha256": "4e8b3f9ee1a31857712e0813234f0b1c1c43315f052ba05a42cb8274c790b853",
+    "commands": [
+      {
+        "stage": "capture-unit",
+        "command": [
+          "cargo",
+          "test",
+          "--offline",
+          "--locked",
+          "-p",
+          "admiralty-server",
+          "--lib",
+          "services::native_executor::tests::actual_producer_capture_failure_cannot_yield_typed_transcript",
+          "--",
+          "--exact",
+          "--nocapture",
+          "--test-threads=1"
+        ],
+        "exit_code": 0,
+        "started_utc": "2026-10-20T06:59:56.609212+00:00",
+        "completed_utc": "2026-10-20T07:00:05.512210+00:00",
+        "log_sha256": "49d2039af823c45042100aeaae894ff1377ac323bc226f65aeb873000a06459b",
+        "guard": {
+          "load": 26.30517578125,
+          "mem_available": 98798776320
+        }
+      },
+      {
+        "stage": "server-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "--offline",
+          "--locked",
+          "-p",
+          "admiralty-server",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "started_utc": "2026-10-20T07:00:05.512628+00:00",
+        "completed_utc": "2026-10-20T07:00:46.815031+00:00",
+        "log_sha256": "73b5385a04f2e6d5db8e76184f94b1216c9807c2ba748d79e3d7c1b1269c150f",
+        "guard": {
+          "load": 26.0625,
+          "mem_available": 98512658432
+        }
+      },
+      {
+        "stage": "runtime-capture-limit",
+        "command": [
+          "cargo",
+          "test",
+          "--offline",
+          "--locked",
+          "-p",
+          "admiralty-runtime",
+          "--lib",
+          "session::tests::input_and_capture_limits_fail_before_silent_growth",
+          "--",
+          "--exact",
+          "--nocapture",
+          "--test-threads=1"
+        ],
+        "exit_code": 0,
+        "started_utc": "2026-10-20T07:00:46.815950+00:00",
+        "completed_utc": "2026-10-20T07:01:08.869887+00:00",
+        "log_sha256": "71f78232f502d8986fda991e430c9f4a29af1ce0f33ed320b48dd8c739be3de1",
+        "guard": {
+          "load": 25.62841796875,
+          "mem_available": 98558279680
+        }
+      },
+      {
+        "stage": "server-library",
+        "command": [
+          "cargo",
+          "test",
+          "--offline",
+          "--locked",
+          "-p",
+          "admiralty-server",
+          "--lib",
+          "--",
+          "--test-threads=1"
+        ],
+        "exit_code": 0,
+        "started_utc": "2026-10-20T07:01:08.870395+00:00",
+        "completed_utc": "2026-10-20T07:01:33.768866+00:00",
+        "log_sha256": "a97ff76ef93ede883b80d3fa20cf10047dd434779153727f98d305850d631b8a",
+        "guard": {
+          "load": 25.83544921875,
+          "mem_available": 99663585280
+        }
+      },
+      {
+        "stage": "capture-traced",
+        "command": [
+          "strace",
+          "--kill-on-exit",
+          "-f",
+          "-y",
+          "-T",
+          "-e",
+          "trace=fdatasync,fsync",
+          "-o",
+          "/mnt/fast-scratch/repository-bundles/admiralty-root-d1659f4-mf_ltx1g/capture-overflow-6c9bee9/candidate-v2/candidate.strace",
+          "/mnt/fast-scratch/repository-bundles/admiralty-root-d1659f4-mf_ltx1g/target/debug/deps/admiralty_server-65a6c89f140e4598",
+          "services::native_executor::tests::actual_producer_capture_failure_cannot_yield_typed_transcript",
+          "--exact",
+          "--nocapture",
+          "--test-threads=1"
+        ],
+        "exit_code": 0,
+        "started_utc": "2026-10-20T07:01:33.769498+00:00",
+        "completed_utc": "2026-10-20T07:01:33.984376+00:00",
+        "log_sha256": "cec750710abdfca5ea0e88959a47be897135b310522f3038e971bd13c1297800",
+        "guard": {
+          "load": 25.7861328125,
+          "mem_available": 99945701376
+        }
+      }
+    ],
+    "output_journal_sync_calls": 1022,
+    "output_journal_all_tmpfs": true,
+    "sync_elapsed_sum_seconds": 0.008468999999999999,
+    "sync_elapsed_max_seconds": 6.5e-05,
+    "trace_sha256": "9097d78a0cfa2a2fd38c57bd54cc30c2f9cbc0ddea2d4fd96283fc3042586d5a",
+    "binary_sha256": "c1de613accde58f4ef14f9347ba787977a94fcd2a427d400a94498784570733c",
+    "cpus": [
+      112,
+      113
+    ],
+    "acceptance": false
+  },
+  "candidate_server_result": {
+    "passed": 115,
+    "failed": 0,
+    "ignored": 2,
+    "seconds": 24.69
+  },
+  "candidate_capture_test_seconds": 0.02,
+  "mac_scoped": {
+    "passed": 1,
+    "failed": 0,
+    "seconds": 4.89,
+    "evidence": "actual tool result; final whole matrix separately required"
+  },
+  "independent_review": {
+    "artifact_sha256": "bf414d94e28ca7a36d51c53fa4e64b2a0267090bdc1a70b7b4db7e2e8dccb07d",
+    "reviewed_candidate_sha256": "4e8b3f9ee1a31857712e0813234f0b1c1c43315f052ba05a42cb8274c790b853",
+    "tests_executed": 0,
+    "conclusion": "No production blocker; conditional private-empty-directory retention noted.",
+    "configured_model": "gpt-6-luna medium",
+    "runtime_model": "unverified",
+    "reviewer_session_id": null,
+    "source_author_session_id": "01a1548c-f1e4-75d1-a214-74d7da958622",
+    "identity_note": "Review session_id_from_packet denotes the source-author spec, not an attested reviewer identity."
+  },
+  "private_linux_archive_sha256": "76199f9155b6fabd66f717cc3129a2687a5826f8cb980130f8a46f3b52ad9d2b",
+  "excluded_setup_failure": {
+    "file": "candidate-v2/runner-setup-failure.json",
+    "tests_executed": 0,
+    "cause": "Root template placeholder corrupted STDOUT before launch; fixed without source changes"
+  },
+  "limits": [
+    "Linux fixture requires actual tmpfs and >=32MiB free; no skip or slow-storage fallback.",
+    "Normal disk-backed tests remain unchanged. These observations do not prove hosted disk latency, physical persistence or power-loss durability.",
+    "Candidate is an exact one-file overlay on 287 frozen selected Rust source/manifest/schema/contract files, not a full frontend tree qualification.",
+    "Whole final local/hosted gates and sole-controller production verification remain separate.",
+    "No native provider, parent or full major-release acceptance."
+  ],
+  "acceptance": false
+}

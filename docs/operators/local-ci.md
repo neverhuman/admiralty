@@ -17,6 +17,15 @@ and archive hash in `.github/workflows/dashboard-e2e.yml`. A local run may use
 another installed browser; set `ADMIRALTY_E2E_BROWSER_VERSION` to require an
 exact CDP version and retain the actual version with its evidence.
 
+On Linux, the real capture-overflow fixture requires `/dev/shm` (or its
+canonical system alias) on tmpfs with at least32MiB available. It creates a
+private0700 directory and fails clearly if that prerequisite is unavailable.
+This one fixture checks real producer failure and the capture byte limit while
+retaining all journal syncs and its30-second deadline. Other journal tests keep
+their normal disk-backed fixtures. It is not a physical-storage throughput or
+power-loss test. A failed prerequisite after directory creation can retain the
+private empty directory for diagnosis; verify ownership before cleanup.
+
 The command installs frozen JavaScript dependencies and runs formatting, strict
 workspace Clippy, all Rust tests, legacy and audit tests, fixture verification,
 release-package and canary self-tests, actual native binary builds and smoke,
