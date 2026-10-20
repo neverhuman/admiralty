@@ -168,6 +168,7 @@ impl AttemptOutcomeRecord {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct TaskAttemptOutcomeLedger {
+    #[schemars(extend("const" = ATTEMPT_OUTCOME_SCHEMA_VERSION))]
     pub schema_version: u32,
     pub project_id: ProjectId,
     pub root_id: RootId,

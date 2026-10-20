@@ -13,6 +13,8 @@ import { validateTaskContract, validateCoordinationMessage, validateDomainEvent,
   validateIntakeBatch, validateSourceProvenance, validateIntakePreview, validateWorkOrderRevision,
   validateRecordIntakeRequest, validateRecordIntakeReceipt, validateDeliveryRequirement,
   validateDuplicateQuery, validateDuplicatePage, validateCoordinationEnvelopeV2,
+  validateTaskAttemptOutcomeLedger, validateAttemptOutcomeProjection, validateExecutionRequirementsV2,
+  validateExecutionRequirementsCapsuleBinding, validateTaskInterfaceContractV2,
   SUPPORTED_SCHEMA_VERSION, CONTRACT_SCHEMA_FINGERPRINTS } from './generated/validators.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -239,7 +241,11 @@ const publicValidators = { Workplan: validateWorkplan, VerificationReceipt: vali
   WorkOrderRevision: validateWorkOrderRevision, RecordIntakeRequest: validateRecordIntakeRequest,
   RecordIntakeReceipt: validateRecordIntakeReceipt, DeliveryRequirement: validateDeliveryRequirement,
   DuplicateQuery: validateDuplicateQuery, DuplicatePage: validateDuplicatePage,
-  CoordinationEnvelopeV2: validateCoordinationEnvelopeV2 };
+  CoordinationEnvelopeV2: validateCoordinationEnvelopeV2,
+  TaskAttemptOutcomeLedger: validateTaskAttemptOutcomeLedger, AttemptOutcomeProjection: validateAttemptOutcomeProjection,
+  ExecutionRequirementsV2: validateExecutionRequirementsV2,
+  ExecutionRequirementsCapsuleBinding: validateExecutionRequirementsCapsuleBinding,
+  TaskInterfaceContractV2: validateTaskInterfaceContractV2 };
 
 test('v2 coordination keeps full header identity and precise counters without importing authority', () => {
   const value = structuredClone(publicFixtures.CoordinationEnvelopeV2);
@@ -274,7 +280,7 @@ function rejectUnchanged(validate, value) {
 
 test('public roots share Rust roundtrip fixtures and package guards', async () => {
   const publicApi = await import('@admiralty/contracts');
-  assert.equal(Object.keys(CONTRACT_SCHEMA_FINGERPRINTS).length, 23);
+  assert.equal(Object.keys(CONTRACT_SCHEMA_FINGERPRINTS).length, 28);
   assert.deepEqual(Object.keys(publicFixtures).sort(), Object.keys(publicValidators).sort());
   for (const [name, validate] of Object.entries(publicValidators)) {
     const fixture = structuredClone(publicFixtures[name]);
@@ -460,4 +466,67 @@ test('intake schemas reject forged authority fields, malformed boundaries and ne
   assert.equal(validateWorkOrderRevision(artifactClaim), true, 'shape does not establish artifact custody');
   rejectUnchanged(validateWorkOrderRevision, { ...artifactClaim,
     source_payload: { ...artifactClaim.source_payload, custody_verified: true } });
+});
+
+
+test('attempt, execution and interface guards retain v1 shape without installing authority', async () => {
+  const names = ['TaskAttemptOutcomeLedger', 'AttemptOutcomeProjection', 'ExecutionRequirementsV2',
+    'ExecutionRequirementsCapsuleBinding', 'TaskInterfaceContractV2'];
+  for (const name of names) {
+    const validate = publicValidators[name];
+    for (const field of ['authenticated', 'execution_qualified', 'acceptance_granted']) {
+      rejectUnchanged(validate, { ...structuredClone(publicFixtures[name]), [field]: true });
+    }
+    if (name !== 'AttemptOutcomeProjection') {
+      for (const schema_version of [0, 2, 4294967296, '1', null]) {
+        rejectUnchanged(validate, { ...structuredClone(publicFixtures[name]), schema_version });
+      }
+    }
+  }
+  for (const [name, mutate] of [
+    ['TaskAttemptOutcomeLedger', value => { value.max_attempts = 65536; }],
+    ['TaskAttemptOutcomeLedger', value => { value.outcomes['attempt-one'].schema_version = 2; }],
+    ['TaskAttemptOutcomeLedger', value => { delete value.outcomes['attempt-one'].schema_version; }],
+    ['TaskAttemptOutcomeLedger', value => { value.outcomes['attempt-one'].attempt_index = 65536; }],
+    ['TaskAttemptOutcomeLedger', value => { value.outcomes['attempt-one'].acceptance_granted = true; }],
+    ['TaskAttemptOutcomeLedger', value => { value.current_contract_revision = 4294967296; }],
+    ['AttemptOutcomeProjection', value => { value.task_ledgers.task.schema_version = 2; }],
+    ['AttemptOutcomeProjection', value => { delete value.task_ledgers.task.schema_version; }],
+    ['AttemptOutcomeProjection', value => { value.task_ledgers.task.acceptance_granted = true; }],
+    ['ExecutionRequirementsV2', value => { value.runner.execution_qualified = true; }],
+    ['ExecutionRequirementsV2', value => { value.shell_boundary.mode = 'implicit_shell'; }],
+    ['ExecutionRequirementsV2', value => { value.max_wall_clock_secs = 4294967296; }],
+    ['ExecutionRequirementsCapsuleBinding', value => { value.contract_revision = 0.5; }],
+    ['TaskInterfaceContractV2', value => { value.producer_task.revision = 4294967296; }],
+    ['TaskInterfaceContractV2', value => { value.status.acceptance_granted = true; }],
+    ['TaskInterfaceContractV2', value => { value.compatibility_policy.policy = 'always_accept'; }],
+  ]) {
+    const value = structuredClone(publicFixtures[name]); mutate(value);
+    rejectUnchanged(publicValidators[name], value);
+  }
+  const cases = JSON.parse(await readFile(new URL('./fixtures/decimal-u64.json', import.meta.url), 'utf8'));
+  for (const item of cases) {
+    for (const [name, mutate] of [
+      ['ExecutionRequirementsV2', value => { value.runner.budget_requirement.amount = item.value; }],
+      ['TaskInterfaceContractV2', value => { value.interface_revision = item.value; }],
+      ['TaskInterfaceContractV2', value => { value.status = { state: 'superseded', superseded_by_interface_revision: item.value }; }],
+    ]) {
+      const value = structuredClone(publicFixtures[name]); mutate(value);
+      const before = JSON.stringify(value);
+      assert.equal(publicValidators[name](value), item.accepted, `${name}: ${JSON.stringify(item.value)}`);
+      assert.equal(JSON.stringify(value), before, 'decimal strings are never rounded or coerced');
+    }
+  }
+  // These valid shapes deliberately fail Rust domain checks (covered by CLI
+  // consumer tests). Schema guards never authenticate claims or join digests.
+  for (const [name, mutate] of [
+    ['TaskAttemptOutcomeLedger', value => { value.scheduling = 'running'; value.active_attempt_id = null; }],
+    ['AttemptOutcomeProjection', value => { value.task_ledgers.task.scheduling = 'running'; }],
+    ['ExecutionRequirementsV2', value => { value.deadline_utc = '2026-02-30T00:00:00Z'; }],
+    ['ExecutionRequirementsCapsuleBinding', value => { value.requirements_digest = `sha256:${'b'.repeat(64)}`; }],
+    ['TaskInterfaceContractV2', value => { value.compatibility_policy.required_producer_revision = 2; }],
+  ]) {
+    const value = structuredClone(publicFixtures[name]); mutate(value);
+    assert.equal(publicValidators[name](value), true, `${name}: shaped claim still needs Rust domain checks`);
+  }
 });

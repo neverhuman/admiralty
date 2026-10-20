@@ -771,5 +771,191 @@
     "kind": "verification_failed",
     "priority": "decision",
     "expires_at_unix_ms": "500"
+  },
+  "TaskAttemptOutcomeLedger": {
+    "schema_version": 1,
+    "project_id": "project",
+    "root_id": "root",
+    "task_id": "task",
+    "current_contract_revision": 1,
+    "current_contract_digest": "sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba",
+    "max_attempts": 2,
+    "scheduling": "claimed",
+    "active_attempt_id": "attempt-one",
+    "attempt_order": [
+      "attempt-one"
+    ],
+    "outcomes": {
+      "attempt-one": {
+        "schema_version": 1,
+        "project_id": "project",
+        "root_id": "root",
+        "task_id": "task",
+        "contract_revision": 1,
+        "contract_digest": "sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba",
+        "attempt_id": "attempt-one",
+        "attempt_index": 1,
+        "owner": "worker",
+        "started": false,
+        "candidate_ref": null,
+        "status": "unknown",
+        "decision_evidence": null,
+        "closure_digest": null,
+        "reason": null,
+        "superseded_by_retry": false
+      }
+    },
+    "pending_cancel_reason": null
+  },
+  "AttemptOutcomeProjection": {
+    "projection": {
+      "tasks": {
+        "task": {
+          "contract": {
+            "schema_version": 1,
+            "project_id": "project",
+            "root_id": "root",
+            "task_id": "task",
+            "revision": 1,
+            "title": "Scoped task",
+            "objective": "Deliver a checked change",
+            "non_goals": [
+              "No publication"
+            ],
+            "owned_paths": [
+              "src/task.rs"
+            ],
+            "forbidden_paths": [
+              "private"
+            ],
+            "read_first": [
+              "README.md"
+            ],
+            "dependencies": [],
+            "criteria": [
+              {
+                "id": "C1",
+                "text": "Named check passes",
+                "check_ids": [
+                  "T1"
+                ]
+              }
+            ],
+            "checks": [
+              {
+                "id": "T1",
+                "program": "cargo",
+                "args": [
+                  "test"
+                ],
+                "cwd": ".",
+                "timeout_secs": 60
+              }
+            ],
+            "authority_ref": "policy:test",
+            "max_attempts": 2,
+            "simulated": true
+          },
+          "state": "ready",
+          "attempt_id": null,
+          "owner": null,
+          "candidate_ref": null
+        }
+      },
+      "messages": {},
+      "acknowledgments": {}
+    },
+    "task_ledgers": {
+      "task": {
+        "schema_version": 1,
+        "project_id": "project",
+        "root_id": "root",
+        "task_id": "task",
+        "current_contract_revision": 1,
+        "current_contract_digest": "sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba",
+        "max_attempts": 2,
+        "scheduling": "ready",
+        "active_attempt_id": null,
+        "attempt_order": [],
+        "outcomes": {},
+        "pending_cancel_reason": null
+      }
+    }
+  },
+  "ExecutionRequirementsV2": {
+    "schema_version": 1,
+    "project_id": "project",
+    "root_id": "root",
+    "task_id": "task",
+    "contract_revision": 1,
+    "contract_digest": "sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba",
+    "base_commit_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "runner": {
+      "runner_mode": "trusted_local_worktree",
+      "required_capabilities": [
+        "rust"
+      ],
+      "locality_refs": [
+        "local:test"
+      ],
+      "budget_requirement": {
+        "account_pool": "test",
+        "amount": "9007199254740993"
+      }
+    },
+    "environment_allowlist": [
+      "LANG"
+    ],
+    "shell_boundary": {
+      "mode": "forbid_shell"
+    },
+    "deadline_utc": "2026-12-01T00:00:00Z",
+    "max_wall_clock_secs": 120,
+    "responsible_role": "worker",
+    "required_delivery_stage": "source_only"
+  },
+  "ExecutionRequirementsCapsuleBinding": {
+    "schema_version": 1,
+    "task_id": "task",
+    "contract_revision": 1,
+    "contract_digest": "sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba",
+    "requirements_digest": "sha256:68f79957263d2b7832f89daef27a74dbf1cbc93f8a71b4935268b7835fb46584",
+    "placement_request_digest": "sha256:3dca0c13ff3f6f618b57606e9e125a5225e39ec9258c8992fa7b998eb6145126",
+    "base_commit_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "responsible_role": "worker",
+    "required_delivery_stage": "source_only",
+    "rendered_summary": "task=task@1 base=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa runner=TrustedLocalWorktree role=Worker delivery=SourceOnly deadline=2026-12-01T00:00:00Z max_wall_clock_secs=120 env_allowlist=[LANG] req_digest=sha256:68f79957263d2b7832f89daef27a74dbf1cbc93f8a71b4935268b7835fb46584"
+  },
+  "TaskInterfaceContractV2": {
+    "schema_version": 1,
+    "interface_id": "interface-test",
+    "project_id": "project",
+    "root_id": "root",
+    "authority_ref": "policy:test",
+    "interface_revision": "18446744073709551615",
+    "producer_task": {
+      "task_id": "task",
+      "revision": 1,
+      "contract_digest": "sha256:7fdd09187328bde554641490604d7a2abbd17e9837ece98a6b36b249df93cdba"
+    },
+    "consumer_tasks": [
+      {
+        "task_id": "consumer",
+        "revision": 1,
+        "contract_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    ],
+    "artifact_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "schema_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "compatibility_policy": {
+      "policy": "exact_producer_revision",
+      "required_producer_revision": 1
+    },
+    "acceptance_check_ids": [
+      "T1"
+    ],
+    "status": {
+      "state": "provisional"
+    }
   }
 }

@@ -118,3 +118,45 @@ export type NestedViewsSnapshotTypes = [
 // @ts-expect-error Comparison bindings are trusted in-process inputs, not public wire grants.
 import type { ExpectedBindings } from '@admiralty/contracts';
 
+
+import {
+  validateTaskAttemptOutcomeLedger, validateAttemptOutcomeProjection, validateExecutionRequirementsV2,
+  validateExecutionRequirementsCapsuleBinding, validateTaskInterfaceContractV2,
+} from '@admiralty/contracts';
+import type {
+  TaskAttemptOutcomeLedger, AttemptOutcomeProjection, ExecutionRequirementsV2,
+  ExecutionRequirementsCapsuleBinding, TaskInterfaceContractV2,
+} from '@admiralty/contracts';
+if (validateTaskAttemptOutcomeLedger(input)) {
+  const ledger: TaskAttemptOutcomeLedger = input;
+  const version: 1 = ledger.schema_version;
+  void [version, ledger.outcomes, ledger.scheduling];
+}
+if (validateAttemptOutcomeProjection(input)) {
+  const projection: AttemptOutcomeProjection = input;
+  void [projection.projection.tasks, projection.task_ledgers];
+}
+if (validateExecutionRequirementsV2(input)) {
+  const requirements: ExecutionRequirementsV2 = input;
+  const version: 1 = requirements.schema_version;
+  const amount: string = requirements.runner.budget_requirement.amount;
+  void [version, amount, requirements.deadline_utc, requirements.shell_boundary];
+}
+if (validateExecutionRequirementsCapsuleBinding(input)) {
+  const binding: ExecutionRequirementsCapsuleBinding = input;
+  const version: 1 = binding.schema_version;
+  void [version, binding.requirements_digest, binding.placement_request_digest];
+}
+if (validateTaskInterfaceContractV2(input)) {
+  const contract: TaskInterfaceContractV2 = input;
+  const version: 1 = contract.schema_version;
+  const revision: string = contract.interface_revision;
+  void [version, revision, contract.producer_task, contract.consumer_tasks, contract.status];
+}
+// @ts-expect-error Execution budgets retain canonical decimal string wire values.
+const roundedBudget: ExecutionRequirementsV2['runner']['budget_requirement']['amount'] = 9007199254740992;
+// @ts-expect-error Interface revisions retain canonical decimal string wire values.
+const roundedInterfaceRevision: TaskInterfaceContractV2['interface_revision'] = 9007199254740992;
+// @ts-expect-error A V2 type name does not change its source-owned schema version.
+const inventedExecutionVersion: ExecutionRequirementsV2['schema_version'] = 2;
+void [roundedBudget, roundedInterfaceRevision, inventedExecutionVersion];
