@@ -3408,3 +3408,38 @@ review the README/evidence delta and approve the exact final head. Fresh hosted
 CI, actual eligible approval, normal matched merge, receiving-main checks and
 safe cleanup remain pending at this dated record. The owner continuation stays
 active until those scoped tasks are verified complete.
+
+### GFI08 — short linear sequences after the live UI report
+
+The user's renewed20October report is verified in actual Chrome: production
+still loads the pre-PR164 feature chunk. That deployment remains the sole Fleet
+Admiral's work. A separate concrete source gap is reproduced by executing the
+merged geometry on the21:28:06UTC public DOPE producer:8ranges/198members fold,
+but two/three-interior stretches stay individual under the four-interior rule.
+Several neighboring screenshot commits are actual forks and remain protected.
+
+The [short-range plan](GITFLOW_SHORT_RANGES_2026-10-20.md) registers this chat's
+sole managed source lane. Three pre-fix assertions fail on the actual short-run
+behavior. The repair folds at least two eligible interiors, sizes controls to
+their omitted-column budget, stacks endpoint hashes for short runs and retains
+full accessible metadata at extreme zoom. All eligibility, topology anchors,
+project scope, explicit focus and manual-collapse semantics remain unchanged.
+On the captured400-commit producer the repaired algorithm finds33ranges with258
+members and retains every loaded ref target and the six screenshot fork points.
+
+Focused qualification passes18compression unit tests, frontend and browser
+typechecks, production build and18real isolated server/browser tests, including
+the new two/three-interior cases, keyboard recollapse, global controls, focus,
+inventory, actual hit-testing and mobile axe. The first browser run passes17/18:
+the second new fixture observed the prior producer before the server's next
+source cut. Waiting for its exact new commit/range count fixes synchronization
+without changing an assertion or product code. Both logs and frozen PNGs remain
+under `/Users/bentaylor/.codex/artifacts/hygiene-redeploy-20261020T141911Z/live-collapse-followup-20261020T212618Z/`.
+
+These are focused working-tree checks. Full clean-source local CI, exact-source
+independent review, hosted checks, eligible approval, ordinary matched merge,
+resulting-main checks and actual rollout/Chrome verification remain pending.
+README/operator instructions describe the new source behavior while retaining
+the explicit production-preview limit. No private gate, pin, service, custody or
+foreign source was changed. The controller was notified of this disjoint source
+scope through both locked logs; no conflicting controller or PR was created.

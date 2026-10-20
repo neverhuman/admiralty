@@ -95,9 +95,43 @@ describe("maximal linear Git compression", () => {
     expect(layout.marks[0].commit).toEqual(repo.commits[0]);
     expect(layout.marks[0].range).toBeUndefined();
   });
-  it.each([0, 1, 2, 3, 4, 5])("keeps tiny histories of %i commits explicit", (n) => {
+  it.each([0, 1, 2, 3])("keeps tiny histories of %i commits explicit", (n) => {
     expect(layoutGit(chain(n)).marks).toHaveLength(n);
     expect(layoutGit(chain(n)).ranges).toHaveLength(0);
+  });
+  it.each([2, 3])("collapses %i non-branching interiors into a smaller reversible control", (n) => {
+    const repo = chain(n + 2), compact = layoutGit(repo);
+    expect(compact.ranges).toHaveLength(1);
+    expect(compact.ranges[0].commits).toEqual(repo.commits.slice(1, -1));
+    expect(compact.marks).toHaveLength(3);
+    for (const commit of repo.commits.slice(1, -1))
+      expect(compact.byOid.get(commit.oid)).toBe(compact.marks[1]);
+    for (const zoom of [0.4, 0.9, 1, 2]) {
+      const collapsed = layoutGit(repo, new Set(), zoom);
+      const expanded = layoutGit(repo, new Set(repo.commits.map((c) => c.oid)), zoom);
+      expect(collapsed.byOid.get(oid(n + 1))!.x * zoom).toBeLessThan(expanded.byOid.get(oid(n + 1))!.x * zoom);
+    }
+    const expanded = layoutGit(repo, new Set([oid(1)]));
+    expect(expanded.marks).toHaveLength(n + 2);
+    expect(expanded.ranges[0].expanded).toBe(true);
+    expect(layoutGit(repo)).toEqual(compact);
+  });
+  it("keeps real forks visible between short linear runs", () => {
+    const repo = chain(10);
+    repo.commits[3].parents = [oid(1)];
+    repo.commits[9].parents = [oid(5)];
+    const layout = layoutGit(repo);
+    expect(layout.ranges.map((range) => range.commits.map((commit) => commit.oid)))
+      .toEqual([[oid(3), oid(4)], [oid(6), oid(7)]]);
+    for (const index of [0, 1, 2, 5, 8, 9]) {
+      expect(layout.byOid.get(oid(index))!.range).toBeUndefined();
+      expect(layout.byOid.get(oid(index))!.commit.oid).toBe(oid(index));
+    }
+    expect(layout.byOid.size).toBe(10);
+    for (const commit of repo.commits) for (const parent of commit.parents) {
+      const a = layout.byOid.get(parent)!, b = layout.byOid.get(commit.oid)!;
+      if (a !== b) expect(a.x).toBeLessThan(b.x);
+    }
   });
   it("reserves readable bubble space at every supported zoom", () => {
     for (const zoom of [0.2, 0.4, 0.9, 1, 2]) {

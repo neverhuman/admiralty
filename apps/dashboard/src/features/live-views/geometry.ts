@@ -70,6 +70,11 @@ export type GitLayout = {
   ranges: CommitRange[];
   orderedCommits: GitCommit[];
 };
+const GIT_COMMIT_SPACING = 112;
+/** Spend less than the omitted columns, with a usable target at extreme zoom. */
+export function gitRangeWidth(count: number, zoom: number) {
+  return Math.max(24, Math.min(304, (count - 1) * GIT_COMMIT_SPACING * zoom * 0.75));
+}
 /** Kahn's algorithm retains every loaded parent and ignores misleading commit dates. */
 function layoutGitCommits(repo: GitRepository) {
   const commits = new Map(repo.commits.map((c) => [c.oid, c]));
@@ -159,8 +164,8 @@ export function layoutGit(
       chain.push(next.commit);
       next = raw.byOid.get(children.get(next.commit.oid)![0]);
     }
-    // A bubble is wider than two or three ordinary commit columns.
-    if (chain.length < 4) continue;
+    // Two or more interiors form a run; compact controls fit short sequences too.
+    if (chain.length < 2) continue;
     const range: CommitRange = {
       id: `${repo.instance_id}:${chain[0].oid}:${chain.at(-1)!.oid}`,
       commits: chain,
@@ -174,7 +179,7 @@ export function layoutGit(
   const marks: CommitMark[] = [];
   const byOid = new Map<string, CommitMark>();
   const laneEnds = new Map<number, number>();
-  const radius = (m: CommitMark) => m.range ? 152 / zoom : 0;
+  const radius = (m: CommitMark) => m.range ? gitRangeWidth(m.range.commits.length, zoom) / (2 * zoom) : 0;
   for (const source of raw.marks) {
     const range = membership.get(source.commit.oid);
     if (range && !range.expanded && range.commits[0].oid !== source.commit.oid) {
@@ -187,7 +192,7 @@ export function layoutGit(
       const parent = byOid.get(id);
       return parent ? [parent] : [];
     });
-    mark.x = Math.max(64 + radius(mark), (laneEnds.get(mark.lane) ?? -48) + 112 + radius(mark), ...parents.map((p) => p.x + radius(p) + 112 + radius(mark)));
+    mark.x = Math.max(64 + radius(mark), (laneEnds.get(mark.lane) ?? -48) + GIT_COMMIT_SPACING + radius(mark), ...parents.map((p) => p.x + radius(p) + GIT_COMMIT_SPACING + radius(mark)));
     if (range?.expanded && range.commits[0].oid === mark.commit.oid) {
       range.x = mark.x;
       range.y = mark.y;
