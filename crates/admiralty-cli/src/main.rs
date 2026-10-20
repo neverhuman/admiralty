@@ -154,7 +154,7 @@ enum Command {
     },
     /// Create-only backups, isolated restore rehearsals and non-authorizing recovery proposals.
     Recover(native_recovery::RecoveryArgs),
-    /// Stage explicit release inputs; this does not install, sign or activate a release.
+    /// Stage, archive or privately install explicit release inputs; this does not sign, publish or activate a release.
     Release {
         #[command(subcommand)]
         command: ReleaseCommand,
@@ -758,10 +758,11 @@ async fn run(cli: Cli) -> CliResult<()> {
             let store = Store::open(directory.path().join("demo.sqlite"))?;
             seed_demo(&store)?;
             eprintln!(
-                "Isolated synthetic demo: no live providers, project authority or acceptance. Temporary state is removed on exit."
+                "Isolated synthetic demo: no live providers, project authority or acceptance. Temporary state is removed after clean shutdown (SIGINT/SIGTERM)."
             );
             if snapshot_only {
                 print_json(serde_json::to_value(store.snapshot()?)?)?;
+                drop(store);
             } else {
                 serve(
                     store,
@@ -776,7 +777,8 @@ async fn run(cli: Cli) -> CliResult<()> {
                 )
                 .await?;
             }
-            // Store ownership drains before the enclosing temporary directory.
+            // Store ownership and active SSE streams drain before closing the enclosing temporary directory.
+            directory.close()?;
         }
         Command::AgentTools(args) => args.run()?,
         Command::Doctor => {

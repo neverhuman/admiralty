@@ -56,6 +56,8 @@ struct AppState {
     streams: Arc<Semaphore>,
     models: Option<admiralty_runtime::models::RegistryFile>,
     views: Arc<views::ViewsHub>,
+    shutdown: tokio::sync::watch::Receiver<bool>,
+    _shutdown_lifetime: tokio::sync::watch::Sender<bool>,
 }
 
 #[derive(Serialize)]
@@ -312,6 +314,7 @@ async fn events_for_version(
     }
     drop(_permit);
     let generation = snapshot.cursor.recovery_generation;
+    let shutdown = state.shutdown.clone();
     let stream = futures_util::stream::unfold(
         (
             state,
@@ -321,12 +324,25 @@ async fn events_for_version(
             false,
             stream_permit,
             changes,
+            shutdown,
         ),
-        move |(state, mut after, mut pending, generation, closed, stream_permit, mut changes)| async move {
-            if closed {
+        move |(
+            state,
+            mut after,
+            mut pending,
+            generation,
+            closed,
+            stream_permit,
+            mut changes,
+            mut shutdown,
+        )| async move {
+            if closed || *shutdown.borrow() {
                 return None;
             }
             loop {
+                if *shutdown.borrow() {
+                    return None;
+                }
                 if let Some(record) = pending.pop_front() {
                     let record: admiralty_store::EventRecord = record;
                     after = record.seq.parse().unwrap_or(after);
@@ -347,6 +363,7 @@ async fn events_for_version(
                             false,
                             stream_permit,
                             changes,
+                            shutdown,
                         ),
                     ));
                 }
@@ -384,12 +401,13 @@ async fn events_for_version(
                                     true,
                                     stream_permit,
                                     changes,
+                                    shutdown,
                                 ),
                             ));
                         }
                         if state.config.simulated && batch.events.iter().any(|r|matches!(&r.event,admiralty_core::DomainEvent::TaskSubmitted{contract} if !contract.simulated)) {
                         let event=Event::default().event("snapshot_required").data("demo scope changed; private state is unavailable");
-                        return Some((Ok(event),(state,after,pending,generation,true,stream_permit,changes)));
+                        return Some((Ok(event),(state,after,pending,generation,true,stream_permit,changes,shutdown)));
                     }
                         pending.extend(batch.events);
                     }
@@ -407,26 +425,38 @@ async fn events_for_version(
                                 true,
                                 stream_permit,
                                 changes,
+                                shutdown,
                             ),
                         ));
                     }
                 }
-                if pending.is_empty() && changes.changed().await.is_err() {
-                    let event = Event::default()
-                        .event("snapshot_required")
-                        .data("event notifications unavailable; fetch a fresh snapshot");
-                    return Some((
-                        Ok(event),
-                        (
-                            state,
-                            after,
-                            pending,
-                            generation,
-                            true,
-                            stream_permit,
-                            changes,
-                        ),
-                    ));
+                if pending.is_empty() {
+                    tokio::select! {
+                        biased;
+                        _ = shutdown.changed() => {
+                            return None;
+                        }
+                        changed = changes.changed() => {
+                            if changed.is_err() {
+                                let event = Event::default()
+                                    .event("snapshot_required")
+                                    .data("event notifications unavailable; fetch a fresh snapshot");
+                                return Some((
+                                    Ok(event),
+                                    (
+                                        state,
+                                        after,
+                                        pending,
+                                        generation,
+                                        true,
+                                        stream_permit,
+                                        changes,
+                                        shutdown,
+                                    ),
+                                ));
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -700,6 +730,25 @@ pub fn app_with_work_order_routes(
     native_routes: Option<Router>,
     intake: Option<services::work_order_routes::WorkOrderRouteState>,
 ) -> Result<Router, Box<dyn std::error::Error + Send + Sync>> {
+    let (shutdown, _) = tokio::sync::watch::channel(false);
+    app_with_work_order_routes_and_shutdown(
+        store,
+        config,
+        native_routes,
+        intake,
+        shutdown,
+        views::ViewsHub::new(),
+    )
+}
+
+fn app_with_work_order_routes_and_shutdown(
+    store: Store,
+    config: ServerConfig,
+    native_routes: Option<Router>,
+    intake: Option<services::work_order_routes::WorkOrderRouteState>,
+    shutdown: tokio::sync::watch::Sender<bool>,
+    views: Arc<views::ViewsHub>,
+) -> Result<Router, Box<dyn std::error::Error + Send + Sync>> {
     if config.simulated && (native_routes.is_some() || intake.is_some()) {
         return Err("demo mode cannot install native command routes".into());
     }
@@ -735,7 +784,9 @@ pub fn app_with_work_order_routes(
         reads: Arc::new(Semaphore::new(8)),
         streams: Arc::new(Semaphore::new(MAX_EVENT_STREAMS)),
         models,
-        views: views::ViewsHub::new(),
+        views,
+        shutdown: shutdown.subscribe(),
+        _shutdown_lifetime: shutdown,
     };
     let model_routes = Router::new()
         .route("/v1/models", get(model_list).put(model_update))
@@ -791,6 +842,29 @@ pub async fn serve_with_native_routes(
     serve_with_work_order_routes(store, config, native_routes, None).await
 }
 
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+        let mut sigterm = signal(SignalKind::terminate()).ok();
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {}
+            _ = async {
+                match &mut sigterm {
+                    Some(s) => {
+                        s.recv().await;
+                    }
+                    None => std::future::pending::<()>().await,
+                }
+            } => {}
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = tokio::signal::ctrl_c().await;
+    }
+}
+
 pub async fn serve_with_work_order_routes(
     store: Store,
     config: ServerConfig,
@@ -799,7 +873,16 @@ pub async fn serve_with_work_order_routes(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let listen = config.listen;
     let native_commands = native_routes.is_some() || intake.is_some();
-    let app = app_with_work_order_routes(store, config, native_routes, intake)?;
+    let (shutdown_tx, _) = tokio::sync::watch::channel(false);
+    let views = views::ViewsHub::new();
+    let app = app_with_work_order_routes_and_shutdown(
+        store,
+        config,
+        native_routes,
+        intake,
+        shutdown_tx.clone(),
+        views.clone(),
+    )?;
     let listener = tokio::net::TcpListener::bind(listen).await?;
     let mode = if native_commands {
         "native commands enabled; execution requires admitted controller"
@@ -810,11 +893,18 @@ pub async fn serve_with_work_order_routes(
         "Admiralty listening on http://{} ({mode})",
         listener.local_addr()?
     );
-    axum::serve(listener, app)
-        .with_graceful_shutdown(async {
-            let _ = tokio::signal::ctrl_c().await;
+    let signal_tx = shutdown_tx.clone();
+    let outcome = axum::serve(listener, app)
+        .with_graceful_shutdown(async move {
+            shutdown_signal().await;
+            signal_tx.send_replace(true);
         })
-        .await?;
+        .await;
+    // A notification is not a join. Release the updater's Store and any
+    // in-flight blocking projection before the demo can remove its database.
+    shutdown_tx.send_replace(true);
+    views.shutdown().await?;
+    outcome?;
     Ok(())
 }
 

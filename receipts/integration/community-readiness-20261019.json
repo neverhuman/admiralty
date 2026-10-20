@@ -15,7 +15,7 @@
     "README.md": "2c53f6ed5345304e59df100be88a4e2ded5df7faa6c738b9182abdd6ac5b83c8",
     "CONTRIBUTING.md": "7f1fa6c965dbb4d1e85500fb3f7b4a7c0a07c02101fe4716e2c78058e5d817eb",
     "SECURITY.md": "d3414d07a28c9b15733f2c031c0a2c09668fa4b579d8a614d27bc8738fc982a5",
-    "docs/contributors/community-readiness.md": "3c1fa52149a21289499348ba5a25acafccdcec8baefba7f54510d307133ab0a4",
+    "docs/contributors/community-readiness.md": "8b13875d23ac487d73dbad053498613da51d7a706118a5cf29b2551a49794c08",
     "CHANGELOG.md": "417c85c0eb987ea7b274246188aef32e8f5cfadac9adb8789e8abee64b5a03de"
   },
   "command_checks": [
@@ -115,6 +115,11 @@
     "javascript_vulnerabilities_all_severities": 0,
     "full_history_gitleaks_original_exit": 1,
     "full_history_original_findings": 29,
+    "full_history_gitleaks_ref_scope": "all shared-clone refs (1953 commits across preserved foreign lanes, 29 generic-api-key findings retained and classified, 0 confirmed live credentials)",
+    "main_b958736f_history_patch_commits": 682,
+    "main_b958736f_history_findings": 11,
+    "main_b958736f_exact_11_fingerprint_control_exit": 0,
+    "main_b958736f_exact_11_fingerprint_control_findings": 0,
     "every_historical_source_occurrence_reviewed": true,
     "unique_locations": 11,
     "confirmed_live_credentials": 0,
