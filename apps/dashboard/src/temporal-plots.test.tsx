@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { parseLegacy } from './legacy';
+import { TokenEfficiency } from './ui/TokenEfficiency';
+import { LegacyHierarchy } from './ui/LegacyHierarchy';
 import { buildTemporalMetrics, TemporalPlots } from './ui/TemporalPlots';
 
 // Field names and nesting captured from GET /v1/legacy: ts/proj/hosts/tiers/hyg/ty,
@@ -46,7 +48,7 @@ describe('dense temporal dashboard strip', () => {
   });
   it('keeps token-weighted cost distinct from the separate live-agent average', () => {
     const metric = buildTemporalMetrics(snapshot()).metrics[0];
-    expect(metric.values[0].value).toBe('4.51×');
+    expect(metric.values[0].value).toBe('11.3×');
     expect(metric.series[0].points.map(point => point.value)).toEqual([4.2, 4.51]);
     expect(metric.note).toContain('real token counts');
   });
@@ -89,8 +91,8 @@ describe('dense temporal dashboard strip', () => {
     const quota = metrics.find(metric => metric.id === 'weekly-quota')!;
     expect(quota.sourceTime).toBe('2026-10-18T11:04:00Z'); expect(quota.series[0].points.at(-1)!.time).toBe(Date.parse(quota.sourceTime) / 1000);
     const yieldMetric = metrics.find(metric => metric.id === 'token-yield')!;
-    expect(yieldMetric.values[0].value).toBe('main 45%'); expect(yieldMetric.note).toContain('main 47.4%');
-    expect(yieldMetric.note).toContain('not acceptance');
+    expect(yieldMetric.values[0].value).toBe('45%'); expect(yieldMetric.values[0].label).toBe('Full main yield'); expect(yieldMetric.note).toContain('main 47.4%');
+    expect(yieldMetric.note).toContain('estimates from the same observed events');
     const html = renderToStaticMarkup(<TemporalPlots snapshot={source} />);
     expect(html).toContain('dateTime="2026-10-18T10:56:08Z"');
   });
@@ -103,5 +105,74 @@ describe('dense temporal dashboard strip', () => {
     const cost = html.split('data-metric="cost-index"')[1].split('</article>')[0];
     expect((cost.match(/<circle/g) ?? []).length).toBe(2); expect(cost).not.toContain('<polyline');
     expect(html).not.toContain('<img'); expect(html).toContain('&lt;img');
+  });
+
+  it('keeps full and observed cost and yield bases separate across mixed history', () => {
+    const source = snapshot();
+    source.token_efficiency = { cost_index_vs_all_luna: null, cost_index_observed_vs_all_luna: 1.234,
+      quota: { credits_balance: '123456789012345678.999' },
+      cost_index_observed_note: 'Partial priced Codex sample · not full spend' };
+    source.history = { rows: [
+      { ts: 1792321200, cost_index: 4.25, cost_index_observed: null,
+        ty: { tok: 1000, int: 600, main: 400, ym: 40, yi: 60, cov: 80,
+          observed: { tok: 900, int: 500, main: 350, attributed: 300, ym: null, yi: null, cov: null } } },
+      { ts: 1792321320, cost_index: null, cost_index_observed: 1.2345,
+        cost_observed_basis: 'Priced observed samples only',
+        ty: { tok: null, int: null, main: null, ym: null, yi: null, cov: null,
+          observed: { tok: 80, int: 45, main: 30, attributed: 25, ym: 0, yi: 87.64277401681029, cov: null } } },
+    ] };
+    source.token_yield = { generated_utc: '2026-10-18T11:04:00Z', method: 'event counts', lower_bound_tokens: 120,
+      integration_tokens: 70, main_tokens: 50, attributed_tokens: 42,
+      total: { tokens: null, integration_tokens: null, main_tokens: null, attributed_tokens: null,
+        yield_main_pct: null, yield_integration_pct: null, coverage_pct: null } };
+
+    const model = buildTemporalMetrics(source).metrics;
+    const cost = model.find(metric => metric.id === 'cost-index')!;
+    expect(cost.values.map(value => value.value)).toEqual(['4.25×', '1.23× observed']);
+    expect(cost.series.map(item => item.id)).toEqual(['cost-full', 'cost-observed']);
+    expect(cost.series[0].points.map(point => point.value)).toEqual([4.25, null]);
+    expect(cost.series[1].points.map(point => point.value)).toEqual([null, 1.2345]);
+    expect(cost.note).toContain('Partial priced Codex sample');
+
+    const tokens = model.find(metric => metric.id === 'tokens')!;
+    expect(tokens.values.map(value => value.value)).toEqual(['≥ 120 observed', '≥ 70 observed', '≥ 50 observed', '≥ 42 observed']);
+    expect(tokens.series.find(item => item.id === 'token-observed-main')!.points.map(point => point.value)).toEqual([350, 30]);
+    const yieldMetric = model.find(metric => metric.id === 'token-yield')!;
+    expect(yieldMetric.values.slice(0, 3).map(value => value.value)).toEqual(['unknown', 'unknown', 'unknown']);
+    expect(yieldMetric.values.slice(3).map(value => value.value)).toEqual(['0%', '87.64%', 'unknown']);
+    expect(yieldMetric.series.find(item => item.id === 'yield-main-observed')!.points.map(point => point.value)).toEqual([null, 0]);
+    expect(yieldMetric.series.find(item => item.id === 'yield-main-full')!.points.map(point => point.value)).toEqual([40, null]);
+
+    const html = renderToStaticMarkup(<><TemporalPlots snapshot={source} /><TokenEfficiency snapshot={source} /></>);
+    expect(html).toContain('Observed sample · partial');
+    expect(html).toContain('Partial priced Codex sample');
+    expect(html).toContain('≥ 120 observed');
+    expect(html).toContain('Observed-sample main yield');
+    expect(html).toContain('123,456,789,012,345,679');
+    expect(html).not.toContain('87.642774');
+  });
+
+  it('shows current and historical hygiene with original per-project source age, including missing sources', () => {
+    const source = snapshot();
+    source.hierarchy = { captains: [{ key: 'alpha', name: 'Project Alpha', state: 'idle', workers: [] },
+      { key: 'beta', name: 'Project Beta', state: 'idle', workers: [] }] };
+    source.super_captain = { status_mtime_utc: '2026-10-18T10:00:00Z', status: { captains: {
+      alpha: { hygiene: { grade: 'A', score: 96.42857142857143, notes: ['reported'] } }, beta: { hygiene: null },
+    } } };
+    source.history.rows = [
+      { ts: 1792321200, hyg_at: { beta: 1792321140 }, hyg: { beta: 13.593749999999998 } },
+      { ts: 1792321320, hyg_at: {}, hyg: {} },
+    ];
+    const metric = buildTemporalMetrics(source).metrics.find(item => item.id === 'hygiene')!;
+    expect(metric.values[0].value).toContain('96.43');
+    expect(metric.values[0].label).toContain('2026-10-18T10:00:00Z');
+    expect(metric.values[1].value).toContain('13.59');
+    expect(metric.values[1].label).toContain('2026-10-18T10:59:00.000Z');
+    const html = renderToStaticMarkup(<LegacyHierarchy snapshot={source} />);
+    expect(html).toContain('Hygiene');
+    expect(html).toContain('96.43');
+    expect(html).toContain('2026-10-18T10:00:00Z');
+    expect(html).toContain('Not reported by Admiral');
+    expect(html).not.toContain('Hygiene 0');
   });
 });

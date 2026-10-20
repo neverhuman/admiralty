@@ -1,17 +1,15 @@
 import { useState, type ReactNode } from 'react';
 import { data, list, number, text, type Data, type LegacySnapshot } from '../legacy';
+import { formatCompactMeasurement, formatDecimalBalance, formatMeasurement } from '../formatNumbers';
 import { ModelBadge, modelFamily } from './ModelBadge';
 import './token-efficiency.css';
 
-const fmt = (value: number | null, digits = 1): string => value === null ? 'Unknown' : value.toLocaleString('en-US', { maximumFractionDigits: digits });
+const fmt = (value: number | null, digits = 2): string => formatMeasurement(value, digits);
 const metric = (value: unknown, digits = 1): string => fmt(number(value), digits);
 const percent = (value: unknown): string => number(value) === null || Number(value) > 100 ? 'Unknown' : `${metric(value)}%`;
 const signed = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) ? value : null;
-const formatBalance = (value: unknown): string => typeof value === 'string' && /^\d{1,18}(?:\.\d{1,32})?$/.test(value) ? value : fmt(number(value), 0);
-const compact = (value: unknown): string => {
-  const n = number(value);
-  return n === null ? 'Unknown' : n >= 1e9 ? `${fmt(n / 1e9, 2)}B` : n >= 1e6 ? `${fmt(n / 1e6, 2)}M` : n >= 1e3 ? `${fmt(n / 1e3, 1)}k` : fmt(n, 0);
-};
+const formatBalance = (value: unknown): string => formatDecimalBalance(value);
+const compact = (value: unknown): string => formatCompactMeasurement(number(value));
 const entries = (value: unknown): Array<[string, unknown]> => Object.entries(data(value));
 const summary = (value: unknown): string => entries(value).map(([key, count]) => `${key} ${metric(count, 0)}`).join(' · ') || 'Unknown';
 const modelName = (agent: Data): string => `${text(agent.model)}${agent.family === 'codex' && text(agent.effort) ? ` ${text(agent.effort)}` : ''}`;
@@ -35,6 +33,10 @@ export function TokenEfficiency({ snapshot }: { snapshot: LegacySnapshot }) {
   const windows = data(efficiency.windows), hour = data(windows['60']), quarter = data(windows['15']);
   const ledger = data(efficiency.ledger), stats = data(efficiency.ledger_stats), funnel = data(stats.funnel);
   const yieldSource = data(snapshot.token_yield), yieldTotal = data(yieldSource.total);
+  const historyRows = list(data(snapshot.history).rows).map(data).filter(row => number(row.ts) !== null)
+    .sort((a, b) => Number(a.ts) - Number(b.ts)).slice(-4096);
+  const latestFullCostRow = [...historyRows].reverse().find(row => number(row.cost_index) !== null);
+  const latestObservedCostRow = [...historyRows].reverse().find(row => number(row.cost_index_observed) !== null);
   const agents = list(snapshot.agents).map(data);
   const [modelLimit, setModelLimit] = useState(16), [usageLimit, setUsageLimit] = useState(16), [flagLimit, setFlagLimit] = useState(12), [projectLimit, setProjectLimit] = useState(12);
   // The producer's `agents` list contains observed agent-process records.
@@ -54,7 +56,15 @@ export function TokenEfficiency({ snapshot }: { snapshot: LegacySnapshot }) {
   const yieldProjects = entries(yieldSource.projects).map(([id, value]) => [id, data(value)] as const);
   const sourceNotes = [efficiency.windows_note, efficiency.quota_note, efficiency.claude_note].map(text).filter(Boolean);
   const cheapest = number(efficiency.pct_codex_on_cheapest);
-  const cost = number(efficiency.cost_index_vs_all_luna), used = number(quota.used_percent);
+  const liveCost = number(efficiency.cost_index_vs_all_luna), liveObservedCost = number(efficiency.cost_index_observed_vs_all_luna);
+  const cost = liveCost ?? number(latestFullCostRow?.cost_index);
+  const observedCost = liveObservedCost ?? number(latestObservedCostRow?.cost_index_observed), used = number(quota.used_percent);
+  const currentFullCost = liveCost !== null;
+  const costHistoryTime = (row: Data | undefined) => number(row?.ts) === null ? '' : new Date(Number(row!.ts) * 1000).toISOString();
+  const fullCostTime = currentFullCost ? text(snapshot.generated_utc) : costHistoryTime(latestFullCostRow);
+  const observedCostTime = liveObservedCost !== null ? text(snapshot.generated_utc) : costHistoryTime(latestObservedCostRow);
+  const displayedCost = cost ?? observedCost;
+  const observedCostNote = text(efficiency.cost_index_observed_note) || text(latestObservedCostRow?.cost_observed_basis) || 'Observed/priced Codex samples only; partial coverage, not full spend.';
   const measuredCost = efficiency.cost_index_basis === 'measured_tokens_15m';
   const quotaBurn = signed(quota.burn_pct_per_hour);
   const hasEfficiency = Object.keys(efficiency).length > 0;
@@ -68,9 +78,13 @@ export function TokenEfficiency({ snapshot }: { snapshot: LegacySnapshot }) {
         value={<>{metric(efficiency.codex_on_cheapest, 0)}/{metric(efficiency.codex_agents, 0)} <span>· {percent(efficiency.pct_codex_on_cheapest)}</span></>}
         title="Legacy producer classifies gpt-6-luna as cheapest. This is not the configured native model registry's lowest tier."
         note={<>Detected models · <span>gpt-6-luna baseline</span></>} />
-      <Kpi label="Cost index vs all-Luna" accent={cost === null ? 'neutral' : cost > 10 ? 'astra' : cost > 4 ? 'sol' : 'luna'}
-        value={cost === null ? 'Unknown' : `${fmt(cost)}×`} title={text(efficiency.cost_index_note) || 'Source agent-weighted output-rate index; not token-weighted spend.'}
-        note={measuredCost ? <>Measured token mix · last 15 min</> : <>{metric(efficiency.cost_index_avg_output_rate)} cr/1M output <span>· agent weighted</span></>} />
+      <Kpi label={cost === null && observedCost !== null ? 'Cost index · observed sample' : currentFullCost ? 'Cost index vs all-Luna' : 'Last recorded full cost index'} accent={displayedCost === null ? 'neutral' : displayedCost > 10 ? 'astra' : displayedCost > 4 ? 'sol' : 'luna'}
+        value={displayedCost === null ? 'Unknown' : `${fmt(displayedCost)}×`}
+        title={cost === null && observedCost !== null ? [observedCostNote, observedCostTime].filter(Boolean).join(' · ') : [text(efficiency.cost_index_note) || text(latestFullCostRow?.cost_basis) || 'Token-weighted aggregate cost index.', fullCostTime].filter(Boolean).join(' · ')}
+        note={cost === null && observedCost !== null ? <>Observed/priced samples · partial coverage · {observedCostTime || 'source time unknown'}<br />{observedCostNote}</>
+          : <>{currentFullCost && measuredCost ? 'Full measured token mix · last 15 min' : cost !== null ? `Full aggregate · source ${fullCostTime || 'time unknown'}` : <>{metric(efficiency.cost_index_avg_output_rate)} cr/1M output · agent weighted</>}
+            {observedCost !== null && <> · observed sample {fmt(observedCost)}× (partial, {observedCostTime || 'source time unknown'})</>}
+          </>} />
       <Kpi label="Codex burn · last 60 min" value={<>{metric(hour.credits_per_hour_est)} <span>cr/h</span></>}
         note={<><span className="te-estimate">Estimate{incomplete ? ' · priced subtotal' : ''}</span> · 15m pace {metric(quarter.credits_per_hour_est)} cr/h{quarterIncomplete ? ' (subtotal)' : ''}<br />{compact(hour.output_tokens)} out / {compact(hour.input_tokens)} in <span>· measured tokens</span></>} />
       <Kpi label={quotaLabel(quota)} accent={used === null || used > 100 ? 'neutral' : used >= 85 ? 'astra' : used >= 60 ? 'sol' : 'luna'} value={percent(quota.used_percent)}
@@ -119,7 +133,32 @@ export function TokenEfficiency({ snapshot }: { snapshot: LegacySnapshot }) {
 
     {Object.keys(yieldSource).length > 0 && <section className="te-yield" aria-label="Estimated token yield">
       <div className="te-section-heading"><h3>Token yield <span>· estimate</span></h3><span>{number(yieldSource.window_hours) !== null ? `${metric(yieldSource.window_hours, 0)}h source window` : 'window unknown'}</span></div>
-      <div className="te-yield-totals"><span><b>{percent(yieldTotal.yield_integration_credits_pct)}</b> credits → integration</span><span><b>{percent(yieldTotal.yield_main_credits_pct)}</b> credits → main</span><span><b>{percent(yieldTotal.coverage_pct)}</b> coverage</span><span><b>{compact(yieldTotal.tokens)}</b> generated tokens</span></div>
+      {(() => {
+        const observedRow = [...historyRows].reverse().find(row => Object.keys(data(data(row.ty).observed)).length);
+        const observed = data(data(observedRow?.ty).observed);
+        const observedOrLower = (full: unknown, sample: unknown, lower: unknown) => {
+          const fullValue = number(full);
+          const measured = number(lower) ?? number(sample);
+          return fullValue !== null ? compact(fullValue) : measured !== null ? `≥ ${compact(measured)} observed` : 'Unknown';
+        };
+        const mainYield = number(yieldTotal.yield_main_pct), integrationYield = number(yieldTotal.yield_integration_pct);
+        const mainCreditYield = number(yieldTotal.yield_main_credits_pct), integrationCreditYield = number(yieldTotal.yield_integration_credits_pct);
+        const sampleMain = number(observed.ym), sampleIntegration = number(observed.yi), sampleCoverage = number(observed.cov);
+        return <>
+          <div className="te-yield-totals">
+            <span><b>{percent(integrationCreditYield)}</b> full estimated credits → integration</span>
+            <span><b>{percent(mainCreditYield)}</b> full estimated credits → main</span>
+            <span><b>{mainYield === null ? percent(sampleMain) : percent(mainYield)}</b> {mainYield === null ? 'observed-sample main yield' : 'full main yield'}{mainYield === null && sampleMain !== null ? ' · estimate' : ''}</span>
+            <span><b>{integrationYield === null ? percent(sampleIntegration) : percent(integrationYield)}</b> {integrationYield === null ? 'observed-sample integration yield' : 'full integration yield'}{integrationYield === null && sampleIntegration !== null ? ' · estimate' : ''}</span>
+            <span><b>{percent(number(yieldTotal.coverage_pct) ?? sampleCoverage)}</b> {number(yieldTotal.coverage_pct) === null ? 'observed-sample coverage' : 'full coverage'}</span>
+            <span><b>{observedOrLower(yieldTotal.tokens, observed.tok, yieldSource.lower_bound_tokens ?? yieldTotal.lower_bound_tokens)}</b> generated tokens</span>
+            <span><b>{observedOrLower(yieldTotal.integration_tokens, observed.int, yieldSource.integration_tokens ?? yieldTotal.integration_tokens)}</b> integration tokens</span>
+            <span><b>{observedOrLower(yieldTotal.main_tokens, observed.main, yieldSource.main_tokens ?? yieldTotal.main_tokens)}</b> main tokens</span>
+            <span><b>{observedOrLower(yieldTotal.attributed_tokens, observed.attributed, yieldSource.attributed_tokens ?? yieldTotal.attributed_tokens)}</b> attributed tokens</span>
+          </div>
+          <p className="te-source">Observed-sample yields use the same observed events. They are estimates and are not lower bounds for full yield. Full fields remain unknown when coverage is incomplete.{observedRow ? ` Sample source ${number(observedRow.ts) === null ? 'timestamp unavailable' : new Date(Number(observedRow.ts) * 1000).toISOString()}.` : ''}</p>
+        </>;
+      })()}
       {yieldProjects.length > 0 && <div className="te-table-scroll"><table className="te-table"><thead><tr><th>Project</th><th>Tokens</th><th>Credits <small>(est.)</small></th><th>Integration</th><th>Main</th><th>Coverage</th></tr></thead><tbody>{yieldProjects.slice(0, projectLimit).map(([id, row]) => <tr key={id}><td>{id}</td><td>{compact(row.tokens)}</td><td>{metric(row.credits, 0)}</td><td>{percent(row.yield_integration_credits_pct)}</td><td>{percent(row.yield_main_credits_pct)}</td><td>{percent(row.coverage_pct)}</td></tr>)}</tbody></table></div>}
       <RowsNote count={yieldProjects.length} shown={projectLimit} onMore={() => setProjectLimit(value => value + 32)} />
       <p className="te-source">{text(yieldSource.method) || 'Yield method unavailable.'} Updated {text(yieldSource.generated_utc) || 'Unknown'}{list(yieldSource.not_covered).length ? ` · Not covered: ${list(yieldSource.not_covered).map(text).join(', ')}` : ''}</p>
