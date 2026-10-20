@@ -3171,3 +3171,37 @@ dependency equality and measurement/platform limits. Independent review and the
 final whole matrix/hosted gates remain separate. Production stays on the last
 qualified main until ordinary merge and the sole controller's serial cutover;
 P03 and full native release acceptance remain false.
+
+### DOPE audit, project Git Flow chat and Git protector — October20
+
+Source `91eae7345bd1bf0554a073d763ee9fa37f164706` in the isolated Mac lane
+`codex/git-protector-chat` implements project-scoped Captain/Admiral chat,
+immutable durable inbox/reply CLI transport, and a Rust Git health evaluator over
+the existing observation. The [worker-ready plan](GIT_PROTECTOR_CHAT_PLAN.md)
+defines ownership, rollout, stop conditions and sequential integration with the
+independent linear-collapse lane. No generated Views contracts were changed.
+
+The [DOPE audit](DOPE_GIT_AUDIT_2026-10-20.md) covers eleven existing worktrees and
+four missing registrations. Old workplan content is patch-equivalent, the
+captain bridge has main's exact tree, and the real pending worker delta remains
+in existing DOPE PR290. Canonical main's43 staged paths remove6659 lines;
+historical author/intent remain unknown. The Admiral acknowledged the notice
+and preservation/custody decision. Captain queue acceptance is recorded without
+claiming consumption. No DOPE source reconciliation or cleanup occurred.
+
+The final clean-source local `pnpm check` passes20/20 stages:1759 Rust tests
+(6 ignored, including the explicit benchmark),208 dashboard tests and37 browser
+tests; strict Clippy, contracts, native startup canary, typechecks and build pass.
+Actual final binaries additionally pass29 authenticated startup/chat/CLI checks.
+The final-source unoptimized benchmark averages56.087021ms across100 evaluations
+of64 checkouts/512 commits/65 refs with zero Git subprocesses. It is not a release
+or fleet latency guarantee. Strict axe gates remain unchanged and pass after
+bounding chat overlay layers. Earlier lint, canary readiness, inventory, native
+mode and accessibility failures remain retained, with their specific repairs.
+
+The [source-bound receipt](../../../receipts/integration/git-protector-chat-20261020.json)
+records exact commands, source/tree/file hashes, logs, binaries, screenshots and
+limits. Its evidence commit follows the tested source. Existing PR163's owner is
+the receiving integration route; no duplicate PR or production controller is
+created. Exact-head review/hosted gates, sequential combination with collapse,
+deployment, protected role enrollment and a real role round trip remain separate.
