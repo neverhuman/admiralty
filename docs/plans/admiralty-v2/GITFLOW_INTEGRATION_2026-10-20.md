@@ -49,6 +49,12 @@ layout need. The branch-audit packet is read-only. The role-coordination packet
 only appends authorized locked coordination logs and collects evidence outside
 source. No parallel agent writes the same file or runs competing builds.
 
+The follow-up runtime packet owns only
+`crates/admiralty-runtime/src/execution.rs` and its inline tests after the
+interim matrix completes. Preserve the current SessionHost, server authority,
+identity/digest fields and public `finish` signature. No two packets write the
+runtime file or run overlapping builds.
+
 Generated schemas/exports, production configuration, databases and private
 transcripts are outside the write scope. No new Python source is required.
 
@@ -103,6 +109,59 @@ transcripts are outside the write scope. No new Python source is required.
     receipt and notify captain/Admiral. Retain foreign/dirty/custody work and
     only clean up owned inactive merged work through normal managed lifecycle.
 
+## GFI02 — absent execution safety delta found during the complete audit
+
+The deeper audit proves `origin/codex/native-i3-execution-bounded` at
+`ce2b7a85c3b60fd03688d716ece27d1ba7327524` contains a genuinely missing safety
+behavior. Current `ExecutionAdapter::finish` calls `SessionHost::wait`, whose
+live-child loop has no deadline. The separate bounded NativeExecutor does not
+replace this public adapter consumed by the model-selection boundary. The old
+branch is not safe to import wholesale: it removes `finish`, renames current
+identity fields and treats some potentially post-spawn failures as pre-spawn.
+
+Read runtime `execution.rs:1`, `session/mod.rs:925`, and server
+`model_selection.rs:2617` plus current reservation/evidence consumers before
+editing. Preserve `ExecutionIdentity.provider/model`, its digest schema,
+`ExecutionError::Io`, and the `finish` call signature. Add `finish_until` with a
+monotonic observation deadline and a documented bounded default for `finish`.
+Do not intentionally wait on a live child after the observation deadline.
+Status contention, capture failures, missing evidence, overflow and deadlines
+produce unknown evidence, never fabricated success or settlement. Filesystem
+and kernel calls are not a hard real-time guarantee; state this limitation.
+
+Insert a Starting record before entering the host's side-effecting launch call,
+release the adapter metadata lock while launching, and retain unknown custody
+after any unproved post-call failure. Do not assume Poisoned proves no spawn.
+An ambiguous attempt cannot be resubmitted as a fresh spawn. Denied admission
+still creates no record, spool or child. Preserve current lifecycle/acceptance
+and owner authority.
+
+Test owned live-child deadline, later completed observation, metadata/status
+contention, ambiguous launch retention and duplicate refusal, nonzero failure,
+capture bounds and explicit child cleanup/reaping. Run focused runtime and
+existing server reservation/evidence consumers, then the entire local matrix
+on the final combined source. The prior Gitflow-only matrix does not qualify
+this later runtime delta.
+
+The focused port passes10 runtime tests (one existing ignored helper), strict
+runtime all-target Clippy and two existing server identity/settlement consumer
+tests. The imported causal-clock negative also passes in its current registered
+target. Source/commands/log hashes and the original timing-fixture failure are
+retained in `/private/tmp/execution-safety-port/`; final full qualification is
+still required after source commit. The complete
+[branch reconciliation](BRANCH_RECONCILIATION_2026-10-20.md) records all428 refs,
+the deeper67-ref comparison and preserved dirty/proposal dispositions.
+
+The deeper audit also proves `fd477b67b001bd8d96cb9a4d07b337488cb8bb0a` is an
+unwired per-agent lifecycle authority proposal. It is not equivalent to current
+owner-only lifecycle commands. Blind import regresses registry-incarnation
+isolation and checks a stale task digest before idempotent Store replay. Its
+single initial-cancel fixture does not qualify retry, revision, rotation or HTTP
+startup. Retain this unaccepted proposal with explicit evidence; do not add a
+new agent authority surface while merging unrelated ready work. Historical
+qualification test/source snapshots require their own semantic disposition,
+not automatic replay based on unique commit or test names.
+
 ## Validation and failure interpretation
 
 Use Node24 and pnpm11.15.1, Rust1.95, bounded two compiler jobs and one Rust test
@@ -138,7 +197,11 @@ filtered-project control reproduces intent loss outside the visible project.
 Initial fixture/selector failures are retained separately and are not product
 negative proof. Repairs preserve explicit anchors, manual collapse over growth,
 project-scoped camera/intent and real horizontal chat pan. The combined affected
-browser suites pass22/22; full exact-source qualification follows.
+browser suites pass22/22. Interim source
+`0fa59ac13f87ec6c4370856e3ad94ba5e4872078` then passes the complete Node24 local
+matrix:1762 Rust executions (6 ignored),231 dashboard tests and47 browser tests;
+logs remain `/private/tmp/adm.IgPWpG/logs`. It remains an interim qualification
+because GFI02 was discovered while completing the branch audit.
 
 PR163 merged at07:54:06UTC after all five hosted checks passed and actual
 neverhumanbot approved its exact head. Receiving main

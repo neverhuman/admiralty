@@ -7,6 +7,11 @@
   with durable inbox delivery/replies and Rust Git health findings over cached
   observations. Protected role enrollment is required for live chat and alerts.
 
+- Bound admitted execution observation with caller deadlines, retain ambiguous
+  launch identities and reject resubmission of a submitted run token. Preserve
+  current identity/admission contracts and reject a causal child timestamp that
+  predates its recorded parent.
+
 - Display reported partial hygiene audit ranges and known subtotals in live
   cards, hierarchy and history, with original audit times. Keep final scores
   unknown until the missing measurements are available. Use the same two-decimal
