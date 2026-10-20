@@ -35,6 +35,7 @@ describe("built per-project Git operator chat", () => {
       window.fetch = async (input, init) => {
         const url = new URL(typeof input === 'string' ? input : input.url, location.href);
         if (url.pathname === '/v2/views/events') return new Response(new ReadableStream({start(controller) {
+          window.__chatViewController = controller; window.__chatViewSnapshot = snapshot;
           controller.enqueue(new TextEncoder().encode('event: views\\nid: chat-fixture\\ndata: ' + JSON.stringify(snapshot) + '\\n\\n'));
           init?.signal?.addEventListener('abort', () => {try {controller.close()} catch {}});
         }}), {headers:{'Content-Type':'text/event-stream'}});
@@ -191,5 +192,51 @@ describe("built per-project Git operator chat", () => {
     expect(await browser.evaluate(`document.querySelector('.git-chat-destination').textContent`)).not.toContain("Exact target:");
     expect(await browser.evaluate(`document.querySelectorAll('.git-chat-timeline article').length`)).toBe(0);
     expect(await browser.evaluate(`document.querySelector('.git-chat button[type=submit]').disabled`)).toBe(true);
+  }, 20_000);
+
+  it("isolates cached live chat from simulated frames and resumes with fresh live destinations", async () => {
+    await browser.setViewportSize(1440, 1000);
+    await browser.evaluate(`window.__chatMode='normal';window.__chatStored=[];window.__release=false;window.__chatHistoryTruncated=false;`);
+    await browser.clickButtonByAriaLabel("Access settings");
+    await browser.fillInputByLabel("Bearer token", "synthetic-source-isolation-token");
+    await browser.clickButtonByText("Apply token");
+    await browser.waitForSelector(".lv-feed.is-connected");
+    await browser.clickButtonByText("DOPE · Chat");
+    await browser.waitForText("Exact target: captain:dope");
+    await browser.fillInputByLabel("DOPE chat text", "Private live draft before simulation");
+    expect(await browser.evaluate(`document.querySelector('.git-chat button[type=submit]').disabled`)).toBe(false);
+    const before = await browser.evaluate<{ reads: number; writes: number }>(`({reads:window.__chatGetCount,writes:window.__chatRequests.length})`);
+    await browser.evaluate(`(() => {
+      const next={...window.__chatViewSnapshot,revision:'chat-synthetic-cut',simulated:true};
+      window.__chatViewSnapshot=next;
+      window.__chatViewController.enqueue(new TextEncoder().encode('event: views\\nid: '+next.revision+'\\ndata: '+JSON.stringify(next)+'\\n\\n'));
+    })()`);
+    await browser.waitForSelector(".lv-demo");
+    expect(await browser.evaluate(`document.querySelector('.git-chat-toggle').getAttribute('aria-expanded')`)).toBe("false");
+    await browser.clickButtonByText("DOPE · Chat");
+    await browser.waitForText("Operator chat is disabled for simulated observations.");
+    expect(await browser.evaluate(`document.querySelector('.git-chat-destination').textContent`)).not.toContain("Exact target:");
+    expect(await browser.evaluate(`document.querySelector('.git-chat textarea').value`)).toBe("");
+    await browser.fillInputByLabel("DOPE chat text", "Attempt from simulated view");
+    expect(await browser.evaluate(`document.querySelector('.git-chat button[type=submit]').disabled`)).toBe(true);
+    await browser.evaluate(`document.querySelector('.git-chat form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}))`);
+    await browser.evaluate(`new Promise(resolve=>setTimeout(resolve,3200))`);
+    expect(await browser.evaluate(`({reads:window.__chatGetCount,writes:window.__chatRequests.length})`)).toEqual(before);
+    await browser.evaluate(`(() => {
+      const next={...window.__chatViewSnapshot,revision:'chat-live-restored',simulated:false};
+      window.__chatViewSnapshot=next;
+      window.__chatViewController.enqueue(new TextEncoder().encode('event: views\\nid: '+next.revision+'\\ndata: '+JSON.stringify(next)+'\\n\\n'));
+    })()`);
+    await browser.waitForSelector(".lv-feed.is-connected");
+    await browser.evaluate(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))`);
+    expect(await browser.evaluate(`document.querySelector('.git-chat-toggle').getAttribute('aria-expanded')`)).toBe("false");
+    await browser.clickButtonByText("DOPE · Chat");
+    await browser.waitForText("Exact target: captain:dope");
+    expect(await browser.evaluate(`document.querySelector('.git-chat textarea').value`)).toBe("");
+    expect(await browser.evaluate<number>(`window.__chatGetCount`)).toBeGreaterThan(before.reads);
+    await browser.fillInputByLabel("DOPE chat text", "Restored live message");
+    await browser.clickButtonByText("Send message");
+    await browser.waitForText("Delivered to inbox; awaiting reply");
+    expect(await browser.evaluate<number>(`window.__chatRequests.length`)).toBe(before.writes + 1);
   }, 20_000);
 });

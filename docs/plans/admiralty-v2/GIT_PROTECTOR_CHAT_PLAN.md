@@ -1,6 +1,6 @@
 # DOPE reconciliation, Git Flow operator chat, and Git protector
 
-Date: 20 October 2026, America/Denver. Parent: `MASTER_PLAN.md`, P11/P12 and the existing `LIVE_VIEWS_PLAN.md`. Owner/integrator: this chat. Starting source: `c58a67c`. Implementation checkout: `/Users/bentaylor/.codex/worktrees/git-protector-chat/admiralty`, branch `codex/git-protector-chat`.
+Date: 20 October 2026, America/Denver. Parent: `MASTER_PLAN.md`, P11/P12 and the existing `LIVE_VIEWS_PLAN.md`. Owner/integrator: this chat. Starting source: `c58a67c`; integration baseline updated to `6e974790371454f60bcf946d69b388927dacfa56` after detecting 105 upstream commits. Implementation checkout: `/Users/bentaylor/.codex/worktrees/git-protector-chat/admiralty`, branch `codex/git-protector-chat`.
 
 ## Objective and completion contract
 
@@ -141,3 +141,13 @@ Update `EXECUTION.md` with material decisions, exact source/check outcomes, actu
 Receipt `receipts/integration/git-protector-chat-20261020.json` binds baseline, implementation commit, changed file hashes, command/cwd/exit/log artifacts, tool versions, screenshot paths, audit receipt, role notice delivery references, completed criteria and explicit limitations. Commit source before a final commit-bound evidence receipt; do not claim a receipt commit is the source it describes. Review exact source and requalify affected paths if integration moves.
 
 Final handoff names audit findings, implementation worktree/branch/source SHA, plan/operator docs/receipt, passing checks, actual captain/admiral acknowledgment, and separate review/merge/activation state. No deployment, healthy fleet, actual instruction execution or resolved DOPE dirty-index custody claim without direct evidence.
+
+## Implementation and integration record
+
+GPC01–GPC04 source is implemented in this isolated checkout. The 105-commit update preserved upstream execution requirements, agent tools, incidents and bounded startup, resolving only additive shared-file conflicts. The original dirty checkout and the independent `codex/git-linear-collapse` lane remain separate. Both lanes touch `GitFlow.tsx` and `live-views.css`; the project integrator must combine them sequentially and rerun the combined browser journeys. Do not overwrite either implementation. Existing project integration PR163 remains the intended coordination point until its owner/Admiral supplies another disposition; no duplicate integration PR has been created here.
+
+Independent review repaired recurring-alert episode handling, destination failure isolation, stale cache semantics, post-rename durability retry, immutable reply identity, pre-extraction authentication, enrollment-scoped delivery state, and concurrent read/write authentication rejection. A final source-transition guard disables simulation chat and drops cached private targets/history when the source changes between live and simulated.
+
+The full local matrix at code source `d273c037ee5fe2c966aecb29952d1f5cb5f65bcb` passed formatting, strict workspace Clippy, all Rust workspace tests, legacy/audit fixtures, fixture verification and release package self-tests, then exposed an existing canary self-test race. Its fixed 100ms delay could send SIGTERM before a controlled child installed its ignore handler. The integrator's validation scope includes a narrow test-only repair in existing `scripts/check/canary-smoke.py`: deliberately delayed startup, bounded explicit readiness, and unchanged cleanup timeout/reaping assertions. Production cleanup code and gates remain unchanged. Original failing logs remain `/private/tmp/adm.Cmj8KP/logs`; preceding lint failures remain `/private/tmp/adm.gZmdzy/logs`. Final checks and exact source are recorded in the integration receipt, including any remaining failure.
+
+Live enrollment, deployment and role acknowledgment remain separate gates. Both DOPE captain's COMMS and Admiral's inbox received the audit, with a verified queued Admiral pointer; the last bounded check found no matching acknowledgment. Canonical DOPE's unknown index custody and PR290's saved CPU failure remain with the existing owner. No source reconciliation, cleanup or production service control was performed.
