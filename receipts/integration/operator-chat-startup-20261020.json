@@ -1,0 +1,463 @@
+{
+  "schema_version": 1,
+  "kind": "actual_native_binary_operator_chat_startup_smoke",
+  "source_commit": "91eae7345bd1bf0554a073d763ee9fa37f164706",
+  "source_binding": "Inspection revision; compare binary hashes with final matrix build.",
+  "started_utc": "2026-10-20T07:27:50.715534+00:00",
+  "scratch": "/private/tmp/operator-chat-startup-smoke-xal1wc41",
+  "cwd": "/Users/bentaylor/.codex/worktrees/git-protector-chat/admiralty",
+  "commands": [
+    {
+      "label": "server_help",
+      "argv": [
+        "rtk",
+        "proxy",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "/private/tmp/operator-chat-startup-smoke-xal1wc41/server_help.stdout.log",
+      "stderr": "/private/tmp/operator-chat-startup-smoke-xal1wc41/server_help.stderr.log"
+    },
+    {
+      "label": "cli_chat_help",
+      "argv": [
+        "rtk",
+        "proxy",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty",
+        "chat",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "/private/tmp/operator-chat-startup-smoke-xal1wc41/cli_chat_help.stdout.log",
+      "stderr": "/private/tmp/operator-chat-startup-smoke-xal1wc41/cli_chat_help.stderr.log"
+    },
+    {
+      "label": "owned_daemon",
+      "argv": [
+        "rtk",
+        "proxy",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd",
+        "--database",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/owned_daemon.sqlite",
+        "--token-file",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/owner.token",
+        "--listen",
+        "127.0.0.1:60159",
+        "--operator-chat-config",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/operator-chat.json"
+      ],
+      "pid": 22273,
+      "stdout": "/private/tmp/operator-chat-startup-smoke-xal1wc41/owned_daemon.stdout.log",
+      "stderr": "/private/tmp/operator-chat-startup-smoke-xal1wc41/owned_daemon.stderr.log"
+    },
+    {
+      "label": "captain_cli_inbox",
+      "argv": [
+        "rtk",
+        "proxy",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty",
+        "chat",
+        "inbox",
+        "--directory",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain"
+      ],
+      "exit_code": 0,
+      "stdout": "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_inbox.stdout.log",
+      "stderr": "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_inbox.stderr.log"
+    },
+    {
+      "label": "captain_cli_reply",
+      "argv": [
+        "rtk",
+        "proxy",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty",
+        "chat",
+        "reply",
+        "--directory",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain",
+        "--message-id",
+        "f38c485e-f926-4220-8fef-b3451b7e19cb",
+        "--text-file",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/reply.txt"
+      ],
+      "exit_code": 0,
+      "stdout": "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_reply.stdout.log",
+      "stderr": "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_reply.stderr.log"
+    },
+    {
+      "label": "captain_cli_reply_retry",
+      "argv": [
+        "rtk",
+        "proxy",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty",
+        "chat",
+        "reply",
+        "--directory",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain",
+        "--message-id",
+        "f38c485e-f926-4220-8fef-b3451b7e19cb",
+        "--text-file",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/reply.txt"
+      ],
+      "exit_code": 0,
+      "stdout": "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_reply_retry.stdout.log",
+      "stderr": "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_reply_retry.stderr.log"
+    },
+    {
+      "label": "captain_cli_reply_replacement_denied",
+      "argv": [
+        "rtk",
+        "proxy",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty",
+        "chat",
+        "reply",
+        "--directory",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain",
+        "--message-id",
+        "f38c485e-f926-4220-8fef-b3451b7e19cb",
+        "--text-file",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/replacement.txt"
+      ],
+      "exit_code": 1,
+      "stdout": "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_reply_replacement_denied.stdout.log",
+      "stderr": "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_reply_replacement_denied.stderr.log"
+    },
+    {
+      "label": "admiral_cli_inbox",
+      "argv": [
+        "rtk",
+        "proxy",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty",
+        "chat",
+        "inbox",
+        "--directory",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/admiral"
+      ],
+      "exit_code": 0,
+      "stdout": "/private/tmp/operator-chat-startup-smoke-xal1wc41/admiral_cli_inbox.stdout.log",
+      "stderr": "/private/tmp/operator-chat-startup-smoke-xal1wc41/admiral_cli_inbox.stderr.log"
+    },
+    {
+      "label": "malformed_config_startup_denied",
+      "argv": [
+        "rtk",
+        "proxy",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd",
+        "--database",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/must-not-exist.sqlite",
+        "--token-file",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/owner.token",
+        "--operator-chat-config",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/malformed-chat.json",
+        "--listen",
+        "127.0.0.1:0"
+      ],
+      "exit_code": 1,
+      "stdout": "/private/tmp/operator-chat-startup-smoke-xal1wc41/malformed_config_startup_denied.stdout.log",
+      "stderr": "/private/tmp/operator-chat-startup-smoke-xal1wc41/malformed_config_startup_denied.stderr.log"
+    },
+    {
+      "label": "unconfigured_daemon",
+      "argv": [
+        "rtk",
+        "proxy",
+        "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd",
+        "--database",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/unconfigured_daemon.sqlite",
+        "--token-file",
+        "/private/tmp/operator-chat-startup-smoke-xal1wc41/owner.token",
+        "--listen",
+        "127.0.0.1:60173"
+      ],
+      "pid": 22287,
+      "stdout": "/private/tmp/operator-chat-startup-smoke-xal1wc41/unconfigured_daemon.stdout.log",
+      "stderr": "/private/tmp/operator-chat-startup-smoke-xal1wc41/unconfigured_daemon.stderr.log"
+    }
+  ],
+  "checks": [
+    {
+      "name": "server_help_exit",
+      "passed": true,
+      "detail": 0
+    },
+    {
+      "name": "binary_has_chat_option",
+      "passed": true
+    },
+    {
+      "name": "cli_chat_help_exit",
+      "passed": true,
+      "detail": 0
+    },
+    {
+      "name": "chat_only_mode_native_execution_disabled",
+      "passed": true
+    },
+    {
+      "name": "unauthorized_get_denied",
+      "passed": true,
+      "detail": 401
+    },
+    {
+      "name": "unauthorized_get_no_store",
+      "passed": true
+    },
+    {
+      "name": "unauthorized_malformed_post_denied_before_parse",
+      "passed": true,
+      "detail": 401
+    },
+    {
+      "name": "unauthorized_no_messages",
+      "passed": true
+    },
+    {
+      "name": "owner_instruction_delivered",
+      "passed": true,
+      "detail": 200
+    },
+    {
+      "name": "exact_retry_one_record",
+      "passed": true
+    },
+    {
+      "name": "changed_payload_conflict",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "captain_cli_inbox_exit",
+      "passed": true,
+      "detail": 0
+    },
+    {
+      "name": "actual_cli_inbox_exact_instruction",
+      "passed": true
+    },
+    {
+      "name": "captain_cli_reply_exit",
+      "passed": true,
+      "detail": 0
+    },
+    {
+      "name": "captain_cli_reply_retry_exit",
+      "passed": true,
+      "detail": 0
+    },
+    {
+      "name": "actual_cli_reply_retry_immutable",
+      "passed": true
+    },
+    {
+      "name": "captain_cli_reply_replacement_denied_exit",
+      "passed": true,
+      "detail": 1
+    },
+    {
+      "name": "http_observes_actual_cli_reply",
+      "passed": true
+    },
+    {
+      "name": "other_project_no_leak",
+      "passed": true
+    },
+    {
+      "name": "foreign_route_rejected",
+      "passed": true,
+      "detail": 400
+    },
+    {
+      "name": "admiral_delivery_scoped",
+      "passed": true,
+      "detail": 200
+    },
+    {
+      "name": "admiral_cli_inbox_exit",
+      "passed": true,
+      "detail": 0
+    },
+    {
+      "name": "actual_admiral_inbox_separate",
+      "passed": true
+    },
+    {
+      "name": "ambiguous_authorization_denied",
+      "passed": true,
+      "detail": 401
+    },
+    {
+      "name": "health_without_source_explicit",
+      "passed": true,
+      "detail": 200
+    },
+    {
+      "name": "malformed_config_startup_denied_exit",
+      "passed": true,
+      "detail": 1
+    },
+    {
+      "name": "malformed_config_precedes_database_creation",
+      "passed": true
+    },
+    {
+      "name": "unconfigured_mode_read_only",
+      "passed": true
+    },
+    {
+      "name": "unconfigured_route_has_no_enrolled_targets",
+      "passed": true
+    }
+  ],
+  "real_role_transport": false,
+  "source_edits": false,
+  "build_commands": false,
+  "runner": {
+    "path": "/private/tmp/operator-chat-startup-smoke-runner-4c6790f3.py",
+    "sha256": "1adfe81774b20a542d044d216390f1d50910a97de535f437745ea0aebfdb39db"
+  },
+  "binaries": {
+    "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiraltyd": {
+      "sha256_before": "61e960c52145dc48035b41ab7c5191d14c0c71c66fae475ff199db91c961b89c",
+      "bytes": 37509872,
+      "sha256_after": "61e960c52145dc48035b41ab7c5191d14c0c71c66fae475ff199db91c961b89c",
+      "stable_during_smoke": true
+    },
+    "/Users/bentaylor/Documents/ChatGPT/admiralty/target/debug/admiralty": {
+      "sha256_before": "0cb95c0adae5f34dbbeb631c4c2d664532e22e701b4a1e3d036fa9d34cdada26",
+      "bytes": 49564560,
+      "sha256_after": "0cb95c0adae5f34dbbeb631c4c2d664532e22e701b4a1e3d036fa9d34cdada26",
+      "stable_during_smoke": true
+    }
+  },
+  "passed": true,
+  "owned_processes_stopped": [
+    {
+      "label": "owned_daemon",
+      "pid": 22273,
+      "exit_code": -15,
+      "port": 60159,
+      "port_closed": true
+    },
+    {
+      "label": "unconfigured_daemon",
+      "pid": 22287,
+      "exit_code": -15,
+      "port": 60173,
+      "port_closed": true
+    }
+  ],
+  "finished_utc": "2026-10-20T07:27:51.062269+00:00",
+  "token_redacted": true,
+  "log_token_leak_detected": false,
+  "artifacts": {
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/cli_chat_help.stdout.log": {
+      "sha256": "8437bae6698442ea3d2a1e2416a53d5226da799776341861282a216900e3dd65",
+      "bytes": 380
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_reply_replacement_denied.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_reply_retry.stdout.log": {
+      "sha256": "7653fce5900ec6ccac8552bd232c03b319a8d0a6a03dc0cbee6a1f8d99579f55",
+      "bytes": 225
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/owned_daemon.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/reply.txt": {
+      "sha256": "26c78bf9440c91d169136598e34044b5dd0397caf72acbff09ed6ff4fcfccbad",
+      "bytes": 57
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_inbox.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/http-history.json": {
+      "sha256": "708a96b57ba77417c266f84712fb32bea7f3e785657d44495b6a67ae3fd76ad8",
+      "bytes": 1059
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/admiral_cli_inbox.stdout.log": {
+      "sha256": "4cabb65189a8c60ad65388282ecab6114585b3927a2d6a7786801629dff45d2e",
+      "bytes": 364
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/server_help.stdout.log": {
+      "sha256": "d188926c2a26a3a29017d7d9f41b10937ebde5c9b682bd3259166bdece8b8011",
+      "bytes": 1060
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/unconfigured_daemon.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_reply.stdout.log": {
+      "sha256": "7653fce5900ec6ccac8552bd232c03b319a8d0a6a03dc0cbee6a1f8d99579f55",
+      "bytes": 225
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/replacement.txt": {
+      "sha256": "d704f98c729f0178fbb8107dbe9d27b31a38102bcf59325b493520b0a429a367",
+      "bytes": 33
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/malformed_config_startup_denied.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/owned_daemon.stderr.log": {
+      "sha256": "150f1bd1dcbe24354318d28a9eb9516f79b51e994ffe7e65739f5d462dae9324",
+      "bytes": 97
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_reply_retry.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_reply_replacement_denied.stderr.log": {
+      "sha256": "59c15af105b1080c4634e3abcfe94f1cb72e2ea9b4efe7cf3ecf31e7edc187cb",
+      "bytes": 69
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/cli_chat_help.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_inbox.stdout.log": {
+      "sha256": "82989602761c0e9b8652c1141bffa5def5d50dec0d7650e6dc4a0d7515631d04",
+      "bytes": 410
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/server_help.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/admiral_cli_inbox.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/delivered-message.json": {
+      "sha256": "cc8ec681d25f7677c2d64eaa2865156d488210def844481d7d88939d37171a7d",
+      "bytes": 386
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/unconfigured_daemon.stderr.log": {
+      "sha256": "ebdc46df1514bdd9be1eca600c529b1f8b22ecc219be28f88104a69c0bca81a2",
+      "bytes": 85
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/malformed_config_startup_denied.stderr.log": {
+      "sha256": "c8aec7b06dcc686429e51d39bef8b15c1928bdfb07575c0cefb3ed51a2a73032",
+      "bytes": 45
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain_cli_reply.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain/reply-f38c485e-f926-4220-8fef-b3451b7e19cb.json": {
+      "sha256": "07661ca29b95278b308c7ca16b3dd876cebede6723370829cbfa2bc7213f64e8",
+      "bytes": 203
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/captain/msg-f38c485e-f926-4220-8fef-b3451b7e19cb.json": {
+      "sha256": "ea55fdfd41853fb8d615b9b719ed27d97a2a7bb0122a2bed93c1639adeec2715",
+      "bytes": 352
+    },
+    "/private/tmp/operator-chat-startup-smoke-xal1wc41/admiral/msg-2ee97457-77cb-40de-b038-02e0980928fc.json": {
+      "sha256": "d4d6383eff87f92ab18508562a4c2112fd5c8c3f2ac724768ce60c17cc924e9f",
+      "bytes": 306
+    }
+  }
+}
