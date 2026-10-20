@@ -175,7 +175,7 @@ export default function LiveViews({
             <div className="lv-overline">ADMIRALTY / OBSERVATORY</div>
             <h1>{mode === "atlas" ? "Fleet Atlas" : "Git Flow"}</h1>
           </div>
-          <span className="lv-readonly">READ ONLY</span>
+          <span className="lv-readonly">{mode === "git" ? "OBSERVATIONS + OPERATOR CHAT" : "READ ONLY"}</span>
         </div>
         <div className="lv-header-actions">
           <span
@@ -266,6 +266,19 @@ export default function LiveViews({
               selection={selection}
               onSelect={select}
               now={now}
+              token={token}
+              onAccess={onAccess}
+              chatScopeEpoch={feed.scopeEpoch}
+              healthEnabled={feed.state === "connected" && !feed.publicFallback && !feed.sessionAccessRequired && !snapshot.simulated}
+              chatDisabledReason={visiblePausedGit
+                ? "Resume live observations before sending. This Git graph is paused."
+                : feed.publicFallback || feed.sessionAccessRequired
+                  ? "Connect private session access before sending."
+                  : feed.state !== "connected"
+                    ? "Reconnect the live feed before sending."
+                    : !snapshot.observed_utc || isStale(snapshot.observed_utc, now) || Date.parse(snapshot.observed_utc) > now + 30_000
+                      ? "Refresh stale observations before sending."
+                      : ""}
             />
           )}{" "}
           {selection && (

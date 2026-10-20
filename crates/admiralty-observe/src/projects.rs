@@ -1294,6 +1294,7 @@ mod tests {
             manager_screen: None,
             worker_prefixes: vec![],
             coordination_log: None,
+            git_health: None,
         }
     }
     #[test]
