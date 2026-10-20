@@ -1453,6 +1453,8 @@ export interface BrowserHarness {
 }
 
 export interface LaunchBrowserHarnessOptions {
+  /** Test-only attempt adapter for custody propagation; never launches an OS process. */
+  _testLaunchAttempt?: (attempt: number) => Promise<BrowserHarness>;
   startupTimeoutMs?: number;
   maxStartupAttempts?: number;
   /** Test-only hook to simulate a stalled CDP pipe on specific 1-based attempt numbers */
@@ -1509,6 +1511,10 @@ export function captureOwnedProcessDiagnostics(pid: number | undefined, listenPo
   return `pid=${pid} state=${state} start_ticks=${startTicks} wchan=${wchan} exe=${exe} listener=${listener}`;
 }
 
+export class OwnedProcessCustodyError extends Error {
+  override name = 'OwnedProcessCustodyError';
+}
+
 export function isProcessAlive(pid: number, probe?: (pid: number) => void): boolean {
   const proc = process as unknown as { kill?: (targetPid: number, signal?: string | number) => boolean };
   if (!probe && typeof proc.kill !== 'function') return true;
@@ -1519,7 +1525,8 @@ export function isProcessAlive(pid: number, probe?: (pid: number) => void): bool
   } catch (error) {
     // Permission, procfs and IO errors do not prove exit. Zombies remain in
     // custody until the direct ChildProcess reports that it has been reaped.
-    return (error as { code?: string }).code !== 'ESRCH';
+    const code = error !== null && typeof error === 'object' ? (error as { code?: unknown }).code : undefined;
+    return code !== 'ESRCH';
   }
 }
 
@@ -1538,7 +1545,7 @@ export async function waitForOwnedProcessExit(child: ChildProcess, timeoutMs: nu
   while (typeof pid === 'number' && !observedChildExit(child)) {
     if (Date.now() >= deadline) {
       const diag = captureOwnedProcessDiagnostics(pid);
-      throw new Error(
+      throw new OwnedProcessCustodyError(
         `Owned process ${pid} has no observed exit after ${timeoutMs}ms; retain its private files and do not retry startup [${diag}]`,
       );
     }
@@ -1599,8 +1606,11 @@ export async function launchBrowserHarness(
 
   for (let attempt = 1; attempt <= maxStartupAttempts; attempt++) {
     try {
-      return await launchBrowserHarnessAttempt(attempt, startupTimeoutMs, options);
+      return options?._testLaunchAttempt
+        ? await options._testLaunchAttempt(attempt)
+        : await launchBrowserHarnessAttempt(attempt, startupTimeoutMs, options);
     } catch (err) {
+      if (err instanceof OwnedProcessCustodyError) throw err;
       const msg = err instanceof Error ? err.message : String(err);
       attemptDiagnostics.push(`attempt ${attempt}/${maxStartupAttempts}: ${msg}`);
       // Do not retry if the host explicitly lacks a usable normal-user sandbox configuration
@@ -1837,7 +1847,7 @@ async function launchBrowserHarnessAttempt(
         const deadline = Date.now() + 5_000;
         while (isProcessAlive(-groupPid)) {
           if (Date.now() >= deadline) {
-            throw new Error(`Owned browser group ${groupPid} has not disappeared; preserve its private profile and do not retry startup`);
+            throw new OwnedProcessCustodyError(`Owned browser group ${groupPid} has not disappeared; preserve its private profile and do not retry startup`);
           }
           await new Promise(resolve => setTimeout(resolve, 20));
         }
@@ -2001,7 +2011,12 @@ async function launchBrowserHarnessAttempt(
     }
     const baseMsg = err instanceof Error ? err.message : String(err);
     const diagBeforeKill = initialDiagnosticBeforeSignal ?? formatDiagnosticContext();
-    await terminateBrowserProcessTree(baseMsg);
+    try {
+      await terminateBrowserProcessTree(baseMsg);
+    } catch (cleanupError) {
+      if (cleanupError instanceof OwnedProcessCustodyError) throw cleanupError;
+      throw new OwnedProcessCustodyError(`Browser cleanup was not confirmed; retain its private files and do not retry startup: ${String(cleanupError)}`);
+    }
     throw new Error(baseMsg.includes(diagBeforeKill) ? baseMsg : `${baseMsg} | ${diagBeforeKill}`);
   } finally {
     clearTimeout(startupTimer);
