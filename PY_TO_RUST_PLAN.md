@@ -13,7 +13,7 @@ Per Jepson's 2026-10-18 stack ruling (`JEPSON_RULING_20261018T1940Z_stack_rust_j
 | `dashboard/rollout.py` | 425 | Legacy rollout manifest loader & live worker joiner | Replace with Rust `admiralty-server` projection & delete | `ADM-PY01` |
 | `dashboard/serve.py` | 22 | Legacy `18890` static HTTP server | Replace with `admiralty-server` (`admiraltyd`) & delete | `ADM-PY01` |
 | `dashboard/token_yield.py` | 214 | Legacy `tokens.db` yield aggregator | Replace with `admiralty-core::economics` & delete | `ADM-PY01` |
-| `scripts/check/canary-smoke.py` | 1,105 | Isolated HTTP/CLI canary smoke test runner | Port to Rust binary/test in `admiralty-testkit` & delete | `ADM-PY02` |
+| `scripts/check/canary-smoke.py` | 1,124 | Isolated HTTP/CLI canary smoke test runner | Port to Rust binary/test in `admiralty-testkit` & delete | `ADM-PY02` |
 | `scripts/check/excursions-smoke.py` | 143 | Isolated excursions CLI/HTTP smoke test runner | Port to Rust test in `admiralty-testkit` & delete | `ADM-PY02` |
 | `scripts/demos/encode.py` | 177 | Actual production PNG-capture WebP/GIF encoder | Port to Rust subcommand in `admiralty-cli` & delete | `ADM-PY02` |
 | `scripts/demos/verify.py` | 71 | Actual capture/encoded-media integrity verifier | Port to Rust subcommand in `admiralty-cli` & delete | `ADM-PY02` |
