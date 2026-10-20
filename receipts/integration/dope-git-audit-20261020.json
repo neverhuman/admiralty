@@ -1,0 +1,1268 @@
+{
+  "schema_version": 1,
+  "kind": "read_only_dope_git_audit",
+  "date": "2026-10-20",
+  "integration_source_head": "c58a67c095248ab3a3c7dd5ba9568422575ad751",
+  "observation_window_utc": {
+    "inventory": "2026-10-20T06:33:24.675888+00:00",
+    "fast_probe": "2026-10-20T06:37:14.845776+00:00"
+  },
+  "scope": {
+    "project": "DOPE",
+    "primary_remote": "https://github.com/neverhuman/dope.git",
+    "read_only": false,
+    "refs_changed": false,
+    "worktree_administration_changed": false,
+    "runtime_coordination_logs_appended": true,
+    "objects_fetched": false,
+    "processes_interrupted": false,
+    "captains_messaged": true,
+    "limitations": [
+      "Bounded known repository/worktree paths, not a whole-disk discovery.",
+      "Snapshots can change during active work; each SHA/timestamp retained.",
+      "No fresh product test runs or hosted check query; existing hashed evidence inspected.",
+      "xbabe4 configured endpoint resolves Mac-Studio.local; no DOPE repository found in bounded home paths."
+    ],
+    "authorized_runtime_log_appends": true,
+    "source_worktree_mutation": false,
+    "read_only_source_audit": true,
+    "read_only_explanation": "Git/source audit read-only; subsequent user-authorized messages appended to runtime coordination logs and queued in verified Admiral TUI."
+  },
+  "local": {
+    "repository": "/Users/bentaylor/Documents/ChatGPT/Dope",
+    "head": "54691d86492c01108af8a890d3f6e598b77cae58",
+    "branch": "main",
+    "origin_main": "54691d86492c01108af8a890d3f6e598b77cae58",
+    "tracked_dirty": false,
+    "untracked_roots": [
+      ".audit/",
+      "todo/"
+    ],
+    "registered_worktrees": 1,
+    "screenshot_refs_present": false
+  },
+  "hosts": [
+    {
+      "id": "xbabe2",
+      "repository": "/home/ubuntu/dope",
+      "worktrees": [
+        {
+          "worktree": "/home/ubuntu/dope",
+          "HEAD": "192c46f1eed43b0897a36dd6f2cb182d3214edeb",
+          "branch": "refs/heads/main",
+          "exists": true,
+          "status": {
+            "exit": 0,
+            "stdout": "M  PYTHON_EXCEPTIONS.md\nM  PY_TO_RUST_PLAN.md\nM  agent/owner-map.json\nM  agent/test-map.json\nD  docs/archive/historical-paper-errata.md\nMM docs/decisions.md\nD  docs/install.md\nD  docs/plans/finish65-major-release.md\nM  docs/testing.md\nM  docs/whitepaper/README.md\nM  ops/ci/cpu.sh\nM  ops/ci/native-release-smoke.sh\nD  research/transfer/campaign_admission.py\nD  research/transfer/campaign_artifacts.py\nD  research/transfer/campaign_cli.py\nD  research/transfer/campaign_execution.py\nD  research/transfer/campaign_native.py\nD  research/transfer/campaign_runner.py\nM  research/transfer/locks/kumo-tabular.json\nM  research/transfer/locks/other-auditors.json\nD  research/transfer/manifests/release-readiness-v1.json\nD  research/transfer/native_qualification.py\nD  research/transfer/native_qualification_runtime.py\nM  research/transfer/registries/lock-states.json\nD  research/transfer/run_native_qualification.py\nD  research/transfer/tests/test_campaign_admission.py\nD  research/transfer/tests/test_campaign_cli.py\nD  research/transfer/tests/test_campaign_execution.py\nD  research/transfer/tests/test_campaign_runner.py\nD  research/transfer/tests/test_native_qualification.py\nM  research/transfer/tests/test_workplan_acceptance.py\nD  research/transfer/tests/test_workplan_packet.py\nD  research/transfer/workplan_packet.py\nM  rust/main/facade/dispatch.rs\nD  schemas/pilot-admission-v1.schema.json\nD  schemas/pilot-execution-v1.schema.json\nD  scripts/install-dope.sh\nD  scripts/uninstall-dope.sh\nD  tests/vnext_dope_install.rs\nM  tools/claims/foundation.py\nM  tools/claims/render.py\nM  tools/claims/test_figure.py\nM  validation/requirements-v1.txt\n?? .jankurai/\n?? COMMS.md\n?? COMMS.md.lock\n?? artifacts/\n?? docs/Blockers_Kumo_TabICL_Readiness_Packet_20261019.md\n?? docs/Blockers_Kumo_TabICL_Readiness_Packet_Addendum_20261019T0237Z.md\n?? docs/plans/\n?? research/transfer/manifests/release-readiness-v1.json\n",
+            "stderr": ""
+          },
+          "instructions": {
+            "AGENTS.md": {
+              "sha256": "276f787731dc4b0d965bfbb1f879b142b3ab29d962f897f5b3ff5efc061b6e5e",
+              "bytes": 1147
+            },
+            "docs/architecture.md": {
+              "sha256": "49680964058da03260775d93be4125cc5d3c8d500f7a051c8d2710766a68f6bf",
+              "bytes": 5461
+            },
+            "docs/testing.md": {
+              "sha256": "68cba92daefc93ca3a6f21fd7b7b3b9eaf2ba67fa1474b159da5ce3fe72b7b0c",
+              "bytes": 14956
+            },
+            "docs/release.md": {
+              "sha256": "9b4dc56a50d6616200af73136c999478c59f6801dc351babb1bf8d316e8a0a21",
+              "bytes": 9026
+            },
+            "docs/audit.md": {
+              "sha256": "9346ed56509a265703b5f4e3b6fafb00a7ebe6dc9cbd5c350ddf4276e7793c0b",
+              "bytes": 3234
+            },
+            "agent/JANKURAI_STANDARD.md": {
+              "sha256": "2769ce825a09a6599fff3c44625c994f59363aa40a380d0279f675e8deeb8049",
+              "bytes": 1677
+            }
+          }
+        },
+        {
+          "worktree": "/home/ubuntu/dope/.agent/worktrees/integration",
+          "HEAD": "11cf5cc62866dab2db5e1c0d9ee427a2639e1aa3",
+          "branch": "refs/heads/captain/e03-pilot-runner-bridge",
+          "exists": true,
+          "status": {
+            "exit": 0,
+            "stdout": "",
+            "stderr": ""
+          },
+          "instructions": {
+            "AGENTS.md": {
+              "sha256": "276f787731dc4b0d965bfbb1f879b142b3ab29d962f897f5b3ff5efc061b6e5e",
+              "bytes": 1147
+            },
+            "docs/architecture.md": {
+              "sha256": "49680964058da03260775d93be4125cc5d3c8d500f7a051c8d2710766a68f6bf",
+              "bytes": 5461
+            },
+            "docs/testing.md": {
+              "sha256": "c420b6eafb0f67aa9e8ebfc78b3fc57bc9abd24827245fff915016eb55cf2bc4",
+              "bytes": 16979
+            },
+            "docs/release.md": {
+              "sha256": "9b4dc56a50d6616200af73136c999478c59f6801dc351babb1bf8d316e8a0a21",
+              "bytes": 9026
+            },
+            "docs/audit.md": {
+              "sha256": "9346ed56509a265703b5f4e3b6fafb00a7ebe6dc9cbd5c350ddf4276e7793c0b",
+              "bytes": 3234
+            },
+            "agent/JANKURAI_STANDARD.md": {
+              "sha256": "2769ce825a09a6599fff3c44625c994f59363aa40a380d0279f675e8deeb8049",
+              "bytes": 1677
+            }
+          }
+        },
+        {
+          "worktree": "/home/ubuntu/dope/.agent/worktrees/lane-campaign-readiness",
+          "HEAD": "241746eae338f2a094a40a007734a44abbd9ba3d",
+          "branch": "refs/heads/feat/w01-e03-e07-cpu-readiness-harness",
+          "exists": true,
+          "status": {
+            "exit": 0,
+            "stdout": "",
+            "stderr": ""
+          },
+          "instructions": {
+            "AGENTS.md": {
+              "sha256": "276f787731dc4b0d965bfbb1f879b142b3ab29d962f897f5b3ff5efc061b6e5e",
+              "bytes": 1147
+            },
+            "docs/architecture.md": {
+              "sha256": "49680964058da03260775d93be4125cc5d3c8d500f7a051c8d2710766a68f6bf",
+              "bytes": 5461
+            },
+            "docs/testing.md": {
+              "sha256": "68cba92daefc93ca3a6f21fd7b7b3b9eaf2ba67fa1474b159da5ce3fe72b7b0c",
+              "bytes": 14956
+            },
+            "docs/release.md": {
+              "sha256": "9b4dc56a50d6616200af73136c999478c59f6801dc351babb1bf8d316e8a0a21",
+              "bytes": 9026
+            },
+            "docs/audit.md": {
+              "sha256": "9346ed56509a265703b5f4e3b6fafb00a7ebe6dc9cbd5c350ddf4276e7793c0b",
+              "bytes": 3234
+            },
+            "agent/JANKURAI_STANDARD.md": {
+              "sha256": "2769ce825a09a6599fff3c44625c994f59363aa40a380d0279f675e8deeb8049",
+              "bytes": 1677
+            }
+          }
+        },
+        {
+          "worktree": "/home/ubuntu/dope/.agent/worktrees/lane-decisions-reverify",
+          "HEAD": "241746eae338f2a094a40a007734a44abbd9ba3d",
+          "branch": "refs/heads/docs/decisions-d19-and-blocker-unblock-spec",
+          "exists": true,
+          "status": {
+            "exit": 0,
+            "stdout": "",
+            "stderr": ""
+          },
+          "instructions": {
+            "AGENTS.md": {
+              "sha256": "276f787731dc4b0d965bfbb1f879b142b3ab29d962f897f5b3ff5efc061b6e5e",
+              "bytes": 1147
+            },
+            "docs/architecture.md": {
+              "sha256": "49680964058da03260775d93be4125cc5d3c8d500f7a051c8d2710766a68f6bf",
+              "bytes": 5461
+            },
+            "docs/testing.md": {
+              "sha256": "68cba92daefc93ca3a6f21fd7b7b3b9eaf2ba67fa1474b159da5ce3fe72b7b0c",
+              "bytes": 14956
+            },
+            "docs/release.md": {
+              "sha256": "9b4dc56a50d6616200af73136c999478c59f6801dc351babb1bf8d316e8a0a21",
+              "bytes": 9026
+            },
+            "docs/audit.md": {
+              "sha256": "9346ed56509a265703b5f4e3b6fafb00a7ebe6dc9cbd5c350ddf4276e7793c0b",
+              "bytes": 3234
+            },
+            "agent/JANKURAI_STANDARD.md": {
+              "sha256": "2769ce825a09a6599fff3c44625c994f59363aa40a380d0279f675e8deeb8049",
+              "bytes": 1677
+            }
+          }
+        },
+        {
+          "worktree": "/home/ubuntu/dope/.agent/worktrees/lane-durable-acceptance",
+          "HEAD": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+          "branch": "refs/heads/codex/e03-confined-control-worker",
+          "exists": true,
+          "status": {
+            "exit": 0,
+            "stdout": "",
+            "stderr": ""
+          },
+          "instructions": {
+            "AGENTS.md": {
+              "sha256": "276f787731dc4b0d965bfbb1f879b142b3ab29d962f897f5b3ff5efc061b6e5e",
+              "bytes": 1147
+            },
+            "docs/architecture.md": {
+              "sha256": "49680964058da03260775d93be4125cc5d3c8d500f7a051c8d2710766a68f6bf",
+              "bytes": 5461
+            },
+            "docs/testing.md": {
+              "sha256": "f525c7f8ea7db524231c3c33e18f2cff3f59cb7158fd1edbd72becabca9deb58",
+              "bytes": 17560
+            },
+            "docs/release.md": {
+              "sha256": "9b4dc56a50d6616200af73136c999478c59f6801dc351babb1bf8d316e8a0a21",
+              "bytes": 9026
+            },
+            "docs/audit.md": {
+              "sha256": "9346ed56509a265703b5f4e3b6fafb00a7ebe6dc9cbd5c350ddf4276e7793c0b",
+              "bytes": 3234
+            },
+            "agent/JANKURAI_STANDARD.md": {
+              "sha256": "2769ce825a09a6599fff3c44625c994f59363aa40a380d0279f675e8deeb8049",
+              "bytes": 1677
+            }
+          }
+        },
+        {
+          "worktree": "/home/ubuntu/dope/.agent/worktrees/lane-e07-bikeshare",
+          "HEAD": "241746eae338f2a094a40a007734a44abbd9ba3d",
+          "branch": "refs/heads/codex/dope-sc-dec-106-e07",
+          "exists": true,
+          "status": {
+            "exit": 0,
+            "stdout": "",
+            "stderr": ""
+          },
+          "instructions": {
+            "AGENTS.md": {
+              "sha256": "276f787731dc4b0d965bfbb1f879b142b3ab29d962f897f5b3ff5efc061b6e5e",
+              "bytes": 1147
+            },
+            "docs/architecture.md": {
+              "sha256": "49680964058da03260775d93be4125cc5d3c8d500f7a051c8d2710766a68f6bf",
+              "bytes": 5461
+            },
+            "docs/testing.md": {
+              "sha256": "68cba92daefc93ca3a6f21fd7b7b3b9eaf2ba67fa1474b159da5ce3fe72b7b0c",
+              "bytes": 14956
+            },
+            "docs/release.md": {
+              "sha256": "9b4dc56a50d6616200af73136c999478c59f6801dc351babb1bf8d316e8a0a21",
+              "bytes": 9026
+            },
+            "docs/audit.md": {
+              "sha256": "9346ed56509a265703b5f4e3b6fafb00a7ebe6dc9cbd5c350ddf4276e7793c0b",
+              "bytes": 3234
+            },
+            "agent/JANKURAI_STANDARD.md": {
+              "sha256": "2769ce825a09a6599fff3c44625c994f59363aa40a380d0279f675e8deeb8049",
+              "bytes": 1677
+            }
+          }
+        },
+        {
+          "worktree": "/home/ubuntu/dope/.agent/worktrees/rt-L2",
+          "HEAD": "241746eae338f2a094a40a007734a44abbd9ba3d",
+          "branch": "refs/heads/codex/f65-01-w01",
+          "exists": true,
+          "status": {
+            "exit": 0,
+            "stdout": "",
+            "stderr": ""
+          },
+          "instructions": {
+            "AGENTS.md": {
+              "sha256": "276f787731dc4b0d965bfbb1f879b142b3ab29d962f897f5b3ff5efc061b6e5e",
+              "bytes": 1147
+            },
+            "docs/architecture.md": {
+              "sha256": "49680964058da03260775d93be4125cc5d3c8d500f7a051c8d2710766a68f6bf",
+              "bytes": 5461
+            },
+            "docs/testing.md": {
+              "sha256": "68cba92daefc93ca3a6f21fd7b7b3b9eaf2ba67fa1474b159da5ce3fe72b7b0c",
+              "bytes": 14956
+            },
+            "docs/release.md": {
+              "sha256": "9b4dc56a50d6616200af73136c999478c59f6801dc351babb1bf8d316e8a0a21",
+              "bytes": 9026
+            },
+            "docs/audit.md": {
+              "sha256": "9346ed56509a265703b5f4e3b6fafb00a7ebe6dc9cbd5c350ddf4276e7793c0b",
+              "bytes": 3234
+            },
+            "agent/JANKURAI_STANDARD.md": {
+              "sha256": "2769ce825a09a6599fff3c44625c994f59363aa40a380d0279f675e8deeb8049",
+              "bytes": 1677
+            }
+          }
+        },
+        {
+          "worktree": "/home/ubuntu/dope/.agent/worktrees/verify-016068fc",
+          "HEAD": "241746eae338f2a094a40a007734a44abbd9ba3d",
+          "detached": true,
+          "exists": true,
+          "status": {
+            "exit": 0,
+            "stdout": "",
+            "stderr": ""
+          },
+          "instructions": {
+            "AGENTS.md": {
+              "sha256": "276f787731dc4b0d965bfbb1f879b142b3ab29d962f897f5b3ff5efc061b6e5e",
+              "bytes": 1147
+            },
+            "docs/architecture.md": {
+              "sha256": "49680964058da03260775d93be4125cc5d3c8d500f7a051c8d2710766a68f6bf",
+              "bytes": 5461
+            },
+            "docs/testing.md": {
+              "sha256": "68cba92daefc93ca3a6f21fd7b7b3b9eaf2ba67fa1474b159da5ce3fe72b7b0c",
+              "bytes": 14956
+            },
+            "docs/release.md": {
+              "sha256": "9b4dc56a50d6616200af73136c999478c59f6801dc351babb1bf8d316e8a0a21",
+              "bytes": 9026
+            },
+            "docs/audit.md": {
+              "sha256": "9346ed56509a265703b5f4e3b6fafb00a7ebe6dc9cbd5c350ddf4276e7793c0b",
+              "bytes": 3234
+            },
+            "agent/JANKURAI_STANDARD.md": {
+              "sha256": "2769ce825a09a6599fff3c44625c994f59363aa40a380d0279f675e8deeb8049",
+              "bytes": 1677
+            }
+          }
+        }
+      ],
+      "selected_refs": [
+        "refs/heads/captain/e03-pilot-runner-bridge 11cf5cc62866dab2db5e1c0d9ee427a2639e1aa3 origin/captain/e03-pilot-runner-bridge ",
+        "refs/heads/codex/e03-admission-contract 25ddfd987f099f14eab3ae34d28c8e838064121b origin/codex/e03-admission-contract ",
+        "refs/heads/codex/e03-confined-control-worker f976f13fe03ac3a582722f87d930dfaaeebacd0f  ",
+        "refs/heads/codex/e03-control-artifact-adapters e2775ccbc2c8d90edc1e584a77ed554742f2bc66  ",
+        "refs/heads/codex/e03-scheduler-durability 45081745414adc53205e68d9c9178a56f7fe34a6 origin/codex/e03-scheduler-durability ",
+        "refs/heads/codex/wc-d-lanec-e03-bridge 7737192aa2ab6ed34cb3e524e081d12010f709e5 origin/codex/wc-d-lanec-e03-bridge ",
+        "refs/heads/dope/unified-spec-workplan-v2 47325f1022452e0675a37b2de9f9bfd1ac79e378 origin/dope/unified-spec-workplan-v2 ",
+        "refs/heads/fast/lane2-47325f10 47325f1022452e0675a37b2de9f9bfd1ac79e378  ",
+        "refs/heads/fast/lane3-47325f10 47325f1022452e0675a37b2de9f9bfd1ac79e378  ",
+        "refs/heads/fast/lane4-47325f10 47325f1022452e0675a37b2de9f9bfd1ac79e378  ",
+        "refs/heads/fast/lane5-47325f10 47325f1022452e0675a37b2de9f9bfd1ac79e378  ",
+        "refs/heads/feat/w01-e03-e07-cpu-readiness-harness 241746eae338f2a094a40a007734a44abbd9ba3d origin/main [behind 14]",
+        "refs/heads/main 192c46f1eed43b0897a36dd6f2cb182d3214edeb origin/main [behind 5]",
+        "refs/remotes/origin/captain/e03-base-heartbeat-20261019T2317Z 54a4a5f7c02c544e74510edefb070ff1217d1a31  ",
+        "refs/remotes/origin/captain/e03-c00f14c7-staged-verify-20261019 20fe3ed7f3982a1f65c9a46b0884943a1902f458  ",
+        "refs/remotes/origin/captain/e03-pilot-runner-bridge 11cf5cc62866dab2db5e1c0d9ee427a2639e1aa3  ",
+        "refs/remotes/origin/codex/e03-admission-contract 25ddfd987f099f14eab3ae34d28c8e838064121b  ",
+        "refs/remotes/origin/codex/e03-confined-control-worker f976f13fe03ac3a582722f87d930dfaaeebacd0f  ",
+        "refs/remotes/origin/codex/e03-scheduler-durability 45081745414adc53205e68d9c9178a56f7fe34a6  ",
+        "refs/remotes/origin/codex/wc-d-lanec-e03-bridge 7737192aa2ab6ed34cb3e524e081d12010f709e5  ",
+        "refs/remotes/origin/dope/unified-spec-workplan-v2 47325f1022452e0675a37b2de9f9bfd1ac79e378  ",
+        "refs/remotes/origin/feat/w01-e03-e07-cpu-readiness-harness 1a2a6418380d736cf38c743716f44ee3db6b4d60  ",
+        "refs/remotes/origin/main 3e4382b60b2e64c03abbbb2654c413aab0a5079b  ",
+        "refs/remotes/origin/verify/sc181am-e03-audit-20261020T0038Z 192c46f1eed43b0897a36dd6f2cb182d3214edeb  "
+      ],
+      "total_ref_count": 624,
+      "shallow": false
+    },
+    {
+      "id": "xbabe1",
+      "worktrees": [
+        {
+          "worktree": "/home/ubuntu/dope/.agent/worktrees/v01-ci",
+          "HEAD": "402954ed9dc34c66c2a7c986b6d3000b6a58746a",
+          "detached": true,
+          "exists": true,
+          "status": {
+            "exit": 0,
+            "stdout": "",
+            "stderr": ""
+          }
+        },
+        {
+          "worktree": "/home/ubuntu/dope/.agent/worktrees/fast-5",
+          "HEAD": "0ac99c68ecd697abe19d5bab488f620d5c51517b",
+          "detached": true,
+          "prunable": "gitdir file points to non-existent location",
+          "exists": false
+        },
+        {
+          "worktree": "/home/ubuntu/dope/.agent/worktrees/fast-6",
+          "HEAD": "0ac99c68ecd697abe19d5bab488f620d5c51517b",
+          "detached": true,
+          "prunable": "gitdir file points to non-existent location",
+          "exists": false
+        },
+        {
+          "worktree": "/home/ubuntu/dope/.agent/worktrees/fast-7",
+          "HEAD": "0ac99c68ecd697abe19d5bab488f620d5c51517b",
+          "detached": true,
+          "prunable": "gitdir file points to non-existent location",
+          "exists": false
+        },
+        {
+          "worktree": "/home/ubuntu/dope/.agent/worktrees/fast-8",
+          "HEAD": "0ac99c68ecd697abe19d5bab488f620d5c51517b",
+          "detached": true,
+          "prunable": "gitdir file points to non-existent location",
+          "exists": false
+        }
+      ],
+      "refs": {
+        "exit": 0,
+        "stdout": "refs/heads/dope/unified-spec-workplan-v2 d1f6d10075248ee9477011a474ff0100284e35fa \nrefs/heads/fast/lane6-47325f10 47325f1022452e0675a37b2de9f9bfd1ac79e378 \nrefs/heads/fast/lane7-47325f10 47325f1022452e0675a37b2de9f9bfd1ac79e378 \nrefs/heads/fast/lane8-47325f10 47325f1022452e0675a37b2de9f9bfd1ac79e378 \nrefs/heads/fast/lane9-47325f10 47325f1022452e0675a37b2de9f9bfd1ac79e378 \nrefs/heads/main 2bfee82e05c264bdfb8ff26049a560a64d984817 [behind 69]\nrefs/remotes/origin/main 402954ed9dc34c66c2a7c986b6d3000b6a58746a \n",
+        "stderr": ""
+      },
+      "shallow": {
+        "exit": 0,
+        "stdout": "false\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "xbabe3",
+      "worktrees": [
+        {
+          "worktree": "/home/ubuntu/dope/.agent/worktrees/v01-ci",
+          "HEAD": "402954ed9dc34c66c2a7c986b6d3000b6a58746a",
+          "detached": true,
+          "exists": true,
+          "status": {
+            "exit": 0,
+            "stdout": "",
+            "stderr": ""
+          }
+        }
+      ],
+      "refs": {
+        "exit": 0,
+        "stdout": "refs/heads/dope/unified-spec-workplan-v2 d1f6d10075248ee9477011a474ff0100284e35fa \nrefs/heads/main 2bfee82e05c264bdfb8ff26049a560a64d984817 [behind 69]\nrefs/remotes/origin/main 402954ed9dc34c66c2a7c986b6d3000b6a58746a \n",
+        "stderr": ""
+      },
+      "shallow": {
+        "exit": 0,
+        "stdout": "false\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "xbabe4",
+      "observed_hostname": "Mac-Studio.local",
+      "bounded_dope_repository_found": false
+    }
+  ],
+  "remote_refs_verified_with_ls_remote": {
+    "refs/heads/main": "3e4382b60b2e64c03abbbb2654c413aab0a5079b",
+    "refs/heads/codex/e03-confined-control-worker": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+    "refs/heads/dope/unified-spec-workplan-v2": "47325f1022452e0675a37b2de9f9bfd1ac79e378",
+    "refs/heads/captain/e03-pilot-runner-bridge": "11cf5cc62866dab2db5e1c0d9ee427a2639e1aa3"
+  },
+  "topology": {
+    "observed_utc": "2026-10-20T06:33:52.403583+00:00",
+    "commits": {
+      "main": {
+        "exit": 0,
+        "stdout": "192c46f1eed43b0897a36dd6f2cb182d3214edeb\n54a4a5f7c02c544e74510edefb070ff1217d1a31\n2026-10-19T23:37:38+00:00\nAdd immutable pilot metadata contracts and complete Python inventories\n",
+        "stderr": ""
+      },
+      "origin/main": {
+        "exit": 0,
+        "stdout": "3e4382b60b2e64c03abbbb2654c413aab0a5079b\n32cc61a53fb44eb02f68d3ec95fb3f1611c9b60c\n2026-10-20T04:59:27+00:00\nresearch: add bounded controls and isolated sample handoff\n",
+        "stderr": ""
+      },
+      "codex/e03-confined-control-worker": {
+        "exit": 0,
+        "stdout": "f976f13fe03ac3a582722f87d930dfaaeebacd0f\n3e4382b60b2e64c03abbbb2654c413aab0a5079b\n2026-10-20T06:10:52+00:00\nresearch: add pinned confined numeric control worker\n",
+        "stderr": ""
+      },
+      "captain/e03-pilot-runner-bridge": {
+        "exit": 0,
+        "stdout": "11cf5cc62866dab2db5e1c0d9ee427a2639e1aa3\n230058353f9a41903a53786e5d7aeeaa4a4b2105\n2026-10-20T04:59:27+00:00\nresearch: add bounded controls and isolated sample handoff\n",
+        "stderr": ""
+      },
+      "codex/e03-control-artifact-adapters": {
+        "exit": 0,
+        "stdout": "e2775ccbc2c8d90edc1e584a77ed554742f2bc66\nc0325e3792e16b432f925ce68804b73816124dde\n2026-10-20T04:35:15+00:00\nresearch: align control sample feature and target identity\n",
+        "stderr": ""
+      },
+      "dope/unified-spec-workplan-v2": {
+        "exit": 0,
+        "stdout": "47325f1022452e0675a37b2de9f9bfd1ac79e378\n81ec509a00f8fae1fcf4f1fab5de5044e5e39878\n2026-10-18T10:43:23+00:00\nsecurity: re-pin gitleaks ignores for linearized C03/U01 synthetic test tokens\n",
+        "stderr": ""
+      }
+    },
+    "pairs": [
+      {
+        "left": "origin/main",
+        "right": "main",
+        "merge_base": {
+          "exit": 0,
+          "stdout": "192c46f1eed43b0897a36dd6f2cb182d3214edeb\n",
+          "stderr": ""
+        },
+        "ahead_behind": {
+          "exit": 0,
+          "stdout": "5\t0\n",
+          "stderr": ""
+        },
+        "patch_unmatched": {
+          "exit": 0,
+          "stdout": "< 3e4382b6 research: add bounded controls and isolated sample handoff\n< 32cc61a5 test: require native pilot ABI verification\n< 40441b78 research: add signed pilot stage execution bridge\n< cf67e73e Isolate simulated execution fixture accounting\n< 850f309a Preserve scheduler evidence on creation and resource failure\n",
+          "stderr": ""
+        }
+      },
+      {
+        "left": "origin/main",
+        "right": "codex/e03-confined-control-worker",
+        "merge_base": {
+          "exit": 0,
+          "stdout": "3e4382b60b2e64c03abbbb2654c413aab0a5079b\n",
+          "stderr": ""
+        },
+        "ahead_behind": {
+          "exit": 0,
+          "stdout": "0\t1\n",
+          "stderr": ""
+        },
+        "patch_unmatched": {
+          "exit": 0,
+          "stdout": "> f976f13f research: add pinned confined numeric control worker\n",
+          "stderr": ""
+        }
+      },
+      {
+        "left": "origin/main",
+        "right": "captain/e03-pilot-runner-bridge",
+        "merge_base": {
+          "exit": 0,
+          "stdout": "cf67e73e5a1dbb2001967ed23a4f5ef40ee00371\n",
+          "stderr": ""
+        },
+        "ahead_behind": {
+          "exit": 0,
+          "stdout": "3\t3\n",
+          "stderr": ""
+        },
+        "patch_unmatched": {
+          "exit": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      },
+      {
+        "left": "origin/main",
+        "right": "codex/e03-control-artifact-adapters",
+        "merge_base": {
+          "exit": 0,
+          "stdout": "cf67e73e5a1dbb2001967ed23a4f5ef40ee00371\n",
+          "stderr": ""
+        },
+        "ahead_behind": {
+          "exit": 0,
+          "stdout": "3\t2\n",
+          "stderr": ""
+        },
+        "patch_unmatched": {
+          "exit": 0,
+          "stdout": "< 3e4382b6 research: add bounded controls and isolated sample handoff\n< 32cc61a5 test: require native pilot ABI verification\n< 40441b78 research: add signed pilot stage execution bridge\n> e2775ccb research: align control sample feature and target identity\n> c0325e37 research: implement bounded controls and return isolated samples\n",
+          "stderr": ""
+        }
+      },
+      {
+        "left": "origin/main",
+        "right": "dope/unified-spec-workplan-v2",
+        "merge_base": {
+          "exit": 0,
+          "stdout": "2bfee82e05c264bdfb8ff26049a560a64d984817\n",
+          "stderr": ""
+        },
+        "ahead_behind": {
+          "exit": 0,
+          "stdout": "124\t69\n",
+          "stderr": ""
+        },
+        "patch_unmatched": {
+          "exit": 0,
+          "stdout": "< 3e4382b6 research: add bounded controls and isolated sample handoff\n< 32cc61a5 test: require native pilot ABI verification\n< 40441b78 research: add signed pilot stage execution bridge\n< cf67e73e Isolate simulated execution fixture accounting\n< 850f309a Preserve scheduler evidence on creation and resource failure\n< 192c46f1 Add immutable pilot metadata contracts and complete Python inventories\n< 54a4a5f7 Add verified CPU DOPE facade installation and removal\n< a4a7a8ee test: require explicit workplan packet qualification\n< f7a97db2 fix(ci): declare supervisor dependency and clarify v1 plan boundary\n< 604b3b62 fix(transfer): pin ledger gate and handle process inspection races\n< 42f87176 feat(transfer): execute signed native engineering stages\n< 0330190f docs(errata): correct WC01 driver_fidelity formula to rank+Jaccard\n< c8e79241 claims: keep WC-A diff disjoint from SC-DEC-181I test_workplan_acceptance.py lease\n< 82fe81f5 claims: bind interval provenance metadata and add WC01 historical paper errata (WC-A)\n< 241746ea refactor(transfer): split W01 native runner below 500-line cap and bind runtime provenance\n< 19177bcc fix(transfer): update lock-states.json sha256 pins for W01 kumo-tabular and other-auditors locks\n< 0cdaa3b2 F65-01 require official adapter parity for Q2\n< 1b6bc5a2 F65-01 bind independent Q9 evidence\n< b0317a0c feat(transfer): construct bound native development command plans\n< db4b78f2 test: assert FIFO journal refusal explicitly\n< 41f69bc0 docs(f65-00): adopt finish65 major release execution fence and release readiness manifest\n< af69ca4e Add durable development campaign stage accounting\n< 001a8af1 docs(inventory): add bikeshare-observational/controls.py to PYTHON_EXCEPTIONS and PY_TO_RUST_PLAN\n< 26f9b588 refactor(research): keep Bikeshare runner under source cap\n< 56d077e9 docs: record SC-DEC-106 observational smoke\n< 91b0c499 feat(research): add bounded Bikeshare comparator arms\n< d5a7b012 fix: correct README budget and audit archive layout\n< e2a846e9 fix(ci): repair security and publication gates\n< 2a10c11f fix(ci): restore cargo audit from cached cargo path\n< 9a06da1b fix(merge-guard): isolate legacy workflow fixtures\n< d3f43c79 fix(merge-guard): pin live workflow inventory\n< dcc23939 feat(ci): add Rust frozen evidence checker parity candidate\n< 016068fc ci,ops: sync cost-budget.toml and check-budgets.sh with 60m/20m workflow caps\n< f6119288 ci: restore native ARM64 arm64-portability steps from 990f442\n< 6fa1e5b0 ci,ops: extend merge_guard arm64 inventory, fix guest dpkg fsync & budgets, add Python boundary docs\n< e2746bae fix(ci,paper): bind tools/claims in code_snapshot and forbid parent-walk escape in readme_benchmark\n< 23de67f4 fix(paper): resolve CLAIMS_REPO across target/paper-render scratch dirs in readme_benchmark.py\n< cb77dee2 fix(ci): resolve full apt dependency closure for rootless arm64 poppler-utils and verify ldd\n< 1e05b983 fix(ci): include libpoppler134 and shared libs in rootless arm64 poppler-utils bundle\n< b12e73ea fix(ci,paper): restore frozen figure-one artifacts and provision poppler-utils in arm64-portability\n< db4cf79b test(acceptance): filter unbuilt PDF notice in run_v2_lint on clean checkouts\n< 65e6b55b test(acceptance): allow missing pdftotext tool on no-sudo ARM64 runner in v2_lint\n< c0196459 ci(arm64): add arm64-portability job on neverhuman-lan ARM64 runner\n< 608e4a15 fix(claims): emit 6 plotted foundation rows in hero-frontier.csv and raise footer to >=9pt\n< 0d17eaf1 test(acceptance): fail closed on explicit DOPE_PACKET_DIR while keeping clean-checkout fallback\n< 728297a1 paper(q01): render authenticated foundation hero bars and fix visual-QA margins\n< 6034acda test(transfer): add TestD19AndBlockerUnblockMatrix and configurable DOPE_PACKET_DIR\n< 8c526998 docs(decisions): define D19 governance hold and blocker unblock matrix (W01, E03-E07)\n< e2cd811d test(transfer): add W01 and E03-E07 deterministic CPU preflight test classes\n< 964b4543 test(transfer): port 17 workplan acceptance test classes into tracked CI suite\n< 31966ba2 docs(readme): preserve 'small **sampling program**' fixture string for test_claim_registry\n< 3beb5a5f docs(readme): align Quick Start with dope-kernel compile-csv and 650-900 authored word budget (Q02)\n< 03f4a220 fix(ci): use provisioned target/ci-python interpreter for U04 fixtures in cpu job\n< a7548ee3 fix(ci): map .gitleaks.toml in agent maps and fetch cargo deps before offline Q03 smoke\n< 933c83db ci: cover red-team task evidence and gitleaks\n< 402954ed Q03: build dope-kernel binary in native-release-smoke.sh\n< 94b38edd security: re-pin gitleaks ignores for C03/U01 synthetic test tokens on main after #269\n> 154bc5cc E05: record sealed confirmation custody blocker\n> e85b247c W01: verify official runtime pins; qualification held\n",
+          "stderr": ""
+        }
+      },
+      {
+        "left": "dope/unified-spec-workplan-v2",
+        "right": "codex/e03-confined-control-worker",
+        "merge_base": {
+          "exit": 0,
+          "stdout": "2bfee82e05c264bdfb8ff26049a560a64d984817\n",
+          "stderr": ""
+        },
+        "ahead_behind": {
+          "exit": 0,
+          "stdout": "69\t125\n",
+          "stderr": ""
+        },
+        "patch_unmatched": {
+          "exit": 0,
+          "stdout": "> f976f13f research: add pinned confined numeric control worker\n> 3e4382b6 research: add bounded controls and isolated sample handoff\n> 32cc61a5 test: require native pilot ABI verification\n> 40441b78 research: add signed pilot stage execution bridge\n> cf67e73e Isolate simulated execution fixture accounting\n> 850f309a Preserve scheduler evidence on creation and resource failure\n> 192c46f1 Add immutable pilot metadata contracts and complete Python inventories\n> 54a4a5f7 Add verified CPU DOPE facade installation and removal\n> a4a7a8ee test: require explicit workplan packet qualification\n> f7a97db2 fix(ci): declare supervisor dependency and clarify v1 plan boundary\n> 604b3b62 fix(transfer): pin ledger gate and handle process inspection races\n> 42f87176 feat(transfer): execute signed native engineering stages\n> 0330190f docs(errata): correct WC01 driver_fidelity formula to rank+Jaccard\n> c8e79241 claims: keep WC-A diff disjoint from SC-DEC-181I test_workplan_acceptance.py lease\n> 82fe81f5 claims: bind interval provenance metadata and add WC01 historical paper errata (WC-A)\n> 241746ea refactor(transfer): split W01 native runner below 500-line cap and bind runtime provenance\n> 19177bcc fix(transfer): update lock-states.json sha256 pins for W01 kumo-tabular and other-auditors locks\n> 0cdaa3b2 F65-01 require official adapter parity for Q2\n> 1b6bc5a2 F65-01 bind independent Q9 evidence\n> b0317a0c feat(transfer): construct bound native development command plans\n> db4b78f2 test: assert FIFO journal refusal explicitly\n> 41f69bc0 docs(f65-00): adopt finish65 major release execution fence and release readiness manifest\n> af69ca4e Add durable development campaign stage accounting\n> 001a8af1 docs(inventory): add bikeshare-observational/controls.py to PYTHON_EXCEPTIONS and PY_TO_RUST_PLAN\n> 26f9b588 refactor(research): keep Bikeshare runner under source cap\n> 56d077e9 docs: record SC-DEC-106 observational smoke\n> 91b0c499 feat(research): add bounded Bikeshare comparator arms\n> d5a7b012 fix: correct README budget and audit archive layout\n> e2a846e9 fix(ci): repair security and publication gates\n> 2a10c11f fix(ci): restore cargo audit from cached cargo path\n> 9a06da1b fix(merge-guard): isolate legacy workflow fixtures\n> d3f43c79 fix(merge-guard): pin live workflow inventory\n> dcc23939 feat(ci): add Rust frozen evidence checker parity candidate\n> 016068fc ci,ops: sync cost-budget.toml and check-budgets.sh with 60m/20m workflow caps\n> f6119288 ci: restore native ARM64 arm64-portability steps from 990f442\n> 6fa1e5b0 ci,ops: extend merge_guard arm64 inventory, fix guest dpkg fsync & budgets, add Python boundary docs\n> e2746bae fix(ci,paper): bind tools/claims in code_snapshot and forbid parent-walk escape in readme_benchmark\n> 23de67f4 fix(paper): resolve CLAIMS_REPO across target/paper-render scratch dirs in readme_benchmark.py\n> cb77dee2 fix(ci): resolve full apt dependency closure for rootless arm64 poppler-utils and verify ldd\n> 1e05b983 fix(ci): include libpoppler134 and shared libs in rootless arm64 poppler-utils bundle\n> b12e73ea fix(ci,paper): restore frozen figure-one artifacts and provision poppler-utils in arm64-portability\n> db4cf79b test(acceptance): filter unbuilt PDF notice in run_v2_lint on clean checkouts\n> 65e6b55b test(acceptance): allow missing pdftotext tool on no-sudo ARM64 runner in v2_lint\n> c0196459 ci(arm64): add arm64-portability job on neverhuman-lan ARM64 runner\n> 608e4a15 fix(claims): emit 6 plotted foundation rows in hero-frontier.csv and raise footer to >=9pt\n> 0d17eaf1 test(acceptance): fail closed on explicit DOPE_PACKET_DIR while keeping clean-checkout fallback\n> 728297a1 paper(q01): render authenticated foundation hero bars and fix visual-QA margins\n> 6034acda test(transfer): add TestD19AndBlockerUnblockMatrix and configurable DOPE_PACKET_DIR\n> 8c526998 docs(decisions): define D19 governance hold and blocker unblock matrix (W01, E03-E07)\n> e2cd811d test(transfer): add W01 and E03-E07 deterministic CPU preflight test classes\n> 964b4543 test(transfer): port 17 workplan acceptance test classes into tracked CI suite\n> 31966ba2 docs(readme): preserve 'small **sampling program**' fixture string for test_claim_registry\n> 3beb5a5f docs(readme): align Quick Start with dope-kernel compile-csv and 650-900 authored word budget (Q02)\n> 03f4a220 fix(ci): use provisioned target/ci-python interpreter for U04 fixtures in cpu job\n> a7548ee3 fix(ci): map .gitleaks.toml in agent maps and fetch cargo deps before offline Q03 smoke\n> 933c83db ci: cover red-team task evidence and gitleaks\n> 402954ed Q03: build dope-kernel binary in native-release-smoke.sh\n> 94b38edd security: re-pin gitleaks ignores for C03/U01 synthetic test tokens on main after #269\n< 154bc5cc E05: record sealed confirmation custody blocker\n< e85b247c W01: verify official runtime pins; qualification held\n",
+          "stderr": ""
+        }
+      },
+      {
+        "left": "captain/e03-pilot-runner-bridge",
+        "right": "codex/e03-confined-control-worker",
+        "merge_base": {
+          "exit": 0,
+          "stdout": "cf67e73e5a1dbb2001967ed23a4f5ef40ee00371\n",
+          "stderr": ""
+        },
+        "ahead_behind": {
+          "exit": 0,
+          "stdout": "3\t4\n",
+          "stderr": ""
+        },
+        "patch_unmatched": {
+          "exit": 0,
+          "stdout": "> f976f13f research: add pinned confined numeric control worker\n",
+          "stderr": ""
+        }
+      },
+      {
+        "left": "captain/e03-pilot-runner-bridge",
+        "right": "codex/e03-control-artifact-adapters",
+        "merge_base": {
+          "exit": 0,
+          "stdout": "cf67e73e5a1dbb2001967ed23a4f5ef40ee00371\n",
+          "stderr": ""
+        },
+        "ahead_behind": {
+          "exit": 0,
+          "stdout": "3\t2\n",
+          "stderr": ""
+        },
+        "patch_unmatched": {
+          "exit": 0,
+          "stdout": "< 11cf5cc6 research: add bounded controls and isolated sample handoff\n< 23005835 test: require native pilot ABI verification\n> e2775ccb research: align control sample feature and target identity\n> c0325e37 research: implement bounded controls and return isolated samples\n< 5aae82a5 research: add signed pilot stage execution bridge\n",
+          "stderr": ""
+        }
+      }
+    ]
+  },
+  "patch_equivalence": {
+    "old_workplan_vs_origin_main": {
+      "unique_commits": 69,
+      "patch_equivalent": 67,
+      "unmatched": [
+        "+ e85b247ca5e7d10d2173cb6a32e200dbb75c1ca6",
+        "+ 154bc5cc45278f9a667faa45e695d5ee09627a97"
+      ],
+      "unmatched_empty_commit_diff_tree": {
+        "154bc5cc": {
+          "exit": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        "e85b247c": {
+          "exit": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      }
+    },
+    "captain_vs_origin_main": {
+      "raw_ahead": 3,
+      "raw_behind": 3,
+      "patch_equivalent": 3,
+      "tree_equal": true,
+      "tree": "95b7893c2072fd900298150b3ed5dd17f63c28f4",
+      "cherry": "- 5aae82a5ec8a1efee190d08cd1f306d0b3828144 research: add signed pilot stage execution bridge\n- 230058353f9a41903a53786e5d7aeeaa4a4b2105 test: require native pilot ABI verification\n- 11cf5cc62866dab2db5e1c0d9ee427a2639e1aa3 research: add bounded controls and isolated sample handoff\n"
+    }
+  },
+  "legacy_read_only_merge_tree": [
+    {
+      "left": "origin/main",
+      "right": "dope/unified-spec-workplan-v2",
+      "base": "2bfee82e05c264bdfb8ff26049a560a64d984817",
+      "exit": 0,
+      "conflict_hunks": 33,
+      "output_bytes": 33714,
+      "note": "Legacy three-tree advisory, not exact ort result or hosted mergeability."
+    },
+    {
+      "left": "origin/main",
+      "right": "captain/e03-pilot-runner-bridge",
+      "base": "cf67e73e5a1dbb2001967ed23a4f5ef40ee00371",
+      "exit": 0,
+      "conflict_hunks": 0,
+      "output_bytes": 0,
+      "note": "Legacy three-tree advisory, not exact ort result or hosted mergeability."
+    },
+    {
+      "left": "origin/main",
+      "right": "codex/e03-confined-control-worker",
+      "base": "3e4382b60b2e64c03abbbb2654c413aab0a5079b",
+      "exit": 0,
+      "conflict_hunks": 0,
+      "output_bytes": 45041,
+      "note": "Legacy three-tree advisory, not exact ort result or hosted mergeability."
+    },
+    {
+      "left": "origin/main",
+      "right": "codex/e03-control-artifact-adapters",
+      "base": "cf67e73e5a1dbb2001967ed23a4f5ef40ee00371",
+      "exit": 0,
+      "conflict_hunks": 3,
+      "output_bytes": 3365,
+      "note": "Legacy three-tree advisory, not exact ort result or hosted mergeability."
+    }
+  ],
+  "canonical_main_index": {
+    "status_scope": "Tracked index/worktree; source data not opened",
+    "staged_path_count": 43,
+    "staged_shortstat": "43 files changed, 196 insertions(+), 6659 deletions(-)",
+    "staged_paths_matching_old_workplan": [
+      "docs/archive/historical-paper-errata.md",
+      "docs/install.md",
+      "docs/plans/finish65-major-release.md",
+      "docs/whitepaper/README.md",
+      "research/transfer/campaign_admission.py",
+      "research/transfer/campaign_artifacts.py",
+      "research/transfer/campaign_cli.py",
+      "research/transfer/campaign_execution.py",
+      "research/transfer/campaign_native.py",
+      "research/transfer/campaign_runner.py",
+      "research/transfer/locks/kumo-tabular.json",
+      "research/transfer/locks/other-auditors.json",
+      "research/transfer/manifests/release-readiness-v1.json",
+      "research/transfer/native_qualification.py",
+      "research/transfer/native_qualification_runtime.py",
+      "research/transfer/registries/lock-states.json",
+      "research/transfer/run_native_qualification.py",
+      "research/transfer/tests/test_campaign_admission.py",
+      "research/transfer/tests/test_campaign_cli.py",
+      "research/transfer/tests/test_campaign_execution.py",
+      "research/transfer/tests/test_campaign_runner.py",
+      "research/transfer/tests/test_native_qualification.py",
+      "research/transfer/tests/test_workplan_packet.py",
+      "research/transfer/workplan_packet.py",
+      "rust/main/facade/dispatch.rs",
+      "schemas/pilot-admission-v1.schema.json",
+      "schemas/pilot-execution-v1.schema.json",
+      "scripts/install-dope.sh",
+      "scripts/uninstall-dope.sh",
+      "tests/vnext_dope_install.rs",
+      "validation/requirements-v1.txt"
+    ],
+    "staged_paths_other": [
+      "PYTHON_EXCEPTIONS.md",
+      "PY_TO_RUST_PLAN.md",
+      "agent/owner-map.json",
+      "agent/test-map.json",
+      "docs/decisions.md",
+      "docs/testing.md",
+      "ops/ci/cpu.sh",
+      "ops/ci/native-release-smoke.sh",
+      "research/transfer/tests/test_workplan_acceptance.py",
+      "tools/claims/foundation.py",
+      "tools/claims/render.py",
+      "tools/claims/test_figure.py"
+    ],
+    "unstaged_shortstat": "docs/decisions.md | 16 ++++++++++++++++\n 1 file changed, 16 insertions(+)",
+    "finding": "31/43 staged path states match old workplan branch, including removed native campaign/admission, qualification, installation and doctor identities; intent/author not established.",
+    "remote_main_untouched": true
+  },
+  "cross_host_old_workplan": {
+    "branch": {
+      "exit": 0,
+      "stdout": "d1f6d10075248ee9477011a474ff0100284e35fa\n6ff6921c947ae432db9e5a4f0b48efe6f0c8771a\n2026-10-18T05:43:20+00:00\nV00: reconcile Wave-2 integration and verification fixtures\n",
+      "stderr": ""
+    },
+    "merge_base": {
+      "exit": 0,
+      "stdout": "2768bf2d93636724dd59c6418f80f5359df143d3\n",
+      "stderr": ""
+    },
+    "ahead_behind": {
+      "exit": 0,
+      "stdout": "59\t83\n",
+      "stderr": ""
+    },
+    "patch_unmatched": {
+      "exit": 0,
+      "stdout": "< 47325f1 security: re-pin gitleaks ignores for linearized C03/U01 synthetic test tokens\n< 81ec509 integration: reconcile linearized history to reviewed tree cc3694c\n< b95787d V00: fix CPU cache cleanup and Studio receipt errors\n< 6f3204b V00: preserve frozen Figure 1 ledger bytes\n< c18ceb0 V00: fix CI cpu Python 3.12 patch lock, paper-clean figure_one regen, and Jankurai hard gates\n< 2f10880 V00: repair Wave-2 frozen-evidence allowlist, README CR-04 negation, and Jankurai v1.7.1 gates\n< 3722916 V00: reconcile Wave-2 integration and verification fixtures\n< e98af8f Q02: clarify paper status and preregister comprehension review\n< 7a795b8 U00: implement truthful dope CLI facade and split main.rs <500 LOC\n< 771452d S03: gate release on operation rights\n< a5e63ef S00: separate utility, empirical privacy, formal DP and legal release states\n< ea15520 Add diverse OOF teacher study fixtures\n< ec8ae8f R03: preregister joint dependence ablation\n< 58b2658 E00: plan source-balanced benchmark rosters\n< b9d4895 U04: add cross-system public bike observation\n< 6e70fb5 R08: preregister prior-decoder study and closure accounting\n< 80852af C02: implement crossed random-effects inference and seeded simulation fixtures\n< 25c9e07 C03: implement paired D80 driver agreement and failure corpus\n> d1f6d10 V00: reconcile Wave-2 integration and verification fixtures\n> 7972238 Q02: clarify paper status and preregister comprehension review\n> 4bc0868 U04: add cross-system public bike observation\n> 2fbbfc8 R03: preregister joint dependence ablation\n> 39fdeb7 R08: preregister prior-decoder study and closure accounting\n> b9b5ed3 Add diverse OOF teacher study fixtures\n> 646ddce S03: gate release on operation rights\n> 1232bd3 E00: plan source-balanced benchmark rosters\n> 7f6cb92 U00: implement truthful dope CLI facade and split main.rs <500 LOC\n> 045faed C02: implement crossed random-effects inference and seeded simulation fixtures\n> 26f21a6 C03: implement paired D80 driver agreement and failure corpus\n> 4cfa59d I01: extract interaction fitting and bind frontier compatibility\n> 049fca2 D00: define PreparedView v1 contract and raw/prepared boundaries\n> d92c60f S00: separate utility, empirical privacy, formal DP and legal release states\n> 32b376e C01: implement paired query-level T90 and loss-validity floors\n",
+      "stderr": ""
+    },
+    "tree_diff": {
+      "exit": 0,
+      "stdout": " .gitleaksignore                                    |   3 -\n CITATION.cff                                       |   4 +-\n README.md                                          | 198 ++++-----------------\n agent/owner-map.json                               |   4 +-\n agent/test-map.json                                |   8 -\n apps/studio/index.html                             |  81 +--------\n apps/studio/package.json                           |   2 +-\n apps/studio/{studio.ts => studio.js}               |   3 +-\n crates/dope-service/src/service.rs                 |  47 +++--\n crates/dope-service/src/wire.rs                    |   8 +-\n docs/whitepaper/scripts/figure_one.py              |  29 +--\n docs/whitepaper/scripts/readme_benchmark.py        | 148 ++-------------\n ops/ci/cpu.sh                                      |  18 +-\n ops/ci/frozen-evidence.json                        |  24 ---\n ops/ci/paper-prepare.py                            |   2 -\n packages/protocol/generate.mjs                     |   2 +-\n packages/protocol/src/schema-snapshots.ts          |   8 +-\n research/transfer/adapters/auditors/challengers.py |   2 +-\n .../transfer/adapters/auditors/conventional.py     |   2 +-\n research/transfer/adapters/base.py                 |   2 +-\n research/transfer/adapters/worker_abi.py           |   2 +-\n research/transfer/frontier_coverage.py             |   2 +-\n research/transfer/inference.py                     |   4 +-\n research/transfer/privacy/accountant.py            |   2 +-\n research/transfer/tests/test_bundle_isolation.py   |   7 +-\n research/transfer/tests/test_e03_pilot_manifest.py |   2 +-\n research/transfer/tests/test_other_auditors.py     |   6 +-\n rust/evaluation/worker.rs                          |   5 +-\n rust/evaluation/worker/tests.rs                    |  10 +-\n rust/main/facade.rs                                |   2 +-\n rust/main/facade/io.rs                             |   6 +-\n rust/main/facade/registry.rs                       |   2 +-\n rust/metrics/drivers.rs                            |   6 +-\n rust/transfer_metrics/inference.rs                 |   5 +-\n validation/requirements-v1.txt                     |   2 -\n 35 files changed, 116 insertions(+), 542 deletions(-)\n",
+      "stderr": ""
+    }
+  },
+  "confined_control_worker_existing_proof": {
+    "receipt_sha256": "9fc9b5174c8b2bb039a9d27ced28ac658a0dbde8e0688f5213631ac86c07f28a",
+    "at_utc": "2026-10-20T06:09:10.999699+00:00",
+    "source_parent": "3e4382b60b2e64c03abbbb2654c413aab0a5079b",
+    "tested_tree": "52f2a350aa2015e261093d9bfc973de51927f9e3",
+    "matched_source_files": [
+      "Cargo.toml",
+      "PYTHON_EXCEPTIONS.md",
+      "PY_TO_RUST_PLAN.md",
+      "agent/owner-map.json",
+      "agent/test-map.json",
+      "docs/testing.md",
+      "research/transfer/tdl/ADAPTERS.md",
+      "research/transfer/tdl/control_boundary.py",
+      "research/transfer/tdl/control_isolated_worker.py",
+      "research/transfer/tests/test_control_boundary.py",
+      "rust/control_isolation_ffi.rs",
+      "rust/lib.rs"
+    ],
+    "mismatched_source_files": [],
+    "checks": [
+      {
+        "command": [
+          "python3",
+          "-B",
+          "-m",
+          "unittest",
+          "research.transfer.tests.test_control_boundary",
+          "-v"
+        ],
+        "rc": 0,
+        "elapsed_seconds": 16.80000014405232,
+        "log_sha256": "ced8f002f31db55bec7b56beade6a790f0535f3a22dd64ba93d1f908df02e32b",
+        "current_log_sha256": "ced8f002f31db55bec7b56beade6a790f0535f3a22dd64ba93d1f908df02e32b",
+        "log_matches": true
+      },
+      {
+        "command": [
+          "/snap/just/40/bin/just",
+          "fast"
+        ],
+        "rc": 0,
+        "elapsed_seconds": 377.3172537689097,
+        "log_sha256": "dd84e06dd98375f64f4b86277e19ffe605d2ef0ae4f07b7bb8053684344ab2cc",
+        "current_log_sha256": "dd84e06dd98375f64f4b86277e19ffe605d2ef0ae4f07b7bb8053684344ab2cc",
+        "log_matches": true
+      },
+      {
+        "command": [
+          "/snap/just/40/bin/just",
+          "check"
+        ],
+        "rc": 0,
+        "elapsed_seconds": 478.50502778205555,
+        "log_sha256": "8b8f8aa0c93f5e82fdb95bc6595c5ccf97939f35d23a692264804e17a130179f",
+        "current_log_sha256": "8b8f8aa0c93f5e82fdb95bc6595c5ccf97939f35d23a692264804e17a130179f",
+        "log_matches": true
+      }
+    ],
+    "pr": {
+      "at_utc": "2026-10-20T06:29:09.212135+00:00",
+      "url": "https://github.com/neverhuman/dope/pull/290",
+      "number": 290,
+      "head": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+      "tree": "52f2a350aa2015e261093d9bfc973de51927f9e3",
+      "base": "3e4382b60b2e64c03abbbb2654c413aab0a5079b",
+      "native_CI_pending": true,
+      "source_review_pending_native_approval": true
+    },
+    "later_saved_native_snapshot": {
+      "path": "/home/ubuntu/dope/.agent/worktrees/lane-durable-acceptance/target/pr290-f976-native-change-only-watch-20261020/LATEST_NATIVE_OBSERVATION.json",
+      "at_utc": "2026-10-20T06:39:16.935999+00:00",
+      "sha256": "4960d1396ae7d421b10285253c3df8e2e456ae00dbb14c3e7d3b793739a34083",
+      "checks": [
+        {
+          "name": "public-smoke",
+          "head_sha": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+          "status": "completed",
+          "conclusion": "skipped",
+          "html_url": "https://github.com/neverhuman/dope/actions/runs/39380628265/job/118488693700"
+        },
+        {
+          "name": "security",
+          "head_sha": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/neverhuman/dope/actions/runs/39380628035/job/118488691750"
+        },
+        {
+          "name": "cpu",
+          "head_sha": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/neverhuman/dope/actions/runs/39380628035/job/118488691672"
+        },
+        {
+          "name": "arm64-portability",
+          "head_sha": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/neverhuman/dope/actions/runs/39380628035/job/118488691629"
+        },
+        {
+          "name": "paper-clean",
+          "head_sha": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/neverhuman/dope/actions/runs/39380628035/job/118488691477"
+        },
+        {
+          "name": "jankurai-audit",
+          "head_sha": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/neverhuman/dope/actions/runs/39380628052/job/118488691369"
+        }
+      ]
+    },
+    "saved_native_snapshot": {
+      "at_utc": "2026-10-20T06:34:15.490472+00:00",
+      "sha256": "480de9345a8239ca90a954135ab72a76191e54bcbadc8407fe755e68bf372ac2",
+      "checks": [
+        {
+          "name": "public-smoke",
+          "head_sha": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+          "status": "completed",
+          "conclusion": "skipped",
+          "html_url": "https://github.com/neverhuman/dope/actions/runs/39380628265/job/118488693700"
+        },
+        {
+          "name": "security",
+          "head_sha": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/neverhuman/dope/actions/runs/39380628035/job/118488691750"
+        },
+        {
+          "name": "cpu",
+          "head_sha": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/neverhuman/dope/actions/runs/39380628035/job/118488691672"
+        },
+        {
+          "name": "arm64-portability",
+          "head_sha": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/neverhuman/dope/actions/runs/39380628035/job/118488691629"
+        },
+        {
+          "name": "paper-clean",
+          "head_sha": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/neverhuman/dope/actions/runs/39380628035/job/118488691477"
+        },
+        {
+          "name": "jankurai-audit",
+          "head_sha": "f976f13fe03ac3a582722f87d930dfaaeebacd0f",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/neverhuman/dope/actions/runs/39380628052/job/118488691369"
+        }
+      ]
+    }
+  },
+  "fast_probe": {
+    "observed_utc": "2026-10-20T06:37:14.845776+00:00",
+    "scope": "8 registered worktrees + one reference inventory + 4 selected base relations; no untracked walk or patch-id stage",
+    "total_elapsed_ms": 94.213,
+    "samples": [
+      {
+        "command": [
+          "worktree",
+          "list",
+          "--porcelain"
+        ],
+        "exit": 0,
+        "elapsed_ms": 3.752,
+        "stdout_sha256": "09af2877a4852f02faad31d035db47437b26a2e63c22f8c5223cc9e7c3ef3fe2"
+      },
+      {
+        "command": [
+          "for-each-ref",
+          "--format=%(refname) %(objectname)",
+          "refs/heads",
+          "refs/remotes/origin/main"
+        ],
+        "exit": 0,
+        "elapsed_ms": 5.081,
+        "stdout_sha256": "120928a1fe4d4dbc15fec23309c02a0fd56723ce4d5769f3db7d32c61d4fc6a9"
+      },
+      {
+        "command": [
+          "status",
+          "--porcelain=v1",
+          "--untracked-files=no"
+        ],
+        "exit": 0,
+        "elapsed_ms": 9.327,
+        "stdout_sha256": "7d0db8f7774cece8bb4f517aca22978d4c7f9afee8edaeac55ce9ee5eb094478",
+        "worktree": "/home/ubuntu/dope",
+        "tracked_entries": [
+          "M  PYTHON_EXCEPTIONS.md",
+          "M  PY_TO_RUST_PLAN.md",
+          "M  agent/owner-map.json",
+          "M  agent/test-map.json",
+          "D  docs/archive/historical-paper-errata.md",
+          "MM docs/decisions.md",
+          "D  docs/install.md",
+          "D  docs/plans/finish65-major-release.md",
+          "M  docs/testing.md",
+          "M  docs/whitepaper/README.md",
+          "M  ops/ci/cpu.sh",
+          "M  ops/ci/native-release-smoke.sh",
+          "D  research/transfer/campaign_admission.py",
+          "D  research/transfer/campaign_artifacts.py",
+          "D  research/transfer/campaign_cli.py",
+          "D  research/transfer/campaign_execution.py",
+          "D  research/transfer/campaign_native.py",
+          "D  research/transfer/campaign_runner.py",
+          "M  research/transfer/locks/kumo-tabular.json",
+          "M  research/transfer/locks/other-auditors.json",
+          "D  research/transfer/manifests/release-readiness-v1.json",
+          "D  research/transfer/native_qualification.py",
+          "D  research/transfer/native_qualification_runtime.py",
+          "M  research/transfer/registries/lock-states.json",
+          "D  research/transfer/run_native_qualification.py",
+          "D  research/transfer/tests/test_campaign_admission.py",
+          "D  research/transfer/tests/test_campaign_cli.py",
+          "D  research/transfer/tests/test_campaign_execution.py",
+          "D  research/transfer/tests/test_campaign_runner.py",
+          "D  research/transfer/tests/test_native_qualification.py",
+          "M  research/transfer/tests/test_workplan_acceptance.py",
+          "D  research/transfer/tests/test_workplan_packet.py",
+          "D  research/transfer/workplan_packet.py",
+          "M  rust/main/facade/dispatch.rs",
+          "D  schemas/pilot-admission-v1.schema.json",
+          "D  schemas/pilot-execution-v1.schema.json",
+          "D  scripts/install-dope.sh",
+          "D  scripts/uninstall-dope.sh",
+          "D  tests/vnext_dope_install.rs",
+          "M  tools/claims/foundation.py",
+          "M  tools/claims/render.py",
+          "M  tools/claims/test_figure.py",
+          "M  validation/requirements-v1.txt"
+        ]
+      },
+      {
+        "command": [
+          "status",
+          "--porcelain=v1",
+          "--untracked-files=no"
+        ],
+        "exit": 0,
+        "elapsed_ms": 9.132,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "worktree": "/home/ubuntu/dope/.agent/worktrees/integration"
+      },
+      {
+        "command": [
+          "status",
+          "--porcelain=v1",
+          "--untracked-files=no"
+        ],
+        "exit": 0,
+        "elapsed_ms": 7.992,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "worktree": "/home/ubuntu/dope/.agent/worktrees/lane-campaign-readiness"
+      },
+      {
+        "command": [
+          "status",
+          "--porcelain=v1",
+          "--untracked-files=no"
+        ],
+        "exit": 0,
+        "elapsed_ms": 7.775,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "worktree": "/home/ubuntu/dope/.agent/worktrees/lane-decisions-reverify"
+      },
+      {
+        "command": [
+          "status",
+          "--porcelain=v1",
+          "--untracked-files=no"
+        ],
+        "exit": 0,
+        "elapsed_ms": 8.524,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "worktree": "/home/ubuntu/dope/.agent/worktrees/lane-durable-acceptance"
+      },
+      {
+        "command": [
+          "status",
+          "--porcelain=v1",
+          "--untracked-files=no"
+        ],
+        "exit": 0,
+        "elapsed_ms": 8.029,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "worktree": "/home/ubuntu/dope/.agent/worktrees/lane-e07-bikeshare"
+      },
+      {
+        "command": [
+          "status",
+          "--porcelain=v1",
+          "--untracked-files=no"
+        ],
+        "exit": 0,
+        "elapsed_ms": 10.952,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "worktree": "/home/ubuntu/dope/.agent/worktrees/rt-L2"
+      },
+      {
+        "command": [
+          "status",
+          "--porcelain=v1",
+          "--untracked-files=no"
+        ],
+        "exit": 0,
+        "elapsed_ms": 7.893,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "worktree": "/home/ubuntu/dope/.agent/worktrees/verify-016068fc"
+      },
+      {
+        "command": [
+          "rev-list",
+          "--left-right",
+          "--count",
+          "origin/main...main"
+        ],
+        "exit": 0,
+        "elapsed_ms": 3.601,
+        "stdout": "5\t0\n",
+        "stdout_sha256": "f1e8b967ff2a8dbb5943798188aeea00caff386348401fcd1221a4fd3f20f360"
+      },
+      {
+        "command": [
+          "rev-list",
+          "--left-right",
+          "--count",
+          "origin/main...captain/e03-pilot-runner-bridge"
+        ],
+        "exit": 0,
+        "elapsed_ms": 4.024,
+        "stdout": "3\t3\n",
+        "stdout_sha256": "b19abd31461d392e98bd65452ff8bce54923bf402e44dffd4714e67ce8bd3568"
+      },
+      {
+        "command": [
+          "rev-list",
+          "--left-right",
+          "--count",
+          "origin/main...codex/e03-confined-control-worker"
+        ],
+        "exit": 0,
+        "elapsed_ms": 3.501,
+        "stdout": "0\t1\n",
+        "stdout_sha256": "2dd01bd53f96a75c966f8245468cbe61d32c2576f4c99df382142590149ee50c"
+      },
+      {
+        "command": [
+          "rev-list",
+          "--left-right",
+          "--count",
+          "origin/main...dope/unified-spec-workplan-v2"
+        ],
+        "exit": 0,
+        "elapsed_ms": 4.329,
+        "stdout": "124\t69\n",
+        "stdout_sha256": "b76dde14553436ac5ec45efe14f9126c9fe20de87c7858da09f657e8112392cc"
+      }
+    ]
+  },
+  "recommended_disposition": {
+    "old_workplan": "Preserve historical proof refs; mark superseded-by patch equivalence; no wholesale merge needed.",
+    "captain_bridge": "Same-tree rewritten history; mark landed/content-equivalent after owner reconciliation; no content merge needed.",
+    "confined_worker": "Use existing PR290 with exact-head policy; no duplicate candidate/PR.",
+    "dirty_canonical_main": "Existing owner must preserve staged/unstaged/untracked custody and resolve rollback-shaped index before any checkout/reset/rebase/commit.",
+    "stale_ci_metadata": "Inventory custody/process ownership before any cleanup; never auto-prune from health check."
+  },
+  "tests_run_by_auditor": [],
+  "validation": "JSON parse, source/receipt/log SHA verification; no product behavior claims from graph inspection.",
+  "messaging": {
+    "last_acknowledgment_check": {
+      "at_utc": "2026-10-20T06:47:23.814794+00:00",
+      "captain_log_new_bytes": 0,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "admiral_capture_sha256": "ff90a655459be68e670f5be7dfa7c508b761cc79310f0b618f2d437a0fec6a3a",
+      "admiral_alert_still_queued": true,
+      "captain_acknowledged": false,
+      "admiral_acknowledged": false
+    },
+    "authorization": "Direct user authorization relayed by parent agent: talk/work with captain and admiral so both aware.",
+    "captain": {
+      "screen": "2716151.captain_dope",
+      "thread_id": "01a1574d-f2ca-79b0-92d8-d41179b39644",
+      "active_headless": true,
+      "terminal_input_sent": false
+    },
+    "admiral": {
+      "screen": "4060655.super_captain",
+      "codex_pid": 1706264,
+      "empty_composer_verified": true,
+      "descendant_verified": true,
+      "queue_visible": true,
+      "acknowledgment": "pending"
+    },
+    "delivery": {
+      "at_utc": "2026-10-20T06:40:23.909363+00:00",
+      "deliveries": [
+        {
+          "recipient": "DOPE Captain",
+          "path": "/home/ubuntu/dope/COMMS.md",
+          "offset_before": 835752,
+          "offset_after": 839651,
+          "appended_sha256": "32fff80a8b871fbaf1c1cc1a387831d9def5f5acb2ef90f60d40e572f13cda49",
+          "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/DOPE_GIT_AUDIT_20261020_vpmrncxl/NOTIFICATION.md",
+          "message_sha256": "8a8e461859ece429440b14af749049bc8f9f78a1cb3680efbd9d4221ab602cde",
+          "message_id": "DOPE-GIT-AUDIT-20261020-0637Z",
+          "status": "durably_appended_not_yet_acknowledged"
+        },
+        {
+          "recipient": "Admiral",
+          "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_INBOX.md",
+          "offset_before": 113101,
+          "offset_after": 116995,
+          "appended_sha256": "e47454911c8c2a788c5e67ef9907d29f62a8154226a77f31f78f2d7aed335da2",
+          "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/DOPE_GIT_AUDIT_20261020_vpmrncxl/NOTIFICATION.md",
+          "message_sha256": "8a8e461859ece429440b14af749049bc8f9f78a1cb3680efbd9d4221ab602cde",
+          "message_id": "DOPE-GIT-AUDIT-20261020-0637Z",
+          "status": "durably_appended_not_yet_acknowledged"
+        }
+      ]
+    },
+    "admiral_pointer": {
+      "preflight_sha256": "457f866bdbe562e55f51fcb2389e9b2debdacb2e3b1cef35d45cc7f08e3dd524",
+      "pointer_sha256": "8a76363697ff08298745ac12a07d17e994a0d736fefb7b09a3ef98b93474c770",
+      "operations": [
+        {
+          "operation": "readbuf",
+          "exit": 0
+        },
+        {
+          "operation": "paste",
+          "exit": 0
+        },
+        {
+          "operation": "stuff",
+          "exit": 0
+        }
+      ],
+      "queue_preflight_sha256": "9e81ceb922c632f1793c4f245c6fd0c8b5cb04d9f1d6b108412ed593331c45ff",
+      "queue_tab_exit": 0,
+      "queue_postflight_sha256": "45892ad3cffad8b9fece6707a1ca61ff39fb528637c11f329c32feafca5b52aa"
+    },
+    "captain_status": "Durable COMMS delivery; active headless process prevents concurrent resume or shell prose injection; direct consumption pending.",
+    "message_id": "DOPE-GIT-AUDIT-20261020-0637Z",
+    "responses": []
+  }
+}

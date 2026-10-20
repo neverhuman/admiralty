@@ -38,6 +38,7 @@ pub mod economics;
 pub mod evaluation;
 pub mod excursions;
 pub mod execution_requirements;
+pub mod git_health;
 pub mod governor;
 pub mod import;
 pub mod intake;

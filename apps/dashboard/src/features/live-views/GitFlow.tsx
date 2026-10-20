@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRoute } from "../../router";
 import {
   age,
+  isStale,
   type GitCheckout,
   type ViewProject,
   type ViewsSnapshot,
@@ -9,6 +10,9 @@ import {
 import { layoutGit, type GitLayout } from "./geometry";
 import { useSize, type Selection } from "./LiveViews";
 import { changeParams, palette } from "./FleetAtlas";
+import GitChat from "./GitChat";
+import { createChatMemory } from "./operator-chat";
+import { useGitHealth, type GitHealthReport } from "./gitHealth";
 
 let viewMemory = { zoom: 0.9, left: 0, top: 0, follow: true, inventory: false };
 const colors = [
@@ -31,6 +35,30 @@ function working(checkout: GitCheckout) {
       : s.staged + s.unstaged + s.untracked
         ? `${s.staged} staged · ${s.unstaged} unstaged · ${s.untracked} untracked entries`
         : "clean (submodules excluded)";
+}
+function GitHealthBadge({ report, error, now, onToggle }: { report?: GitHealthReport; error: string; now: number; onToggle: (open: boolean) => void }) {
+  const stale = !!report && isStale(report.observed_utc, now);
+  const timeUncertain = !!report && Date.parse(report.observed_utc) > now + 30_000;
+  const state = stale || timeUncertain || error ? "unknown" : report?.state ?? "unknown";
+  const amount = (value: GitHealthReport["branches"][number]["ahead"]) => value ? `${value.lower_bound ? "≥" : ""}${value.value}` : "unknown";
+  return <details className={`git-health git-health-${state}`} onToggle={(event) => onToggle(event.currentTarget.open)}>
+    <summary>Git health · {stale ? "stale" : state}{report?.issues.length ? ` · ${report.issues.length}` : ""}</summary>
+    <div className="git-health-detail">
+      {!report ? <p>{error || "Health report not observed for this project."}</p> : <>
+        {error && <p role="status">Health coverage / notification: {error}</p>}
+        <p>{age(report.observed_utc, now)} · Integration: <code>{report.integration_ref ?? "not configured"}</code></p>
+        <p>{report.observed_commits} commits · {report.observed_refs} refs · {report.observed_checkouts} checkouts observed.</p>
+        {(report.shallow || report.truncated || report.missing_parent_oids.length > 0 || report.observation_error) && <p>Coverage: {[
+          report.shallow ? "shallow ancestry" : "", report.truncated ? "bounded window" : "", report.missing_parent_oids.length ? `${report.missing_parent_oids.length} missing parents` : "", report.observation_error ? "source error" : "",
+        ].filter(Boolean).join(" · ")}. Unknown facts cannot establish healthy Git.</p>}
+        {report.issues.slice(0, 30).map((issue, index) => <article key={`${issue.code}:${index}`}><b>{issue.severity} · {issue.code}</b><p>{issue.detail}</p>{issue.ref_name && <code>{issue.ref_name}</code>}{issue.checkout_id && <code>{issue.checkout_id}</code>}</article>)}
+        {report.issues.length > 30 && <p>Showing 30 of {report.issues.length} issues.</p>}
+        {report.branches.slice(0, 50).map((branch) => <p key={branch.ref_name}><code>{branch.ref_name}</code><br />{branch.relation} · ahead {amount(branch.ahead)} / behind {amount(branch.behind)}</p>)}
+        {report.branches.length > 50 && <p>Showing 50 of {report.branches.length} branches.</p>}
+        <p>Uses cached observations. No Git writes or automatic reconciliation.</p>
+      </>}
+    </div>
+  </details>;
 }
 function GitCanvas({
   project,
@@ -286,6 +314,11 @@ export default function GitFlow({
   selection,
   onSelect,
   now,
+  token,
+  onAccess,
+  chatScopeEpoch,
+  chatDisabledReason,
+  healthEnabled,
 }: {
   snapshot: ViewsSnapshot;
   paused: ViewsSnapshot | null;
@@ -293,7 +326,16 @@ export default function GitFlow({
   selection: Selection | null;
   onSelect: (s: Selection | null) => void;
   now: number;
+  token?: string;
+  onAccess: () => void;
+  chatScopeEpoch: number;
+  chatDisabledReason: string;
+  healthEnabled: boolean;
 }) {
+  const chatMemory = useMemo(() => createChatMemory(), [token, chatScopeEpoch]);
+  const [chatRevision, setChatRevision] = useState(0);
+  const [healthOpen, setHealthOpen] = useState<ReadonlySet<string>>(new Set());
+  const health = useGitHealth(token, chatScopeEpoch, healthEnabled && !paused);
   const route = useRoute(),
     filter =
       route.params.get("scope") ??
@@ -335,12 +377,15 @@ export default function GitFlow({
     let top = 0;
     return projects.map((project) => {
       const layout = project.git ? layoutGit(project.git) : null;
-      const height = layout ? layout.height * zoom + 76 : 180;
+      const height = Math.max(
+        chatMemory.projects.get(project.id)?.open || healthOpen.has(project.id) ? 480 : 180,
+        layout ? layout.height * zoom + 76 : 180,
+      );
       const row = { project, layout, top, height };
       top += height;
       return row;
     });
-  }, [projects, zoom]);
+  }, [projects, zoom, chatMemory, chatRevision, healthOpen]);
   const width = Math.max(
       680,
       ...bands.map((b) => (b.layout?.width ?? 680) * zoom),
@@ -708,6 +753,17 @@ export default function GitFlow({
                           ? age(b.project.git.observed_utc, now)
                           : "No Git observation"}
                       </div>
+                      <GitHealthBadge
+                        report={health.reports[b.project.id]?.instance_id === b.project.git?.instance_id ? health.reports[b.project.id] : undefined}
+                        error={health.error}
+                        now={now}
+                        onToggle={(open) => setHealthOpen((previous) => {
+                          if (previous.has(b.project.id) === open) return previous;
+                          const next = new Set(previous);
+                          if (open) next.add(b.project.id); else next.delete(b.project.id);
+                          return next;
+                        })}
+                      />
                       {b.project.git?.error && (
                         <p className="git-source-error">
                           {b.project.git.error}
@@ -818,6 +874,25 @@ export default function GitFlow({
                 </div>
               )}
             </div>
+          </div>
+          <div className="git-chat-overlays">
+            {bands.map((band) => {
+              const top = Math.max(12, band.top - scroll.top + 52);
+              const available = Math.min(viewport.height - top - 12, band.top + band.height - scroll.top - top - 12);
+              const visible = available >= 60 && band.top < scroll.top + viewport.height - 60;
+              return <div key={`${chatMemory.id}:${band.project.id}`} className="git-chat-anchor" hidden={!visible} style={{ top, maxHeight: Math.max(60, available) }}>
+                <GitChat
+                  projectId={band.project.id}
+                  projectName={band.project.name}
+                  token={token}
+                  memory={chatMemory}
+                  active={visible}
+                  disabledReason={chatDisabledReason}
+                  onAccess={onAccess}
+                  onToggle={() => setChatRevision((revision) => revision + 1)}
+                />
+              </div>;
+            })}
           </div>
         </div>
       )}

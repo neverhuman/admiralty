@@ -6,6 +6,7 @@ pub mod model_selection;
 pub mod models;
 pub mod native_attention;
 pub mod native_attention_context;
+pub mod operator_chat;
 pub mod services;
 pub mod startup;
 mod views;

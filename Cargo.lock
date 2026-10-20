@@ -117,6 +117,7 @@ dependencies = [
  "chrono",
  "clap",
  "flate2",
+ "fs2",
  "futures-util",
  "rustix",
  "serde",
