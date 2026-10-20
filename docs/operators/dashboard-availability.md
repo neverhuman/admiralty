@@ -120,3 +120,14 @@ bytes for cached JS/CSS/images, and lossless resized WebP brand icons remain
 failures and hosted `xbabe3` browser readiness variance remain retained as separate
 operational evidence; this dashboard availability proof does not qualify general
 native coding execution or full release acceptance beyond `P00/P01`.
+
+At 02:37UTC on 20 October, the old local SSH process and its `:18890` listener
+were absent while the remote service remained healthy. Restoring one loopback
+forward made the detailed page available again; the actual browser rendered
+fresh producer data, project tabs and all thirteen plots. One HTTP-only sample
+over that forward measured 37.83ms for current facts and 61.48ms for full detail;
+these are request timings, not new browser-render measurements or percentiles.
+No production service or configuration changed. The local tunnel is an operator
+connection and must be running separately from the source build. Preserve its
+active control socket while using it; a successful build cannot keep an absent
+SSH tunnel alive.

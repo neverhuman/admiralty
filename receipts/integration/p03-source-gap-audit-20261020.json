@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "started_utc": "2026-10-20T03:01:34Z",
+  "completed_utc": "2026-10-20T03:09:51.751479Z",
+  "verdict": "implementation_gaps_found_not_source_ready_not_accepted",
+  "source_commit": "514562194005f448d4345279b8603929e37c5656",
+  "private_audit_sha256": "cb7b38776cc38589adb400cbd89f5a9eb159f0faf005362bec4de2dbeac4f342",
+  "mode": "independent read-only source audit; no builds/tests",
+  "gaps": [
+    {
+      "id": "G01",
+      "title": "Writer metrics are a disconnected value object, not observations of the Store writer",
+      "criterion": "P03 step3: Expose writer depth, transaction latency",
+      "reason": "Exact-source repository search finds WriterHealthMetrics and record_turn only in writer.rs and its manual integration fixture. Inner/Writer have no metrics state, enqueue/dequeue do not count depth, and Writer::run/transactions do not time or expose actual work. Public engine/WAL helpers also have no live Store request path and the diagnostics test opens a separate connection after dropping Store.",
+      "smallest_root_owned_repair": "Instrument the real bounded admission/dequeue path and transaction boundaries with shared bounded counters/monotonic timing; expose a read-only health snapshot plus linked-engine diagnostics from the owning writer connection. Preserve serialization and prevent health reads from opening a competing writer.",
+      "required_tests": [
+        "Drive real Store work and assert completed turns and measured latency advance.",
+        "Hold a deterministic writer barrier, enqueue concurrent requests, assert depth/high-water/backpressure and drain; no manual metrics.record_turn substitutes.",
+        "Assert real owning-connection WAL/FULL/FK/source identity through the Store health seam."
+      ]
+    },
+    {
+      "id": "G02",
+      "title": "PASSIVE checkpoint busy flag is incorrectly reported as reader blockage",
+      "criterion": "P03 step3: WAL reader/checkpoint health",
+      "reason": "PASSIVE checkpoints may succeed while leaving reader-pinned frames uncheckpointed. A busy result can also reflect a competing checkpoint lock; it is not a reader identity signal. The current boolean can report false for a pinned reader and true for an unrelated checkpoint lock. Source SQLite documentation in the locked cached header describes both behaviors.",
+      "smallest_root_owned_repair": "Separate checkpoint busy/incomplete/lag from known reader state, preserve unavailable/unknown inspection results instead of coercing negative sentinels to healthy zeroes, and expose meaningful reader/checkpoint observations through G01. Do not label busy!=0 as proof of a reader.",
+      "required_tests": [
+        "Hold a real reader snapshot across subsequent commits; assert incomplete checkpoint/retained frames are visible, then release and observe progress.",
+        "Cover competing checkpoint lock and non-WAL/unavailable results without claiming healthy reader state."
+      ]
+    },
+    {
+      "id": "G03",
+      "title": "Task filters have bounded output but unbounded global scan and snapshot cost",
+      "criterion": "P03 step3: indexed bounded queries; MASTER_PLAN6.2 bounded read queues and short-lived reads",
+      "reason": "Only after_task_id uses the BTreeMap index. project_id/state/owner are post-filters over all later tasks. matching.next() may traverse the whole collection even for limit1 or no matches; has_more repeats that scan. A caller first obtains a full cloned Store snapshot, so a small page still scales with the global projection. Event keyset and scoped inbox indexes are implemented; this finding is specifically the new filtered task-query seam.",
+      "smallest_root_owned_repair": "Add a Store-owned indexed filtered task page seam (maintained secondary indexes or explicit indexed SQL projection) using stable keys/cursor and a scan bound, avoiding a full global snapshot per bounded read. Preserve event/recovery cursor coherence and immutable task source.",
+      "required_tests": [
+        "Large interleaved foreign-project/state/owner population with rare/no-match filter, instrument examined keys/rows and prove bounded work.",
+        "Check multi-page order, no duplicate/omitted rows, changed generation and updates after append/rebuild."
+      ]
+    },
+    {
+      "id": "G04",
+      "title": "Planned migration families are not established by the component schema initialization",
+      "criterion": "P03 step1: Create ordered migration families in MASTER_PLAN",
+      "reason": "The actual numbered list is foundation/outbox/atomic_effects/context_renders/attention_journal/work_order_intake/intake_capture/usage_observations/admission_reservations/inference_slots; schema user_version remains1, and other coordination/custody DDL is inline. This is working additive component storage, not the six centrally ordered foundation/coordination/evidence-assets/economics/operations/improvement families required by the packet. A different filename alone is not a runtime defect; the missing canonical family/order/version contract is the actual criterion gap.",
+      "smallest_root_owned_repair": "Root centralizes the existing DDL under a canonical ordered migration/family registry with a durable schema transition/compatibility policy, preserving already-shipped additive files and data; move/reconcile inline component DDL deliberately. Do not rename immutable historical migrations or implement future provider behavior merely to change filenames.",
+      "required_tests": [
+        "Fresh creation and supported historical database upgrade reach the same schema inventory/version.",
+        "Partial migration failure rolls back or resumes deterministically; newer/unsupported schemas fail closed.",
+        "Migration/schema identity verification covers required indexes, constraints and immutable associations."
+      ]
+    },
+    {
+      "id": "G05",
+      "title": "Backup verifier accepts an invented schema_user_version and omits projection/event-version metadata",
+      "criterion": "P03 step4 and MASTER_PLAN6.5: backup metadata binds actual schema/event versions",
+      "reason": "Creation reads actual PRAGMA user_version, but verification only checks that the manifest value is positive and never compares it with the file. The manifest does not retain Snapshot.schema_version or an explicit event-version contract, despite the referenced backup metadata requirement. File hash/cursor/projection checks do not bind a separately changed manifest field.",
+      "smallest_root_owned_repair": "Read and compare the actual backup schema metadata during verification; version the closure metadata deliberately to bind actual projection/event contract versions while preserving existing consumers. Keep closure inventory as an explicit interface and restore authorityfalse.",
+      "required_tests": [
+        "Mutating only schema_user_version must fail.",
+        "Actual v1 and native v2 snapshots retain their exact projection/event-version metadata through backup verification.",
+        "Tampered cursor/digest/size/restore flag fail without claiming restoration authority."
+      ]
+    },
+    {
+      "id": "G06",
+      "title": "A single process-kill scenario and SQL-error fixtures do not implement the required crash-point matrix",
+      "criterion": "P03 Pass: crash-point matrix loses no acknowledged control/usage fact",
+      "reason": "The named crash harness exercises one acknowledged TaskSubmitted plus one raw uncommitted row. It does not kill at Store event/outbox/reservation/watermark/usage commit-versus-reply boundaries or at claimed/completed/unknown outbox persistence boundaries. Meaningful SQL-failure, exact-retry, reopen and backup tests exist, but they are not those abrupt-process crash cases. No actual loss of acknowledged data is asserted by this static audit.",
+      "smallest_root_owned_repair": "Extend the existing owned-child crash harness with deterministic bounded barriers at transaction/commit/ACK boundaries, including usage and atomic event/budget/slot/outbox joins. Use fake effect counters and opaque test authorities; do not activate a provider or production controller.",
+      "required_tests": [
+        "Before-commit kill: no partial event/association/reservation/usage row or advanced producer ACK.",
+        "After-commit-before-reply kill: exact retry recovers the same original receipt, no duplicate event/effect/debit.",
+        "After-reply kill: acknowledged control and usage facts survive.",
+        "Claim/complete/unknown outbox boundary kills retain identity/fencing/uncertainty and never automatically redispatch ambiguous work."
+      ]
+    }
+  ],
+  "later_startup_fix": "d1659f4 reduces independent schema commits and tests rollback of two groups; it does not close the six full P03 criteria.",
+  "parent_accepted": false,
+  "provider_activation_required_for_p03_storage_source": false,
+  "full_release_qualified": false
+}

@@ -20,6 +20,11 @@ cargo build --release --locked -p admiralty-cli -p admiralty-server -p admiralty
 pnpm --dir apps/dashboard build
 ```
 
+Build the production dashboard immediately before selecting bundle inputs.
+Browser qualification writes `.admiralty-build-identity.json` into its build
+directory for test custody; that test marker is not a shipping asset. A fresh
+production build removes it. Do not package an unchecked reused test directory.
+
 Prepare an owned 0700 input root. Copy the three binaries to its `target/release/`
 directory as independent regular files. Copy the built dashboard to
 `apps/dashboard/dist/`, the public schema to `schemas/domain-event-v2.schema.json`,
@@ -73,3 +78,11 @@ binaries pass the same private-version checks and exit cleanly under SIGINT and
 SIGTERM while both SSE families remain open. The first-view cancellation and
 unknown-process retry failures have dedicated negative and positive controls.
 The qualification limits above still apply.
+
+The [startup-repair qualification](../../receipts/integration/community-release-startup-20261020.json)
+rebuilds all three release binaries at `d1659f4` and repeats that 73-file round
+trip with fresh production assets. Both signal journeys again hold both SSE
+families open. The original five-second readiness and shutdown limits remain.
+The earlier 74-file probe containing the test marker is retained privately;
+it is superseded by the fresh production payload. Linux source Store/signal
+tests passed separately and do not qualify a Linux distribution.
