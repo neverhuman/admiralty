@@ -1,0 +1,514 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-20T03:41:59.870268+00:00",
+  "source_commit": "d1659f423257f6a63dbc79cf770f3cbe53e49dc7",
+  "source_tree": "20d09773fda9d1fa4401bc10fb7945ed241b17b0",
+  "scope": "source startup repair; actual macOS full matrix and private release bundle; Linux scoped source tests",
+  "original_hosted_failure": {
+    "pull_request": 162,
+    "source_commit": "514562194005f448d4345279b8603929e37c5656",
+    "run_id": 39361369420,
+    "job_id": 118428083900,
+    "failure": "Both demo signal tests exceeded their existing five-second readiness bound before exercising shutdown.",
+    "raw_diagnostics_sha256": "8223f274549c8d93f6cf5fb6456720d5c161cce985bcb8750f61aa4f14653e66",
+    "resource_cause_proven": false
+  },
+  "repair": {
+    "foundation_and_final_non_nesting_schema_groups": "BEGIN IMMEDIATE with explicit commit and rollback on failure; other independently transactional initializers unchanged",
+    "unchanged": [
+      "WAL",
+      "synchronous=FULL",
+      "foreign keys",
+      "linked SQLite version gate",
+      "schema version",
+      "five-second demo readiness/shutdown bounds",
+      "two open SSE families",
+      "owned child reaping",
+      "temporary-state/listener cleanup",
+      "replay and external authority"
+    ],
+    "whole_store_open_atomic": false
+  },
+  "fault_controls": {
+    "old_source": "514562194005f448d4345279b8603929e37c5656",
+    "old_exit_code": 101,
+    "old_failed_cases": 2,
+    "old_log_sha256": "444d19c7887ce254b1a7829ce7fcf6052b69816053a6974474f9d8dc16b9068b",
+    "repaired_passed_cases": 2,
+    "repaired_log_sha256": "5cc16efa85dd2a2d6be964bcebb0702b5b7ce1c2eaf156246cea681a252783c5",
+    "assertions": [
+      "Foundation DDL failure leaves no new metadata table or version bump; conflicting view preserved.",
+      "Final ledger-group failure leaves no newly created tail tables; malformed preexisting ledger preserved."
+    ]
+  },
+  "local_full_matrix": {
+    "source_commit": "d1659f423257f6a63dbc79cf770f3cbe53e49dc7",
+    "command": [
+      "pnpm",
+      "check"
+    ],
+    "exit_code": 0,
+    "started_utc": "2026-10-20T03:25:31.044855+00:00",
+    "completed_utc": "2026-10-20T03:29:48.632066+00:00",
+    "status_after": "",
+    "stage_count": 20,
+    "rust_passed": 1729,
+    "rust_failed": 0,
+    "rust_ignored": 5,
+    "rust_reported_targets": 166,
+    "dashboard_unit_passed": 187,
+    "browser_and_harness_passed": 30,
+    "rustc": "1.95.0",
+    "node": "24.19.0",
+    "pnpm": "11.15.1",
+    "compiler_jobs": 2,
+    "test_threads": 1,
+    "logs": {
+      "01.log": {
+        "raw_sha256": "fe661817954087b99182c6c6ab38df2b7ceed32aa285700d420c0f5a60014b78",
+        "gzip_sha256": "31b6f6ec6cc04f2c613c32309026f3475bc5eed55b4fb51674ee2a5bcc453fa6",
+        "gzip_bytes": 101
+      },
+      "02.log": {
+        "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+        "gzip_bytes": 20
+      },
+      "03.log": {
+        "raw_sha256": "0757c0f937edab0098d1b065e00e18acfd413da130baec2bc74cf2a1bcfad844",
+        "gzip_sha256": "9c7d0ec07f692a15c6ed97940872b7e1815174352f2771fbe70fab61a2884ed0",
+        "gzip_bytes": 230
+      },
+      "04.log": {
+        "raw_sha256": "e082ba1b7db42b2f31a3ca0ab9ea65e14425fcb31e9c43032fac43f2c62a97d3",
+        "gzip_sha256": "ef82e6fcd398e951c09af185cdda07e2ddefb5f9c642e86131fb890502c8bb4b",
+        "gzip_bytes": 45313
+      },
+      "05.log": {
+        "raw_sha256": "bac88adc01eea277f55b8353d929eab171fabebe9eacea10d903a1cf80e4d117",
+        "gzip_sha256": "3a3ac6173cb1031ca4cb0f661cbf2ec59569e6e3422bf51dfe521545d9cc66d1",
+        "gzip_bytes": 2809
+      },
+      "06.log": {
+        "raw_sha256": "800e012dc927d1ad38d5558be01ca49a6700213ca256959535f179c842dd922b",
+        "gzip_sha256": "263dcc482144c9e38019f85081283f2f8ec4e5f530adb1988d3878a65a8402f7",
+        "gzip_bytes": 4409
+      },
+      "07.log": {
+        "raw_sha256": "5eca008dddc22ac1d7ed161e0c035b16ffc58f27454ca1c2a0961682f96b545a",
+        "gzip_sha256": "3906ca8a10f5d97dbc8689ba94c52bf0390a4aa9f793f644eb5dfcd8876e8f38",
+        "gzip_bytes": 420
+      },
+      "08.log": {
+        "raw_sha256": "730814d91eb1bc2733c8c87725c67a2fc69d8e1ba17fbcaa2cb001781b197331",
+        "gzip_sha256": "4c702b52713a743edcc7c5043b2ce7c244864f703cb96fef132fd712fab24a60",
+        "gzip_bytes": 399
+      },
+      "09.log": {
+        "raw_sha256": "f23387423d371eaf37ba747039df7060a64d85f33a45dc942965eea3a2d175c0",
+        "gzip_sha256": "21c6c8d1b7a3973f3d8b65b709dc33a5712148160f04227ed1ca72cf8ab59759",
+        "gzip_bytes": 993
+      },
+      "10.log": {
+        "raw_sha256": "bd78efc584786aedeff4a2938ba22269233ac68fe183a1ecbdd47ccc783b7a43",
+        "gzip_sha256": "6db8c6bd169cd26eea1f943ed8886444c71431d6c9b2acb6d7f1e3e6cede27b6",
+        "gzip_bytes": 80
+      },
+      "11.log": {
+        "raw_sha256": "a3a51d980d2693d61843324d7657ced51f741130ed7750039060d07eace1573a",
+        "gzip_sha256": "16444a9afc6e45660427f3742a8c1cf0c4c656ad69898b8ce0d15ef1f26fd64b",
+        "gzip_bytes": 622
+      },
+      "12.log": {
+        "raw_sha256": "f9a9666285a38bf40dc8c1d61b624c5bc2510b67b03ecba25b392f52c6512533",
+        "gzip_sha256": "978a1f88f0e827d771d8c3439e359d39404cb6757a2850e3e223dd5465993586",
+        "gzip_bytes": 431
+      },
+      "13.log": {
+        "raw_sha256": "217a27a6700351aca4cde48752d84901bc7bbd849444577952ab8f4991c1c0c1",
+        "gzip_sha256": "6bb4a88bbaee8c9ff90c9ca8a6fec24da0617d36ac159f3032d097de9653b1a4",
+        "gzip_bytes": 125
+      },
+      "14.log": {
+        "raw_sha256": "46968765a160cf5476b6a04902c2747f0b0fc24097d8179ca20b97df102de3d3",
+        "gzip_sha256": "05748b16c849156af016d4ee597757a1e5e6084699462f74757d47f78d484f92",
+        "gzip_bytes": 898
+      },
+      "15.log": {
+        "raw_sha256": "5cfb036289d819b2a87e947d65f4532031dd37753f3cf2def0f77d398eea1737",
+        "gzip_sha256": "decff4e40f51c23a3fb129535a1238d4f5debb9bdcfdfb7174096fbe5d4a48b0",
+        "gzip_bytes": 44
+      },
+      "16.log": {
+        "raw_sha256": "8ce4365f6136e4a443b92561b1e647ef81b95f738611847c44c88d5ee4b5e221",
+        "gzip_sha256": "c37687dd93a5a6692d12a8b0e19a00047af119c1f9d03bead2cc398b5c864b00",
+        "gzip_bytes": 217
+      },
+      "17.log": {
+        "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+        "gzip_bytes": 20
+      },
+      "18.log": {
+        "raw_sha256": "938afcd2f27d4ae6f7e9603ba8b003a3c2914c49b62b68a2237a0e986f1c1b07",
+        "gzip_sha256": "299a0a7d143e74effc659ef818e400aba8369dd90f59f6d5b02d2b43e5edc8d0",
+        "gzip_bytes": 684
+      },
+      "19.log": {
+        "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+        "gzip_bytes": 20
+      },
+      "20.log": {
+        "raw_sha256": "1e66f0c415d17de38fcffdb3c64ca0ff5b004cd3d19cc08640ff66183c2fabf4",
+        "gzip_sha256": "730f2c65798d63222b3ca8b0797423485e2c655f3e7b119412624b7a8c00f788",
+        "gzip_bytes": 217
+      },
+      "commands.log": {
+        "raw_sha256": "b95bc340c677d0fb5070fc1f97246cf5245cbfde260622a0829c4d5dd6a0fcee",
+        "gzip_sha256": "6b14528d8894fea024d8dda1c347de0273da9e21cf865b6642c930c95be48ce0",
+        "gzip_bytes": 673
+      },
+      "environment.log": {
+        "raw_sha256": "b70ec457b306642b1ddfdba90f6f587f5464cab4594d6c819067033503262649",
+        "gzip_sha256": "4dd5f3dd3cd21e9b68df99c74d6d6d12c6cf2fac064718a31da4069eb1734c03",
+        "gzip_bytes": 232
+      }
+    }
+  },
+  "linux_scoped_tests": {
+    "source_commit": "d1659f423257f6a63dbc79cf770f3cbe53e49dc7",
+    "source_tree": "20d09773fda9d1fa4401bc10fb7945ed241b17b0",
+    "archive_sha256": "f5bcece3499830a3926d20ce063346fe24756337f090ff3d1d44062358a6a682",
+    "archive_bytes": 14363475,
+    "source_files": {
+      "crates/admiralty-store/src/lib.rs": "717b94676d5ed42f497197eaf63ca03307fb645c0e068d6064f9e92e9637e07f",
+      "crates/admiralty-cli/tests/demo_shutdown.rs": "680acb3f6e7b4857895142203552f9ddbd02e6bd43c01f69a8ef09f08068e93e",
+      "Cargo.lock": "fa9db54ff42b2eeb011e5b328e856329073ab97c3953d678bdf6d2aed31606bc"
+    },
+    "commands": [
+      {
+        "name": "demo-signals",
+        "command": [
+          "cargo",
+          "test",
+          "--offline",
+          "--locked",
+          "-p",
+          "admiralty-cli",
+          "--test",
+          "demo_shutdown",
+          "--",
+          "--nocapture"
+        ],
+        "started_utc": "2026-10-20T03:26:35.421576+00:00",
+        "completed_utc": "2026-10-20T03:27:53.296389+00:00",
+        "exit_code": 0,
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "log_sha256": "00acf938afb85a4425d5daf75d50c3c4548bcbc15f3ccc2de1049f4795efa009"
+      },
+      {
+        "name": "store-suite",
+        "command": [
+          "cargo",
+          "test",
+          "--offline",
+          "--locked",
+          "-p",
+          "admiralty-store"
+        ],
+        "started_utc": "2026-10-20T03:27:53.296895+00:00",
+        "completed_utc": "2026-10-20T03:30:32.395429+00:00",
+        "exit_code": 0,
+        "passed": 238,
+        "failed": 0,
+        "ignored": 0,
+        "log_sha256": "7fbbd501f2853da9c7c3e14c1155925644f091fbfd7323fcf1a56aa018a71755"
+      }
+    ],
+    "platform": "Linux x86_64",
+    "compiler_jobs": 2,
+    "test_threads": 1,
+    "source_files_match": true,
+    "native_execution_qualified": false,
+    "full_release_accepted": false
+  },
+  "independent_source_review": {
+    "source_commit": "d1659f423257f6a63dbc79cf770f3cbe53e49dc7",
+    "status": "clear_with_limits",
+    "findings": [],
+    "raw_report_sha256": "24f104a8818621ebdd50f512f491966b74c6286c27268c2d80a01c8278410e6d",
+    "execution_by_reviewer": false,
+    "limits": [
+      "Bounded source review; separate atomic groups, not whole-startup atomicity.",
+      "Does not accept P03 or establish production/provider qualification."
+    ]
+  },
+  "release_bundle": {
+    "schema_version": 1,
+    "observed_utc": "2026-10-20T03:40:54.337607+00:00",
+    "source_commit": "d1659f423257f6a63dbc79cf770f3cbe53e49dc7",
+    "scope": "current macOS arm64 host, release-profile real private bundle",
+    "file_count": 73,
+    "schema_count": 28,
+    "guard_module_count": 25,
+    "validator_root_count": 28,
+    "payload_bytes": 35491782,
+    "archive_bytes": 14480706,
+    "archive_sha256": "b6954a4ff123e3945d12ca209b67941a603d68bcb1ec6db5ddc0a24dd321f4cf",
+    "manifest_raw_sha256": "30be392ddc07388c21f475ef2762025dedc7bf3f33cd0fcbc9eaf65c631998a1",
+    "explicit_allowlist_sha256": "f14506bdc807628b5660847a947c5f8fe99f280d7a93042a6691adf9a578953e",
+    "reproducible_second_archive": true,
+    "all_installed_hashes_and_modes_verified": true,
+    "node_and_python_absent_from_child_path": true,
+    "commands": [
+      {
+        "label": "stage",
+        "exit_code": 0,
+        "elapsed_ms": 501.2,
+        "stdout_sha256": "30d70f720fcfce7f1ce1740d1c159427f3903538d6d8189e29e7253c30d13cd3",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "label": "archive",
+        "exit_code": 0,
+        "elapsed_ms": 1131.5,
+        "stdout_sha256": "50821b66a071391ad1e4e88eff70ea1eef02053894030e73527796cf39339e26",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "label": "archive-repeat",
+        "exit_code": 0,
+        "elapsed_ms": 1102.9,
+        "stdout_sha256": "e1c7fbb514bdb1aff601e243515331c8301d638eb15bb796f9a4e41bc26349f3",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "label": "install",
+        "exit_code": 0,
+        "elapsed_ms": 917.1,
+        "stdout_sha256": "1dd128fbcb1f7fb88cb9aa0e09a0e9428e9101ac283e9c97ee9702d2a79da396",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "label": "no-overwrite",
+        "exit_code": 1,
+        "elapsed_ms": 5.9,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "0e214860d89ce4273130997f022faf3dcd8e3e8dea526a4eb290f07acfa71e6a"
+      },
+      {
+        "label": "tamper-rejected",
+        "exit_code": 1,
+        "elapsed_ms": 31.8,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "e8caa0c2507802d238fe379d61c176c2f4fa4326eb811bbdd9c8851ed7c75013"
+      },
+      {
+        "label": "installed-doctor",
+        "exit_code": 0,
+        "elapsed_ms": 215.3,
+        "stdout_sha256": "0dca08638743ea33a07200c1ba4256b150d9dd5b25f819ee62e7ef3b5d64f24a",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "label": "installed-demo-snapshot",
+        "exit_code": 0,
+        "elapsed_ms": 17.9,
+        "stdout_sha256": "07bb36da8f290cf3d690f06aaec1bf8149dba883ac103ae2aee1fb14b056b6ee",
+        "stderr_sha256": "b5dcdd3e2ebf1117624687198040232cf657700f8321cd48d30a322cfe939502"
+      },
+      {
+        "label": "installed-admiraltyd-help",
+        "exit_code": 0,
+        "elapsed_ms": 146.0,
+        "stdout_sha256": "82c736fcabddfd7fee9d1dc61404bdd08c38ed93a83ee43c964b59ec9ff69d3b",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "label": "installed-admiralty-observe-help",
+        "exit_code": 0,
+        "elapsed_ms": 105.3,
+        "stdout_sha256": "3331645e400337f2e6c2ea1a0db57665bb905ac4d563bf8ffb4333493cae28fc",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "demo_journeys": [
+      {
+        "signal": "SIGINT",
+        "exit_code": 0,
+        "open_sse_families": 2,
+        "temp_cleanup": true,
+        "listener_released": true,
+        "http": [
+          {
+            "path": "/",
+            "status": 200,
+            "bytes": 539,
+            "elapsed_ms": 0.7
+          },
+          {
+            "path": "/healthz",
+            "status": 200,
+            "bytes": 68,
+            "elapsed_ms": 0.4
+          },
+          {
+            "path": "/v2/fleet",
+            "status": 200,
+            "bytes": 3216,
+            "elapsed_ms": 0.6
+          },
+          {
+            "path": "/v2/views",
+            "status": 200,
+            "bytes": 16325,
+            "elapsed_ms": 0.7
+          }
+        ]
+      },
+      {
+        "signal": "SIGTERM",
+        "exit_code": 0,
+        "open_sse_families": 2,
+        "temp_cleanup": true,
+        "listener_released": true,
+        "http": [
+          {
+            "path": "/",
+            "status": 200,
+            "bytes": 539,
+            "elapsed_ms": 0.6
+          },
+          {
+            "path": "/healthz",
+            "status": 200,
+            "bytes": 68,
+            "elapsed_ms": 0.3
+          },
+          {
+            "path": "/v2/fleet",
+            "status": 200,
+            "bytes": 3216,
+            "elapsed_ms": 0.4
+          },
+          {
+            "path": "/v2/views",
+            "status": 200,
+            "bytes": 16325,
+            "elapsed_ms": 0.5
+          }
+        ]
+      }
+    ],
+    "source_files": {
+      "crates/admiralty-cli/src/main.rs": "785bdb7608e3efd0a59619e678f4a58fa661b326674ac841c65ee7dd85127d2e",
+      "crates/admiralty-cli/src/native_package.rs": "fc4773c86f7640f2396fe82457b7d1b048ce33158bc72868bca093985a2be816",
+      "crates/admiralty-server/src/lib.rs": "fd757ff45055e0d4dd56fe374ea7440ad6f4dbd532e7259158b0b8e92178fad6",
+      "crates/admiralty-server/src/views.rs": "af0bd84f64759a27dfb242f7f7c0a9a5ac1539d6ed65887956a4b5fc7a8bead5",
+      "scripts/contracts/generate.mjs": "0edac7eae0d59375ff642ad76e635e234c65d5b86ddd1bcffc6aa405802cdc37",
+      "Cargo.lock": "fa9db54ff42b2eeb011e5b328e856329073ab97c3953d678bdf6d2aed31606bc",
+      "pnpm-lock.yaml": "0e118257c45b78246c250474389d088670bf7354dbbad7ed76fcb1941aa1e2c9",
+      "crates/admiralty-store/src/lib.rs": "717b94676d5ed42f497197eaf63ca03307fb645c0e068d6064f9e92e9637e07f",
+      "crates/admiralty-cli/tests/demo_shutdown.rs": "680acb3f6e7b4857895142203552f9ddbd02e6bd43c01f69a8ef09f08068e93e"
+    },
+    "not_qualified": [
+      "clean machine",
+      "Linux distribution",
+      "Windows",
+      "observer live collection in empty PATH",
+      "global/service installation",
+      "upgrade with active jobs",
+      "signing/publisher provenance",
+      "SBOM/third-party notice closure",
+      "managed coding execution",
+      "full major release"
+    ],
+    "native_execution_qualified": false,
+    "full_release_qualified": false,
+    "private_report_sha256": "587e0a86d82d29757a01c222a92aca9216ff3520da77c062cc0736c1a3457b3a",
+    "build_results": [
+      {
+        "source_commit": "d1659f423257f6a63dbc79cf770f3cbe53e49dc7",
+        "command": [
+          "cargo",
+          "build",
+          "--locked",
+          "--release",
+          "-p",
+          "admiralty-cli",
+          "-p",
+          "admiralty-server",
+          "-p",
+          "admiralty-observe"
+        ],
+        "started_utc": "2026-10-20T03:31:26.589708+00:00",
+        "completed_utc": "2026-10-20T03:32:52.154141+00:00",
+        "exit_code": 0,
+        "log_sha256": "43d242bb5c899bfa2d9301a5f8369052ed57020b9cd69b3ad2da21c34cd1c617"
+      },
+      {
+        "source_commit": "d1659f423257f6a63dbc79cf770f3cbe53e49dc7",
+        "command": [
+          "pnpm",
+          "--dir",
+          "apps/dashboard",
+          "build"
+        ],
+        "started_utc": "2026-10-20T03:40:49.030404+00:00",
+        "completed_utc": "2026-10-20T03:40:49.848044+00:00",
+        "exit_code": 0,
+        "log_sha256": "5059d849d1df60dfc9ad7206b528e0c2fa375194414892cad3a201d7eb249079"
+      }
+    ]
+  },
+  "deterministic_replay": {
+    "source_commit": "d1659f423257f6a63dbc79cf770f3cbe53e49dc7",
+    "source_tree": "20d09773fda9d1fa4401bc10fb7945ed241b17b0",
+    "exit_code": 0,
+    "log_sha256": "1d0663a08d9970404c1f638d7507f3afd45e6a5267668626f767fe9a6d63a765",
+    "proof": {
+      "all_equal": true,
+      "independent_store_results": [
+        {
+          "event_count": 4,
+          "input_digest": "sha256:502deb334c02a420adb6cb52d75000cf72c05b6ed3d97f71ee20fea30ea7afa5",
+          "projection_bytes": 716,
+          "projection_digest": "sha256:760760664383865fc0bd599fec23cd3e7b31ad88494137e837ae3d44a382feae",
+          "rebuild_equal": true,
+          "recovery_generation_changed": true,
+          "reopen_equal": true,
+          "self_acceptance": false
+        },
+        {
+          "event_count": 4,
+          "input_digest": "sha256:502deb334c02a420adb6cb52d75000cf72c05b6ed3d97f71ee20fea30ea7afa5",
+          "projection_bytes": 716,
+          "projection_digest": "sha256:760760664383865fc0bd599fec23cd3e7b31ad88494137e837ae3d44a382feae",
+          "rebuild_equal": true,
+          "recovery_generation_changed": true,
+          "reopen_equal": true,
+          "self_acceptance": false
+        }
+      ],
+      "scope": "synthetic deterministic Rust Store/reducer replay and canonical content_digest; no provider or authority"
+    },
+    "execution": "Actual private Rust probe calls this source Store/reducer and canonical content_digest; actual command/raw log retained privately."
+  },
+  "payload_audit": {
+    "earlier_74_file_probe_preserved": true,
+    "removed_from_shipping_inputs": "browser E2E .admiralty-build-identity.json marker",
+    "correction": "Fresh production Vite build before explicit input selection; complete bundle qualification repeated.",
+    "shipping_file_count": 73
+  },
+  "qualification_at_observation": {
+    "final_documentation_head_ci": "pending",
+    "hosted_repair_checks": "pending",
+    "actual_main_merge": "pending",
+    "parent_acceptance_changed": false,
+    "native_execution_qualified": false,
+    "full_release_qualified": false
+  }
+}

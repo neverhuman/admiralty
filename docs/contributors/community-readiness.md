@@ -25,6 +25,14 @@ These rows describe executed evidence, not portability guarantees. Linux
 systemd resource/isolation claims do not transfer to macOS. An ordinary worktree
 or private file does not isolate another process running as the same OS user.
 
+The [latest source qualification](../../receipts/integration/community-release-startup-20261020.json)
+records all 20 local stages, 1,729 Rust executions (five existing ignored
+helpers), 187 dashboard unit tests and 30 browser/harness tests at `d1659f4`.
+Separate Linux runs passed 238 Store and two actual demo signal tests. A real
+73-file macOS release-profile bundle passed private installation and both
+open-SSE shutdown journeys. Hosted checks, delivery and remaining release gates
+remain separately evidenced.
+
 ## Start from source
 
 Install Rust **1.95.0** with rustfmt and Clippy, Node **24**, pnpm **11.15.1**,

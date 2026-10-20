@@ -1390,7 +1390,7 @@ neverhumanbot approval and matched-head rebase. Source-bound local build and
 all18actual-backend browser checks pass; hosted browser/contracts pass. Hosted
 Rust fails four private-directory fixtures plus an inherited controlled-child
 capture deadline. Original logs are archived in the
-[single deferred cleanup backlog](../../../../CI_CLEANUP_BACKLOG.md). Jepson's
+[single deferred cleanup backlog](../../../CI_CLEANUP_BACKLOG.md). Jepson's
 02:12Z code-first ruling authorizes this local-CI-only cutover merge; no red check
 is green. Commodore alone owns the new Git/Fleet deployment.
 
@@ -3027,3 +3027,45 @@ fails the new control, and exact repaired wrapper bytes pass eight isolated
 Linux publication/preservation/lock cases. The [receipt](../../../receipts/integration/history-export-platform-20261020.json)
 preserves scope, hashes and original failures. Final whole local CI and hosted
 checks still follow; no parent or release acceptance changes.
+
+## Community source candidate and Store startup repair, 20 October 2026 UTC
+
+The single integration PR162 at `5145621` passed hosted contracts, browser,
+security and advisory audit checks. Its Rust job118428083900 failed both demo
+signal tests at the existing five-second listener-readiness bound, before their
+shutdown assertions. Original diagnostics remain preserved; resource contention
+is not established as the cause. The security lane now provisions its required
+pinned tools on a fresh runner and scans the full validated event range, including
+merge-parent diffs; its original missing-Cargo and zero-byte false-pass controls
+remain in the [security receipt](../../../receipts/integration/security-fresh-runner-20261020.json).
+
+Source `d1659f423257f6a63dbc79cf770f3cbe53e49dc7` groups foundation DDL and
+the final four non-nesting ledger initializers into separate immediate
+transactions. Other transaction owners, WAL/FULL/FK/version gates, replay and
+authority remain unchanged. Both new partial-schema fault controls fail against
+the old initializer and pass after repair. This is not whole-startup atomicity.
+Signal-test diagnostics now retain bounded child output; no five-second budget,
+open-SSE, child custody, shutdown or cleanup assertion was weakened.
+
+Actual clean-source full local20 passes 1,729 Rust executions (five existing
+ignored helpers), 187 dashboard units and 30 browser/harness tests. Separate
+bounded Linux qualification passes 238 Store and two actual signal cases;
+listeners became ready in 2.5604s and 2.3752s. Independent source review found
+no new issue within its declared scope. Three release-profile binaries and fresh
+production assets pass a real 73-file macOS private bundle round trip, repeat
+archive equality, all hashes/modes, tamper/no-overwrite refusal, deterministic
+replay and both open-SSE shutdown journeys. The earlier 74-file test-marker
+probe remains history. See [the source-bound receipt](../../../receipts/integration/community-release-startup-20261020.json).
+Final documentation-head CI, hosted repair checks and actual main integration
+follow this observation; no release or parent acceptance is inferred.
+
+The [independent P03 audit](../../../receipts/integration/p03-source-gap-audit-20261020.json)
+records six implementation/qualification gaps rather than an unrelated provider
+blocker: actual writer telemetry, WAL checkpoint semantics, indexed filtered
+pages, canonical migration families, backup version binding and abrupt-crash
+coverage. Root retains shared Store/migration/wiring ownership. P02 is source
+complete and conditionally ready for exact final checks/main/criterion evidence;
+only P00/P01 are currently accepted. Native coding and full-release flags stay
+false. One integration PR, local CI before push, exact-head bot review and
+ordinary protected rebase merge remain required. Foreign dirty, ignored and
+custody-held work remains preserved.
