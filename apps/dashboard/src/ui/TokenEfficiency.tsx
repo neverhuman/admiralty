@@ -7,7 +7,7 @@ import './token-efficiency.css';
 
 const fmt = (value: number | null, digits = 2): string => formatMeasurement(value, digits);
 const metric = (value: unknown, digits = 1): string => fmt(number(value), digits);
-const percent = (value: unknown): string => number(value) === null || Number(value) > 100 ? 'Unknown' : `${metric(value)}%`;
+const percent = (value: unknown): string => number(value) === null || Number(value) > 100 ? 'Unknown' : `${metric(value, 2)}%`;
 const signed = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) ? value : null;
 const formatBalance = (value: unknown): string => formatDecimalBalance(value);
 const compact = (value: unknown): string => formatCompactMeasurement(number(value));

@@ -94,8 +94,8 @@ describe('dense temporal dashboard strip', () => {
     expect(metric().values[0].value).toContain('30.12–80.99 range · partial audit · known subtotal 80.99');
     expect(metric().values[0].label).toContain(at);
     expect(metric().series[0].points).toEqual([{ time: Date.parse(at) / 1000, value: null }]);
-    expect(metric().series.find(item => item.id === 'alpha-partial-0')!.points).toEqual([{ time: Date.parse(at) / 1000, value: 30.123456 }]);
-    expect(metric().series.find(item => item.id === 'alpha-partial-1')!.points).toEqual([{ time: Date.parse(at) / 1000, value: 80.987654 }]);
+    expect(metric().series.find(item => item.label === 'Project Alpha · partial minimum')!.points).toEqual([{ time: Date.parse(at) / 1000, value: 30.123456 }]);
+    expect(metric().series.find(item => item.label === 'Project Alpha · partial maximum')!.points).toEqual([{ time: Date.parse(at) / 1000, value: 80.987654 }]);
     const html = renderToStaticMarkup(<><TemporalPlots snapshot={source} /><LegacyHierarchy snapshot={source} /></>);
     expect(html).toContain('30.12–80.99 range');
     expect(html).toContain('partial audit');
@@ -114,6 +114,38 @@ describe('dense temporal dashboard strip', () => {
     const source = snapshot(); source.history = { rows: [] };
     source.super_captain = { status: { captains: { alpha: { hygiene: { score: null, possible_score_range: [0, 0], known_component_subtotal: 0 } } } } };
     expect(buildTemporalMetrics(source).metrics.find(item => item.id === 'hygiene')!.values[0].value).toContain('0–0 range · partial audit · known subtotal 0');
+  });
+  it('does not render a final grade or grade color for an explicitly partial audit', () => {
+    for (const grade of ['A', 'D']) {
+      const source = snapshot(); source.hierarchy = { captains: [{ key: 'alpha', name: 'Project Alpha', workers: [] }] };
+      source.super_captain = { status: { captains: { alpha: { hygiene: { score: null, grade, possible_score_range: [30, 80], known_component_subtotal: 80 } } } } };
+      const html = renderToStaticMarkup(<LegacyHierarchy snapshot={source} />);
+      expect(html).toContain('30–80 range · partial audit · known subtotal 80');
+      expect(html).not.toMatch(/>[AD]\s|legacy-hierarchy-good|legacy-hierarchy-bad/);
+    }
+  });
+  it('allocates unique range series IDs even when reported project IDs occupy generated names', () => {
+    const source = snapshot(), reserved = '["hygiene-partial","alpha",0]';
+    source.order = ['alpha', 'alpha-partial-0', reserved];
+    source.projects = Object.fromEntries(source.order.map(id => [id, { name: id }]));
+    source.history = { rows: [{ ts: 1792321200, hyg: { alpha: { score: null, possible_score_range: [30, 80] } } }] };
+    const series = buildTemporalMetrics(source).metrics.find(item => item.id === 'hygiene')!.series;
+    expect(series.slice(0, 3).map(item => item.id)).toEqual(source.order);
+    expect(series).toHaveLength(5);
+    expect(new Set(series.map(item => item.id)).size).toBe(series.length);
+    expect(series.find(item => item.label === 'alpha · partial minimum')!.points[0].value).toBe(30);
+  });
+  it('uses the same small percentages in live trends and the token summary', () => {
+    const source = snapshot(); source.token_yield = { total: {
+      tokens: null, lower_bound_tokens: 10000, lower_bound_main_tokens: 1,
+      lower_bound_integration_tokens: 2, lower_bound_attributed_tokens: 42,
+    } };
+    const values = buildTemporalMetrics(source).metrics.find(item => item.id === 'token-yield')!.values;
+    expect(values.slice(3).map(item => item.value)).toEqual(['0.01%', '0.02%', '0.42%']);
+    const visible = renderToStaticMarkup(<TokenEfficiency snapshot={source} />).replace(/<[^>]*>/g, '');
+    expect(visible).toContain('0.01% observed-sample main yield');
+    expect(visible).toContain('0.02% observed-sample integration yield');
+    expect(visible).toContain('0.42% observed-sample coverage');
   });
   it('restores all thirteen old metrics from the actual collector field names', () => {
     const model = buildTemporalMetrics(snapshot());

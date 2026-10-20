@@ -3191,3 +3191,15 @@ tests,65 observer tests and the dashboard typecheck. Whole local/hosted gates
 and actual deployment remain separate from these scoped checks. Root requested
 the existing Admiral complete missing audit measurements; no score, grade,
 source freshness or native acceptance is inferred.
+
+The existing Luna medium independent reviewer found two source edge cases:
+an incomplete range could retain a final grade in the hierarchy, and generated
+range series IDs could collide with a reported project ID. Root suppresses the
+grade for partial audits and allocates IDs against the complete occupied set.
+Both new mocks fail0939eb5. A third negative catches a real production
+inconsistency: a0.01% yield in trends rounded to0% in the token summary. Both
+views now use at most two decimal places. The first new percentage assertion
+incorrectly matched raw HTML against adjacent visible words; it was corrected
+to inspect rendered text, and is excluded from regression proof. All18 temporal
+tests pass after restoration. The earlier0939eb5 full20 matrix passed before
+these changes; the corrected exact head requires its own full qualification.

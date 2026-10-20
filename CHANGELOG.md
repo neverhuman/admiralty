@@ -4,7 +4,8 @@
 
 - Display reported partial hygiene audit ranges and known subtotals in live
   cards, hierarchy and history, with original audit times. Keep final scores
-  unknown until the missing measurements are available.
+  unknown until the missing measurements are available. Use the same two-decimal
+  percentage limit in token summaries and trend cards, preserving small yields.
 
 - Refresh community onboarding with a directly usable synthetic-demo link,
   current local CI/tool prerequisites, verified private vulnerability reporting,
