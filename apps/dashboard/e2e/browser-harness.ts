@@ -1480,6 +1480,7 @@ export function captureOwnedProcessDiagnostics(pid: number | undefined, listenPo
   if (process.platform !== 'linux') return `pid=${pid}`;
   let state = 'unknown';
   let startTicks = 'unknown';
+  let parentPid = 'unknown';
   let exe = 'unavailable';
   let wchan = 'unavailable';
   try {
@@ -1488,6 +1489,7 @@ export function captureOwnedProcessDiagnostics(pid: number | undefined, listenPo
     if (closeParen !== -1) {
       const fields = stat.slice(closeParen + 2).split(/\s+/);
       state = fields[0] ?? 'unknown';
+      parentPid = fields[1] ?? 'unknown';
       startTicks = fields[19] ?? 'unknown';
     }
   } catch {
@@ -1516,7 +1518,22 @@ export function captureOwnedProcessDiagnostics(pid: number | undefined, listenPo
       listener = 'unavailable';
     }
   }
-  return `pid=${pid} state=${state} start_ticks=${startTicks} wchan=${wchan} exe=${exe} listener=${listener}`;
+  let threads = 'unavailable';
+  try {
+    const ids = readdirSync(`/proc/${pid}/task`).filter(id => /^\d+$/.test(id)).sort((a, b) => Number(a) - Number(b));
+    threads = ids.slice(0, 12).map(id => {
+      try {
+        const name = readFileSync(`/proc/${pid}/task/${id}/comm`, 'utf8').trim().replace(/[^a-zA-Z0-9_. -]/g, '?').slice(0, 24);
+        const wait = readFileSync(`/proc/${pid}/task/${id}/wchan`, 'utf8').trim().slice(0, 64);
+        return `${id}:${name}/${wait}`;
+      } catch {
+        return `${id}:unavailable`;
+      }
+    }).join(',') + (ids.length > 12 ? `,+${ids.length - 12}` : '');
+  } catch {
+    // The owned child exited or procfs is unavailable; neither proves reaping.
+  }
+  return `pid=${pid} parent_pid=${parentPid} state=${state} start_ticks=${startTicks} wchan=${wchan} exe=${exe} listener=${listener} threads=[${threads}]`;
 }
 
 export class OwnedProcessCustodyError extends Error {

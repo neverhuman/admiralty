@@ -1852,27 +1852,21 @@ impl Writer {
                 "database schema is newer than this executable".into(),
             ));
         }
-        // Keep the foundation atomic and avoid a FULL-sync commit per DDL statement.
-        let foundation = Transaction::new_unchecked(&connection, TransactionBehavior::Immediate)?;
-        foundation.execute_batch(include_str!("../migrations/0001_foundation.sql"))?;
-        foundation.commit()?;
-        // Storage initialization only. Startup/replay never reserves or delivers
-        // an outbox intent; explicit trusted-clock helpers remain separate.
-        outbox::initialize(&connection)?;
-        let migration = Transaction::new_unchecked(&connection, TransactionBehavior::Immediate)?;
-        migration.execute_batch(include_str!("../migrations/0003_atomic_effects.sql"))?;
-        migration.commit()?;
-        workplans::initialize(&connection)?;
-        context_renders::initialize(&connection)?;
-        attention::initialize(&connection)?;
-        excursions::initialize(&connection)?;
-        intake::initialize(&connection)?;
-        intake_capture::initialize(&connection)?;
-        questions::initialize(&connection)?;
-        // These initializers use the supplied connection without opening nested
-        // transactions. Commit their schema, initial ledgers and generation once;
-        // an incompatible final schema rolls this whole new tail back.
+        // Initialize every schema family and recovery generation in one
+        // Immediate transaction. A late incompatibility rolls back all new DDL;
+        // FULL durability requires one schema commit instead of eleven.
+        // Storage initialization never reserves or delivers an outbox intent.
         let startup = Transaction::new_unchecked(&connection, TransactionBehavior::Immediate)?;
+        startup.execute_batch(include_str!("../migrations/0001_foundation.sql"))?;
+        outbox::initialize_in_transaction(&startup)?;
+        startup.execute_batch(include_str!("../migrations/0003_atomic_effects.sql"))?;
+        workplans::initialize_in_transaction(&startup)?;
+        context_renders::initialize_in_transaction(&startup)?;
+        attention::initialize_in_transaction(&startup)?;
+        excursions::initialize(&startup)?;
+        intake::initialize_in_transaction(&startup)?;
+        intake_capture::initialize_in_transaction(&startup)?;
+        questions::initialize_in_transaction(&startup)?;
         subscriptions::initialize(&startup)?;
         usage_observations::initialize(&startup)?;
         admission_reservations::initialize(&startup)?;
