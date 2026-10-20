@@ -325,7 +325,23 @@
     "captain_queue_accepted": true,
     "captain_consumption_verified": false,
     "canonical_historical_author_intent_and_mutation_owner": "UNKNOWN",
-    "final_source_notice": "pending publication; final delivery evidence will follow"
+    "final_source_notice": {
+      "message_id": "GPC-SOURCE-20261020-0731Z",
+      "delivered_at_utc": "2026-10-20T07:32:44.596589+00:00",
+      "recipients": [
+        "Admiral",
+        "DOPE Captain",
+        "Admiralty Captain / existing PR163 integration owner"
+      ],
+      "receipt": {
+        "path": "/Users/bentaylor/.codex/worktrees/git-protector-chat/admiralty/receipts/integration/git-protector-chat-role-delivery-20261020.json",
+        "bytes": 10243,
+        "sha256": "75a37bd9070efca9904127fa110da302b44ae9d5adba485a592a56ded944ef20"
+      },
+      "matching_final_source_ack_found": false,
+      "single_bounded_check_at_utc": "2026-10-20T07:33:37.530954+00:00",
+      "no_repeated_notifications_or_polls": true
+    }
   },
   "integration": {
     "owner_route": "Existing Admiralty Root integration owner through captain COMMS and Admiral inbox",
@@ -539,7 +555,7 @@
     "audit_and_worker_plan": true,
     "source_implemented": true,
     "local_qualification": true,
-    "published": false,
+    "published": true,
     "review_and_merge": false,
     "live_deployment": false,
     "role_enrollment_roundtrip": false,
@@ -552,5 +568,56 @@
     "Delivered is durable inbox publication; it does not prove read, execution or task acceptance.",
     "Fast Git health uses bounded observed topology and status; patch equivalence/regression/merge safety requires deeper explicit review.",
     "Original dirty Admiralty checkout and independent collapse lane preserved; this unmerged worktree retained."
-  ]
+  ],
+  "publication": {
+    "remote": "https://github.com/neverhuman/admiralty.git",
+    "branch": "codex/git-protector-chat",
+    "published_tip_before_final_role_notice": "b47fc42b85e4a0d42a690e7d30ff8f6df4b10c2c",
+    "ls_remote_verified": true,
+    "qualification_receipt_sha256_at_that_tip": "09df8a28182ebd148e56c592fb7916798dbad0d63d8c99d0d6728b8feab76ab4",
+    "subsequent_evidence_commit_does_not_change_qualified_code": true
+  },
+  "audit_followup": {
+    "observed_utc": "2026-10-20T07:33:30Z",
+    "command": "rtk proxy gh pr view 290 --repo neverhuman/dope --json number,state,headRefOid,baseRefOid,url,statusCheckRollup",
+    "exit_code": 0,
+    "state": "OPEN",
+    "head": "5701ba3309a14216dc9fefb464fe9c330ebc6720",
+    "base": "3e4382b60b2e64c03abbbb2654c413aab0a5079b",
+    "cpu": "IN_PROGRESS",
+    "cpu_job": "https://github.com/neverhuman/dope/actions/runs/39385472487/job/118504145919",
+    "other_results": "jankurai-audit,paper-clean,security,arm64-portability SUCCESS; public-smoke SKIPPED",
+    "interpretation": "The owner moved the pending candidate after the audit snapshot. Prior CPU failure and prior qualification hashes apply only to the recordedf976f13 source; this is not a current-head green or review claim.",
+    "static_delta_inspection": {
+      "relation": "direct one-commit descendant of auditedf976f13; ahead1/behind0",
+      "changed_paths": [
+        "Justfile",
+        "agent/owner-map.json",
+        "agent/test-map.json",
+        "docs/testing.md",
+        "research/transfer/claims.py",
+        "research/transfer/tests/test_claims.py",
+        "research/transfer/tests/test_control_boundary.py",
+        "tests/vnext_bundle_isolation.rs"
+      ],
+      "insertions": 35,
+      "deletions": 8,
+      "summary": "Bundle-isolation check coverage, exact un-hashed Cargo rlib selection, typed LineageError redaction and regression test, removal of final os._exit(0) while retaining denial witnesses. Static inspection only.",
+      "tests_run_by_auditor": false,
+      "underlying_process_or_model_attribution": "unproved; GitHub account metadata is not process identity",
+      "artifacts": [
+        {
+          "path": "/tmp/gpc-source-handoff-66t_3z99/DOPE_PR290_5701_GITHUB_COMPARE_TOOL_RESULT.json",
+          "bytes": 2639,
+          "sha256": "6eec9cde914e4b392230299570796e0ad4cc277eaaeec1c48d3902d969df75f3"
+        },
+        {
+          "path": "/tmp/gpc-source-handoff-66t_3z99/DOPE_PR290_5701_GITHUB_COMMIT_TOOL_RESULT.json",
+          "bytes": 20390,
+          "sha256": "aa47a6beb93983b7b5e8353ecdac2f83131db80dd50d4443e8c47314a0548ff6"
+        }
+      ]
+    }
+  },
+  "final_evidence_updated_utc": "2026-10-20T07:38:04.492570+00:00"
 }
