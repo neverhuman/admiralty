@@ -409,6 +409,7 @@ export default function GitFlow({
   );
   const focusId = route.params.get("focus") ?? "",
     branch = route.params.get("branch") ?? "",
+    focusProject = route.params.get("project") ?? "",
     selectedOid = selection?.kind === "commit" ? selection.commit.oid : "",
     selectedProject = selection?.kind === "commit" ? selection.project.id : "";
   const rangeAnchor = useRef<{ projectId: string; oid: string; screenX: number } | null>(null);
@@ -419,7 +420,7 @@ export default function GitFlow({
       const revealed = new Set(project.git?.commits.filter((c) => {
         const key = `${project.id}:${c.oid}`;
         return expanded.has(key) || (!collapsed.has(key) && (
-          c.oid === focusId ||
+          (c.oid === focusId && (!focusProject || project.id === focusProject)) ||
           (project.id === selectedProject && c.oid === selectedOid) ||
           (needle && `${c.oid} ${c.subject}`.toLowerCase().includes(needle))
         ));
@@ -433,14 +434,16 @@ export default function GitFlow({
       top += height;
       return row;
     });
-  }, [projects, zoom, expanded, collapsed, focusId, selectedOid, selectedProject, query, chatMemory, chatRevision, healthOpen]);
+  }, [projects, zoom, expanded, collapsed, focusId, focusProject, selectedOid, selectedProject, query, chatMemory, chatRevision, healthOpen]);
   useEffect(() => {
     if (!focusId) return;
     setCollapsed((before) => {
-      const next = new Set([...before].filter((key) => !key.endsWith(`:${focusId}`)));
+      const next = new Set([...before].filter((key) =>
+        focusProject ? key !== `${focusProject}:${focusId}` : !key.endsWith(`:${focusId}`),
+      ));
       return next.size === before.size ? before : next;
     });
-  }, [focusId]);
+  }, [focusId, focusProject]);
   useLayoutEffect(() => {
     const anchor = rangeAnchor.current, el = scrollRef.current;
     if (!anchor || !el) return;
