@@ -3069,3 +3069,40 @@ only P00/P01 are currently accepted. Native coding and full-release flags stay
 false. One integration PR, local CI before push, exact-head bot review and
 ordinary protected rebase merge remain required. Foreign dirty, ignored and
 custody-held work remains preserved.
+
+## Live trends, measurement formatting and development routing, 20 October 2026 UTC
+
+The user reproduced excessive decimals and four blank temporal metrics. Source
+history discarded known partial token counts whenever complete enumeration was
+unavailable; the current Admiral status also omitted measured hygiene reports.
+The observer now preserves an independently priced observed-sample cost index
+and timestamped observed token/yield series while leaving incomplete full
+aggregates unknown. The dashboard labels these bases separately, preserves
+gaps and audit clocks, and never restores an older full cost as current after
+an explicit unknown. Current observed counts render before history sampling.
+No missing hygiene score is synthesized. Numeric cards, chart labels, balances
+and source inspectors display at most two fraction digits without changing
+stored observations or contract digests.
+
+Hosted PR162 attempt2 failed one live160ms missing-label probe after its entire
+CDP budget expired. The helper's default DOM-negative reason was unobserved.
+The repair preserves actual DOM and transport evidence separately, uses a
+monotonic deadline and an injected clock for deterministic budget controls.
+The original helper fails the new negative control; repaired targeted real
+browser cases pass without extending deadlines or weakening process custody.
+Mock data covers complete/partial/missing/zero values, mixed series, stale
+hygiene clocks and the user's decimal examples. Scoped checks pass63 observer
+tests,197 dashboard units, both new launcher tests and the partial-trend
+browser case. Complete exact-source local CI and hosted checks follow these
+source observations; they do not establish deployment.
+
+The live routing audit confirmed14 inherited Sol xhigh Codex worker settings.
+All14 were switched to Luna medium at idle task boundaries and logged; no busy
+worker was killed. Two subsequent disjoint source packets ran on Luna medium.
+The [fresh development launcher](../../../tools/codex-luna.sh) explicitly pins
+Luna medium and rejects override arguments without changing shared config.
+Its mock-provider tests check exact argv, hostile defaults, refusal before
+invocation and exit propagation. Existing sessions require observed-footer
+preflight and a session-only switch; escalation requires objective failure
+evidence and a small handoff. These are development routing controls, not
+qualified native execution. P00/P01 remain the only accepted parents.

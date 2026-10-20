@@ -1,5 +1,21 @@
 # Dashboard connection and availability
 
+Live measurements use at most two digits after the decimal in cards, chart
+labels, balances and numeric source inspectors. This is display formatting;
+the stored observations, full producer data and contract digests retain their
+original precision. Decimal-string balances are rounded without converting
+their potentially large integer part through a JavaScript number.
+
+Cost and token trends distinguish complete aggregate measurements from an
+explicitly labeled observed sample. An incomplete source inventory leaves
+full totals and full yield unknown. Known event counts remain visible as
+observed lower bounds, while observed-sample yield percentages compare the
+same sampled events and are not bounds for full yield. Missing samples break
+the curves. A current unknown never silently resurrects an older full cost.
+Hygiene requires a measured Admiral report: an absent report says “Not reported
+by Admiral”; retained reports preserve their own audit timestamps. Fleet
+polling does not create a new hygiene audit or a synthetic score.
+
 The live dashboard is a long-running Rust service on the production host's
 loopback port18890. Local CI uses isolated ephemeral ports and rejects18890/18891
 in its smoke harness. Building and running local CI should leave production

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { data, list, number, text, type Data, type LegacySnapshot } from '../legacy';
 import { formatCompactMeasurement, formatMeasurement } from '../formatNumbers';
+import { observedTokenSample } from '../usageMetrics';
 import './temporal-plots.css';
 
 type Point = { time: number; value: number | null };
@@ -31,9 +32,10 @@ const hygieneScore = (value: unknown): number | null => {
   const raw = record.score ?? value;
   if (typeof raw === 'string' && raw.trim() !== '') {
     const parsed = Number(raw);
-    return Number.isFinite(parsed) ? parsed : null;
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100 ? parsed : null;
   }
-  return numeric(raw);
+  const score = numeric(raw);
+  return score !== null && score <= 100 ? score : null;
 };
 const ageText = (iso: string): string => {
   const at = Date.parse(iso);
@@ -67,18 +69,16 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
   const make = (id: string, title: string, values: Value[], graph: TemporalSeries[], note: string, at = historicalTime): TemporalMetric =>
     ({ id, title, values, series: graph, note, sourceTime: at, min: 0 });
   const tiers = unique(['luna', 'sol', 'astra', 'claude', 'agy', ...rows.flatMap(row => Object.keys(data(row.tiers)))]);
-  const latestFullCostRow = [...rows].reverse().find(row => numeric(row.cost_index) !== null);
-  const latestObservedCostRow = [...rows].reverse().find(row => numeric(row.cost_index_observed) !== null);
   const hygieneStatus = data(data(snapshot.super_captain).status);
   const hygieneStatusTime = validIsoTime(data(snapshot.super_captain).status_mtime_utc ?? hygieneStatus.status_mtime_utc);
   const hygieneStatusByProject = data(hygieneStatus.captains);
   const hygieneForProject = (id: string) => {
     const live = data(data(hygieneStatusByProject[id]).hygiene);
-    if (hygieneScore(live) !== null || text(live.grade)) return { value: live, at: hygieneStatusTime, live: true };
+    if (hygieneScore(live) !== null || text(live.grade)) return { value: live, at: validIsoTime(live.observed_utc) || hygieneStatusTime, live: true };
     const row = [...rows].reverse().find(candidate => hygieneScore(data(candidate.hyg)[id]) !== null || text(data(data(candidate.hyg)[id]).grade));
     if (!row) return { value: undefined, at: '', live: false };
     const atByProject = data(row.hyg_at);
-    const at = numeric(atByProject[id]) ?? numeric(row.ts);
+    const at = Object.hasOwn(row, 'hyg_at') ? numeric(atByProject[id]) : numeric(row.ts);
     return { value: data(row.hyg)[id], at: at !== null && Number.isFinite(new Date(at * 1000).getTime()) ? utc(at) : '', live: false };
   };
   const quotaSeries = single('quota', 'used quota', '#58a6ff', row => row.quota_pct);
@@ -86,31 +86,33 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
     const time = typeof row[0] === 'string' ? Date.parse(row[0]) / 1000 : NaN;
     return Number.isFinite(time) ? [{ time, value: numeric(row[1]) }] : [];
   }).sort((a, b) => a.time - b.time);
-  const observedYieldRow = [...rows].reverse().find(row => Object.keys(data(data(row.ty).observed)).length) ?? {};
+  const observedYieldRow = last;
+  const liveObservedYield = observedTokenSample(total);
+  const observedYield = liveObservedYield ?? data(data(observedYieldRow.ty).observed);
   const hasFullYield = [total.tokens, total.integration_tokens, total.main_tokens, total.attributed_tokens,
     total.yield_main_pct, total.yield_integration_pct, total.yield_main_credits_pct,
     total.yield_integration_credits_pct, total.coverage_pct].some(value => numeric(value) !== null);
   const yieldHistoryTime = sourceTime(observedYieldRow);
-  const yieldSourceTime = hasFullYield ? validIsoTime(yieldSource.generated_utc) || yieldHistoryTime
+  const yieldSourceTime = hasFullYield || liveObservedYield !== null ? validIsoTime(yieldSource.generated_utc) || yieldHistoryTime
     : yieldHistoryTime || validIsoTime(yieldSource.generated_utc);
   // The quota source has its own timestamped stream, often newer than the two-minute fleet history.
   if (samples.length) quotaSeries[0].points = samples;
   const metrics: TemporalMetric[] = [
     (() => {
-      const full = numeric(te.cost_index_vs_all_luna) ?? numeric(latestFullCostRow?.cost_index);
-      const observed = numeric(te.cost_index_observed_vs_all_luna) ?? numeric(latestObservedCostRow?.cost_index_observed);
+      const full = Object.hasOwn(te, 'cost_index_vs_all_luna') ? numeric(te.cost_index_vs_all_luna) : numeric(last.cost_index);
+      const observed = Object.hasOwn(te, 'cost_index_observed_vs_all_luna') ? numeric(te.cost_index_observed_vs_all_luna) : numeric(last.cost_index_observed);
       const hasLiveCost = numeric(te.cost_index_vs_all_luna) !== null || numeric(te.cost_index_observed_vs_all_luna) !== null;
       const values: Value[] = [];
       if (full !== null) values.push({ label: 'Full aggregate cost index', value: `${formatMeasurement(full)}×`, color: '#f2c335' });
       if (observed !== null) values.push({ label: 'Observed sample cost index · partial coverage', value: `${formatMeasurement(observed)}× observed`, color: '#58a6ff' });
       if (!values.length) values.push({ label: 'Cost index unknown', value: 'unknown', color: '#8b949e' });
-      const note = [text(te.cost_index_note) || text(latestFullCostRow?.cost_basis),
-        observed === null ? '' : text(te.cost_index_observed_note) || text(latestObservedCostRow?.cost_observed_basis) || 'Observed/priced Codex samples only; partial coverage, not full spend.'].filter(Boolean).join(' · ') || 'Cost basis unknown';
+      const note = [text(te.cost_index_note) || text(last.cost_basis),
+        observed === null ? '' : text(te.cost_index_observed_note) || text(last.cost_observed_basis) || 'Observed/priced Codex samples only; partial coverage, not full spend.'].filter(Boolean).join(' · ') || 'Cost basis unknown';
       return { ...make('cost-index', 'Cost index vs all-Luna (1.0 = all Luna)', values,
         [...single('cost-full', 'Full aggregate', '#f2c335', row => row.cost_index),
           ...single('cost-observed', 'Observed sample · partial', '#58a6ff', row => row.cost_index_observed)], note,
         hasLiveCost ? validIsoTime(snapshot.generated_utc) || historicalTime
-          : [sourceTime(latestFullCostRow ?? {}), sourceTime(latestObservedCostRow ?? {})].filter(Boolean).sort().at(-1) || historicalTime) };
+          : historicalTime) };
     })(),
     { ...make('luna-failures', 'Luna failures → escalated · first-pass', [
       { label: 'failures', value: `${format(ledger.luna_failures_total)} total`, color: '#ff535c' },
@@ -150,12 +152,19 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
           value: `${measured} · ${age}`, color: projectColor(item.id) };
       });
       return { ...make('hygiene', 'Hygiene score per Commodore', values,
-        series(projects, (row, id) => hygieneScore(data(row.hyg)[id]), projectName, projectColor),
+        series(projects, (row, id) => hygieneScore(data(row.hyg)[id]), projectName, projectColor).map(item => {
+          const points = item.points.map((point, index) => {
+            const row = rows[index];
+            const reportTime = Object.hasOwn(row, 'hyg_at') ? numeric(data(row.hyg_at)[item.id]) : point.time;
+            return { time: reportTime ?? point.time, value: reportTime === null ? null : point.value };
+          }).sort((a, b) => a.time - b.time);
+          return { ...item, points: points.filter((point, index) => index === 0 || point.time !== points[index - 1].time || point.value !== points[index - 1].value) };
+        }),
         current.some(item => item.value === undefined) ? 'Not reported by Admiral means no current or retained score was supplied. Historical values retain their original per-project source time.' : 'Scores retain their per-project source times; no synthetic score is inferred.',
         times.at(-1) || ''), max: 100 };
     })(),
     (() => {
-      const observed = data(data(observedYieldRow.ty).observed), lower = (key: string) => numeric(yieldSource[key]) ?? numeric(total[key]);
+      const observed = observedYield;
       const tokenValue = (fullValue: unknown, observedValue: unknown, lowerValue: unknown) => {
         const full = numeric(fullValue), count = numeric(lowerValue) ?? numeric(observedValue);
         return full !== null ? compact(full) : count !== null ? `≥ ${compact(count)} observed` : 'unknown';
@@ -163,10 +172,10 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
       const fullRows = (key: string) => single(`token-full-${key}`, `${key} · full`, key === 'tok' ? '#c1c9d2' : key === 'int' ? '#f2c335' : '#39e065', row => data(row.ty)[key]);
       const observedRows = (key: string, color: string) => single(`token-observed-${key}`, `${key} · observed`, color, row => data(data(row.ty).observed)[key]);
       return make('tokens', 'Tokens · generated / integration / main', [
-        { label: 'generated tokens', value: tokenValue(total.tokens, observed.tok, lower('lower_bound_tokens')), color: '#c1c9d2' },
-        { label: 'integration tokens', value: tokenValue(total.integration_tokens, observed.int, lower('integration_tokens')), color: '#f2c335' },
-        { label: 'main tokens', value: tokenValue(total.main_tokens, observed.main, lower('main_tokens')), color: '#39e065' },
-        { label: 'attributed tokens', value: tokenValue(total.attributed_tokens, observed.attributed, lower('attributed_tokens')), color: '#58a6ff' },
+        { label: 'generated tokens', value: tokenValue(total.tokens, observed.tok, total.lower_bound_tokens), color: '#c1c9d2' },
+        { label: 'integration tokens', value: tokenValue(total.integration_tokens, observed.int, total.lower_bound_integration_tokens), color: '#f2c335' },
+        { label: 'main tokens', value: tokenValue(total.main_tokens, observed.main, total.lower_bound_main_tokens), color: '#39e065' },
+        { label: 'attributed tokens', value: tokenValue(total.attributed_tokens, observed.attributed, total.lower_bound_attributed_tokens), color: '#58a6ff' },
       ], [...fullRows('tok'), ...fullRows('int'), ...fullRows('main'), ...fullRows('attributed'),
         ...observedRows('tok', '#aeb7c2'), ...observedRows('int', '#d2ad44'), ...observedRows('main', '#36b45a'), ...observedRows('attributed', '#4d8bcc')],
       `${format(yieldSource.window_hours)}h window · ${text(yieldSource.method) || 'Attribution method unknown'} · ≥ counts are observed/lower-bound events; full totals stay unknown when coverage is incomplete`,
@@ -176,16 +185,16 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
       { label: 'Full main yield', value: format(total.yield_main_pct, '%'), color: '#39e065' },
       { label: 'Full integration yield', value: format(total.yield_integration_pct, '%'), color: '#f2c335' },
       { label: 'Full coverage', value: format(total.coverage_pct, '%'), color: '#a3adba' },
-      { label: 'Observed-sample main yield', value: format(data(data(last.ty).observed).ym, '%'), color: '#8de4a3' },
-      { label: 'Observed-sample integration yield', value: format(data(data(last.ty).observed).yi, '%'), color: '#ffe08a' },
-      { label: 'Observed-sample coverage', value: format(data(data(last.ty).observed).cov, '%'), color: '#d2d8e0' },
+      { label: 'Observed-sample main yield', value: format(observedYield.ym, '%'), color: '#8de4a3' },
+      { label: 'Observed-sample integration yield', value: format(observedYield.yi, '%'), color: '#ffe08a' },
+      { label: 'Observed-sample coverage', value: format(observedYield.cov, '%'), color: '#d2d8e0' },
     ], [...single('yield-main-full', 'Main · full', '#39e065', row => data(row.ty).ym),
       ...single('yield-integration-full', 'Integration · full', '#f2c335', row => data(row.ty).yi),
       ...single('coverage-full', 'Coverage · full', '#a3adba', row => data(row.ty).cov),
       ...single('yield-main-observed', 'Main · observed sample', '#8de4a3', row => data(data(row.ty).observed).ym),
       ...single('yield-integration-observed', 'Integration · observed sample', '#ffe08a', row => data(data(row.ty).observed).yi),
       ...single('coverage-observed', 'Coverage · observed sample', '#d2d8e0', row => data(data(row.ty).observed).cov)],
-    `Full credit yield: main ${format(total.yield_main_credits_pct, '%')} · integration ${format(total.yield_integration_credits_pct, '%')}. Observed-sample ratios are estimates from the same observed events, not lower bounds for full yield.`, yieldSourceTime), max: 100 },
+    `Full credit yield: main ${format(total.yield_main_credits_pct, '%')} · integration ${format(total.yield_integration_credits_pct, '%')}. Observed-sample ratios are estimates from the same observed events, not lower bounds for full yield. Attribution is not acceptance.`, yieldSourceTime), max: 100 },
     { ...make('weekly-quota', 'Codex weekly quota used % · real', [
       { label: 'quota used', value: format(quota.used_percent, '%'), color: '#58a6ff' },
       { label: 'credits per hour estimate', value: `${format(last.credits_h)} cr/h est.`, color: '#c1c9d2' },

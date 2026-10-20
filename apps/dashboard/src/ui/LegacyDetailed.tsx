@@ -6,14 +6,15 @@ import { TokenEfficiency } from './TokenEfficiency';
 import { Economics } from '../features/economics/Economics';
 import { ModelBadge } from './ModelBadge';
 import { routeHref } from '../router';
+import { formatJsonMeasurements, formatMeasurement } from '../formatNumbers';
 import './legacy-evidence.css';
 
 /** Semantic React views of producer facts. Unknown values never become zeros. */
 export function DataValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
   const [shown, setShown] = useState(30), [expanded, setExpanded] = useState(false);
   if (value === null || value === undefined) return <span className="muted">Unknown</span>;
-  if (typeof value !== 'object') return <span className="source-text">{text(value)}</span>;
-  if (depth >= 5) return <details onToggle={event => setExpanded(event.currentTarget.open)}><summary>Nested source details</summary>{expanded && <pre>{JSON.stringify(value, null, 2)}</pre>}</details>;
+  if (typeof value !== 'object') return <span className="source-text">{typeof value === 'number' ? formatMeasurement(value) : text(value)}</span>;
+  if (depth >= 5) return <details onToggle={event => setExpanded(event.currentTarget.open)}><summary>Nested source details</summary>{expanded && <pre>{formatJsonMeasurements(value)}</pre>}</details>;
   const entries = Array.isArray(value) ? value.map((item, index) => [String(index + 1), item] as const) : Object.entries(value);
   if (!entries.length) return <span className="muted">None reported</span>;
   return <><dl className="source-data">{entries.slice(0, shown).map(([key, item]) => <div key={key}><dt>{Array.isArray(value) ? key : label(key)}</dt><dd><DataValue value={item} depth={depth + 1} /></dd></div>)}</dl>{entries.length > shown && <button className="text-button" onClick={() => setShown(count => count + 100)}>Show more ({entries.length - shown} remaining)</button>}</>;
@@ -45,10 +46,10 @@ function PullRequest({ value }: { value: unknown }) {
 export function ProjectDetail({ project, compact = false, initial = false }: { project: ProjectDetailModel; compact?: boolean; initial?: boolean }) {
   const total = project.total, entries = Object.entries(project.stages);
   return <article className={`legacy-project panel ${compact ? 'compact' : ''}`} data-project-id={project.id}>
-    <header className="legacy-project-heading"><h2>{project.name}</h2><a className="legacy-live-link" href={routeHref('git', { project: project.id })}>Git Flow ↗</a><span>{total === null ? 'Unknown total' : `${total} tasks`}</span></header>
+    <header className="legacy-project-heading"><h2>{project.name}</h2><a className="legacy-live-link" href={routeHref('git', { project: project.id })}>Git Flow ↗</a><span>{total === null ? 'Unknown total' : `${formatMeasurement(total)} tasks`}</span></header>
     <p className="legacy-provenance">{project.source}</p>
-    <div className="legacy-stage-bar" role="img" aria-label={`${project.name} reported task stages`}>{entries.map(([stage, count]) => <span key={stage} className={stageClass(stage)} style={{ width: `${total && total > 0 ? Math.min(100, count / total * 100) : 0}%` }} title={`${stageLabel(stage, project.labels)}: ${count}`} />)}</div>
-    <div className="legacy-stage-counts">{entries.map(([stage, count]) => <span key={stage}><i className={stageClass(stage)} /><b>{count}</b> {stageLabel(stage, project.labels)}</span>)}</div>
+    <div className="legacy-stage-bar" role="img" aria-label={`${project.name} reported task stages`}>{entries.map(([stage, count]) => <span key={stage} className={stageClass(stage)} style={{ width: `${total && total > 0 ? Math.min(100, count / total * 100) : 0}%` }} title={`${stageLabel(stage, project.labels)}: ${formatMeasurement(count)}`} />)}</div>
+    <div className="legacy-stage-counts">{entries.map(([stage, count]) => <span key={stage}><i className={stageClass(stage)} /><b>{formatMeasurement(count)}</b> {stageLabel(stage, project.labels)}</span>)}</div>
     <div className="legacy-provenance">Producer observation: {project.observed} ({freshness(project.observed)}). Source claims and accepted counts retain their original meanings.</div>
     {Object.hasOwn(project.stages, 'verified') && <p className="legacy-evidence-note">Recorded checks describe component evidence. Integration and accepted completion require separate proof.</p>}
     {project.alerts.map((alert, index) => <div className={`legacy-alert legacy-alert-${alert.kind}`} key={`${alert.sourceMessage}:${index}`}>

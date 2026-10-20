@@ -47,11 +47,12 @@ describe('source-faithful token efficiency panel', () => {
   });
   it('renders dense KPIs, bright model bars and source-window provenance', () => {
     const html = render();
-    for (const value of ['44.4%', '20.4×', '411.5', '306.5', 'Weekly quota used', '41%', '9691.1815655000',
+    for (const value of ['44.4%', '20.4×', '411.5', '306.5', 'Weekly quota used', '41%', '9,691.18',
       '2026-10-24T21:40:00Z', 'Observed agents by model', 'te-fill', 'te-luna', 'te-astra',
       'session turn_context', 'custom-observer-node', 'last 3h', 'not token weighted']) expect(html).toContain(value);
     expect(html).toContain('gpt-6-luna baseline');
     expect(html).toContain('agent weighted');
+    expect(html).not.toContain('9691.1815655000');
     expect(html).not.toContain('<dl');
   });
   it('keeps measured tokens, cached share and estimated credits separate', () => {

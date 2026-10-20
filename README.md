@@ -85,7 +85,7 @@ These captures use the deployment's explicitly public producer view. Private nat
 
 ## What you can use today
 
-- **Fleet observations:** configured project ledgers, task stages, Git/PR evidence, agent/model observations, resource measurements and thirteen temporal plots. Missing measurements and original source times remain visible.
+- **Fleet observations:** configured project ledgers, task stages, Git/PR evidence, agent/model observations, resource measurements and thirteen temporal plots. Live measurements display at most two decimal places. Full totals and explicitly labeled observed samples remain distinct; missing measurements and original source times remain visible.
 - **Git Flow and Fleet Atlas:** ancestry, branches, linked/detached checkouts, command relationships, searchable inventories and evidence inspectors. Requested model names, configured roles and observed processes retain distinct meanings.
 - **Scoped native coordination:** durable typed captain–admiral messages, exact retries, own-inbox application receipts, task contracts and compact context through authenticated CLI/MCP and HTTP adapters.
 - **Offline tools:** workplan previews and immutable revision registration, contract validation, backups and restore rehearsals. Release tools stage explicit inputs, create archives and install a new private version directory.
@@ -120,7 +120,7 @@ For protected task intake and scoped agent access, follow [native startup](docs/
 | Collect and display real project data | [Native observer](docs/operators/native-observer.md), [live console](docs/operators/live-console.md) |
 | Configure native access and typed role messages | [Native startup](docs/operators/native-startup.md), [native coordination](docs/operators/native-coordination.md) |
 | Capture and enrich work orders | [Work-order intake](docs/operators/work-order-intake.md), [workplan import](docs/operators/workplan-import.md) |
-| Configure model policies | [Models](docs/operators/models.md), [OpenCode SSH qualification](docs/operators/opencode-ssh.md) |
+| Configure model policies | [Models](docs/operators/models.md), [development routing](docs/operators/model-routing.md), [OpenCode SSH qualification](docs/operators/opencode-ssh.md) |
 | Understand Git and agent views | [Live views](docs/operators/live-views.md) |
 | Back up, rehearse recovery or install an explicit archive | [Recovery manifests](docs/operators/recovery-manifest.md), [native archive](docs/operators/native-archive.md), [private version installation](docs/operators/native-install.md) |
 | Develop and reproduce checks | [Contributing](CONTRIBUTING.md), [local CI](docs/operators/local-ci.md) |
