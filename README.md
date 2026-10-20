@@ -85,8 +85,12 @@ These captures use the deployment's explicitly public producer view. Private nat
 
 ## What you can use today
 
+The newer Git Flow features below are source-preview capabilities. The 19 October recordings above do not establish their production deployment or live role enrollment.
+
 - **Fleet observations:** configured project ledgers, task stages, Git/PR evidence, agent/model observations, resource measurements and thirteen temporal plots. Live measurements display at most two decimal places. Full totals and explicitly labeled observed samples remain distinct. Partial hygiene audits show their reported range and known subtotal; final scores require complete audit measurements. Missing measurements and original source times remain visible.
-- **Git Flow and Fleet Atlas:** ancestry, branches, linked/detached checkouts, command relationships, searchable inventories and evidence inspectors. Requested model names, configured roles and observed processes retain distinct meanings.
+- **Git Flow and Fleet Atlas:** ancestry, branches, linked/detached checkouts, command relationships, searchable inventories and evidence inspectors. Git Flow reversibly compresses linear commit interiors while keeping forks, merges, roots, tips, refs/tags, checkout HEADs and missing-parent boundaries visible. Requested model names, configured roles and observed processes retain distinct meanings.
+- **Project Git chat:** a Captain/Admiral bubble floats within each project's viewport, slightly translucent at rest and opaque on hover or focus; touch devices keep it opaque. Sending messages or commands requires protected role configuration and owner session access. Delivery confirms durable inbox receipt, separately from a role's acknowledgment, execution or task acceptance. See [operator chat](docs/operators/operator-chat.md).
+- **Rust Git health:** evaluates the already collected graph, refs and checkouts without running Git commands; the dashboard reads cached reports. Coverage gaps remain explicitly unknown; configured alerts notify the project Captain's inbox. Reports never change repositories or establish merge safety. See [Git health](docs/operators/git-health.md).
 - **Scoped native coordination:** durable typed captain–admiral messages, exact retries, own-inbox application receipts, task contracts and compact context through authenticated CLI/MCP and HTTP adapters.
 - **Offline tools:** workplan previews and immutable revision registration, contract validation, backups and restore rehearsals. Release tools stage explicit inputs, create archives and install a new private version directory.
 
@@ -122,6 +126,8 @@ For protected task intake and scoped agent access, follow [native startup](docs/
 | Capture and enrich work orders | [Work-order intake](docs/operators/work-order-intake.md), [workplan import](docs/operators/workplan-import.md) |
 | Configure model policies | [Models](docs/operators/models.md), [development routing](docs/operators/model-routing.md), [OpenCode SSH qualification](docs/operators/opencode-ssh.md) |
 | Understand Git and agent views | [Live views](docs/operators/live-views.md) |
+| Configure per-project Captain/Admiral chat and verify delivery | [Operator chat](docs/operators/operator-chat.md) |
+| Configure Git health policy and captain alerts | [Git health](docs/operators/git-health.md) |
 | Back up, rehearse recovery or install an explicit archive | [Recovery manifests](docs/operators/recovery-manifest.md), [native archive](docs/operators/native-archive.md), [private version installation](docs/operators/native-install.md) |
 | Develop and reproduce checks | [Contributing](CONTRIBUTING.md), [local CI](docs/operators/local-ci.md) |
 | Review architecture, evidence and remaining implementation | [Master plan](docs/plans/admiralty-v2/MASTER_PLAN.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [remaining-work audit](docs/plans/admiralty-v2/REMAINING_20261019.md) |
