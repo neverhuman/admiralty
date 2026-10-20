@@ -3443,3 +3443,21 @@ README/operator instructions describe the new source behavior while retaining
 the explicit production-preview limit. No private gate, pin, service, custody or
 foreign source was changed. The controller was notified of this disjoint source
 scope through both locked logs; no conflicting controller or PR was created.
+
+The first clean source `fd740ed40d0897878f028884cb056b1881423610`, tree
+`0d2451b47dc63f493b218ab1e469c439ed1298c3`, passes all20 local stages:
+1768Rust tests/6existing ignores,232dashboard tests and49browser tests. Logs are
+`/private/tmp/adm.wvKunK/logs`. Actual Chrome additionally proves pointer expansion
+of the screenshot's40441b7→32cc61a pair, Enter recollapse, global33→0→33 range
+counts and retained192c46f inspector, on an isolated finite native preview.
+That preview is stopped and its port closed; it is not the production service.
+
+The same real-history check finds another concrete gap before publication:
+192c46f sits on lane12, but the direct camera scrolls only to the project's band
+top, leaving that lane below the viewport. A20-branch browser regression actually
+fails waiting for its adjacent short range. The existing focus effect now centers
+the mark vertically, clamped at the project band top, retaining project-scoped
+identity and first-lane behavior. All19focused browser tests pass after this
+repair. The fd740 matrix does not qualify this successor; freeze the new source
+and repeat the complete matrix before publication/review/merge. Both original
+negatives, all historical passes and actual Chrome limits remain retained.

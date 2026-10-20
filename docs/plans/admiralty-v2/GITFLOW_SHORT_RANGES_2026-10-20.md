@@ -8,6 +8,8 @@ merged algorithm leaves two/three-commit interiors explicit. Ship the qualified
 rollout through the existing sole controller and add compact reversible controls
 for those short runs. Preserve genuine forks, merges, refs, checkout heads,
 explicit focus, complete inventory, project isolation and manual collapse intent.
+An explicit deep link must bring its selected commit's lane into view, including
+lower lanes in a real multi-branch repository, rather than only open an inspector.
 
 This is a UI follow-up to main `b3ab31c8a0752c1d70f75830ab0ad675b9096643`,
 not a replacement of its completed qualification. No Rust runtime, generated
@@ -69,6 +71,14 @@ matched merge. Do not label preview, prior-head tests or source merge as rollout
    default collapse, pointer expansion, Enter recollapse, global controls,
    preserved focus/anchors, full inventory and tiny-screen overflow/axe. Preserve
    existing long-history, live growth, project and explicit-selection controls.
+   The real DOPE check also exposes a camera bug: selected192c46f is on lane12,
+   while initial vertical scroll targets only the project's band top. Reproduce
+   with a20-branch fixture whose selected anchor is below the viewport. In the
+   existing applied-focus effect, include `48 + mark.y * zoom` when positioning
+   vertical scroll, centered within the actual scroller and clamped at the band
+   top. Retain the project-scoped applied-focus key, normal live-update behavior
+   and existing first-lane/shared-OID expectations. Verify the adjacent collapsed
+   short-range control is visibly hit-testable without manual scrolling.
 7. Run focused unit/type/build/browser checks first, inspect real failures, and
    then run the complete Node24/pnpm11.15.1 local CI on clean committed source.
    Bounded two compiler jobs/one Rust test thread; no other project/runner effects.
