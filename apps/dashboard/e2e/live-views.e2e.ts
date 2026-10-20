@@ -282,6 +282,57 @@ describe("built live views against the real Rust server", () => {
     ).toBe(true);
     await browser.pressKey("Escape");
   });
+  it.each([2, 3])("collapses %i linear interiors beside a real fork and preserves focus and inventory", async (count) => {
+    const source = sourceFixture(), repo = source.git.harbor, template = repo.commits[0];
+    const oid = (n: number) => ((n * 2654435761) >>> 0).toString(16).padStart(8, "0").padEnd(40, "0");
+    repo.commits = Array.from({ length: count + 2 }, (_, i) => ({
+      ...template, oid: oid(i + 1), parents: i ? [oid(i)] : [], subject: `Short linear commit ${i + 1}`,
+    }));
+    repo.commits.push({ ...template, oid: oid(100), parents: [oid(1)], subject: "Actual side branch" });
+    repo.refs = [{ name: "refs/heads/main", oid: oid(count + 2), commit_oid: oid(count + 2), kind: "branch" }];
+    repo.checkouts = [{ ...repo.checkouts[0], head: oid(1) }];
+    server.writeLegacySnapshot(source);
+    await browser.setViewportSize(1440, 1000);
+    await connect(`git?project=harbor&focus=${oid(1)}`);
+    await browser.waitForSelector(".lv-inspector");
+    await browser.waitForSelector(`.git-canvas[aria-label*="${count + 3} commits, 1 collapsed ranges"]`);
+    await browser.waitForSelector('.git-commit-range[aria-expanded="false"]');
+    const label = `${oid(2).slice(0, 7)} → ${oid(count + 1).slice(0, 7)} + ${count} hidden. Expand commits`;
+    expect(await browser.evaluate(`document.querySelector('.git-commit-range').getAttribute('aria-label')`)).toBe(label);
+    expect(await browser.evaluate(`document.querySelectorAll('.git-commit-range').length`)).toBe(1);
+    expect(await browser.evaluate(`document.querySelector('.git-canvas').getAttribute('aria-label')`)).toContain(`${count + 3} commits, 1 collapsed ranges`);
+    const hit = await browser.evaluate<{ x: number; y: number; width: number; intended: boolean }>(`(() => {
+      const b=document.querySelector('.git-commit-range'), r=b.getBoundingClientRect(), x=r.x+r.width/2, y=r.y+r.height/2;
+      return {x,y,width:r.width,intended:b.contains(document.elementFromPoint(x,y))};
+    })()`);
+    expect(hit.width).toBeLessThan(count * 112 * 0.9);
+    expect(hit.intended).toBe(true);
+    await browser.movePointer(hit.x, hit.y);
+    await browser.clickButtonByAriaLabel(label);
+    await browser.waitForSelector('.git-commit-range[aria-expanded="true"]');
+    await browser.evaluate(`document.querySelector('.git-commit-range').focus()`);
+    await browser.pressKey("Enter");
+    await browser.waitForSelector('.git-commit-range[aria-expanded="false"]');
+    await browser.clickButtonByText("Expand all");
+    await browser.waitForSelector('.git-commit-range[aria-expanded="true"]');
+    await browser.clickButtonByText("Collapse linear");
+    await browser.waitForSelector('.git-commit-range[aria-expanded="false"]');
+    expect(await browser.evaluate(`location.hash`)).toContain(`focus=${oid(1)}`);
+    expect(await browser.evaluate(`Boolean(document.querySelector('.lv-inspector'))`)).toBe(true);
+    await browser.captureScreenshot(join(evidence, `git-short-${count}.png`));
+    await browser.clickButtonByText("Inventory");
+    expect(await browser.evaluate(`document.querySelectorAll('.git-inventory tbody tr').length`)).toBe(count + 3);
+    await browser.clickButtonByText("Graph");
+    await browser.setViewportSize(390, 844);
+    for (let i = 0; i < 9; i++) await browser.clickButtonByAriaLabel("Zoom Git out");
+    await browser.waitForSelector('.git-commit-range.is-tiny[aria-expanded="false"]');
+    expect(await browser.evaluate(`(() => { const b=document.querySelector('.git-commit-range');return b.scrollWidth <= b.clientWidth && b.getBoundingClientRect().width >= 24; })()`)).toBe(true);
+    expect(await browser.evaluate(`document.querySelector('.git-commit-range').getAttribute('aria-label')`)).toBe(label);
+    expect((await browser.runAxeAudit()).violations).toEqual([]);
+    await browser.captureScreenshot(join(evidence, `git-short-${count}-mobile.png`));
+    await browser.setViewportSize(1440, 1000);
+    server.writeLegacySnapshot(sourceFixture());
+  }, 60_000);
   it("compresses long histories into accessible reversible ranges and keeps inventory complete", async () => {
     const source = sourceFixture();
     const repo = source.git.harbor;

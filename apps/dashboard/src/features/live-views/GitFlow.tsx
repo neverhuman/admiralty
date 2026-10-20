@@ -7,7 +7,7 @@ import {
   type ViewProject,
   type ViewsSnapshot,
 } from "./feed";
-import { layoutGit, type CommitRange, type GitLayout } from "./geometry";
+import { gitRangeWidth, layoutGit, type CommitRange, type GitLayout } from "./geometry";
 import { useSize, type Selection } from "./LiveViews";
 import { changeParams, palette } from "./FleetAtlas";
 import GitChat from "./GitChat";
@@ -304,17 +304,19 @@ function GitCanvas({
       {layout.ranges.map((range) => {
         const x = range.x * zoom - left;
         const y = range.y * zoom - top;
-        const buttonWidth = Math.min(width, range.expanded ? 156 : 304);
+        const buttonWidth = Math.min(width, range.expanded ? 156 : gitRangeWidth(range.commits.length, zoom));
         const narrow = !range.expanded && buttonWidth < 304;
-        if (x + (range.expanded ? 78 : 152) < 0 || x - (range.expanded ? 78 : 152) > width || y < 0 || y > height)
+        const compact = !range.expanded && buttonWidth < 144;
+        const tiny = !range.expanded && buttonWidth < 68;
+        if (x + buttonWidth / 2 < 0 || x - buttonWidth / 2 > width || y < 0 || y > height)
           return null;
         const first = range.commits[0].oid.slice(0, 7);
         const last = range.commits.at(-1)!.oid.slice(0, 7);
         return (
           <button
             key={range.id}
-            className={`git-commit-range ${range.expanded ? "is-expanded" : ""} ${narrow ? "is-narrow" : ""}`}
-            style={{ left: left + Math.max(0, Math.min(width - buttonWidth, x - buttonWidth / 2)), top: top + 48 + y - (range.expanded ? 38 : narrow ? 26 : 19), width: buttonWidth }}
+            className={`git-commit-range ${range.expanded ? "is-expanded" : ""} ${narrow ? "is-narrow" : ""} ${compact ? "is-compact" : ""} ${tiny ? "is-tiny" : ""}`}
+            style={{ left: left + Math.max(0, Math.min(width - buttonWidth, x - buttonWidth / 2)), top: top + 48 + y - (range.expanded ? 38 : tiny ? 13 : narrow ? 26 : 19), width: buttonWidth }}
             aria-expanded={range.expanded}
             aria-label={range.expanded ? `− Collapse ${range.commits.length} commits` : `${first} → ${last} + ${range.commits.length} hidden. Expand commits`}
             title={`${range.commits[0].oid} → ${range.commits.at(-1)!.oid} · ${range.commits.length} linear commits. ${range.expanded ? "Collapse range" : "Expand range"}.`}
@@ -322,6 +324,10 @@ function GitCanvas({
           >
             {range.expanded ? (
               <>− Collapse {range.commits.length} commits</>
+            ) : tiny ? (
+              <span>+{range.commits.length}</span>
+            ) : compact ? (
+              <><code><span>{first}</span><span>→ {last}</span></code><span>+ {range.commits.length} hidden</span></>
             ) : (
               <><code>{first} → {last}</code><span>+ {range.commits.length} hidden</span></>
             )}
