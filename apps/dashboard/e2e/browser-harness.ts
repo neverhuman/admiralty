@@ -1262,21 +1262,28 @@ function validateStageTimeoutMs(rawTimeoutMs: number, name: string): number {
   return rawTimeoutMs;
 }
 
+export type StageTiming = { now(): number; sleep(ms: number): Promise<void> };
+const stageTiming: StageTiming = {
+  now: () => Math.floor(performance.now()),
+  sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
+};
+
 export async function fillInputByLabelStage(
   evaluateFn: StageEvaluateFn,
   labelText: string,
   value: string,
   timeoutMs = FORM_CONTROL_STAGE_TIMEOUT_MS,
+  timing: StageTiming = stageTiming,
 ): Promise<void> {
   const stageTimeoutMs = validateStageTimeoutMs(timeoutMs, 'fillInputByLabel timeoutMs');
   const labelEsc = JSON.stringify(labelText);
   const valEsc = JSON.stringify(value);
-  const deadline = Date.now() + stageTimeoutMs;
-  let lastFailureDetail = 'matching <input> or <textarea> not mounted';
+  const deadline = timing.now() + stageTimeoutMs;
+  let lastFailureDetail = 'DOM inspection did not complete';
   let lastEvalError: string | null = null;
 
-  while (Date.now() < deadline) {
-    const remainingMs = deadline - Date.now();
+  while (timing.now() < deadline) {
+    const remainingMs = deadline - timing.now();
     if (remainingMs <= 0) break;
     const evalTimeoutMs = Math.min(MAX_STAGE_EVALUATE_BUDGET_MS, remainingMs);
     try {
@@ -1336,9 +1343,9 @@ export async function fillInputByLabelStage(
     } catch (err) {
       lastEvalError = err instanceof Error ? err.message : String(err);
     }
-    const sleepRemainingMs = deadline - Date.now();
+    const sleepRemainingMs = deadline - timing.now();
     if (sleepRemainingMs <= 0) break;
-    await new Promise((r) => setTimeout(r, Math.min(40, sleepRemainingMs)));
+    await timing.sleep(Math.min(40, sleepRemainingMs));
   }
 
   const details = [
@@ -1353,16 +1360,17 @@ export async function selectByLabelStage(
   labelText: string,
   value: string,
   timeoutMs = FORM_CONTROL_STAGE_TIMEOUT_MS,
+  timing: StageTiming = stageTiming,
 ): Promise<void> {
   const stageTimeoutMs = validateStageTimeoutMs(timeoutMs, 'selectByLabel timeoutMs');
   const labelEsc = JSON.stringify(labelText);
   const valEsc = JSON.stringify(value);
-  const deadline = Date.now() + stageTimeoutMs;
-  let lastFailureDetail = 'matching <select> or <option> not mounted';
+  const deadline = timing.now() + stageTimeoutMs;
+  let lastFailureDetail = 'DOM inspection did not complete';
   let lastEvalError: string | null = null;
 
-  while (Date.now() < deadline) {
-    const remainingMs = deadline - Date.now();
+  while (timing.now() < deadline) {
+    const remainingMs = deadline - timing.now();
     if (remainingMs <= 0) break;
     const evalTimeoutMs = Math.min(MAX_STAGE_EVALUATE_BUDGET_MS, remainingMs);
     try {
@@ -1416,9 +1424,9 @@ export async function selectByLabelStage(
     } catch (err) {
       lastEvalError = err instanceof Error ? err.message : String(err);
     }
-    const sleepRemainingMs = deadline - Date.now();
+    const sleepRemainingMs = deadline - timing.now();
     if (sleepRemainingMs <= 0) break;
-    await new Promise((r) => setTimeout(r, Math.min(40, sleepRemainingMs)));
+    await timing.sleep(Math.min(40, sleepRemainingMs));
   }
 
   const details = [

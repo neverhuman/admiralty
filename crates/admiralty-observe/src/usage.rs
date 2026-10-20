@@ -983,6 +983,47 @@ async fn ancestor(cwd: &Path, sha: &str, reference: String) -> Option<bool> {
     }
 }
 
+/// Compare the same observed token deltas against actual and Luna rates. An
+/// incomplete inventory prevents a fleet aggregate, but does not erase a
+/// fully priced observed sample. Never substitute an agent-count average.
+fn cost_indices(
+    sessions: &[Session],
+    rates: &BTreeMap<String, Rate>,
+    now: i64,
+    coverage_complete: bool,
+) -> (Option<f64>, Option<f64>) {
+    let baseline = rates.get("gpt-6-luna");
+    let mut actual = 0.0;
+    let mut luna = 0.0;
+    let mut priced = baseline.is_some();
+    let mut token_seen = false;
+    for session in sessions.iter().filter(|s| s.family == "codex") {
+        for sample in session
+            .samples
+            .iter()
+            .filter(|s| s.at > now - 900 && s.at <= now)
+        {
+            token_seen |= sample.tokens.total() > 0;
+            match (
+                rates
+                    .get(&sample.model)
+                    .and_then(|r| r.credits(sample.tokens)),
+                baseline.and_then(|r| r.credits(sample.tokens)),
+            ) {
+                (Some(a), Some(b)) => {
+                    actual += a;
+                    luna += b;
+                }
+                _ => priced = false,
+            }
+        }
+    }
+    let observed = (priced && token_seen && luna > 0.0)
+        .then_some(actual / luna)
+        .filter(|n| n.is_finite());
+    (observed.filter(|_| coverage_complete), observed)
+}
+
 pub async fn collect(config: &ObserveConfig, snapshot: &Value) -> crate::Result<Value> {
     let now = Utc::now().timestamp();
     let (rates, rates_source) = rates(config);
@@ -1079,29 +1120,12 @@ pub async fn collect(config: &ObserveConfig, snapshot: &Value) -> crate::Result<
     if quota.is_object() {
         merge_quota_history(config, &mut quota, now);
     }
-    let baseline = rates.get("gpt-6-luna");
-    let mut actual = 0.0;
-    let mut luna = 0.0;
-    let mut index_known = baseline.is_some() && win["15"]["coverage_complete"] == true;
-    let mut token_seen = false;
-    for s in &codex_sessions {
-        for sample in s.samples.iter().filter(|s| s.at > now - 900 && s.at <= now) {
-            token_seen = true;
-            match (
-                rates
-                    .get(&sample.model)
-                    .and_then(|r| r.credits(sample.tokens)),
-                baseline.and_then(|r| r.credits(sample.tokens)),
-            ) {
-                (Some(a), Some(b)) if s.family == "codex" => {
-                    actual += a;
-                    luna += b;
-                }
-                _ => index_known = false,
-            }
-        }
-    }
-    let index = (index_known && token_seen && luna > 0.0).then_some(actual / luna);
+    let (index, observed_index) = cost_indices(
+        &codex_sessions,
+        &rates,
+        now,
+        win["15"]["coverage_complete"] == true,
+    );
     let rates_json = rates
         .iter()
         .map(|(id, r)| {
@@ -1111,7 +1135,7 @@ pub async fn collect(config: &ObserveConfig, snapshot: &Value) -> crate::Result<
             )
         })
         .collect::<Map<_, _>>();
-    let efficiency = json!({"agents_total":agents.map(Vec::len),"by_family":by_family,"by_model":by_model,"codex_tiers":tiers,"codex_agents":agents.map(|_|codex),"codex_on_cheapest":agents.map(|_|cheap),"pct_codex_on_cheapest":percent(cheap,codex),"windows":win,"other_provider_windows":{"claude":other_windows},"quota":quota,"ledger_stats":stats,"ledger":stats,"flags":[],"rates_source":rates_source,"rates_per_1m":rates_json,"cost_index_vs_all_luna":index,"cost_index_basis":"measured_tokens_15m","cost_index_note":"Token-weighted configured Codex credit rates, actual last15min. Incomplete windows or unpriced usage make aggregate cost unknown; no own-model price is inferred.","windows_note":"Bounded configured JSONL sources with private persisted offsets/cumulative baselines and48h events. Full totals/cost require a known source start or baseline before each window and complete source enumeration; otherwise null, with observed lower_bound fields separate. Cached input unknown stays unpriced.","scan":{"sessions":sessions.len(),"truncated_files":sessions.iter().filter(|s|s.truncated).count(),"counter_resets":sessions.iter().map(|s|s.resets).sum::<usize>(),"byte_limit":SCAN_BYTES,"limit_reached":budget==0,"source_inventory_complete":sources,"state_persisted":state_saved,"state_byte_limit":STATE_BYTES}});
+    let efficiency = json!({"agents_total":agents.map(Vec::len),"by_family":by_family,"by_model":by_model,"codex_tiers":tiers,"codex_agents":agents.map(|_|codex),"codex_on_cheapest":agents.map(|_|cheap),"pct_codex_on_cheapest":percent(cheap,codex),"windows":win,"other_provider_windows":{"claude":other_windows},"quota":quota,"ledger_stats":stats,"ledger":stats,"flags":[],"rates_source":rates_source,"rates_per_1m":rates_json,"cost_index_vs_all_luna":index,"cost_index_observed_vs_all_luna":observed_index,"cost_index_basis":"measured_tokens_15m","cost_index_note":"Token-weighted configured Codex credit rates, actual last15min. Incomplete windows or unpriced usage make aggregate cost unknown; no own-model price is inferred.","cost_index_observed_note":"Observed sample only: identically scoped actual Codex token deltas versus configured Luna rates, last15min. Partial source coverage is not full fleet spend; unpriced observed usage leaves this ratio unknown too.","windows_note":"Bounded configured JSONL sources with private persisted offsets/cumulative baselines and48h events. Full totals/cost require a known source start or baseline before each window and complete source enumeration; otherwise null, with observed lower_bound fields separate. Cached input unknown stays unpriced.","scan":{"sessions":sessions.len(),"truncated_files":sessions.iter().filter(|s|s.truncated).count(),"counter_resets":sessions.iter().map(|s|s.resets).sum::<usize>(),"byte_limit":SCAN_BYTES,"limit_reached":budget==0,"source_inventory_complete":sources,"state_persisted":state_saved,"state_byte_limit":STATE_BYTES}});
     let mut yield_value = yield_metrics(config, snapshot, &sessions, &rates, now).await;
     apply_yield_coverage(&mut yield_value, &sessions, config, now, all_complete);
     Ok(json!({"token_efficiency":efficiency,"token_yield":yield_value}))
@@ -1418,6 +1442,74 @@ fn apply_yield_coverage(
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    #[test]
+    fn cost_sample_is_priced_independently_of_full_inventory_coverage() {
+        let rates = BTreeMap::from([
+            (
+                "gpt-6-luna".into(),
+                Rate {
+                    input: 1.0,
+                    cached: 0.1,
+                    output: 2.0,
+                },
+            ),
+            (
+                "gpt-6.1-sol".into(),
+                Rate {
+                    input: 4.0,
+                    cached: 0.4,
+                    output: 8.0,
+                },
+            ),
+        ]);
+        let mut session = Session {
+            family: "codex".into(),
+            samples: vec![Sample {
+                at: 9999,
+                model: "gpt-6.1-sol".into(),
+                tokens: Tokens {
+                    input: 100,
+                    cached: Some(50),
+                    output: 10,
+                },
+            }],
+            ..Session::default()
+        };
+        assert_eq!(
+            cost_indices(&[session.clone()], &rates, 10000, true),
+            (Some(4.0), Some(4.0))
+        );
+        assert_eq!(
+            cost_indices(&[session.clone()], &rates, 10000, false),
+            (None, Some(4.0))
+        );
+        session.samples[0].tokens.cached = None;
+        assert_eq!(
+            cost_indices(&[session.clone()], &rates, 10000, true),
+            (None, None)
+        );
+        session.samples[0].tokens.cached = Some(50);
+        session.samples[0].model = "unpriced-own-model".into();
+        assert_eq!(
+            cost_indices(&[session.clone()], &rates, 10000, true),
+            (None, None)
+        );
+        session.samples[0].model = "gpt-6-luna".into();
+        session.samples[0].at = 9100; // excluded exact boundary
+        assert_eq!(
+            cost_indices(&[session.clone()], &rates, 10000, true),
+            (None, None)
+        );
+        session.samples[0].at = 10001; // future usage excluded
+        assert_eq!(
+            cost_indices(&[session.clone()], &rates, 10000, true),
+            (None, None)
+        );
+        session.samples[0].at = 9999;
+        session.family = "claude".into();
+        assert_eq!(cost_indices(&[session], &rates, 10000, true), (None, None));
+        assert_eq!(cost_indices(&[], &rates, 10000, true), (None, None));
+    }
     fn config(root: &Path) -> ObserveConfig {
         serde_json::from_value(json!({"schema_version":1,"node_id":"observed-node","output_dir":root,"projects":[],"nodes":[],"coordination_dir":null,"rollout_manifest":null,"codex_sessions":null,"claude_projects":null,"rates_dir":null,"history_source":null,"admiral_screen":null,"gh_program":null})).expect("configured fixture")
     }
