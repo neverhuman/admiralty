@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "kind": "authorized_role_source_handoff_delivery",
+  "qualified_source": "91eae7345bd1bf0554a073d763ee9fa37f164706",
+  "published_tip_cited": "b47fc42b85e4a0d42a690e7d30ff8f6df4b10c2c",
+  "message_text": "GPC-SOURCE-20261020-0731Z \u2014 Published Git protector and project chat handoff\nRecipients: Admiral; DOPE Captain; Admiralty Captain and existing PR163 integration owner.\nAuthorization: direct human request to coordinate with both roles and carry this feature through the existing integration process. This is a source handoff and ownership request, not approval, merge, deployment or live qualification.\n\nPublished lane: https://github.com/neverhuman/admiralty/tree/codex/git-protector-chat\nPublished tip: b47fc42b85e4a0d42a690e7d30ff8f6df4b10c2c\nQualified code: 91eae7345bd1bf0554a073d763ee9fa37f164706\nQualified tree: fa2de2af571791b116a7a316347dc8f6f7f584e4\nBaseline: 6e97479 (qualified source baseline; use full baseline identity from the source receipt).\nThe published b47fc42 follow-up adds evidence only; it does not replace the qualified code identity.\n\nConcrete behavior:\n- Each Git Flow project has a floating chat bubble, slight transparency at rest and opaque on hover/focus, exact Captain/Admiral destination and project scope.\n- Messages and commands are durable protected-inbox instructions. Delivery, role acknowledgment, instruction execution and task acceptance remain separate. The server does not inject a shell/TUI/provider process.\n- Rust Git health uses bounded cached observations and can inform the configured Captain without a browser/model turn. Missing or incomplete coverage remains unknown; no automatic Git repair, merge, cleanup or history rewrite.\n- Access-scope changes clear private drafts/history; uncertain delivery retries retain the exact UUID/payload; retained health errors and bounded history stay visible.\n\nQualification reported by source owner:\n- Full local validation: 20/20 stages pass; 1,759 Rust tests with 6 existing ignored, 208 dashboard unit tests, 37 browser tests.\n- Native startup/operator-chat checks: 29 pass.\n- Debug cached-health benchmark: 100 evaluations, 64 checkouts/512 commits/65 refs, mean 56.087 ms, zero Git subprocesses. This is a bounded local fixture, not a fleet latency/SLA claim.\n- No hosted approval/merge/deployment/live role polling or live chat round trip is implied by these local results.\n\nPublished read-first artifacts:\n1. docs/plans/admiralty-v2/GIT_PROTECTOR_CHAT_PLAN.md\n2. docs/plans/admiralty-v2/DOPE_GIT_AUDIT_2026-10-20.md\n3. receipts/integration/git-protector-chat-20261020.json\n   SHA-256 09df8a28182ebd148e56c592fb7916798dbad0d63d8c99d0d6728b8feab76ab4\n4. receipts/integration/operator-chat-startup-20261020.json\n5. docs/operators/operator-chat.md and docs/operators/git-health.md\n\nIntegration ownership request:\nKeep existing Admiralty PR163 and its integration owner as the route. Wait for qualified PR163 receiving-main, then that owner sequentially rebases/reconciles this lane with the existing independent codex/git-linear-collapse lane. Both touch GitFlow.tsx/CSS. Preserve layoutGit(repo, revealed, zoom), full orderedCommits/inventory and collapse reveal/anchor behavior together with project chat and health; use the plan's exact conflict checks and rerun combined browser/accessibility validation on the resulting tree. Do not create a competing PR, source writer, takeover, parallel integration or deployment process.\n\nEnrollment/consumption ownership request:\nAfter source/integration qualification, the sole controller/deployment owner enrolls protected actual role mailboxes and explicit integration-ref policy through the existing reviewed startup path. Each actual Captain and Admiral confirms inbox reads in its own existing decision cycle and uses the native CLI to reply to exact message IDs. A configured route or durable delivery is not proof of consumption. Please name the integration owner and enrollment/polling/reply owner and provide their bounded next action.\n\nDOPE custody remains a separate unresolved issue:\nThe Admiral acknowledged DOPE-GIT-AUDIT-20261020-0637Z and recorded SC-DEC-CADENCE-0700-CUSTODY. Existing Root is custody steward; historical author/intent and canonical mutation ownership for the 43-path staged state remain UNKNOWN. Preserve the existing exact index, staged/unstaged patches and untracked/ignored payload. This handoff grants no source/ref/index/Git-administration mutation or cleanup of that canonical tree and changes no scientific qualification.\n\nPlease explicitly acknowledge this message in your documented coordination log using GPC-SOURCE-20261020-0731Z. State that the published source/artifacts were read, identify integration and enrollment/consumption ownership, and distinguish pending qualification from completed effects. DOPE Captain: confirm actual own-cycle consumption rather than queue acceptance. Admiral: route to the existing Admiralty integration owner. Admiralty Captain: preserve the one-PR/one-integrator sequence and the overlapping collapse lane.\n\nNo TUI pointer, native resume, source checkout change, service restart or process effect accompanies this delivery.\n",
+  "source_artifacts": [
+    {
+      "path": "/tmp/gpc-source-handoff-66t_3z99/GPC_SOURCE_HANDOFF.md",
+      "bytes": 4943,
+      "sha256": "d4b6cdc5f2562f932dbacadbb3368bac3926fe5389d620deb533a8291d8eb6aa"
+    },
+    {
+      "path": "/tmp/gpc-source-handoff-66t_3z99/GPC_SOURCE_DELIVERY_RECEIPT.json",
+      "bytes": 2628,
+      "sha256": "6187f6941287eb5627e684875c207acb5bab0bc42ca430e7441306a6d3169a3c"
+    },
+    {
+      "path": "/tmp/gpc-source-handoff-66t_3z99/GPC_SOURCE_SINGLE_ACK_CHECK.json",
+      "bytes": 1202,
+      "sha256": "27890aa494bb0c3f2788b58b257893c22df6fd8a5e1682a2e0a5449b0270c47b"
+    }
+  ],
+  "delivery": {
+    "at_utc": "2026-10-20T07:32:44.596589+00:00",
+    "message_id": "GPC-SOURCE-20261020-0731Z",
+    "published_tip": "b47fc42b85e4a0d42a690e7d30ff8f6df4b10c2c",
+    "qualified_code": "91eae7345bd1bf0554a073d763ee9fa37f164706",
+    "deliveries": [
+      {
+        "recipient": "Admiral",
+        "at_utc": "2026-10-20T07:32:44.080852+00:00",
+        "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_INBOX.md",
+        "lock": "/home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_INBOX.md.lock",
+        "offset_before": 145018,
+        "offset_after": 150109,
+        "appended_bytes": 5091,
+        "appended_sha256": "cef49244dc521594841fe769962697977ade80baa66da0eaac0032a7052cd06c",
+        "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/DOPE_GIT_AUDIT_20261020_vpmrncxl/GPC_SOURCE_HANDOFF.md",
+        "message_sha256": "d4b6cdc5f2562f932dbacadbb3368bac3926fe5389d620deb533a8291d8eb6aa",
+        "message_id": "GPC-SOURCE-20261020-0731Z",
+        "status": "durably_appended_verified_not_yet_acknowledged"
+      },
+      {
+        "recipient": "DOPE Captain",
+        "at_utc": "2026-10-20T07:32:44.249850+00:00",
+        "path": "/home/ubuntu/dope/COMMS.md",
+        "lock": "/home/ubuntu/dope/COMMS.md.lock",
+        "offset_before": 845423,
+        "offset_after": 850519,
+        "appended_bytes": 5096,
+        "appended_sha256": "1358586fda9ab584dc9bdba6d3d7a3596fd940173f14b267c1c88ba8bfccb68c",
+        "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/DOPE_GIT_AUDIT_20261020_vpmrncxl/GPC_SOURCE_HANDOFF.md",
+        "message_sha256": "d4b6cdc5f2562f932dbacadbb3368bac3926fe5389d620deb533a8291d8eb6aa",
+        "message_id": "GPC-SOURCE-20261020-0731Z",
+        "status": "durably_appended_verified_not_yet_acknowledged"
+      },
+      {
+        "recipient": "Admiralty Captain / existing PR163 integration owner",
+        "at_utc": "2026-10-20T07:32:44.394370+00:00",
+        "path": "/home/ubuntu/admiralty-v2-build/COMMS.md",
+        "lock": "/home/ubuntu/admiralty-v2-build/COMMS.md.lock",
+        "offset_before": 362337,
+        "offset_after": 367473,
+        "appended_bytes": 5136,
+        "appended_sha256": "c8c082216234eb9a7663795c1d35b38a4ae0497c8b09fa6938e9ac2092e9579d",
+        "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/DOPE_GIT_AUDIT_20261020_vpmrncxl/GPC_SOURCE_HANDOFF.md",
+        "message_sha256": "d4b6cdc5f2562f932dbacadbb3368bac3926fe5389d620deb533a8291d8eb6aa",
+        "message_id": "GPC-SOURCE-20261020-0731Z",
+        "status": "durably_appended_verified_not_yet_acknowledged"
+      }
+    ],
+    "tui_input_sent": false,
+    "process_or_service_effect": false,
+    "source_or_git_administration_changed": false
+  },
+  "single_ack_check": {
+    "at_utc": "2026-10-20T07:33:37.530954+00:00",
+    "message_id": "GPC-SOURCE-20261020-0731Z",
+    "check_kind": "single_bounded_new_byte_acknowledgment_check",
+    "roles": [
+      {
+        "recipient": "Admiral",
+        "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/super_captain_INBOX.md",
+        "offset_before": 150109,
+        "offset_after": 150109,
+        "new_bytes": 0,
+        "new_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "matching_reply_spans": []
+      },
+      {
+        "recipient": "DOPE Captain",
+        "path": "/home/ubuntu/dope/COMMS.md",
+        "offset_before": 850519,
+        "offset_after": 850519,
+        "new_bytes": 0,
+        "new_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "matching_reply_spans": []
+      },
+      {
+        "recipient": "Admiralty Captain / existing PR163 integration owner",
+        "path": "/home/ubuntu/admiralty-v2-build/COMMS.md",
+        "offset_before": 367473,
+        "offset_after": 367473,
+        "new_bytes": 0,
+        "new_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "matching_reply_spans": []
+      }
+    ],
+    "consumption_inferred_from_delivery": false
+  },
+  "prior_admiral_audit_ack": "See dope-git-audit-20261020.json; final-source notice is separately unacknowledged.",
+  "limits": [
+    "Append/readback proves durable delivery only.",
+    "No final-source acknowledgment, review, merge, deployment, enrollment or captain consumption is established.",
+    "No TUI/process/service/Git administration effects."
+  ]
+}
