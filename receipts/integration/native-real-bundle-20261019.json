@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-20T01:20:01.310177+00:00",
+  "source_commit": "e9695c38880107430d378d783e06b67980762f35",
+  "scope": "current-host macOS arm64 real release-profile Stage/Archive/private-version Install/reopen; no Node or Python on child PATH",
+  "files": 42,
+  "payload_bytes": 34419459,
+  "archive_bytes": 14298579,
+  "archive_sha256": "25d9ef1042a8d64287baaa0d56f75c407d13beed6e94b46f08ea6f3693a935f9",
+  "manifest_raw_sha256": "4d7bb1bbbe17e0529e6c8b72c68918076316c9bf1cb0188d73540325a2cd2aeb",
+  "explicit_allowlist_sha256": "14d78c25f340116c66fcfa933a657eba53b96bb81c71d1af8536fa7dfe1384db",
+  "installed_demo_http": [
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 539,
+      "elapsed_ms": 0.9,
+      "sha256": "f595edbe65952fb41c1559502019996e89ba57d8fba2d451834365663faa25b8"
+    },
+    {
+      "path": "/healthz",
+      "status": 200,
+      "bytes": 68,
+      "elapsed_ms": 0.4,
+      "sha256": "d07f5621aa0a3e34b101c6862dff8614f5293cbdb84d1d4209101db452d5320f"
+    },
+    {
+      "path": "/v2/fleet",
+      "status": 200,
+      "bytes": 3216,
+      "elapsed_ms": 0.6,
+      "sha256": "e6436da1894b912a03d8e32d0be7ad506749846aa4f529823de8d9237b84933f"
+    },
+    {
+      "path": "/v2/views",
+      "status": 200,
+      "bytes": 16325,
+      "elapsed_ms": 0.9,
+      "sha256": "336cdbefe7138ab8238da0b0b007f1d4ec44fedd52cf83321cff2cc3182535e2"
+    }
+  ],
+  "installed_demo_exit": 0,
+  "private_demo_cleanup_verified": true,
+  "all_installed_file_hashes_and_modes_verified": true,
+  "source_files": {
+    "crates/admiralty-cli/src/native_package.rs": "e095a51b6fef2ec65c27eef0463072de9eafb8fcb39d15adfe9cfa0a159bb7cf",
+    "crates/admiralty-cli/tests/native_archive_cli.rs": "58920acd52fd7c46d76dfd29065874737f0b025d8bd08d1a77a46f52a6d6d8e6",
+    "crates/admiralty-cli/tests/native_install_cli.rs": "adbec70950489f7fb60d3a89df1a59769de7b480d99296ce6f9a996a5d2e99a6",
+    "Cargo.lock": "fa9db54ff42b2eeb011e5b328e856329073ab97c3953d678bdf6d2aed31606bc",
+    "pnpm-lock.yaml": "0e118257c45b78246c250474389d088670bf7354dbbad7ed76fcb1941aa1e2c9"
+  },
+  "original_probe_failure": {
+    "endpoint": "/v2/health",
+    "result": "404 due to incorrect private probe path; actual endpoint /healthz; original records and owned scratch preserved",
+    "source_repair_needed": false
+  },
+  "not_qualified": [
+    "clean machine",
+    "Linux installer",
+    "Windows",
+    "global/service installation",
+    "activation/upgrade with active jobs",
+    "publisher authentication/signing",
+    "SBOM/third party notice closure",
+    "managed coding execution",
+    "active SSE demo shutdown",
+    "full major release"
+  ],
+  "native_execution_qualified": false,
+  "full_release_qualified": false,
+  "targeted_tests": {
+    "native_package": 12,
+    "native_archive_cli": 6,
+    "native_install_cli": 8,
+    "failed": 0,
+    "new_cases": 4,
+    "legacy_bundle_cases_retained": true
+  },
+  "commands": [
+    {
+      "label": "stage",
+      "exit_code": 0,
+      "duration_ms": 362.7,
+      "stdout_sha256": "b48290b0a1e9e839765a50e8ab90f7f5a59e13e24ba206dee6dbb6e52c4ef81a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "archive",
+      "exit_code": 0,
+      "duration_ms": 1080.4,
+      "stdout_sha256": "0c5c23cbc69b58874a6d73d943667f4bd029e72e43b6a29832aa4c636c76b800",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "install",
+      "exit_code": 0,
+      "duration_ms": 711.7,
+      "stdout_sha256": "874e459bdb3f8575283c67563a15843408b9189336a1183f747ebc86ad45e7e3",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "install-no-replace",
+      "exit_code": 1,
+      "duration_ms": 5.5,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "0e214860d89ce4273130997f022faf3dcd8e3e8dea526a4eb290f07acfa71e6a"
+    },
+    {
+      "label": "install-tamper",
+      "exit_code": 1,
+      "duration_ms": 28.3,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e8caa0c2507802d238fe379d61c176c2f4fa4326eb811bbdd9c8851ed7c75013"
+    },
+    {
+      "label": "installed-doctor",
+      "exit_code": 0,
+      "duration_ms": 214.9,
+      "stdout_sha256": "0dca08638743ea33a07200c1ba4256b150d9dd5b25f819ee62e7ef3b5d64f24a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "installed-demo-snapshot",
+      "exit_code": 0,
+      "duration_ms": 24.2,
+      "stdout_sha256": "486243a68c47b777f4be982693f9ecc58aaea7d3a62bc07a18aabcb52949a86a",
+      "stderr_sha256": "ef1f8ee1378ef84641a7d4fb7b61cd024d9247d11d58bff7c7b0bb5caab18afb"
+    },
+    {
+      "label": "installed-admiraltyd-help",
+      "exit_code": 0,
+      "duration_ms": 144.8,
+      "stdout_sha256": "82c736fcabddfd7fee9d1dc61404bdd08c38ed93a83ee43c964b59ec9ff69d3b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "installed-admiralty-observe-help",
+      "exit_code": 0,
+      "duration_ms": 102.8,
+      "stdout_sha256": "3331645e400337f2e6c2ea1a0db57665bb905ac4d563bf8ffb4333493cae28fc",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "private_qualification_report_sha256": "6425ba5138199ef7cc11214bfcc06acb0a3745f315939be406919b90b54d9a93",
+  "remaining_qualification_notes": "Same-host local synthetic API/static asset exercise. Does not establish clean-machine install, runtime observer production feed, active-stream shutdown, supported-target distribution or full P30 acceptance."
+}
