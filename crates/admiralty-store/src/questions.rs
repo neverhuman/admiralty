@@ -389,6 +389,12 @@ fn chain_digest(previous: &str, sequence: u64, event_digest: &str, scope_digest:
 pub fn initialize(connection: &Connection) -> Result<()> {
     connection.execute_batch("PRAGMA foreign_keys=ON;")?;
     let tx = Transaction::new_unchecked(connection, TransactionBehavior::Immediate)?;
+    initialize_in_transaction(&tx)?;
+    tx.commit()?;
+    Ok(())
+}
+
+pub(crate) fn initialize_in_transaction(tx: &Transaction<'_>) -> Result<()> {
     tx.execute_batch(
         "CREATE TABLE IF NOT EXISTS durable_questions (
              question_id TEXT PRIMARY KEY CHECK(length(CAST(question_id AS BLOB)) BETWEEN 1 AND 128),
@@ -441,7 +447,6 @@ pub fn initialize(connection: &Connection) -> Result<()> {
              UNIQUE(producer_id,incarnation,source_sequence)
          );",
     )?;
-    tx.commit()?;
     Ok(())
 }
 

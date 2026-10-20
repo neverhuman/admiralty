@@ -526,11 +526,9 @@ fn bounds(connection: &Connection) -> Result<(i64, i64, i64)> {
     }
     Ok((journals, commands, bytes))
 }
-pub(crate) fn initialize(connection: &Connection) -> Result<()> {
-    let tx = Transaction::new_unchecked(connection, TransactionBehavior::Immediate)?;
+pub(crate) fn initialize_in_transaction(tx: &Transaction<'_>) -> Result<()> {
     tx.execute_batch(include_str!("../migrations/0005_attention_journal.sql"))?;
-    tx.commit()?;
-    validate_all(connection)
+    validate_all(tx)
 }
 struct DefinitionRow {
     definition: AttentionDefinition,
