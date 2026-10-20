@@ -58,6 +58,7 @@ pub enum InterfaceBindingStatus {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct TaskInterfaceContractV2 {
+    #[schemars(extend("const" = INTERFACE_COMPAT_SCHEMA_VERSION))]
     pub schema_version: u32,
     pub interface_id: InterfaceId,
     pub project_id: ProjectId,

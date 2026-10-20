@@ -36,6 +36,11 @@ const specifications = [
   ['duplicate-query', 'DuplicateQuery'],
   ['duplicate-page', 'DuplicatePage'],
   ['coordination-envelope-v2', 'CoordinationEnvelopeV2'],
+  ['task-attempt-outcome-ledger', 'TaskAttemptOutcomeLedger'],
+  ['attempt-outcome-projection', 'AttemptOutcomeProjection'],
+  ['execution-requirements-v2', 'ExecutionRequirementsV2'],
+  ['execution-requirements-capsule-binding', 'ExecutionRequirementsCapsuleBinding'],
+  ['task-interface-contract-v2', 'TaskInterfaceContractV2'],
 ];
 const check = process.argv.length === 3 && process.argv[2] === '--check';
 if (process.argv.length > 2 && !check) {
@@ -94,7 +99,13 @@ function runtimeSchema(value) {
   }
   if (result.properties?.schema_version) {
     const field = result.properties.schema_version;
-    if (field.type !== 'integer' || (field.const !== undefined && field.const !== supportedSchemaVersion)) {
+    // All five added Rust roots (including the V2-named models) and their
+    // versioned nested records currently use v1. An explicit Rust const must
+    // agree; a future version needs its own reviewed mapping, never coercion.
+    if (field.type !== 'integer' || (field.const !== undefined && field.const !== supportedSchemaVersion)
+      || (field.enum !== undefined && stable(field.enum) !== stable([supportedSchemaVersion]))
+      || (field.minimum !== undefined && field.minimum > supportedSchemaVersion)
+      || (field.maximum !== undefined && field.maximum < supportedSchemaVersion)) {
       throw new Error('schema_version must remain compatible with the explicit supported runtime version');
     }
     field.const = supportedSchemaVersion;
@@ -145,6 +156,16 @@ async function generate() {
     const schema = JSON.parse(sourceBytes.toString('utf8'));
     if (schema.title !== title) throw new Error(`${stem}: expected root title ${title}`);
     assertLocalReferences(schema);
+    if (title === 'ExecutionRequirementsV2') {
+      // placement::DecimalU64 deserializes canonical u64 strings, but its
+      // derived schema is only String. Reuse the existing Rust-owned exact
+      // interfaces::DecimalU64 definition; never duplicate its range regex.
+      const canonical = definitions.get('DecimalU64');
+      if (!canonical || stable(schema.$defs?.DecimalU64) !== stable({ type: 'string' })) {
+        throw new Error('ExecutionRequirementsV2: review changed placement DecimalU64 schema before exporting');
+      }
+      schema.$defs.DecimalU64 = JSON.parse(canonical);
+    }
     // A root type also appears as a nested definition in event schemas. Compare
     // both forms before choosing one canonical public export for that name.
     const rootDefinition = Object.fromEntries(Object.entries(schema).filter(([key]) => !['$schema', '$defs', 'title'].includes(key)));

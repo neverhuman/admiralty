@@ -78,6 +78,7 @@ pub struct ExecutionRunnerRequirements {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct ExecutionRequirementsV2 {
+    #[schemars(extend("const" = EXECUTION_REQUIREMENTS_SCHEMA_VERSION))]
     pub schema_version: u32,
     pub project_id: ProjectId,
     pub root_id: RootId,
@@ -97,6 +98,7 @@ pub struct ExecutionRequirementsV2 {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct ExecutionRequirementsCapsuleBinding {
+    #[schemars(extend("const" = EXECUTION_REQUIREMENTS_SCHEMA_VERSION))]
     pub schema_version: u32,
     pub task_id: TaskId,
     pub contract_revision: u32,

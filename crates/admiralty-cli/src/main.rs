@@ -41,7 +41,7 @@ use std::{
 
 type CliResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 const MAX_JSON_BYTES: u64 = 1024 * 1024;
-const SCHEMA_FILES: [&str; 23] = [
+const SCHEMA_FILES: [&str; 28] = [
     "task-contract.schema.json",
     "coordination-message.schema.json",
     "domain-event.schema.json",
@@ -65,6 +65,11 @@ const SCHEMA_FILES: [&str; 23] = [
     "duplicate-query.schema.json",
     "duplicate-page.schema.json",
     "coordination-envelope-v2.schema.json",
+    "task-attempt-outcome-ledger.schema.json",
+    "attempt-outcome-projection.schema.json",
+    "execution-requirements-v2.schema.json",
+    "execution-requirements-capsule-binding.schema.json",
+    "task-interface-contract-v2.schema.json",
 ];
 
 #[derive(Parser)]
@@ -551,6 +556,21 @@ fn schema_documents() -> CliResult<Vec<(&'static str, Vec<u8>)>> {
         serde_json::to_value(schemars::schema_for!(DuplicatePage))?,
         serde_json::to_value(schemars::schema_for!(
             admiralty_core::coordination::envelope::CoordinationEnvelopeV2
+        ))?,
+        serde_json::to_value(schemars::schema_for!(
+            admiralty_core::attempt_outcome::TaskAttemptOutcomeLedger
+        ))?,
+        serde_json::to_value(schemars::schema_for!(
+            admiralty_core::attempt_outcome::AttemptOutcomeProjection
+        ))?,
+        serde_json::to_value(schemars::schema_for!(
+            admiralty_core::execution_requirements::ExecutionRequirementsV2
+        ))?,
+        serde_json::to_value(schemars::schema_for!(
+            admiralty_core::execution_requirements::ExecutionRequirementsCapsuleBinding
+        ))?,
+        serde_json::to_value(schemars::schema_for!(
+            admiralty_core::interface_compatibility::TaskInterfaceContractV2
         ))?,
     ];
     SCHEMA_FILES
@@ -1284,6 +1304,29 @@ mod tests {
             "CoordinationEnvelopeV2",
             true,
         )?;
+        public_contract_fixture::<admiralty_core::attempt_outcome::TaskAttemptOutcomeLedger>(
+            &fixtures,
+            "TaskAttemptOutcomeLedger",
+            true,
+        )?;
+        public_contract_fixture::<admiralty_core::attempt_outcome::AttemptOutcomeProjection>(
+            &fixtures,
+            "AttemptOutcomeProjection",
+            true,
+        )?;
+        public_contract_fixture::<admiralty_core::execution_requirements::ExecutionRequirementsV2>(
+            &fixtures,
+            "ExecutionRequirementsV2",
+            true,
+        )?;
+        public_contract_fixture::<
+            admiralty_core::execution_requirements::ExecutionRequirementsCapsuleBinding,
+        >(&fixtures, "ExecutionRequirementsCapsuleBinding", true)?;
+        public_contract_fixture::<admiralty_core::interface_compatibility::TaskInterfaceContractV2>(
+            &fixtures,
+            "TaskInterfaceContractV2",
+            true,
+        )?;
         admiralty_core::coordination::envelope::CoordinationEnvelopeV2::parse(
             &serde_json::to_vec(&fixtures["CoordinationEnvelopeV2"])?,
         )?;
@@ -1299,6 +1342,117 @@ mod tests {
             "provider_claim"
         );
         assert!(fixtures["VerificationReceipt"]["checks"][0]["exit_code"].is_null());
+        Ok(())
+    }
+
+    #[test]
+    fn public_attempt_execution_interface_fixtures_require_domain_checks() -> CliResult<()> {
+        use admiralty_core::{
+            attempt_outcome::{
+                AttemptOutcomeProjection, TaskAttemptOutcomeLedger, TaskSchedulingDimension,
+            },
+            execution_requirements::{
+                ExecutionRequirementsCapsuleBinding, ExecutionRequirementsV2,
+            },
+            interface_compatibility::{ConsumerCompatibilityPolicy, TaskInterfaceContractV2},
+        };
+        let fixtures: Value = serde_json::from_str(include_str!(
+            "../../../packages/contracts/fixtures/public-roots.json"
+        ))?;
+        let contract: TaskContract =
+            serde_json::from_value(fixtures["Workplan"]["tasks"][0].clone())?;
+        let ledger: TaskAttemptOutcomeLedger =
+            serde_json::from_value(fixtures["TaskAttemptOutcomeLedger"].clone())?;
+        ledger.validate()?;
+        assert_eq!(ledger.current_contract_digest, content_digest(&contract)?);
+        let projection: AttemptOutcomeProjection =
+            serde_json::from_value(fixtures["AttemptOutcomeProjection"].clone())?;
+        for ledger in projection.task_ledgers.values() {
+            ledger.validate()?;
+        }
+        let requirements: ExecutionRequirementsV2 =
+            serde_json::from_value(fixtures["ExecutionRequirementsV2"].clone())?;
+        requirements.validate_against_contract(&contract)?;
+        let binding: ExecutionRequirementsCapsuleBinding =
+            serde_json::from_value(fixtures["ExecutionRequirementsCapsuleBinding"].clone())?;
+        assert_eq!(binding, requirements.compile_capsule_binding(&contract)?);
+        let interface: TaskInterfaceContractV2 =
+            serde_json::from_value(fixtures["TaskInterfaceContractV2"].clone())?;
+        interface.validate()?;
+
+        // These are deserializable claims. Only domain checks/joined bindings
+        // reject them; structural guards cannot confer execution or acceptance.
+        let mut invalid = ledger;
+        invalid.scheduling = TaskSchedulingDimension::Running;
+        invalid.active_attempt_id = None;
+        assert!(invalid.validate().is_err());
+        let mut invalid = projection;
+        invalid
+            .task_ledgers
+            .values_mut()
+            .next()
+            .expect("fixture ledger")
+            .scheduling = TaskSchedulingDimension::Running;
+        assert!(
+            invalid
+                .task_ledgers
+                .values()
+                .next()
+                .expect("fixture ledger")
+                .validate()
+                .is_err()
+        );
+        let mut invalid = requirements.clone();
+        invalid.deadline_utc = "2026-02-30T00:00:00Z".into();
+        assert!(invalid.validate().is_err());
+        let mut invalid = binding;
+        invalid.requirements_digest = format!("sha256:{}", "b".repeat(64));
+        assert_ne!(invalid, requirements.compile_capsule_binding(&contract)?);
+        let mut invalid = interface;
+        invalid.compatibility_policy = ConsumerCompatibilityPolicy::ExactProducerRevision {
+            required_producer_revision: 2,
+        };
+        assert!(invalid.validate().is_err());
+
+        let cases: Vec<Value> = serde_json::from_str(include_str!(
+            "../../../packages/contracts/fixtures/decimal-u64.json"
+        ))?;
+        for case in cases {
+            let value = case["value"].clone();
+            let accepted = case["accepted"].as_bool().expect("fixture boolean");
+            let mut execution = fixtures["ExecutionRequirementsV2"].clone();
+            execution["runner"]["budget_requirement"]["amount"] = value.clone();
+            let result = serde_json::from_value::<ExecutionRequirementsV2>(execution);
+            assert_eq!(result.is_ok(), accepted, "execution budget wire: {value}");
+            if let Ok(parsed) = result {
+                assert_eq!(
+                    serde_json::to_value(parsed)?["runner"]["budget_requirement"]["amount"],
+                    value
+                );
+            }
+            for superseded in [false, true] {
+                let mut interface = fixtures["TaskInterfaceContractV2"].clone();
+                if superseded {
+                    interface["status"] =
+                        json!({"state":"superseded", "superseded_by_interface_revision":value});
+                } else {
+                    interface["interface_revision"] = value.clone();
+                }
+                let result = serde_json::from_value::<TaskInterfaceContractV2>(interface);
+                assert_eq!(result.is_ok(), accepted, "interface revision wire: {value}");
+                if let Ok(parsed) = result {
+                    let roundtrip = serde_json::to_value(parsed)?;
+                    assert_eq!(
+                        if superseded {
+                            &roundtrip["status"]["superseded_by_interface_revision"]
+                        } else {
+                            &roundtrip["interface_revision"]
+                        },
+                        &value
+                    );
+                }
+            }
+        }
         Ok(())
     }
 
