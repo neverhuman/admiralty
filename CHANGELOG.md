@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Refresh community onboarding with a directly usable synthetic-demo link,
+  current local CI/tool prerequisites, verified private vulnerability reporting,
+  platform limits and evidence-based major-release gates. Production recordings
+  and the lossless WebP/GIF distinction remain explicit.
+
 - Preserve the exact floating-point values of source decimals through JSON
   parsing and detail projection; independent bit-level regression retains the
   original one-ULP failure. No dependency versions or schemas change.
