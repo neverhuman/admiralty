@@ -172,7 +172,7 @@ fn lock(directory: &Path) -> Result<File> {
     {
         use rustix::fs::{Mode, OFlags, open};
         let fd = open(
-            &directory.join(".chat.lock"),
+            directory.join(".chat.lock"),
             OFlags::RDWR | OFlags::CREATE | OFlags::NOFOLLOW | OFlags::CLOEXEC,
             Mode::RUSR | Mode::WUSR,
         )?;
@@ -628,10 +628,7 @@ pub fn router(
     if let Some(path) = status_file {
         let weak = Arc::downgrade(&service);
         tokio::spawn(async move {
-            loop {
-                let Some(service) = weak.upgrade() else {
-                    break;
-                };
+            while let Some(service) = weak.upgrade() {
                 let path = path.clone();
                 let _ = tokio::task::spawn_blocking(move || {
                     if refresh(&service,&path).is_err() && let Ok(mut cache) = service.health.write() { cache["error"] = json!("Git health source or captain notification unavailable; retained reports may be stale"); cache["stale"] = json!(true); }
