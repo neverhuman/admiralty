@@ -62,7 +62,7 @@ fn pins_luna_medium_canonical_directory_and_propagates_provider_status() {
     let original_config = b"model = 'gpt-6.1-sol'\nmodel_reasoning_effort = 'xhigh'\n";
     fs::write(&config, original_config).expect("write hostile config fixture");
 
-    let output = run_launcher(&[target.to_str().unwrap()], root, "23");
+    let output = run_launcher(&[target.to_str().expect("UTF-8 target fixture")], root, "23");
     assert_eq!(output.status.code(), Some(23));
     let recorded = fs::read(root.join("argv.bin")).expect("mock recorded argv");
     let argv: Vec<&[u8]> = recorded
@@ -99,7 +99,7 @@ fn rejects_missing_invalid_and_override_arguments_before_mock_invocation() {
     let invalid = root.join("missing directory");
     for args in [
         vec![],
-        vec![invalid.to_str().unwrap()],
+        vec![invalid.to_str().expect("UTF-8 invalid directory fixture")],
         vec!["--model", "gpt-6.1-sol"],
         vec![".", "--"],
         vec!["--resume"],
