@@ -366,6 +366,12 @@ describe("built live views against the real Rust server", () => {
     await browser.evaluate(`document.querySelector('.git-band:first-child .git-commit-range').click()`);
     await browser.waitForSelector('.git-band:first-child .git-commit-range[aria-expanded="true"]');
     expect(await browser.evaluate(`document.querySelector('.git-band:nth-child(2) .git-commit-range').getAttribute('aria-expanded')`)).toBe("false");
+    await browser.clickButtonByText("Inventory");
+    await browser.evaluate(`Array.from(document.querySelectorAll('.git-inventory tbody tr')).filter(row => row.textContent.includes('Harbor'))[1].querySelector('button').click()`);
+    await browser.waitForSelector('.lv-inspector');
+    await browser.clickButtonByText("Graph");
+    await browser.waitForSelector('.git-band:first-child .git-canvas[aria-label*="0 collapsed ranges"]');
+    expect(await browser.evaluate(`document.querySelector('.git-band:nth-child(2) .git-canvas').getAttribute('aria-label')`)).toContain("1 collapsed ranges");
     server.writeLegacySnapshot(sourceFixture());
   });
   it("preserves Git offsets and follows new commits after Inventory", async () => {
