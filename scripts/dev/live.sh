@@ -34,31 +34,10 @@ fi
 run() {
   if command -v rtk >/dev/null 2>&1; then rtk proxy "$@"; else "$@"; fi
 }
-# Create a private preview state directory; never relax an existing directory.
-run python3 - "$task_state" <<'PY'
-import os, pathlib, secrets, stat, sys
-path = pathlib.Path(sys.argv[1]).expanduser()
-if not path.is_absolute() or path.is_symlink():
-    raise SystemExit('Preview state directory must be absolute and not a symlink')
-path.mkdir(mode=0o700, parents=True, exist_ok=True)
-info = path.stat()
-if info.st_uid != os.getuid() or info.st_mode & 0o077:
-    raise SystemExit('Existing preview state directory must be owned and mode 0700')
-token = path / 'dashboard-token'
-try:
-    fd = os.open(token, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_NOFOLLOW', 0), 0o600)
-except FileExistsError:
-    info = token.lstat()
-    if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
-        raise SystemExit('Existing dashboard token must be a private owned regular file')
-else:
-    with os.fdopen(fd, 'w') as stream:
-        stream.write(secrets.token_urlsafe(48))
-        stream.flush()
-        os.fsync(stream.fileno())
-print('Dashboard access token is in', token, '(value not displayed)')
-PY
 export CARGO_TARGET_DIR="${ADMIRALTY_TARGET_DIR:-$task_root/target}"
+# Create (or verify) a private 0700 preview state directory with a 0600 token.
+# Existing state is never relaxed or rewritten; the token value is never printed.
+run cargo run -p admiralty-cli --locked --quiet -- state init --dir "$task_state"
 run pnpm --dir apps/dashboard build
 task_args=(--database "$task_state/native.sqlite" --token-file "$task_state/dashboard-token"
   --listen "${ADMIRALTY_LIVE_LISTEN:-127.0.0.1:18891}" --assets "$task_root/apps/dashboard/dist"

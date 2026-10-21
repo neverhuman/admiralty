@@ -1,3 +1,4 @@
+# 2026-10-21: four retired paths removed (Rust release evidence preflight; retired static server/snapshot).
 # Scoped amendment: exactly two retained-audit paths approved 2026-10-21, PR166 comment6307405031.
 # Existing 40-file exception ceiling, SC-DEC-186J (2026-10-19).
 # Source d858a9a292a9e458d5851531e1e548f817908520.
@@ -5,9 +6,7 @@
 dashboard/collector.py
 dashboard/extras.py
 dashboard/globalres.py
-dashboard/make_snapshot.py
 dashboard/rollout.py
-dashboard/serve.py
 dashboard/token_yield.py
 scripts/check/canary-smoke.py
 scripts/check/excursions-smoke.py
@@ -21,8 +20,6 @@ tests/legacy/test_rollout_live_workers.py
 tests/legacy/test_rollout_observe.py
 tests/legacy/test_rollout_packets.py
 tests/legacy/test_stage_evidence_regressions.py
-tests/qualification/release_evidence.py
-tests/qualification/test_release_evidence.py
 tests/test_sc_audit_ci_queue.py
 tests/test_sc_audit_dope.py
 tests/test_sc_audit_gpu.py

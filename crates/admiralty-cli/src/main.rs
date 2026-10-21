@@ -8,6 +8,9 @@ pub mod native_package;
 pub mod native_recovery;
 #[cfg(unix)]
 mod node;
+mod ops;
+mod release_activate;
+mod release_evidence;
 pub mod work_order_intake;
 mod workplans;
 use admiralty_core::{
@@ -169,6 +172,13 @@ enum Command {
         #[command(subcommand)]
         command: ReleaseCommand,
     },
+    /// Token-budgeted fleet brief from an observer status.json for agents. Read-only; no model turns.
+    Brief(ops::BriefArgs),
+    /// Create or verify private live-console state (0700 directory, 0600 bearer token).
+    State {
+        #[command(subcommand)]
+        command: ops::StateCommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -311,6 +321,36 @@ fn bounded_absolute_path(value: &str) -> Result<PathBuf, String> {
 
 #[derive(Subcommand)]
 enum ReleaseCommand {
+    /// Read-only release evidence preflight (exit 0 ready for independent review, 1 incomplete, 2 invalid). Never deploys or accepts.
+    Evidence {
+        /// Bounded (1 MiB) JSON manifest; duplicate keys are invalid.
+        #[arg(long)]
+        manifest: PathBuf,
+        /// Evidence files are resolved under this root without following symlinks.
+        #[arg(long)]
+        evidence_root: PathBuf,
+        /// Full 40- or 64-hex source revision every passed gate must bind.
+        #[arg(long)]
+        expected_revision: String,
+    },
+    /// Atomically point ROOT/current at an installed ROOT/versions/NAME and record ROOT/previous. Never controls services.
+    Activate {
+        /// Owned release root containing versions/ (no group/other write).
+        #[arg(long, value_parser = bounded_absolute_path)]
+        root: PathBuf,
+        #[arg(long)]
+        version: String,
+    },
+    /// Atomically switch ROOT/current back to ROOT/previous. Never controls services.
+    Rollback {
+        #[arg(long, value_parser = bounded_absolute_path)]
+        root: PathBuf,
+    },
+    /// Show current, previous and installed versions under a release root.
+    Status {
+        #[arg(long, value_parser = bounded_absolute_path)]
+        root: PathBuf,
+    },
     /// Install integrity-pinned bytes into one new private version directory; no services or activation.
     Install {
         #[arg(long, value_parser = bounded_absolute_path)]
@@ -843,6 +883,34 @@ async fn run(cli: Cli) -> CliResult<()> {
                 )?)?;
             }
         },
+        Command::Release {
+            command:
+                ReleaseCommand::Evidence {
+                    manifest,
+                    evidence_root,
+                    expected_revision,
+                },
+        } => {
+            let status = release_evidence::run(&manifest, &evidence_root, &expected_revision);
+            if status != 0 {
+                std::process::exit(i32::from(status));
+            }
+        }
+        Command::Release {
+            command: ReleaseCommand::Activate { root, version },
+        } => print_json(release_activate::activate(&root, &version)?)?,
+        Command::Release {
+            command: ReleaseCommand::Rollback { root },
+        } => print_json(release_activate::rollback(&root)?)?,
+        Command::Release {
+            command: ReleaseCommand::Status { root },
+        } => print_json(release_activate::status(&root)?)?,
+        Command::Brief(args) => {
+            println!("{}", ops::run_brief(args)?);
+        }
+        Command::State { command } => {
+            println!("{}", ops::run_state(command)?);
+        }
         Command::Doctor => {
             print_json(json!({
                 "version": env!("CARGO_PKG_VERSION"), "platform": std::env::consts::OS,
