@@ -21,6 +21,8 @@ use std::{
 use tokio::sync::{OnceCell, watch};
 
 const MAX_FRAME: usize = 8 * 1024 * 1024;
+/// Producer source read bound; the published frame keeps its own MAX_FRAME.
+const MAX_SOURCE: u64 = crate::legacy::MAX_STATUS_BYTES;
 #[derive(Clone)]
 struct Cut {
     snapshot: ViewsSnapshot,
@@ -29,6 +31,10 @@ struct Cut {
 
 pub(crate) struct ViewsHub {
     current: watch::Sender<Option<Arc<Cut>>>,
+    /// Native cursor plus producer file identity of the last projected input.
+    /// The 2-second updater skips re-reading and re-hashing an unchanged
+    /// multi-megabyte source; any file replacement or store change re-projects.
+    last_input: std::sync::Mutex<Option<String>>,
     initialized: watch::Sender<bool>,
     started: OnceCell<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
     #[cfg(test)]
@@ -43,6 +49,7 @@ impl ViewsHub {
     pub(crate) fn new() -> Arc<Self> {
         Arc::new(Self {
             current: watch::channel(None).0,
+            last_input: std::sync::Mutex::new(None),
             initialized: watch::channel(false).0,
             started: OnceCell::new(),
             #[cfg(test)]
@@ -143,6 +150,12 @@ async fn update(hub: &ViewsHub, store: &Store, config: &ServerConfig) {
         .lock()
         .expect("test gate mutex")
         .take();
+    let previous_input = hub
+        .last_input
+        .lock()
+        .ok()
+        .and_then(|last| last.clone())
+        .filter(|_| hub.current.borrow().is_some());
     let result = tokio::task::spawn_blocking(move || {
         #[cfg(test)]
         if let Some(gate) = gate {
@@ -161,19 +174,43 @@ async fn update(hub: &ViewsHub, store: &Store, config: &ServerConfig) {
         {
             return Err("Demo scope changed");
         }
+        let input = format!(
+            "{:?}|{}",
+            config
+                .legacy
+                .as_ref()
+                .map(|c| crate::legacy::source_identity(&c.status_file)),
+            serde_json::to_string(&native.cursor).unwrap_or_default()
+        );
+        if previous_input.as_deref() == Some(input.as_str()) {
+            return Ok(None);
+        }
         let legacy = config.legacy.as_ref().map(|c| {
-            crate::legacy::read_bounded(&c.status_file, MAX_FRAME as u64)
+            crate::legacy::read_bounded(&c.status_file, MAX_SOURCE)
                 .ok()
                 .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
                 .filter(|v| v["projects"].is_object() && v["generated_utc"].is_string())
         });
-        Ok((native, legacy, config.simulated))
+        Ok(Some((native, legacy, config.simulated, input)))
     })
     .await;
-    let Ok(Ok((native, legacy, simulated))) = result else {
-        // In particular, never retain private state after a demo scope violation.
-        hub.current.send_replace(None);
-        return;
+    let (native, legacy, simulated) = match result {
+        // Unchanged producer file and native cursor: the published cut stands.
+        Ok(Ok(None)) => return,
+        Ok(Ok(Some((native, legacy, simulated, input)))) => {
+            if let Ok(mut last) = hub.last_input.lock() {
+                *last = Some(input);
+            }
+            (native, legacy, simulated)
+        }
+        _ => {
+            // In particular, never retain private state after a demo scope violation.
+            if let Ok(mut last) = hub.last_input.lock() {
+                *last = None;
+            }
+            hub.current.send_replace(None);
+            return;
+        }
     };
     let previous = hub.current.borrow().clone();
     let producer_failed = matches!(legacy, Some(None));

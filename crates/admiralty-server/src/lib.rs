@@ -114,7 +114,7 @@ fn authorized(state: &AppState, headers: &HeaderMap) -> Result<(), ApiError> {
         .get(header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "));
-    if provided != Some(expected) {
+    if !provided.is_some_and(|p| http_bytes::constant_time_eq(p.as_bytes(), expected.as_bytes())) {
         return Err(error(
             StatusCode::UNAUTHORIZED,
             "bearer authentication required",
@@ -602,10 +602,163 @@ async fn legacy_snapshot_view(
         .acquire()
         .await
         .map_err(|_| error(StatusCode::SERVICE_UNAVAILABLE, "read capacity unavailable"))?;
-    let response =
+    let encoded =
         legacy::snapshot_encoded(config, http_bytes::accepts_gzip(&headers), view).await?;
+    let mut response = if http_bytes::not_modified(&headers, &encoded.etag) {
+        (
+            StatusCode::NOT_MODIFIED,
+            [
+                (header::VARY, "Accept-Encoding"),
+                (header::CACHE_CONTROL, "no-store"),
+            ],
+        )
+            .into_response()
+    } else {
+        http_bytes::encoded_response("application/json", encoded.body.clone(), encoded.gzip)
+    };
+    let headers = response.headers_mut();
+    if let Ok(etag) = encoded.etag.parse() {
+        headers.insert(header::ETAG, etag);
+    }
+    headers.insert(
+        "x-admiralty-snapshot-cache",
+        header::HeaderValue::from_static(if encoded.cache_hit { "hit" } else { "miss" }),
+    );
     Ok(http_bytes::timed(response, "snapshot", started.elapsed()))
 }
+#[derive(Deserialize)]
+struct BriefQuery {
+    budget: Option<usize>,
+    project: Option<String>,
+    format: Option<String>,
+}
+
+/// Token-budgeted fleet brief for agents, derived from the same bounded
+/// producer snapshot as the detail view. Same read scope as `/v1/legacy`.
+async fn legacy_brief(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<BriefQuery>,
+) -> Result<Response, ApiError> {
+    use admiralty_core::fleet_brief::{BriefOptions, brief};
+    let started = std::time::Instant::now();
+    let config = legacy_config(&state, &headers)?;
+    let json = match query.format.as_deref() {
+        None | Some("text") => false,
+        Some("json") => true,
+        Some(_) => {
+            return Err(error(
+                StatusCode::BAD_REQUEST,
+                "format must be text or json",
+            ));
+        }
+    };
+    let project = match query.project {
+        Some(p)
+            if p.is_empty()
+                || p.len() > 128
+                || !p
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')) =>
+        {
+            return Err(error(StatusCode::BAD_REQUEST, "invalid project identifier"));
+        }
+        other => other,
+    };
+    let _permit = state
+        .reads
+        .acquire()
+        .await
+        .map_err(|_| error(StatusCode::SERVICE_UNAVAILABLE, "read capacity unavailable"))?;
+    let snapshot = legacy::snapshot_value(config).await?;
+    let result = brief(
+        &snapshot,
+        &BriefOptions {
+            budget_bytes: query.budget.unwrap_or(2_000),
+            project,
+            now_utc: Some(chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)),
+        },
+    );
+    let omitted = result.omitted_lines.to_string();
+    let mut response = if json {
+        Json(&result).into_response()
+    } else {
+        (
+            [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+            result.text,
+        )
+            .into_response()
+    };
+    let headers = response.headers_mut();
+    headers.insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    headers.insert(
+        header::X_CONTENT_TYPE_OPTIONS,
+        header::HeaderValue::from_static("nosniff"),
+    );
+    if let Ok(value) = omitted.parse() {
+        headers.insert("x-admiralty-brief-omitted", value);
+    }
+    Ok(http_bytes::timed(response, "brief", started.elapsed()))
+}
+
+/// Status sources older than this are not ready (matches the dashboard's
+/// stale threshold). A readiness pass is not a rendered-dashboard proof.
+const READY_MAX_SOURCE_AGE_S: u64 = 180;
+
+/// Readiness for supervisors and deploy checks. Unlike `/healthz` (process
+/// up), this verifies the configured producer feed is present, bounded and
+/// recently published, and that configured dashboard assets exist. It never
+/// reads or reveals file contents or paths.
+async fn ready(State(state): State<AppState>) -> Response {
+    let legacy = state.config.legacy.clone();
+    let assets = state.config.assets.clone();
+    let checks = tokio::task::spawn_blocking(move || {
+        let mut checks = serde_json::Map::new();
+        let mut ready = true;
+        if let Some(legacy) = legacy {
+            let metadata = std::fs::metadata(&legacy.status_file).ok();
+            let age = metadata
+                .as_ref()
+                .and_then(|m| m.modified().ok())
+                .and_then(|t| t.elapsed().ok())
+                .map(|d| d.as_secs());
+            let ok = metadata
+                .as_ref()
+                .is_some_and(|m| m.is_file() && m.len() <= legacy::MAX_STATUS_BYTES)
+                && age.is_some_and(|a| a <= READY_MAX_SOURCE_AGE_S);
+            ready &= ok;
+            checks.insert(
+                "producer_feed".into(),
+                serde_json::json!({"ok":ok,"age_s":age,"max_age_s":READY_MAX_SOURCE_AGE_S}),
+            );
+        }
+        if let Some(assets) = assets {
+            let ok = assets.join("index.html").is_file();
+            ready &= ok;
+            checks.insert("dashboard_assets".into(), serde_json::json!({"ok":ok}));
+        }
+        (ready, checks)
+    })
+    .await;
+    let (ready, checks) = checks.unwrap_or_else(|_| (false, serde_json::Map::new()));
+    let mut response = Json(serde_json::json!({
+        "ready":ready,"version":env!("CARGO_PKG_VERSION"),"checks":checks,
+        "native_execution_qualified":false
+    }))
+    .into_response();
+    if !ready {
+        *response.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
+    }
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    response
+}
+
 async fn legacy_index(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -802,6 +955,7 @@ fn app_with_work_order_routes_and_shutdown(
     let router = Router::new()
         .merge(model_routes)
         .route("/healthz", get(health))
+        .route("/readyz", get(ready))
         .route("/v1/fleet", get(fleet))
         .route("/v2/fleet", get(fleet_v2))
         .route("/v2/events", get(events_v2))
@@ -811,6 +965,7 @@ fn app_with_work_order_routes_and_shutdown(
         .route("/v1/legacy", get(legacy_snapshot))
         .route("/v1/legacy/detail", get(legacy_detail_snapshot))
         .route("/v1/legacy/detail/initial", get(legacy_initial_snapshot))
+        .route("/v1/brief", get(legacy_brief))
         .route("/legacy/", get(legacy_index))
         .route("/legacy/index.html", get(legacy_index))
         .route("/legacy/status.json", get(legacy_snapshot))
@@ -841,6 +996,91 @@ pub async fn serve_with_native_routes(
     native_routes: Option<Router>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     serve_with_work_order_routes(store, config, native_routes, None).await
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum AccessLogMode {
+    Off,
+    /// Default: failed (5xx) or slow (>= 1 s) requests only.
+    Problems,
+    All,
+}
+
+fn access_log_mode() -> AccessLogMode {
+    static MODE: std::sync::OnceLock<AccessLogMode> = std::sync::OnceLock::new();
+    *MODE.get_or_init(|| match std::env::var("ADMIRALTY_ACCESS_LOG").as_deref() {
+        Ok("off") => AccessLogMode::Off,
+        Ok("all") => AccessLogMode::All,
+        _ => AccessLogMode::Problems,
+    })
+}
+
+const SLOW_REQUEST_MS: u128 = 1_000;
+
+/// Compact request events on stderr (logfmt). Only method, path, status,
+/// duration and snapshot cache state are recorded: never query strings,
+/// headers, bodies or tokens.
+fn access_event(
+    method: &str,
+    path: &str,
+    status: u16,
+    ms: u128,
+    cache: Option<&str>,
+    mode: AccessLogMode,
+) -> Option<admiralty_core::agent_log::Event> {
+    use admiralty_core::agent_log::{Event, Level};
+    let level = if status >= 500 {
+        Level::Error
+    } else if ms >= SLOW_REQUEST_MS {
+        Level::Warn
+    } else {
+        Level::Info
+    };
+    if mode == AccessLogMode::Off || (mode == AccessLogMode::Problems && level == Level::Info) {
+        return None;
+    }
+    let mut event = Event::new(
+        chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        level,
+        "http.request",
+    )
+    .field("method", method)
+    .field("path", path)
+    .field("status", status)
+    .field("ms", u64::try_from(ms).unwrap_or(u64::MAX));
+    if let Some(cache) = cache {
+        event = event.field("cache", cache);
+    }
+    Some(event)
+}
+
+async fn access_log(request: axum::extract::Request, next: axum::middleware::Next) -> Response {
+    let mode = access_log_mode();
+    if mode == AccessLogMode::Off {
+        return next.run(request).await;
+    }
+    let started = std::time::Instant::now();
+    let method = request.method().as_str().to_owned();
+    let path = request.uri().path().to_owned();
+    let response = next.run(request).await;
+    let cache = response
+        .headers()
+        .get("x-admiralty-snapshot-cache")
+        .and_then(|v| v.to_str().ok());
+    if let Some(event) = access_event(
+        &method,
+        &path,
+        response.status().as_u16(),
+        started.elapsed().as_millis(),
+        cache,
+        mode,
+    ) {
+        eprintln!(
+            "{}",
+            event.render(admiralty_core::agent_log::Format::Logfmt)
+        );
+    }
+    response
 }
 
 async fn shutdown_signal() {
@@ -910,7 +1150,8 @@ pub async fn serve_with_operator_chat(
     let app = match chat_source {
         Some((token, source)) => app.merge(operator_chat::router(token, chat, source)),
         None => app,
-    };
+    }
+    .layer(axum::middleware::from_fn(access_log));
     let mode = if native_commands {
         "native commands enabled; execution requires admitted controller"
     } else if chat_enabled {
@@ -971,4 +1212,43 @@ pub async fn serve_redirect(
         })
         .await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod access_log_tests {
+    use super::*;
+
+    #[test]
+    fn problems_mode_logs_only_failures_and_slow_requests() {
+        let quiet = access_event(
+            "GET",
+            "/v1/legacy/detail",
+            200,
+            12,
+            Some("hit"),
+            AccessLogMode::Problems,
+        );
+        assert!(quiet.is_none());
+        let slow = access_event(
+            "GET",
+            "/v1/legacy/detail",
+            200,
+            1_500,
+            Some("miss"),
+            AccessLogMode::Problems,
+        )
+        .expect("slow request")
+        .render(admiralty_core::agent_log::Format::Logfmt);
+        assert!(
+            slow.contains(
+                " warn http.request method=GET path=/v1/legacy/detail status=200 ms=1500 cache=miss"
+            ),
+            "{slow}"
+        );
+        let failed = access_event("GET", "/v1/legacy", 502, 3, None, AccessLogMode::Problems)
+            .expect("failure");
+        assert_eq!(failed.level, admiralty_core::agent_log::Level::Error);
+        assert!(access_event("GET", "/", 200, 1, None, AccessLogMode::All).is_some());
+        assert!(access_event("GET", "/", 500, 1, None, AccessLogMode::Off).is_none());
+    }
 }
