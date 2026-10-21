@@ -1937,7 +1937,6 @@
 .git-project-checkouts { font-size: 11px; }
 .git-project-checkouts button { display: block; padding: 7px 0; text-align: left; white-space: normal; overflow-wrap: anywhere; }
 .git-project-checkouts summary { cursor: pointer; }
-.is-project-expanded > .git-chat-overlays { top: 54px; bottom: 48px; }
 @media (max-width: 850px) {
   .lv-body.has-inspector:has(.is-project-expanded) { flex-direction: column; }
   .lv-body.has-inspector:has(.is-project-expanded) > .git-view { height: auto; min-height: 0; flex: 1; }
@@ -1949,3 +1948,13 @@
 
 .git-project-camera-controls button[aria-label="Fit graph"] { border-color: var(--lv-accent); color: var(--lv-accent); }
 .git-project-camera-controls > span { color: var(--lv-muted); font-size: 11px; }
+
+.git-project-stage .git-chat-anchor:has(.git-chat.is-open) {
+  height: calc(100% - 24px);
+  display: flex;
+  overflow: hidden;
+}
+.git-project-stage .git-chat.is-open { flex: 1; min-height: 0; max-height: 100%; }
+
+.git-source-totals { display: block; line-height: 18px; background: var(--lv-bg); }
+@media (max-width: 650px) { .git-source-totals { flex-basis: 100%; } }

@@ -789,10 +789,8 @@ export default function GitFlow({
           {filter && <strong>{frozen.projects.find((p) => p.id === filter)?.name ?? filter}</strong>}
           {filter && !projectExpanded && <button className="lv-button git-expand-project" onClick={() => changeScope(filter, true)}>Expand project ⛶</button>}
           <span className="git-axis-icon" aria-hidden="true" data-icon="⑂" />
-          <b>{projects.length}</b> {projects.length === 1 ? "project" : "projects"} <span> / </span>
-          <b>{allCommits}</b> commits <span> / </span>
-          <b>{checkouts}</b> checkouts
-          {filter && !inventory && <button className="lv-text-button" aria-pressed={details} onClick={() => setDetails(!details)}>{details ? "Hide" : "Show"} project details</button>}
+          <span className="git-source-totals">{`${projects.length} ${projects.length === 1 ? "project" : "projects"} / ${allCommits} commits / ${checkouts} checkouts`}</span>
+          {filter && !inventory && !projectExpanded && <button className="lv-text-button" aria-pressed={details} onClick={() => setDetails(!details)}>{details ? "Hide" : "Show"} project details</button>}
         </div>
         <span>
           Parents always precede children. Each repository has its own
@@ -925,9 +923,16 @@ export default function GitFlow({
           <GitProjectViewport key={`${projects[0].id}:${projects[0].git.instance_id}`}
             project={projects[0]} layout={focusedLayout}
             selectionKey={selectedOid}
-            render={(camera, size) => <GitCanvas project={projects[0]} layout={focusedLayout}
-              zoom={camera.k} left={-camera.x} top={-camera.y} width={size.width} height={size.height}
-              selection={selection} onSelect={inspect} onToggleRange={(range) => toggleRange(projects[0].id, range)} fixed />}
+            render={(camera, size) => <>
+              <GitCanvas project={projects[0]} layout={focusedLayout}
+                zoom={camera.k} left={-camera.x} top={-camera.y} width={size.width} height={size.height}
+                selection={selection} onSelect={inspect} onToggleRange={(range) => toggleRange(projects[0].id, range)} fixed />
+              <div className="git-chat-overlays"><div className="git-chat-anchor" style={{top:12,maxHeight:"calc(100% - 24px)"}}>
+                <GitChat projectId={projects[0].id} projectName={projects[0].name} token={token} memory={chatMemory}
+                  active={!snapshot.simulated} disabledReason={chatDisabledReason} onAccess={onAccess}
+                  onToggle={() => setChatRevision((revision) => revision + 1)} />
+              </div></div>
+            </>}
           />
           <div className="git-project-tools">
             <GitHealthBadge report={health.reports[projects[0].id]?.instance_id === projects[0].git.instance_id ? health.reports[projects[0].id] : undefined}
@@ -939,11 +944,6 @@ export default function GitFlow({
               {!checkouts && <p>No observed worktrees.</p>}
             </details>
           </div>
-          <div className="git-chat-overlays"><div className="git-chat-anchor" style={{top:12,maxHeight:"60%"}}>
-            <GitChat projectId={projects[0].id} projectName={projects[0].name} token={token} memory={chatMemory}
-              active={!snapshot.simulated} disabledReason={chatDisabledReason} onAccess={onAccess}
-              onToggle={() => setChatRevision((revision) => revision + 1)} />
-          </div></div>
         </div>
       ) : (
         <div className="git-surface" ref={viewport.ref} onKeyDown={(event) => {
@@ -1006,7 +1006,7 @@ export default function GitFlow({
                           </span>
                         </div>
                       </header>
-                      {!filter && <><button className="lv-button git-expand-project" onClick={() => changeScope(b.project.id, true)} aria-label={`Expand project: ${b.project.name}`}>Expand project ⛶</button><button className="lv-text-button git-focus-project" onClick={() => changeScope(b.project.id)} aria-label={`Focus project: ${b.project.name}`}>Filter to project</button></>}
+                      {!filter && <><button className="lv-button git-expand-project" onClick={() => changeScope(b.project.id, true)} aria-label={`Expand project: ${b.project.name}`}>Expand project ⛶</button><button className="lv-text-button git-focus-project" onClick={() => changeScope(b.project.id)} aria-label={`Filter to project: ${b.project.name}`}>Filter to project</button></>}
                       <div className="git-source-age">
                         {b.project.git
                           ? age(b.project.git.observed_utc, now)
