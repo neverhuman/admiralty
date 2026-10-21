@@ -7,6 +7,7 @@ pub mod git;
 pub mod git_health;
 pub mod history;
 pub mod io;
+pub mod jankurai;
 #[cfg(test)]
 mod legacy_cases;
 pub mod projects;
@@ -59,6 +60,8 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
     snapshot["git"] = serde_json::to_value(repositories)?;
     snapshot["git_health"] = serde_json::to_value(git_health)?;
     snapshot["git_health_alerts"] = serde_json::to_value(git_health_alerts)?;
+    // Coding-standard scores from each repository's latest `jankurai audit`.
+    snapshot["jankurai"] = jankurai::collect(config);
     match usage::collect(config, &snapshot).await {
         Ok(fields) => {
             if let Some(fields) = fields.as_object() {

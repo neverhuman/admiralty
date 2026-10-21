@@ -7,6 +7,7 @@ import { Economics } from '../features/economics/Economics';
 import { ModelBadge } from './ModelBadge';
 import { routeHref } from '../router';
 import { formatJsonMeasurements, formatMeasurement } from '../formatNumbers';
+import { JankuraiBadge, JankuraiSection, jankuraiFor, type JankuraiSummary } from '../features/jankurai/Jankurai';
 import './legacy-evidence.css';
 
 /** Semantic React views of producer facts. Unknown values never become zeros. */
@@ -43,10 +44,10 @@ function PullRequest({ value }: { value: unknown }) {
   if (!Object.keys(pr).length) return <div className="muted">No PR metadata reported.</div>;
   return <div className="legacy-pr">{link ? <a href={link} target="_blank" rel="noopener noreferrer">{pr.number ? `PR #${text(pr.number)}` : 'Integration PR'}</a> : <b>PR not linked</b>} · {text(pr.state) || 'State unknown'}{pr.draft === true ? ' (draft)' : ''}<p>{text(pr.title)}</p><div>Head <code>{text(pr.head) || 'Unknown'}</code> · {text(pr.branch)}</div><div>CI: <b>{text(ci.state) || 'Unknown'}</b> · Review: {text(pr.review_decision) || 'Unknown'} · {pr.exact_head_approved === true ? 'exact head approved (source report)' : 'exact-head approval not confirmed'}</div><DataValue value={{ checks: ci.counts, failing: ci.failing, last_review: pr.last_review, fetched_utc: pr.fetched_utc, merged_at: pr.merged_at, note: pr.note }} /></div>;
 }
-export function ProjectDetail({ project, compact = false, initial = false }: { project: ProjectDetailModel; compact?: boolean; initial?: boolean }) {
+export function ProjectDetail({ project, compact = false, initial = false, jankurai = null }: { project: ProjectDetailModel; compact?: boolean; initial?: boolean; jankurai?: JankuraiSummary | null }) {
   const total = project.total, entries = Object.entries(project.stages);
   return <article className={`legacy-project panel ${compact ? 'compact' : ''}`} data-project-id={project.id}>
-    <header className="legacy-project-heading"><h2>{project.name}</h2><a className="legacy-live-link" href={routeHref('git', { project: project.id })}>Git Flow ↗</a><span>{total === null ? 'Unknown total' : `${formatMeasurement(total)} tasks`}</span></header>
+    <header className="legacy-project-heading"><h2>{project.name}</h2><a className="legacy-live-link" href={routeHref('git', { project: project.id })}>Git Flow ↗</a>{jankurai && <JankuraiBadge summary={jankurai} />}<span>{total === null ? 'Unknown total' : `${formatMeasurement(total)} tasks`}</span></header>
     <p className="legacy-provenance">{project.source}</p>
     <div className="legacy-stage-bar" role="img" aria-label={`${project.name} reported task stages`}>{entries.map(([stage, count]) => <span key={stage} className={stageClass(stage)} style={{ width: `${total && total > 0 ? Math.min(100, count / total * 100) : 0}%` }} title={`${stageLabel(stage, project.labels)}: ${formatMeasurement(count)}`} />)}</div>
     <div className="legacy-stage-counts">{entries.map(([stage, count]) => <span key={stage}><i className={stageClass(stage)} /><b>{formatMeasurement(count)}</b> {stageLabel(stage, project.labels)}</span>)}</div>
@@ -60,6 +61,7 @@ export function ProjectDetail({ project, compact = false, initial = false }: { p
       </details>}
     </div>)}
     {project.recent.length > 0 && <section><h3>Recently changed tasks</h3><div className="legacy-table-scroll"><table><thead><tr><th>Task</th><th>Change</th><th>Observed</th><th>Source</th></tr></thead><tbody>{project.recent.map((value, index) => { const row = data(value); return <tr key={index}><td>{text(row.task)}</td><td>{text(row.old) || '∅'} → {text(row.new)}</td><td>{text(row.at)}</td><td>{text(row.source)}</td></tr>; })}</tbody></table></div></section>}
+    {jankurai && !initial && <JankuraiSection summary={jankurai} />}
     <section><h3>Commodore</h3><Screen value={project.captain} /></section>
     <section><h3>Worker screens and models ({project.workers.length})</h3><Workers values={project.workers} /></section>
     <section><h3>Integration PR, CI and review</h3><PullRequest value={project.pr} /></section>
@@ -75,7 +77,7 @@ export function LegacyFleetView({ snapshot, selected = 'all' }: { snapshot: Lega
     <TemporalPlots snapshot={snapshot} />
     <div className="legacy-source-status" data-detail-phase={initial ? 'initial' : 'complete'}>Source host: <b>{text(snapshot.host) || 'Unknown'}</b> · Produced {snapshot.generated_utc} ({freshness(snapshot.generated_utc)}) · Read-only observation every 15 seconds</div>
     <div className="legacy-layout">
-      <div className="legacy-project-grid">{visible.map(project => <ProjectDetail key={project.id} project={project} compact={selected === 'all'} initial={initial} />)}{!visible.length && <div className="loading-card">Selected project is no longer present in this snapshot.</div>}</div>
+      <div className="legacy-project-grid">{visible.map(project => <ProjectDetail key={project.id} project={project} compact={selected === 'all'} initial={initial} jankurai={jankuraiFor(snapshot, project.id)} />)}{!visible.length && <div className="loading-card">Selected project is no longer present in this snapshot.</div>}</div>
       <aside className="legacy-side">
         <a className="text-button" href={routeHref('atlas')}>Open full Fleet Atlas ↗</a><LegacyHierarchy snapshot={snapshot} />
         <TokenEfficiency snapshot={snapshot} />
@@ -102,10 +104,10 @@ export default function LegacyDetailed({ token }: { token?: string }) {
     onSnapshot: value => { if (value && value.admiralty_delivery !== 'initial') completeReceived.current = true; setSnapshot(value); setLoaded(true); },
     onError: value => { setError(value); if (value) setLoaded(true); } }); }, [token, retry]);
   const projects = useMemo(() => snapshot ? projectDetails(snapshot) : [], [snapshot]);
-  return <div className={`legacy-detailed density-${density}`}><div className="legacy-toolbar"><div className="legacy-project-tabs" role="tablist" aria-label="Observed projects"><button role="tab" aria-selected={selected === 'all'} onClick={() => setSelected('all')}>All projects</button>{projects.map(project => <button role="tab" key={project.id} aria-selected={selected === project.id} onClick={() => setSelected(project.id)}><span className="legacy-tab-title">{project.name}<small>{project.total === null ? 'Unknown total' : `${project.total} tasks`}</small></span><span className="legacy-tab-metrics">{Object.entries(project.stages).filter(([stage, count]) => count > 0 && ['done', 'in_progress', 'in_pr', 'blocked', 'review', 'verified', 'integrated'].includes(stage)).map(([stage, count]) => <span key={stage}><b>{count}</b> {stageLabel(stage, project.labels)}</span>)}</span><span className="legacy-stage-bar" aria-hidden="true">{Object.entries(project.stages).map(([stage, count]) => <span key={stage} className={stageClass(stage)} style={{width:`${project.total ? Math.min(100,count/project.total*100) : 0}%`}} />)}</span></button>)}</div><label>Density <select value={density} onChange={event => setDensity(event.target.value as 'dense' | 'comfortable')}><option value="dense">Dense</option><option value="comfortable">Comfortable</option></select></label><button className="text-button" onClick={() => setRetry(value => value + 1)}>Refresh source</button><a href="/legacy/" target="_blank" rel="noopener noreferrer">Original detailed dashboard ↗</a></div>
+  return <div className={`legacy-detailed density-${density}`}><div className="legacy-toolbar"><div className="legacy-project-tabs" role="tablist" aria-label="Observed projects"><button role="tab" aria-selected={selected === 'all'} onClick={() => setSelected('all')}>All projects</button>{projects.map(project => <button role="tab" key={project.id} aria-selected={selected === project.id} onClick={() => setSelected(project.id)}><span className="legacy-tab-title">{project.name}<small>{project.total === null ? 'Unknown total' : `${project.total} tasks`}</small></span><span className="legacy-tab-metrics">{Object.entries(project.stages).filter(([stage, count]) => count > 0 && ['done', 'in_progress', 'in_pr', 'blocked', 'review', 'verified', 'integrated'].includes(stage)).map(([stage, count]) => <span key={stage}><b>{count}</b> {stageLabel(stage, project.labels)}</span>)}</span><span className="legacy-stage-bar" aria-hidden="true">{Object.entries(project.stages).map(([stage, count]) => <span key={stage} className={stageClass(stage)} style={{width:`${project.total ? Math.min(100,count/project.total*100) : 0}%`}} />)}</span></button>)}</div><label>Density <select value={density} onChange={event => setDensity(event.target.value as 'dense' | 'comfortable')}><option value="dense">Dense</option><option value="comfortable">Comfortable</option></select></label><button className="text-button" onClick={() => setRetry(value => value + 1)}>Refresh source</button></div>
     {error && <div className="error-banner" role="status">{error} {snapshot ? 'Showing the last received snapshot; its original source age is preserved.' : 'No live snapshot has loaded yet.'}</div>}
     {!loaded && <div className="loading-card">Loading detailed producer snapshot…</div>}
-    {loaded && !snapshot && <div className="loading-card">Detailed producer data unavailable on this server. Native simulation and its synthetic projects remain separate in the overview.</div>}
+    {loaded && !snapshot && <div className="loading-card legacy-empty"><b>No producer feed on this server.</b> Start <code>admiraltyd</code> with <code>--legacy-status-file</code> pointing at the observer's <code>status.json</code> to see project progress here. Native tasks, including the demo's synthetic projects, are in <a href={routeHref('overview')}>Overview</a>.</div>}
     {snapshot && <LegacyFleetView snapshot={snapshot} selected={selected} />}
   </div>;
 }

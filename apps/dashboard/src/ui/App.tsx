@@ -13,11 +13,29 @@ const LiveViews = lazy(() => import('../features/live-views/LiveViews'));
 const CommandJourneys = lazy(() => import('./CommandJourneys'));
 const Intake = lazy(() => import('./Intake'));
 const Incidents = lazy(() => import('../features/incidents/Incidents'));
-type View = 'Legacy detailed view' | 'Overview' | 'Workplans' | 'Coordination' | 'Commands' | 'Intake' | 'Incidents' | 'Models' | 'Git Flow' | 'Fleet Atlas';
+
+/** Navigation grouped by what the operator is doing: watching, acting or configuring. */
+const NAV_GROUPS: ReadonlyArray<{ label: string; items: ReadonlyArray<{ view: View; icon: string }> }> = [
+  { label: 'Observe', items: [{ view: 'Fleet detail', icon: '▦' }, { view: 'Git Flow', icon: '⑂' }, { view: 'Fleet Atlas', icon: '✦' }] },
+  { label: 'Operate', items: [{ view: 'Overview', icon: '◫' }, { view: 'Workplans', icon: '≡' }, { view: 'Coordination', icon: '◉' }, { view: 'Commands', icon: '⌘' }, { view: 'Intake', icon: '↧' }, { view: 'Incidents', icon: '!' }] },
+  { label: 'Configure', items: [{ view: 'Models', icon: '⚙' }] },
+];
+const groupOf = (view: View) => NAV_GROUPS.find(group => group.items.some(item => item.view === view))?.label ?? 'Observe';
+const DESCRIPTIONS: Partial<Record<View, string>> = {
+  'Fleet detail': 'Project progress, command hierarchy, model mix and token efficiency from the producer feed.',
+  Overview: 'Native task projections; separate from the detailed producer fleet.',
+  Workplans: 'Native task stages and who currently holds each task.',
+  Coordination: 'Native coordination activity and message acknowledgements.',
+  Commands: 'Create work, revise pending contracts and inspect task evidence.',
+  Incidents: 'Scoped incident history and local improvement proposals.',
+  Intake: 'Preserve an original request, inspect unresolved facts and record an immutable capture.',
+  Models: 'Provider and model configuration.',
+};
+type View = 'Fleet detail' | 'Overview' | 'Workplans' | 'Coordination' | 'Commands' | 'Intake' | 'Incidents' | 'Models' | 'Git Flow' | 'Fleet Atlas';
 
 function App() {
   const route = useRoute();
-  const destinations: Record<RouteName, View> = { detail: 'Legacy detailed view', overview: 'Overview', workplans: 'Workplans', coordination: 'Coordination', commands: 'Commands', intake: 'Intake', incidents: 'Incidents', models: 'Models', git: 'Git Flow', atlas: 'Fleet Atlas' };
+  const destinations: Record<RouteName, View> = { detail: 'Fleet detail', overview: 'Overview', workplans: 'Workplans', coordination: 'Coordination', commands: 'Commands', intake: 'Intake', incidents: 'Incidents', models: 'Models', git: 'Git Flow', atlas: 'Fleet Atlas' };
   const view = destinations[route.name];
   const setView = (value: View) => navigate((Object.keys(destinations) as RouteName[]).find(key => destinations[key] === value) ?? 'detail');
   const visualView = route.name === 'git' || route.name === 'atlas';
@@ -33,7 +51,7 @@ function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [connection, setConnection] = useState<ConnectionState>('connecting');
   const [retry, setRetry] = useState(0);
-  const legacyView = view === 'Legacy detailed view';
+  const legacyView = view === 'Fleet detail';
   const modelsView = view === 'Models';
   const commandsView = view === 'Commands';
   const intakeView = view === 'Intake';
@@ -60,25 +78,23 @@ function App() {
   return <div className={`app theme-${theme} ${legacyView ? 'fleet-console' : ''} ${visualView ? 'visual-console' : ''}`}>
     <aside className="sidebar">
       <a className="brand" href="#/detail">
-        <img className="brand-mark" src={admiraltyMark} fetchPriority="low" decoding="async" alt="Admiralty" /><span><strong>ADMIRALTY</strong> <small>FLEET CONTROL</small></span>
+        <img className="brand-mark" src={admiraltyMark} fetchPriority="low" decoding="async" alt="Admiralty" /><span><strong>Admiralty</strong> <small>Fleet control</small></span>
       </a>
-      <div className="workspace-label">WORKSPACE</div>
-      <div className="workspace"><span className="workspace-dot" /> Fleet overview <span className="chevron" data-icon="⌄" aria-hidden="true" /></div>
       <nav aria-label="Main navigation">
-        <div className="nav-label">MONITOR</div>
-        {(['Legacy detailed view', 'Git Flow', 'Fleet Atlas', 'Overview', 'Workplans', 'Coordination', 'Commands', 'Intake', 'Incidents', 'Models'] as View[]).map((item, index) => <button key={item} className={`nav-item ${view === item ? 'active' : ''}`} title={item} aria-current={view === item ? 'page' : undefined} onClick={() => setView(item)}>
-          <span className="nav-icon" data-icon={['▦', '⑂', '✦', '◫', '≡', '◉', '⌘', '↧', '!', '⚙'][index]} aria-hidden="true" />{item === 'Overview' && fleet?.simulated ? 'Demo overview' : item}
-          {item === 'Coordination' && fleet && <span className="nav-count">{fleet.coordination.queued_messages}</span>}
-        </button>)}
+        {NAV_GROUPS.map(group => <div className="nav-group" role="group" aria-label={group.label} key={group.label}>
+          {group.items.map(({ view: item, icon }) => <button key={item} className={`nav-item ${view === item ? 'active' : ''}`} title={item} aria-current={view === item ? 'page' : undefined} onClick={() => setView(item)}>
+            <span className="nav-icon" data-icon={icon} aria-hidden="true" /><span className="nav-text">{item === 'Overview' && fleet?.simulated ? 'Demo overview' : item}</span>
+            {item === 'Coordination' && fleet && <span className="nav-count">{fleet.coordination.queued_messages}</span>}
+          </button>)}
+        </div>)}
       </nav>
       <div className="sidebar-spacer" />
-      <div className="brand-slot"><img className="brand-slot-mark" src={admiraltyMark} fetchPriority="low" decoding="async" alt="Admiralty mascot" /><span>Admiralty<br /><small>Coordinate. Build. Verify.</small></span></div>
       <div className="sidebar-footer"><ProfileAvatar name={profileName} profile={profile} /><span><b>{profileName}</b><small>Local session</small></span><button aria-label="Access settings" onClick={() => setShowAccess(true)}><span data-icon="···" aria-hidden="true" /></button></div>
     </aside>
 
     <main className="main-area">
       <header className="topbar">
-        <div className="breadcrumbs">Fleet <span data-icon="/" aria-hidden="true" /> <strong>{view}</strong></div>
+        <div className="breadcrumbs"><span className="crumb-group">{groupOf(view)}</span> <span data-icon="/" aria-hidden="true" /> <strong>{view === 'Overview' && fleet?.simulated ? 'Demo overview' : view}</strong></div>
         <div className="top-actions"><span className={`connection ${!legacyView && !intakeView && !incidentsView && connection === 'connected' ? 'online' : !legacyView && !intakeView && !incidentsView && connection === 'paused' ? 'offline' : ''}`} aria-live="polite"><i />{intakeView || incidentsView ? 'Scoped operator access' : legacyView ? 'Detailed producer view' : connection === 'connected' ? 'Live updates' : connection === 'paused' ? 'Updates paused' : connection === 'reconnecting' ? 'Reconnecting' : 'Connecting'}</span>
           <button className="icon-button" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><span data-icon={theme === 'dark' ? '☼' : '◐'} aria-hidden="true" /></button>
           <button className="operator-button" title="Your profile" onClick={() => setShowProfile(true)}><ProfileAvatar name={profileName} className="small" profile={profile} /><span>{profileName}</span><span data-icon="⌄" aria-hidden="true" /></button>
@@ -86,8 +102,8 @@ function App() {
       </header>
 
       <div className={`content ${legacyView ? 'legacy-content' : ''}`}>
-        <section className="page-heading"><div><div className="eyebrow">ADMIRALTY / {legacyView ? 'OBSERVED PRODUCER FLEET' : 'NATIVE CONTROL PLANE'}</div><h1>{legacyView ? 'Fleet detail' : view === 'Overview' && fleet?.simulated ? 'Demo overview' : view}</h1><p>{legacyView ? 'Live project progress · hierarchy · model mix · token efficiency' : view === 'Overview' ? 'Native task projections; separate from the detailed producer fleet.' : view === 'Workplans' ? 'Native task stages and current ownership.' : commandsView ? 'Create work, revise pending contracts and inspect task evidence.' : incidentsView ? 'Scoped incident history and local improvement proposals.' : intakeView ? 'Preserve an original request, inspect unresolved facts and record an immutable capture.' : view === 'Models' ? 'Provider and model configuration.' : 'Compact native coordination activity and message acknowledgements.'}</p></div>
-          <div className="heading-meta"><span className={`mode-pill ${!legacyView && !visualView && !intakeView && !incidentsView && fleet?.simulated ? 'simulation' : ''}`}>{incidentsView ? 'SCOPED INCIDENTS' : intakeView ? 'SCOPED INTAKE' : legacyView ? 'PRODUCER OBSERVATIONS' : fleet?.simulated ? 'SIMULATION · SYNTHETIC TASKS' : fleet ? 'NATIVE SNAPSHOT' : 'AWAITING DATA'}</span>{!legacyView && !intakeView && !incidentsView && <span className="freshness"><i />{updated ? `Updated ${updated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No snapshot yet'}</span>}</div>
+        <section className="page-heading"><div><h1>{view === 'Overview' && fleet?.simulated ? 'Demo overview' : view}</h1><p>{DESCRIPTIONS[view]}</p></div>
+          <div className="heading-meta"><span className={`mode-pill ${!legacyView && !visualView && !intakeView && !incidentsView && fleet?.simulated ? 'simulation' : ''}`}>{incidentsView ? 'Scoped incidents' : intakeView ? 'Scoped intake' : legacyView ? 'Producer observations' : fleet?.simulated ? 'Simulation: synthetic tasks' : fleet ? 'Native snapshot' : 'Awaiting data'}</span>{!legacyView && !intakeView && !incidentsView && <span className="freshness"><i />{updated ? `Updated ${updated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No snapshot yet'}</span>}</div>
         </section>
         {visualView && <Suspense fallback={<div className="loading-card" role="status">Loading observatory…</div>}><LiveViews mode={route.name === 'atlas' ? 'atlas' : 'git'} token={token || undefined} onAccess={() => setShowAccess(true)} /></Suspense>}
         {incidentsView && <Suspense fallback={<div role="status">Loading incident history…</div>}><Incidents token={token} /></Suspense>}
@@ -101,12 +117,12 @@ function App() {
         {view === 'Models' && <Models token={token || undefined} onAccess={() => setShowAccess(true)} />}
         {commandsView && <Suspense fallback={<div className="loading-card" role="status">Loading task commands…</div>}><CommandJourneys token={token || undefined} onAccess={() => setShowAccess(true)} onRefreshSnapshot={() => setRetry(value => value + 1)} /></Suspense>}
         {(intakeView || hasOpenedIntake) && <div hidden={!intakeView}><Suspense fallback={<div className="loading-card" role="status">Loading request intake…</div>}><Intake token={token || undefined} onAccess={() => setShowAccess(true)} /></Suspense></div>}
-        <footer className="page-footer"><span>{incidentsView ? 'SCOPED INCIDENT HISTORY · LOCAL PROPOSALS' : intakeView ? 'RAW REQUEST INTAKE · SEPARATE SCOPED ACCESS' : route.name === 'git' ? 'GIT OBSERVATIONS · OPERATOR CHAT' : commandsView ? 'OPERATOR COMMANDS · SESSION ACCESS' : modelsView ? 'MODEL POLICY CONFIGURATION' : `READ ONLY · SOURCE: ${legacyView ? 'PRODUCER SNAPSHOT' : 'NATIVE FLEET API'}`}</span><span>{incidentsView ? 'Review required before action' : intakeView ? 'No execution or acceptance grant' : legacyView ? 'Source provenance and uncertainty preserved' : <>Native execution {fleet?.native_execution_qualified ? 'qualified' : 'not qualified'} <b data-icon="·" aria-hidden="true" /> Usage {formatUnknown(fleet?.coordination.measured_tokens)}</>}</span></footer>
+        <footer className="page-footer"><span>{incidentsView ? 'Scoped incident history and local proposals' : intakeView ? 'Separate scoped access for raw requests' : route.name === 'git' ? 'Git observations and operator chat' : commandsView ? 'Operator commands require session access' : modelsView ? 'Model policy configuration' : `Read only. Source: ${legacyView ? 'producer snapshot' : 'native fleet API'}`}</span><span>{incidentsView ? 'Review required before action' : intakeView ? 'No execution or acceptance grant' : legacyView ? 'Source provenance and uncertainty preserved' : <>Native execution {fleet?.native_execution_qualified ? 'qualified' : 'not qualified'} <b data-icon="·" aria-hidden="true" /> Usage {formatUnknown(fleet?.coordination.measured_tokens)}</>}</span></footer>
       </div>
     </main>
     {showProfile && <ProfileSettings onClose={() => setShowProfile(false)} onAccess={() => { setShowProfile(false); setShowAccess(true); }} />}
     {showAccess && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAccess(false); }}>
-      <section className="access-modal" role="dialog" aria-modal="true" aria-labelledby="access-title"><button className="modal-close" onClick={() => setShowAccess(false)} aria-label="Close access settings"><span data-icon="×" aria-hidden="true" /></button><div className="eyebrow">PRIVATE MODE</div><h2 id="access-title">Session access</h2><p>Bearer token stays in this page's memory and is sent only as an authorization header. It is never stored in the URL.</p><label htmlFor="bearer-token">Bearer token</label><input id="bearer-token" type="password" autoComplete="off" value={tokenDraft} onChange={(event) => setTokenDraft(event.target.value)} placeholder="Paste token" onKeyDown={(event) => { if (event.key === 'Enter') { setToken(tokenDraft.trim()); setShowAccess(false); } }} /><div className="modal-actions"><button className="secondary-button" onClick={() => { setToken(''); setTokenDraft(''); setShowAccess(false); }}>Clear session</button><button className="primary-button" onClick={() => { setToken(tokenDraft.trim()); setShowAccess(false); }}>Apply token</button></div></section>
+      <section className="access-modal" role="dialog" aria-modal="true" aria-labelledby="access-title"><button className="modal-close" onClick={() => setShowAccess(false)} aria-label="Close access settings"><span data-icon="×" aria-hidden="true" /></button><h2 id="access-title">Session access</h2><p>Bearer token stays in this page's memory and is sent only as an authorization header. It is never stored in the URL.</p><label htmlFor="bearer-token">Bearer token</label><input id="bearer-token" type="password" autoComplete="off" value={tokenDraft} onChange={(event) => setTokenDraft(event.target.value)} placeholder="Paste token" onKeyDown={(event) => { if (event.key === 'Enter') { setToken(tokenDraft.trim()); setShowAccess(false); } }} /><div className="modal-actions"><button className="secondary-button" onClick={() => { setToken(''); setTokenDraft(''); setShowAccess(false); }}>Clear session</button><button className="primary-button" onClick={() => { setToken(tokenDraft.trim()); setShowAccess(false); }}>Apply token</button></div></section>
     </div>}
   </div>;
 }
@@ -123,15 +139,15 @@ function Overview({ fleet, totals, onWorkplans }: { fleet: NativeFleet; totals: 
       <Metric label="Blocked" value={totals.blocked} detail="Needs attention" icon="⏸" tone="gold" />
     </section>
     <section className="overview-grid">
-      <div className="panel project-panel"><div className="panel-head"><div><div className="eyebrow">PROJECTS</div><h2>Fleet at a glance</h2></div><button className="text-button" onClick={onWorkplans}>View workplans <span data-icon="→" aria-hidden="true" /></button></div>
+      <div className="panel project-panel"><div className="panel-head"><div><h2>Fleet at a glance</h2></div><button className="text-button" onClick={onWorkplans}>View workplans <span data-icon="→" aria-hidden="true" /></button></div>
         <div className="project-list">{fleet.projects.length ? fleet.projects.map((project) => {
           const progress = project.total ? Math.min(100, Math.round((project.accepted / project.total) * 100)) : 0;
           return <article className="project-card" key={project.id}><div className="project-card-top"><span className="project-avatar">{project.name.slice(0, 1).toUpperCase()}</span><div className="project-name"><h3>{project.name}</h3><small>{project.id}</small></div><span className="project-total">{project.total} <small>tasks</small></span></div><div className="progress-track" role="progressbar" aria-label={`${project.name} accepted tasks`} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${progress}%` }} /></div><div className="project-stages"><span><i className="dot accepted" />{project.accepted} accepted</span><span><i className="dot running" />{project.running} claimed / running</span><span><i className="dot blocked" />{project.blocked} blocked</span><span><i className="dot verifying" />{project.awaiting_verification} awaiting verification</span></div></article>;
         }) : <Empty message="No projects in the current snapshot." />}</div>
       </div>
-      <div className="panel delivery-panel"><div className="panel-head"><div><div className="eyebrow">DELIVERY</div><h2>Task stages</h2></div><span className="tiny-badge">{totals.tasks} TOTAL</span></div><div className="stage-list">{stageItems.map(([label, count, kind]) => <div className="stage-row" key={label}><span className={`stage-icon ${kind}`} data-icon={kind === 'accepted' ? '✓' : kind === 'running' ? '↗' : kind === 'blocked' ? '!' : '◷'} aria-hidden="true" /><span className="stage-label">{label}</span><strong>{count}</strong><span className="stage-track"><i className={kind} style={{ width: `${totals.tasks ? Math.max(count ? 3 : 0, count / totals.tasks * 100) : 0}%` }} /></span></div>)}</div><div className="delivery-note"><span>Quality gate</span><b>Not yet qualified</b><small>Candidate reports await independent verification. Native execution remains disabled.</small></div></div>
+      <div className="panel delivery-panel"><div className="panel-head"><div><h2>Task stages</h2></div><span className="tiny-badge">{totals.tasks} total</span></div><div className="stage-list">{stageItems.map(([label, count, kind]) => <div className="stage-row" key={label}><span className={`stage-icon ${kind}`} data-icon={kind === 'accepted' ? '✓' : kind === 'running' ? '↗' : kind === 'blocked' ? '!' : '◷'} aria-hidden="true" /><span className="stage-label">{label}</span><strong>{count}</strong><span className="stage-track"><i className={kind} style={{ width: `${totals.tasks ? Math.max(count ? 3 : 0, count / totals.tasks * 100) : 0}%` }} /></span></div>)}</div><div className="delivery-note"><span>Quality gate</span><b>Not yet qualified</b><small>Candidate reports await independent verification. Native execution remains disabled.</small></div></div>
     </section>
-    <section className="panel activity-panel"><div className="panel-head"><div><div className="eyebrow">COORDINATION</div><h2>Message pulse</h2></div><span className="panel-caption">No routine model turns</span></div><div className="coord-stats"><div><span className="stat-label">Recorded messages</span><strong>{fleet.coordination.queued_messages}</strong><small>Durably queued in snapshot</small></div><div><span className="stat-label">Acknowledged</span><strong>{fleet.coordination.acknowledged_messages}</strong><small>Recorded in snapshot</small></div><div><span className="stat-label">Routine turns</span><strong>{fleet.coordination.routine_model_turns}</strong><small>Current API contract</small></div><div><span className="stat-label">Measured tokens</span><strong>{formatUnknown(fleet.coordination.measured_tokens)}</strong><small>Unknown is distinct from zero</small></div></div></section>
+    <section className="panel activity-panel"><div className="panel-head"><div><h2>Message pulse</h2></div><span className="panel-caption">No routine model turns</span></div><div className="coord-stats"><div><span className="stat-label">Recorded messages</span><strong>{fleet.coordination.queued_messages}</strong><small>Durably queued in snapshot</small></div><div><span className="stat-label">Acknowledged</span><strong>{fleet.coordination.acknowledged_messages}</strong><small>Recorded in snapshot</small></div><div><span className="stat-label">Routine turns</span><strong>{fleet.coordination.routine_model_turns}</strong><small>Current API contract</small></div><div><span className="stat-label">Measured tokens</span><strong>{formatUnknown(fleet.coordination.measured_tokens)}</strong><small>Unknown is distinct from zero</small></div></div></section>
   </>;
 }
 
@@ -145,7 +161,7 @@ function Coordination({ fleet }: { fleet: NativeFleet }) {
     { label: 'Acknowledged messages', value: fleet.coordination.acknowledged_messages, detail: 'Acknowledgements recorded', color: 'blue' },
     { label: 'Routine model turns', value: fleet.coordination.routine_model_turns, detail: 'No routine turns observed', color: 'green' },
   ];
-  return <div className="coordination-layout"><section className="panel coordination-summary"><div className="panel-head"><div><div className="eyebrow">COORDINATION / SNAPSHOT</div><h2>Message statistics</h2></div><span className="tiny-badge">CURRENT</span></div><div className="coordination-cards">{items.map((item) => <article className="coordination-card" key={item.label}><span className={`coordination-icon ${item.color}`} data-icon={item.color === 'gold' ? '◌' : item.color === 'blue' ? '✓' : '↔'} aria-hidden="true" /><div><span>{item.label}</span><strong>{item.value}</strong><small>{item.detail}</small></div></article>)}</div></section><section className="panel accounting-panel"><div className="eyebrow">USAGE ACCOUNTING</div><h2>Measured usage</h2><div className="accounting-value">{formatUnknown(fleet.coordination.measured_tokens)} <span>tokens</span></div><p>The API reports measured token usage when available. Missing usage remains unknown; it is not treated as zero.</p></section><div className="read-only-note"><span className="lock-icon" data-icon="⌑" aria-hidden="true" /><div><b>Coordination is read only</b><span>This dashboard displays observed message counts. Sending, replying and changing task state are not available here.</span></div></div></div>;
+  return <div className="coordination-layout"><section className="panel coordination-summary"><div className="panel-head"><div><h2>Message statistics</h2></div><span className="tiny-badge">Current snapshot</span></div><div className="coordination-cards">{items.map((item) => <article className="coordination-card" key={item.label}><span className={`coordination-icon ${item.color}`} data-icon={item.color === 'gold' ? '◌' : item.color === 'blue' ? '✓' : '↔'} aria-hidden="true" /><div><span>{item.label}</span><strong>{item.value}</strong><small>{item.detail}</small></div></article>)}</div></section><section className="panel accounting-panel"><h2>Measured usage</h2><div className="accounting-value">{formatUnknown(fleet.coordination.measured_tokens)} <span>tokens</span></div><p>The API reports measured token usage when available. Missing usage remains unknown; it is not treated as zero.</p></section><div className="read-only-note"><span className="lock-icon" data-icon="⌑" aria-hidden="true" /><div><b>Coordination is read only</b><span>This dashboard displays observed message counts. Sending, replying and changing task state are not available here.</span></div></div></div>;
 }
 
 function Empty({ message }: { message: string }) { return <div className="empty-state"><span data-icon="⌁" aria-hidden="true" />{message}</div>; }

@@ -29,7 +29,7 @@ export function ProfileSettings({ onClose, onAccess }: { onClose: () => void; on
     if (event.target === event.currentTarget) { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose(); }
   }}><form onSubmit={save} className="profile-body">
     <button className="modal-close" type="button" onClick={onClose} aria-label="Close profile"><span data-icon="×" aria-hidden="true" /></button>
-    <div className="eyebrow">YOUR WORKSPACE</div><h2 id="profile-title">Your profile</h2>
+    <div className="eyebrow">Your workspace</div><h2 id="profile-title">Your profile</h2>
     <p>Your photo appears in the owner’s hierarchy card and your profile menu.</p>
     <div className="profile-photo-row"><ProfileAvatar name={draft.displayName || 'Owner'} className="profile-preview" profile={draft} /><div>
       <label className={`secondary-button profile-upload ${busy ? 'is-busy' : ''}`}>Choose photo<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={event => { const file = event.currentTarget.files?.[0]; void upload(file); event.currentTarget.value = ''; }} /></label>

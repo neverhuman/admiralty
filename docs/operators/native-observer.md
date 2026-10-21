@@ -168,6 +168,21 @@ window and all configured sources are completely enumerated. The 15-minute,
 `coverage_complete`, `usage_coverage_complete`, scan/source-inventory flags and
 `state_persisted`; merely waiting for one interval does not establish coverage.
 
+### Jankurai standing
+
+For every configured project, `status.json` carries `jankurai.projects.<project
+id>`, read from `<repository>/.jankurai/repo-score.json` (the report `jankurai
+audit` writes). The observer never runs the auditor; it reads the existing
+report without following symlinks and refuses files over 8 MiB. Each entry has a
+`status` of `observed`, `missing` or `invalid`; only `observed` entries carry
+`score`, `raw_score`, `decision`, `minimum_score`, `passed`, hard/soft finding
+counts, findings by severity, up to 32 applied caps, up to 24 dimensions, the
+weakest dimension, claimed and observed conformance level, auditor and standard
+versions, the audited head and dirty flag, the audit scope, and the report's own
+`generated_utc` and `report_modified_utc`. A missing report is not a zero score,
+and a report audited at an older head stays labelled with that head. Fleet
+detail shows the standing in each project header and in the project panel.
+
 ## Cutover and rollback
 
 The deployment owner performs the service changes after qualification. Keep

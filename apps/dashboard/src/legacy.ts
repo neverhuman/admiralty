@@ -1,5 +1,5 @@
 import { ApiError, readBoundedJson } from './api';
-import { assertBoundedJson } from './validation';
+import { assertBoundedJson } from './jsonBounds';
 
 export type Data = Record<string, unknown>;
 export type LegacySnapshot = Data & { generated_utc: string; projects: Record<string, Data>; order?: string[] };

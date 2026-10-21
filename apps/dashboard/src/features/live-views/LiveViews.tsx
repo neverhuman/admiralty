@@ -207,10 +207,10 @@ export default function LiveViews({
             data-icon={mode === "atlas" ? "✦" : "⑂"}
           />
           <div>
-            <div className="lv-overline">ADMIRALTY / OBSERVATORY</div>
+            <div className="lv-overline">Observatory</div>
             <h1>{mode === "atlas" ? "Fleet Atlas" : "Git Flow"}</h1>
           </div>
-          <span className="lv-readonly">{mode === "git" ? "OBSERVATIONS + OPERATOR CHAT" : "READ ONLY"}</span>
+          <span className="lv-readonly">{mode === "git" ? "Observations and operator chat" : "Read only"}</span>
         </div>
         <div className="lv-header-actions">
           <span
@@ -241,7 +241,7 @@ export default function LiveViews({
       </header>
       {presented?.simulated && (
         <div className="lv-demo">
-          SIMULATION · Every agent, repository and relationship in this
+          Simulation: every agent, repository and relationship in this
           demonstration is synthetic.
         </div>
       )}
@@ -478,7 +478,7 @@ function Inspector({
       }}
     >
       <header>
-        <div className="lv-overline">OBSERVATION INSPECTOR</div>
+        <div className="lv-overline">Observation inspector</div>
         <button
           className="lv-icon"
           onClick={onClose}

@@ -801,7 +801,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
   });
 
   it(
-    'renders Legacy detailed view, project tabs, temporal plots, hierarchy, and scales across 4, 20, and 100 projects',
+    'renders Fleet detail, project tabs, temporal plots, hierarchy, and scales across 4, 20, and 100 projects',
     async () => {
       await browser.goto(server.baseUrl);
       await browser.waitForText('Alpha Control');
@@ -1715,8 +1715,8 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
         }
       };
 
-      // 1. Audit Legacy detailed view in dark theme
-      await recordSurface('dark:Legacy detailed view');
+      // 1. Audit Fleet detail in dark theme
+      await recordSurface('dark:Fleet detail');
 
       // 2. Audit Overview, Workplans, Coordination, Commands, and Models in dark theme
       for (const [navLabel, expectedText] of [
@@ -1744,7 +1744,7 @@ describe('Admiralty release qualification browser E2E and axe-core accessibility
         ['Coordination', 'Message statistics'],
         ['Commands', 'Live work intake & CAS contract revision'],
         ['Models', 'Ornith Local Coding'],
-        ['Legacy detailed view', 'Alpha Control'],
+        ['Fleet detail', 'Alpha Control'],
       ] as const) {
         await browser.clickNav(navLabel);
         await browser.waitForText(expectedText);

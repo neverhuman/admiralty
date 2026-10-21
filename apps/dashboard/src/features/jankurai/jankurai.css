@@ -1,0 +1,81 @@
+/* Jankurai coding-standard score in Fleet detail. Uses the design-system tokens. */
+.jk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--rule-strong, var(--line));
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text);
+  white-space: nowrap;
+}
+.jk-badge i {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+}
+.jk-pass i { background: var(--green); border-radius: 50%; }
+.jk-below i { background: var(--gold); transform: rotate(45deg); }
+.jk-unknown i { border: 1.5px dashed var(--muted); border-radius: 50%; }
+.jk-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.jk-section h3 { margin-bottom: 6px; }
+.jk-empty { color: var(--muted); margin: 0; }
+.jk-headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-bottom: 8px;
+}
+.jk-score {
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 750;
+  color: var(--text);
+}
+.jk-standing { font-weight: 650; color: var(--text); }
+.jk-meta { color: var(--muted); font-size: 12px; }
+.jk-findings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0 0 8px;
+}
+.jk-findings div { display: flex; gap: 6px; align-items: baseline; }
+.jk-findings dt { color: var(--muted); font-size: 12px; text-transform: none; }
+.jk-findings dd { margin: 0; font-weight: 650; color: var(--text); }
+.jk-dimensions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+}
+.jk-dimensions li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(60px, 120px) 3ch;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text);
+}
+.jk-dimension-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jk-weakest .jk-dimension-name { font-weight: 650; }
+.jk-track {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.jk-track span { display: block; height: 100%; background: var(--blue); border-radius: 3px; }
+.jk-weakest .jk-track span { background: var(--gold); }
+.jk-dimension-score { text-align: right; font-weight: 650; }
