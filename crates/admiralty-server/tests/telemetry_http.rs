@@ -43,7 +43,16 @@ fn header<'a>(head: &'a str, name: &str) -> Option<&'a str> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn request_ids_readiness_metrics_and_digest_work_over_loopback() {
-    let directory = tempfile::tempdir().expect("tempdir");
+    // Owner-only regardless of the runner's umask.
+    let directory = {
+        let mut builder = tempfile::Builder::new();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            builder.permissions(std::fs::Permissions::from_mode(0o700));
+        }
+        builder.tempdir().expect("tempdir")
+    };
     let store = admiralty_store::Store::open(directory.path().join("state.sqlite")).expect("store");
     let config = ServerConfig {
         listen: "127.0.0.1:0".parse().expect("listen"),
