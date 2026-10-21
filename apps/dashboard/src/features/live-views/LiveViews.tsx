@@ -149,6 +149,16 @@ export default function LiveViews({
     }
     window.location.hash = routeHref(mode, Object.fromEntries(params));
   };
+  const previousExpansion = useRef(route.params.get("expand"));
+  useEffect(() => {
+    const expanded = route.params.get("expand");
+    if (expanded === "1") setFullscreen(true);
+    else if (previousExpansion.current === "1") {
+      setFullscreen(false);
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    }
+    previousExpansion.current = expanded;
+  }, [route.params.get("expand")]);
   const toggleFullscreen = () => {
     if (fullscreen) {
       setFullscreen(false);
@@ -260,6 +270,11 @@ export default function LiveViews({
             />
           ) : (
             <GitFlow
+              onProjectFullscreen={(expanded) => {
+                setFullscreen(expanded);
+                if (expanded) void root.current?.requestFullscreen?.().catch(() => undefined);
+                else if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+              }}
               snapshot={snapshot}
               paused={visiblePausedGit}
               onPause={pauseGit}

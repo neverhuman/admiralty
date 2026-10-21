@@ -78,11 +78,13 @@ Actual reviewer adoption, exact-head approval, local/hosted qualification,
 ordinary merge and serialized rollout remain separate evidence gates.
 
 The [viewport scope record](GITFLOW_VIEWPORT_2026-10-21.md) tracks explicit100%
-snap, anchored zoom, honest width fitting, project focus/return and responsive
+snap, anchored zoom, project focus/return and responsive
 canvas/gutter math. Original dirty checkout, runtime/generated contracts,
 private access/chat boundaries and sole deployment controls remain preserved.
 Preview tests are candidate evidence; no new source merge or deployment is
 claimed by this entry. The final PR/qualification receipt records later results.
+
+The human's subsequent correction makes **per-repository investigation** authoritative: choose a repository, Expand project, fit both loaded axes with padding, then continuously zoom/pan/drill/inspect and return with a remembered camera. A fleet-wide fullscreen map is superseded. The same PR166 retains sole source ownership and existing Admiral/Captain coordination. Current source extends the viewport record with fullscreen integration, per-instance camera, bounded source/disabled-health explanations and actual CDP drag qualification. No merge, final review, hosted success or deployment is claimed by this source snapshot.
 
 ## Git Flow and Fleet Atlas — qualified source, 19 October 2026 UTC
 

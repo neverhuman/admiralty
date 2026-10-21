@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { GitRepository } from "./feed";
 import { layoutGit, type GitLayout } from "./geometry";
-import { captureGitAnchor, fitGitZoom, restoreGitAnchor, type GitViewportBand } from "./git-viewport";
+import { captureGitAnchor, fitGitOverview, fitGitZoom, gitFrontierScroll, restoreGitAnchor, type GitViewportBand } from "./git-viewport";
 
 const oid = (n: number) => n.toString(16).padStart(40, "0");
 function repository(count = 24): GitRepository {
@@ -17,6 +17,41 @@ const viewport = { width: 640, height: 400 };
 function band(projectId: string, layout: GitLayout | null, top = 0, height = 500): GitViewportBand {
   return { projectId, layout, top, height };
 }
+
+describe("Git full-content overview fit", () => {
+  it.each([{ width: 120_000, height: 80_000 }, { width: 8_000, height: 160_000 }])("fits huge wide or tall histories below the detail zoom floor", (world) => {
+    const camera = fitGitOverview(world, viewport)!;
+    expect(camera.k).toBeGreaterThan(0);
+    expect(camera.k).toBeLessThan(0.05);
+    expect(camera.x).toBeGreaterThanOrEqual(24);
+    expect(camera.y).toBeGreaterThanOrEqual(24);
+    expect(camera.x + world.width * camera.k).toBeLessThanOrEqual(viewport.width - 24);
+    expect(camera.y + world.height * camera.k).toBeLessThanOrEqual(viewport.height - 24);
+  });
+
+  it("refits both dimensions when a small viewport or inspector changes the pane", () => {
+    const world = { width: 10_000, height: 6_000 };
+    const wide = fitGitOverview(world, { width: 1440, height: 900 })!;
+    const inspector = fitGitOverview(world, { width: 980, height: 900 })!;
+    const mobile = fitGitOverview(world, { width: 280, height: 240 })!;
+    expect(inspector.k).toBeLessThan(wide.k);
+    expect(mobile.k).toBeLessThan(inspector.k);
+    expect(mobile.x + world.width * mobile.k).toBeLessThanOrEqual(256);
+    expect(mobile.y + world.height * mobile.k).toBeLessThanOrEqual(216);
+    const tiny = fitGitOverview(world, { width: 20, height: 10 })!;
+    expect(tiny.k).toBeGreaterThan(0);
+    expect(tiny.x + world.width * tiny.k).toBeLessThanOrEqual(20);
+    expect(tiny.y + world.height * tiny.k).toBeLessThanOrEqual(10);
+  });
+
+  it("centers compact content without forcing a one-to-one scale", () => {
+    expect(fitGitOverview({ width: 100, height: 50 }, { width: 448, height: 248 }))
+      .toEqual({ k: 4, x: 24, y: 24 });
+    for (const invalid of [{ width: 0, height: 400 }, { width: Infinity, height: 400 }, { width: 640, height: NaN }])
+      expect(fitGitOverview({ width: 100, height: 50 }, invalid)).toBeNull();
+    expect(fitGitOverview({ width: 0, height: 0 }, viewport)).toBeNull();
+  });
+});
 
 describe("Git viewport anchoring", () => {
   it("keeps a visible selected OID fixed through zoom-dependent range layout", () => {
@@ -85,6 +120,78 @@ describe("Git viewport anchoring", () => {
       expect(captureGitAnchor({ bands: empty, zoom: 1, scroll: { left: 0, top: 0 }, viewport })).toBeNull();
     expect(captureGitAnchor({ bands, zoom: 0, scroll: { left: 0, top: 0 }, viewport })).toBeNull();
     expect(captureGitAnchor({ bands, zoom: 1, scroll: { left: 0, top: 0 }, viewport: { width: 0, height: 400 } })).toBeNull();
+  });
+});
+
+describe("Git observed frontier", () => {
+  it("keeps a short visible repository in view despite a much wider following project", () => {
+    const short = layoutGit(repository(2)), longRepo = repository(100);
+    const long = layoutGit(longRepo, new Set(longRepo.commits.map((commit) => commit.oid)));
+    expect(long.width).toBeGreaterThan(short.width * 10);
+    const position = gitFrontierScroll({
+      bands: [band("short", short), band("long", long, 500)],
+      zoom: 1, scroll: { left: long.width - viewport.width, top: 0 }, viewport,
+    });
+    expect(position).toEqual({ left: short.width - viewport.width, top: 0 });
+  });
+
+  it("follows the lower project under the viewport center in its own coordinates", () => {
+    const longRepo = repository(100);
+    const long = layoutGit(longRepo, new Set(longRepo.commits.map((commit) => commit.oid)));
+    const position = gitFrontierScroll({
+      bands: [band("short", layoutGit(repository(2))), band("long", long, 500)],
+      zoom: 1, scroll: { left: 0, top: 450 }, viewport,
+    });
+    expect(position).toEqual({ left: long.width - viewport.width, top: 450 });
+  });
+
+  it("prefers the rightmost currently visible lane to an offscreen later mark", () => {
+    const base = layoutGit(repository(3));
+    const marks = base.marks.map((mark, index) => ({ ...mark, x: [100, 300, 1500][index], y: [40, 80, 600][index] }));
+    const layout = { ...base, width: 1640, marks, byOid: new Map(marks.map((mark) => [mark.commit.oid, mark])) };
+    expect(gitFrontierScroll({
+      bands: [band("lanes", layout, 0, 1000)], zoom: 1,
+      scroll: { left: 900, top: 0 }, viewport: { width: 200, height: 200 },
+    })).toEqual({ left: 196, top: 0 });
+    // No current marks are visible: center the rightmost observed lane instead.
+    expect(gitFrontierScroll({
+      bands: [band("lanes", layout, 0, 1000)], zoom: 1,
+      scroll: { left: 0, top: 300 }, viewport: { width: 200, height: 200 },
+    })).toEqual({ left: 1440, top: 548 });
+  });
+
+  it("honors an explicit project and skips an empty center band", () => {
+    const layout = layoutGit(repository(2));
+    const bands = [band("first", layout, 0, 100), band("empty", null, 100, 400), band("last", layout, 500)];
+    expect(gitFrontierScroll({ bands, zoom: 1, scroll: { left: 0, top: 0 }, viewport, projectId: "last" }))
+      .toEqual({ left: layout.width - viewport.width, top: 500 });
+    expect(gitFrontierScroll({ bands, zoom: 1, scroll: { left: 0, top: 0 }, viewport }))
+      .toEqual({ left: layout.width - viewport.width, top: 0 });
+    expect(gitFrontierScroll({ bands, zoom: 1, scroll: { left: 0, top: 0 }, viewport, projectId: "empty" })).toBeNull();
+    expect(gitFrontierScroll({ bands: [], zoom: 1, scroll: { left: 0, top: 0 }, viewport })).toBeNull();
+    expect(gitFrontierScroll({ bands, zoom: NaN, scroll: { left: 0, top: 0 }, viewport })).toBeNull();
+    expect(gitFrontierScroll({ bands, zoom: 1, scroll: { left: 0, top: 0 }, viewport: { width: 0, height: 400 } })).toBeNull();
+  });
+
+  it("centers the nearest populated repository when the viewport contains only empty projects", () => {
+    const layout = layoutGit(repository(2));
+    const bands = [band("nearest", layout, 0, 180), band("empty", null, 180, 1200), band("distant", layout, 1380)];
+    expect(gitFrontierScroll({ bands, zoom: 1, scroll: { left: 200, top: 400 }, viewport }))
+      .toEqual({ left: layout.width - viewport.width, top: 0 });
+    expect(gitFrontierScroll({ bands, zoom: 1, scroll: { left: 200, top: 950 }, viewport }))
+      .toEqual({ left: layout.width - viewport.width, top: 1380 });
+  });
+
+  it("reaches the actual layout end for a sole populated repository at every tested zoom", () => {
+    const repo = repository(40), expanded = new Set(repo.commits.map((commit) => commit.oid));
+    for (const zoom of [0.2, 0.9, 1, 2]) {
+      const layout = layoutGit(repo, expanded, zoom);
+      const position = gitFrontierScroll({
+        bands: [band("only", layout, 0, layout.height * zoom + 76)],
+        zoom, scroll: { left: 0, top: 0 }, viewport,
+      })!;
+      expect(layout.width * zoom - viewport.width - position.left).toBeCloseTo(0);
+    }
   });
 });
 
