@@ -1265,9 +1265,6 @@
   color: inherit;
   text-align: left;
   font: inherit;
-  /* Keep the self-hosted font's glyph bounds inside the clipped title on
-     Linux as well as Darwin; inherited normal metrics differ by platform. */
-  line-height: 20px;
   cursor: pointer;
 }
 .git-chat-toggle > span:nth-child(2) {
@@ -1277,6 +1274,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+  /* The shared button font shorthand resets inherited line-height. Give the
+     clipped title its own box, large enough for the self-hosted font on Linux. */
+  line-height: 20px;
 }
 .git-chat-panel {
   flex: 1;
