@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, routeHref } from "../../router";
 import {
   useViews,
@@ -15,6 +15,7 @@ import FleetAtlas from "./FleetAtlas";
 import GitFlow from "./GitFlow";
 import "./live-views.css";
 import type { SlotRegistry } from "./geometry";
+import { createGitMergeIndex } from "../git-flow/merges";
 
 export type Selection =
   | { kind: "agent"; agent: ViewAgent }
@@ -111,6 +112,22 @@ export default function LiveViews({
     document.addEventListener("fullscreenchange", sync);
     return () => document.removeEventListener("fullscreenchange", sync);
   }, []);
+  useEffect(() => {
+    if (!fullscreen || !root.current) return;
+    // CSS fullscreen is also a modal workspace when the browser declines the
+    // native request. Keep the covered application out of keyboard/AT focus.
+    const covered: { element: HTMLElement; inert: boolean }[] = [];
+    let active: HTMLElement = root.current;
+    while (active.parentElement && active.parentElement !== document.body) {
+      for (const sibling of active.parentElement.children) if (sibling !== active && sibling instanceof HTMLElement) {
+        covered.push({ element: sibling, inert: sibling.inert }); sibling.inert = true;
+      }
+      active = active.parentElement;
+    }
+    const focused = document.activeElement;
+    if (!(focused instanceof Node) || !root.current.contains(focused)) root.current.querySelector<HTMLButtonElement>('button[aria-label="Exit fullscreen"]')?.focus();
+    return () => { for (const { element, inert } of covered) element.inert = inert; };
+  }, [fullscreen]);
   const snapshot = feed.snapshot,
     presented = mode === "git" ? (visiblePausedGit ?? snapshot) : snapshot,
     selection = presented ? resolveSelection(presented, route.params) : null;
@@ -169,10 +186,18 @@ export default function LiveViews({
       void root.current?.requestFullscreen?.().catch(() => undefined);
     }
   };
+  const openAccess = () => {
+    setFullscreen(false);
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    onAccess();
+  };
   return (
     <div
       ref={root}
       className={`live-workspace ${fullscreen ? "is-fullscreen" : ""}`}
+      role={fullscreen ? "dialog" : undefined}
+      aria-modal={fullscreen || undefined}
+      aria-label={fullscreen ? `${mode === "atlas" ? "Fleet Atlas" : "Git Flow"} fullscreen workspace` : undefined}
     >
       <header className="lv-header">
         <div className="lv-title">
@@ -224,7 +249,7 @@ export default function LiveViews({
         <div className="lv-demo" role="status">
           <span>Showing the explicitly public producer snapshot. Private native assignments are unavailable; source timestamps are preserved.</span>
           {feed.error && <span>{feed.error}. Last public source timestamps are unchanged.</span>}
-          <button onClick={onAccess} className="lv-button">
+          <button onClick={openAccess} className="lv-button">
             Connect session access
           </button>
           <button onClick={feed.retry} className="lv-button">
@@ -235,7 +260,7 @@ export default function LiveViews({
       {feed.error && !feed.publicFallback && (
         <div className="lv-error" role="status">
           <span>{feed.error}. Source times preserved.</span>
-          <button onClick={onAccess} className="lv-button">
+          <button onClick={openAccess} className="lv-button">
             {feed.sessionAccessRequired ? "Connect session access" : "Session access"}
           </button>
           <button onClick={feed.retry} className="lv-button">
@@ -282,7 +307,7 @@ export default function LiveViews({
               onSelect={select}
               now={now}
               token={token}
-              onAccess={onAccess}
+              onAccess={openAccess}
               chatScopeEpoch={feed.scopeEpoch}
               healthEnabled={feed.state === "connected" && !feed.publicFallback && !feed.sessionAccessRequired && !snapshot.simulated}
               chatDisabledReason={snapshot.simulated
@@ -303,6 +328,7 @@ export default function LiveViews({
               selection={selection}
               snapshot={presented!}
               onClose={() => select(null)}
+              onSelect={select}
               now={now}
             />
           )}
@@ -342,11 +368,13 @@ function Inspector({
   selection,
   snapshot,
   onClose,
+  onSelect,
   now,
 }: {
   selection: Selection;
   snapshot: ViewsSnapshot;
   onClose: () => void;
+  onSelect: (selection: Selection) => void;
   now: number;
 }) {
   const ref = useRef<HTMLElement>(null);
@@ -359,6 +387,8 @@ function Inspector({
   useEffect(() => {
     ref.current?.focus({ preventScroll: true });
   }, [identity]);
+  const repository = selection.kind === "commit" ? selection.project.git : undefined;
+  const merge = useMemo(() => repository ? createGitMergeIndex(repository).get(identity) : undefined, [repository, identity]);
   let title = "",
     subtitle = "",
     fields: Record<string, string> = {},
@@ -459,6 +489,18 @@ function Inspector({
       </header>
       <span className="lv-inspector-kind">{subtitle}</span>
       <h2>{title}</h2>
+      {merge && selection.kind === "commit" && <section className="git-merge-evidence" aria-label="Actual Git merge evidence">
+        <h3>Actual Git merge · {merge.parentCount} parents</h3>
+        <p>The recorded parent order defines this junction. Integration through rebase, squash or fast-forward requires separate evidence.</p>
+        {[merge.firstParent, ...merge.additionalParents].map((parent, index) => <div key={`${index}:${parent.oid}`}>
+          <strong>{index === 0 ? "First parent · previous history" : `Additional parent ${index} · incoming history`}</strong>
+          <button className="lv-text-button" disabled={!parent.loaded} onClick={() => {
+            const commit = repository?.commits.find((commit) => commit.oid === parent.oid);
+            if (commit) onSelect({ kind: "commit", project: selection.project, commit });
+          }}><code>{parent.oid}</code></button>
+          <small>{parent.loaded ? parent.refs.join(" · ") || "Loaded commit · no current ref" : "Parent object not loaded · ancestry boundary"}</small>
+        </div>)}
+      </section>}
       {selection.kind === "agent" && (
         <ModelBadge
           model={selection.agent.model ?? "Reported model unknown"}

@@ -1,5 +1,5 @@
+import { layoutGitGraph } from "../git-flow/layout";
 import type {
-  GitCommit,
   GitRepository,
   ViewAgent,
   ViewsSnapshot,
@@ -48,168 +48,33 @@ export function visible(
     box.y * camera.k + camera.y <= height + margin
   );
 }
-export type CommitMark = Point & {
-  commit: GitCommit;
-  lane: number;
-  rank: number;
-  range?: CommitRange;
-};
-export type CommitRange = {
-  id: string;
-  commits: GitCommit[];
-  expanded: boolean;
-  x: number;
-  y: number;
-};
-export type GitLayout = {
-  marks: CommitMark[];
-  byOid: Map<string, CommitMark>;
-  width: number;
-  height: number;
-  boundaries: number;
-  ranges: CommitRange[];
-  orderedCommits: GitCommit[];
-};
+import type { CommitMark, GitLayout } from "../git-flow/model";
+export type { CommitMark, CommitRange, GitLayout } from "../git-flow/model";
 const GIT_COMMIT_SPACING = 112;
 /** Spend less than the omitted columns, with a usable target at extreme zoom. */
 export function gitRangeWidth(count: number, zoom: number) {
   return Math.max(24, Math.min(304, (count - 1) * GIT_COMMIT_SPACING * zoom * 0.75));
 }
-/** Kahn's algorithm retains every loaded parent and ignores misleading commit dates. */
-function layoutGitCommits(repo: GitRepository) {
-  const commits = new Map(repo.commits.map((c) => [c.oid, c]));
-  const children = new Map<string, string[]>(),
-    indegree = new Map<string, number>();
-  let boundaries = 0;
-  for (const c of repo.commits) {
-    indegree.set(c.oid, c.parents.filter((p) => commits.has(p)).length);
-    for (const p of c.parents)
-      if (commits.has(p)) children.set(p, [...(children.get(p) ?? []), c.oid]);
-      else boundaries++;
-  }
-  const queue = repo.commits
-    .filter((c) => indegree.get(c.oid) === 0)
-    .map((c) => c.oid)
-    .sort();
-  const ranks = new Map<string, number>(),
-    marks: CommitMark[] = [],
-    lanes = new Map<string, number>();
-  const occupied = new Map<number, Set<number>>();
-  while (queue.length) {
-    const id = queue.shift()!,
-      c = commits.get(id)!;
-    const rank = Math.max(-1, ...c.parents.map((p) => ranks.get(p) ?? -1)) + 1;
-    ranks.set(id, rank);
-    const used = occupied.get(rank) ?? new Set<number>();
-    let lane = c.parents.length ? (lanes.get(c.parents[0]) ?? 0) : 0;
-    while (used.has(lane)) lane++;
-    used.add(lane);
-    occupied.set(rank, used);
-    lanes.set(id, lane);
-    marks.push({ commit: c, rank, lane, x: 64 + rank * 72, y: 44 + lane * 40 });
-    for (const child of (children.get(id) ?? []).sort()) {
-      const degree = indegree.get(child)! - 1;
-      indegree.set(child, degree);
-      if (!degree) {
-        queue.push(child);
-        queue.sort();
-      }
-    }
-  }
-  if (marks.length !== commits.size)
-    throw new Error("Invalid cyclic Git graph");
-  const maxRank = Math.max(0, ...marks.map((m) => m.rank));
-  return {
-    marks,
-    byOid: new Map(marks.map((m) => [m.commit.oid, m])),
-    width: Math.max(680, 200 + maxRank * 72),
-    height: Math.max(180, 100 + Math.max(0, ...marks.map((m) => m.lane)) * 40),
-    boundaries,
-  };
-}
-/** Collapse only unadorned 1-parent/1-child interiors, never topology anchors.
- * Every loaded OID maps to its visible mark; the source commits stay untouched.
- * Manual collapse wins across a growing range until explicit user intent clears it.
+/** Compatibility bands use the same world layout as project investigation.
+ * Only their origin is translated into the old positive scroll coordinate space.
+ * Camera scale never changes source topology or world spacing.
  */
-export function layoutGit(
-  repo: GitRepository,
-  expandedOids: ReadonlySet<string> = new Set(),
-  zoom = 1,
-  collapsedOids: ReadonlySet<string> = new Set(),
-): GitLayout {
-  const raw = layoutGitCommits(repo);
-  const children = new Map<string, string[]>();
-  for (const c of repo.commits)
-    for (const p of c.parents) {
-      const list = children.get(p) ?? [];
-      list.push(c.oid);
-      children.set(p, list);
-    }
-  const anchors = new Set([
-    ...repo.refs.map((r) => r.commit_oid),
-    ...repo.checkouts.flatMap((c) => c.head ? [c.head] : []),
-  ]);
-  const eligible = (m: CommitMark) =>
-    !anchors.has(m.commit.oid) &&
-    m.commit.parents.length === 1 &&
-    raw.byOid.has(m.commit.parents[0]) &&
-    children.get(m.commit.oid)?.length === 1;
-  const ranges: CommitRange[] = [];
-  const membership = new Map<string, CommitRange>();
-  for (const mark of raw.marks) {
-    if (!eligible(mark) || membership.has(mark.commit.oid)) continue;
-    const chain = [mark.commit];
-    let next = raw.byOid.get(children.get(mark.commit.oid)![0]);
-    while (next && eligible(next)) {
-      chain.push(next.commit);
-      next = raw.byOid.get(children.get(next.commit.oid)![0]);
-    }
-    // Two or more interiors form a run; compact controls fit short sequences too.
-    if (chain.length < 2) continue;
-    const range: CommitRange = {
-      id: `${repo.instance_id}:${chain[0].oid}:${chain.at(-1)!.oid}`,
-      commits: chain,
-      expanded: chain.some((c) => expandedOids.has(c.oid)) &&
-        !chain.some((c) => collapsedOids.has(c.oid)),
-      x: 0, y: 0,
-    };
-    ranges.push(range);
-    for (const c of chain) membership.set(c.oid, range);
-  }
-  const marks: CommitMark[] = [];
-  const byOid = new Map<string, CommitMark>();
-  const laneEnds = new Map<number, number>();
-  const radius = (m: CommitMark) => m.range ? gitRangeWidth(m.range.commits.length, zoom) / (2 * zoom) : 0;
-  for (const source of raw.marks) {
-    const range = membership.get(source.commit.oid);
-    if (range && !range.expanded && range.commits[0].oid !== source.commit.oid) {
-      byOid.set(source.commit.oid, byOid.get(range.commits[0].oid)!);
-      continue;
-    }
-    const mark = { ...source, range: range && !range.expanded ? range : undefined };
-    if (ranges.length) mark.y = 44 / Math.min(1, zoom) + mark.lane * Math.max(40, 54 / zoom);
-    const parents = source.commit.parents.flatMap((id) => {
-      const parent = byOid.get(id);
-      return parent ? [parent] : [];
-    });
-    mark.x = Math.max(64 + radius(mark), (laneEnds.get(mark.lane) ?? -48) + GIT_COMMIT_SPACING + radius(mark), ...parents.map((p) => p.x + radius(p) + GIT_COMMIT_SPACING + radius(mark)));
-    if (range?.expanded && range.commits[0].oid === mark.commit.oid) {
-      range.x = mark.x;
-      range.y = mark.y;
-    } else if (mark.range) {
-      mark.range.x = mark.x;
-      mark.range.y = mark.y;
-    }
-    laneEnds.set(mark.lane, mark.x + radius(mark));
-    marks.push(mark);
-    byOid.set(mark.commit.oid, mark);
-  }
-  return {
-    ...raw, marks, byOid, ranges,
-    orderedCommits: raw.marks.map((m) => m.commit),
-    height: Math.max(180, ...marks.map((m) => m.y + 100)),
-    width: Math.max(680, ...marks.map((m) => m.x + radius(m) + 140)),
-  };
+export function layoutGit(repo: GitRepository, expanded: ReadonlySet<string> = new Set(), _zoom = 1, collapsed: ReadonlySet<string> = new Set()): GitLayout {
+  const graph = layoutGitGraph(repo, { expandedOids: expanded, collapsedOids: collapsed });
+  const offset = 44 - graph.marks.reduce((minimum, mark) => Math.min(minimum, mark.y), 0);
+  const ranges = graph.ranges.map((range) => ({ ...range, y: range.y + offset }));
+  const rangeById = new Map(ranges.map((range) => [range.id, range]));
+  const translated = new Map<CommitMark, CommitMark>();
+  const marks = graph.marks.map((mark) => {
+    const next = { ...mark, y: mark.y + offset, range: mark.range ? rangeById.get(mark.range.id) : undefined };
+    translated.set(mark, next); return next;
+  });
+  return { ...graph, marks, ranges,
+    byOid: new Map([...graph.byOid].map(([oid, mark]) => [oid, translated.get(mark)!])),
+    edges: graph.edges.map((edge) => ({ ...edge, child: translated.get(edge.child)!, parent: edge.parent ? translated.get(edge.parent)! : null })),
+    bounds: { ...graph.bounds, minY: graph.bounds.minY + offset, maxY: graph.bounds.maxY + offset },
+    height: Math.max(180, graph.bounds.maxY + offset + 56),
+  } as GitLayout;
 }
 export type AtlasNode = Box & { agent: ViewAgent };
 export type AtlasBoard = Box & { id: string; name: string; nodes: AtlasNode[] };

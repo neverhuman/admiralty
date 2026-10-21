@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "typecheck": "tsc -b --pretty false",
+    "typecheck": "tsc -b --pretty false && tsc -p tsconfig.worker.json --noEmit",
     "test": "vitest"
   },
   "dependencies": {
