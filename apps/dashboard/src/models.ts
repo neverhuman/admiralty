@@ -1,5 +1,5 @@
 import { ApiError, readBoundedJson } from './api';
-import { assertBoundedJson } from './validation';
+import { assertBoundedJson } from './jsonBounds';
 
 export type Provider = 'openai_compatible' | 'opencode_ssh' | 'codex_cli';
 export type PublicModel = { id: string; label: string; provider: Provider; provider_model: string; tier: number; enabled: boolean; node_id: string | null;

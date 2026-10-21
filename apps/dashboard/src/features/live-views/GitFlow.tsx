@@ -434,7 +434,7 @@ export default function GitFlow({
             </option>
           ))}
         </select>
-        <span className="lv-axis-pill">ANCESTRY → COMMIT ORDER</span>
+        <span className="lv-axis-pill">Ancestry → commit order</span>
         <span className="lv-toolbar-spacer" />
         <button
           className={`lv-button ${inventory ? "active" : ""}`}

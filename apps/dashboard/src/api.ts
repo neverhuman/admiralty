@@ -1,5 +1,4 @@
 import type { CandidateDecisionEvidence as I1CandidateDecisionEvidence, TaskContract } from '../../../packages/contracts/index';
-import { parseFleet, parseNativeFleet } from './validation';
 
 export type Cursor = { recovery_generation: string; event_seq: string };
 export class ApiError extends Error {
@@ -93,7 +92,10 @@ export async function getFleet(token?: string, signal?: AbortSignal, fetcher: ty
     signal, cache: 'no-store',
   });
   if (!response.ok) throw new ApiError(`Fleet request failed (${response.status})`, response.status);
-  return parseFleet(await readBoundedJson(response));
+  const body = await readBoundedJson(response);
+  // Generated schema guards load on first use, outside the initial bundle.
+  const { parseFleet } = await import('./validation');
+  return parseFleet(body);
 }
 
 export async function getNativeFleet(token?: string, signal?: AbortSignal, fetcher: typeof fetch = fetch): Promise<NativeFleet> {
@@ -102,7 +104,9 @@ export async function getNativeFleet(token?: string, signal?: AbortSignal, fetch
     signal, cache: 'no-store',
   });
   if (!response.ok) throw new ApiError(`Fleet request failed (${response.status})`, response.status);
-  return parseNativeFleet(await readBoundedJson(response));
+  const body = await readBoundedJson(response);
+  const { parseNativeFleet } = await import('./validation');
+  return parseNativeFleet(body);
 }
 
 export function formatUnknown(value: number | string | null | undefined): string {

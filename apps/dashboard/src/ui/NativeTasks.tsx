@@ -34,7 +34,7 @@ export default function NativeTasks({ fleet, error, connection }: {
 
   return <section className="panel workplans-panel native-task-panel" aria-labelledby="native-task-title">
     <div className="panel-head">
-      <div><div className="eyebrow">NATIVE TASKS / SNAPSHOT PROJECTION</div><h2 id="native-task-title">Task inspection</h2></div>
+      <div><div className="eyebrow">Native tasks, snapshot projection</div><h2 id="native-task-title">Task inspection</h2></div>
       {fleet && <span className="tiny-badge">{fleet.simulated ? 'SIMULATED SNAPSHOT' : 'AUTHENTICATED V2 SNAPSHOT'} · EXECUTION NOT QUALIFIED</span>}
     </div>
     {!fleet ? <div className="native-task-unavailable" role="status">

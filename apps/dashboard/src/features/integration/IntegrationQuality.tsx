@@ -45,7 +45,7 @@ export default function IntegrationQuality({ fleet, onSelectTask }: {
   if (!fleet) return <div className="loading-card" role="status">Integration snapshot unavailable. Reconnect to inspect recorded evidence.</div>;
 
   return <section className="panel integration-quality" aria-labelledby="integration-quality-title">
-    <div className="panel-head"><div><div className="eyebrow">INTEGRATION / QUALITY</div>
+    <div className="panel-head"><div><div className="eyebrow">Integration and quality</div>
       <h2 id="integration-quality-title">Candidates, blockers &amp; evidence</h2></div>
       <a href="#/atlas">Fleet inventory &amp; node observations</a></div>
     <p>Open a task to inspect its verification evidence and available authorized actions.</p>
