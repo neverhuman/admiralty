@@ -50,6 +50,7 @@ describe("repository Git investigation against isolated native source", () => {
   let browser: BrowserHarness, server: IsolatedNativeAdmiraltyServer, source: ReturnType<typeof sourceFixture>;
   const evidence = join(REPO_ROOT, "target", "git-investigation-evidence");
   const observations: unknown[] = [];
+  let fixtureSequence = 0;
   beforeAll(async () => {
     mkdirSync(evidence, { recursive: true });
     server = await startIsolatedNativeAdmiraltyServer({ legacySnapshot: sourceFixture(), allowedProjects: ["harbor", "observatory"] });
@@ -62,7 +63,12 @@ describe("repository Git investigation against isolated native source", () => {
     await browser?.close(); await server?.close();
   });
   beforeEach(async () => {
-    source = sourceFixture(); server.writeLegacySnapshot(source);
+    source = sourceFixture();
+    const sequence = ++fixtureSequence;
+    source.projects.harbor.name = `Harbor initial fixture ${sequence}`;
+    source.git.harbor.instance_id = `investigation-harbor-fixture-${sequence}`;
+    source.git.observatory.instance_id = `investigation-observatory-fixture-${sequence}`;
+    server.writeLegacySnapshot(source);
     await browser.resetPage(); await browser.setViewportSize(1440, 1000);
   });
 
@@ -88,6 +94,9 @@ describe("repository Git investigation against isolated native source", () => {
   async function connect() {
     await browser.goto(`${server.baseUrl}/#/git`); await admitCurrentPage();
     await browser.waitForSelector(".git-band");
+    // The native producer polls asynchronously. Do not interact with a cached
+    // prior test snapshot while the newly written fixture is still in flight.
+    await browser.waitForText(source.projects.harbor.name);
   }
   async function selectByAriaLabel(label: string, value: string) {
     await browser.evaluate(`(() => {
@@ -175,6 +184,25 @@ describe("repository Git investigation against isolated native source", () => {
       throw Error('No unobstructed canvas input target');
     })()`);
   }
+  const rangeControlGeometry=()=>browser.evaluate<{count:number;overlaps:unknown[];blocked:unknown[]}>(`(() => {
+      const stage=document.querySelector('.git-project-stage'),v=stage.getBoundingClientRect();
+      const controls=[...stage.querySelectorAll('.git-commit-range')].map(e=>({e,r:e.getBoundingClientRect()}));
+      const overlaps=[],blocked=[];
+      for(let i=0;i<controls.length;i++) for(let j=i+1;j<controls.length;j++) {
+        const a=controls[i].r,b=controls[j].r;
+        if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>.1 && Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>.1)
+          overlaps.push({a:controls[i].e.title,b:controls[j].e.title,aRect:a.toJSON(),bRect:b.toJSON()});
+      }
+      for(const {e,r} of controls) {
+        const left=Math.max(r.left,v.left)+1,right=Math.min(r.right,v.right)-1,top=Math.max(r.top,v.top)+1,bottom=Math.min(r.bottom,v.bottom)-1;
+        if(left>=right||top>=bottom) continue;
+        for(const [x,y] of [[(left+right)/2,(top+bottom)/2],[left,(top+bottom)/2],[right,(top+bottom)/2],[(left+right)/2,top],[(left+right)/2,bottom]]) {
+          const hit=document.elementFromPoint(x,y);if(hit!==e&&!e.contains(hit)) blocked.push({title:e.title,x,y,hit:hit?.className});
+        }
+      }
+      return {count:controls.length,overlaps,blocked};
+    })()`);
+
   const distance = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
 
   it("expands one chosen repository with padded fit when native fullscreen is refused", async () => {
@@ -326,32 +354,37 @@ describe("repository Git investigation against isolated native source", () => {
     await connect(); await expand(); const before=await camera();
     await browser.wheelPointer(await canvasPoint(),{x:0,y:-Math.log(scale/before.k)/.002},{control:true});
     expect((await camera()).k).toBeCloseTo(scale,6);
-    const measure=()=>browser.evaluate<{count:number;overlaps:unknown[];blocked:unknown[]}>(`(() => {
-      const stage=document.querySelector('.git-project-stage'),v=stage.getBoundingClientRect();
-      const controls=[...stage.querySelectorAll('.git-commit-range')].map(e=>({e,r:e.getBoundingClientRect()}));
-      const overlaps=[],blocked=[];
-      for(let i=0;i<controls.length;i++) for(let j=i+1;j<controls.length;j++) {
-        const a=controls[i].r,b=controls[j].r;
-        if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>.1 && Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>.1)
-          overlaps.push({a:controls[i].e.title,b:controls[j].e.title,aRect:a.toJSON(),bRect:b.toJSON()});
-      }
-      for(const {e,r} of controls) {
-        const left=Math.max(r.left,v.left)+1,right=Math.min(r.right,v.right)-1,top=Math.max(r.top,v.top)+1,bottom=Math.min(r.bottom,v.bottom)-1;
-        if(left>=right||top>=bottom) continue;
-        for(const [x,y] of [[(left+right)/2,(top+bottom)/2],[left,(top+bottom)/2],[right,(top+bottom)/2],[(left+right)/2,top],[(left+right)/2,bottom]]) {
-          const hit=document.elementFromPoint(x,y);if(hit!==e&&!e.contains(hit)) blocked.push({title:e.title,x,y,hit:hit?.className});
-        }
-      }
-      return {count:controls.length,overlaps,blocked};
-    })()`);
     for(const phase of ['collapsed','expanded','panned']) {
       if(phase==='expanded') {
         const anchor=await browser.evaluate<string>(`(() => {const e=[...document.querySelectorAll('.git-project-stage .git-commit-range[aria-expanded="false"]')].find(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return hit===e||e.contains(hit);});if(!e)throw Error('No hittable collapsed range');return e.dataset.anchorOid;})()`);
         await realClick(`.git-project-stage .git-commit-range[data-anchor-oid="${anchor}"]`);
       }
       if(phase==='panned') await browser.wheelPointer(await canvasPoint(),{x:240,y:0});
-      const result=await measure(); observations.push({label:'actual range-control intersection and hit test',scale,phase,...result});
+      const result=await rangeControlGeometry(); observations.push({label:'actual range-control intersection and hit test',scale,phase,...result});
       expect(result.count).toBeGreaterThanOrEqual(3); expect(result.overlaps).toEqual([]); expect(result.blocked).toEqual([]);
+    }
+  });
+
+  it.each(['left','right'])("keeps clipped same-lane range controls apart at the %s edge", async(edge) => {
+    const repo=source.git.harbor, template=repo.commits[0];
+    repo.commits=Array.from({length:15},(_,n)=>({...template,oid:oid(n+1),parents:n?[oid(n)]:[],subject:`Edge chain ${n+1}`}));
+    repo.refs=[{name:'refs/heads/main',oid:oid(15),commit_oid:oid(15),kind:'branch'},{name:'refs/tags/midpoint',oid:oid(8),commit_oid:oid(8),kind:'tag'}];
+    repo.checkouts=[]; server.writeLegacySnapshot(source); await connect(); await expand();
+    const start=await camera(); await browser.wheelPointer(await canvasPoint(),{x:0,y:-Math.log(.69/start.k)/.002},{control:true});
+    expect((await camera()).k).toBeCloseTo(.69,6);
+    for(const phase of ['collapsed','mixed']) {
+      if(phase==='mixed') {
+        await browser.clickButtonByAriaLabel('Fit graph');
+        const anchor=await browser.evaluate<string>(`[...document.querySelectorAll('.git-project-stage .git-commit-range')].sort((a,b)=>Number(a.dataset.worldX)-Number(b.dataset.worldX))[1].dataset.anchorOid`);
+        await realClick(`.git-project-stage .git-commit-range[data-anchor-oid="${anchor}"]`);
+        const fitted=await camera(); await browser.wheelPointer(await canvasPoint(),{x:0,y:-Math.log(.69/fitted.k)/.002},{control:true});
+      }
+      const world=await browser.evaluate<number[]>(`[...document.querySelectorAll('.git-project-stage .git-commit-range')].map(e=>Number(e.dataset.worldX)).sort((a,b)=>a-b)`);
+      expect(world).toHaveLength(2); const current=await camera();
+      const desired=(edge==='left'?-80:current.width+80)-world[edge==='left'?0:1]*current.k;
+      await browser.wheelPointer(await canvasPoint(),{x:current.x-desired,y:0});
+      const result=await rangeControlGeometry(); observations.push({label:'same-lane clipped control geometry',edge,phase,...result});
+      expect(result.count).toBe(2); expect(result.overlaps).toEqual([]); expect(result.blocked).toEqual([]);
     }
   });
 

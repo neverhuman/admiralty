@@ -82,7 +82,7 @@ export default function GitCanvas({
     const offset = compactProject ? compactHeight / 2 : range.expanded ? 38 : tiny ? 13 : narrow ? 26 : 19;
     const buttonHeight = compactProject ? compactHeight : range.expanded || tiny ? 26 : narrow ? 52 : 38;
     return [{ range, compactProject, narrow, compact, tiny, rect: {
-      x: Math.max(0, Math.min(width - buttonWidth, x - buttonWidth / 2)), y: y - offset, width: buttonWidth, height: buttonHeight,
+      x: fixed ? x - buttonWidth / 2 : Math.max(0, Math.min(width - buttonWidth, x - buttonWidth / 2)), y: y - offset, width: buttonWidth, height: buttonHeight,
     } }];
   }), [layout, visibleOids, fixed, zoom, left, top, width, height]);
   const markColor = (mark: GitLayout["marks"][number]) => familyColors.get(mark.commit.oid) ?? colors[mark.lane % colors.length];
