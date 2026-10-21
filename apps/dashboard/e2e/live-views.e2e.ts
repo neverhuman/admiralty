@@ -366,7 +366,7 @@ describe("built live views against the real Rust server", () => {
   it("exits branch-only scope and restores the latest camera after leaving Git Flow", async () => {
     server.writeLegacySnapshot(sourceFixture());
     await connect("git?project=harbor&branch=worker%2Fui");
-    await browser.waitForSelector('.is-project-focused');
+    await browser.waitForSelector('.is-project-focused .git-canvas[aria-label*="4 commits"]');
     await browser.clickButtonByText("All projects");
     await browser.waitForSelector('.git-band:nth-child(2)');
     expect(await browser.evaluate(`new URLSearchParams(location.hash.split('?')[1]).has('branch')`)).toBe(false);
@@ -402,6 +402,7 @@ describe("built live views against the real Rust server", () => {
     Object.assign(source.git, { observatory: structuredClone(repo) });
     server.writeLegacySnapshot(source);
     await connect("git");
+    await browser.waitForSelector('.git-canvas[aria-label*="161 commits"]');
     await browser.clickButtonByText("Expand all");
     await browser.waitForText("Collapse linear");
     await browser.clickButtonByText("Fit width");
