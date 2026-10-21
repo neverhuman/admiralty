@@ -93,6 +93,60 @@ pub struct GitHealthReport {
     pub issues: Vec<GitHealthIssue>,
     pub branches: Vec<GitHealthBranch>,
     pub checkouts: Vec<GitHealthCheckout>,
+    /// Descriptive hygiene and activity measurements. They never change
+    /// `state`, `actionable` or `fingerprint`, so they cannot trigger alerts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub metrics: Option<GitHealthMetrics>,
+}
+
+/// Hygiene and activity measurements from the same immutable observer cut.
+///
+/// Ages are relative to `observed_utc`, not the reader's clock, so a report is
+/// reproducible. Window counts walk the integration ref's first-parent chain;
+/// when that walk leaves the loaded graph before the window starts, the count
+/// is a lower bound. Commit age describes history only: it never establishes
+/// that work is stalled, abandoned or safe to delete.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GitHealthMetrics {
+    /// Local branches (`refs/heads/*`) other than the integration ref.
+    pub local_branches: u32,
+    /// Local branches with commits absent from the integration ref.
+    pub unmerged_branches: u32,
+    /// Local branches fully contained in the integration ref. Cleanup
+    /// candidates once their owners confirm; never deleted by Admiralty.
+    pub merged_branches: u32,
+    /// Local branches that are both ahead of and behind the integration ref.
+    pub diverged_branches: u32,
+    /// Branch and remote refs whose ancestry is outside the loaded graph.
+    pub unknown_refs: u32,
+    /// Remote-tracking refs (excluding `*/HEAD`) with unintegrated commits.
+    pub remote_unmerged_refs: u32,
+    /// Largest `behind` among unmerged local branches: how far lanes trail.
+    pub max_unmerged_behind: Option<GitHealthCount>,
+    /// Largest `ahead` among unmerged local branches: biggest pending batch.
+    pub max_unmerged_ahead: Option<GitHealthCount>,
+    /// Age of the oldest unmerged local branch tip at observation time.
+    pub oldest_unmerged_tip_age_s: Option<u64>,
+    pub dirty_checkouts: u32,
+    pub conflicted_checkouts: u32,
+    pub detached_checkouts: u32,
+    pub locked_checkouts: u32,
+    pub prunable_checkouts: u32,
+    pub unknown_state_checkouts: u32,
+    /// Linked checkouts that are clean, unlocked and fully contained in the
+    /// integration ref. Process activity is not observed here.
+    pub cleanup_candidate_checkouts: Vec<String>,
+    /// Integration tip age at observation time.
+    pub integration_tip_age_s: Option<u64>,
+    pub integration_commits_24h: Option<GitHealthCount>,
+    pub integration_commits_7d: Option<GitHealthCount>,
+    /// First-parent merge commits in 7 days (zero under rebase-only policy).
+    pub integration_merges_7d: Option<GitHealthCount>,
+    /// Commits whose subject starts with `Revert "` in 7 days.
+    pub integration_reverts_7d: Option<GitHealthCount>,
+    /// `fixup!`/`squash!`/`amend!` commits that reached the integration ref.
+    pub integration_fixups_7d: Option<GitHealthCount>,
 }
 
 struct Ancestry<'a> {
@@ -216,6 +270,7 @@ pub fn evaluate(
         issues: vec![],
         branches: vec![],
         checkouts: vec![],
+        metrics: None,
     };
     let Some(integration_ref) = integration_ref else {
         // Unconfigured ancestry policy must not hide directly observed conflicts.
@@ -248,7 +303,7 @@ pub fn evaluate(
         if report.actionable {
             report.state = GitHealthState::Attention;
         }
-        return finish(report);
+        return finish(report, repository);
     };
     let mut issue = |code: &str, severity, detail: &str| {
         report.issues.push(GitHealthIssue {
@@ -472,7 +527,7 @@ pub fn evaluate(
         GitHealthState::Attention
     };
     report.actionable = !report.issues.is_empty();
-    finish(report)
+    finish(report, repository)
 }
 
 fn acyclic(graph: &BTreeMap<&str, &GitCommit>) -> bool {
@@ -512,7 +567,7 @@ fn working_dirty(state: &crate::views::GitWorkingState) -> bool {
     state.staged > 0 || state.unstaged > 0 || state.untracked > 0 || state.conflicts > 0
 }
 
-fn finish(mut report: GitHealthReport) -> GitHealthReport {
+fn finish(mut report: GitHealthReport, repository: &GitRepository) -> GitHealthReport {
     report.issues.sort_by(|a, b| {
         (&a.code, &a.ref_name, &a.checkout_id).cmp(&(&b.code, &b.ref_name, &b.checkout_id))
     });
@@ -520,10 +575,160 @@ fn finish(mut report: GitHealthReport) -> GitHealthReport {
         .checkouts
         .sort_by(|a, b| a.checkout_id.cmp(&b.checkout_id));
     let observed = std::mem::take(&mut report.observed_utc);
+    // Metrics include time-relative ages; keeping them out of the content
+    // identity preserves existing fingerprints and alert deduplication.
+    report.metrics = None;
     // All fields are serializable primitives; serialization has no fallible I/O.
     report.fingerprint = crate::content_digest(&report).unwrap_or_default();
     report.observed_utc = observed;
+    report.metrics = Some(metrics(repository, &report));
     report
+}
+
+const DAY_SECONDS: i64 = 86_400;
+
+fn epoch_seconds(text: &str) -> Option<i64> {
+    text.parse::<jiff::Timestamp>().ok().map(|t| t.as_second())
+}
+
+/// Commits on the integration ref's first-parent chain newer than `window`
+/// seconds before `now`, with a lower-bound flag when the chain leaves the
+/// loaded graph (or loses its date) before reaching the window start.
+fn first_parent_window<'a>(
+    tip: &'a str,
+    graph: &BTreeMap<&'a str, &'a GitCommit>,
+    now: i64,
+    window: i64,
+    accept: impl Fn(&GitCommit) -> bool,
+) -> GitHealthCount {
+    let mut matched = 0usize;
+    let mut cursor = Some(tip);
+    let mut seen = BTreeSet::new();
+    while let Some(oid) = cursor {
+        if !seen.insert(oid) {
+            break;
+        }
+        let Some(commit) = graph.get(oid) else {
+            return count(matched, true);
+        };
+        let Some(at) = epoch_seconds(&commit.committed_utc) else {
+            return count(matched, true);
+        };
+        if now - at > window {
+            return count(matched, false);
+        }
+        if accept(commit) {
+            matched += 1;
+        }
+        cursor = commit.parents.first().map(String::as_str);
+    }
+    // A root commit inside the window: the count is complete.
+    count(matched, false)
+}
+
+fn max_count(values: impl Iterator<Item = GitHealthCount>) -> Option<GitHealthCount> {
+    values.max_by(|a, b| {
+        a.value
+            .cmp(&b.value)
+            .then(a.lower_bound.cmp(&b.lower_bound))
+    })
+}
+
+fn metrics(repository: &GitRepository, report: &GitHealthReport) -> GitHealthMetrics {
+    let graph = repository
+        .commits
+        .iter()
+        .map(|c| (c.oid.as_str(), c))
+        .collect::<BTreeMap<_, _>>();
+    let now = epoch_seconds(&repository.observed_utc);
+    let age = |oid: &str| -> Option<u64> {
+        let at = epoch_seconds(&graph.get(oid)?.committed_utc)?;
+        u64::try_from(now? - at).ok()
+    };
+    let kinds = repository
+        .refs
+        .iter()
+        .map(|r| (r.name.as_str(), r.kind.as_str()))
+        .collect::<BTreeMap<_, _>>();
+    let integration = report.integration_ref.as_deref();
+    let mut metrics = GitHealthMetrics::default();
+    let mut unmerged_local = Vec::new();
+    for branch in &report.branches {
+        let name = branch.ref_name.as_str();
+        if Some(name) == integration {
+            continue;
+        }
+        let local = kinds.get(name) == Some(&"branch");
+        let unmerged = matches!(
+            branch.relation,
+            GitHealthRelation::Ahead | GitHealthRelation::Diverged
+        );
+        match branch.relation {
+            GitHealthRelation::Unknown => metrics.unknown_refs += 1,
+            _ if !local && unmerged && !name.ends_with("/HEAD") => {
+                metrics.remote_unmerged_refs += 1;
+            }
+            _ if !local => {}
+            GitHealthRelation::Equal | GitHealthRelation::Behind => metrics.merged_branches += 1,
+            GitHealthRelation::Diverged => metrics.diverged_branches += 1,
+            _ => {}
+        }
+        if local {
+            metrics.local_branches += 1;
+            if unmerged {
+                metrics.unmerged_branches += 1;
+                unmerged_local.push(branch);
+            }
+        }
+    }
+    metrics.max_unmerged_behind = max_count(unmerged_local.iter().filter_map(|b| b.behind.clone()));
+    metrics.max_unmerged_ahead = max_count(unmerged_local.iter().filter_map(|b| b.ahead.clone()));
+    metrics.oldest_unmerged_tip_age_s = unmerged_local.iter().filter_map(|b| age(&b.oid)).max();
+    let observed = repository
+        .checkouts
+        .iter()
+        .map(|c| (c.id.as_str(), c))
+        .collect::<BTreeMap<_, _>>();
+    for checkout in &report.checkouts {
+        let source = observed.get(checkout.checkout_id.as_str());
+        metrics.dirty_checkouts += u32::from(checkout.dirty == Some(true));
+        metrics.conflicted_checkouts += u32::from(checkout.conflicts.is_some_and(|n| n > 0));
+        metrics.detached_checkouts += u32::from(checkout.detached);
+        metrics.locked_checkouts += u32::from(source.is_some_and(|c| c.locked));
+        metrics.prunable_checkouts += u32::from(source.is_some_and(|c| c.prunable));
+        metrics.unknown_state_checkouts += u32::from(
+            checkout.dirty.is_none() && source.is_some_and(|c| c.kind != "bare" && !c.prunable),
+        );
+        let contained = checkout
+            .unique_commits
+            .as_ref()
+            .is_some_and(|n| n.value == 0 && !n.lower_bound);
+        if contained
+            && checkout.dirty == Some(false)
+            && source.is_some_and(|c| c.kind == "linked" && !c.locked && !c.prunable)
+        {
+            metrics
+                .cleanup_candidate_checkouts
+                .push(checkout.checkout_id.clone());
+        }
+    }
+    if let (Some(tip), Some(now)) = (report.integration_oid.as_deref(), now) {
+        metrics.integration_tip_age_s = age(tip);
+        let window = |seconds, accept: &dyn Fn(&GitCommit) -> bool| {
+            Some(first_parent_window(tip, &graph, now, seconds, accept))
+        };
+        metrics.integration_commits_24h = window(DAY_SECONDS, &|_| true);
+        metrics.integration_commits_7d = window(7 * DAY_SECONDS, &|_| true);
+        metrics.integration_merges_7d = window(7 * DAY_SECONDS, &|c| c.parents.len() > 1);
+        metrics.integration_reverts_7d =
+            window(7 * DAY_SECONDS, &|c| c.subject.starts_with("Revert \""));
+        metrics.integration_fixups_7d = window(7 * DAY_SECONDS, &|c| {
+            ["fixup!", "squash!", "amend!"]
+                .iter()
+                .any(|prefix| c.subject.starts_with(prefix))
+        });
+    }
+    metrics
 }
 
 #[cfg(test)]
@@ -814,5 +1019,158 @@ mod tests {
             started.elapsed(),
             started.elapsed() / 100
         );
+    }
+
+    fn dated(n: usize, parents: &[usize], at: &str, subject: &str) -> GitCommit {
+        GitCommit {
+            oid: oid(n),
+            parents: parents.iter().map(|n| oid(*n)).collect(),
+            subject: subject.into(),
+            committed_utc: at.into(),
+        }
+    }
+    fn reference(name: &str, n: usize, kind: &str) -> GitRef {
+        GitRef {
+            name: name.into(),
+            oid: oid(n),
+            commit_oid: Some(oid(n)),
+            kind: kind.into(),
+        }
+    }
+    fn linked(id: &str, head: usize) -> GitCheckout {
+        GitCheckout {
+            id: id.into(),
+            name: id.into(),
+            kind: "linked".into(),
+            head: Some(oid(head)),
+            branch: None,
+            detached: false,
+            locked: false,
+            prunable: false,
+            status: Some(GitWorkingState::default()),
+        }
+    }
+    fn hygiene_repository() -> GitRepository {
+        let mut main = linked("main", 4);
+        main.kind = "main".into();
+        main.branch = Some("main".into());
+        let mut dirty = linked("lane-b", 6);
+        dirty.status.as_mut().expect("status").unstaged = 1;
+        let mut locked = linked("lane-c", 5);
+        locked.locked = true;
+        let mut prunable = linked("lane-d", 5);
+        prunable.prunable = true;
+        prunable.status = None;
+        let mut detached = linked("lane-e", 3);
+        detached.detached = true;
+        GitRepository {
+            instance_id: "fixture:hygiene".into(),
+            node: "fixture".into(),
+            observed_utc: "2026-10-20T00:00:00Z".into(),
+            error: None,
+            shallow: false,
+            truncated: false,
+            commits: vec![
+                dated(1, &[], "2026-10-01T00:00:00Z", "root"),
+                dated(2, &[1], "2026-10-15T00:00:00Z", "fixup! root"),
+                dated(3, &[2], "2026-10-19T12:00:00Z", "Revert \"risky\""),
+                dated(4, &[3, 5], "2026-10-19T20:00:00Z", "Merge lane"),
+                dated(5, &[1], "2026-10-10T00:00:00Z", "lane work"),
+                dated(6, &[3], "2026-10-18T00:00:00Z", "unmerged work"),
+            ],
+            refs: vec![
+                reference("refs/heads/main", 4, "branch"),
+                reference("refs/heads/worker", 6, "branch"),
+                reference("refs/heads/done", 5, "branch"),
+                reference("refs/remotes/origin/main", 4, "remote"),
+                reference("refs/remotes/origin/feature", 6, "remote"),
+                reference("refs/remotes/origin/HEAD", 6, "remote"),
+                reference("refs/tags/v1", 1, "tag"),
+            ],
+            checkouts: vec![main, linked("lane-a", 5), dirty, locked, prunable, detached],
+        }
+    }
+
+    #[test]
+    fn hygiene_metrics_describe_branches_checkouts_and_integration_activity() {
+        let report = evaluate(&hygiene_repository(), Some("refs/heads/main"), 20);
+        let metrics = report.metrics.clone().expect("metrics");
+        assert_eq!(metrics.local_branches, 2);
+        assert_eq!(metrics.unmerged_branches, 1);
+        assert_eq!(metrics.merged_branches, 1);
+        assert_eq!(metrics.diverged_branches, 1);
+        assert_eq!(metrics.unknown_refs, 0);
+        assert_eq!(metrics.remote_unmerged_refs, 1, "HEAD symref excluded");
+        assert_eq!(metrics.max_unmerged_behind, Some(count(2, false)));
+        assert_eq!(metrics.max_unmerged_ahead, Some(count(1, false)));
+        assert_eq!(metrics.oldest_unmerged_tip_age_s, Some(2 * 86_400));
+        assert_eq!(
+            (
+                metrics.dirty_checkouts,
+                metrics.conflicted_checkouts,
+                metrics.detached_checkouts,
+                metrics.locked_checkouts,
+                metrics.prunable_checkouts,
+                metrics.unknown_state_checkouts
+            ),
+            (1, 0, 1, 1, 1, 0)
+        );
+        assert_eq!(
+            metrics.cleanup_candidate_checkouts,
+            vec!["lane-a".to_owned(), "lane-e".to_owned()]
+        );
+        assert_eq!(metrics.integration_tip_age_s, Some(4 * 3600));
+        assert_eq!(metrics.integration_commits_24h, Some(count(2, false)));
+        assert_eq!(metrics.integration_commits_7d, Some(count(3, false)));
+        assert_eq!(metrics.integration_merges_7d, Some(count(1, false)));
+        assert_eq!(metrics.integration_reverts_7d, Some(count(1, false)));
+        assert_eq!(metrics.integration_fixups_7d, Some(count(1, false)));
+    }
+
+    #[test]
+    fn metrics_never_change_fingerprint_state_or_alerting() {
+        let repository = hygiene_repository();
+        let report = evaluate(&repository, Some("refs/heads/main"), 20);
+        let mut later = repository.clone();
+        later.observed_utc = "2026-10-27T00:00:00Z".into();
+        let aged = evaluate(&later, Some("refs/heads/main"), 20);
+        assert_ne!(report.metrics, aged.metrics, "ages and windows moved");
+        assert_eq!(report.fingerprint, aged.fingerprint);
+        assert_eq!(
+            (report.state.clone(), report.actionable),
+            (aged.state, aged.actionable)
+        );
+        let mut without = report.clone();
+        without.metrics = None;
+        without.observed_utc = String::new();
+        without.fingerprint = String::new();
+        assert_eq!(
+            crate::content_digest(&without).expect("digest"),
+            report.fingerprint,
+            "fingerprint is computed exactly as before metrics existed"
+        );
+        let json = serde_json::to_value(&report).expect("json");
+        let restored: GitHealthReport = serde_json::from_value(json).expect("round trip");
+        assert_eq!(restored, report);
+        let mut legacy = serde_json::to_value(&report).expect("json");
+        legacy.as_object_mut().expect("object").remove("metrics");
+        let older: GitHealthReport = serde_json::from_value(legacy).expect("older reports parse");
+        assert_eq!(older.metrics, None);
+    }
+
+    #[test]
+    fn window_counts_become_lower_bounds_when_history_is_cut() {
+        let mut repository = hygiene_repository();
+        repository.commits.retain(|c| c.oid != oid(1));
+        let report = evaluate(&repository, Some("refs/heads/main"), 20);
+        let metrics = report.metrics.expect("metrics");
+        assert_eq!(metrics.integration_commits_24h, Some(count(2, false)));
+        assert_eq!(metrics.integration_commits_7d, Some(count(3, true)));
+        let unconfigured = evaluate(&hygiene_repository(), None, 20)
+            .metrics
+            .expect("checkout metrics without policy");
+        assert_eq!(unconfigured.local_branches, 0);
+        assert_eq!(unconfigured.integration_commits_7d, None);
+        assert_eq!(unconfigured.dirty_checkouts, 1);
     }
 }
