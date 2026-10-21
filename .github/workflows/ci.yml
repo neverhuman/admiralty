@@ -11,10 +11,11 @@ concurrency:
 jobs:
   rust-and-legacy:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    # Durable SQLite/process deadlines need consistent SSD-backed storage.
-    # The generic LAN label mixes NVMe and USB-HDD-backed guest disks.
-    # Standard hosted runners are free for this public repository.
-    runs-on: ubuntu-24.04
+    # Owner policy: use the general self-hosted fleet; never cloud runners.
+    # Repair storage/capacity in that pool rather than selecting a project host.
+    runs-on:
+      group: neverhuman-lan
+      labels: [self-hosted, Linux, X64, lan-ci]
     # Toolchain installation, compilation and the complete serialized process/
     # SQLite qualification matrix must fit within the job, not just unit tests.
     # Individual test deadlines and compiler/test concurrency stay bounded.
