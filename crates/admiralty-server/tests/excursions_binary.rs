@@ -159,11 +159,20 @@ fn start(root: &Path, address: SocketAddr) -> Daemon {
 #[cfg(unix)]
 #[test]
 fn incident_journal_survives_restart_with_scope_isolation_and_exact_retry() {
+    use std::os::unix::fs::DirBuilderExt;
     use std::os::unix::fs::PermissionsExt;
-    let directory = tempfile::tempdir().expect("tempdir");
+    // Private at creation: admiraltyd refuses configuration below any group- or
+    // world-writable ancestor, and tempfile otherwise applies the process umask
+    // (000 on some self-hosted runners).
+    let directory = tempfile::Builder::new()
+        .permissions(std::fs::Permissions::from_mode(0o700))
+        .tempdir()
+        .expect("tempdir");
     let root = directory.path().join("scratch");
-    std::fs::create_dir(&root).expect("scratch");
-    std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700)).expect("chmod");
+    std::fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&root)
+        .expect("scratch");
     let scope = json!({"project":"p27-smoke","root":"root","task":"task","contract_revision":1,
         "contract_digest":format!("sha256:{}", "a".repeat(64)),
         "protected_oracle_digest":format!("sha256:{}", "b".repeat(64))});
