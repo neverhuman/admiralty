@@ -1,7 +1,7 @@
 //! Bounded read-only fleet observations. Process presence is not task progress.
 use crate::config::{NodeConfig, ObserveConfig};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -29,6 +29,10 @@ printf '\n@@MEM\n'; cat /proc/meminfo
 printf '\n@@DF\n'; df -Pk
 printf '\n@@GPU\n'
 if test -x /usr/bin/nvidia-smi; then /usr/bin/nvidia-smi --query-gpu=index,name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader,nounits; fi
+printf '\n@@PSI\n'
+for r in cpu memory io; do if test -r /proc/pressure/$r; then while IFS= read -r l; do printf '%s %s\n' "$r" "$l"; done < /proc/pressure/$r; fi; done
+printf '\n@@DSTATE\n'; ps -eo stat= 2>/dev/null | grep -c '^D'
+printf '\n@@TOP\n'; ps -eo pid=,user=,rss=,pcpu=,etimes=,comm= --sort=-rss 2>/dev/null | head -n 5
 printf '\n@@SCREENS\n'; /usr/bin/screen -ls
 printf '\n@@SCREEN_RC %s\n' "$?"
 printf '\n@@END\n'
@@ -334,7 +338,7 @@ fn shell_quote(value: &str) -> String {
 fn unknown_host(node: &NodeConfig, reason: &str) -> Value {
     json!({"host":node.id,"local":node.ssh.is_none(),"reachable":false,"error":reason,"nproc":null,
         "load":null,"mem":null,"disks":[],"gpus":[],"screens":[],"screen_observations":[],"screen_inventory_available":false,
-        "top_rss":[],"d_state_procs":null,"warnings":[{"level":"amber","text":reason}]})
+        "pressure":null,"top_rss":[],"d_state_procs":null,"warnings":[{"level":"amber","text":reason}]})
 }
 
 fn parse_resources(node: &NodeConfig, text: &str) -> Value {
@@ -451,10 +455,101 @@ fn parse_resources(node: &NodeConfig, text: &str) -> Value {
     if level.is_some_and(|s| s != "ok") {
         warnings.push(json!({"level":level,"text":format!("{} CPU load is high",node.id)}));
     }
+    let pressure = parse_pressure(lines("PSI"));
+    warnings.extend(pressure_warnings(&node.id, &pressure));
+    // Present only when the probe section ran; absent sections stay unknown.
+    let d_state = sections
+        .contains_key("DSTATE")
+        .then(|| {
+            lines("DSTATE")
+                .first()
+                .and_then(|s| s.trim().parse::<u64>().ok())
+        })
+        .flatten();
+    let top_rss = lines("TOP")
+        .iter()
+        .filter_map(|line| parse_top(line))
+        .take(5)
+        .collect::<Vec<_>>();
     json!({"host":node.id,"local":node.ssh.is_none(),"reachable":true,"error":null,"nproc":nproc,
         "load":if load.len()==3 {json!(load)} else {Value::Null},"load_level":level,"mem":mem,"disks":disks,"gpus":gpus,
         "screens":screens.iter().filter_map(|v| v["id"].as_str()).collect::<Vec<_>>(),"screen_observations":screens,
-        "screen_inventory_available":inventory,"gpu_observation":if gpus.is_empty(){"unavailable_or_none_observed"}else{"observed"},"top_rss":[],"d_state_procs":null,"warnings":warnings})
+        "screen_inventory_available":inventory,"gpu_observation":if gpus.is_empty(){"unavailable_or_none_observed"}else{"observed"},
+        "pressure":pressure,"top_rss":top_rss,"d_state_procs":d_state,"warnings":warnings})
+}
+
+/// Linux pressure stall information (PSI): the share of wall time some (or
+/// all) runnable tasks were stalled on CPU, memory or I/O. Unlike load
+/// average, PSI measures lost work directly. `null` when the kernel lacks it.
+fn parse_pressure(lines: &[&str]) -> Value {
+    let mut resources = Map::new();
+    for line in lines {
+        let mut words = line.split_whitespace();
+        let (Some(resource), Some(kind)) = (words.next(), words.next()) else {
+            continue;
+        };
+        if !matches!(resource, "cpu" | "memory" | "io") || !matches!(kind, "some" | "full") {
+            continue;
+        }
+        let entry = resources
+            .entry(resource.to_owned())
+            .or_insert_with(|| json!({}));
+        for pair in words {
+            if let Some((key, value)) = pair.split_once('=')
+                && matches!(key, "avg10" | "avg60" | "avg300")
+                && let Ok(number) = value.parse::<f64>()
+                && number.is_finite()
+                && (0.0..=100.0).contains(&number)
+            {
+                entry[format!("{kind}_{key}")] = json!(number);
+            }
+        }
+    }
+    if resources.is_empty() {
+        Value::Null
+    } else {
+        Value::Object(resources)
+    }
+}
+
+/// Saturation hints: memory or I/O "full" stalls mean every runnable task
+/// waited. Thresholds are deliberately conservative and descriptive only.
+fn pressure_warnings(host: &str, pressure: &Value) -> Vec<Value> {
+    let mut warnings = Vec::new();
+    for (resource, label, amber, red) in
+        [("memory", "memory", 5.0, 20.0), ("io", "I/O", 20.0, 50.0)]
+    {
+        if let Some(stall) = pressure[resource]["full_avg60"].as_f64()
+            && stall >= amber
+        {
+            let level = if stall >= red { "red" } else { "amber" };
+            warnings.push(json!({"level":level,"kind":"pressure",
+                "text":format!("{host} {label} pressure: all tasks stalled {stall:.1}% of the last minute")}));
+        }
+    }
+    warnings
+}
+
+fn parse_top(line: &str) -> Option<Value> {
+    let fields = line.split_whitespace().collect::<Vec<_>>();
+    if fields.len() < 6 {
+        return None;
+    }
+    let pid = fields[0].parse::<u64>().ok()?;
+    let rss_kib = fields[2].parse::<u64>().ok()?;
+    let pcpu = fields[3]
+        .parse::<f64>()
+        .ok()
+        .filter(|n| n.is_finite() && *n >= 0.0)?;
+    let etime = fields[4].parse::<u64>().ok()?;
+    let comm = crate::io::clean(&fields[5..].join(" "))
+        .chars()
+        .take(40)
+        .collect::<String>();
+    Some(
+        json!({"pid":pid,"user":crate::io::clean(fields[1]).chars().take(32).collect::<String>(),
+        "rss_gb":(rss_kib as f64 / 1048576.0 * 100.0).round() / 100.0,"pcpu":pcpu,"etime_s":etime,"comm":comm}),
+    )
 }
 
 fn memory_value(
@@ -1122,6 +1217,57 @@ mod tests {
         assert_eq!(v["screen_inventory_available"], true);
         assert!(v["mem"]["swap_total_gb"].is_null());
         assert!(parse_resources(&node(), "@@END\n")["nproc"].is_null());
+        // Sections the probe did not emit stay unknown, never zero.
+        assert!(v["pressure"].is_null());
+        assert!(v["d_state_procs"].is_null());
+        assert_eq!(v["top_rss"], json!([]));
+    }
+
+    #[test]
+    fn pressure_d_state_and_top_processes_parse_with_saturation_warnings() {
+        let v = parse_resources(
+            &node(),
+            "@@NPROC\n4\n@@PSI\ncpu some avg10=1.50 avg60=2.25 avg300=3.00 total=1\n\
+             cpu full avg10=0.00 avg60=0.00 avg300=0.00 total=0\n\
+             memory some avg10=9.00 avg60=8.00 avg300=7.00 total=1\n\
+             memory full avg10=30.00 avg60=25.50 avg300=10.00 total=1\n\
+             io some avg10=1.00 avg60=1.00 avg300=1.00 total=1\n\
+             io full avg10=bad avg60=21.00 avg300=101.00 total=1\n\
+             gpu some avg10=5.00\n\
+             @@DSTATE\n3\n@@TOP\n  4242 builder 8388608 197.5 3600 rustc --edition\n\
+             not a process row\n  7 root 1024 0.0 99 \u{1b}[31mbash\n@@END\n",
+        );
+        assert_eq!(v["pressure"]["cpu"]["some_avg60"], 2.25);
+        assert_eq!(v["pressure"]["memory"]["full_avg60"], 25.5);
+        assert_eq!(v["pressure"]["io"]["full_avg60"], 21.0);
+        assert!(
+            v["pressure"]["io"].get("full_avg10").is_none(),
+            "unparseable dropped"
+        );
+        assert!(
+            v["pressure"]["io"].get("full_avg300").is_none(),
+            "out of range dropped"
+        );
+        assert!(v["pressure"].get("gpu").is_none(), "only known resources");
+        assert_eq!(v["d_state_procs"], 3);
+        assert_eq!(v["top_rss"][0]["pid"], 4242);
+        assert_eq!(v["top_rss"][0]["rss_gb"], 8.0);
+        assert_eq!(v["top_rss"][0]["comm"], "rustc --edition");
+        assert_eq!(v["top_rss"][1]["comm"], "bash", "escapes cleaned");
+        assert_eq!(v["top_rss"].as_array().map(Vec::len), Some(2));
+        let warnings = v["warnings"].as_array().expect("warnings");
+        assert!(warnings.iter().any(|w| {
+            w["level"] == "red"
+                && w["text"]
+                    .as_str()
+                    .is_some_and(|t| t.contains("memory pressure"))
+        }));
+        assert!(warnings.iter().any(|w| {
+            w["level"] == "amber"
+                && w["text"]
+                    .as_str()
+                    .is_some_and(|t| t.contains("I/O pressure"))
+        }));
     }
     #[test]
     fn process_requested_models_and_prompt_mentions_never_establish_model_identity() {
