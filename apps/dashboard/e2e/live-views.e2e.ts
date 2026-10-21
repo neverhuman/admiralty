@@ -324,12 +324,17 @@ describe("built live views against the real Rust server", () => {
     expect(await browser.evaluate(`document.querySelectorAll('.git-inventory tbody tr').length`)).toBe(count + 3);
     await browser.clickButtonByText("Graph");
     await browser.setViewportSize(390, 844);
-    for (let i = 0; i < 9; i++) await browser.clickButtonByAriaLabel("Zoom Git out");
+    for (let i = 0; i < 6; i++) await browser.clickButtonByAriaLabel("Zoom Git out");
     await browser.waitForSelector('.git-commit-range.is-tiny[aria-expanded="false"]');
     expect(await browser.evaluate(`(() => { const b=document.querySelector('.git-commit-range');return b.scrollWidth <= b.clientWidth && b.getBoundingClientRect().width >= 24; })()`)).toBe(true);
     expect(await browser.evaluate(`document.querySelector('.git-commit-range').getAttribute('aria-label')`)).toBe(label);
     expect((await browser.runAxeAudit()).violations).toEqual([]);
     await browser.captureScreenshot(join(evidence, `git-short-${count}-mobile.png`));
+    for (let i = 0; i < 3; i++) await browser.clickButtonByAriaLabel("Zoom Git out");
+    expect(await browser.evaluate(`document.querySelectorAll('.git-commit-range').length`)).toBe(0);
+    expect(await browser.evaluate(`document.querySelector('.git-canvas').getAttribute('aria-label')`)).toContain(`${count + 3} commits, 1 collapsed ranges`);
+    await browser.evaluate(`document.querySelector('.git-canvas').focus()`);await browser.pressKey("ArrowRight");
+    expect(await browser.evaluate(`document.querySelector('.git-canvas').getAttribute('aria-label')`)).toContain(`${count + 3} commits, 0 collapsed ranges`);
     await browser.setViewportSize(1440, 1000);
     server.writeLegacySnapshot(sourceFixture());
   }, 60_000);

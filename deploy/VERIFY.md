@@ -37,8 +37,10 @@ For the requested Git Flow journey:
 4. Zoom to 5% and below. Check the camera scale, not only a rounded percentage.
 5. Reset to 100% and confirm actual camera scale 1. Pan with a real pointer and
    verify Fit restores the whole graph.
-6. Expand a real collapsed commit sequence with the pointer; recollapse with
-   Enter. Check control hit targets and counts.
+6. Expand a real collapsed commit sequence with the pointer. Focus a present
+   collapse control and press Enter to recollapse it; check hit targets and counts.
+   At low zoom an individual control may be hidden to preserve commit picking
+   and lane clearance. Zoom in to use that control, or use Collapse linear.
 7. For the trunk-first release, verify a straight selected-main first-parent
    backbone, topics above it and traceable actual fork/merge junctions. A label
    at the main tip alone does not satisfy this.
