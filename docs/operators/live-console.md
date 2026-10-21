@@ -20,7 +20,7 @@ project or all projects; Admiralty uses the same project component. The chart
 strip scrolls horizontally and each card expands on click or keyboard activation.
 It includes cost index versus all-Luna, Luna failures/first-pass, ToDo burn-up,
 in-progress work by project, agent tiers, escalation funnel, CPU load, root disk,
-integration CI history, Commodore hygiene, generated/integration/main tokens,
+host memory headroom, integration CI history, unmerged Git lanes, Commodore hygiene, generated/integration/main tokens,
 estimated token yield/coverage, and quota usage. Expanded cards retain the source
 period, timestamps and accounting notes. Missing measurements stay unknown and
 break graph lines.
@@ -48,3 +48,45 @@ read-only rollout bridge while native execution is built and qualified.
 The React role labels are **Admiral** for fleet coordination and **Commodore**
 for each project lead. Existing producer keys and Screen IDs retain their exact
 identities in observations; the display mapping does not rename live sessions.
+
+## Fleet health
+
+`#/health` (**Fleet health** under Observe) answers one question: what is
+degrading, and what should happen next. It reads the same producer snapshot as
+the detailed view plus two service endpoints, and it never acts on its own.
+
+- **Needs attention** ranks findings as Critical, Warning or Note. Severity is
+  written out and carried by shape, not only color. Sources: `/readyz`, observer
+  age (stale after six refresh intervals, minimum three minutes), unreachable
+  hosts, host warnings (disk, memory and I/O pressure), Git health attention or
+  unknown coverage, merge commits that reached the integration branch this week
+  (the repository merges rebase-only), lanes that
+  trail integration past the configured divergence threshold, merged-but-clean
+  worktrees, reverts and fixups. Each finding names a next step; Git findings link
+  to that project's Git Flow. The first eight are shown; the rest expand.
+- **Service** shows readiness and the busiest routes with request counts, 4xx/5xx
+  and the p95 latency bucket, parsed from `/metrics` (session access required).
+- **Hosts** show load per core, memory, swap, PSI stall percentages, blocked
+  I/O processes, GPUs and the largest processes. Disk meters fill solid for space
+  used today; the hatched extension is where the measured growth rate puts usage in
+  24 hours. Shrinking or unmeasured growth draws no projection. Unreachable hosts
+  show no numbers rather than guessed ones.
+- **Git hygiene** lists each project's state, unmerged and merged branches,
+  maximum lag behind/ahead of integration, dirty and conflicted checkouts,
+  cleanup candidates and integration activity for the last 24 hours and 7 days.
+  `≥` marks a lower bound where the observed history window ended first.
+- **Log digest** fetches `/v1/logs/digest` with a token budget and minimum
+  level, then copies it for an agent. `W×5` means five warnings of one template;
+  `{a,b,+2}` lists varying values; `3..803` is a range; a trailing `?` marks a
+  field missing from some events in the group.
+
+## Navigation and preferences
+
+Views are grouped as **Observe** (Fleet detail, Fleet health, Git Flow, Fleet
+Atlas), **Operate** (Overview, Workplans, Coordination, Commands, Intake,
+Incidents) and **Configure** (Models). **Ctrl K** (**⌘ K** on macOS) or the
+**Go to…** button opens a command palette: type to filter views and
+preferences, use the arrow keys, Enter to open and Esc to close; focus returns to
+where it was. The light or dark theme choice is stored in this browser only
+(`admiralty.theme`); the default stays dark. Views that do not read the native
+fleet, including Fleet health, do not hold the native event stream open.

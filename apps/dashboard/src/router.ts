@@ -9,7 +9,8 @@ export type RouteName =
   | "incidents"
   | "models"
   | "git"
-  | "atlas";
+  | "atlas"
+  | "health";
 const names = new Set<RouteName>([
   "detail",
   "overview",
@@ -21,6 +22,7 @@ const names = new Set<RouteName>([
   "models",
   "git",
   "atlas",
+  "health",
 ]);
 export function parseRoute(hash: string): {
   name: RouteName;
