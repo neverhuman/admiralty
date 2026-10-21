@@ -18,6 +18,10 @@ The server shares one source reader across viewers. It checks published producer
 
 ## Git Flow
 
+Projects stack vertically. Choose **Focus project ↗** beside a repository, or choose it in the project selector, to give its graph the full available width. **Show project details** restores its checkouts, source age and Git health panel. **← All projects** returns to the overview; each scope retains its camera position and browser Back/Forward follows project navigation. Selecting within a project keeps the scope and inspector together.
+
+**[ ] 100%** snaps to actual size. **Fit width** measures the loaded graph width in the current scope and keeps the current branch near its vertical position. Scroll vertically through branches and projects; branch rows and range controls retain readable spacing. Very wide graphs can reach the minimum 5% scale and still require horizontal scrolling. Neither control means the observer loaded the entire Git repository. Zoom retains a visible selected commit, or the commit nearest the viewport center, when geometry and scroll limits permit. On a focused graph canvas, press **0** to fit, **1** for actual size and **+ / −** to zoom. Text entry and chat controls keep their normal keys. At dense scales, overlapping branch badges are omitted from the canvas; hover the commit or use its inspector to read every observed ref.
+
 Projects stack vertically. One horizontal scroller moves through their independent ancestry coordinates. **Parents always precede children**; horizontal alignment across repositories is not a shared clock. Selecting a mark or checkout opens its evidence inspector. Use **Inventory** for keyboard access to every loaded commit and checkout.
 
 * Filled dots are exact commit objects; solid curves are actual ordered parent edges.

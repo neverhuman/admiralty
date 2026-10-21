@@ -67,6 +67,23 @@ registered resource limits, unrelated jobs and preserved work remain in force.
 | P30 | in_progress | release + integration review | reviewed `17c7a76d` | Explicit-input archive builder passes 10 checks; clean-install, signed distribution, rights and complete operator paths pending |
 | P31 | in_progress | integration + qualification review | reviewed `455ee5f4` | Isolated binary smoke and offline controlled provider harness are integrated; real provider, soak, savings, restore and fleet cutover gates remain open |
 
+## Git Flow viewport UX — 21 October 2026 candidate
+
+New user-authorized feature lane `codex/git-flow-viewport` starts at
+`5d4e656bbe7438a25728aefbac78b2576e1732ed`. Root owns UI integration;
+helper worker delivered pure camera math and nine tests in disjoint new files.
+The existing Git Flow owner verified no overlapping source writer and is routing
+Captain review designation/Admiral tracking through existing coordination logs.
+Actual reviewer adoption, exact-head approval, local/hosted qualification,
+ordinary merge and serialized rollout remain separate evidence gates.
+
+The [viewport scope record](GITFLOW_VIEWPORT_2026-10-21.md) tracks explicit100%
+snap, anchored zoom, honest width fitting, project focus/return and responsive
+canvas/gutter math. Original dirty checkout, runtime/generated contracts,
+private access/chat boundaries and sole deployment controls remain preserved.
+Preview tests are candidate evidence; no new source merge or deployment is
+claimed by this entry. The final PR/qualification receipt records later results.
+
 ## Git Flow and Fleet Atlas — qualified source, 19 October 2026 UTC
 
 Merged [PR95](https://github.com/neverhuman/admiralty/pull/95) introduced the base
