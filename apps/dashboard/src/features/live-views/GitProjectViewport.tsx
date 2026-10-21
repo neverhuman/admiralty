@@ -94,9 +94,9 @@ export default function GitProjectViewport({ project, layout, render, selectionK
   const zoomLabel = `${percent >= 1 ? Math.round(percent) : Number(percent.toPrecision(2))}%`;
   return <div className="git-project-viewport" data-project-id={project.id} data-fitted={active.fitted}>
     <div className="git-project-camera-controls" role="group" aria-label="Project Git viewport controls">
-      <button className="lv-button" aria-label="Zoom project out" onClick={() => zoom(1 / 1.2)}>−</button>
+      <button className="lv-button" aria-label="Zoom project out" onClick={() => zoom(1 / 1.2)}><span data-icon="−" aria-hidden="true" /></button>
       <output aria-label="Current project Git zoom">{zoomLabel}</output>
-      <button className="lv-button" aria-label="Zoom project in" onClick={() => zoom(1.2)}>+</button>
+      <button className="lv-button" aria-label="Zoom project in" onClick={() => zoom(1.2)}><span data-icon="+" aria-hidden="true" /></button>
       <button className="lv-button" aria-label="Fit graph" title="Fit complete loaded graph · 0" onClick={fit}>Fit graph</button>
       <button className="lv-button" aria-label="Reset project zoom to 100%" title="Actual size · 1" onClick={actualSize}>[ ] 100%</button>
       <span>Drag to pan · Scroll to zoom · 0 Fit · 1 Actual size</span>
