@@ -3,7 +3,7 @@ import type { ViewProject } from "../live-views/feed";
 import { gitRangeWidth, type CommitRange, type GitLayout } from "../live-views/geometry";
 import type { Selection } from "../live-views/LiveViews";
 import { palette } from "../live-views/FleetAtlas";
-import type { GitGraphLayout, GraphEdge } from "./model";
+import { GIT_LANE_SPACING, type GitGraphLayout, type GraphEdge } from "./model";
 import { createGraphSpatialIndex } from "./scene";
 import { parentCurve } from "./curves";
 import { createGitMergeIndex } from "./merges";
@@ -68,15 +68,19 @@ export default function GitCanvas({
   const rangeControls = useMemo(() => layout.ranges.flatMap((range) => {
     if (visibleOids && !range.commits.some((commit) => visibleOids.has(commit.oid))) return [];
     const x = range.x * zoom - left, y = range.y * zoom - top;
-    if (fixed && zoom * 54 < 16) return []; // Canvas/keyboard retain low-zoom ranges.
-    const compactProject = fixed && zoom < 0.65;
+    const laneClearance = zoom * GIT_LANE_SPACING;
+    if (fixed && laneClearance < 16) return []; // Canvas/keyboard retain low-zoom ranges.
+    // A detailed narrow control reaches26px below its lane; an expanded
+    // control reaches38px above. Reserve their combined reach plus a4px gap.
+    const compactProject = fixed && laneClearance < 26 + 38 + 4;
+    const compactHeight = laneClearance < 30 ? 14 : 26;
     const buttonWidth = Math.min(width, compactProject ? Math.max(28, gitRangeWidth(range.commits.length, 1) * zoom) : range.expanded ? 156 : Math.max(28, Math.min(304, gitRangeWidth(range.commits.length, 1) * zoom)));
     if (x + buttonWidth / 2 < 0 || x - buttonWidth / 2 > width || y < 0 || y > height) return [];
     const narrow = !range.expanded && buttonWidth < 304;
     const compact = !range.expanded && buttonWidth < 144;
     const tiny = compactProject || (!range.expanded && buttonWidth < 68);
-    const offset = compactProject ? 7 : range.expanded ? 38 : tiny ? 13 : narrow ? 26 : 19;
-    const buttonHeight = compactProject ? 14 : range.expanded || tiny ? 26 : narrow ? 52 : 38;
+    const offset = compactProject ? compactHeight / 2 : range.expanded ? 38 : tiny ? 13 : narrow ? 26 : 19;
+    const buttonHeight = compactProject ? compactHeight : range.expanded || tiny ? 26 : narrow ? 52 : 38;
     return [{ range, compactProject, narrow, compact, tiny, rect: {
       x: Math.max(0, Math.min(width - buttonWidth, x - buttonWidth / 2)), y: y - offset, width: buttonWidth, height: buttonHeight,
     } }];
