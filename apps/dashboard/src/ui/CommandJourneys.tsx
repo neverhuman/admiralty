@@ -113,6 +113,15 @@ export type DuplicateCoverage = {
   partial: boolean;
 };
 
+export type DuplicateCoverageState =
+  | ({ status: 'available' } & DuplicateCoverage)
+  | ({ status: 'stale'; sourceCursor: string } & DuplicateCoverage)
+  | { status: 'unavailable'; reason: string };
+
+export type FleetEvidenceState =
+  | { status: 'available'; freshness: 'current' | 'stale'; sourceCursor: string; detail?: string }
+  | { status: 'unavailable'; reason: 'loading' | 'access_required' | 'error' | 'not_observed'; detail?: string };
+
 export type DuplicateCandidateList = DuplicateCandidate[] & DuplicateCoverage;
 
 export type IntakeOperationKind = 'create' | 'revise_contract';
@@ -125,7 +134,7 @@ export type IntakePreview = {
   errors: string[];
   warnings: string[];
   duplicates: DuplicateCandidateList;
-  duplicateCoverage: DuplicateCoverage;
+  duplicateCoverage: DuplicateCoverageState;
   cliCommand: string | null;
   nonDispatchNotice: string;
 };
@@ -1168,6 +1177,25 @@ function attachDuplicateCoverage(
   return Object.assign(items, coverage);
 }
 
+function applyFleetEvidence(preview: IntakePreview, evidence: FleetEvidenceState): IntakePreview {
+  const coverage = preview.duplicateCoverage;
+  if (coverage.status !== 'available') return preview;
+  if (evidence.status === 'unavailable') {
+    return { ...preview, duplicateCoverage: { status: 'unavailable', reason: evidence.detail ?? evidence.reason } };
+  }
+  if (evidence.freshness === 'stale') {
+    return {
+      ...preview,
+      duplicateCoverage: { ...coverage, status: 'stale', sourceCursor: evidence.sourceCursor },
+    };
+  }
+  return preview;
+}
+
+function sourceCursorLabel(fleet: AnyFleet | Fleet): string {
+  return `recovery generation ${fleet.cursor.recovery_generation}, event seq #${fleet.cursor.event_seq}`;
+}
+
 export function findDuplicateCandidates(
   contract: Pick<TaskContract, 'project_id' | 'task_id' | 'revision' | 'title' | 'owned_paths'>,
   existingTasks: readonly AnyFleetTask[],
@@ -1283,7 +1311,7 @@ export function buildIntakePreview(
       errors: [error instanceof Error ? error.message : 'Input exceeds validation bounds'],
       warnings: [],
       duplicates: attachDuplicateCoverage([], emptyCoverage),
-      duplicateCoverage: emptyCoverage,
+      duplicateCoverage: { status: 'available', ...emptyCoverage },
       cliCommand: null,
       nonDispatchNotice: NON_DISPATCH_NOTICE,
     };
@@ -1299,7 +1327,7 @@ export function buildIntakePreview(
       errors: ['Contract candidate must be a JSON object.'],
       warnings: [],
       duplicates: attachDuplicateCoverage([], emptyCoverage),
-      duplicateCoverage: emptyCoverage,
+      duplicateCoverage: { status: 'available', ...emptyCoverage },
       cliCommand: null,
       nonDispatchNotice: NON_DISPATCH_NOTICE,
     };
@@ -1365,7 +1393,7 @@ export function buildIntakePreview(
       errors,
       warnings: [],
       duplicates: attachDuplicateCoverage([], emptyCoverage),
-      duplicateCoverage: emptyCoverage,
+      duplicateCoverage: { status: 'available', ...emptyCoverage },
       cliCommand: null,
       nonDispatchNotice: NON_DISPATCH_NOTICE,
     };
@@ -1561,6 +1589,7 @@ export function buildIntakePreview(
     warnings,
     duplicates,
     duplicateCoverage: {
+      status: 'available',
       inspected: duplicates.inspected,
       total: duplicates.total,
       partial: duplicates.partial,
@@ -2472,6 +2501,7 @@ export async function executeTaskDetailLifecycleCommand(params: {
 
 export function IntakeJourney({
   fleet,
+  snapshotEvidence,
   initialDraft,
   initialRetainedEnvelope = null,
   token,
@@ -2482,6 +2512,7 @@ export function IntakeJourney({
   onAccess,
 }: {
   fleet: AnyFleet | Fleet | null;
+  snapshotEvidence?: FleetEvidenceState;
   initialDraft?: IntakeDraft;
   initialRetainedEnvelope?: RetainedCommandEnvelope | null;
   token?: string;
@@ -2492,6 +2523,9 @@ export function IntakeJourney({
   onAccess?: () => void;
 }) {
   const defaultProject = fleet?.projects[0]?.id ?? 'admiralty';
+  const evidence = snapshotEvidence ?? (fleet
+    ? { status: 'available', freshness: 'current', sourceCursor: sourceCursorLabel(fleet) } as const
+    : { status: 'unavailable', reason: 'loading' } as const);
   const [draft, setDraft] = useState<IntakeDraft>(() => initialDraft ?? emptyIntakeDraft(defaultProject));
   const [jsonMode, setJsonMode] = useState(false);
   const [rawJson, setRawJson] = useState('');
@@ -2503,16 +2537,17 @@ export function IntakeJourney({
   const [retainedSubmit, setRetainedSubmit] = useState<RetainedCommandEnvelope | null>(initialRetainedEnvelope);
 
   const preview = useMemo(() => {
+    let candidate: IntakePreview;
     if (jsonMode) {
       try {
-        return buildIntakePreview(JSON.parse(rawJson), fleet?.tasks ?? []);
+        candidate = buildIntakePreview(JSON.parse(rawJson), fleet?.tasks ?? []);
       } catch (error) {
         const emptyCoverage: DuplicateCoverage = {
           inspected: Math.min(fleet?.tasks.length ?? 0, 500),
           total: fleet?.tasks.length ?? 0,
           partial: (fleet?.tasks.length ?? 0) > 500,
         };
-        return {
+        candidate = {
           valid: false,
           operation: 'create',
           contract: null,
@@ -2520,14 +2555,16 @@ export function IntakeJourney({
           errors: [error instanceof Error ? `Invalid JSON: ${error.message}` : 'Invalid JSON'],
           warnings: [],
           duplicates: attachDuplicateCoverage([], emptyCoverage),
-          duplicateCoverage: emptyCoverage,
+          duplicateCoverage: { status: 'available', ...emptyCoverage },
           cliCommand: null,
           nonDispatchNotice: NON_DISPATCH_NOTICE,
         } satisfies IntakePreview;
       }
+    } else {
+      candidate = buildIntakePreview(draft, fleet?.tasks ?? []);
     }
-    return buildIntakePreview(draft, fleet?.tasks ?? []);
-  }, [draft, jsonMode, rawJson, fleet]);
+    return applyFleetEvidence(candidate, evidence);
+  }, [draft, jsonMode, rawJson, fleet, evidence]);
 
   // Keep pinned CAS digest stable once bound unless the user changes target task_id or explicitly rebinds.
   const effectiveCasDigest = pinnedCasDigest ?? preview.expectedTaskDigest;
@@ -2816,14 +2853,18 @@ export function IntakeJourney({
         <div className="models-form-actions" style={{ marginTop: 12 }}>
           <button
             type="button"
-            className="primary-button"
-            disabled={submitting || (!retainedSubmit && !preview.valid)}
+            className={retainedSubmit || preview.duplicateCoverage.status === 'available' ? 'primary-button' : 'secondary-button'}
+            disabled={submitting || (!retainedSubmit && (!preview.valid || preview.duplicateCoverage.status !== 'available'))}
             onClick={() => void handleLiveSubmit()}
           >
             {submitting
               ? 'Submitting…'
               : retainedSubmit
                 ? `Retry retained ${retainedSubmit.kind === 'revise_contract' ? '+1 contract revision' : 'task submission'} (${retainedSubmit.request_id.slice(0, 8)}…)`
+                : preview.valid && preview.duplicateCoverage.status === 'unavailable'
+                  ? 'Awaiting fleet snapshot to submit'
+                  : preview.valid && preview.duplicateCoverage.status === 'stale'
+                    ? 'Refresh snapshot before submitting'
                 : preview.operation === 'revise_contract'
                   ? `Submit +1 contract revision (POST /v2/tasks/lifecycle)`
                   : `Submit pending task (POST /v2/tasks)`}
@@ -2908,14 +2949,22 @@ export function IntakeJourney({
             <h2 id="intake-preview-heading">
               {!preview.valid
                 ? 'Admission blocked by validation errors'
-                : preview.operation === 'revise_contract'
+                : preview.duplicateCoverage.status === 'unavailable'
+                  ? 'Local contract fields valid; duplicate coverage unavailable'
+                  : preview.duplicateCoverage.status === 'stale'
+                    ? 'Local contract fields valid; refresh the retained snapshot before submission'
+                    : preview.operation === 'revise_contract'
                   ? 'Ready for CAS contract revision (POST /v2/tasks/lifecycle)'
                   : 'Ready for pending task submission (POST /v2/tasks)'}
             </h2>
           </div>
-          <span className={`state-pill ${preview.valid ? 'ready' : 'blocked'}`}>
+          <span className={`state-pill ${preview.valid && preview.duplicateCoverage.status === 'available' ? 'ready' : 'blocked'}`}>
             {preview.valid
-              ? preview.operation === 'revise_contract'
+              ? preview.duplicateCoverage.status === 'unavailable'
+                ? 'local fields valid'
+                : preview.duplicateCoverage.status === 'stale'
+                  ? 'snapshot stale'
+                  : preview.operation === 'revise_contract'
                 ? 'valid +1 revision'
                 : 'valid new contract'
               : `${preview.errors.length} error(s)`}
@@ -2950,7 +2999,11 @@ export function IntakeJourney({
               {preview.duplicates.length === 0 && (
                 <tr>
                   <td colSpan={5} className="muted">
-                    No duplicate or overlapping candidates detected.
+                    {preview.duplicateCoverage.status === 'available'
+                      ? 'No duplicate or overlapping candidates detected in the current snapshot.'
+                      : preview.duplicateCoverage.status === 'stale'
+                        ? `No candidates found in the retained snapshot (${preview.duplicateCoverage.sourceCursor}); refresh before relying on this result.`
+                        : 'Duplicate and overlap check unavailable until a fleet snapshot is observed.'}
                   </td>
                 </tr>
               )}
@@ -2973,7 +3026,17 @@ export function IntakeJourney({
             </tbody>
           </table>
         </div>
-        {preview.duplicates.length === 0 && (
+        {preview.duplicateCoverage.status === 'unavailable' && (
+          <p role="status">
+            Duplicate coverage unavailable: {preview.duplicateCoverage.reason}. Local schema and field validation remains available; submission waits for an authenticated fleet snapshot.
+          </p>
+        )}
+        {preview.duplicateCoverage.status === 'stale' && (
+          <p role="status">
+            Retained snapshot cursor: <code>{preview.duplicateCoverage.sourceCursor}</code>. Duplicate results use this last observed cursor and submission is paused until refresh succeeds.
+          </p>
+        )}
+        {preview.duplicateCoverage.status === 'available' && preview.duplicates.length === 0 && (
           <p>
             {preview.duplicateCoverage.partial ? (
               <>
@@ -3589,11 +3652,13 @@ export function TaskDetailEvidenceJourney({
 
 export function AttentionCoordinationJourney({
   fleet,
+  snapshotEvidence,
   records,
   replayCoverage,
   onSelectTask,
 }: {
   fleet: AnyFleet | Fleet | null;
+  snapshotEvidence?: FleetEvidenceState;
   records: readonly (DomainRecord | AnyDomainRecord)[];
   replayCoverage?: ReplayCoverageState;
   onSelectTask?: (taskId: string) => void;
@@ -3619,7 +3684,14 @@ export function AttentionCoordinationJourney({
   const ledger = useMemo(() => deriveCoordinationLedger(records), [records]);
 
   if (!fleet) {
-    return <div className="loading-card">Awaiting fleet snapshot for attention and coordination triage…</div>;
+    const message = snapshotEvidence?.status === 'unavailable'
+      ? snapshotEvidence.reason === 'access_required'
+        ? 'Fleet access required before attention and coordination counts can be observed.'
+        : snapshotEvidence.reason === 'error'
+          ? `Fleet snapshot unavailable: ${snapshotEvidence.detail ?? 'the request failed'}. Attention counts are unavailable.`
+          : 'Awaiting an authenticated fleet snapshot; attention counts are unavailable.'
+      : 'Awaiting fleet snapshot for attention and coordination triage…';
+    return <div className="loading-card" role="status">{message}</div>;
   }
 
   return (
@@ -3844,6 +3916,7 @@ export function AttentionCoordinationJourney({
 
 export function OperatorActionsJourney({
   fleet,
+  snapshotEvidence,
   health,
   token,
   fetcher = fetch,
@@ -3851,6 +3924,7 @@ export function OperatorActionsJourney({
   onAccess,
 }: {
   fleet: AnyFleet | Fleet | null;
+  snapshotEvidence?: FleetEvidenceState;
   health: HealthStatus | null;
   token?: string;
   fetcher?: typeof fetch;
@@ -3922,25 +3996,30 @@ export function OperatorActionsJourney({
         <div className="coord-stats">
           <div>
             <span className="stat-label">/healthz status</span>
-            <strong>{health ? `${health.status} (v${health.version})` : 'Unknown'}</strong>
-            <small>Native execution: {health?.native_execution_qualified ? 'qualified' : 'false'}</small>
+            <strong>{health ? `${health.status} (v${health.version})` : 'Unavailable'}</strong>
+            <small>Native execution: {health ? (health.native_execution_qualified ? 'qualified' : 'not qualified') : 'Unavailable'}</small>
           </div>
           <div>
             <span className="stat-label">Recovery generation</span>
-            <strong>{fleet?.cursor.recovery_generation ?? 'Unknown'}</strong>
-            <small>SQLite {fleet?.sqlite_version ?? 'unknown'} · Schema v{fleet?.schema_version ?? 1}</small>
+            <strong>{fleet?.cursor.recovery_generation ?? 'Unavailable'}</strong>
+            <small>SQLite {fleet?.sqlite_version ?? 'Unavailable'} · Schema {fleet ? `v${fleet.schema_version}` : 'Unavailable'}</small>
           </div>
           <div>
             <span className="stat-label">Durable event seq</span>
-            <strong>{fleet?.cursor.event_seq ?? '0'}</strong>
-            <small>{fleet?.simulated ? 'Simulated mode' : 'Authenticated snapshot'}</small>
+            <strong>{fleet?.cursor.event_seq ?? 'Unavailable'}</strong>
+            <small>{fleet ? `${fleet.simulated ? 'Simulated mode' : 'Authenticated snapshot'} · cursor` : 'No observed source cursor'}</small>
           </div>
           <div>
             <span className="stat-label">Tracked tasks</span>
-            <strong>{totals?.tasks ?? 0}</strong>
-            <small>{totals?.running ?? 0} running · {totals?.blocked ?? 0} blocked · {totals?.accepted ?? 0} accepted</small>
+            <strong>{totals?.tasks ?? 'Unavailable'}</strong>
+            <small>{totals ? `${totals.running} running · ${totals.blocked} blocked · ${totals.accepted} accepted` : 'Task totals unavailable until a fleet snapshot is observed'}</small>
           </div>
         </div>
+        {snapshotEvidence?.status === 'available' && snapshotEvidence.freshness === 'stale' && (
+          <p className="simulation-note" role="status">
+            Retained fleet snapshot at cursor <code>{snapshotEvidence.sourceCursor}</code>. {snapshotEvidence.detail ?? 'Refresh failed; counts below describe the last observed snapshot.'}
+          </p>
+        )}
       </section>
 
       <section className="panel models-panel" aria-labelledby="actions-select-heading">
@@ -4092,6 +4171,8 @@ export function CommandJourneys({
   const [fetchedReplayCoverage, setFetchedReplayCoverage] = useState<ReplayCoverageState | undefined>(undefined);
   const [fetchedHealth, setFetchedHealth] = useState<HealthStatus | null>(null);
   const [error, setError] = useState('');
+  const [snapshotRequestState, setSnapshotRequestState] = useState<'loading' | 'current' | 'error'>('loading');
+  const [snapshotRequestError, setSnapshotRequestError] = useState('');
   const [connection, setConnection] = useState<ConnectionState>('connecting');
   const [reloadCount, setReloadCount] = useState(0);
 
@@ -4099,6 +4180,21 @@ export function CommandJourneys({
   const records = externalRecords !== undefined ? externalRecords : fetchedRecords;
   const replayCoverage = externalReplayCoverage !== undefined ? externalReplayCoverage : fetchedReplayCoverage;
   const health = externalHealth !== undefined ? externalHealth : fetchedHealth;
+
+  const snapshotEvidence: FleetEvidenceState = fleet
+    ? {
+        status: 'available',
+        freshness: externalFleet !== undefined || snapshotRequestState === 'current' ? 'current' : 'stale',
+        sourceCursor: sourceCursorLabel(fleet),
+        ...(snapshotRequestState === 'error' && snapshotRequestError ? { detail: snapshotRequestError } : {}),
+      }
+    : externalFleet === null
+      ? { status: 'unavailable', reason: 'not_observed', detail: 'No fleet snapshot was supplied.' }
+      : snapshotRequestState === 'loading' || connection === 'connecting'
+        ? { status: 'unavailable', reason: 'loading' }
+        : /\b(401|403)\b/.test(snapshotRequestError || error)
+          ? { status: 'unavailable', reason: 'access_required', detail: snapshotRequestError || error }
+          : { status: 'unavailable', reason: 'error', detail: snapshotRequestError || error || 'Fleet request failed.' };
 
   const triggerRefresh = async () => {
     await onRefreshSnapshot?.();
@@ -4108,11 +4204,17 @@ export function CommandJourneys({
   useEffect(() => {
     if (externalFleet !== undefined && externalRecords !== undefined && externalHealth !== undefined) {
       setConnection('connected');
+      setSnapshotRequestState(externalFleet ? 'current' : 'error');
+      setSnapshotRequestError(externalFleet ? '' : 'No fleet snapshot was supplied.');
       return;
     }
     const controller = new AbortController();
     setConnection('connecting');
     setError('');
+    if (externalFleet === undefined) {
+      setSnapshotRequestState('loading');
+      setSnapshotRequestError('');
+    }
 
     void (async () => {
       try {
@@ -4125,7 +4227,11 @@ export function CommandJourneys({
             : getHealthStatus(controller.signal, fetcher).catch(() => null),
         ]);
         if (controller.signal.aborted) return;
-        if (externalFleet === undefined) setFetchedFleet(nextFleet);
+        if (externalFleet === undefined) {
+          setFetchedFleet(nextFleet);
+          setSnapshotRequestState('current');
+          setSnapshotRequestError('');
+        }
         if (externalHealth === undefined) setFetchedHealth(nextHealth);
         if (externalRecords === undefined && nextFleet) {
           const eventEndpoint = nextFleet.schema_version === 2 ? '/v2/events' : '/v1/events';
@@ -4186,22 +4292,26 @@ export function CommandJourneys({
       } catch (reason) {
         if (controller.signal.aborted) return;
         setConnection('paused');
-        setError(reason instanceof Error ? reason.message : 'Command journey snapshot unavailable');
+        const message = reason instanceof Error ? reason.message : 'Command journey snapshot unavailable';
+        setSnapshotRequestState('error');
+        setSnapshotRequestError(message);
+        setError(message);
       }
     })();
 
     return () => controller.abort();
   }, [externalFleet, externalRecords, externalHealth, token, fetcher, reloadCount]);
 
-  const attentionCount = useMemo(
-    () => (fleet ? deriveAttentionItems(fleet, records).length : 0),
-    [fleet, records],
-  );
+  const attentionBadge: number | string | undefined =
+    !fleet ? undefined
+      : snapshotEvidence.status === 'available' && snapshotEvidence.freshness === 'current' && replayCoverage?.status === 'complete'
+        ? deriveAttentionItems(fleet, records).length
+        : 'unavailable';
 
-  const tabs: Array<{ id: CommandJourneyTab; label: string; badge?: number }> = [
+  const tabs: Array<{ id: CommandJourneyTab; label: string; badge?: number | string }> = [
     { id: 'intake', label: 'Work intake' },
     { id: 'detail', label: 'Task detail & evidence', badge: fleet?.tasks.length },
-    { id: 'attention', label: 'Attention & coordination', badge: attentionCount },
+    { id: 'attention', label: 'Attention & coordination', badge: attentionBadge },
     { id: 'actions', label: 'Operator actions' },
     { id: 'integration', label: 'Integration & quality' },
   ];
@@ -4225,8 +4335,14 @@ export function CommandJourneys({
 
       {error && (
         <div className="error-banner" role="alert">
-          <span>Command UI connection issue</span>
+          <span>{snapshotEvidence.status === 'unavailable' && snapshotEvidence.reason === 'access_required' ? 'Fleet access required' : snapshotEvidence.status === 'available' && snapshotEvidence.freshness === 'stale' ? 'Retained fleet snapshot' : 'Command UI connection issue'}</span>
           <span>{error}</span>
+          {snapshotEvidence.status === 'available' && snapshotEvidence.freshness === 'stale' && (
+            <span>Last observed source cursor: {snapshotEvidence.sourceCursor}. Counts describe that retained snapshot.</span>
+          )}
+          {snapshotEvidence.status === 'unavailable' && snapshotEvidence.reason === 'access_required' && onAccess && (
+            <button type="button" className="text-button" onClick={onAccess}>Open session access</button>
+          )}
           <button
             type="button"
             className="text-button"
@@ -4241,6 +4357,7 @@ export function CommandJourneys({
         <IntakeJourney
           key={intakeInitialDraft ? `${intakeInitialDraft.task_id}:${intakeInitialDraft.revision}` : 'default'}
           fleet={fleet}
+          snapshotEvidence={snapshotEvidence}
           initialDraft={intakeInitialDraft}
           token={token}
           fetcher={fetcher}
@@ -4272,6 +4389,7 @@ export function CommandJourneys({
       {tab === 'attention' && (
         <AttentionCoordinationJourney
           fleet={fleet}
+          snapshotEvidence={snapshotEvidence}
           records={records}
           replayCoverage={replayCoverage}
           onSelectTask={taskId => {
@@ -4283,6 +4401,7 @@ export function CommandJourneys({
       {tab === 'actions' && (
         <OperatorActionsJourney
           fleet={fleet}
+          snapshotEvidence={snapshotEvidence}
           health={health}
           token={token}
           fetcher={fetcher}

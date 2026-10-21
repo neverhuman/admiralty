@@ -43,6 +43,7 @@ import CommandJourneys, {
   type AnyDomainRecord,
   type AnyFleet,
   type AnyFleetTask,
+  type FleetEvidenceState,
   type RetainedCommandEnvelope,
 } from './ui/CommandJourneys';
 
@@ -429,6 +430,27 @@ describe('Gate 8 live work intake preview, Rust admission equivalence, and dupli
     expect(html).toContain('500');
     expect(html).toContain('505');
     expect(html).toContain('full duplicate coverage not declared');
+  });
+
+  it('renders exact task identity and overlapping-path results only from a loaded snapshot', () => {
+    const exactDraft = emptyIntakeDraft('admiralty');
+    exactDraft.task_id = 'task-alpha';
+    exactDraft.title = 'Duplicate current task identity';
+    const exactHtml = renderToStaticMarkup(
+      <IntakeJourney fleet={sampleFleet()} initialDraft={exactDraft} />,
+    );
+    expect(exactHtml).toContain('same task id');
+    expect(exactHtml).toContain('task-alpha');
+    expect(exactHtml).toContain('apps/dashboard/src/ui/CommandJourneys.tsx');
+
+    const overlapDraft = emptyIntakeDraft('admiralty');
+    overlapDraft.task_id = 'task-new-overlap';
+    const overlapHtml = renderToStaticMarkup(
+      <IntakeJourney fleet={sampleFleet()} initialDraft={overlapDraft} />,
+    );
+    expect(overlapHtml).toContain('owned path overlap');
+    expect(overlapHtml).toContain('apps/dashboard/src/ui/CommandJourneys.tsx');
+    expect(overlapHtml).not.toContain('No duplicate or overlapping candidates detected in the current snapshot.');
   });
 });
 
@@ -1068,8 +1090,62 @@ describe('Gate 8 attention, coordination triage, and operator actions', () => {
     );
     expect(rootHtml).toContain('Work intake');
     expect(rootHtml).toContain('Task detail &amp; evidence (3)');
-    expect(rootHtml).toContain('Attention &amp; coordination (5)');
+    expect(rootHtml).toContain('Attention &amp; coordination (unavailable)');
     expect(rootHtml).toContain('Operator actions');
+  });
+});
+
+describe('P0 evidence unavailable and retained snapshot states', () => {
+  it('keeps local validation separate from unavailable duplicate, task and attention coverage', () => {
+    const draft = emptyIntakeDraft('admiralty');
+    const intakeHtml = renderToStaticMarkup(<IntakeJourney fleet={null} initialDraft={draft} />);
+    expect(intakeHtml).toContain('Local contract fields valid; duplicate coverage unavailable');
+    expect(intakeHtml).toContain('Duplicate and overlap check unavailable until a fleet snapshot is observed.');
+    expect(intakeHtml).not.toContain('Ready for pending task submission');
+    expect(intakeHtml).not.toContain('No duplicate or overlapping candidates detected.');
+    expect(intakeHtml).toContain('submission waits for an authenticated fleet snapshot');
+    expect(intakeHtml).toContain('Awaiting fleet snapshot to submit');
+
+    const actionsHtml = renderToStaticMarkup(
+      <OperatorActionsJourney fleet={null} health={null} />,
+    );
+    expect(actionsHtml).toContain('Unavailable');
+    expect(actionsHtml).not.toContain('Tracked tasks</span><strong>0</strong>');
+    expect(actionsHtml).not.toContain('Durable event seq</span><strong>0</strong>');
+
+    const attentionHtml = renderToStaticMarkup(
+      <AttentionCoordinationJourney
+        fleet={null}
+        records={[]}
+        snapshotEvidence={{ status: 'unavailable', reason: 'access_required' }}
+      />,
+    );
+    expect(attentionHtml).toContain('Fleet access required');
+    expect(attentionHtml).toContain('attention and coordination counts can be observed');
+    expect(attentionHtml).not.toContain('0 attention items');
+  });
+
+  it('reports true empty coverage only for a loaded empty snapshot and marks retained coverage stale by cursor', () => {
+    const draft = emptyIntakeDraft('admiralty');
+    const emptyFleet = { ...sampleFleet(), tasks: [] } as Fleet;
+    const emptyHtml = renderToStaticMarkup(<IntakeJourney fleet={emptyFleet} initialDraft={draft} />);
+    expect(emptyHtml).toContain('Ready for pending task submission');
+    expect(emptyHtml).toContain('0 of 0 snapshot task(s)');
+
+    const retainedEvidence: FleetEvidenceState = {
+      status: 'available',
+      freshness: 'stale',
+      sourceCursor: 'recovery generation gen-42, event seq #4',
+      detail: 'Fleet refresh failed (401)',
+    };
+    const staleHtml = renderToStaticMarkup(
+      <IntakeJourney fleet={sampleFleet()} snapshotEvidence={retainedEvidence} initialDraft={draft} />,
+    );
+    expect(staleHtml).toContain('snapshot stale');
+    expect(staleHtml).toContain('recovery generation gen-42, event seq #4');
+    expect(staleHtml).toContain('submission is paused until refresh succeeds');
+    expect(staleHtml).toContain('Refresh snapshot before submitting');
+    expect(staleHtml).not.toContain('Ready for pending task submission');
   });
 });
 
