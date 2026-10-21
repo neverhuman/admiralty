@@ -1,6 +1,6 @@
 # CI runner pool
 
-Both jobs in `.github/workflows/ci.yml` select the existing organization runner
+Jobs in `.github/workflows/ci.yml` select the existing organization runner
 group `neverhuman-lan` with the shared labels `self-hosted`, `Linux`, `X64` and
 `lan-ci`. GitHub schedules any available matching runner. The workflow contains
 no machine names, OS-image-specific labels or dedicated project runner labels.
@@ -11,6 +11,24 @@ three-host observations below are historical configuration evidence, not proof
 of current four-host readiness. Platform-specific jobs retain actual capability
 labels; verify host identity and matching live capacity before fleet repairs.
 Storage problems must be addressed within the general pool.
+
+Rust and browser qualification additionally require the shared `storage-nvme`
+capability. It is reusable by any repository in the group, not an Admiralty or
+host label. The general x64 launcher advertises it only when `findmnt` identifies
+the actual job-state filesystem on a direct `/dev/nvme…` device and `lsblk`
+reports nonrotational storage. Unknown or mapped devices fail closed for this
+label. On21 October2026 xbabe1 and xbabe2 meet that predicate; xbabe3's encrypted
+USB-HDD-backed job volume does not. Contracts, security and audit jobs retain
+the broader general selector, while xbabe4 provides the general Linux ARM64
+lane. No cloud runner is selected and no active job is restarted to add a label.
+Existing ephemeral registrations acquire the capability on natural renewal.
+
+The general launcher change is limited to this additional capability in its JIT
+registration payload. Image hashes, isolation, resource/disk admission, runner
+group, existing labels and cleanup are unchanged. Source-bound before/after
+script hashes, syntax/lint results and root-only rollback copies are retained
+with the maintenance evidence. Qualification still requires an actual job
+record showing the capability and a successful exact-source result.
 
 The general launcher was inspected read-only on xbabe1, xbabe2 and xbabe3 on
 2026-10-18. All three have the same `/opt/neverhuman-actions/launch.sh` SHA-256
