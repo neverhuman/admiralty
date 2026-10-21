@@ -15,6 +15,11 @@ struct Cli {
     once: bool,
     #[arg(long)]
     validate: bool,
+    /// Optional compatibility cycle format; omit to use structured ALOG telemetry.
+    #[arg(long)]
+    log_format: Option<admiralty_core::agent_log::Format>,
+    #[arg(long, default_value_t = 600)]
+    log_rollup_seconds: i64,
     /// Print the latest host resource table (load, memory, disks with growth
     /// and time-to-full, GPUs, pressure, warnings) from status.json and exit.
     /// Reads only; never probes hosts or takes the collector lock.
@@ -97,10 +102,22 @@ async fn execute() -> Result<()> {
     }
     lock.try_lock()
         .map_err(|_| "another native observer owns this output directory")?;
+    let mut stop = StopSignal::install();
+    let mut rollup = admiralty_core::agent_log::Rollup::new(
+        cli.log_rollup_seconds,
+        admiralty_observe::logging::VOLATILE,
+    );
     loop {
         let started = Instant::now();
         // Successful cycles report through `obs.cycle` and change events.
-        match admiralty_observe::cycle(&config).await {
+        let outcome = admiralty_observe::cycle(&config).await;
+        if let Some(format) = cli.log_format {
+            let event = admiralty_observe::logging::cycle_event(&outcome, started.elapsed());
+            for line in rollup.admit(event, chrono::Utc::now().timestamp()) {
+                eprintln!("{}", line.render(format));
+            }
+        }
+        match outcome {
             Ok(_) => {}
             Err(e) => {
                 admiralty_telemetry::event(Level::Error, "obs.cycle", "cycle.failed")
@@ -115,9 +132,37 @@ async fn execute() -> Result<()> {
         if cli.once {
             break;
         }
-        tokio::select! {_=tokio::time::sleep(Duration::from_secs(config.interval_seconds).saturating_sub(started.elapsed()))=>{},_=tokio::signal::ctrl_c()=>break}
+        tokio::select! {_=tokio::time::sleep(Duration::from_secs(config.interval_seconds).saturating_sub(started.elapsed()))=>{},_=stop.requested()=>break}
+    }
+    if let (Some(format), Some(line)) = (cli.log_format, rollup.flush()) {
+        eprintln!("{}", line.render(format));
     }
     Ok(())
+}
+/// Ctrl-C or, on Unix, SIGTERM (what systemd and most supervisors send).
+/// The handler is installed once before the first cycle, so a stop request
+/// that arrives mid-cycle lets that cycle finish and publish atomically.
+struct StopSignal {
+    #[cfg(unix)]
+    term: Option<tokio::signal::unix::Signal>,
+}
+
+impl StopSignal {
+    fn install() -> Self {
+        StopSignal {
+            #[cfg(unix)]
+            term: tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()).ok(),
+        }
+    }
+
+    async fn requested(&mut self) {
+        #[cfg(unix)]
+        if let Some(term) = self.term.as_mut() {
+            tokio::select! {_ = tokio::signal::ctrl_c() => {}, _ = term.recv() => {}}
+            return;
+        }
+        let _ = tokio::signal::ctrl_c().await;
+    }
 }
 mod config {
     pub use admiralty_observe::config::validate_output;

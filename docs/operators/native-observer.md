@@ -59,8 +59,28 @@ rtk proxy /srv/admiralty/releases/REVISION/bin/admiralty-observe \
   --config /srv/admiralty/observe/config.json
 ```
 
-There is no `daemon` subcommand or automatic service installer. The continuous
-process stays in the foreground for an operator-owned supervisor to manage.
+There is no `daemon` subcommand. The continuous process stays in the foreground
+for an operator-owned supervisor; [systemd user units](deployment-systemd.md)
+are provided in `packaging/systemd/`. SIGTERM (and Ctrl-C) let the cycle in
+progress finish and publish atomically before exit.
+
+Each cycle writes one compact log event (`logfmt` by default, `--log-format
+json` for NDJSON). Identical consecutive outcomes collapse into a counted
+`repeat=N` line every `--log-rollup-seconds` (default 600; `0` writes every
+cycle). See [agent brief and compact logs](agent-brief.md).
+
+Fleet/project collection and Git scans run concurrently, and the previous
+`status.json` is read once per cycle. `collector.stages_ms` publishes the
+`fleet`, `projects`, `git`, `git_health`, `usage` and `history` durations; the
+first two lanes overlap, so their sum can exceed `collector.duration_ms`.
+
+Disk growth (`growth_gb_per_h`), `hours_to_full` and `rate_window_min` are
+estimated from the observer's own used-byte samples, kept for six hours in the
+private `disk-rates-v1.json`. The rate uses the oldest sample between 20 minutes
+and 3 hours old, so these fields stay `null` for the first 20 minutes and after
+gaps. Fewer than 24 (12) projected hours to full raise a disk to amber (red),
+matching the retired Python estimate. Projections are linear advice, not
+reservations or capacity guarantees.
 Its advisory `collector.lock` prevents a second native observer from writing the
 same output directory. It does not coordinate with old collectors. Keep a single
 writer for every active feed and use separate output directories for candidates.

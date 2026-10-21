@@ -1,6 +1,7 @@
 //! Operator operations, bounded authenticated agent tools and an isolated demo.
 mod agent_tools;
 mod diagnostics;
+mod fleet_ops;
 pub mod native_archive;
 pub mod native_install;
 pub mod native_intake;
@@ -9,6 +10,7 @@ pub mod native_recovery;
 #[cfg(unix)]
 mod node;
 pub mod ops;
+mod release_evidence;
 pub mod release_ops;
 pub mod work_order_intake;
 mod workplans;
@@ -171,6 +173,13 @@ enum Command {
         #[command(subcommand)]
         command: ReleaseCommand,
     },
+    /// Token-budgeted fleet brief from a recorded producer snapshot.
+    Brief(fleet_ops::BriefArgs),
+    /// Compatibility alias for protected preview initialization.
+    State {
+        #[command(subcommand)]
+        command: StateCommand,
+    },
     /// Token-budgeted digests of Admiralty (ALOG/JSON) or arbitrary logs, for agents.
     Logs {
         #[command(subcommand)]
@@ -188,6 +197,14 @@ enum Command {
         listen: SocketAddr,
         #[arg(long, default_value_t = 30, value_parser = clap::value_parser!(u64).range(0..=3600))]
         timeout_seconds: u64,
+    },
+}
+
+#[derive(Subcommand)]
+enum StateCommand {
+    Init {
+        #[arg(long, value_parser = bounded_absolute_path)]
+        dir: PathBuf,
     },
 }
 
@@ -349,6 +366,20 @@ fn bounded_absolute_path(value: &str) -> Result<PathBuf, String> {
 
 #[derive(Subcommand)]
 enum ReleaseCommand {
+    /// Inspect the retained activation layout without switching versions or services.
+    Status {
+        #[arg(long, alias = "root", value_parser = bounded_absolute_path)]
+        releases_root: PathBuf,
+    },
+    /// Validate source-bound release evidence without deploying or accepting.
+    Evidence {
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long)]
+        evidence_root: PathBuf,
+        #[arg(long)]
+        expected_revision: String,
+    },
     /// Rehearse stage → archive twice (byte-identical) → private install →
     /// installed doctor and demo, offline with an empty PATH; retain all
     /// evidence in a new directory. Replaces scripts/release/qualify_native.py.
@@ -916,6 +947,34 @@ async fn run(cli: Cli) -> CliResult<()> {
                 )?)?;
             }
         },
+        Command::Release {
+            command:
+                ReleaseCommand::Evidence {
+                    manifest,
+                    evidence_root,
+                    expected_revision,
+                },
+        } => {
+            let status = release_evidence::run(&manifest, &evidence_root, &expected_revision);
+            if status != 0 {
+                std::process::exit(i32::from(status));
+            }
+        }
+        Command::Release {
+            command: ReleaseCommand::Status { releases_root },
+        } => print_json(release_ops::status(&releases_root)?)?,
+        Command::Brief(args) => {
+            println!("{}", fleet_ops::run_brief(args)?);
+        }
+        Command::State {
+            command: StateCommand::Init { dir },
+        } => {
+            let token = ops::init_preview_state(&dir)?;
+            eprintln!(
+                "Dashboard access token file: {} (value not displayed)",
+                token.display()
+            );
+        }
         Command::Doctor => {
             print_json(json!({
                 "version": env!("CARGO_PKG_VERSION"), "platform": std::env::consts::OS,

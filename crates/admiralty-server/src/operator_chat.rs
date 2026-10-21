@@ -80,6 +80,17 @@ struct Service {
     token: String,
     config: Option<Configuration>,
     health: Arc<RwLock<Value>>,
+    /// Last parsed producer revision. Freshness and notification retries are
+    /// still evaluated every tick; only an unchanged file skips the re-parse.
+    source: Arc<std::sync::Mutex<Option<ParsedHealthSource>>>,
+}
+
+type HealthReports = BTreeMap<String, admiralty_core::git_health::GitHealthReport>;
+
+struct ParsedHealthSource {
+    identity: crate::legacy::SourceIdentity,
+    reports: HealthReports,
+    generated_utc: Value,
 }
 
 fn id(value: &str) -> bool {
@@ -364,7 +375,9 @@ fn auth(
             .get(header::AUTHORIZATION)
             .and_then(|v| v.to_str().ok())
             .and_then(|s| s.strip_prefix("Bearer "))
-            != Some(service.token.as_str())
+            .is_none_or(|provided| {
+                !crate::http_bytes::constant_time_eq(provided.as_bytes(), service.token.as_bytes())
+            })
     {
         return Err(failure(
             StatusCode::UNAUTHORIZED,
@@ -560,19 +573,45 @@ fn notify_health(
     Ok(())
 }
 
-fn refresh(service: &Service, status_file: &Path) -> Result<()> {
-    let raw = crate::legacy::read_bounded(&status_file.to_path_buf(), 8 * 1024 * 1024)?;
+fn parse_health_source(status_file: &Path) -> Result<(HealthReports, Value)> {
+    let raw =
+        crate::legacy::read_bounded(&status_file.to_path_buf(), crate::legacy::MAX_STATUS_BYTES)?;
     let source: Value = serde_json::from_slice(&raw)?;
-    let reports: BTreeMap<String, admiralty_core::git_health::GitHealthReport> =
-        serde_json::from_value(
-            source
-                .get("git_health")
-                .cloned()
-                .unwrap_or_else(|| json!({})),
-        )?;
+    let reports: HealthReports = serde_json::from_value(
+        source
+            .get("git_health")
+            .cloned()
+            .unwrap_or_else(|| json!({})),
+    )?;
     if reports.len() > 64 {
         return Err("health report inventory exceeds bounds".into());
     }
+    Ok((reports, source["generated_utc"].clone()))
+}
+
+fn refresh(service: &Service, status_file: &Path) -> Result<()> {
+    let identity = crate::legacy::source_identity(status_file);
+    let cached = service.source.lock().ok().and_then(|cache| {
+        cache
+            .as_ref()
+            .filter(|c| identity.as_ref() == Some(&c.identity))
+            .map(|c| (c.reports.clone(), c.generated_utc.clone()))
+    });
+    let (reports, generated_utc) = match cached {
+        Some(parsed) => parsed,
+        None => {
+            let (reports, generated_utc) = parse_health_source(status_file)?;
+            if let (Some(identity), Ok(mut cache)) = (identity, service.source.lock()) {
+                *cache = Some(ParsedHealthSource {
+                    identity,
+                    reports: reports.clone(),
+                    generated_utc: generated_utc.clone(),
+                });
+            }
+            (reports, generated_utc)
+        }
+    };
+    let source = json!({"generated_utc": generated_utc});
     let producer_fresh = source["generated_utc"]
         .as_str()
         .and_then(|stamp| chrono::DateTime::parse_from_rfc3339(stamp).ok())
@@ -624,6 +663,7 @@ pub fn router(
         health: Arc::new(RwLock::new(
             json!({"schema_version":1,"reports":{},"error":"Git health source is not configured"}),
         )),
+        source: Arc::new(std::sync::Mutex::new(None)),
     });
     if let Some(path) = status_file {
         let weak = Arc::downgrade(&service);
@@ -776,6 +816,7 @@ mod tests {
             token: "owner".into(),
             config: Some(c),
             health: Arc::new(RwLock::new(json!({}))),
+            source: Arc::new(std::sync::Mutex::new(None)),
         };
         fs::write(
             &source_path,
@@ -858,6 +899,7 @@ mod tests {
             token: "t".into(),
             config: Some(c),
             health: Arc::new(RwLock::new(json!({}))),
+            source: Arc::new(std::sync::Mutex::new(None)),
         };
         refresh(&service, &source).expect("independent refresh");
         assert_eq!(inbox(&good).expect("good inbox").len(), 1);

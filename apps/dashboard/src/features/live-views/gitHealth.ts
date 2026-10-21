@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChatApiError, readBoundedJson } from "./operator-chat";
+import { scheduleVisible } from "../../visibility";
 
 export type GitHealthCount = { value: number; lower_bound: boolean };
 export type GitHealthReport = {
@@ -77,7 +78,7 @@ export function useGitHealth(token: string | undefined, scopeEpoch: number, enab
   const [state, setState] = useState<{ token?: string; scopeEpoch: number; reports: Record<string, GitHealthReport>; error: string } | null>(null);
   useEffect(() => {
     if (!enabled) return;
-    let stopped = false, timer: ReturnType<typeof setTimeout> | undefined, request: AbortController | undefined;
+    let stopped = false, cancelNext: (() => void) | undefined, request: AbortController | undefined;
     async function poll() {
       request = new AbortController();
       const deadline = setTimeout(() => request?.abort(), 12_000);
@@ -94,10 +95,11 @@ export function useGitHealth(token: string | undefined, scopeEpoch: number, enab
       } finally {
         clearTimeout(deadline);
       }
-      if (!stopped) timer = setTimeout(poll, 5_000);
+      // Hidden tabs wait until visible instead of polling every five seconds.
+      if (!stopped) cancelNext = scheduleVisible(() => void poll(), 5_000);
     }
     void poll();
-    return () => { stopped = true; request?.abort(); clearTimeout(timer); };
+    return () => { stopped = true; request?.abort(); cancelNext?.(); };
   }, [token, scopeEpoch, enabled]);
   return enabled && state && state.token === token && state.scopeEpoch === scopeEpoch ? state : { reports: {}, error: enabled ? "Checking Git health…" : "Git health requires current private observations." };
 }

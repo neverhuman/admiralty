@@ -1131,3 +1131,220 @@ async fn visual_producer_failure_keeps_last_known_inventory_and_public_legacy_fl
             .any(|s| s["state"] == "error")
     );
 }
+
+#[tokio::test]
+async fn snapshot_projection_cache_revalidates_with_etag_and_tracks_source_replacement() {
+    let directory = store_directory();
+    let status = directory.path().join("status.json");
+    let write = |generated: &str| {
+        let source = serde_json::json!({"generated_utc":generated,"order":["real"],
+            "projects":{"real":{"name":"real source","log":"x".repeat(4_096)}},
+            "git":{"real":{"commits":[]}}})
+        .to_string();
+        // Atomic replacement, exactly like the observer's publisher.
+        let next = directory.path().join(".status.tmp");
+        std::fs::write(&next, &source).expect("source");
+        std::fs::rename(&next, &status).expect("publish");
+    };
+    write("2026-10-21T00:00:00Z");
+    let store = Store::open(directory.path().join("native.sqlite")).expect("store");
+    let mut settings = config(false, None);
+    settings.legacy = Some(admiralty_server::legacy::LegacyConfig {
+        status_file: status.clone(),
+        index_file: directory.path().join("original.html"),
+        public_read: true,
+    });
+    let router = app(store, settings).expect("router");
+    let get = |router: Router, etag: Option<String>| async move {
+        let mut builder = Request::builder()
+            .uri("/v1/legacy/detail")
+            .header(header::ACCEPT_ENCODING, "gzip");
+        if let Some(etag) = etag {
+            builder = builder.header(header::IF_NONE_MATCH, etag);
+        }
+        router
+            .oneshot(builder.body(Body::empty()).expect("request"))
+            .await
+            .expect("response")
+    };
+    let first = get(router.clone(), None).await;
+    assert_eq!(first.status(), StatusCode::OK);
+    assert_eq!(first.headers()["x-admiralty-snapshot-cache"], "miss");
+    assert_eq!(first.headers()[header::CONTENT_ENCODING], "gzip");
+    assert_eq!(first.headers()[header::CACHE_CONTROL], "no-store");
+    let etag = first.headers()[header::ETAG]
+        .to_str()
+        .expect("etag")
+        .to_owned();
+    assert!(etag.starts_with('"') && etag.ends_with("-gz\""), "{etag}");
+    let first_body = to_bytes(first.into_body(), 1024 * 1024)
+        .await
+        .expect("body");
+    let second = get(router.clone(), None).await;
+    assert_eq!(second.headers()["x-admiralty-snapshot-cache"], "hit");
+    assert_eq!(second.headers()[header::ETAG], etag.as_str());
+    assert_eq!(
+        to_bytes(second.into_body(), 1024 * 1024)
+            .await
+            .expect("cached body"),
+        first_body,
+        "a cache hit must be byte-identical to the original projection"
+    );
+    let unchanged = get(router.clone(), Some(etag.clone())).await;
+    assert_eq!(unchanged.status(), StatusCode::NOT_MODIFIED);
+    assert_eq!(unchanged.headers()[header::ETAG], etag.as_str());
+    assert!(
+        to_bytes(unchanged.into_body(), 16)
+            .await
+            .expect("empty")
+            .is_empty()
+    );
+    // A newly published snapshot is a new identity: fresh projection and tag.
+    write("2026-10-21T00:00:15Z");
+    let replaced = get(router.clone(), Some(etag.clone())).await;
+    assert_eq!(replaced.status(), StatusCode::OK);
+    assert_eq!(replaced.headers()["x-admiralty-snapshot-cache"], "miss");
+    assert_ne!(replaced.headers()[header::ETAG], etag.as_str());
+    // Identity clients get a different representation tag, never gzip bytes.
+    let identity = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/legacy/detail")
+                .header(header::ACCEPT_ENCODING, "identity")
+                .body(Body::empty())
+                .expect("request"),
+        )
+        .await
+        .expect("response");
+    assert!(!identity.headers().contains_key(header::CONTENT_ENCODING));
+    assert!(
+        !identity.headers()[header::ETAG]
+            .to_str()
+            .expect("tag")
+            .ends_with("-gz\"")
+    );
+    let detail = json(identity).await;
+    assert_eq!(detail["generated_utc"], "2026-10-21T00:00:15Z");
+    assert!(detail.get("git").is_none());
+    // Malformed replacement still fails closed instead of serving the cache.
+    std::fs::write(directory.path().join(".bad"), b"malformed").expect("bad");
+    std::fs::rename(directory.path().join(".bad"), &status).expect("publish bad");
+    assert_eq!(get(router, None).await.status(), StatusCode::BAD_GATEWAY);
+}
+
+#[tokio::test]
+async fn agent_brief_and_readiness_use_the_bounded_producer_feed_without_leaking_paths() {
+    let directory = store_directory();
+    let status = directory.path().join("status.json");
+    let generated = utc_now_seconds();
+    std::fs::write(
+        &status,
+        serde_json::json!({"generated_utc":generated,"host":"node","order":["p"],
+            "collector":{"duration_ms":12,"model_turns":0},
+            "projects":{"p":{"done":3,"total":4,"counts":{"in_progress":1,"blocked":0}}},
+            "git_health":{"p":{"state":"attention","actionable":true,"fingerprint":"sha256:abcdef0123",
+                "issues":[{"code":"merge_conflicts"}]}}})
+        .to_string(),
+    )
+    .expect("source");
+    let assets = directory.path().join("assets");
+    std::fs::create_dir(&assets).expect("assets");
+    let store = Store::open(directory.path().join("native.sqlite")).expect("store");
+    let mut settings = config(false, Some(assets.clone()));
+    settings.legacy = Some(admiralty_server::legacy::LegacyConfig {
+        status_file: status.clone(),
+        index_file: directory.path().join("original.html"),
+        public_read: true,
+    });
+    let router = app(store.clone(), settings.clone()).expect("router");
+    let brief = request(&router, "GET", "/v1/brief?budget=400", None).await;
+    assert_eq!(brief.status(), StatusCode::OK);
+    assert_eq!(
+        brief.headers()[header::CONTENT_TYPE],
+        "text/plain; charset=utf-8"
+    );
+    assert_eq!(brief.headers()["x-admiralty-brief-omitted"], "0");
+    let text = String::from_utf8(
+        to_bytes(brief.into_body(), 4096)
+            .await
+            .expect("brief")
+            .to_vec(),
+    )
+    .expect("utf-8");
+    assert!(
+        text.starts_with(&format!("# fleet gen={generated} ")),
+        "{text}"
+    );
+    assert!(
+        text.contains("\n! git p attention merge_conflicts fp=abcdef01"),
+        "{text}"
+    );
+    assert!(text.contains("proj p done=3/4 ip=1 blk=0"), "{text}");
+    assert!(text.len() <= 400);
+    let structured =
+        json(request(&router, "GET", "/v1/brief?format=json&project=p", None).await).await;
+    assert_eq!(structured["omitted_lines"], 0);
+    assert_eq!(structured["stale"], false);
+    for bad in ["/v1/brief?format=yaml", "/v1/brief?project=../etc"] {
+        assert_eq!(
+            request(&router, "GET", bad, None).await.status(),
+            StatusCode::BAD_REQUEST,
+            "{bad}"
+        );
+    }
+    // Readiness: assets missing index.html -> 503 with reasons, never paths.
+    let not_ready = request(&router, "GET", "/readyz", None).await;
+    assert_eq!(not_ready.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let body = json(not_ready).await;
+    assert_eq!(body["ready"], false);
+    assert_eq!(body["checks"]["producer_feed"]["ok"], true);
+    assert_eq!(body["checks"]["dashboard_assets"]["ok"], false);
+    assert!(
+        !body
+            .to_string()
+            .contains(directory.path().to_str().expect("path"))
+    );
+    std::fs::write(assets.join("index.html"), "<!doctype html>").expect("index");
+    let ready = request(&router, "GET", "/readyz", None).await;
+    assert_eq!(ready.status(), StatusCode::OK);
+    assert_eq!(json(ready).await["ready"], true);
+    // Private scope still applies to the brief.
+    settings.legacy.as_mut().expect("legacy").public_read = false;
+    let private = app(store, settings).expect("private");
+    assert_eq!(
+        request(&private, "GET", "/v1/brief", None).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        request(&private, "GET", "/v1/brief", Some(TOKEN))
+            .await
+            .status(),
+        StatusCode::OK
+    );
+}
+
+/// RFC 3339 UTC "now" without adding a date dependency to the test kit.
+fn utc_now_seconds() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("clock after epoch")
+        .as_secs() as i64;
+    let (days, rem) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
+    // Civil-from-days (Howard Hinnant), proleptic Gregorian.
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    format!(
+        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}Z",
+        rem / 3_600,
+        rem % 3_600 / 60,
+        rem % 60
+    )
+}

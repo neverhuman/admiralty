@@ -331,12 +331,20 @@ async fn scan(path: &Path, node: &str) -> crate::Result<GitRepository> {
 pub async fn collect(config: &crate::config::ObserveConfig) -> BTreeMap<String, GitRepository> {
     let previous =
         crate::io::read_json(&config.output_dir.join("status.json"), 32 * 1024 * 1024).ok();
+    collect_with_previous(config, previous.as_ref()).await
+}
+
+/// Scan every configured repository, retaining the last successful facts
+/// from an already loaded previous snapshot when a scan fails.
+pub async fn collect_with_previous(
+    config: &crate::config::ObserveConfig,
+    previous: Option<&serde_json::Value>,
+) -> BTreeMap<String, GitRepository> {
     let mut result = BTreeMap::new();
     let slots = std::sync::Arc::new(tokio::sync::Semaphore::new(4));
     let mut tasks = tokio::task::JoinSet::new();
     for project in &config.projects {
         let mut value = previous
-            .as_ref()
             .and_then(|v| {
                 serde_json::from_value::<GitRepository>(v["git"][&project.id].clone()).ok()
             })
