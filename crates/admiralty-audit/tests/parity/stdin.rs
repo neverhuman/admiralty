@@ -13,7 +13,12 @@ use crate::common::at;
 #[test]
 fn test_run_passes_devnull_stdin() {
     let out = RealHost.run(
-        &["sh", "-c", "readlink /proc/$$/fd/0"],
+        &[
+            "sh",
+            "-c",
+            // /dev/fd works on both Linux and Darwin; /proc is Linux-only.
+            "test /dev/fd/0 -ef /dev/null && printf '/dev/null\\n'",
+        ],
         Some(Duration::from_secs(10)),
         None,
     );
