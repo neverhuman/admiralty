@@ -11,9 +11,9 @@ pub struct LiveArgs {
     #[arg(long, value_parser = bounded_absolute_path)]
     status: PathBuf,
     #[arg(long, value_parser = bounded_absolute_path)]
-    index: PathBuf,
+    index: Option<PathBuf>,
     #[arg(long, value_parser = bounded_absolute_path)]
-    assets: PathBuf,
+    assets: Option<PathBuf>,
     #[arg(long, default_value = "127.0.0.1:18891")]
     listen: SocketAddr,
     #[arg(long, value_parser = bounded_absolute_path)]
@@ -26,7 +26,22 @@ pub async fn run(args: LiveArgs) -> CliResult<()> {
     if !args.listen.ip().is_loopback() {
         return Err("live preview requires a loopback listener".into());
     }
-    for file in [&args.status, &args.index, &args.assets.join("index.html")] {
+    let assets =
+        if args.assets.is_some() || admiralty_server::embedded::embedded_dashboard().is_none() {
+            admiralty_server::startup::resolve_assets(
+                args.assets,
+                std::env::current_exe().ok().as_deref(),
+            )
+        } else {
+            None
+        };
+    if assets.is_none() && admiralty_server::embedded::embedded_dashboard().is_none() {
+        return Err("live preview requires built assets or an embedded console".into());
+    }
+    let mut required = vec![args.status.clone()];
+    required.extend(args.index.iter().cloned());
+    required.extend(assets.iter().map(|path| path.join("index.html")));
+    for file in &required {
         if !std::fs::metadata(file).is_ok_and(|m| m.is_file()) {
             return Err("live preview requires existing producer files and built assets".into());
         }
@@ -43,10 +58,10 @@ pub async fn run(args: LiveArgs) -> CliResult<()> {
             listen: args.listen,
             simulated: false,
             token: Some(token),
-            assets: Some(args.assets),
+            assets,
             legacy: Some(LegacyConfig {
                 status_file: args.status,
-                index_file: Some(args.index),
+                index_file: args.index,
                 public_read: true,
             }),
             models_file: args.models,
@@ -117,8 +132,8 @@ mod tests {
         let result = run(LiveArgs {
             state_dir: state.clone(),
             status: root.path().join("status.json"),
-            index: root.path().join("index.html"),
-            assets: root.path().join("assets"),
+            index: Some(root.path().join("index.html")),
+            assets: Some(root.path().join("assets")),
             listen: "0.0.0.0:18891".parse()?,
             models: None,
         })

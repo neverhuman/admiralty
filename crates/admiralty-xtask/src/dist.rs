@@ -179,6 +179,7 @@ pub fn run_dist(root: &Path, args: &DistArgs) -> Result<i32, Error> {
         return Ok(2);
     }
     let overlay = vec![
+        (OsString::from("CARGO_BUILD_JOBS"), OsString::from("2")),
         (
             OsString::from("ADMIRALTY_EMBED_DASHBOARD"),
             dist.clone().into_os_string(),

@@ -81,6 +81,15 @@ pub(crate) fn respond(requested: &str, headers: &HeaderMap, gzip_ok: bool) -> Op
             .then(|| lookup("index.html"))
             .flatten()
     })?;
+    Some(respond_asset(asset, requested, headers, gzip_ok))
+}
+
+fn respond_asset(
+    asset: &EmbeddedAsset,
+    requested: &str,
+    headers: &HeaderMap,
+    gzip_ok: bool,
+) -> Response {
     let identity_tag = format!("\"{}\"", &asset.sha256[..32]);
     let gzip_tag = format!("\"{}-gz\"", &asset.sha256[..32]);
     let use_gzip = gzip_ok && asset.gzip.is_some();
@@ -90,7 +99,7 @@ pub(crate) fn respond(requested: &str, headers: &HeaderMap, gzip_ok: bool) -> Op
     } else {
         "no-cache"
     };
-    let mut response = if etag_matches(headers, &[&identity_tag, &gzip_tag]) {
+    let mut response = if etag_matches(headers, &[etag.as_str()]) {
         StatusCode::NOT_MODIFIED.into_response()
     } else {
         let body = match (use_gzip, asset.gzip) {
@@ -118,7 +127,7 @@ pub(crate) fn respond(requested: &str, headers: &HeaderMap, gzip_ok: bool) -> Op
     if let Ok(value) = HeaderValue::from_str(etag) {
         headers.insert(header::ETAG, value);
     }
-    Some(response)
+    response
 }
 
 #[cfg(test)]
@@ -149,6 +158,46 @@ mod tests {
         assert!(!etag_matches(&headers, &["\"zzz\""]));
         headers.insert(header::IF_NONE_MATCH, HeaderValue::from_static("*"));
         assert!(etag_matches(&headers, &["\"zzz\""]));
+    }
+
+    #[test]
+    fn conditional_requests_validate_only_the_selected_encoding() {
+        let asset = EmbeddedAsset {
+            path: "index.html",
+            mime: "text/html; charset=utf-8",
+            sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            body: b"identity fixture",
+            gzip: Some(b"gzip representation fixture"),
+        };
+        let identity = "\"0123456789abcdef0123456789abcdef\"";
+        let compressed = "\"0123456789abcdef0123456789abcdef-gz\"";
+        let mut headers = HeaderMap::new();
+        headers.insert(header::IF_NONE_MATCH, HeaderValue::from_static(identity));
+        let response = respond_asset(&asset, "index.html", &headers, true);
+        assert_eq!(
+            response.status(),
+            StatusCode::OK,
+            "identity cache cannot validate gzip bytes"
+        );
+        assert_eq!(response.headers()[header::ETAG], compressed);
+        assert_eq!(response.headers()[header::CONTENT_ENCODING], "gzip");
+        headers.insert(header::IF_NONE_MATCH, HeaderValue::from_static(compressed));
+        assert_eq!(
+            respond_asset(&asset, "index.html", &headers, true).status(),
+            StatusCode::NOT_MODIFIED
+        );
+        let response = respond_asset(&asset, "index.html", &headers, false);
+        assert_eq!(
+            response.status(),
+            StatusCode::OK,
+            "gzip cache cannot validate identity bytes"
+        );
+        assert_eq!(response.headers()[header::ETAG], identity);
+        assert!(!response.headers().contains_key(header::CONTENT_ENCODING));
+        headers.insert(header::IF_NONE_MATCH, HeaderValue::from_static(identity));
+        let response = respond_asset(&asset, "index.html", &headers, false);
+        assert_eq!(response.status(), StatusCode::NOT_MODIFIED);
+        assert_eq!(response.headers()[header::VARY], "Accept-Encoding");
     }
 
     #[test]

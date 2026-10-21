@@ -87,7 +87,19 @@ fn assert_plan_matches_script(name: &str) {
     let dir = tempfile::tempdir().expect("tempdir");
     let sb = dir.path().join("sb");
     std::fs::create_dir_all(&sb).expect("sandbox");
-    copy_tree(&fx.join("seed"), &sb);
+    // /tmp exists on the original host even when no seed file occupies it.
+    std::fs::create_dir_all(sb.join("tmp")).expect("sandbox tmp");
+    std::fs::create_dir_all(sb.join("home/ubuntu/xbabe2_kicker/captains-20261017"))
+        .expect("original host captain directory");
+    if fx.join("seed").is_dir() {
+        copy_tree(&fx.join("seed"), &sb);
+    } else {
+        assert_eq!(
+            std::fs::read_to_string(fx.join("empty-seed.txt")).expect("explicit empty seed"),
+            "empty\n",
+            "a missing nonempty fixture must fail"
+        );
+    }
     let sb_str = sb.display().to_string();
     let plan_text = std::fs::read_to_string(crate_dir().join("plans").join(format!("{name}.json")))
         .expect("plan file");

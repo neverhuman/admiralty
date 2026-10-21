@@ -1,0 +1,4 @@
+
+# Captured terminal and export fixtures retain spaces and CRLF; keep their exact oracle bytes.
+crates/admiralty-fleetops/tests/fixtures/** -text whitespace=-blank-at-eol,-blank-at-eof
+crates/admiralty-tools/tests/fixtures/history_export.bundle -text whitespace=-blank-at-eol,-blank-at-eof

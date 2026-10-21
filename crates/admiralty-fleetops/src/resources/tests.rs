@@ -60,7 +60,7 @@ fn sampler_matches_python_outputs_byte_for_byte() {
     assert_eq!(resources(&mut ctx, false).expect("resources"), 0);
     assert_eq!(
         std::fs::read_to_string(dir.path().join("global_resources.json")).expect("doc"),
-        read("global_resources.json")
+        read("expected_global_resources.json")
     );
     assert_eq!(
         std::fs::read_to_string(dir.path().join(".res_history.json")).expect("hist"),

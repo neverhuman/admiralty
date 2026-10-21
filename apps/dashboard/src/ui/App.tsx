@@ -115,7 +115,7 @@ function App() {
 
   const totals = useMemo(() => fleet ? fleetTotals(fleet) : null, [fleet]);
   const paletteCommands = useMemo<PaletteCommand[]>(() => [
-    ...navGroups.flatMap(group => group.items.map(item => ({
+    ...NAV_GROUPS.flatMap(group => group.items.map(item => ({
       id: `view-${item.view}`, label: item.view === 'Fleet detail' ? 'Fleet detail' : item.view, group: `${group.label.charAt(0)}${group.label.slice(1).toLowerCase()}`,
       keywords: item.view === 'Fleet detail' ? 'legacy detailed view projects trends' : item.view === 'Fleet health' ? 'hosts disk memory git hygiene logs metrics readiness' : undefined,
       run: () => navigate((Object.keys(destinations) as RouteName[]).find(key => destinations[key] === item.view) ?? 'detail'),
