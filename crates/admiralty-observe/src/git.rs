@@ -150,45 +150,93 @@ fn trailer_line(text: &str) -> Option<(&str, &str)> {
     .then(|| (key, value.trim()))
 }
 
-/// Fleet attribution trailers from a commit's last message paragraph. The
-/// paragraph counts only when it is not the subject paragraph and every line is
-/// a trailer or an indented continuation, so prose that merely mentions a key
-/// is never read as a trailer. The first value of each key wins.
-fn agent_trailers(paragraphs: usize, last: &[String]) -> Option<GitAgentTrailers> {
-    if paragraphs < 2 || last.is_empty() {
-        return None;
-    }
-    let mut found = GitAgentTrailers::default();
-    for line in last {
-        if line.starts_with([' ', '\t']) {
-            continue;
+#[derive(Clone, Copy)]
+enum TrailerField {
+    Session,
+    Model,
+    Task,
+}
+
+/// Validate every line of the final paragraph while retaining only three
+/// bounded values. An invalid suffix must invalidate even an earlier match.
+#[derive(Default)]
+struct AgentTrailerParagraph {
+    found: GitAgentTrailers,
+    invalid: bool,
+    saw_trailer: bool,
+    continuation: Option<TrailerField>,
+}
+impl AgentTrailerParagraph {
+    fn slot(&mut self, field: TrailerField) -> &mut Option<String> {
+        match field {
+            TrailerField::Session => &mut self.found.session,
+            TrailerField::Model => &mut self.found.model,
+            TrailerField::Task => &mut self.found.task,
         }
-        let (key, value) = trailer_line(line)?;
-        let slot = match key.to_ascii_lowercase().as_str() {
-            "agent-session" => &mut found.session,
-            "agent-model" => &mut found.model,
-            "agent-task" => &mut found.task,
-            _ => continue,
+    }
+    fn append(&mut self, field: TrailerField, text: &str) {
+        let slot = self.slot(field);
+        let used = slot.as_ref().map_or(0, |value| value.chars().count());
+        let mut remaining = MAX_TRAILER_CHARS - used;
+        if remaining == 0 {
+            return;
+        }
+        let cleaned = crate::io::clean(text);
+        let text = cleaned.trim();
+        if text.is_empty() {
+            return;
+        }
+        let value = slot.get_or_insert_with(String::new);
+        if !value.is_empty() {
+            value.push(' ');
+            remaining -= 1;
+        }
+        value.extend(text.chars().take(remaining));
+    }
+    fn observe(&mut self, text: &str) {
+        if self.invalid {
+            return;
+        }
+        if text.starts_with([' ', '\t']) {
+            if !self.saw_trailer {
+                self.invalid = true;
+            } else if let Some(field) = self.continuation {
+                self.append(field, text);
+            }
+            return;
+        }
+        let Some((key, value)) = trailer_line(text) else {
+            self.invalid = true;
+            return;
         };
-        let value: String = crate::io::clean(value)
-            .chars()
-            .take(MAX_TRAILER_CHARS)
-            .collect();
-        if slot.is_none() && !value.is_empty() {
-            *slot = Some(value);
+        self.saw_trailer = true;
+        self.continuation = None;
+        let field = match key.to_ascii_lowercase().as_str() {
+            "agent-session" => TrailerField::Session,
+            "agent-model" => TrailerField::Model,
+            "agent-task" => TrailerField::Task,
+            _ => return,
+        };
+        // The first nonempty value wins, including its folded continuation.
+        if self.slot(field).is_none() {
+            self.continuation = Some(field);
+            self.append(field, value);
         }
     }
-    (found != GitAgentTrailers::default()).then_some(found)
+    fn finish(self, paragraphs: usize) -> Option<GitAgentTrailers> {
+        (paragraphs >= 2 && !self.invalid && self.found != GitAgentTrailers::default())
+            .then_some(self.found)
+    }
 }
 
 fn commits(raw: &str) -> crate::Result<Vec<GitCommit>> {
     let mut result: Vec<GitCommit> = Vec::new();
     let mut message = false;
     let mut subject = false;
-    // Message paragraphs seen, the latest paragraph's lines, and whether a
+    // Message paragraphs seen, the latest paragraph's bounded state, and whether a
     // blank message line (raw format prints it as four spaces) preceded them.
     let mut paragraphs = 0usize;
-    let mut last: Vec<String> = Vec::new();
+    let mut last = AgentTrailerParagraph::default();
     let mut gap = false;
     for line in raw.lines() {
         if let Some(id) = line.strip_prefix("commit ") {
@@ -196,7 +244,7 @@ fn commits(raw: &str) -> crate::Result<Vec<GitCommit>> {
                 return Err("invalid Git commit record".into());
             }
             if let Some(previous) = result.last_mut() {
-                previous.agent_trailers = agent_trailers(paragraphs, &last);
+                previous.agent_trailers = std::mem::take(&mut last).finish(paragraphs);
             }
             result.push(GitCommit {
                 oid: id.into(),
@@ -208,7 +256,7 @@ fn commits(raw: &str) -> crate::Result<Vec<GitCommit>> {
             message = false;
             subject = false;
             paragraphs = 0;
-            last.clear();
+            last = AgentTrailerParagraph::default();
             gap = false;
         } else if let Some(commit) = result.last_mut() {
             if message && let Some(text) = line.strip_prefix("    ") {
@@ -217,12 +265,10 @@ fn commits(raw: &str) -> crate::Result<Vec<GitCommit>> {
                 } else {
                     if gap || paragraphs == 0 {
                         paragraphs += 1;
-                        last.clear();
+                        last = AgentTrailerParagraph::default();
                         gap = false;
                     }
-                    if last.len() < 64 {
-                        last.push(text.to_owned());
-                    }
+                    last.observe(text);
                 }
             }
             if !message {
@@ -250,7 +296,7 @@ fn commits(raw: &str) -> crate::Result<Vec<GitCommit>> {
         }
     }
     if let Some(previous) = result.last_mut() {
-        previous.agent_trailers = agent_trailers(paragraphs, &last);
+        previous.agent_trailers = last.finish(paragraphs);
     }
     if result.iter().any(|c| c.committed_utc.is_empty()) {
         return Err("incomplete Git commit metadata".into());
@@ -620,6 +666,65 @@ mod tests {
             .and_then(|t| t.task)
             .expect("task");
         assert_eq!(task.chars().count(), MAX_TRAILER_CHARS);
+    }
+    #[test]
+    fn agent_trailers_validate_the_entire_final_paragraph() {
+        let mut lines = vec!["Subject", "", "Agent-Task: P1"];
+        lines.extend(std::iter::repeat_n("Reviewed-by: Fixture", 80));
+        lines.push("Prose after the old line cap must invalidate the paragraph.");
+        let parsed = commits(&raw_commit(7, &lines)).expect("commits");
+        assert_eq!(parsed[0].agent_trailers, None);
+    }
+    #[test]
+    fn agent_trailers_reject_orphan_continuations() {
+        let parsed = commits(&raw_commit(
+            8,
+            &["Subject", "", " orphan prose", "Agent-Task: P1"],
+        ))
+        .expect("commits");
+        assert_eq!(parsed[0].agent_trailers, None);
+    }
+    #[test]
+    fn agent_trailers_after_long_valid_blocks_are_retained() {
+        let mut lines = vec!["Subject", ""];
+        lines.extend(std::iter::repeat_n("Reviewed-by: Fixture", 80));
+        lines.push("Agent-Task: P1");
+        let parsed = commits(&raw_commit(9, &lines)).expect("commits");
+        assert_eq!(
+            parsed[0]
+                .agent_trailers
+                .as_ref()
+                .and_then(|t| t.task.as_deref()),
+            Some("P1")
+        );
+    }
+    #[test]
+    fn agent_trailers_unfold_values_with_one_shared_character_bound() {
+        let raw = raw_commit(
+            10,
+            &[
+                "Subject",
+                "",
+                "Agent-Model: gpt-6-luna",
+                " medium",
+                "Agent-Model: duplicate",
+                " ignored continuation",
+                "Reviewed-by: Fixture",
+                " unrelated continuation",
+                "Agent-Task:",
+                " P1",
+                &format!("Agent-Session: {}", "界".repeat(120)),
+                &format!("\t{}", "界".repeat(400)),
+            ],
+        );
+        let parsed = commits(&raw).expect("commits");
+        let trailers = parsed[0].agent_trailers.as_ref().expect("trailers");
+        assert_eq!(trailers.model.as_deref(), Some("gpt-6-luna medium"));
+        assert_eq!(trailers.task.as_deref(), Some("P1"));
+        assert_eq!(
+            trailers.session.as_deref(),
+            Some(format!("{} {}", "界".repeat(120), "界".repeat(7)).as_str())
+        );
     }
     #[tokio::test]
     async fn real_commit_trailers_are_observed_without_changing_the_repository() {
