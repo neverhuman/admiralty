@@ -5,6 +5,13 @@ group `neverhuman-lan` with the shared labels `self-hosted`, `Linux`, `X64` and
 `lan-ci`. GitHub schedules any available matching runner. The workflow contains
 no machine names, OS-image-specific labels or dedicated project runner labels.
 
+On21 October2026 the owner explicitly required the general self-hosted fleet
+across xbabe1, xbabe2, xbabe3 and xbabe4, with no GitHub cloud runners. The
+three-host observations below are historical configuration evidence, not proof
+of current four-host readiness. Platform-specific jobs retain actual capability
+labels; verify host identity and matching live capacity before fleet repairs.
+Storage problems must be addressed within the general pool.
+
 The general launcher was inspected read-only on xbabe1, xbabe2 and xbabe3 on
 2026-10-18. All three have the same `/opt/neverhuman-actions/launch.sh` SHA-256
 `e51ee6d1f10faf7e1b051e2cf0b803bfb6b7cf67135effd413af253412dcb996`

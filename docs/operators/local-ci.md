@@ -71,12 +71,15 @@ crash behavior or change the separate `/dev/shm` capture-fixture requirement.
 
 ## Rust runner storage
 
-The hosted Rust/legacy qualification job uses the standard GitHub-hosted
-`ubuntu-24.04` runner. The generic LAN pool mixed NVMe and USB rotational storage,
-which caused large fsync delays, startup-budget failures and a30-minute timeout
-on unchanged source. This public repository uses GitHub's free standard runner;
-other job routing remains unchanged. Keep the two compiler jobs, serialized
-Rust tests, real durability operations, individual deadlines and30-minute job
-limit. A fast rerun is evidence for its exact source, not erasure of the original
-failure. Reintroducing a LAN Rust lane requires demonstrated durable I/O
-performance and an actual corresponding runner label.
+All CI uses the general self-hosted fleet. The owner explicitly requires
+xbabe1, xbabe2, xbabe3 and xbabe4 on21 October2026 and prohibits GitHub cloud
+runners. Workflows select the shared `neverhuman-lan` group and actual capability
+labels; a platform-specific job can use only matching fleet capacity. Do not
+create dedicated Admiralty runners or route a slow job to a cloud runner.
+
+The inspected LAN pool mixed NVMe and USB rotational storage. Large durable-I/O
+delays accompanied startup-budget failures and a30-minute timeout on unchanged
+source. Repair and qualify the general pool while keeping two compiler jobs,
+serialized Rust tests, real durability operations, individual deadlines and the
+30-minute job limit. Record actual runner placement and exact-source results.
+A fast rerun does not erase the original failure or qualify every fleet host.
