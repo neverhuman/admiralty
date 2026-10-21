@@ -63,39 +63,53 @@ pub fn digest_logs(
 
 /// Create (or verify) the private preview directory and its dashboard token.
 ///
-/// Replaces the Python heredoc formerly embedded in `scripts/dev/live.sh`
-/// with identical rules: the directory is absolute, not a symlink, owned by
-/// the caller and mode 0700; the token is created exclusively with 0600 and
-/// 48 random bytes encoded URL-safe (64 characters); an existing token must
-/// be a private regular file owned by the caller. The token value is never
-/// printed.
+/// Traverses protected, no-follow directory descriptors and validates the
+/// resulting credential with the daemon's reader. Existing invalid tokens
+/// are refused without replacement or permission changes. Newly created
+/// tokens contain 48 random bytes encoded as 64 URL-safe characters.
 #[cfg(unix)]
 pub fn init_preview_state(directory: &Path) -> Result<PathBuf> {
-    use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
-    if !directory.is_absolute() {
-        return Err("preview state directory must be absolute".into());
+    use rustix::fs::{Mode, OFlags, fstat, mkdirat, open, openat};
+    use std::path::Component;
+
+    if !directory.is_absolute()
+        || directory
+            .components()
+            .any(|part| !matches!(part, Component::RootDir | Component::Normal(_)))
+    {
+        return Err("preview state directory must be absolute and normalized".into());
     }
-    if fs::symlink_metadata(directory).is_ok_and(|m| m.file_type().is_symlink()) {
-        return Err("preview state directory must not be a symlink".into());
-    }
-    fs::DirBuilder::new()
-        .recursive(true)
-        .mode(0o700)
-        .create(directory)?;
     let uid = rustix::process::geteuid().as_raw();
-    let info = fs::symlink_metadata(directory)?;
-    if !info.is_dir() || info.uid() != uid || info.permissions().mode() & 0o077 != 0 {
+    let flags = OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC;
+    let mut parent = open("/", flags, Mode::empty())?;
+    for component in directory.components() {
+        let info = fstat(&parent)?;
+        if ![0, uid].contains(&info.st_uid)
+            || (info.st_mode & 0o022 != 0 && info.st_mode & 0o1000 == 0)
+        {
+            return Err("preview state ancestor is not protected".into());
+        }
+        if let Component::Normal(name) = component {
+            match mkdirat(&parent, name, Mode::from_raw_mode(0o700)) {
+                Ok(()) | Err(rustix::io::Errno::EXIST) => {}
+                Err(error) => return Err(error.into()),
+            }
+            parent = openat(&parent, name, flags, Mode::empty())?;
+        }
+    }
+    let info = fstat(&parent)?;
+    if info.st_uid != uid || info.st_mode & 0o077 != 0 {
         return Err("existing preview state directory must be owned and mode 0700".into());
     }
     let token = directory.join("dashboard-token");
-    match fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .custom_flags(rustix::fs::OFlags::NOFOLLOW.bits() as i32)
-        .open(&token)
-    {
-        Ok(mut file) => {
+    match openat(
+        &parent,
+        "dashboard-token",
+        OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+        Mode::from_raw_mode(0o600),
+    ) {
+        Ok(descriptor) => {
+            let mut file = fs::File::from(descriptor);
             let mut secret = random_token()?;
             let written = file
                 .write_all(secret.as_bytes())
@@ -103,18 +117,13 @@ pub fn init_preview_state(directory: &Path) -> Result<PathBuf> {
             // Best-effort overwrite of the in-memory copy before reporting.
             wipe(&mut secret);
             written?;
+            fs::File::from(parent).sync_all()?;
         }
-        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
-            let info = fs::symlink_metadata(&token)?;
-            if !info.file_type().is_file()
-                || info.uid() != uid
-                || info.permissions().mode() & 0o077 != 0
-            {
-                return Err("existing dashboard token must be a private owned regular file".into());
-            }
-        }
+        Err(rustix::io::Errno::EXIST) => {}
         Err(error) => return Err(error.into()),
     }
+    let mut credential = admiralty_server::startup::read_private_token(&token)?;
+    wipe(&mut credential);
     Ok(token)
 }
 
@@ -173,9 +182,13 @@ pub fn wait_ready(listen: SocketAddr, timeout: Duration) -> Readiness {
         last_body: None,
         last_error: None,
     };
-    loop {
+    let Some(deadline) = started.checked_add(timeout) else {
+        result.last_error = Some("readiness deadline exceeds clock range".into());
+        return result;
+    };
+    while Instant::now() < deadline {
         result.attempts += 1;
-        match get(listen, "/readyz") {
+        match get(listen, "/readyz", deadline) {
             Ok((status, body)) => {
                 result.last_status = Some(status);
                 result.last_body = serde_json::from_str(&body).ok();
@@ -187,27 +200,55 @@ pub fn wait_ready(listen: SocketAddr, timeout: Duration) -> Readiness {
             }
             Err(error) => result.last_error = Some(error.to_string()),
         }
-        if started.elapsed() >= timeout {
-            break;
-        }
-        std::thread::sleep(Duration::from_millis(250));
+        std::thread::sleep(
+            Duration::from_millis(250).min(deadline.saturating_duration_since(Instant::now())),
+        );
     }
     result.elapsed_ms = started.elapsed().as_millis();
     result
 }
 
-fn get(address: SocketAddr, path: &str) -> io::Result<(u16, String)> {
-    let mut stream = TcpStream::connect_timeout(&address, Duration::from_secs(2))?;
-    stream.set_read_timeout(Some(Duration::from_secs(3)))?;
-    stream.set_write_timeout(Some(Duration::from_secs(3)))?;
-    // One write: a peer that answers after its first read must see the whole
-    // request, or closing with unread bytes would reset the connection.
+fn remaining(deadline: Instant) -> io::Result<Duration> {
+    deadline
+        .checked_duration_since(Instant::now())
+        .filter(|duration| !duration.is_zero())
+        .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "readiness deadline elapsed"))
+}
+
+fn get(address: SocketAddr, path: &str, deadline: Instant) -> io::Result<(u16, String)> {
+    let mut stream =
+        TcpStream::connect_timeout(&address, remaining(deadline)?.min(Duration::from_secs(2)))?;
     let request = format!(
         "GET {path} HTTP/1.1\r\nHost: {address}\r\nConnection: close\r\nAccept: application/json\r\n\r\n"
     );
-    stream.write_all(request.as_bytes())?;
+    let mut pending = request.as_bytes();
+    while !pending.is_empty() {
+        stream.set_write_timeout(Some(remaining(deadline)?.min(Duration::from_secs(3))))?;
+        match stream.write(pending) {
+            Ok(0) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::WriteZero,
+                    "readiness write failed",
+                ));
+            }
+            Ok(written) => pending = &pending[written..],
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error),
+        }
+    }
     let mut response = Vec::new();
-    stream.take(256 * 1024).read_to_end(&mut response)?;
+    let mut buffer = [0; 4096];
+    while response.len() < 256 * 1024 {
+        stream.set_read_timeout(Some(remaining(deadline)?.min(Duration::from_secs(3))))?;
+        let capacity = buffer.len().min(256 * 1024 - response.len());
+        match stream.read(&mut buffer[..capacity]) {
+            Ok(0) => break,
+            Ok(read) => response.extend_from_slice(&buffer[..read]),
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error),
+        }
+    }
+    remaining(deadline)?;
     let text = String::from_utf8_lossy(&response);
     let (head, body) = text.split_once("\r\n\r\n").unwrap_or((&text, ""));
     let status = head
@@ -221,6 +262,118 @@ fn get(address: SocketAddr, path: &str) -> io::Result<(u16, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    fn private_root() -> tempfile::TempDir {
+        use std::os::unix::fs::PermissionsExt;
+        tempfile::Builder::new()
+            .prefix("adm-preview-")
+            .permissions(fs::Permissions::from_mode(0o700))
+            .tempdir_in(
+                std::env::temp_dir()
+                    .canonicalize()
+                    .expect("canonical scratch"),
+            )
+            .expect("private scratch")
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn preview_state_refuses_intermediate_symlinks_before_creation() {
+        use std::os::unix::fs::{PermissionsExt, symlink};
+        let root = private_root();
+        let destination = root.path().join("destination");
+        fs::create_dir(&destination).expect("destination");
+        fs::set_permissions(&destination, fs::Permissions::from_mode(0o700)).expect("mode");
+        symlink(&destination, root.path().join("link")).expect("link");
+        assert!(init_preview_state(&root.path().join("link/new")).is_err());
+        assert!(!destination.join("new").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn preview_state_refuses_shared_ancestors_before_creation() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = private_root();
+        let shared = root.path().join("shared");
+        fs::create_dir(&shared).expect("shared");
+        fs::set_permissions(&shared, fs::Permissions::from_mode(0o777)).expect("mode");
+        assert!(init_preview_state(&shared.join("new")).is_err());
+        assert!(!shared.join("new").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn preview_state_validates_existing_token_bytes_without_replacement() {
+        let root = private_root();
+        let state = root.path().join("state");
+        let token = init_preview_state(&state).expect("create");
+        for invalid in [
+            b"".as_slice(),
+            b"short",
+            b"a credential containing spaces is not valid",
+        ] {
+            fs::write(&token, invalid).expect("fixture");
+            assert!(init_preview_state(&state).is_err());
+            assert_eq!(fs::read(&token).expect("unchanged"), invalid);
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn preview_state_refuses_hard_linked_tokens_without_replacement() {
+        let root = private_root();
+        let state = root.path().join("state");
+        let token = init_preview_state(&state).expect("create");
+        let original = fs::read(&token).expect("token");
+        fs::hard_link(&token, root.path().join("alias")).expect("link");
+        assert!(init_preview_state(&state).is_err());
+        assert_eq!(fs::read(&token).expect("unchanged"), original);
+    }
+
+    #[test]
+    fn readiness_zero_budget_starts_no_attempt() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+        let result = wait_ready(listener.local_addr().expect("address"), Duration::ZERO);
+        assert!(!result.ready);
+        assert_eq!(result.attempts, 0);
+    }
+
+    #[test]
+    fn readiness_total_deadline_bounds_a_trickling_response() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+        let address = listener.local_addr().expect("address");
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept");
+            stream
+                .set_read_timeout(Some(Duration::from_secs(1)))
+                .expect("timeout");
+            let mut request = [0; 512];
+            let _ = stream.read(&mut request);
+            if stream
+                .write_all(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
+                .is_ok()
+            {
+                for _ in 0..40 {
+                    std::thread::sleep(Duration::from_millis(30));
+                    if stream.write_all(b" ").is_err() {
+                        break;
+                    }
+                }
+            }
+        });
+        let started = Instant::now();
+        let result = wait_ready(address, Duration::from_millis(150));
+        let elapsed = started.elapsed();
+        server.join().expect("server");
+        assert!(!result.ready, "slow peer accepted after {elapsed:?}");
+        assert_eq!(result.attempts, 1);
+        assert!(result.last_error.is_some());
+        assert!(
+            elapsed < Duration::from_secs(1),
+            "deadline exceeded: {elapsed:?}"
+        );
+    }
 
     #[test]
     fn digest_reads_files_and_rejects_bad_levels() {
@@ -246,7 +399,7 @@ mod tests {
     #[test]
     fn preview_state_is_private_idempotent_and_refuses_unsafe_paths() {
         use std::os::unix::fs::{PermissionsExt, symlink};
-        let root = tempfile::tempdir().expect("tempdir");
+        let root = private_root();
         let state = root.path().join("nested").join("preview");
         let token = init_preview_state(&state).expect("create");
         let first = fs::read_to_string(&token).expect("token");

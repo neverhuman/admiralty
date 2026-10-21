@@ -21,8 +21,7 @@ USAGE
 }
 
 releases_root="" version="" listen="127.0.0.1:18891" units="admiraltyd admiralty-observe"
-timeout=60 dry_run=0
-scope=()
+timeout=60 dry_run=0 user_scope=0
 while (($#)); do
   case "$1" in
     --releases-root|--version|--listen|--units|--timeout-seconds)
@@ -35,7 +34,7 @@ while (($#)); do
         --timeout-seconds) timeout="$2" ;;
       esac
       shift 2 ;;
-    --user) scope=(--user); shift ;;
+    --user) user_scope=1; shift ;;
     --dry-run) dry_run=1; shift ;;
     --help|-h) usage; exit 0 ;;
     *) usage >&2; exit 2 ;;
@@ -56,6 +55,14 @@ if [[ ! -x "$candidate" || -L "$releases_root/$version" ]]; then
 fi
 read -r -a unit_list <<<"$units"
 current_cli() { printf '%s/current/bin/admiralty' "$releases_root"; }
+restart_units() {
+  # Bash 3.2 treats an empty array expansion as unbound under set -u.
+  if ((user_scope)); then
+    systemctl --user restart "${unit_list[@]}"
+  else
+    systemctl restart "${unit_list[@]}"
+  fi
+}
 
 if ((dry_run)); then
   echo "rollout (dry run): would activate $version, restart ${unit_list[*]} and require $listen/readyz"
@@ -63,7 +70,7 @@ if ((dry_run)); then
 fi
 
 "$candidate" release activate --releases-root "$releases_root" --version "$version"
-systemctl "${scope[@]}" restart "${unit_list[@]}"
+restart_units
 if "$(current_cli)" ready --listen "$listen" --timeout-seconds "$timeout"; then
   echo "rollout: $version is active and ready"
   exit 0
@@ -71,7 +78,7 @@ fi
 
 echo "rollout: $version did not become ready within ${timeout}s; rolling back" >&2
 "$(current_cli)" release rollback --releases-root "$releases_root"
-systemctl "${scope[@]}" restart "${unit_list[@]}"
+restart_units
 if ! "$(current_cli)" ready --listen "$listen" --timeout-seconds "$timeout"; then
   echo 'rollout: the restored version is not ready either; inspect `journalctl -u admiraltyd` and `admiralty logs digest`' >&2
 fi
