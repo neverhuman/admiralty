@@ -6,6 +6,7 @@ pub mod git;
 pub mod git_health;
 pub mod history;
 pub mod io;
+pub mod logging;
 pub mod projects;
 pub mod rollout;
 pub mod usage;

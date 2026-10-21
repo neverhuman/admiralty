@@ -9,15 +9,16 @@ import { useProfile } from '../profile';
 import { ProfileAvatar, ProfileSettings } from './Profile';
 import { navigate, useRoute, type RouteName } from '../router';
 
+const FleetHealth = lazy(() => import('../features/health/FleetHealth'));
 const LiveViews = lazy(() => import('../features/live-views/LiveViews'));
 const CommandJourneys = lazy(() => import('./CommandJourneys'));
 const Intake = lazy(() => import('./Intake'));
 const Incidents = lazy(() => import('../features/incidents/Incidents'));
-type View = 'Legacy detailed view' | 'Overview' | 'Workplans' | 'Coordination' | 'Commands' | 'Intake' | 'Incidents' | 'Models' | 'Git Flow' | 'Fleet Atlas';
+type View = 'Fleet health' | 'Legacy detailed view' | 'Overview' | 'Workplans' | 'Coordination' | 'Commands' | 'Intake' | 'Incidents' | 'Models' | 'Git Flow' | 'Fleet Atlas';
 
 function App() {
   const route = useRoute();
-  const destinations: Record<RouteName, View> = { detail: 'Legacy detailed view', overview: 'Overview', workplans: 'Workplans', coordination: 'Coordination', commands: 'Commands', intake: 'Intake', incidents: 'Incidents', models: 'Models', git: 'Git Flow', atlas: 'Fleet Atlas' };
+  const destinations: Record<RouteName, View> = { health: 'Fleet health', detail: 'Legacy detailed view', overview: 'Overview', workplans: 'Workplans', coordination: 'Coordination', commands: 'Commands', intake: 'Intake', incidents: 'Incidents', models: 'Models', git: 'Git Flow', atlas: 'Fleet Atlas' };
   const view = destinations[route.name];
   const setView = (value: View) => navigate((Object.keys(destinations) as RouteName[]).find(key => destinations[key] === value) ?? 'detail');
   const visualView = route.name === 'git' || route.name === 'atlas';
@@ -33,6 +34,7 @@ function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [connection, setConnection] = useState<ConnectionState>('connecting');
   const [retry, setRetry] = useState(0);
+  const healthView = view === 'Fleet health';
   const legacyView = view === 'Legacy detailed view';
   const modelsView = view === 'Models';
   const commandsView = view === 'Commands';
@@ -46,14 +48,14 @@ function App() {
 
   useEffect(() => {
     setFleet(null); setUpdated(null); setError('');
-    if (visualView || intakeView || incidentsView) return;
+    if (visualView || healthView || intakeView || incidentsView) return;
     return watchFleet({ token: token || undefined,
       onFleet: (result) => {
         setFleet(result);
         setUpdated(new Date());
       }, onState: setConnection, onError: setError,
     });
-  }, [token, retry, visualView, intakeView, incidentsView]);
+  }, [token, retry, visualView, healthView, intakeView, incidentsView]);
 
   const totals = useMemo(() => fleet ? fleetTotals(fleet) : null, [fleet]);
 
@@ -66,8 +68,8 @@ function App() {
       <div className="workspace"><span className="workspace-dot" /> Fleet overview <span className="chevron" data-icon="⌄" aria-hidden="true" /></div>
       <nav aria-label="Main navigation">
         <div className="nav-label">MONITOR</div>
-        {(['Legacy detailed view', 'Git Flow', 'Fleet Atlas', 'Overview', 'Workplans', 'Coordination', 'Commands', 'Intake', 'Incidents', 'Models'] as View[]).map((item, index) => <button key={item} className={`nav-item ${view === item ? 'active' : ''}`} title={item} aria-current={view === item ? 'page' : undefined} onClick={() => setView(item)}>
-          <span className="nav-icon" data-icon={['▦', '⑂', '✦', '◫', '≡', '◉', '⌘', '↧', '!', '⚙'][index]} aria-hidden="true" />{item === 'Overview' && fleet?.simulated ? 'Demo overview' : item}
+        {(['Fleet health', 'Legacy detailed view', 'Git Flow', 'Fleet Atlas', 'Overview', 'Workplans', 'Coordination', 'Commands', 'Intake', 'Incidents', 'Models'] as View[]).map((item, index) => <button key={item} className={`nav-item ${view === item ? 'active' : ''}`} title={item} aria-current={view === item ? 'page' : undefined} onClick={() => setView(item)}>
+          <span className="nav-icon" data-icon={['◈', '▦', '⑂', '✦', '◫', '≡', '◉', '⌘', '↧', '!', '⚙'][index]} aria-hidden="true" />{item === 'Overview' && fleet?.simulated ? 'Demo overview' : item}
           {item === 'Coordination' && fleet && <span className="nav-count">{fleet.coordination.queued_messages}</span>}
         </button>)}
       </nav>
@@ -79,29 +81,30 @@ function App() {
     <main className="main-area">
       <header className="topbar">
         <div className="breadcrumbs">Fleet <span data-icon="/" aria-hidden="true" /> <strong>{view}</strong></div>
-        <div className="top-actions"><span className={`connection ${!legacyView && !intakeView && !incidentsView && connection === 'connected' ? 'online' : !legacyView && !intakeView && !incidentsView && connection === 'paused' ? 'offline' : ''}`} aria-live="polite"><i />{intakeView || incidentsView ? 'Scoped operator access' : legacyView ? 'Detailed producer view' : connection === 'connected' ? 'Live updates' : connection === 'paused' ? 'Updates paused' : connection === 'reconnecting' ? 'Reconnecting' : 'Connecting'}</span>
+        <div className="top-actions"><span className={`connection ${!healthView && !legacyView && !intakeView && !incidentsView && connection === 'connected' ? 'online' : !healthView && !legacyView && !intakeView && !incidentsView && connection === 'paused' ? 'offline' : ''}`} aria-live="polite"><i />{healthView ? 'Producer health view' : intakeView || incidentsView ? 'Scoped operator access' : legacyView ? 'Detailed producer view' : connection === 'connected' ? 'Live updates' : connection === 'paused' ? 'Updates paused' : connection === 'reconnecting' ? 'Reconnecting' : 'Connecting'}</span>
           <button className="icon-button" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><span data-icon={theme === 'dark' ? '☼' : '◐'} aria-hidden="true" /></button>
           <button className="operator-button" title="Your profile" onClick={() => setShowProfile(true)}><ProfileAvatar name={profileName} className="small" profile={profile} /><span>{profileName}</span><span data-icon="⌄" aria-hidden="true" /></button>
         </div>
       </header>
 
       <div className={`content ${legacyView ? 'legacy-content' : ''}`}>
-        <section className="page-heading"><div><div className="eyebrow">ADMIRALTY / {legacyView ? 'OBSERVED PRODUCER FLEET' : 'NATIVE CONTROL PLANE'}</div><h1>{legacyView ? 'Fleet detail' : view === 'Overview' && fleet?.simulated ? 'Demo overview' : view}</h1><p>{legacyView ? 'Live project progress · hierarchy · model mix · token efficiency' : view === 'Overview' ? 'Native task projections; separate from the detailed producer fleet.' : view === 'Workplans' ? 'Native task stages and current ownership.' : commandsView ? 'Create work, revise pending contracts and inspect task evidence.' : incidentsView ? 'Scoped incident history and local improvement proposals.' : intakeView ? 'Preserve an original request, inspect unresolved facts and record an immutable capture.' : view === 'Models' ? 'Provider and model configuration.' : 'Compact native coordination activity and message acknowledgements.'}</p></div>
-          <div className="heading-meta"><span className={`mode-pill ${!legacyView && !visualView && !intakeView && !incidentsView && fleet?.simulated ? 'simulation' : ''}`}>{incidentsView ? 'SCOPED INCIDENTS' : intakeView ? 'SCOPED INTAKE' : legacyView ? 'PRODUCER OBSERVATIONS' : fleet?.simulated ? 'SIMULATION · SYNTHETIC TASKS' : fleet ? 'NATIVE SNAPSHOT' : 'AWAITING DATA'}</span>{!legacyView && !intakeView && !incidentsView && <span className="freshness"><i />{updated ? `Updated ${updated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No snapshot yet'}</span>}</div>
+        <section className="page-heading"><div><div className="eyebrow">ADMIRALTY / {legacyView || healthView ? 'OBSERVED PRODUCER FLEET' : 'NATIVE CONTROL PLANE'}</div><h1>{legacyView ? 'Fleet detail' : view === 'Overview' && fleet?.simulated ? 'Demo overview' : view}</h1><p>{healthView ? 'Source freshness · Git review · coverage gaps · compact agent context' : legacyView ? 'Live project progress · hierarchy · model mix · token efficiency' : view === 'Overview' ? 'Native task projections; separate from the detailed producer fleet.' : view === 'Workplans' ? 'Native task stages and current ownership.' : commandsView ? 'Create work, revise pending contracts and inspect task evidence.' : incidentsView ? 'Scoped incident history and local improvement proposals.' : intakeView ? 'Preserve an original request, inspect unresolved facts and record an immutable capture.' : view === 'Models' ? 'Provider and model configuration.' : 'Compact native coordination activity and message acknowledgements.'}</p></div>
+          <div className="heading-meta"><span className={`mode-pill ${!healthView && !legacyView && !visualView && !intakeView && !incidentsView && fleet?.simulated ? 'simulation' : ''}`}>{healthView ? 'OBSERVED HEALTH' : incidentsView ? 'SCOPED INCIDENTS' : intakeView ? 'SCOPED INTAKE' : legacyView ? 'PRODUCER OBSERVATIONS' : fleet?.simulated ? 'SIMULATION · SYNTHETIC TASKS' : fleet ? 'NATIVE SNAPSHOT' : 'AWAITING DATA'}</span>{!healthView && !legacyView && !intakeView && !incidentsView && <span className="freshness"><i />{updated ? `Updated ${updated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No snapshot yet'}</span>}</div>
         </section>
+        {healthView && <Suspense fallback={<div role="status">Loading fleet health…</div>}><FleetHealth token={token || undefined} onAccess={() => setShowAccess(true)} /></Suspense>}
         {visualView && <Suspense fallback={<div className="loading-card" role="status">Loading observatory…</div>}><LiveViews mode={route.name === 'atlas' ? 'atlas' : 'git'} token={token || undefined} onAccess={() => setShowAccess(true)} /></Suspense>}
         {incidentsView && <Suspense fallback={<div role="status">Loading incident history…</div>}><Incidents token={token} /></Suspense>}
         {legacyView && <LegacyDetailed token={token || undefined} />}
-        {!legacyView && !visualView && !intakeView && !incidentsView && fleet?.simulated && <div className="simulation-note">Simulation: these synthetic projects and tasks are separate from the real producer fleet.</div>}
-        {!legacyView && !visualView && !modelsView && !commandsView && !intakeView && !incidentsView && error && <div className="error-banner" role="status"><span>{connection === 'paused' ? 'Updates paused' : 'Connection issue'}</span><span>{error}{connection === 'reconnecting' ? ' · Reconnecting automatically.' : ''}</span><button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry connection</button></div>}
-        {!legacyView && !visualView && !modelsView && !commandsView && !intakeView && !incidentsView && !fleet && !error && <div className="loading-card">Connecting to the local native service…</div>}
+        {!healthView && !legacyView && !visualView && !intakeView && !incidentsView && fleet?.simulated && <div className="simulation-note">Simulation: these synthetic projects and tasks are separate from the real producer fleet.</div>}
+        {!healthView && !legacyView && !visualView && !modelsView && !commandsView && !intakeView && !incidentsView && error && <div className="error-banner" role="status"><span>{connection === 'paused' ? 'Updates paused' : 'Connection issue'}</span><span>{error}{connection === 'reconnecting' ? ' · Reconnecting automatically.' : ''}</span><button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry connection</button></div>}
+        {!healthView && !legacyView && !visualView && !modelsView && !commandsView && !intakeView && !incidentsView && !fleet && !error && <div className="loading-card">Connecting to the local native service…</div>}
         {fleet && view === 'Overview' && <Overview fleet={fleet} totals={totals!} onWorkplans={() => setView('Workplans')} />}
         {view === 'Workplans' && <NativeTasks fleet={fleet} error={error} connection={connection} />}
         {fleet && view === 'Coordination' && <Coordination fleet={fleet} />}
         {view === 'Models' && <Models token={token || undefined} onAccess={() => setShowAccess(true)} />}
         {commandsView && <Suspense fallback={<div className="loading-card" role="status">Loading task commands…</div>}><CommandJourneys token={token || undefined} onAccess={() => setShowAccess(true)} onRefreshSnapshot={() => setRetry(value => value + 1)} /></Suspense>}
         {(intakeView || hasOpenedIntake) && <div hidden={!intakeView}><Suspense fallback={<div className="loading-card" role="status">Loading request intake…</div>}><Intake token={token || undefined} onAccess={() => setShowAccess(true)} /></Suspense></div>}
-        <footer className="page-footer"><span>{incidentsView ? 'SCOPED INCIDENT HISTORY · LOCAL PROPOSALS' : intakeView ? 'RAW REQUEST INTAKE · SEPARATE SCOPED ACCESS' : route.name === 'git' ? 'GIT OBSERVATIONS · OPERATOR CHAT' : commandsView ? 'OPERATOR COMMANDS · SESSION ACCESS' : modelsView ? 'MODEL POLICY CONFIGURATION' : `READ ONLY · SOURCE: ${legacyView ? 'PRODUCER SNAPSHOT' : 'NATIVE FLEET API'}`}</span><span>{incidentsView ? 'Review required before action' : intakeView ? 'No execution or acceptance grant' : legacyView ? 'Source provenance and uncertainty preserved' : <>Native execution {fleet?.native_execution_qualified ? 'qualified' : 'not qualified'} <b data-icon="·" aria-hidden="true" /> Usage {formatUnknown(fleet?.coordination.measured_tokens)}</>}</span></footer>
+        <footer className="page-footer"><span>{healthView ? 'READ ONLY · PRODUCER HEALTH BRIEF' : incidentsView ? 'SCOPED INCIDENT HISTORY · LOCAL PROPOSALS' : intakeView ? 'RAW REQUEST INTAKE · SEPARATE SCOPED ACCESS' : route.name === 'git' ? 'GIT OBSERVATIONS · OPERATOR CHAT' : commandsView ? 'OPERATOR COMMANDS · SESSION ACCESS' : modelsView ? 'MODEL POLICY CONFIGURATION' : `READ ONLY · SOURCE: ${legacyView ? 'PRODUCER SNAPSHOT' : 'NATIVE FLEET API'}`}</span><span>{healthView ? 'Coverage gaps and original source clocks preserved' : incidentsView ? 'Review required before action' : intakeView ? 'No execution or acceptance grant' : legacyView ? 'Source provenance and uncertainty preserved' : <>Native execution {fleet?.native_execution_qualified ? 'qualified' : 'not qualified'} <b data-icon="·" aria-hidden="true" /> Usage {formatUnknown(fleet?.coordination.measured_tokens)}</>}</span></footer>
       </div>
     </main>
     {showProfile && <ProfileSettings onClose={() => setShowProfile(false)} onAccess={() => { setShowProfile(false); setShowAccess(true); }} />}

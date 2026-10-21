@@ -61,3 +61,10 @@ log directory and retains commands, source/working-tree status, tool versions
 and one log per stage. A dirty working-tree run is useful feedback, but does not
 establish qualification of the printed commit alone. Inspect and fix failures
 locally before pushing; preserve original failures alongside later passes.
+
+`ADMIRALTY_CHECK_SCRATCH_ROOT` may select an existing absolute temporary
+directory outside Git when the default root disk is full. The command still
+creates its own private subdirectory and retains every stage/log and the same
+concurrency limits and assertions. For example, use an adequately sized local
+tmpfs on a disposable Linux test host; this does not qualify physical-disk
+crash behavior or change the separate `/dev/shm` capture-fixture requirement.

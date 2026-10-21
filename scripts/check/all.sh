@@ -21,9 +21,13 @@ fi
 # Restore the caller's umask so private-at-creation fixtures remain exercised.
 caller_umask="$(umask)"
 umask 077
-scratch_base="/tmp"
-if [[ -e /tmp/.git ]] && [[ -d /var/tmp ]] && [[ ! -e /var/tmp/.git ]]; then
+scratch_base="${ADMIRALTY_CHECK_SCRATCH_ROOT:-/tmp}"
+if [[ -z "${ADMIRALTY_CHECK_SCRATCH_ROOT:-}" && -e /tmp/.git ]] && [[ -d /var/tmp ]] && [[ ! -e /var/tmp/.git ]]; then
   scratch_base="/var/tmp"
+fi
+if [[ "$scratch_base" != /* || ! -d "$scratch_base" || -e "$scratch_base/.git" ]]; then
+  echo 'ADMIRALTY_CHECK_SCRATCH_ROOT must be an existing absolute directory outside Git.' >&2
+  exit 1
 fi
 check_scratch="$(mktemp -d "${scratch_base}/adm.XXXXXX")"
 check_scratch="$(cd "$check_scratch" && pwd -P)"

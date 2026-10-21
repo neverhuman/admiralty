@@ -1,5 +1,5 @@
 use admiralty_observe::{Result, config::ObserveConfig, io};
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use std::{
     fs::{self, OpenOptions},
     path::PathBuf,
@@ -14,27 +14,49 @@ struct Cli {
     once: bool,
     #[arg(long)]
     validate: bool,
+    /// Structured bounded metadata for agents/log processors; source prose is excluded.
+    #[arg(long, value_enum, default_value_t = LogFormat::Text)]
+    log_format: LogFormat,
+}
+#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum LogFormat {
+    Text,
+    Json,
 }
 // Fleet hosts can expose hundreds of CPUs; observation does not need one thread per CPU.
 #[tokio::main(worker_threads = 2)]
 async fn main() -> std::process::ExitCode {
-    match execute().await {
+    let cli = Cli::parse();
+    match execute(&cli).await {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("Native observer failed: {}", io::clean(&error.to_string()));
+            if cli.log_format == LogFormat::Json {
+                eprintln!(
+                    "{}",
+                    admiralty_observe::logging::failure("observer.stopped")
+                );
+            } else {
+                eprintln!("Native observer failed: {}", io::clean(&error.to_string()));
+            }
             std::process::ExitCode::FAILURE
         }
     }
 }
-async fn execute() -> Result<()> {
-    let cli = Cli::parse();
+async fn execute(cli: &Cli) -> Result<()> {
     let config = ObserveConfig::load(&cli.config)?;
     if cli.validate {
-        println!(
-            "Native observer configuration valid: {} projects, {} nodes",
-            config.projects.len(),
-            config.nodes.len()
-        );
+        if cli.log_format == LogFormat::Json {
+            println!(
+                "{}",
+                serde_json::json!({"schema_version":1,"event":"configuration.valid","project_count":config.projects.len(),"node_count":config.nodes.len()})
+            );
+        } else {
+            println!(
+                "Native observer configuration valid: {} projects, {} nodes",
+                config.projects.len(),
+                config.nodes.len()
+            );
+        }
         return Ok(());
     }
     if !config.output_dir.exists() {
@@ -66,13 +88,29 @@ async fn execute() -> Result<()> {
     loop {
         let started = Instant::now();
         match admiralty_observe::cycle(&config).await {
+            Ok(snapshot) if cli.log_format == LogFormat::Json => {
+                let bytes = fs::metadata(config.output_dir.join("status.json"))
+                    .ok()
+                    .map(|m| m.len());
+                println!(
+                    "{}",
+                    admiralty_observe::logging::published(&snapshot, bytes)
+                );
+            }
             Ok(snapshot) => println!(
                 "{} Rust observation published: {} projects",
                 snapshot["generated_utc"].as_str().unwrap_or("unknown"),
                 config.projects.len()
             ),
             Err(e) => {
-                eprintln!("Native observation failed: {}", io::clean(&e.to_string()));
+                if cli.log_format == LogFormat::Json {
+                    eprintln!(
+                        "{}",
+                        admiralty_observe::logging::failure("observation.failed")
+                    );
+                } else {
+                    eprintln!("Native observation failed: {}", io::clean(&e.to_string()));
+                }
                 if cli.once {
                     return Err(e);
                 }

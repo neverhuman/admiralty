@@ -1,4 +1,5 @@
 //! Fleet projection, durable replay and explicitly configured native command services.
+pub mod fleet_brief;
 mod http_bytes;
 pub mod intake_configuration;
 pub mod legacy;
@@ -590,6 +591,12 @@ async fn legacy_initial_snapshot(
 ) -> Result<Response, ApiError> {
     legacy_snapshot_view(state, headers, legacy::SnapshotView::Initial).await
 }
+async fn legacy_brief_snapshot(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
+    legacy_snapshot_view(state, headers, legacy::SnapshotView::Brief).await
+}
 async fn legacy_snapshot_view(
     state: AppState,
     headers: HeaderMap,
@@ -811,6 +818,7 @@ fn app_with_work_order_routes_and_shutdown(
         .route("/v1/legacy", get(legacy_snapshot))
         .route("/v1/legacy/detail", get(legacy_detail_snapshot))
         .route("/v1/legacy/detail/initial", get(legacy_initial_snapshot))
+        .route("/v1/legacy/brief", get(legacy_brief_snapshot))
         .route("/legacy/", get(legacy_index))
         .route("/legacy/index.html", get(legacy_index))
         .route("/legacy/status.json", get(legacy_snapshot))

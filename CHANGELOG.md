@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add Fleet health with independent review/coverage signals and bounded agent
+  JSON briefs, exact counters, original clocks and explicit context omissions.
+  Add structured observer logs and Rust-only installed live-preview startup.
+  Document deployment, remaining Python ports and the next telemetry cuts.
+
 - Compress linear Git history into expandable ranges while preserving topology
   anchors and the complete commit inventory. Add project Captain/Admiral chat
   with durable inbox delivery/replies and Rust Git health findings over cached

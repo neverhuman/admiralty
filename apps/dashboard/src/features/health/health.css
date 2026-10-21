@@ -1,0 +1,52 @@
+.health-report{display:grid;gap:20px}
+.health-source{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:25px 28px;border:1px solid var(--border,#2b3a4f);border-left:4px solid #5cb5b2;border-radius:14px;background:var(--panel,#122132)}
+.health-source h2{margin:8px 0;font-size:24px}
+.health-source p,.health-projects p{margin:5px 0;color:var(--muted,#a5b4c6);font-size:13px}
+.health-source.health-stale,.health-source.health-future,.health-source.health-unknown{border-left-color:#d6aa65}
+.health-payload{display:grid;gap:6px;text-align:right;white-space:nowrap}
+.health-payload strong{font:600 23px ui-monospace,monospace;color:#72c6c3}
+.health-payload span{font-size:12px;color:var(--muted,#a5b4c6)}
+.health-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.health-metric{display:grid;gap:12px;padding:22px;border:1px solid var(--border,#2b3a4f);border-radius:12px;background:var(--panel,#122132)}
+.health-metric>span{font-size:13px}
+.health-metric>strong{font-size:34px;line-height:1;color:#e2b878}
+.health-metric.health-neutral>strong{color:#72c6c3}
+.health-metric>small{color:var(--muted,#a5b4c6);line-height:1.5}
+.health-controls{display:flex;gap:25px;align-items:center;padding:0 24px 20px}
+.health-controls label{display:flex;gap:10px;align-items:center;font-size:13px}
+.health-controls input[type=search]{border:1px solid var(--border,#2b3a4f);border-radius:7px;padding:10px;background:transparent;color:inherit}
+.health-controls input[type=checkbox]{accent-color:#62b9b6}
+.health-table-scroll{overflow:auto}
+.health-projects table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
+.health-projects caption{text-align:left;padding:0 24px 12px;color:var(--muted,#a5b4c6)}
+.health-projects th,.health-projects td{padding:16px 20px;border-top:1px solid var(--border,#2b3a4f);vertical-align:top;line-height:1.5}
+.health-projects thead th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.health-projects tbody th{font-family:ui-monospace,monospace;overflow-wrap:anywhere;min-width:130px}
+.health-projects td small{display:block;color:var(--muted,#a5b4c6);white-space:nowrap}
+.health-tag{display:inline-block;padding:3px 8px;border:1px solid #52647b;border-radius:5px;font-size:11px}
+.health-tag.health-attention{color:#f2c483;border-color:#926d37}
+.health-tag.health-healthy{color:#79d5bb;border-color:#3d8a75}
+.health-code{display:block;font:11px/1.7 ui-monospace,monospace;overflow-wrap:anywhere}
+.health-coverage,.health-empty{padding:12px 24px}
+.health-agent{padding:20px 24px;min-width:0}
+.health-agent summary{cursor:pointer;font-size:13px;font-weight:600}
+.health-agent p{font-size:13px;color:var(--muted,#a5b4c6)}
+.health-agent pre{padding:16px;border-radius:8px;max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1522;color:#c9d8e9;font-size:12px}
+.health-agent small{overflow-wrap:anywhere;display:block;color:var(--muted,#a5b4c6)}
+.health-warning{display:flex;gap:15px;align-items:center;flex-wrap:wrap;padding:16px 20px;border:1px solid #926d37;border-radius:10px;margin-bottom:16px;font-size:13px}
+.health-warning button{padding:8px 12px;border:1px solid currentColor;border-radius:6px;background:transparent;color:inherit}
+.theme-light .health-source,.theme-light .health-metric{background:#fff;border-color:#d4dde5}
+.theme-light .health-metric>strong{color:#885c22}
+.theme-light .health-metric.health-neutral>strong,.theme-light .health-payload strong{color:#206965}
+.theme-light .health-source p,.theme-light .health-projects p,.theme-light .health-metric>small,.theme-light .health-payload span,.theme-light .health-agent p,.theme-light .health-agent small{color:#526174}
+.theme-light .health-tag.health-healthy{color:#1b6b53}
+.theme-light .health-tag.health-attention{color:#80591c}
+@media(max-width:1100px){.health-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+.health-controls{align-items:flex-start;flex-direction:column;gap:15px}
+.health-source{align-items:flex-start;flex-direction:column}
+.health-payload{text-align:left}
+}
+@media(max-width:600px){.health-metrics{grid-template-columns:minmax(0,1fr)}
+.health-source{padding:20px}
+.health-controls label{flex-wrap:wrap}
+}

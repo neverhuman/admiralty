@@ -19,7 +19,20 @@ const MAX_INDEX_BYTES: u64 = 2 * 1024 * 1024;
 
 pub(crate) fn read_bounded(path: &PathBuf, limit: u64) -> Result<Vec<u8>, String> {
     use std::io::Read;
-    let mut file = fs::File::open(path).map_err(|_| "legacy source is unavailable")?;
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        // Refuse non-regular producers without blocking on a FIFO open first.
+        // Regular-file reads and existing source symlinks retain their behavior.
+        options.custom_flags(
+            (rustix::fs::OFlags::NONBLOCK | rustix::fs::OFlags::CLOEXEC).bits() as i32,
+        );
+    }
+    let mut file = options
+        .open(path)
+        .map_err(|_| "legacy source is unavailable")?;
     let metadata = file
         .metadata()
         .map_err(|_| "legacy source metadata unavailable")?;
@@ -72,6 +85,7 @@ pub(crate) enum SnapshotView {
     Full,
     Detail,
     Initial,
+    Brief,
 }
 
 fn detail_projection(mut value: serde_json::Value, initial: bool) -> serde_json::Value {
@@ -143,6 +157,13 @@ pub(crate) async fn snapshot_encoded(
     let result = tokio::task::spawn_blocking(move || {
         let (value, bytes) = read_snapshot(&config)?;
         let bytes = match view {
+            SnapshotView::Brief => crate::fleet_brief::compile_value(
+                &value,
+                &bytes,
+                chrono::Utc::now(),
+                crate::fleet_brief::MAX_BRIEF_BYTES,
+            )
+            .map_err(str::to_owned)?,
             SnapshotView::Full => {
                 drop(value);
                 bytes
@@ -198,6 +219,20 @@ pub async fn index(config: LegacyConfig) -> Response {
 mod delivery_tests {
     use super::*;
     use serde_json::json;
+
+    #[cfg(unix)]
+    #[test]
+    fn fifo_source_is_refused_without_waiting_for_a_writer() {
+        let root = tempfile::tempdir().expect("fixture");
+        let fifo = root.path().join("producer");
+        rustix::fs::mkfifoat(
+            rustix::fs::CWD,
+            &fifo,
+            rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
+        )
+        .expect("fifo");
+        assert!(read_bounded(&fifo, 1024).is_err());
+    }
 
     #[test]
     fn projected_source_decimals_round_trip_without_changing_float_bits() {

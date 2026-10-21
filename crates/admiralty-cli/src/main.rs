@@ -1,6 +1,8 @@
 //! Operator operations, bounded authenticated agent tools and an isolated demo.
 mod agent_tools;
+mod brief;
 mod diagnostics;
+mod live;
 pub mod native_archive;
 pub mod native_install;
 pub mod native_intake;
@@ -85,6 +87,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Compile a bounded, read-only JSON brief from an existing producer file.
+    Brief(brief::BriefArgs),
+    /// Serve existing observations with private Rust-only setup on loopback.
+    Live(live::LiveArgs),
     /// Narrow authenticated agent tools, CLI JSON fallback and MCP stdio.
     AgentTools(agent_tools::AgentToolsArgs),
     /// Enroll nodes, deliver authenticated observations and transfer artifacts.
@@ -780,6 +786,8 @@ fn seed_demo(store: &Store) -> CliResult<()> {
 
 async fn run(cli: Cli) -> CliResult<()> {
     match cli.command {
+        Command::Brief(args) => brief::run(args)?,
+        Command::Live(args) => live::run(args).await?,
         #[cfg(unix)]
         Command::Node(args) => node::run(args)?,
         Command::Demo {
