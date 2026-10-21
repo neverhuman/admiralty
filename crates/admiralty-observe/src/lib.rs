@@ -7,7 +7,9 @@ pub mod git_health;
 pub mod history;
 pub mod io;
 pub mod projects;
+pub mod resources;
 pub mod rollout;
+pub mod telemetry;
 pub mod usage;
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -17,8 +19,15 @@ pub fn now_utc() -> String {
 
 pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> {
     use serde_json::json;
-    let started = std::time::Instant::now();
+    use std::time::Instant;
+    let started = Instant::now();
+    let mut phases = serde_json::Map::new();
+    let mut phase = |name: &str, since: Instant| {
+        phases.insert(name.into(), json!(since.elapsed().as_millis() as u64));
+    };
+    let at = Instant::now();
     let observed = fleet::collect(config).await?;
+    phase("fleet", at);
     let screens = observed
         .get("screens")
         .cloned()
@@ -27,7 +36,9 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
     // Rollout project entries classify actual workers/managers without
     // manufacturing a second task ledger from their assignment metadata.
     feeds.projects.retain(|p| p.tracker["kind"] != "rollout");
+    let at = Instant::now();
     let producer_projects = projects::collect(&feeds, &screens).await?;
+    phase("projects", at);
     let mut snapshot = json!({"generated_utc":now_utc(),"interval_s":config.interval_seconds,
         "host":config.node_id,"projects":producer_projects,
         "order":config.projects.iter().map(|p|p.id.clone()).collect::<Vec<_>>()});
@@ -50,12 +61,28 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
             .collect::<Vec<_>>()
     );
     let previous = io::read_json(&config.output_dir.join("status.json"), 32 * 1024 * 1024).ok();
+    // Disk growth needs retained samples; a failure keeps growth unknown.
+    if resources::annotate(
+        &config.output_dir,
+        &mut snapshot["global_resources"],
+        chrono::Utc::now().timestamp(),
+    )
+    .is_err()
+        && let Some(warnings) = snapshot["global_resources"]["observation_warnings"].as_array_mut()
+    {
+        warnings.push(json!(
+            "Disk growth samples were not persisted; growth stays unknown."
+        ));
+    }
+    let at = Instant::now();
     let repositories = git::collect(config).await;
     let (git_health, git_health_alerts) =
         git_health::collect(config, &repositories, previous.as_ref());
+    phase("git", at);
     snapshot["git"] = serde_json::to_value(repositories)?;
     snapshot["git_health"] = serde_json::to_value(git_health)?;
     snapshot["git_health_alerts"] = serde_json::to_value(git_health_alerts)?;
+    let at = Instant::now();
     match usage::collect(config, &snapshot).await {
         Ok(fields) => {
             if let Some(fields) = fields.as_object() {
@@ -69,6 +96,8 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
                 json!("Native usage observation unavailable; no measurements inferred.")
         }
     }
+    phase("usage", at);
+    let at = Instant::now();
     match history::update(config, &snapshot) {
         Ok(value) => snapshot["history"] = value,
         Err(_) => {
@@ -76,11 +105,13 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
                 json!("Native history observation unavailable; prior history preserved.")
         }
     }
+    phase("history", at);
     snapshot["collector"] = json!({"implementation":"rust","version":env!("CARGO_PKG_VERSION"),
-        "observed_utc":now_utc(),"duration_ms":started.elapsed().as_millis(),"read_only_sources":true,
-        "model_turns":0,"acceptance_authority":false});
+        "observed_utc":now_utc(),"duration_ms":started.elapsed().as_millis(),"phases_ms":phases,
+        "read_only_sources":true,"model_turns":0,"acceptance_authority":false});
     let snapshot = io::public_value(snapshot);
     io::atomic_json(&config.output_dir.join("status.json"), &snapshot)?;
+    telemetry::changes(previous.as_ref(), &snapshot);
     Ok(snapshot)
 }
 

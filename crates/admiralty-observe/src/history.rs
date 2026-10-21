@@ -29,6 +29,27 @@ fn numeric(v: &Value) -> Value {
         .map(|_| v.clone())
         .unwrap_or(Value::Null)
 }
+/// Signed finite measurement (disk growth can be negative); otherwise unknown.
+fn finite(v: &Value) -> Value {
+    v.as_f64()
+        .filter(|n| n.is_finite())
+        .map(|_| v.clone())
+        .unwrap_or(Value::Null)
+}
+
+/// Compact per-project Git hygiene sample: state, unmerged local branches,
+/// how far the most-behind unmerged branch trails, dirty checkouts, cleanup
+/// candidates and integration commits in the last 7 days.
+fn git_sample(report: &Value) -> Value {
+    let metrics = &report["metrics"];
+    let state = report["state"]
+        .as_str()
+        .filter(|s| matches!(*s, "disabled" | "healthy" | "attention" | "unknown"));
+    json!({"st":state,"un":numeric(&metrics["unmerged_branches"]),
+        "bh":numeric(&metrics["max_unmerged_behind"]["value"]),"dt":numeric(&metrics["dirty_checkouts"]),
+        "cc":metrics["cleanup_candidate_checkouts"].as_array().map(Vec::len),
+        "c7":numeric(&metrics["integration_commits_7d"]["value"])})
+}
 
 /// Retain a reported partial audit without turning its interval into a score.
 fn hygiene_observation(value: &Value) -> Value {
@@ -152,13 +173,33 @@ fn historical_row(value: &Value) -> Option<Value> {
                 .map(|(id, h)| {
                     (
                         id.clone(),
-                        json!({"load":numeric(&h["load"]),"disk":numeric(&h["disk"])}),
+                        json!({"load":numeric(&h["load"]),"disk":numeric(&h["disk"]),
+                            "mem":numeric(&h["mem"]),"dg":finite(&h["dg"])}),
                     )
                 })
                 .collect::<Map<_, _>>()
         })
         .unwrap_or_default();
     result["hosts"] = json!(hosts);
+    // Git samples are re-validated like every other retained metric.
+    let git = value["git"]
+        .as_object()
+        .map(|m| {
+            m.iter()
+                .map(|(id, g)| {
+                    let state = g["st"]
+                        .as_str()
+                        .filter(|s| matches!(*s, "disabled" | "healthy" | "attention" | "unknown"));
+                    let mut sample = json!({"st":state});
+                    for key in ["un", "bh", "dt", "cc", "c7"] {
+                        sample[key] = numeric(&g[key]);
+                    }
+                    (id.clone(), sample)
+                })
+                .collect::<Map<_, _>>()
+        })
+        .unwrap_or_default();
+    result["git"] = json!(git);
     let mut ty = Map::new();
     for key in ["tok", "out", "cr", "int", "main", "yi", "ym", "cov"] {
         ty.insert(key.into(), numeric(&value["ty"][key]));
@@ -249,7 +290,18 @@ fn row(snapshot: &Value, at: i64) -> Value {
             .find(|d| d["mount"] == "/")
             .map(|d| numeric(&d["pct"]))
             .unwrap_or(Value::Null);
-        hosts.insert(id.to_owned(), json!({"load":load,"disk":disk}));
+        let root = host["disks"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|d| d["mount"] == "/");
+        let growth = root
+            .map(|d| finite(&d["growth_gb_per_h"]))
+            .unwrap_or(Value::Null);
+        hosts.insert(
+            id.to_owned(),
+            json!({"load":load,"disk":disk,"mem":numeric(&host["mem"]["avail_pct"]),"dg":growth}),
+        );
     }
     for agent in snapshot["agents"].as_array().into_iter().flatten() {
         let model = agent["model"].as_str().unwrap_or("").to_ascii_lowercase();
@@ -287,12 +339,21 @@ fn row(snapshot: &Value, at: i64) -> Value {
                 .collect::<Map<_, _>>()
         })
         .unwrap_or_default();
+    let git = snapshot["git_health"]
+        .as_object()
+        .map(|reports| {
+            reports
+                .iter()
+                .map(|(id, report)| (id.clone(), git_sample(report)))
+                .collect::<Map<_, _>>()
+        })
+        .unwrap_or_default();
     let hygiene_note = if hygiene.is_empty() {
         "Not reported by Admiral: current status contains no measured hygiene score. Historical reports retain their original source age."
     } else {
         "Reported Admiral hygiene scores or partial audit ranges; intervals are not final scores. Source timestamps are independent of fleet sampling."
     };
-    json!({"ts":at,"cost_index":numeric(&efficiency["cost_index_vs_all_luna"]),"cost_index_observed":numeric(&efficiency["cost_index_observed_vs_all_luna"]),"cost_basis":efficiency["cost_index_note"],"cost_observed_basis":efficiency["cost_index_observed_note"],"tiers":tiers,"quota_pct":numeric(&efficiency["quota"]["used_percent"]),"credits_h":numeric(&efficiency["windows"]["60"]["credits_per_hour_est"]),"luna_fail_total":numeric(&stats["luna_failures_total"]),"luna_fp_rate":numeric(&stats["luna_first_pass_rate"]),"proj":projects,"hosts":hosts,"hyg":hygiene,"hyg_at":hygiene_at,"hygiene_note":hygiene_note,"ty":{"tok":numeric(&total["tokens"]),"out":numeric(&total["output"]),"cr":numeric(&total["credits"]),"int":numeric(&total["integration_tokens"]),"main":numeric(&total["main_tokens"]),"yi":numeric(&total["yield_integration_pct"]),"ym":numeric(&total["yield_main_pct"]),"cov":numeric(&total["coverage_pct"]),"observed":observed_yield(total),"p":project_yield}})
+    json!({"ts":at,"cost_index":numeric(&efficiency["cost_index_vs_all_luna"]),"cost_index_observed":numeric(&efficiency["cost_index_observed_vs_all_luna"]),"cost_basis":efficiency["cost_index_note"],"cost_observed_basis":efficiency["cost_index_observed_note"],"tiers":tiers,"quota_pct":numeric(&efficiency["quota"]["used_percent"]),"credits_h":numeric(&efficiency["windows"]["60"]["credits_per_hour_est"]),"luna_fail_total":numeric(&stats["luna_failures_total"]),"luna_fp_rate":numeric(&stats["luna_first_pass_rate"]),"proj":projects,"hosts":hosts,"git":git,"hyg":hygiene,"hyg_at":hygiene_at,"hygiene_note":hygiene_note,"ty":{"tok":numeric(&total["tokens"]),"out":numeric(&total["output"]),"cr":numeric(&total["credits"]),"int":numeric(&total["integration_tokens"]),"main":numeric(&total["main_tokens"]),"yi":numeric(&total["yield_integration_pct"]),"ym":numeric(&total["yield_main_pct"]),"cov":numeric(&total["coverage_pct"]),"observed":observed_yield(total),"p":project_yield}})
 }
 
 fn hygiene_time(snapshot: &Value, id: &str, at: i64) -> Value {
@@ -649,6 +710,48 @@ mod tests {
         let rows = bounded((1..5000).map(|ts| json!({"ts":ts})).collect());
         assert_eq!(rows.len(), 4096);
         assert_eq!(rows.last().unwrap()["ts"], 4999);
+    }
+    #[test]
+    fn git_hygiene_and_host_saturation_samples_are_compact_and_allowlisted() {
+        let snapshot = json!({"projects":{},"global_resources":{"hosts":[{"host":"node","load":[1.0],"nproc":2,
+            "mem":{"avail_pct":42.5},"disks":[{"mount":"/","pct":80.0,"growth_gb_per_h":-0.25}]}]},
+            "git_health":{"p":{"state":"attention","metrics":{"unmerged_branches":3,
+                "max_unmerged_behind":{"value":17,"lower_bound":false},"dirty_checkouts":2,
+                "cleanup_candidate_checkouts":["a","b"],"integration_commits_7d":{"value":31,"lower_bound":true}}},
+                "q":{"state":"healthy"}}});
+        let fresh = row(&snapshot, 42);
+        assert_eq!(
+            fresh["git"]["p"],
+            json!({"st":"attention","un":3,"bh":17,"dt":2,"cc":2,"c7":31})
+        );
+        assert_eq!(fresh["git"]["q"]["st"], "healthy");
+        assert!(
+            fresh["git"]["q"]["un"].is_null(),
+            "no metrics stays unknown, not zero"
+        );
+        assert_eq!(fresh["hosts"]["node"]["mem"], 42.5);
+        assert_eq!(
+            fresh["hosts"]["node"]["dg"], -0.25,
+            "shrinking disks keep their sign"
+        );
+        // Retained rows are re-validated: unknown keys and states are dropped.
+        let mut tampered = fresh.clone();
+        tampered["git"]["p"]["secret"] = json!("x");
+        tampered["git"]["p"]["st"] = json!("compromised");
+        tampered["git"]["p"]["un"] = json!(-1);
+        let retained = historical_row(&tampered).unwrap();
+        assert_eq!(
+            retained["git"]["p"],
+            json!({"st":null,"un":null,"bh":17,"dt":2,"cc":2,"c7":31})
+        );
+        assert_eq!(retained["hosts"]["node"]["dg"], -0.25);
+        let old =
+            historical_row(&json!({"ts":7,"hosts":{"node":{"load":1.0,"disk":2.0}}})).unwrap();
+        assert!(
+            old["git"].as_object().unwrap().is_empty(),
+            "older rows parse"
+        );
+        assert!(old["hosts"]["node"]["mem"].is_null());
     }
     #[test]
     fn manifest_project_history_keeps_recorded_checks_distinct_from_done() {

@@ -1287,12 +1287,18 @@ async fn yield_metrics(
             continue;
         }
         let branch = snapshot["projects"][&project.id]["pr"]["branch"].as_str();
+        // "Main" is the project's configured integration ref when one is
+        // set (the same ref Git health uses), else local origin/main.
+        let main_ref = project.git_health.as_ref().map_or_else(
+            || "refs/remotes/origin/main".to_owned(),
+            |p| p.integration_ref.clone(),
+        );
         let mut main = false;
         let mut integration = false;
         let mut reference_observed = false;
         for sha in commits {
             for (name, kind) in [
-                (Some("refs/remotes/origin/main".to_owned()), 0),
+                (Some(main_ref.clone()), 0),
                 (
                     branch
                         .filter(|b| !b.starts_with('-') && !b.contains(char::is_whitespace))
@@ -1349,7 +1355,7 @@ async fn yield_metrics(
         .into_iter()
         .map(|(id, a)| (id, a.value()))
         .collect::<Map<_, _>>();
-    json!({"generated_utc":crate::now_utc(),"window_hours":48,"projects":projects,"total":if total.sessions==0{Value::Null}else{total.value()},"hosts_covered":[config.node_id],"method":"Bounded actual JSONL token deltas; project by configured repository/cwd. Yield is an ESTIMATE: a session receives token attribution if a commit in its observed activity window is reachable from that worktree HEAD; exact Agent-Session trailers take precedence. Main/integration require successful git merge-base --is-ancestor against local origin refs (never fetched). Missing or exhausted Git coverage is unattributed, not accepted completion. No patch-id equivalence or remote usage inferred.","attribution_command_budget":32,"attribution_budget_remaining":git_budget,"not_covered":["Unconfigured/remote session files","Providers without measured usage","Worktrees outside configured repository paths","Patch-equivalent rebases without ancestry"]})
+    json!({"generated_utc":crate::now_utc(),"window_hours":48,"projects":projects,"total":if total.sessions==0{Value::Null}else{total.value()},"hosts_covered":[config.node_id],"method":"Bounded actual JSONL token deltas; project by configured repository/cwd. Yield is an ESTIMATE: a session receives token attribution if a commit in its observed activity window is reachable from that worktree HEAD; exact Agent-Session trailers take precedence. Main/integration require successful git merge-base --is-ancestor against the configured integration ref (default local origin/main) and the PR branch's local origin ref (never fetched). Missing or exhausted Git coverage is unattributed, not accepted completion. No patch-id equivalence or remote usage inferred.","attribution_command_budget":32,"attribution_budget_remaining":git_budget,"not_covered":["Unconfigured/remote session files","Providers without measured usage","Worktrees outside configured repository paths","Patch-equivalent rebases without ancestry"]})
 }
 
 fn apply_yield_coverage(
@@ -1960,9 +1966,32 @@ mod tests {
         )
         .await
         .unwrap();
-        let unknown =
-            yield_metrics(&c, &json!({"projects":{"p":{}}}), &[session], &rates, now).await;
+        let unknown = yield_metrics(
+            &c,
+            &json!({"projects":{"p":{}}}),
+            std::slice::from_ref(&session),
+            &rates,
+            now,
+        )
+        .await;
         assert_eq!(unknown["total"]["coverage_pct"], 0.0);
         assert_eq!(unknown["total"]["main_tokens"], 0);
+        // A configured integration ref (as used by Git health) replaces the
+        // origin/main default, so trunk-named projects attribute correctly.
+        git(
+            vec![
+                "update-ref".into(),
+                "refs/heads/trunk".into(),
+                "HEAD".into(),
+            ],
+            &repository,
+        )
+        .await
+        .unwrap();
+        c.projects = serde_json::from_value(json!([{"id":"p","name":"Project","repository":repository,"tracker":{},"manager_screen":null,"worker_prefixes":[],"coordination_log":null,"git_health":{"integration_ref":"refs/heads/trunk"}}])).unwrap();
+        let configured =
+            yield_metrics(&c, &json!({"projects":{"p":{}}}), &[session], &rates, now).await;
+        assert_eq!(configured["total"]["main_tokens"], 110);
+        assert_eq!(configured["total"]["coverage_pct"], 100.0);
     }
 }

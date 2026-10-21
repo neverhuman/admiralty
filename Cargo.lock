@@ -62,6 +62,7 @@ name = "admiralty-observe"
 version = "0.1.0"
 dependencies = [
  "admiralty-core",
+ "admiralty-telemetry",
  "chrono",
  "clap",
  "rustix",
