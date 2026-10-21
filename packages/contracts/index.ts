@@ -25,7 +25,7 @@ export type { ConfigLayerReceipt } from './generated/config-layer-receipt.js';
 export type * as ConfigLayerReceiptTypes from './generated/config-layer-receipt.js';
 export type { ProvenanceOrigin, ProvenanceContribution } from './generated/provenance-contribution.js';
 export type * as ProvenanceContributionTypes from './generated/provenance-contribution.js';
-export type { ViewPresence, ViewRole, ViewsSnapshot, ViewAgent, ViewProject, GitRepository, GitCheckout, GitWorkingState, GitCommit, GitRef, ViewSource } from './generated/views-snapshot.js';
+export type { ViewPresence, ViewRole, ViewsSnapshot, ViewAgent, ViewProject, GitRepository, GitCheckout, GitWorkingState, GitCommit, GitAgentTrailers, GitRef, ViewSource } from './generated/views-snapshot.js';
 export type * as ViewsSnapshotTypes from './generated/views-snapshot.js';
 export type { TargetRequirement, DeliveryStage, DeliveryTargetKind, IntakeBatch, IntakeItem, OutcomeInput, DeliveryRequirement, DeliveryTarget, SourceSpan } from './generated/intake-batch.js';
 export type * as IntakeBatchTypes from './generated/intake-batch.js';

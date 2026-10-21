@@ -31,6 +31,17 @@ export function pausedSnapshotForToken(
     ? paused.snapshot
     : null;
 }
+/** The commit's own `Agent-*` trailers, labeled as its claim rather than proof of authorship. */
+export function agentTrailerText(trailers: GitCommit["agent_trailers"]): string {
+  const lines = [
+    trailers?.session && `Agent-Session: ${trailers.session}`,
+    trailers?.model && `Agent-Model: ${trailers.model}`,
+    trailers?.task && `Agent-Task: ${trailers.task}`,
+  ].filter(Boolean);
+  return lines.length
+    ? `${lines.join("\n")}\nReported by the commit message; not proof of which process authored it`
+    : "None in the commit message";
+}
 export function resolveSelection(
   snapshot: ViewsSnapshot,
   params: URLSearchParams,
@@ -441,6 +452,7 @@ function Inspector({
         c.parents.join("\n") ||
         "No recorded parent (may be a shallow boundary)",
       "Committer time": c.committed_utc,
+      "Agent trailers": agentTrailerText(c.agent_trailers),
       Project: p.name,
       "Repository instance": p.git?.instance_id ?? "Unknown",
       Node: p.git?.node ?? "Unknown",

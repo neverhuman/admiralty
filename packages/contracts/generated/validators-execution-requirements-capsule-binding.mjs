@@ -2,35 +2,10 @@
 // Source SHA-256: {"execution-requirements-capsule-binding":"ffb8b49ea9da6ce87a8c68120b850a155e34ea0dcf66e30e824b10eec88f59d0"}
 // Pure standalone schema guards; Rust retains semantic and acceptance authority.
 "use strict";
-export const validateExecutionRequirementsCapsuleBinding = validate626;
-const schema264 = {"$defs":{"RequiredDeliveryBoundary":{"enum":["source_only","verified_candidate","merged_on_main","packaged","staged","canary_qualified","released_and_running"],"type":"string"},"ResponsibleRole":{"enum":["worker","verifier","auditor","captain","super_captain","owner"],"type":"string"},"TaskId":{"type":"string"}},"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false,"properties":{"base_commit_sha":{"type":"string"},"contract_digest":{"type":"string"},"contract_revision":{"minimum":0,"type":"integer","maximum":4294967295},"placement_request_digest":{"type":"string"},"rendered_summary":{"type":"string"},"required_delivery_stage":{"$ref":"#/$defs/RequiredDeliveryBoundary"},"requirements_digest":{"type":"string"},"responsible_role":{"$ref":"#/$defs/ResponsibleRole"},"schema_version":{"const":1,"minimum":0,"type":"integer","maximum":4294967295},"task_id":{"$ref":"#/$defs/TaskId"}},"required":["schema_version","task_id","contract_revision","contract_digest","requirements_digest","placement_request_digest","base_commit_sha","responsible_role","required_delivery_stage","rendered_summary"],"title":"ExecutionRequirementsCapsuleBinding","type":"object"};
+export const validateExecutionRequirementsCapsuleBinding = validate628;
+const schema265 = {"$defs":{"RequiredDeliveryBoundary":{"enum":["source_only","verified_candidate","merged_on_main","packaged","staged","canary_qualified","released_and_running"],"type":"string"},"ResponsibleRole":{"enum":["worker","verifier","auditor","captain","super_captain","owner"],"type":"string"},"TaskId":{"type":"string"}},"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false,"properties":{"base_commit_sha":{"type":"string"},"contract_digest":{"type":"string"},"contract_revision":{"minimum":0,"type":"integer","maximum":4294967295},"placement_request_digest":{"type":"string"},"rendered_summary":{"type":"string"},"required_delivery_stage":{"$ref":"#/$defs/RequiredDeliveryBoundary"},"requirements_digest":{"type":"string"},"responsible_role":{"$ref":"#/$defs/ResponsibleRole"},"schema_version":{"const":1,"minimum":0,"type":"integer","maximum":4294967295},"task_id":{"$ref":"#/$defs/TaskId"}},"required":["schema_version","task_id","contract_revision","contract_digest","requirements_digest","placement_request_digest","base_commit_sha","responsible_role","required_delivery_stage","rendered_summary"],"title":"ExecutionRequirementsCapsuleBinding","type":"object"};
 const func0 = Object.prototype.hasOwnProperty;
-const schema265 = {"enum":["source_only","verified_candidate","merged_on_main","packaged","staged","canary_qualified","released_and_running"],"type":"string"};
-
-function validate627(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
-let vErrors = null;
-let errors = 0;
-const evaluated0 = validate627.evaluated;
-if(evaluated0.dynamicProps){
-evaluated0.props = undefined;
-}
-if(evaluated0.dynamicItems){
-evaluated0.items = undefined;
-}
-if(typeof data !== "string"){
-validate627.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "string"},message:"must be string"}];
-return false;
-}
-if(!(((((((data === "source_only") || (data === "verified_candidate")) || (data === "merged_on_main")) || (data === "packaged")) || (data === "staged")) || (data === "canary_qualified")) || (data === "released_and_running"))){
-validate627.errors = [{instancePath,schemaPath:"#/enum",keyword:"enum",params:{allowedValues: schema265.enum},message:"must be equal to one of the allowed values"}];
-return false;
-}
-validate627.errors = vErrors;
-return errors === 0;
-}
-validate627.evaluated = {"dynamicProps":false,"dynamicItems":false};
-
-const schema266 = {"enum":["worker","verifier","auditor","captain","super_captain","owner"],"type":"string"};
+const schema266 = {"enum":["source_only","verified_candidate","merged_on_main","packaged","staged","canary_qualified","released_and_running"],"type":"string"};
 
 function validate629(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
 let vErrors = null;
@@ -46,7 +21,7 @@ if(typeof data !== "string"){
 validate629.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
-if(!((((((data === "worker") || (data === "verifier")) || (data === "auditor")) || (data === "captain")) || (data === "super_captain")) || (data === "owner"))){
+if(!(((((((data === "source_only") || (data === "verified_candidate")) || (data === "merged_on_main")) || (data === "packaged")) || (data === "staged")) || (data === "canary_qualified")) || (data === "released_and_running"))){
 validate629.errors = [{instancePath,schemaPath:"#/enum",keyword:"enum",params:{allowedValues: schema266.enum},message:"must be equal to one of the allowed values"}];
 return false;
 }
@@ -55,7 +30,7 @@ return errors === 0;
 }
 validate629.evaluated = {"dynamicProps":false,"dynamicItems":false};
 
-const schema267 = {"type":"string"};
+const schema267 = {"enum":["worker","verifier","auditor","captain","super_captain","owner"],"type":"string"};
 
 function validate631(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
 let vErrors = null;
@@ -71,16 +46,41 @@ if(typeof data !== "string"){
 validate631.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
+if(!((((((data === "worker") || (data === "verifier")) || (data === "auditor")) || (data === "captain")) || (data === "super_captain")) || (data === "owner"))){
+validate631.errors = [{instancePath,schemaPath:"#/enum",keyword:"enum",params:{allowedValues: schema267.enum},message:"must be equal to one of the allowed values"}];
+return false;
+}
 validate631.errors = vErrors;
 return errors === 0;
 }
 validate631.evaluated = {"dynamicProps":false,"dynamicItems":false};
 
+const schema268 = {"type":"string"};
 
-function validate626(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
+function validate633(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
 let vErrors = null;
 let errors = 0;
-const evaluated0 = validate626.evaluated;
+const evaluated0 = validate633.evaluated;
+if(evaluated0.dynamicProps){
+evaluated0.props = undefined;
+}
+if(evaluated0.dynamicItems){
+evaluated0.items = undefined;
+}
+if(typeof data !== "string"){
+validate633.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+return false;
+}
+validate633.errors = vErrors;
+return errors === 0;
+}
+validate633.evaluated = {"dynamicProps":false,"dynamicItems":false};
+
+
+function validate628(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
+let vErrors = null;
+let errors = 0;
+const evaluated0 = validate628.evaluated;
 if(evaluated0.dynamicProps){
 evaluated0.props = undefined;
 }
@@ -91,14 +91,14 @@ if(errors === 0){
 if(data && typeof data == "object" && !Array.isArray(data)){
 let missing0;
 if((((((((((((data.schema_version === undefined) || (!(func0.call(data, "schema_version")))) && (missing0 = "schema_version")) || (((data.task_id === undefined) || (!(func0.call(data, "task_id")))) && (missing0 = "task_id"))) || (((data.contract_revision === undefined) || (!(func0.call(data, "contract_revision")))) && (missing0 = "contract_revision"))) || (((data.contract_digest === undefined) || (!(func0.call(data, "contract_digest")))) && (missing0 = "contract_digest"))) || (((data.requirements_digest === undefined) || (!(func0.call(data, "requirements_digest")))) && (missing0 = "requirements_digest"))) || (((data.placement_request_digest === undefined) || (!(func0.call(data, "placement_request_digest")))) && (missing0 = "placement_request_digest"))) || (((data.base_commit_sha === undefined) || (!(func0.call(data, "base_commit_sha")))) && (missing0 = "base_commit_sha"))) || (((data.responsible_role === undefined) || (!(func0.call(data, "responsible_role")))) && (missing0 = "responsible_role"))) || (((data.required_delivery_stage === undefined) || (!(func0.call(data, "required_delivery_stage")))) && (missing0 = "required_delivery_stage"))) || (((data.rendered_summary === undefined) || (!(func0.call(data, "rendered_summary")))) && (missing0 = "rendered_summary"))){
-validate626.errors = [{instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: missing0},message:"must have required property '"+missing0+"'"}];
+validate628.errors = [{instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: missing0},message:"must have required property '"+missing0+"'"}];
 return false;
 }
 else {
 const _errs1 = errors;
 for(const key0 of Object.keys(data)){
-if(!(func0.call(schema264.properties, key0))){
-validate626.errors = [{instancePath,schemaPath:"#/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key0},message:"must NOT have additional properties"}];
+if(!(func0.call(schema265.properties, key0))){
+validate628.errors = [{instancePath,schemaPath:"#/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key0},message:"must NOT have additional properties"}];
 return false;
 break;
 }
@@ -107,7 +107,7 @@ if(_errs1 === errors){
 if(data.base_commit_sha !== undefined && func0.call(data, "base_commit_sha")){
 const _errs2 = errors;
 if(typeof data.base_commit_sha !== "string"){
-validate626.errors = [{instancePath:instancePath+"/base_commit_sha",schemaPath:"#/properties/base_commit_sha/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate628.errors = [{instancePath:instancePath+"/base_commit_sha",schemaPath:"#/properties/base_commit_sha/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
 var valid0 = _errs2 === errors;
@@ -119,7 +119,7 @@ if(valid0){
 if(data.contract_digest !== undefined && func0.call(data, "contract_digest")){
 const _errs4 = errors;
 if(typeof data.contract_digest !== "string"){
-validate626.errors = [{instancePath:instancePath+"/contract_digest",schemaPath:"#/properties/contract_digest/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate628.errors = [{instancePath:instancePath+"/contract_digest",schemaPath:"#/properties/contract_digest/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
 var valid0 = _errs4 === errors;
@@ -132,18 +132,18 @@ if(data.contract_revision !== undefined && func0.call(data, "contract_revision")
 let data2 = data.contract_revision;
 const _errs6 = errors;
 if(!(((typeof data2 == "number") && (!(data2 % 1) && !isNaN(data2))) && (isFinite(data2)))){
-validate626.errors = [{instancePath:instancePath+"/contract_revision",schemaPath:"#/properties/contract_revision/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
+validate628.errors = [{instancePath:instancePath+"/contract_revision",schemaPath:"#/properties/contract_revision/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
 return false;
 }
 if(errors === _errs6){
 if((typeof data2 == "number") && (isFinite(data2))){
 if(data2 > 4294967295 || isNaN(data2)){
-validate626.errors = [{instancePath:instancePath+"/contract_revision",schemaPath:"#/properties/contract_revision/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
+validate628.errors = [{instancePath:instancePath+"/contract_revision",schemaPath:"#/properties/contract_revision/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
 return false;
 }
 else {
 if(data2 < 0 || isNaN(data2)){
-validate626.errors = [{instancePath:instancePath+"/contract_revision",schemaPath:"#/properties/contract_revision/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
+validate628.errors = [{instancePath:instancePath+"/contract_revision",schemaPath:"#/properties/contract_revision/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
 return false;
 }
 }
@@ -158,7 +158,7 @@ if(valid0){
 if(data.placement_request_digest !== undefined && func0.call(data, "placement_request_digest")){
 const _errs8 = errors;
 if(typeof data.placement_request_digest !== "string"){
-validate626.errors = [{instancePath:instancePath+"/placement_request_digest",schemaPath:"#/properties/placement_request_digest/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate628.errors = [{instancePath:instancePath+"/placement_request_digest",schemaPath:"#/properties/placement_request_digest/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
 var valid0 = _errs8 === errors;
@@ -170,7 +170,7 @@ if(valid0){
 if(data.rendered_summary !== undefined && func0.call(data, "rendered_summary")){
 const _errs10 = errors;
 if(typeof data.rendered_summary !== "string"){
-validate626.errors = [{instancePath:instancePath+"/rendered_summary",schemaPath:"#/properties/rendered_summary/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate628.errors = [{instancePath:instancePath+"/rendered_summary",schemaPath:"#/properties/rendered_summary/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
 var valid0 = _errs10 === errors;
@@ -181,8 +181,8 @@ var valid0 = true;
 if(valid0){
 if(data.required_delivery_stage !== undefined && func0.call(data, "required_delivery_stage")){
 const _errs12 = errors;
-if(!(validate627(data.required_delivery_stage, {instancePath:instancePath+"/required_delivery_stage",parentData:data,parentDataProperty:"required_delivery_stage",rootData,dynamicAnchors}))){
-vErrors = vErrors === null ? validate627.errors : vErrors.concat(validate627.errors);
+if(!(validate629(data.required_delivery_stage, {instancePath:instancePath+"/required_delivery_stage",parentData:data,parentDataProperty:"required_delivery_stage",rootData,dynamicAnchors}))){
+vErrors = vErrors === null ? validate629.errors : vErrors.concat(validate629.errors);
 errors = vErrors.length;
 }
 var valid0 = _errs12 === errors;
@@ -194,7 +194,7 @@ if(valid0){
 if(data.requirements_digest !== undefined && func0.call(data, "requirements_digest")){
 const _errs13 = errors;
 if(typeof data.requirements_digest !== "string"){
-validate626.errors = [{instancePath:instancePath+"/requirements_digest",schemaPath:"#/properties/requirements_digest/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate628.errors = [{instancePath:instancePath+"/requirements_digest",schemaPath:"#/properties/requirements_digest/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
 var valid0 = _errs13 === errors;
@@ -205,8 +205,8 @@ var valid0 = true;
 if(valid0){
 if(data.responsible_role !== undefined && func0.call(data, "responsible_role")){
 const _errs15 = errors;
-if(!(validate629(data.responsible_role, {instancePath:instancePath+"/responsible_role",parentData:data,parentDataProperty:"responsible_role",rootData,dynamicAnchors}))){
-vErrors = vErrors === null ? validate629.errors : vErrors.concat(validate629.errors);
+if(!(validate631(data.responsible_role, {instancePath:instancePath+"/responsible_role",parentData:data,parentDataProperty:"responsible_role",rootData,dynamicAnchors}))){
+vErrors = vErrors === null ? validate631.errors : vErrors.concat(validate631.errors);
 errors = vErrors.length;
 }
 var valid0 = _errs15 === errors;
@@ -219,22 +219,22 @@ if(data.schema_version !== undefined && func0.call(data, "schema_version")){
 let data8 = data.schema_version;
 const _errs16 = errors;
 if(!(((typeof data8 == "number") && (!(data8 % 1) && !isNaN(data8))) && (isFinite(data8)))){
-validate626.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
+validate628.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
 return false;
 }
 if(1 !== data8){
-validate626.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/const",keyword:"const",params:{allowedValue: 1},message:"must be equal to constant"}];
+validate628.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/const",keyword:"const",params:{allowedValue: 1},message:"must be equal to constant"}];
 return false;
 }
 if(errors === _errs16){
 if((typeof data8 == "number") && (isFinite(data8))){
 if(data8 > 4294967295 || isNaN(data8)){
-validate626.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
+validate628.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
 return false;
 }
 else {
 if(data8 < 0 || isNaN(data8)){
-validate626.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
+validate628.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
 return false;
 }
 }
@@ -248,8 +248,8 @@ var valid0 = true;
 if(valid0){
 if(data.task_id !== undefined && func0.call(data, "task_id")){
 const _errs18 = errors;
-if(!(validate631(data.task_id, {instancePath:instancePath+"/task_id",parentData:data,parentDataProperty:"task_id",rootData,dynamicAnchors}))){
-vErrors = vErrors === null ? validate631.errors : vErrors.concat(validate631.errors);
+if(!(validate633(data.task_id, {instancePath:instancePath+"/task_id",parentData:data,parentDataProperty:"task_id",rootData,dynamicAnchors}))){
+vErrors = vErrors === null ? validate633.errors : vErrors.concat(validate633.errors);
 errors = vErrors.length;
 }
 var valid0 = _errs18 === errors;
@@ -270,11 +270,11 @@ var valid0 = true;
 }
 }
 else {
-validate626.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"}];
+validate628.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"}];
 return false;
 }
 }
-validate626.errors = vErrors;
+validate628.errors = vErrors;
 return errors === 0;
 }
-validate626.evaluated = {"props":true,"dynamicProps":false,"dynamicItems":false};
+validate628.evaluated = {"props":true,"dynamicProps":false,"dynamicItems":false};

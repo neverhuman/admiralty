@@ -1,6 +1,6 @@
 /**
  * Generated from schemas/views-snapshot.schema.json by json-schema-to-typescript@16.0.0.
- * Source SHA-256: ad1eb2064f042c268fb0c983540730bf8ad5a7df743b5a9278971273dedff270
+ * Source SHA-256: 537bcc4cf573d8256eed2dce8c83ba33c5ffc6c5164631f2df5edf62f1360870
  * Do not edit. Rust domain validation still applies at runtime.
  */
 
@@ -102,10 +102,28 @@ export interface GitWorkingState {
  * via the `definition` "GitCommit".
  */
 export interface GitCommit {
+  /**
+   * `Agent-*` trailers exactly as the commit message states them. This is
+   * the commit's own claim, not proof of which process or model authored it.
+   */
+  agent_trailers?: GitAgentTrailers | null;
   committed_utc: string;
   oid: string;
   parents: string[];
   subject: string;
+}
+/**
+ * First value of each fleet attribution trailer in a commit's final trailer
+ * paragraph (`Agent-Session`, `Agent-Model`, `Agent-Task`). Absent trailers
+ * stay absent; nothing is inferred from branch, checkout or screen names.
+ *
+ * This interface was referenced by `ViewsSnapshot`'s JSON-Schema
+ * via the `definition` "GitAgentTrailers".
+ */
+export interface GitAgentTrailers {
+  model?: string | null;
+  session?: string | null;
+  task?: string | null;
 }
 /**
  * This interface was referenced by `ViewsSnapshot`'s JSON-Schema

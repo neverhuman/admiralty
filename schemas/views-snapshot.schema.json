@@ -1,5 +1,30 @@
 {
   "$defs": {
+    "GitAgentTrailers": {
+      "additionalProperties": false,
+      "description": "First value of each fleet attribution trailer in a commit's final trailer\nparagraph (`Agent-Session`, `Agent-Model`, `Agent-Task`). Absent trailers\nstay absent; nothing is inferred from branch, checkout or screen names.",
+      "properties": {
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "session": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "task": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
     "GitCheckout": {
       "additionalProperties": false,
       "properties": {
@@ -57,6 +82,17 @@
     "GitCommit": {
       "additionalProperties": false,
       "properties": {
+        "agent_trailers": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GitAgentTrailers"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`Agent-*` trailers exactly as the commit message states them. This is\nthe commit's own claim, not proof of which process or model authored it."
+        },
         "committed_utc": {
           "type": "string"
         },

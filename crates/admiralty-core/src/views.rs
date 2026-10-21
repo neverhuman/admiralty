@@ -95,6 +95,24 @@ pub struct GitCommit {
     pub parents: Vec<String>,
     pub subject: String,
     pub committed_utc: String,
+    /// `Agent-*` trailers exactly as the commit message states them. This is
+    /// the commit's own claim, not proof of which process or model authored it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_trailers: Option<GitAgentTrailers>,
+}
+
+/// First value of each fleet attribution trailer in a commit's final trailer
+/// paragraph (`Agent-Session`, `Agent-Model`, `Agent-Task`). Absent trailers
+/// stay absent; nothing is inferred from branch, checkout or screen names.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GitAgentTrailers {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]

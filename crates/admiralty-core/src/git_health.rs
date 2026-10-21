@@ -745,6 +745,7 @@ mod tests {
             parents: parents.iter().map(|n| oid(*n)).collect(),
             subject: format!("commit {n}"),
             committed_utc: "2001-01-01T00:00:00Z".into(),
+            agent_trailers: None,
         }
     }
     fn branch(name: &str, n: usize) -> GitRef {
@@ -1027,6 +1028,7 @@ mod tests {
             parents: parents.iter().map(|n| oid(*n)).collect(),
             subject: subject.into(),
             committed_utc: at.into(),
+            agent_trailers: None,
         }
     }
     fn reference(name: &str, n: usize, kind: &str) -> GitRef {
