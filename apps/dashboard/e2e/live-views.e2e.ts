@@ -363,6 +363,96 @@ describe("built live views against the real Rust server", () => {
     await browser.captureScreenshot(join(evidence, "git-focused-lower-lane.png"));
     server.writeLegacySnapshot(sourceFixture());
   });
+  it("exits branch-only scope and restores the latest camera after leaving Git Flow", async () => {
+    server.writeLegacySnapshot(sourceFixture());
+    await connect("git?project=harbor&branch=worker%2Fui");
+    await browser.waitForSelector('.is-project-focused');
+    await browser.clickButtonByText("All projects");
+    await browser.waitForSelector('.git-band:nth-child(2)');
+    expect(await browser.evaluate(`new URLSearchParams(location.hash.split('?')[1]).has('branch')`)).toBe(false);
+    await browser.clickButtonByAriaLabel("Focus project: Harbor");
+    await browser.waitForSelector('.is-project-focused');
+    await browser.clickButtonByText("All projects");
+    await browser.waitForSelector('.git-band:nth-child(2)');
+    await browser.clickButtonByAriaLabel("Focus project: Harbor");
+    await browser.waitForSelector('.is-project-focused');
+    await browser.clickButtonByAriaLabel("Reset Git zoom to 100%");
+    await browser.clickButtonByAriaLabel("Zoom Git in");
+    const before = await browser.evaluate<{ hash: string; zoom: string }>(`({hash:location.hash,zoom:document.querySelector('[aria-label="Current Git zoom"]').textContent})`);
+    expect(before.zoom).toBe("120%");
+    await browser.evaluate(`location.hash='#/atlas'`);
+    await browser.waitForSelector('.atlas-viewport');
+    await browser.evaluate(`location.hash=${JSON.stringify(before.hash)}`);
+    await browser.waitForSelector('.is-project-focused .git-canvas');
+    expect(await browser.evaluate(`document.querySelector('[aria-label="Current Git zoom"]').textContent`)).toBe(before.zoom);
+  });
+  it("resets actual size and drills into a project without losing selection or overview", async () => {
+    const source = sourceFixture(), repo = source.git.harbor, template = repo.commits[0];
+    const oid = (n: number) => ((n * 2654435761) >>> 0).toString(16).padStart(8, "0").padEnd(40, "0");
+    repo.commits = [{ ...template, oid: oid(1), parents: [] }];
+    repo.refs = []; repo.checkouts = [];
+    for (let lane = 0; lane < 16; lane++) {
+      for (let step = 0; step < 10; step++) {
+        const id = 2 + lane * 10 + step;
+        repo.commits.push({ ...template, oid: oid(id), parents: [oid(step ? id - 1 : 1)], subject: `Viewport lane ${lane} step ${step}` });
+      }
+      const tip = oid(11 + lane * 10);
+      repo.refs.push({ name: `refs/heads/viewport/lane-${lane}`, oid: tip, commit_oid: tip, kind: "branch" });
+    }
+    Object.assign(source.git, { observatory: structuredClone(repo) });
+    server.writeLegacySnapshot(source);
+    await connect("git");
+    await browser.clickButtonByText("Expand all");
+    await browser.waitForText("Collapse linear");
+    await browser.clickButtonByText("Fit width");
+    await browser.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+    await browser.waitForSelector('.git-canvas');
+    const overview = await browser.evaluate<{ zoom: string; left: number; top: number }>(`(() => {
+      const el=document.querySelector('.git-scroll');return {zoom:document.querySelector('[aria-label="Current Git zoom"]').textContent,left:el.scrollLeft,top:el.scrollTop};
+    })()`);
+    expect(parseInt(overview.zoom)).toBeLessThan(100);
+    expect(overview.left).toBe(0);
+    expect(await browser.evaluate(`(()=>{const el=document.querySelector('.git-scroll');return el.scrollWidth<=el.clientWidth+1;})()`)).toBe(true);
+    await browser.clickButtonByAriaLabel("Focus project: Harbor");
+    await browser.waitForSelector('.is-project-focused');
+    expect(await browser.evaluate(`new URLSearchParams(location.hash.split('?')[1]).get('scope')`)).toBe("harbor");
+    expect(await browser.evaluate(`document.querySelectorAll('.git-band').length`)).toBe(1);
+    expect(await browser.evaluate(`document.querySelector('.git-gutter').hidden`)).toBe(true);
+    expect(await browser.evaluate(`(()=>{const el=document.querySelector('.git-scroll');return el.scrollWidth<=el.clientWidth+1;})()`)).toBe(true);
+    await browser.clickButtonByAriaLabel("Reset Git zoom to 100%");
+    expect(await browser.evaluate(`document.querySelector('[aria-label="Current Git zoom"]').textContent`)).toBe("100%");
+    await browser.clickButtonByText("Inventory");
+    await browser.clickButtonByText(oid(91).slice(0, 10));
+    await browser.waitForSelector('.lv-inspector');
+    await browser.clickButtonByText("Graph");
+    await browser.clickButtonByAriaLabel("Zoom Git out");
+    await browser.clickButtonByAriaLabel("Reset Git zoom to 100%");
+    expect(await browser.evaluate(`document.querySelector('.lv-inspector').textContent`)).toContain(oid(91));
+    expect(await browser.evaluate(`document.querySelector('[aria-label="Current Git zoom"]').textContent`)).toBe("100%");
+    await browser.evaluate(`document.querySelector('.git-canvas').focus()`);
+    await browser.pressKey("0");
+    expect(parseInt(await browser.evaluate<string>(`document.querySelector('[aria-label="Current Git zoom"]').textContent`))).toBeLessThan(100);
+    await browser.pressKey("1");
+    expect(await browser.evaluate(`document.querySelector('[aria-label="Current Git zoom"]').textContent`)).toBe("100%");
+    await browser.captureScreenshot(join(evidence, "git-project-actual-size.png"));
+    await browser.clickButtonByText("All projects");
+    await browser.waitForSelector('.git-band:nth-child(2)');
+    expect(await browser.evaluate(`document.querySelector('[aria-label="Current Git zoom"]').textContent`)).toBe(overview.zoom);
+    expect(await browser.evaluate(`new URLSearchParams(location.hash.split('?')[1]).has('scope')`)).toBe(false);
+    expect(await browser.evaluate(`document.querySelector('.lv-inspector').textContent`)).toContain(oid(91));
+    await browser.evaluate(`history.back()`);
+    await browser.waitForSelector('.is-project-focused');
+    await browser.clickButtonByAriaLabel("Close inspector");
+    await browser.setViewportSize(390, 844);
+    await browser.clickButtonByText("Fit width");
+    expect(await browser.evaluate(`document.documentElement.scrollWidth <= innerWidth`)).toBe(true);
+    const controls = await browser.evaluate<boolean>(`Array.from(document.querySelectorAll('.git-zoom button')).every(b=>{const r=b.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth;})`);
+    expect(controls).toBe(true);
+    expect((await browser.runAxeAudit()).violations).toEqual([]);
+    await browser.captureScreenshot(join(evidence, "git-project-mobile-fit.png"));
+    await browser.setViewportSize(1440, 1000);
+    server.writeLegacySnapshot(sourceFixture());
+  }, 60_000);
   it("compresses long histories into accessible reversible ranges and keeps inventory complete", async () => {
     const source = sourceFixture();
     const repo = source.git.harbor;
