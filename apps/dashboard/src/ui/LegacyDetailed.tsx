@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { data, list, text, label, freshness, safeHref, stageLabel, stageClass, projectDetails, watchLegacy, type LegacySnapshot, type ProjectDetailModel } from '../legacy';
 import { TemporalPlots } from './TemporalPlots';
 import { LegacyHierarchy } from './LegacyHierarchy';
@@ -67,9 +67,10 @@ export function ProjectDetail({ project, compact = false, initial = false }: { p
     {!initial && <SourceSection title="Complete producer project record" value={project.raw} />}
   </article>;
 }
-export function LegacyFleetView({ snapshot, selected = 'all' }: { snapshot: LegacySnapshot; selected?: string }) {
+export function LegacyFleetView({ snapshot, selected = 'all', projects: precomputed }: { snapshot: LegacySnapshot; selected?: string; projects?: ProjectDetailModel[] }) {
   const initial = snapshot.admiralty_delivery === 'initial';
-  const projects = projectDetails(snapshot), visible = selected === 'all' ? projects : projects.filter(project => project.id === selected);
+  // The parent already derives project models for its tabs; reuse them.
+  const projects = precomputed ?? projectDetails(snapshot), visible = selected === 'all' ? projects : projects.filter(project => project.id === selected);
   return <>
     {initial && <div className="legacy-provenance" role="status">Live project summaries loaded. Charts and detailed evidence are loading in the background.</div>}
     <TemporalPlots snapshot={snapshot} />
@@ -92,7 +93,7 @@ export function LegacyFleetView({ snapshot, selected = 'all' }: { snapshot: Lega
     </div>
   </>;
 }
-export default function LegacyDetailed({ token }: { token?: string }) {
+function LegacyDetailed({ token }: { token?: string }) {
   const [snapshot, setSnapshot] = useState<LegacySnapshot | null>(null), [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false), [selected, setSelected] = useState('all'), [density, setDensity] = useState<'dense' | 'comfortable'>('dense');
   const [retry, setRetry] = useState(0);
@@ -106,6 +107,9 @@ export default function LegacyDetailed({ token }: { token?: string }) {
     {error && <div className="error-banner" role="status">{error} {snapshot ? 'Showing the last received snapshot; its original source age is preserved.' : 'No live snapshot has loaded yet.'}</div>}
     {!loaded && <div className="loading-card">Loading detailed producer snapshot…</div>}
     {loaded && !snapshot && <div className="loading-card">Detailed producer data unavailable on this server. Native simulation and its synthetic projects remain separate in the overview.</div>}
-    {snapshot && <LegacyFleetView snapshot={snapshot} selected={selected} />}
+    {snapshot && <LegacyFleetView snapshot={snapshot} selected={selected} projects={projects} />}
   </div>;
 }
+
+/** Memoized: native fleet events re-render the shell, not this heavy producer view. */
+export default memo(LegacyDetailed);

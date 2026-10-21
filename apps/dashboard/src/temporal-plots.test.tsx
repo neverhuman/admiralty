@@ -158,16 +158,16 @@ describe('dense temporal dashboard strip', () => {
     expect(metric.values[1].value).toBe('Admiral status unavailable');
     expect(metric.note).toContain('source exceeds configured byte limit');
   });
-  it('restores all thirteen old metrics from the actual collector field names', () => {
+  it('restores all thirteen original metrics and adds memory and Git hygiene trends', () => {
     const model = buildTemporalMetrics(snapshot());
     expect(model.metrics.map(metric => metric.id)).toEqual(['cost-index', 'luna-failures', 'burn-up', 'in-progress', 'agent-tiers',
-      'escalation', 'cpu-load', 'root-disk', 'integration-ci', 'hygiene', 'tokens', 'token-yield', 'weekly-quota']);
+      'escalation', 'cpu-load', 'root-disk', 'host-memory', 'integration-ci', 'git-unmerged', 'hygiene', 'tokens', 'token-yield', 'weekly-quota']);
     const html = renderToStaticMarkup(<TemporalPlots snapshot={snapshot()} />);
-    expect((html.match(/data-metric=/g) ?? []).length).toBe(13);
+    expect((html.match(/data-metric=/g) ?? []).length).toBe(15);
     for (const label of ['History and trends', 'Cost index vs all-Luna', 'Luna failures', 'first-pass', 'burn-up', 'In progress per project',
       'Agents by tier', 'Escalation funnel', 'Load % of CPUs', 'Root disk % used', 'Integration PR CI history', 'Hygiene score',
       'Tokens · generated / integration / main', 'Token yield %', 'Codex weekly quota']) expect(html).toContain(label);
-    expect((html.match(/aria-expanded="false"/g) ?? []).length).toBe(13);
+    expect((html.match(/aria-expanded="false"/g) ?? []).length).toBe(15);
     expect(html).toContain('Scrollable temporal metric cards');
     expect(html).not.toMatch(/NaN|Infinity/);
   });
@@ -299,5 +299,26 @@ describe('dense temporal dashboard strip', () => {
     expect(html).toContain('2026-10-18T10:00:00Z');
     expect(html).toContain('Not reported by Admiral');
     expect(html).not.toContain('Hygiene 0');
+  });
+  it('trends memory headroom and unmerged lanes, preferring live Git metrics and keeping gaps unknown', () => {
+    const source = parseLegacy({ generated_utc: '2026-10-21T08:00:00Z', order: ['alpha', 'beta'],
+      projects: { alpha: { name: 'Alpha' }, beta: { name: 'Beta' } },
+      global_resources: { hosts: [{ host: 'node-a' }] },
+      git_health: { alpha: { state: 'attention', metrics: { unmerged_branches: 4, dirty_checkouts: 1 } } },
+      history: { rows: [
+        { ts: 1792540800, hosts: { 'node-a': { load: 10, disk: 50, mem: 40.5 } }, git: { alpha: { st: 'healthy', un: 2, dt: 0 }, beta: { st: 'unknown', un: null } } },
+        { ts: 1792540920, hosts: { 'node-a': { load: 11, disk: 50 } }, git: { alpha: { st: 'attention', un: 3, dt: 1 }, beta: { st: 'healthy', un: 1, dt: 2 } } },
+      ] } });
+    const metrics = buildTemporalMetrics(source).metrics;
+    const memory = metrics.find(metric => metric.id === 'host-memory')!;
+    expect(memory.max).toBe(100);
+    expect(memory.values).toEqual([{ label: 'node-a', value: 'unknown', color: expect.any(String) }]);
+    expect(memory.series[0].points.map(point => point.value)).toEqual([40.5, null]);
+    const git = metrics.find(metric => metric.id === 'git-unmerged')!;
+    expect(git.values.map(value => [value.label, value.value])).toEqual([
+      ['Alpha', '4 unmerged · 1 dirty'],
+      ['Beta', '1 unmerged · 2 dirty'],
+    ]);
+    expect(git.series.map(series => series.points.map(point => point.value))).toEqual([[2, 3], [null, 1]]);
   });
 });

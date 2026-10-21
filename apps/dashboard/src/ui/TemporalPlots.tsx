@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { data, list, number, text, type Data, type LegacySnapshot } from '../legacy';
 import { formatCompactMeasurement, formatMeasurement } from '../formatNumbers';
 import { observedTokenSample } from '../usageMetrics';
@@ -127,11 +127,27 @@ export function buildTemporalMetrics(snapshot: LegacySnapshot): { metrics: Tempo
     bars: [ ['Luna tasks', funnel.luna_tasks, '#39e065'], ['Luna → Sol', funnel.luna_to_sol, '#f2c335'], ['Sol → Astra', funnel.sol_to_astra, '#ff535c'] ].map(([label, value, color]) => ({ label: String(label), value: numeric(value), color: String(color) })) },
     make('cpu-load', 'Load % of CPUs', hv('load'), series(hosts, (row, id) => data(data(row.hosts)[id]).load), 'Normalized CPU load from each recorded host'),
     make('root-disk', 'Root disk % used', hv('disk'), series(hosts, (row, id) => data(data(row.hosts)[id]).disk), 'Root filesystem use · source hosts discovered dynamically'),
+    { ...make('host-memory', 'Memory available %', hv('mem'), series(hosts, (row, id) => data(data(row.hosts)[id]).mem),
+      'Kernel MemAvailable share of RAM per host · amber below 15%, red below 8% · hosts without a recorded sample stay unknown'), max: 100 },
     { ...make('integration-ci', 'Integration PR CI history', projects.map(id => {
       const state = text(data(data(data(snapshot.projects[id]).pr).ci).state) || 'unknown';
       return { label: projectName(id), value: state, color: ciColor(state) };
     }), [], 'Rows retain project identity · green pass · red fail · amber pending · gray unknown', snapshot.generated_utc), kind: 'ci',
     ci: projects.map(id => ({ id, label: projectName(id), color: projectColor(id), points: rows.map(row => ({ time: Number(row.ts), state: text(data(data(row.proj)[id]).ci) || 'unknown' })) })) },
+    (() => {
+      const live = data(snapshot.git_health);
+      const gitProjects = unique([...projects.filter(id => id in live || rows.some(row => id in data(row.git))), ...Object.keys(live)]);
+      const values = gitProjects.map(id => {
+        const metrics = data(data(live[id]).metrics), sample = data(data(last.git)[id]);
+        const unmerged = numeric(metrics.unmerged_branches) ?? numeric(sample.un), dirty = numeric(metrics.dirty_checkouts) ?? numeric(sample.dt);
+        return { label: projectName(id), color: projectColor(id),
+          value: `${unmerged === null ? 'unknown' : formatMeasurement(unmerged)} unmerged · ${dirty === null ? 'dirty unknown' : `${formatMeasurement(dirty)} dirty`}` };
+      });
+      return make('git-unmerged', 'Unmerged lanes per project · Git hygiene', values,
+        series(gitProjects, (row, id) => data(data(row.git)[id]).un, projectName, projectColor),
+        'Local branches with commits not yet in the integration ref (Git health metrics). Fleet health lists merged branches and clean merged worktrees as cleanup candidates.',
+        snapshot.generated_utc);
+    })(),
     (() => {
       const current = projects.map(id => ({ id, ...hygieneForProject(id) }));
       const seriesIds = new Set(projects);
@@ -282,7 +298,8 @@ function MetricCard({ metric, first, last, loadingHistory = false }: { metric: T
 
 export function TemporalPlots({ snapshot }: { snapshot: LegacySnapshot }) {
   const loadingHistory = snapshot.admiralty_delivery === 'initial';
-  const { metrics, rows, note, omittedRows } = buildTemporalMetrics(snapshot);
+  // Rebuild only when the producer snapshot changes, not on unrelated parent renders.
+  const { metrics, rows, note, omittedRows } = useMemo(() => buildTemporalMetrics(snapshot), [snapshot]);
   const first = sourceTime(rows[0] ?? {}), last = sourceTime(rows.at(-1) ?? {});
   return <section className="temporal-plots" aria-label="History and trends · fleet temporal metrics">
     <div className="temporal-heading"><strong>Live trends</strong>{loadingHistory ? <span>Current source values · history is loading</span> : <><span>{rows.length} historical samples · click a metric to expand · scroll for all {metrics.length}</span><span title={note}>History <time dateTime={first || undefined}>{first || 'unknown'}</time> → <time dateTime={last || undefined}>{last || 'unknown'}</time>{omittedRows ? ` · ${omittedRows} earlier rows outside display bound` : ''}</span></>}</div>
