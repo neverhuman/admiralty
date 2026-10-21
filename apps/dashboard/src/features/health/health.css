@@ -1,0 +1,92 @@
+/* Fleet health: one quiet readout strip, dense tables, and the cycle lanes. */
+.health { display: grid; gap: 16px; font-variant-numeric: tabular-nums; }
+.health .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.health code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--soft); }
+
+/* Readout strip: facts side by side, separated by hairlines rather than cards. */
+.health-bridge { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; }
+.health-readout { padding: 12px 16px 13px; border-left: 1px solid var(--line); box-shadow: inset 3px 0 0 transparent; }
+.health-readout:first-child { border-left: 0; }
+.health-readout dt { color: var(--muted); font-size: 12px; line-height: 1.3; }
+.health-readout dd { margin: 4px 0 0; display: grid; gap: 2px; }
+.health-readout strong { font-size: 22px; font-weight: 650; line-height: 1.15; color: var(--text); letter-spacing: -.3px; }
+.health-readout span { color: var(--muted); font-size: 12px; line-height: 1.35; }
+.health-readout--attention { box-shadow: inset 3px 0 0 var(--gold); }
+.health-readout--attention strong { color: var(--gold); }
+.health-readout--risk { box-shadow: inset 3px 0 0 var(--red); }
+.health-readout--risk strong { color: var(--red); }
+
+.health-panel { padding: 14px 16px 16px; min-width: 0; }
+.health-panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.health-panel h2 { margin: 0; font: 650 16px system-ui, sans-serif; letter-spacing: -.2px; }
+.health-lede { margin: 6px 0 12px; color: var(--muted); font-size: 13px; line-height: 1.45; max-width: 72ch; }
+.health-note { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+.health-empty { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+.health-split { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1200px) { .health-split { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); } }
+
+/* Tables */
+.health-table-wrap { overflow-x: auto; }
+.health-table-wrap:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.health-table { width: 100%; min-width: 0; border-collapse: collapse; font-size: 13px; line-height: 1.4; }
+/* Reset the console-wide uppercase monospace table chrome for this dense view. */
+.health-table th, .health-table td { height: auto; text-align: left; vertical-align: top; padding: 9px 12px 9px 0; border-top: 1px solid var(--line); border-bottom: 0; font: inherit; font-size: 13px; letter-spacing: normal; text-transform: none; color: var(--text); }
+.health-table td:first-child { min-width: 0; }
+.health-table thead th { border-top: 0; color: var(--muted); font-size: 12px; font-weight: 500; padding-top: 0; }
+.health-table tbody th { font-weight: 600; min-width: 120px; }
+.health-table p { margin: 0; }
+.health-table p + p { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.health-table small { display: block; margin-top: 2px; font: inherit; font-size: 12px; color: var(--muted); }
+.health-table td.health-num { white-space: nowrap; }
+.health-name { display: block; }
+.health-table tbody th code { display: block; margin-top: 2px; font-weight: 400; color: var(--muted); }
+.health-issues { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px; }
+.health-issues li { font-size: 12px; color: var(--soft); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
+
+/* State chips: text always names the state; colour only reinforces it.
+   Unknown is deliberately a dashed neutral, never a shade of healthy. */
+.health-chip { display: inline-block; font-size: 12px; font-weight: 600; line-height: 1.5; padding: 0 8px; border-radius: 4px; border: 1px solid currentColor; white-space: nowrap; }
+.health-chip--healthy, .health-chip--level-ok { color: var(--green); background: color-mix(in srgb, var(--green) 12%, transparent); }
+.health-chip--attention, .health-chip--level-amber { color: var(--gold); background: color-mix(in srgb, var(--gold) 12%, transparent); }
+.health-chip--level-red { color: var(--red); background: color-mix(in srgb, var(--red) 12%, transparent); }
+.health-chip--unknown, .health-chip--level-unknown { color: var(--soft); border-style: dashed; }
+.health-chip--disabled, .health-chip--not_reported { color: var(--muted); border-color: var(--line); }
+.health-row--attention > th { box-shadow: inset 3px 0 0 var(--gold); padding-left: 10px; }
+
+/* Observer cycle: two concurrent lanes, then the serial tail, to scale. */
+.health-cycle { margin: 10px 0 0; }
+.health-lanes { display: grid; gap: 6px; }
+.health-lane { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; gap: 10px; }
+.health-lane-label { color: var(--muted); font-size: 12px; text-align: right; }
+.health-track { display: flex; height: 26px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.health-seg { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 0 6px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); border-right: 1px solid var(--surface); }
+.health-seg b { font-weight: 600; }
+.health-seg--fleet { background: color-mix(in srgb, var(--blue) 34%, var(--surface-2)); }
+.health-seg--projects { background: color-mix(in srgb, var(--blue) 20%, var(--surface-2)); }
+.health-seg--git { background: color-mix(in srgb, var(--green) 26%, var(--surface-2)); }
+.health-seg--git_health, .health-seg--usage, .health-seg--history { background: color-mix(in srgb, var(--gold) 22%, var(--surface-2)); }
+.health-gap { flex: none; }
+.health-cycle figcaption { margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.45; max-width: 80ch; }
+
+/* Agent brief */
+.health-brief-controls { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.health-brief-controls label { color: var(--muted); }
+.health-brief-controls select { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 3px 6px; }
+.health-brief-controls .secondary-button { border-radius: 4px; padding: 4px 10px; }
+.health-brief-controls .secondary-button:disabled { opacity: .55; cursor: default; }
+.health-brief-text { margin: 0; max-height: 280px; overflow: auto; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--text); font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }
+
+@media (max-width: 700px) {
+  /* Stack table rows as labelled blocks instead of scrolling sideways. */
+  .health-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .health-table, .health-table tbody, .health-table tr, .health-table th, .health-table td { display: block; width: 100%; }
+  .health-table tr { border-top: 1px solid var(--line); padding: 8px 0 10px; }
+  .health-table th, .health-table td { border-top: 0; padding: 3px 0; }
+  .health-table td[data-label]::before { content: attr(data-label); display: block; color: var(--muted); font-size: 12px; }
+  .health-table td.health-num { white-space: normal; }
+  .health-row--attention > th { padding-left: 10px; }
+  .health-lane { grid-template-columns: 1fr; gap: 3px; }
+  .health-lane-label { text-align: left; }
+  .health-readout { border-left: 0; border-top: 1px solid var(--line); }
+  .health-readout:first-child { border-top: 0; }
+}

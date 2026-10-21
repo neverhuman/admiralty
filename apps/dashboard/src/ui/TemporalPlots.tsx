@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { data, list, number, text, type Data, type LegacySnapshot } from '../legacy';
 import { formatCompactMeasurement, formatMeasurement } from '../formatNumbers';
 import { observedTokenSample } from '../usageMetrics';
@@ -282,7 +282,9 @@ function MetricCard({ metric, first, last, loadingHistory = false }: { metric: T
 
 export function TemporalPlots({ snapshot }: { snapshot: LegacySnapshot }) {
   const loadingHistory = snapshot.admiralty_delivery === 'initial';
-  const { metrics, rows, note, omittedRows } = buildTemporalMetrics(snapshot);
+  // Sorting and projecting up to thousands of history rows is the heaviest
+  // render step; recompute only for a new snapshot, not on every re-render.
+  const { metrics, rows, note, omittedRows } = useMemo(() => buildTemporalMetrics(snapshot), [snapshot]);
   const first = sourceTime(rows[0] ?? {}), last = sourceTime(rows.at(-1) ?? {});
   return <section className="temporal-plots" aria-label="History and trends · fleet temporal metrics">
     <div className="temporal-heading"><strong>Live trends</strong>{loadingHistory ? <span>Current source values · history is loading</span> : <><span>{rows.length} historical samples · click a metric to expand · scroll for all {metrics.length}</span><span title={note}>History <time dateTime={first || undefined}>{first || 'unknown'}</time> → <time dateTime={last || undefined}>{last || 'unknown'}</time>{omittedRows ? ` · ${omittedRows} earlier rows outside display bound` : ''}</span></>}</div>

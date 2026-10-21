@@ -7,17 +7,45 @@ import NativeTasks from './NativeTasks';
 import Models from './Models';
 import { useProfile } from '../profile';
 import { ProfileAvatar, ProfileSettings } from './Profile';
-import { navigate, useRoute, type RouteName } from '../router';
+import { navigate, routeHref, useRoute, type RouteName } from '../router';
+import CommandPalette, { type PaletteItem } from './CommandPalette';
+import './shell.css';
 
 const LiveViews = lazy(() => import('../features/live-views/LiveViews'));
 const CommandJourneys = lazy(() => import('./CommandJourneys'));
 const Intake = lazy(() => import('./Intake'));
 const Incidents = lazy(() => import('../features/incidents/Incidents'));
-type View = 'Legacy detailed view' | 'Overview' | 'Workplans' | 'Coordination' | 'Commands' | 'Intake' | 'Incidents' | 'Models' | 'Git Flow' | 'Fleet Atlas';
+const FleetHealth = lazy(() => import('../features/health/FleetHealth'));
+type View = 'Legacy detailed view' | 'Overview' | 'Workplans' | 'Coordination' | 'Commands' | 'Intake' | 'Incidents' | 'Models' | 'Git Flow' | 'Fleet Atlas' | 'Fleet health';
+
+/** Sidebar groups. Labels stay stable: browser journeys select by them. */
+const NAV_GROUPS: Array<{ label: string; items: Array<{ view: View; icon: string; hint: string }> }> = [
+  { label: 'OBSERVE', items: [
+    { view: 'Legacy detailed view', icon: '▦', hint: 'Projects, history, hierarchy and token efficiency' },
+    { view: 'Fleet health', icon: '◎', hint: 'Repository hygiene, host pressure, observer timing and the agent brief' },
+    { view: 'Git Flow', icon: '⑂', hint: 'Branches, worktrees and commits per repository' },
+    { view: 'Fleet Atlas', icon: '✦', hint: 'Command relationships and every observed agent' },
+  ] },
+  { label: 'OPERATE', items: [
+    { view: 'Overview', icon: '◫', hint: 'Native task projection summary' },
+    { view: 'Workplans', icon: '≡', hint: 'Native task stages and ownership' },
+    { view: 'Coordination', icon: '◉', hint: 'Message and acknowledgement counts' },
+    { view: 'Commands', icon: '⌘', hint: 'Create work and revise pending contracts' },
+    { view: 'Intake', icon: '↧', hint: 'Capture an original request' },
+  ] },
+  { label: 'GOVERN', items: [
+    { view: 'Incidents', icon: '!', hint: 'Scoped incident history and proposals' },
+    { view: 'Models', icon: '⚙', hint: 'Provider and model configuration' },
+  ] },
+];
+const THEME_KEY = 'admiralty.theme';
+function storedTheme(): 'dark' | 'light' {
+  try { return globalThis.localStorage?.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'; } catch { return 'dark'; }
+}
 
 function App() {
   const route = useRoute();
-  const destinations: Record<RouteName, View> = { detail: 'Legacy detailed view', overview: 'Overview', workplans: 'Workplans', coordination: 'Coordination', commands: 'Commands', intake: 'Intake', incidents: 'Incidents', models: 'Models', git: 'Git Flow', atlas: 'Fleet Atlas' };
+  const destinations: Record<RouteName, View> = { detail: 'Legacy detailed view', overview: 'Overview', workplans: 'Workplans', coordination: 'Coordination', commands: 'Commands', intake: 'Intake', incidents: 'Incidents', models: 'Models', git: 'Git Flow', atlas: 'Fleet Atlas', health: 'Fleet health' };
   const view = destinations[route.name];
   const setView = (value: View) => navigate((Object.keys(destinations) as RouteName[]).find(key => destinations[key] === value) ?? 'detail');
   const visualView = route.name === 'git' || route.name === 'atlas';
@@ -30,7 +58,17 @@ function App() {
   const [showProfile, setShowProfile] = useState(false);
   const profile = useProfile();
   const profileName = profile.displayName || 'Operator';
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  // Remembered per browser; the first visit stays dark, matching the console.
+  const [theme, setTheme] = useState<'dark' | 'light'>(storedTheme);
+  useEffect(() => { try { globalThis.localStorage?.setItem(THEME_KEY, theme); } catch { /* private mode */ } }, [theme]);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'k') { event.preventDefault(); setPaletteOpen(open => !open); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   const [connection, setConnection] = useState<ConnectionState>('connecting');
   const [retry, setRetry] = useState(0);
   const legacyView = view === 'Legacy detailed view';
@@ -38,6 +76,7 @@ function App() {
   const commandsView = view === 'Commands';
   const intakeView = view === 'Intake';
   const incidentsView = view === 'Incidents';
+  const healthView = view === 'Fleet health';
   const [hasOpenedIntake, setHasOpenedIntake] = useState(intakeView);
 
   useEffect(() => {
@@ -46,30 +85,37 @@ function App() {
 
   useEffect(() => {
     setFleet(null); setUpdated(null); setError('');
-    if (visualView || intakeView || incidentsView) return;
+    // Fleet health reads only the producer feed; it never needs the native
+    // event stream, so it does not hold an SSE slot or fetch a fleet snapshot.
+    if (visualView || intakeView || incidentsView || healthView) return;
     return watchFleet({ token: token || undefined,
       onFleet: (result) => {
         setFleet(result);
         setUpdated(new Date());
       }, onState: setConnection, onError: setError,
     });
-  }, [token, retry, visualView, intakeView, incidentsView]);
+  }, [token, retry, visualView, intakeView, incidentsView, healthView]);
 
   const totals = useMemo(() => fleet ? fleetTotals(fleet) : null, [fleet]);
+  const paletteItems: PaletteItem[] = useMemo(() => [
+    ...NAV_GROUPS.flatMap(group => group.items.map(({ view: item, hint }) => ({ id: `go:${item}`, label: item === 'Legacy detailed view' ? 'Fleet detail' : item, hint, group: 'Go to', href: routeHref((Object.keys(destinations) as RouteName[]).find(key => destinations[key] === item) ?? 'detail') }))),
+    { id: 'theme', label: `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`, hint: 'Remembered in this browser', group: 'Actions', run: () => setTheme(theme === 'dark' ? 'light' : 'dark') },
+    { id: 'access', label: 'Session access', hint: 'Paste a bearer token for private native data', group: 'Actions', run: () => setShowAccess(true) },
+  ], [theme]);
 
   return <div className={`app theme-${theme} ${legacyView ? 'fleet-console' : ''} ${visualView ? 'visual-console' : ''}`}>
     <aside className="sidebar">
       <a className="brand" href="#/detail">
         <img className="brand-mark" src={admiraltyMark} fetchPriority="low" decoding="async" alt="Admiralty" /><span><strong>ADMIRALTY</strong> <small>FLEET CONTROL</small></span>
       </a>
-      <div className="workspace-label">WORKSPACE</div>
-      <div className="workspace"><span className="workspace-dot" /> Fleet overview <span className="chevron" data-icon="⌄" aria-hidden="true" /></div>
       <nav aria-label="Main navigation">
-        <div className="nav-label">MONITOR</div>
-        {(['Legacy detailed view', 'Git Flow', 'Fleet Atlas', 'Overview', 'Workplans', 'Coordination', 'Commands', 'Intake', 'Incidents', 'Models'] as View[]).map((item, index) => <button key={item} className={`nav-item ${view === item ? 'active' : ''}`} title={item} aria-current={view === item ? 'page' : undefined} onClick={() => setView(item)}>
-          <span className="nav-icon" data-icon={['▦', '⑂', '✦', '◫', '≡', '◉', '⌘', '↧', '!', '⚙'][index]} aria-hidden="true" />{item === 'Overview' && fleet?.simulated ? 'Demo overview' : item}
-          {item === 'Coordination' && fleet && <span className="nav-count">{fleet.coordination.queued_messages}</span>}
-        </button>)}
+        {NAV_GROUPS.map(group => <div className="nav-group" key={group.label} role="group" aria-label={group.label.toLowerCase()}>
+          <div className="nav-label" aria-hidden="true">{group.label}</div>
+          {group.items.map(({ view: item, icon, hint }) => <button key={item} className={`nav-item ${view === item ? 'active' : ''}`} title={hint} aria-current={view === item ? 'page' : undefined} onClick={() => setView(item)}>
+            <span className="nav-icon" data-icon={icon} aria-hidden="true" />{item === 'Overview' && fleet?.simulated ? 'Demo overview' : item}
+            {item === 'Coordination' && fleet && <span className="nav-count">{fleet.coordination.queued_messages}</span>}
+          </button>)}
+        </div>)}
       </nav>
       <div className="sidebar-spacer" />
       <div className="brand-slot"><img className="brand-slot-mark" src={admiraltyMark} fetchPriority="low" decoding="async" alt="Admiralty mascot" /><span>Admiralty<br /><small>Coordinate. Build. Verify.</small></span></div>
@@ -79,35 +125,38 @@ function App() {
     <main className="main-area">
       <header className="topbar">
         <div className="breadcrumbs">Fleet <span data-icon="/" aria-hidden="true" /> <strong>{view}</strong></div>
-        <div className="top-actions"><span className={`connection ${!legacyView && !intakeView && !incidentsView && connection === 'connected' ? 'online' : !legacyView && !intakeView && !incidentsView && connection === 'paused' ? 'offline' : ''}`} aria-live="polite"><i />{intakeView || incidentsView ? 'Scoped operator access' : legacyView ? 'Detailed producer view' : connection === 'connected' ? 'Live updates' : connection === 'paused' ? 'Updates paused' : connection === 'reconnecting' ? 'Reconnecting' : 'Connecting'}</span>
+        <div className="top-actions"><span className={`connection ${!legacyView && !healthView && !intakeView && !incidentsView && connection === 'connected' ? 'online' : !legacyView && !healthView && !intakeView && !incidentsView && connection === 'paused' ? 'offline' : ''}`} aria-live="polite"><i />{intakeView || incidentsView ? 'Scoped operator access' : legacyView ? 'Detailed producer view' : healthView ? 'Producer health view' : connection === 'connected' ? 'Live updates' : connection === 'paused' ? 'Updates paused' : connection === 'reconnecting' ? 'Reconnecting' : 'Connecting'}</span>
+          <button type="button" className="palette-button" onClick={() => setPaletteOpen(true)} aria-keyshortcuts="Control+K Meta+K" title="Go to a view or run an action (Ctrl+K)">Go to… <span className="palette-shortcut">Ctrl K</span></button>
           <button className="icon-button" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><span data-icon={theme === 'dark' ? '☼' : '◐'} aria-hidden="true" /></button>
           <button className="operator-button" title="Your profile" onClick={() => setShowProfile(true)}><ProfileAvatar name={profileName} className="small" profile={profile} /><span>{profileName}</span><span data-icon="⌄" aria-hidden="true" /></button>
         </div>
       </header>
 
       <div className={`content ${legacyView ? 'legacy-content' : ''}`}>
-        <section className="page-heading"><div><div className="eyebrow">ADMIRALTY / {legacyView ? 'OBSERVED PRODUCER FLEET' : 'NATIVE CONTROL PLANE'}</div><h1>{legacyView ? 'Fleet detail' : view === 'Overview' && fleet?.simulated ? 'Demo overview' : view}</h1><p>{legacyView ? 'Live project progress · hierarchy · model mix · token efficiency' : view === 'Overview' ? 'Native task projections; separate from the detailed producer fleet.' : view === 'Workplans' ? 'Native task stages and current ownership.' : commandsView ? 'Create work, revise pending contracts and inspect task evidence.' : incidentsView ? 'Scoped incident history and local improvement proposals.' : intakeView ? 'Preserve an original request, inspect unresolved facts and record an immutable capture.' : view === 'Models' ? 'Provider and model configuration.' : 'Compact native coordination activity and message acknowledgements.'}</p></div>
-          <div className="heading-meta"><span className={`mode-pill ${!legacyView && !visualView && !intakeView && !incidentsView && fleet?.simulated ? 'simulation' : ''}`}>{incidentsView ? 'SCOPED INCIDENTS' : intakeView ? 'SCOPED INTAKE' : legacyView ? 'PRODUCER OBSERVATIONS' : fleet?.simulated ? 'SIMULATION · SYNTHETIC TASKS' : fleet ? 'NATIVE SNAPSHOT' : 'AWAITING DATA'}</span>{!legacyView && !intakeView && !incidentsView && <span className="freshness"><i />{updated ? `Updated ${updated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No snapshot yet'}</span>}</div>
+        <section className="page-heading"><div><div className="eyebrow">ADMIRALTY / {legacyView || healthView ? 'OBSERVED PRODUCER FLEET' : 'NATIVE CONTROL PLANE'}</div><h1>{legacyView ? 'Fleet detail' : view === 'Overview' && fleet?.simulated ? 'Demo overview' : view}</h1><p>{legacyView ? 'Live project progress · hierarchy · model mix · token efficiency' : healthView ? 'Repository hygiene, host pressure and observer timing from the latest producer snapshot.' : view === 'Overview' ? 'Native task projections; separate from the detailed producer fleet.' : view === 'Workplans' ? 'Native task stages and current ownership.' : commandsView ? 'Create work, revise pending contracts and inspect task evidence.' : incidentsView ? 'Scoped incident history and local improvement proposals.' : intakeView ? 'Preserve an original request, inspect unresolved facts and record an immutable capture.' : view === 'Models' ? 'Provider and model configuration.' : 'Compact native coordination activity and message acknowledgements.'}</p></div>
+          <div className="heading-meta"><span className={`mode-pill ${!legacyView && !visualView && !intakeView && !incidentsView && fleet?.simulated ? 'simulation' : ''}`}>{incidentsView ? 'SCOPED INCIDENTS' : intakeView ? 'SCOPED INTAKE' : legacyView || healthView ? 'PRODUCER OBSERVATIONS' : fleet?.simulated ? 'SIMULATION · SYNTHETIC TASKS' : fleet ? 'NATIVE SNAPSHOT' : 'AWAITING DATA'}</span>{!legacyView && !healthView && !intakeView && !incidentsView && <span className="freshness"><i />{updated ? `Updated ${updated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No snapshot yet'}</span>}</div>
         </section>
         {visualView && <Suspense fallback={<div className="loading-card" role="status">Loading observatory…</div>}><LiveViews mode={route.name === 'atlas' ? 'atlas' : 'git'} token={token || undefined} onAccess={() => setShowAccess(true)} /></Suspense>}
         {incidentsView && <Suspense fallback={<div role="status">Loading incident history…</div>}><Incidents token={token} /></Suspense>}
         {legacyView && <LegacyDetailed token={token || undefined} />}
+        {healthView && <Suspense fallback={<div className="loading-card" role="status">Loading fleet health…</div>}><FleetHealth token={token || undefined} onAccess={() => setShowAccess(true)} /></Suspense>}
         {!legacyView && !visualView && !intakeView && !incidentsView && fleet?.simulated && <div className="simulation-note">Simulation: these synthetic projects and tasks are separate from the real producer fleet.</div>}
-        {!legacyView && !visualView && !modelsView && !commandsView && !intakeView && !incidentsView && error && <div className="error-banner" role="status"><span>{connection === 'paused' ? 'Updates paused' : 'Connection issue'}</span><span>{error}{connection === 'reconnecting' ? ' · Reconnecting automatically.' : ''}</span><button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry connection</button></div>}
-        {!legacyView && !visualView && !modelsView && !commandsView && !intakeView && !incidentsView && !fleet && !error && <div className="loading-card">Connecting to the local native service…</div>}
+        {!legacyView && !healthView && !visualView && !modelsView && !commandsView && !intakeView && !incidentsView && error && <div className="error-banner" role="status"><span>{connection === 'paused' ? 'Updates paused' : 'Connection issue'}</span><span>{error}{connection === 'reconnecting' ? ' · Reconnecting automatically.' : ''}</span><button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry connection</button></div>}
+        {!legacyView && !healthView && !visualView && !modelsView && !commandsView && !intakeView && !incidentsView && !fleet && !error && <div className="loading-card">Connecting to the local native service…</div>}
         {fleet && view === 'Overview' && <Overview fleet={fleet} totals={totals!} onWorkplans={() => setView('Workplans')} />}
         {view === 'Workplans' && <NativeTasks fleet={fleet} error={error} connection={connection} />}
         {fleet && view === 'Coordination' && <Coordination fleet={fleet} />}
         {view === 'Models' && <Models token={token || undefined} onAccess={() => setShowAccess(true)} />}
         {commandsView && <Suspense fallback={<div className="loading-card" role="status">Loading task commands…</div>}><CommandJourneys token={token || undefined} onAccess={() => setShowAccess(true)} onRefreshSnapshot={() => setRetry(value => value + 1)} /></Suspense>}
         {(intakeView || hasOpenedIntake) && <div hidden={!intakeView}><Suspense fallback={<div className="loading-card" role="status">Loading request intake…</div>}><Intake token={token || undefined} onAccess={() => setShowAccess(true)} /></Suspense></div>}
-        <footer className="page-footer"><span>{incidentsView ? 'SCOPED INCIDENT HISTORY · LOCAL PROPOSALS' : intakeView ? 'RAW REQUEST INTAKE · SEPARATE SCOPED ACCESS' : route.name === 'git' ? 'GIT OBSERVATIONS · OPERATOR CHAT' : commandsView ? 'OPERATOR COMMANDS · SESSION ACCESS' : modelsView ? 'MODEL POLICY CONFIGURATION' : `READ ONLY · SOURCE: ${legacyView ? 'PRODUCER SNAPSHOT' : 'NATIVE FLEET API'}`}</span><span>{incidentsView ? 'Review required before action' : intakeView ? 'No execution or acceptance grant' : legacyView ? 'Source provenance and uncertainty preserved' : <>Native execution {fleet?.native_execution_qualified ? 'qualified' : 'not qualified'} <b data-icon="·" aria-hidden="true" /> Usage {formatUnknown(fleet?.coordination.measured_tokens)}</>}</span></footer>
+        <footer className="page-footer"><span>{incidentsView ? 'SCOPED INCIDENT HISTORY · LOCAL PROPOSALS' : intakeView ? 'RAW REQUEST INTAKE · SEPARATE SCOPED ACCESS' : route.name === 'git' ? 'GIT OBSERVATIONS · OPERATOR CHAT' : commandsView ? 'OPERATOR COMMANDS · SESSION ACCESS' : modelsView ? 'MODEL POLICY CONFIGURATION' : `READ ONLY · SOURCE: ${legacyView || healthView ? 'PRODUCER SNAPSHOT' : 'NATIVE FLEET API'}`}</span><span>{incidentsView ? 'Review required before action' : intakeView ? 'No execution or acceptance grant' : legacyView || healthView ? 'Source provenance and uncertainty preserved' : <>Native execution {fleet?.native_execution_qualified ? 'qualified' : 'not qualified'} <b data-icon="·" aria-hidden="true" /> Usage {formatUnknown(fleet?.coordination.measured_tokens)}</>}</span></footer>
       </div>
     </main>
     {showProfile && <ProfileSettings onClose={() => setShowProfile(false)} onAccess={() => { setShowProfile(false); setShowAccess(true); }} />}
     {showAccess && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAccess(false); }}>
       <section className="access-modal" role="dialog" aria-modal="true" aria-labelledby="access-title"><button className="modal-close" onClick={() => setShowAccess(false)} aria-label="Close access settings"><span data-icon="×" aria-hidden="true" /></button><div className="eyebrow">PRIVATE MODE</div><h2 id="access-title">Session access</h2><p>Bearer token stays in this page's memory and is sent only as an authorization header. It is never stored in the URL.</p><label htmlFor="bearer-token">Bearer token</label><input id="bearer-token" type="password" autoComplete="off" value={tokenDraft} onChange={(event) => setTokenDraft(event.target.value)} placeholder="Paste token" onKeyDown={(event) => { if (event.key === 'Enter') { setToken(tokenDraft.trim()); setShowAccess(false); } }} /><div className="modal-actions"><button className="secondary-button" onClick={() => { setToken(''); setTokenDraft(''); setShowAccess(false); }}>Clear session</button><button className="primary-button" onClick={() => { setToken(tokenDraft.trim()); setShowAccess(false); }}>Apply token</button></div></section>
     </div>}
+    {paletteOpen && <CommandPalette items={paletteItems} onClose={() => setPaletteOpen(false)} />}
   </div>;
 }
 

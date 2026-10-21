@@ -69,7 +69,7 @@ export function ProjectDetail({ project, compact = false, initial = false }: { p
 }
 export function LegacyFleetView({ snapshot, selected = 'all' }: { snapshot: LegacySnapshot; selected?: string }) {
   const initial = snapshot.admiralty_delivery === 'initial';
-  const projects = projectDetails(snapshot), visible = selected === 'all' ? projects : projects.filter(project => project.id === selected);
+  const projects = useMemo(() => projectDetails(snapshot), [snapshot]), visible = selected === 'all' ? projects : projects.filter(project => project.id === selected);
   return <>
     {initial && <div className="legacy-provenance" role="status">Live project summaries loaded. Charts and detailed evidence are loading in the background.</div>}
     <TemporalPlots snapshot={snapshot} />
