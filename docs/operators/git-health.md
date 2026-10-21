@@ -79,6 +79,31 @@ fingerprints against their own durable delivery receipts so a skipped polling
 cycle does not lose a notification. Captain delivery is handled by the server's
 configured command inbox. Evaluation itself sends no messages or model turns.
 
+## Hygiene and activity metrics
+
+Each report also carries a `metrics` block computed from the same observer cut.
+Metrics are descriptive: they never change `state`, `actionable` or the
+fingerprint, so they cannot create alerts or captain messages. Ages are relative
+to the report's `observed_utc`, so a retained report gives the same numbers when
+re-read.
+
+| Field | Meaning |
+| --- | --- |
+| `local_branches` / `unmerged_branches` / `merged_branches` / `diverged_branches` | Local `refs/heads/*` other than the integration ref, split by relation. *Merged* means fully contained in the integration ref: a cleanup candidate once its owner confirms; Admiralty never deletes refs. |
+| `remote_unmerged_refs` | Remote-tracking refs (excluding `*/HEAD`) with commits absent from integration: pushed but not integrated work. |
+| `unknown_refs` | Refs whose ancestry left the loaded graph. |
+| `max_unmerged_behind` / `max_unmerged_ahead` | How far the most-behind lane trails integration, and the largest pending batch. `lower_bound` follows the branch counts. |
+| `oldest_unmerged_tip_age_s` | Age of the oldest unmerged local tip commit. Commit age is history, not proof of stalled work. |
+| `dirty_checkouts`, `conflicted_checkouts`, `detached_checkouts`, `locked_checkouts`, `prunable_checkouts`, `unknown_state_checkouts` | Worktree counts. |
+| `cleanup_candidate_checkouts` | Linked checkouts that are clean, unlocked, not prunable and whose HEAD is fully contained in integration: the captain hygiene "merged and clean" rule. Process activity is not observed; confirm before `git worktree remove`. |
+| `integration_tip_age_s` | Age of the integration tip. |
+| `integration_commits_24h` / `integration_commits_7d` | First-parent commits on the integration ref inside the window (`lower_bound` when the walk leaves the loaded graph first). |
+| `integration_merges_7d` / `integration_reverts_7d` / `integration_fixups_7d` | Merge commits (zero under a rebase-only policy), `Revert "…"` commits and `fixup!`/`squash!`/`amend!` commits that reached integration. |
+
+`history.jsonl` keeps a compact per-project sample of these metrics (`git:
+{st, un, bh, dt, cc, c7}`) for trend plots, re-validated through the history
+allowlist like every other retained metric.
+
 This metric describes a bounded observation, not acceptance or merge safety.
 Before integration, inspect full worktree status, exact diff, merge bases,
 repository policy and combined candidate tests. A clean textual merge cannot
