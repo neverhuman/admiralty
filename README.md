@@ -39,7 +39,7 @@ cargo run -p admiralty-cli --locked -- demo --snapshot-only
 cargo run -p admiralty-cli --locked -- --help
 ```
 
-The current install path is a source build. There is no published, qualified binary release or supported one-command installer yet. See [platform support and release gates](docs/contributors/community-readiness.md#platform-support).
+The current install path is a source build. `cargo xtask dist` builds one self-contained `admiralty` executable with the console compiled in (`admiralty serve`, `admiralty observe` and every operator tool), plus checksums and a build record; see [single-binary deployment](docs/operators/single-binary.md). There is no published, qualified binary release or supported one-command installer yet. See [platform support and release gates](docs/contributors/community-readiness.md#platform-support).
 
 ## See the production console
 
@@ -93,6 +93,8 @@ The newer Git Flow features below are source-preview capabilities. The 19 Octobe
 - **Rust Git health:** evaluates the already collected graph, refs and checkouts without running Git commands; the dashboard reads cached reports. Coverage gaps remain explicitly unknown; configured alerts notify the project Captain's inbox. Reports never change repositories or establish merge safety. See [Git health](docs/operators/git-health.md).
 - **Scoped native coordination:** durable typed captain–admiral messages, exact retries, own-inbox application receipts, task contracts and compact context through authenticated CLI/MCP and HTTP adapters.
 - **Offline tools:** workplan previews and immutable revision registration, contract validation, backups and restore rehearsals. Release tools stage explicit inputs, create archives and install a new private version directory.
+- **Fleet operations in one binary:** the super-captain audit and ticker (`admiralty sc-audit`, `sc-tick`, `queue-health`), screen operator tools (`admiralty fleet …`), rollout observation and packets, history export/publish and OpenCode qualification are Rust subcommands. See [fleet operator tools](docs/operators/fleet-ops.md).
+- **Jankurai standing:** when a repository carries `.jankurai/repo-score.json`, the observer reports its score, decision, findings by severity, caps and weakest dimension, and **Fleet detail** shows it per project.
 
 Task recording, routing proposals, a successful process or a green subset of checks does not establish executed or accepted work. Native coding-provider admission, trusted verification, settlement and restart recovery remain separate release gates; see [current qualification](docs/operators/release-status.md).
 
@@ -103,12 +105,10 @@ Configure the Rust observer for your own repositories and sources using the [nat
 The convenience launcher connects an existing producer feed to the React console:
 
 ```sh
-pnpm live \
-  --status /absolute/path/status.json \
-  --index "$PWD/dashboard/index.html"
+pnpm live --status /absolute/path/status.json
 ```
 
-Open [http://127.0.0.1:18891/](http://127.0.0.1:18891/). The original detailed HTML remains at `/legacy/`; **Git Flow** and **Fleet Atlas** use `#/git` and `#/atlas`. This launcher also needs **Python 3** to create protected preview state. Native HTTP serving and observation ingestion run in Rust.
+Open [http://127.0.0.1:18891/](http://127.0.0.1:18891/). **Fleet detail** (`#/detail`) renders the producer feed; `/legacy/` redirects there unless you pass `--index` with a retained HTML page. **Git Flow** and **Fleet Atlas** use `#/git` and `#/atlas`. `pnpm live` runs `cargo xtask live`; serving, ingestion and the protected preview state are all Rust.
 
 The launcher prints the private access-token **file path**, never the token value. Use **Session access** for authenticated native data and model settings. This convenience mode explicitly enables public loopback reads of the existing detailed feed. Keep the listener on loopback and use an authenticated SSH tunnel for remote access.
 
@@ -132,17 +132,17 @@ For protected task intake and scoped agent access, follow [native startup](docs/
 | Develop and reproduce checks | [Contributing](CONTRIBUTING.md), [local CI](docs/operators/local-ci.md) |
 | Review architecture, evidence and remaining implementation | [Master plan](docs/plans/admiralty-v2/MASTER_PLAN.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [remaining-work audit](docs/plans/admiralty-v2/REMAINING_20261019.md) |
 
-The Rust crates contain domain contracts, Store, runtime, server, observer, CLI and integration tests. `apps/dashboard` contains the React application. `schemas` and `packages/contracts` hold the public contract pipeline. `dashboard`, `captains` and `tools` retain documented compatibility and fleet operating utilities.
+The Rust crates contain domain contracts, Store, runtime, server, observer, CLI, fleet operations, release qualification, repository automation (`cargo xtask`) and integration tests. `apps/dashboard` contains the React application. `schemas` and `packages/contracts` hold the public contract pipeline. `captains` holds fleet operating briefs. The repository has no Python; see [the completed migration](PY_TO_RUST_PLAN.md).
 
 ## Develop and validate
 
-Use the pinned toolchains above, **Python 3.12+** for retained compatibility tests, and an installed **Chrome or Chromium** for browser qualification. Then run:
+Use the pinned toolchains above and an installed **Chrome or Chromium** for browser qualification. Then run:
 
 ```sh
 pnpm check
 ```
 
-This runs the complete local application matrix: frozen dependency installation, Rust formatting/Clippy/tests, compatibility and audit fixtures, package/canary checks, native binary builds and smoke, contracts, frontend unit tests/typechecks/build, and real browser/accessibility journeys. It does not invoke paid providers. Logs are retained in a private directory printed by the command. See [local CI](docs/operators/local-ci.md) for browser selection and build-cache overrides.
+This runs `cargo xtask check`, the complete local application matrix: frozen dependency installation, Rust formatting/Clippy/tests (including the audit, observer and tool parity suites), package/canary checks, native binary builds and smoke, contracts, script typechecks, frontend unit tests/typechecks/build, and real browser/accessibility journeys. `cargo xtask check --list` shows the stages; `--from`, `--only` and `--skip-browser` select them. It does not invoke paid providers. Logs are retained in a private directory printed by the command. See [local CI](docs/operators/local-ci.md) for browser selection and build-cache overrides.
 
 Linux-only checks and hosted CI are independent evidence; a local pass is not a full release or deployment claim. Keep one integration PR, preserve original failures and run checks before pushing. Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing shared contracts or generated files.
 
