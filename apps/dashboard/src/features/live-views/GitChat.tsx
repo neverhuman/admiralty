@@ -162,7 +162,7 @@ export default function GitChat({
         onToggle(next);
       }}>
         <span aria-hidden="true" data-icon="◌" />
-        <span>{projectName} · Chat</span>
+        <span>{`${projectName} · Chat`}</span>
         <span aria-hidden="true" data-icon={record.open ? "−" : "+"} />
       </button>
       {record.open && <div id={panelId} className="git-chat-panel">
