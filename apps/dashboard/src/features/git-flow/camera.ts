@@ -62,7 +62,8 @@ export function anchorCamera(camera: Camera, world: Point, screen: Point): Camer
 /** Preserve the world point under the pointer, including when a scale limit applies. */
 export function zoomGraphAt(camera: Camera, point: Point, factor: number, fitScale: number): Camera {
   if (!validCamera(camera) || !finitePoint(point) || !Number.isFinite(factor) || factor <= 0 || !Number.isFinite(fitScale) || fitScale <= 0) return camera;
-  const minScale = Math.min(4, fitScale / 2);
+  // Ordinary scenes may zoom to1%; exceptionally large scenes retain a smaller fit-derived bound.
+  const minScale = Math.min(.01, fitScale / 2);
   if (!(minScale > 0)) return camera;
   const world = worldAt(camera, point);
   if (!world) return camera;

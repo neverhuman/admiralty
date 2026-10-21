@@ -265,6 +265,16 @@ describe("repository Git investigation against isolated native source", () => {
     observations.push({ label: "native pan/modifier zoom/held-button drag and focus guards", after });
   });
 
+  it("zooms below5% with native controls and restores actual size and padded Fit", async () => {
+    await connect(); await expand(); const fitted=await camera(); expect(fitted.k).toBeGreaterThan(.1);
+    for(let n=0;n<32&&(await camera()).k>=.05;n++) await realClick('button[aria-label="Zoom project out"]');
+    const small=await camera(); expect(small.k).toBeGreaterThan(0); expect(small.k).toBeLessThan(.05); expect(small.intent).toBe('manual');
+    await realClick('button[aria-label="Reset project zoom to 100%"]'); expect((await camera()).k).toBe(1);
+    await fitBounds('Fit restored after native below5% zoom'); const restored=await camera();
+    expect(restored.k).toBeCloseTo(fitted.k,12); expect(restored.intent).toBe('fit');
+    observations.push({label:'native below5% manual zoom,100% and Fit restore',fitted,small,restored});
+  });
+
   async function pointerSequence(type: string, id: number, point: {x:number;y:number}) {
     await browser.evaluate(`(() => {
       const e=document.querySelector('.git-project-stage');
