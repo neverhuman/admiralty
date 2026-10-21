@@ -12,7 +12,8 @@ Install Rust 1.95.0 with `rustfmt` and `clippy` (pinned by
 [`rust-toolchain.toml`](rust-toolchain.toml)), Node 24, pnpm 11.15.1 (pinned in
 [`package.json`](package.json)), Bash and a native C build toolchain for
 dependencies that compile native code. The retained compatibility fixture
-checks also use Python 3.12+ (qualified on 3.12 and 3.14), as does the convenience `pnpm live` launcher.
+checks also use Python 3.12+ (qualified on 3.12 and 3.14); the `pnpm live`
+launcher no longer does.
 Native HTTP serving and ingestion use Rust.
 Install JavaScript dependencies
 from the lockfile without running dependency lifecycle scripts:

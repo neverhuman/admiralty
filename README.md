@@ -108,7 +108,7 @@ pnpm live \
   --index "$PWD/dashboard/index.html"
 ```
 
-Open [http://127.0.0.1:18891/](http://127.0.0.1:18891/). The original detailed HTML remains at `/legacy/`; **Git Flow** and **Fleet Atlas** use `#/git` and `#/atlas`. This launcher also needs **Python 3** to create protected preview state. Native HTTP serving and observation ingestion run in Rust.
+Open [http://127.0.0.1:18891/](http://127.0.0.1:18891/). The original detailed HTML remains at `/legacy/`; **Git Flow** and **Fleet Atlas** use `#/git` and `#/atlas`. The launcher creates its protected preview state with `admiralty state init`; it no longer needs Python. Native HTTP serving and observation ingestion run in Rust. **Fleet health** (`#/health`) summarizes repository hygiene, host pressure, observer timing and the agent brief.
 
 The launcher prints the private access-token **file path**, never the token value. Use **Session access** for authenticated native data and model settings. This convenience mode explicitly enables public loopback reads of the existing detailed feed. Keep the listener on loopback and use an authenticated SSH tunnel for remote access.
 
@@ -128,6 +128,8 @@ For protected task intake and scoped agent access, follow [native startup](docs/
 | Understand Git and agent views | [Live views](docs/operators/live-views.md) |
 | Configure per-project Captain/Admiral chat and verify delivery | [Operator chat](docs/operators/operator-chat.md) |
 | Configure Git health policy and captain alerts | [Git health](docs/operators/git-health.md) |
+| Give agents a compact fleet brief and read compact logs | [Agent brief and compact logs](docs/operators/agent-brief.md) |
+| Deploy with versions, systemd units, readiness and rollback | [Clean deployment](docs/operators/deployment-systemd.md) |
 | Back up, rehearse recovery or install an explicit archive | [Recovery manifests](docs/operators/recovery-manifest.md), [native archive](docs/operators/native-archive.md), [private version installation](docs/operators/native-install.md) |
 | Develop and reproduce checks | [Contributing](CONTRIBUTING.md), [local CI](docs/operators/local-ci.md) |
 | Review architecture, evidence and remaining implementation | [Master plan](docs/plans/admiralty-v2/MASTER_PLAN.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [remaining-work audit](docs/plans/admiralty-v2/REMAINING_20261019.md) |

@@ -79,6 +79,27 @@ fingerprints against their own durable delivery receipts so a skipped polling
 cycle does not lose a notification. Captain delivery is handled by the server's
 configured command inbox. Evaluation itself sends no messages or model turns.
 
+## Descriptive metrics
+
+`status.json` also publishes `git_metrics`, keyed by project ID, from the same
+cut as `git_health`. Metrics never raise alerts and are excluded from the health
+fingerprint, so adding them did not change alert deduplication.
+
+| Group | Fields |
+| --- | --- |
+| `refs` | Local branches, remote branches, tags and other refs. |
+| `branches` | Branches compared with the integration ref and their relation counts (`equal`, `ahead_only`, `behind_only`, `diverged`, `unrelated`, `unknown`); `merged` (equal or behind: review candidates for cleanup, never deleted); `max_ahead`/`max_behind`; `unintegrated_commits` (distinct commits reachable from any branch but not integration); unmerged tips whose reported commit time is older than 7 and 30 days; `tip_time_unknown`; `oldest_unmerged_tip_utc`. |
+| `checkouts` | Totals for linked, detached, locked, prunable, dirty, clean and **unknown** working state (never counted as clean), checkouts with conflicts and summed staged/unstaged/untracked/conflict file counts. |
+| `integration` | Integration tip commit time and age, loaded first-parent length and whether it reached a root commit. |
+| `activity` | For 24 h, 7 d and 30 d windows ending at observation time: integration first-parent commits, merges among them, and all loaded commits. |
+
+Counts use the same `{value, lower_bound}` shape as health. A partial scan sets
+`complete: false` and marks counts that may grow; values that cannot be
+established (no policy, no clock, incomplete integration ancestry) are `null`.
+Commit times are reported committer times: an old tip describes age, not
+stalled or abandoned work. The **Fleet health** view and the
+[agent brief](agent-brief.md) summarize these metrics.
+
 This metric describes a bounded observation, not acceptance or merge safety.
 Before integration, inspect full worktree status, exact diff, merge bases,
 repository policy and combined candidate tests. A clean textual merge cannot
@@ -89,6 +110,7 @@ Validation:
 
 ```sh
 rtk cargo test -p admiralty-core git_health --locked
+rtk cargo test -p admiralty-core git_metrics --locked
 rtk cargo test -p admiralty-observe git_health --locked
 rtk cargo test -p admiralty-core --release git_health::tests::benchmark_64_checkouts_512_commits --locked -- --ignored --nocapture
 ```

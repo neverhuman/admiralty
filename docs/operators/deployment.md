@@ -8,11 +8,16 @@ a local smoke result and an installed/running revision are separate facts.
 Run the read-only release evidence preflight from the source checkout:
 
 ```sh
-python3 tests/qualification/release_evidence.py \
+admiralty release evidence \
   --manifest /absolute/evidence/release.json \
   --evidence-root /absolute/evidence \
   --expected-revision FULL_SOURCE_GIT_SHA
 ```
+
+The Rust command replaces the retired `tests/qualification/release_evidence.py`
+with the same gates, bounds and exit codes: 0 ready for independent review,
+1 incomplete, 2 invalid. For installing, activating and rolling back a version
+see [clean deployment](deployment-systemd.md).
 
 The bounded JSON manifest contains `schema_version: 1`, `source_revision`, and
 up to 64 `checks`. Each check names one gate below and has `status` (`passed`,
