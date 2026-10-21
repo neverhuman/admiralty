@@ -87,15 +87,23 @@ describe("continuous Git camera", () => {
     const maximum = zoomGraphAt(camera, point, 1e300, 0.04);
     expect(maximum.k).toBe(4); expectPoint(projectPoint(maximum, world), point);
     const minimum = zoomGraphAt(camera, point, 1e-300, 0.04);
-    expect(minimum.k).toBe(0.02); expectPoint(projectPoint(minimum, world), point);
+    expect(minimum.k).toBe(0.01); expectPoint(projectPoint(minimum, world), point);
   });
 
   it("derives the minimum zoom from fit scale and respects the absolute maximum", () => {
     const camera = { x: 0, y: 0, k: 1 }, point = { x: 50, y: 30 };
     expect(zoomGraphAt(camera, point, 1e-300, 1e-9).k).toBe(5e-10);
-    const capped = zoomGraphAt(camera, point, 0.5, 20);
+    const capped = zoomGraphAt(camera, point, 1e300, 20);
     expect(capped.k).toBe(4);
     expectPoint(worldAt(capped, point), worldAt(camera, point)!);
+  });
+
+  it.each([.29255, .69, 1])("allows manual zoom below5% for an ordinary fitted scale %s", (fitScale) => {
+    const camera={x:48,y:137,k:fitScale}, point={x:520,y:270}, world=worldAt(camera,point)!;
+    const zoomed=zoomGraphAt(camera,point,1e-9,fitScale);
+    expect(zoomed.k).toBe(.01); expect(zoomed.k).toBeLessThan(.05);
+    expectPoint(projectPoint(zoomed,world),point);
+    expect(zoomGraphAt(zoomed,point,1e-9,fitScale)).toEqual(zoomed);
   });
 
   it("anchors a selected world point without altering scale", () => {
