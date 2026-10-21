@@ -88,7 +88,30 @@ mod tests {
     fn root() -> CliResult<tempfile::TempDir> {
         Ok(tempfile::Builder::new()
             .prefix("adm-preview-")
+            // tempfile's default directory mode is 0777 before the caller's
+            // umask. Fixtures must be private at creation on shared runners.
+            .permissions(fs::Permissions::from_mode(0o700))
             .tempdir_in(std::env::temp_dir().canonicalize()?)?)
+    }
+
+    #[test]
+    fn private_fixture_supports_a_permissive_caller_umask() -> CliResult<()> {
+        // Isolate umask in a child: never change this test process's global mask.
+        let output = std::process::Command::new("bash")
+            .args(["-c", "umask 000; exec \"$@\"", "preview-fixture"])
+            .arg(std::env::current_exe()?)
+            .args([
+                "--exact",
+                "preview::tests::private_creation_is_idempotent_and_matches_daemon_reader",
+                "--test-threads=1",
+            ])
+            .output()?;
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        Ok(())
     }
 
     #[test]

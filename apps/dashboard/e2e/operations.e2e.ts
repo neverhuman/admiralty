@@ -11,6 +11,7 @@ function fixture() {
     observed_commits: 5, observed_refs: 2, observed_checkouts: 1, missing_parent_oids: [], shallow: false,
     truncated: false, observation_error: false, fingerprint: 'fixture-health', issues: [], branches: [] };
   return { generated_utc: stamp, interval_s: 45,
+    order: ['harbor', ...Array.from({ length: 75 }, (_, i) => `p${i}`)],
     projects: { harbor: { name: 'Harbor' }, ...Object.fromEntries(Array.from({ length: 75 }, (_, i) => [`p${i}`, { name: `Project ${i}` }])) },
     git_health: { harbor: { ...report, state: 'attention', actionable: true }, p0: report },
     collector: { implementation: 'rust', duration_ms: 12.34, stages_ms: { git: 3.21 } },
@@ -24,6 +25,8 @@ describe('fleet operations on the built Rust service', () => {
   beforeAll(async () => {
     mkdirSync(evidence, { recursive: true });
     server = await startIsolatedNativeAdmiraltyServer({ legacySnapshot: fixture() });
+    const initial = await fetch(`${server.baseUrl}/v1/legacy/detail/initial`, { headers: { Authorization: `Bearer ${server.ownerToken}` } });
+    expect(initial.status, await initial.text()).toBe(200);
     browser = await launchBrowserHarness();
   }, 30_000);
   afterAll(async () => { await browser?.close(); await server?.close(); });
