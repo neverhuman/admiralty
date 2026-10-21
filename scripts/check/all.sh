@@ -66,6 +66,7 @@ run cargo clippy --workspace --all-targets --locked -- -D warnings
 run cargo test --workspace --locked
 run python3 -m unittest discover -s tests/legacy -v
 run python3 -m unittest discover -s tests -p 'test_sc_audit*.py' -v
+run python3 -m unittest discover -s tests -p 'test_native_queue_health.py' -v
 run python3 tests/fixtures/legacy/verify.py
 run python3 scripts/release/package.py --self-test
 run python3 scripts/check/canary-smoke.py --self-test

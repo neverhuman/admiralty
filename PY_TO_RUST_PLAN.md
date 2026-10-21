@@ -2,7 +2,7 @@
 
 Per Jepson's 2026-10-18 stack ruling (`JEPSON_RULING_20261018T1940Z_stack_rust_jankurai.md`), Admiralty's target language stack is **Rust** (backend, CLI, tools, compute, smoke/release harnesses) and **Vite + TypeScript + React** (UI). All existing Python files are inventoried below with line counts, purpose, disposition, and assigned porting tasks. The owned production Python collector, server and observer have already been retired in favor of Rust; retained compatibility source is not authorization to restart them. Remaining ports preserve actual behavior and tests before source deletion.
 
-## 1. Complete Inventory of Existing Python Files (`40` files, `11,370` LOC)
+## 1. Complete Inventory of Existing Python Files (`42` files, `11,746` LOC)
 
 | Path | LOC | Purpose | Disposition | Tracker Task |
 | :--- | ---: | :--- | :--- | :--- |
@@ -19,7 +19,7 @@ Per Jepson's 2026-10-18 stack ruling (`JEPSON_RULING_20261018T1940Z_stack_rust_j
 | `scripts/demos/verify.py` | 71 | Actual capture/encoded-media integrity verifier | Port to Rust subcommand in `admiralty-cli` & delete | `ADM-PY02` |
 | `scripts/release/package.py` | 609 | Deterministic release tarball & manifest builder | Port to Rust `admiralty-cli release package` & delete | `ADM-PY02` |
 | `scripts/release/qualify_native.py` | 188 | Native release qualification runner | Port to Rust `admiralty-cli release qualify` & delete | `ADM-PY02` |
-| `tools/sc_audit.py` | 1,776 | Fleet-wide Super-Captain watchdog & stall/PR/GPU auditor | Port to Rust `admiralty-cli sc-audit` binary with parity tests & delete | `ADM-PY03` |
+| `tools/sc_audit.py` | 1,826 | Fleet-wide Super-Captain watchdog & stall/PR/GPU auditor | Port to Rust `admiralty-cli sc-audit` binary with parity tests & delete | `ADM-PY03` |
 | `tools/rollout_observe.py` | 521 | Bounded screen/worktree metadata observer | Port to Rust `admiralty-observe` / `admiralty-runtime::workspace::registry` & delete | `ADM-PY04` |
 | `tools/rollout_packets.py` | 559 | Rollout packet manifest & capsule exporter | Port to Rust `admiralty-cli workplans` & delete | `ADM-PY04` |
 | `tools/bin/classify_screen.py` | 357 | Screen process tree classifier | Port to Rust `admiralty-runtime::providers::observation` & delete | `ADM-PY04` |
@@ -45,7 +45,11 @@ Per Jepson's 2026-10-18 stack ruling (`JEPSON_RULING_20261018T1940Z_stack_rust_j
 | `tests/test_sc_audit_stall_rollback.py` | 43 | Unit tests for `tools/sc_audit.py` stall rollback | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
 | `tests/test_sc_audit_stdin.py` | 24 | Unit tests for `tools/sc_audit.py` stdin hygiene | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
 | `tests/test_sc_audit_survey.py` | 17 | Unit tests for `tools/sc_audit.py` survey | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
-| `tests/test_sc_audit_watchdog.py` | 133 | Unit tests for `tools/sc_audit.py` watchdog | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
+| `tests/test_sc_audit_watchdog.py` | 140 | Unit tests for `tools/sc_audit.py` watchdog | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
+| `tools/native_queue_health.py` | 77 | Bounded read-only native queue metadata / endpoint preconditions for retained audit | Fleet Admiral owner; port to Rust `admiralty-cli sc-audit` and delete; no transport enforcement | `ADM-PY03` |
+| `tests/test_native_queue_health.py` | 242 | Synthetic/mocked draft, queue and endpoint regression controls | Fleet Admiral owner; port with Rust audit tests and delete | `ADM-PY06` |
+
+Approved narrowly by the [21 October 2026 Admiral decision](https://github.com/neverhuman/admiralty/pull/166#issuecomment-6307405031), receipt SHA256 `cf32cfd9ec8fa87af6326f78bc7f9c11e33150bc81f4a730f64158f8413e0daf`. Owner for these two additions is the existing sole Fleet Admiral; PR166’s source writer owns this repair integration. Retirement requires Rust parity for unknown/multiline drafts, read-only bounded queue metadata, missing/corrupt/WAL data, and endpoint preconditions before deleting both compatibility files. The helper remains unwired and does not establish queue consumption or delivery authority.
 
 ## 2. Tracker Tasks for Remaining Parity and Source Retirement
 

@@ -1,3 +1,4 @@
+# Scoped amendment: exactly two retained-audit paths approved 2026-10-21, PR166 comment6307405031.
 # Existing 40-file exception ceiling, SC-DEC-186J (2026-10-19).
 # Source d858a9a292a9e458d5851531e1e548f817908520.
 # Adding a path requires explicit maintainer review; documenting a new path alone cannot authorize it.
@@ -41,3 +42,5 @@ tools/probe_opencode.py
 tools/rollout_observe.py
 tools/rollout_packets.py
 tools/sc_audit.py
+tests/test_native_queue_health.py
+tools/native_queue_health.py

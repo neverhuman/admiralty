@@ -11,11 +11,14 @@ def codes(): return [f['code'] for f in sc.findings]
 
 class Watch(unittest.TestCase):
     def setUp(self): sc.findings.clear()
-    def test_claude_auto_mode_idle_is_red_after_20_min(self):
+    def test_claude_footer_without_verified_empty_composer_requires_inspection(self):
         prev = {'watch:jopedime_flywheel': {'hash': sc.tail_hash(CLAUDE_IDLE), 'since': '2026-10-18T14:32:00+00:00'}}
         newh = {}
         w = sc.idle_watch({'jopedime_flywheel': 'x'}, {'jopedime_flywheel': 'jopedime'}, prev, newh, NOW, hc=lambda n, p: CLAUDE_IDLE)
-        self.assertFalse(w['jopedime_flywheel']['busy']); self.assertEqual(codes(), ['MANAGED_SCREEN_IDLE'])
+        self.assertFalse(w['jopedime_flywheel']['busy']); self.assertEqual(codes(), ['MANAGED_SCREEN_INPUT_UNVERIFIED'])
+        self.assertEqual(w['jopedime_flywheel']['composer_state'], 'unknown')
+        self.assertFalse(w['jopedime_flywheel']['idle_eligible'])
+        self.assertNotRegex(sc.findings[0]['text'], r'(?i)alt\+m|file pointer \+ CR')
         self.assertTrue(sc.findings[0]['must_act'])
     def test_busy_agy_not_idle_and_first_sighting_not_flagged(self):
         sc.idle_watch({'jopedime_agy': 'x'}, {'jopedime_agy': 'jopedime'}, {}, {}, NOW, hc=lambda n, p: AGY_BUSY)
@@ -49,13 +52,17 @@ class Watch(unittest.TestCase):
                      '~~~text\n' + example + '\n~~~']:
             with self.subTest(text=text):
                 self.assertFalse(sc.tail_busy(text + '\n >\n'))
-    def test_zero_monitor_footer_stays_red_after_twenty_minutes(self):
+    def test_zero_monitor_unknown_composer_still_requires_action(self):
         text = CLAUDE_IDLE + 'auto mode on · 0 monitors · ↓ to manage\n'
         prev = {'watch:fixture_worker': {'hash': sc.tail_hash(text), 'since': '2026-10-18T14:32:00+00:00'}}
         watched = sc.idle_watch({'fixture_worker': 'x'}, {'fixture_worker': 'fixture-project'},
                                 prev, {}, NOW, hc=lambda n, p: text)
         self.assertFalse(watched['fixture_worker']['busy'])
-        self.assertEqual(codes(), ['MANAGED_SCREEN_IDLE'])
+        self.assertEqual(codes(), ['MANAGED_SCREEN_INPUT_UNVERIFIED'])
+        self.assertFalse(watched['fixture_worker']['idle_eligible'])
+        self.assertEqual(watched['fixture_worker']['composer_state'], 'unknown')
+        self.assertTrue(sc.findings[0]['must_act'])
+        self.assertNotRegex(sc.findings[0]['text'], r'(?i)alt\+m|file pointer \+ CR')
     def test_newer_completed_or_zero_footer_overrides_old_running_footer(self):
         prior = 'Brewed for 39s · done 3:46 PM · 1 monitor still running\n'
         for current in ['Cooked for 2s · done 3:48 PM\n',

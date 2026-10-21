@@ -1,6 +1,6 @@
 # Python Exceptions (`JEPSON_RULING_20261018T1940Z`)
 
-Per Jepson's 2026-10-18 stack ruling, Admiralty's allowed language stack is **Rust + Vite/TypeScript/React**. No new Python files are permitted. The existing 40 legacy/smoke/qualification Python files below are temporarily retained solely to keep legacy dashboard tests, isolated binary smoke harnesses, release qualification scripts, and the `sc_audit` watchdog operational as compatibility/parity source after the owned production collector/server/observer already moved to Rust, and are scheduled for Rust replacement and deletion in [`PY_TO_RUST_PLAN.md`](PY_TO_RUST_PLAN.md).
+Per Jepson's 2026-10-18 stack ruling, Admiralty's allowed language stack is **Rust + Vite/TypeScript/React**. New Python requires an explicit maintainer exception. The 42 legacy/smoke/qualification Python files below, including the two narrowly approved audit compatibility additions, are temporarily retained solely to keep legacy dashboard tests, isolated binary smoke harnesses, release qualification scripts, and the `sc_audit` watchdog operational as compatibility/parity source after the owned production collector/server/observer already moved to Rust, and are scheduled for Rust replacement and deletion in [`PY_TO_RUST_PLAN.md`](PY_TO_RUST_PLAN.md).
 
 `cargo test -p admiralty-testkit --test python_policy --locked` enforces the
 reviewed ceiling in `tests/fixtures/python-baseline.txt` and exact exception/plan
@@ -50,3 +50,12 @@ maintainer's explicit exception and ordinary exact-head review.
 | `tests/test_sc_audit_stdin.py` | Parity test for `tools/sc_audit.py`; ported to Rust test suite with `ADM-PY03` (`ADM-PY06`). |
 | `tests/test_sc_audit_survey.py` | Parity test for `tools/sc_audit.py`; ported to Rust test suite with `ADM-PY03` (`ADM-PY06`). |
 | `tests/test_sc_audit_watchdog.py` | Parity test for `tools/sc_audit.py`; ported to Rust test suite with `ADM-PY03` (`ADM-PY06`). |
+
+## Narrow audit compatibility exception — 21 October 2026
+
+The [sole Admiral’s explicit delegated maintainer decision](https://github.com/neverhuman/admiralty/pull/166#issuecomment-6307405031) (receipt SHA256 `cf32cfd9ec8fa87af6326f78bc7f9c11e33150bc81f4a730f64158f8413e0daf`) approves exactly the following two paths for the retained audit. Owner: the existing Fleet Admiral, native thread `01a1575b-89a5-7340-a16f-ac73f47f2ee5`; source integration remains PR166’s existing writer. The helper observes bounded read-only queue metadata and protects uncertain composer state. It does not dispatch, resume, clear, consume, or enforce transport. Retire both files with parity-tested Rust `admiralty-cli sc-audit` / `admiralty-testkit` controls under `ADM-PY03` and `ADM-PY06`. This does not authorize Python application/runtime expansion.
+
+| File | One-Line Justification (Temporary Until Rust Port Completes) |
+| :--- | :--- |
+| `tools/native_queue_health.py` | Narrow read-only queue metadata / endpoint precondition compatibility helper for retained `sc_audit`; same Fleet Admiral owner; port to Rust CLI and delete (`ADM-PY03`). |
+| `tests/test_native_queue_health.py` | Synthetic/mocked draft, queue and endpoint regressions for the retained audit helper; same Fleet Admiral owner; port with Rust audit tests and delete (`ADM-PY06`). |

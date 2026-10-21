@@ -9,6 +9,13 @@ Never writes to project repos, never types into screens, never kills anything.
 Usage:  python3 sc_audit.py [--out DIR] [--quiet]
 """
 import argparse, collections, datetime, glob, hashlib, json, os, re, subprocess, sys, time
+import importlib.util
+_native_queue_spec = importlib.util.spec_from_file_location(
+    "admiralty_native_queue_health",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "native_queue_health.py"))
+_native_queue_module = importlib.util.module_from_spec(_native_queue_spec)
+_native_queue_spec.loader.exec_module(_native_queue_module)
+read_queue_health = _native_queue_module.read_queue_health
 
 HOME = os.path.expanduser('~')
 KICK = HOME + '/xbabe2_kicker/captains-20261017'
@@ -116,11 +123,20 @@ APPROVAL = re.compile(r'(Allow (this|once)|Do you want to (proceed|run|allow)|\(
 
 def screen_state(text):
     tail = '\n'.join(text.rstrip('\n').split('\n')[-25:])
-    st = {'busy': 'esc to cancel' in tail, 'queued_msgs': bool(re.search(r'queued messages', tail, re.I)),
+    st = {'busy': bool(re.search(r'esc to (?:cancel|interrupt)', tail, re.I)), 'queued_msgs': bool(re.search(r'queued messages', tail, re.I)),
           'survey': bool(SURVEY.search(tail)), 'quota': bool(QUOTA.search(tail)), 'approval_prompt': bool(APPROVAL.search(tail))}
-    last_gt = [l for l in tail.split('\n') if l.startswith('>')]
-    st['idle_prompt'] = (not st['busy']) and ('? for shortcuts' in tail) and bool(last_gt) and last_gt[-1].strip() == '>'
-    st['typed_input'] = bool(last_gt) and last_gt[-1].strip() not in ('>', '')
+    lines = tail.split('\n')
+    prompts = [(i, line.strip()) for i, line in enumerate(lines)
+               if re.match(r'^\s*[>›❯]', line)]
+    prompt = prompts[-1] if prompts else None
+    st['typed_input'] = (prompt is not None and prompt[1] not in ('>', '›', '❯')) or bool(re.search(r'\[Pasted (?:Content|text)\b', tail, re.I))
+    # A historical blank marker plus a footer elsewhere is not current blank
+    # evidence. Any unrecognized continuation or trailing composer is unknown.
+    continuation = [line.strip() for line in lines[prompt[0] + 1:] if line.strip()] if prompt else []
+    empty_hint = prompt is not None and prompt[1] in ('>', '›', '❯') and continuation == ['? for shortcuts']
+    st['composer_state'] = 'draft' if st['typed_input'] else 'empty_hint' if empty_hint else 'unknown'
+    # Even this recognized terminal hint never authorizes input or transport.
+    st['idle_prompt'] = (not st['busy']) and not st['queued_msgs'] and st['composer_state'] == 'empty_hint'
     st['hash'] = hashlib.sha256(tail.encode()).hexdigest()[:16]
     return st
 
@@ -802,7 +818,7 @@ def audit_admiralty(scr, prev, newh, now):
         workers[n] = info
     res['workers'] = workers
     if dead: F('amber', 'admiralty', 'LANE_DEAD', f'{len(dead)} live-lanes entries are not finished but their screens are gone: {" ".join(dead[:20])}', ADM + '/live-lanes.json')
-    if stale: F('amber', 'admiralty', 'LANE_STALE', f'{len(stale)} workers stale (>=30 min without a reported transition or screen change): {"; ".join(stale[:20])}. agy_captain_admiralty must re-drive or close them', ADM + '/live-lanes.json')
+    if stale: F('amber', 'admiralty', 'LANE_STALE', f'{len(stale)} workers stale (>=30 min without a reported transition or screen change): {"; ".join(stale[:20])}. agy_captain_admiralty must inspect verified owner/endpoint and supported queue/priority status; notLoaded is BLOCKED_TRANSPORT, never type, clear, resume or duplicate', ADM + '/live-lanes.json')
     if unverified: F('amber', 'admiralty', 'UNVERIFIED_CANDIDATES_AGING', f'{len(unverified)} candidates committed but unverified for >=60 min: {" ".join(unverified[:20])}; drive verification on the exact commit, then hand to the integrator', ADM + '/live-lanes.json')
     return res
 
@@ -1370,18 +1386,31 @@ def idle_watch(scr, managed, prev, newh, now, hc=None):
         since = p.get('since') if p.get('hash') == h else now.isoformat(timespec='seconds')
         newh[key] = {'hash': h, 'since': since}
         unchanged = (now - datetime.datetime.fromisoformat(since)).total_seconds() / 60
-        busy = tail_busy(txt)
+        screen = screen_state(txt)
+        busy = tail_busy(txt) or screen['busy']
+        # Share the parser's positive empty-prompt evidence. A pasted draft,
+        # queued-message hint or unrecognized composer must not invite input.
+        idle_eligible = not busy and screen['idle_prompt']
         li = pty_last_input(scr[n]) if isinstance(scr.get(n), int) else None
         res[n] = {'project': proj, 'busy': busy, 'unchanged_min': round(unchanged),
-                  'last_input_utc': li and li.isoformat(timespec='seconds')}
+                  'last_input_utc': li and li.isoformat(timespec='seconds'),
+                  'typed_input': screen['typed_input'], 'queued_msgs': screen['queued_msgs'],
+                  'composer_state': screen['composer_state'], 'idle_eligible': idle_eligible}
         if not busy and unchanged >= IDLE_RED_MIN:
-            idle.setdefault(proj, []).append(f'{n} {round(unchanged)}m' + (f' (last input {li.strftime("%H:%MZ")})' if li else ''))
+            if idle_eligible:
+                idle.setdefault(proj, []).append(f'{n} {round(unchanged)}m' + (f' (last input {li.strftime("%H:%MZ")})' if li else ''))
+            elif screen['typed_input']:
+                MA('amber', proj, 'MANAGED_SCREEN_DRAFT_PROTECTED',
+                   f'{n} has unsent composer text; preserve it and identify the current owner without typing, clearing, resuming or resending', f'/tmp/sc_watch_hc_{n}.txt')
+            else:
+                MA('amber', proj, 'MANAGED_SCREEN_INPUT_UNVERIFIED',
+                   f'{n} has a queued-message hint or no verified empty composer; inspect owner/endpoint and correlated consumption without typing, clearing, resuming or resending', f'/tmp/sc_watch_hc_{n}.txt')
         elif busy and unchanged >= IDLE_RED_MIN:
             MA('amber', proj, 'MANAGED_SCREEN_FROZEN', f'{n} shows busy but screen unchanged {round(unchanged)} min (hung tool call?)', f'/tmp/sc_watch_hc_{n}.txt')
     for proj, lst in idle.items():
         MA('red', proj, 'MANAGED_SCREEN_IDLE', f'{len(lst)} managed screen(s) idle (no "esc to cancel/interrupt") and unchanged >= {IDLE_RED_MIN} min: {"; ".join(lst[:12])}. '
-           'Must act this tick: give each its next concrete task (file pointer + CR + alt+m) and confirm from a fresh hardcopy that it is busy, '
-           'or close it with a LANE ... | closed line (parked is not a state for a worker you are counting on)', '/tmp/sc_watch_hc_<screen>.txt')
+           'Must act this tick: inspect the verified exact-thread owner, endpoint and supported queue/priority status; correlate request consumption and action start. '
+           'A notLoaded endpoint is BLOCKED_TRANSPORT: preserve drafts/backlog, never type, clear, resume or duplicate a request. Terminal hints alone authorize no delivery', '/tmp/sc_watch_hc_<screen>.txt')
     return res
 
 def eta_overdue(scs, now, grace=ETA_GRACE_MIN):
@@ -1419,7 +1448,7 @@ def check_eta_overdue(scs, now):
         top = sorted(items.items(), key=lambda kv: -kv[1])
         MA('red', sc_, 'OWED_ETA_OVERDUE', f'{len(top)} ETA(s) in super_captain_status.json are already past (up to {top[0][1]} min): '
            + ' | '.join(f'"...{c}" ({l}m late)' for c, l in top[:3])
-           + '. Must act this tick: for each, verify the deliverable exists (file/commit/PR); if not, ask the owner screen why, re-drive it and record a NEW ETA; never carry a passed ETA forward',
+           + '. Must act this tick: verify each deliverable and inspect verified owner/endpoint and supported exact-thread queue/priority status; record actual consumption/start or BLOCKED_TRANSPORT and a new checkpoint. Preserve drafts/backlog; no typing, clearing, resume or duplicate request',
            KICK + '/super_captain_status.json')
 
 def redrive_claims(log_text, now, window_min=60):
@@ -1445,8 +1474,9 @@ def check_redrive_delivered(log_text, scr, now, last_input=None):
         if li is None: continue
         if li < t - datetime.timedelta(minutes=REDRIVE_GRACE_MIN):
             done.add(n)
-            MA('red', 'super_captain', 'REDRIVE_NOT_DELIVERED', f'super_captain_LOG {t.strftime("%H:%MZ")} claims it re-drove {n}, but {n} has had no terminal input since {li.strftime("%H:%MZ")} '
-               f'(pty atime): the nudge was never submitted. Claim: "{snip}". Must act this tick: paste the pointer, send CR, then alt+m, and confirm a busy hardcopy before logging "re-driven"')
+            MA('red', 'super_captain', 'REDRIVE_NOT_DELIVERED', f'super_captain_LOG {t.strftime("%H:%MZ")} claims delivery to {n}, but the last recorded terminal read is {li.strftime("%H:%MZ")}; '
+               'this does not prove native queue submission, recipient consumption or action start. Inspect verified exact-thread owner/endpoint and supported queue/priority status, preserving payload and draft. '
+               'notLoaded means BLOCKED_TRANSPORT; do not type, clear, resume, resend or create a duplicate')
 
 def last_push(project):
     rc, out, _ = run([GH, 'api', f'repos/{GHREPO[project]}/activity?per_page=10'], timeout=30)
@@ -1612,6 +1642,26 @@ def main():
     newh = {}
     report = {'utc': now.isoformat(timespec='seconds'), 'projects': {}, 'screens': {}, 'lanes': {}}
 
+    # The terminal hint is not the durable Codex queue. Observe the latter
+    # independently, including Admiral. Never turn unreadable/missing into zero.
+    native_queue = read_queue_health(
+        os.path.join(HOME, '.codex', 'queue_1.sqlite'),
+        now_ms=int(now.timestamp() * 1000))
+    report['native_queue'] = native_queue
+    if native_queue['status'] != 'observed':
+        F('amber', 'super_captain', 'NATIVE_QUEUE_UNKNOWN',
+          'Native queue observation is unavailable or incomplete; delivery and empty queue are unverified',
+          native_queue['source'])
+    for queued in native_queue['threads']:
+        stalled = queued['state'] in ('stalled', 'clock_unknown')
+        F('red' if stalled else 'amber', 'super_captain',
+          'NATIVE_QUEUE_STALLED' if stalled else 'NATIVE_QUEUE_PENDING',
+          f"Thread {queued['thread_id']} has {queued['pending']} persisted pending messages; "
+          f"oldest age_ms={queued['oldest_age_ms']}. Queued is not consumed or started. "
+          "Identify its current owner/endpoint and obtain correlated consumption/start; "
+          "preserve all drafts/backlog, never blindly resend, resume or type.",
+          native_queue['source'])
+
     # 1. captain + super_captain screens
     for proj, name in list(CAPTAINS.items()) + [('super_captain', 'super_captain')]:
         if name not in scr:
@@ -1619,11 +1669,11 @@ def main():
         txt = hardcopy(name, f'/tmp/sc_audit_hc_{name}.txt')
         s = screen_state(txt); newh[name] = {'hash': s['hash'], 'since': prev.get(name, {}).get('since') if prev.get(name, {}).get('hash') == s['hash'] else now.isoformat(timespec='seconds')}
         report['screens'][name] = {k: v for k, v in s.items() if k != 'hash'}
-        if s['survey']: F('red', proj, 'SURVEY_PROMPT', f'{name} shows a survey/feedback prompt that blocks the turn; answer/dismiss it (Esc) before nudging', f'/tmp/sc_audit_hc_{name}.txt')
+        if s['survey']: F('red', proj, 'SURVEY_PROMPT', f'{name} shows a survey/feedback prompt; inspect verified owner/endpoint and supported queue/priority status without terminal input. Preserve the prompt/draft; notLoaded is BLOCKED_TRANSPORT, never resume or duplicate', f'/tmp/sc_audit_hc_{name}.txt')
         if s['approval_prompt']: F('red', proj, 'APPROVAL_PROMPT', f'{name} is waiting on an approval/confirm prompt', f'/tmp/sc_audit_hc_{name}.txt')
         if s['quota']: F('amber', proj, 'QUOTA_TEXT', f'{name} tail mentions quota/rate limit', f'/tmp/sc_audit_hc_{name}.txt')
         if s['queued_msgs']:
-            F('amber', proj, 'QUEUED_MESSAGES', f'{name} has user-queued messages not yet delivered (busy turn); pasted nudges wait until the turn ends', f'/tmp/sc_audit_hc_{name}.txt')
+            F('amber', proj, 'QUEUED_MESSAGES', f'{name} has user-queued messages not yet delivered (busy turn); consumption remains unverified; preserve drafts and confirm the actual recipient', f'/tmp/sc_audit_hc_{name}.txt')
         since = newh[name]['since']
         age = (now - datetime.datetime.fromisoformat(since)).total_seconds() / 60 if since else 0
         report['screens'][name]['unchanged_min'] = round(age)
