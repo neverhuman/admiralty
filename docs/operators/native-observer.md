@@ -138,6 +138,31 @@ presence is not proof of useful work, task ownership or completion. The current
 macOS path supplies resource/Screen inventory but leaves agent ancestry/model
 identity unknown. Remote Screen names alone do not establish their model.
 
+Disk growth and time to full use a private bounded sample file
+(`.rust-disk-samples.json`, 0600, six hours, one sample per mount every five
+minutes). The rate uses the oldest sample between 20 minutes and three hours
+old, matching the retired Python sampler, so `growth_gb_per_h` and
+`hours_to_full` stay null for the first 20 minutes. Disk levels are red at
+92% used or under 12 hours to full and amber at 85% or under 24 hours. Linux
+nodes also report pressure stall information (`pressure.{cpu,memory,io}`
+`some_/full_avg10/60/300`), the five largest processes by RSS and the number
+of uninterruptible (D-state) processes; memory or I/O `full_avg60` stalls
+raise amber/red saturation warnings. Kernels without PSI report `null`.
+`collector.phases_ms` records time spent in the fleet, project, Git, usage
+and history phases.
+
+`admiralty-observe --config CONFIG --resources` prints the latest host table
+(load, memory, disks with growth and time to full, GPUs, pressure, warnings)
+from `status.json`; `--json` prints the raw block. It never probes hosts or
+takes the collector lock, so it is safe beside a running observer. It is the
+Rust replacement for `python3 globalres.py`.
+
+The observer logs one coalesced `obs.cycle` line per cycle and otherwise only
+changes: a host warning appearing or clearing (by stable identity, not by
+changing numbers), a project's Git health state moving, a captain alert, or a
+failed cycle. Logs use the same `ALOG/1` format and `ADMIRALTY_LOG` filter as
+`admiraltyd`; `admiralty logs digest` compresses them for agents.
+
 Model badges come from observed terminal footers. Requested CLI models, default
 configuration and assignment labels do not establish actual identity. Local
 footer captures prioritize Admiral and project managers and rotate through
