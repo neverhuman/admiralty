@@ -7,9 +7,6 @@ describe('P0 Commands evidence availability browser journey', () => {
   let server: DashboardTestServer;
 
   beforeAll(async () => {
-    if (!process.env.ADMIRALTY_P0_EVIDENCE_DIR) {
-      throw new Error('Set ADMIRALTY_P0_EVIDENCE_DIR to the private P0 evidence directory.');
-    }
     await ensureBuiltDashboard();
     server = await startDashboardTestServer({ skipBuildCheck: true });
     browser = await launchBrowserHarness();
@@ -21,7 +18,10 @@ describe('P0 Commands evidence availability browser journey', () => {
   }, 90_000);
 
   it('shows 401 as unavailable, loaded empty as observed zero, and failed refresh as retained cursor without posting', async () => {
-    const evidenceDir = process.env.ADMIRALTY_P0_EVIDENCE_DIR!;
+    const evidenceDir = process.env.ADMIRALTY_P0_EVIDENCE_DIR;
+    const captureEvidence = async (name: string) => {
+      if (evidenceDir) await browser.captureScreenshot(`${evidenceDir}/${name}`);
+    };
     server.setFleetStatus(401, 'Synthetic access required fixture');
     await browser.resetPage();
     await browser.goto(`${server.baseUrl}/#/commands`);
@@ -30,7 +30,7 @@ describe('P0 Commands evidence availability browser journey', () => {
     await browser.waitForText('Duplicate and overlap check unavailable until a fleet snapshot is observed.');
     expect(await browser.evaluate<string>(`document.body.innerText`)).not.toContain('Ready for pending task submission');
     expect(await browser.evaluate<string>(`document.body.innerText`)).not.toContain('No duplicate or overlapping candidates detected.');
-    await browser.captureScreenshot(`${evidenceDir}/401-unavailable.png`);
+    await captureEvidence('401-unavailable.png');
     expect(server.requests.filter(request => request.method === 'POST')).toEqual([]);
 
     server.setFleet(createFleetFixture(0, { eventSeq: '0' }));
@@ -40,7 +40,7 @@ describe('P0 Commands evidence availability browser journey', () => {
     await browser.waitForText('Ready for pending task submission');
     await browser.waitForText('0 of 0 snapshot task(s)');
     expect(await browser.evaluate<string>(`document.body.innerText`)).toContain('No duplicate task IDs');
-    await browser.captureScreenshot(`${evidenceDir}/loaded-empty.png`);
+    await captureEvidence('loaded-empty.png');
     expect(server.requests.filter(request => request.method === 'POST')).toEqual([]);
 
     server.setFleet(createFleetFixture(1, { eventSeq: '8' }));
@@ -58,9 +58,9 @@ describe('P0 Commands evidence availability browser journey', () => {
     await browser.waitForText('submission is paused until refresh succeeds');
     await browser.waitForText('Refresh snapshot before submitting');
     expect(await browser.evaluate<boolean>(`[...document.querySelectorAll('.models-form-actions button')].some(button => button.textContent?.includes('Refresh snapshot before submitting') && button.disabled)`)).toBe(true);
-    await browser.captureScreenshot(`${evidenceDir}/retained-stale-cursor.png`);
+    await captureEvidence('retained-stale-cursor.png');
     await browser.evaluate(`document.querySelector('#intake-preview-heading')?.scrollIntoView({ block: 'start' })`);
-    await browser.captureScreenshot(`${evidenceDir}/retained-stale-preview.png`);
+    await captureEvidence('retained-stale-preview.png');
     expect(server.requests.filter(request => request.method === 'POST')).toEqual([]);
     server.assertNoOverflow();
   }, 60_000);

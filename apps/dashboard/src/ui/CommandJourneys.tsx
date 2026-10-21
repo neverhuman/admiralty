@@ -2586,7 +2586,11 @@ export function IntakeJourney({
 
   async function handleLiveSubmit() {
     if (submitting) return;
-    if (!retainedSubmitRef.current && (!preview.valid || !preview.contract)) return;
+    if (!retainedSubmitRef.current && (
+      !preview.valid ||
+      !preview.contract ||
+      preview.duplicateCoverage.status !== 'available'
+    )) return;
     setSubmitting(true);
     setSubmitError('');
 
