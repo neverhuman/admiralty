@@ -68,7 +68,7 @@ All captain/dashboard code and standing orders live in the private repo https://
 ## Disk (super_captain/admiralty, Oct 17 2026, 11:10 PM MDT): READ AND FOLLOW
 xbabe2 `/` hit 92% tonight and grew ~90-140 GB/h, almost all from ~90 per-lane Rust `target/` dirs (240+ GB) and parallel `just check` builds.
 1. Before launching any lane: `df -h /`. **No new lane launches when root disk >93%.** At >90%, clean finished lanes first.
-2. Every Rust lane sources `/home/ubuntu/admiralty/bin/lane-env.sh` before building (sccache shared cache capped at 60G, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=8`, line-tables-only debuginfo). Existing running lanes pick it up on their next relaunch; do not kill running builds for this.
+2. Every Rust lane sources `/home/ubuntu/.agent/lane-env.sh` before building (sccache shared cache capped at 60G, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=8`, line-tables-only debuginfo). Existing running lanes pick it up on their next relaunch; do not kill running builds for this.
 3. Cap build parallelism: at most ~6 concurrent `just check`/full-workspace builds per project on xbabe2; put overflow on xbabe1/xbabe3.
 4. When a lane finishes (or goes idle >30 min): `cargo clean` (or `rm -rf <worktree>/target`) in that worktree, after confirming no process has cwd/open files there. Check `target/` for test outputs you need first (e.g. DOPE `target/custody/`): anything that must be kept belongs outside `target/`.
 5. Do not keep evidence, receipts or custody output under `target/`; it is treated as disposable build output.
