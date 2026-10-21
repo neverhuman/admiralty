@@ -1,0 +1,812 @@
+/*
+ * Admiralty design system — "chart room".
+ *
+ * One token set for every view, loaded after the legacy stylesheets so the
+ * shell, panels and controls share a palette, type scale and spacing.
+ *
+ * Palette: the night-watch theme (default) and the day-chart theme borrow from
+ * printed nautical charts. Chart magenta, which charts reserve for the marks a
+ * navigator must not miss, is the interaction colour here: the active view,
+ * focus, selection and primary actions. Status uses buoy colours (starboard
+ * green, port red) plus amber and a sounding cyan, and is always paired with a
+ * word or shape; colour never carries meaning alone.
+ *
+ * Type: Atkinson Hyperlegible Next (Braille Institute, OFL) for the interface,
+ * because a watch-stander reading SHAs, counts and model names at a glance
+ * benefits from unambiguous letterforms (0/O, 1/l/I). Its mono sibling is used
+ * only for identifiers: commits, refs, screens, paths.
+ */
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('../assets/fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Mono';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('../assets/fonts/atkinson-hyperlegible-mono-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  --font-ui: 'Atkinson Hyperlegible Next', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-id: 'Atkinson Hyperlegible Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  /* Minor-third scale on a 14px base: dense enough for a console, never below 11px. */
+  --step--2: 11px;
+  --step--1: 12.5px;
+  --step-0: 14px;
+  --step-1: 16.5px;
+  --step-2: 20px;
+  --step-3: 24px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius-s: 5px;
+  --radius-m: 8px;
+  --radius-l: 12px;
+  --rail: 88px;
+  --watchbar: 48px;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+}
+
+/* Night watch (default). */
+.app.theme-dark {
+  --ink: #0b1620;
+  --hull: #102030;
+  --deck: #16293a;
+  --rule: #24394b;
+  --rule-strong: #34506a;
+  --chart-text: #e3ecef;
+  --chart-muted: #93a9b6;
+  --chart-faint: #6d8594;
+  --magenta: #ee6ab8;
+  --magenta-wash: #3a1b33;
+  --on-magenta: #1a0716;
+  --starboard: #43c48e;
+  --port: #ff7a7a;
+  --caution: #e8b65a;
+  --sounding: #7cc3e8;
+  --scrim: #04090ecc;
+}
+
+/* Day chart. */
+.app.theme-light {
+  --ink: #eef3f3;
+  --hull: #ffffff;
+  --deck: #e3ecee;
+  --rule: #c3d1d6;
+  --rule-strong: #93a8b2;
+  --chart-text: #0f202b;
+  --chart-muted: #47606e;
+  --chart-faint: #7e95a1;
+  --magenta: #a0175f;
+  --magenta-wash: #f8e3ef;
+  --on-magenta: #ffffff;
+  --starboard: #15724a;
+  --port: #b42330;
+  --caution: #835600;
+  --sounding: #0e6888;
+  --scrim: #0f202b99;
+}
+
+/* Map the legacy variables every feature stylesheet already uses. */
+.app.theme-dark,
+.app.theme-light {
+  --bg: var(--ink);
+  --surface: var(--hull);
+  --surface-2: var(--deck);
+  --line: var(--rule);
+  --text: var(--chart-text);
+  --muted: var(--chart-muted);
+  --soft: color-mix(in srgb, var(--chart-text) 78%, var(--chart-muted));
+  --blue: var(--sounding);
+  --blue-dim: color-mix(in srgb, var(--sounding) 18%, var(--hull));
+  --gold: var(--caution);
+  --green: var(--starboard);
+  --red: var(--port);
+  --shadow: 0 18px 40px #0004;
+  font-family: var(--font-ui);
+  font-size: var(--step-0);
+  font-feature-settings: 'tnum' 1;
+  font-variant-numeric: tabular-nums;
+  background: var(--ink);
+  color: var(--chart-text);
+}
+.app.visual-console:is(.theme-dark, .theme-light) .live-workspace,
+.app:is(.theme-dark, .theme-light) .live-workspace {
+  --lv-bg: var(--ink);
+  --lv-panel: var(--hull);
+  --lv-card: var(--deck);
+  --lv-line: var(--rule);
+  --lv-text: var(--chart-text);
+  --lv-muted: var(--chart-muted);
+  --lv-accent: var(--magenta);
+}
+.app.visual-console:is(.theme-dark, .theme-light) {
+  --bg: var(--ink);
+  --surface: var(--hull);
+  --line: var(--rule);
+  --text: var(--chart-text);
+  --muted: var(--chart-muted);
+}
+.app:is(.theme-dark, .theme-light) code,
+.app:is(.theme-dark, .theme-light) kbd,
+.app:is(.theme-dark, .theme-light) samp,
+.app:is(.theme-dark, .theme-light) .mono {
+  font-family: var(--font-id);
+  font-size: 0.93em;
+}
+
+/* Focus and selection follow the course line. */
+.app:is(.theme-dark, .theme-light) button:focus-visible,
+.app:is(.theme-dark, .theme-light) a:focus-visible,
+.app:is(.theme-dark, .theme-light) input:focus-visible,
+.app:is(.theme-dark, .theme-light) select:focus-visible,
+.app:is(.theme-dark, .theme-light) textarea:focus-visible,
+.app:is(.theme-dark, .theme-light) summary:focus-visible,
+.app:is(.theme-dark, .theme-light) [tabindex]:focus-visible {
+  outline: 2px solid var(--magenta);
+  outline-offset: 2px;
+}
+.app:is(.theme-dark, .theme-light) ::selection {
+  background: var(--magenta-wash);
+  color: var(--chart-text);
+}
+
+/* Unclassed links (prose, empty states) take the interaction colour. */
+.app:is(.theme-dark, .theme-light) :where(a) {
+  color: var(--magenta);
+  text-underline-offset: 3px;
+}
+
+/* ---------- Rail: one navigation for every view ---------- */
+.app:is(.theme-dark, .theme-light) .sidebar,
+.app.fleet-console:is(.theme-dark, .theme-light) .sidebar,
+.app.visual-console:is(.theme-dark, .theme-light) .sidebar {
+  width: var(--rail);
+  padding: var(--space-3) var(--space-2) var(--space-3);
+  align-items: stretch;
+  background: var(--ink);
+  border-right: 1px solid var(--rule);
+}
+.app:is(.theme-dark, .theme-light) .main-area,
+.app.fleet-console:is(.theme-dark, .theme-light) .main-area,
+.app.visual-console:is(.theme-dark, .theme-light) .main-area {
+  margin-left: var(--rail);
+  width: calc(100% - var(--rail));
+}
+.app:is(.theme-dark, .theme-light) .brand,
+.app.fleet-console:is(.theme-dark, .theme-light) .brand,
+.app.visual-console:is(.theme-dark, .theme-light) .brand {
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+}
+.app:is(.theme-dark, .theme-light) .brand-mark,
+.app.fleet-console:is(.theme-dark, .theme-light) .brand-mark {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.app:is(.theme-dark, .theme-light) .brand > span,
+.app:is(.theme-dark, .theme-light) .workspace-label,
+.app:is(.theme-dark, .theme-light) .workspace,
+.app:is(.theme-dark, .theme-light) .nav-label,
+.app:is(.theme-dark, .theme-light) .brand-slot,
+.app:is(.theme-dark, .theme-light) .sidebar-footer > span:not(.avatar) {
+  display: none;
+}
+.app:is(.theme-dark, .theme-light) .sidebar nav,
+.app.fleet-console:is(.theme-dark, .theme-light) .sidebar nav,
+.app.visual-console:is(.theme-dark, .theme-light) .sidebar nav {
+  width: 100%;
+  margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.app:is(.theme-dark, .theme-light) .nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.app:is(.theme-dark, .theme-light) .nav-group + .nav-group {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--rule);
+}
+.app:is(.theme-dark, .theme-light) .nav-item,
+.app.fleet-console:is(.theme-dark, .theme-light) .nav-item,
+.app.visual-console:is(.theme-dark, .theme-light) .nav-item {
+  width: 100%;
+  height: auto;
+  min-height: 52px;
+  margin: 0;
+  padding: 7px 2px 6px;
+  border-radius: var(--radius-m);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: 0;
+  text-align: center;
+  color: var(--chart-muted);
+  background: transparent;
+  /* No colour transitions: theme switches must repaint instantly (axe samples immediately). */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-areas: '. icon count' 'text text text';
+  justify-items: center;
+}
+.app:is(.theme-dark, .theme-light) .nav-item + .nav-item {
+  margin-top: 0;
+}
+.app:is(.theme-dark, .theme-light) .nav-item:hover {
+  color: var(--chart-text);
+  background: var(--deck);
+}
+.app:is(.theme-dark, .theme-light) .nav-item.active,
+.app.theme-dark .nav-item.active {
+  color: var(--chart-text);
+  background: var(--magenta-wash);
+  box-shadow: inset 3px 0 0 var(--magenta);
+}
+.app:is(.theme-dark, .theme-light) .nav-item.active::before,
+.app.fleet-console:is(.theme-dark, .theme-light) .nav-item.active::before,
+.app.visual-console:is(.theme-dark, .theme-light) .nav-item.active::before {
+  /* The course line is an inset shadow, not a pseudo-element, so axe can
+     always resolve the background behind the label and message count. */
+  content: none;
+  display: none;
+}
+.app:is(.theme-dark, .theme-light) .nav-icon {
+  grid-area: icon;
+}
+.app:is(.theme-dark, .theme-light) .nav-icon,
+.app.fleet-console:is(.theme-dark, .theme-light) .nav-icon,
+.app.visual-console:is(.theme-dark, .theme-light) .nav-icon {
+  width: auto;
+  font-size: 18px;
+  line-height: 1;
+  color: inherit;
+}
+.app:is(.theme-dark, .theme-light) .nav-item.active .nav-icon {
+  color: var(--magenta);
+}
+.app:is(.theme-dark, .theme-light) .nav-text {
+  grid-area: text;
+  display: block;
+  max-width: 100%;
+  hyphens: manual;
+}
+.app:is(.theme-dark, .theme-light) .nav-count,
+.app.fleet-console:is(.theme-dark, .theme-light) .nav-count,
+.app.visual-console:is(.theme-dark, .theme-light) .nav-count {
+  display: grid;
+  grid-area: count;
+  justify-self: start;
+  place-items: center;
+  position: static;
+  margin-left: 3px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font: 700 10px/1 var(--font-ui);
+  background: var(--deck);
+  color: var(--chart-text);
+  border: 1px solid var(--rule-strong);
+}
+.app:is(.theme-dark, .theme-light) .sidebar-footer,
+.app.fleet-console:is(.theme-dark, .theme-light) .sidebar-footer,
+.app.visual-console:is(.theme-dark, .theme-light) .sidebar-footer {
+  border-top: 1px solid var(--rule);
+  padding: var(--space-3) 0 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+}
+.app:is(.theme-dark, .theme-light) .sidebar-footer > button,
+.app.fleet-console:is(.theme-dark, .theme-light) .sidebar-footer > button,
+.app.visual-console:is(.theme-dark, .theme-light) .sidebar-footer > button {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  width: 36px;
+  height: 28px;
+  border-radius: var(--radius-s);
+  color: var(--chart-muted);
+}
+.app:is(.theme-dark, .theme-light) .sidebar-footer > .avatar,
+.app.visual-console:is(.theme-dark, .theme-light) .sidebar-footer > .avatar,
+.app.fleet-console:is(.theme-dark, .theme-light) .sidebar-footer > .avatar {
+  display: grid;
+}
+.app:is(.theme-dark, .theme-light) .sidebar-footer > button:hover {
+  background: var(--deck);
+  color: var(--chart-text);
+}
+
+.app.visual-console:is(.theme-dark, .theme-light) {
+  /* Git Flow and Fleet Atlas are canvases: the rail collapses to icons and
+     keeps the 64px geometry their camera and fit measurements assume. */
+  --rail: 64px;
+}
+.app.visual-console:is(.theme-dark, .theme-light) .nav-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.app.visual-console:is(.theme-dark, .theme-light) .nav-item {
+  min-height: 42px;
+}
+
+@media (max-width: 850px) {
+  /* Same compact geometry the canvas views have always used on small screens. */
+  .app.visual-console:is(.theme-dark, .theme-light) {
+    --rail: 48px;
+  }
+  .app.visual-console:is(.theme-dark, .theme-light) .sidebar {
+    padding: 12px 4px;
+  }
+  .app.visual-console:is(.theme-dark, .theme-light) .topbar {
+    padding: 0 12px;
+  }
+  .app.visual-console:is(.theme-dark, .theme-light) .breadcrumbs {
+    font-size: 11px;
+  }
+}
+
+/* ---------- Watch bar ---------- */
+.app:is(.theme-dark, .theme-light) .topbar,
+.app.fleet-console:is(.theme-dark, .theme-light) .topbar,
+.app.visual-console:is(.theme-dark, .theme-light) .topbar {
+  height: var(--watchbar);
+  min-height: var(--watchbar);
+  padding: 0 var(--space-5);
+  background: var(--ink);
+  border-bottom: 1px solid var(--rule);
+}
+.app:is(.theme-dark, .theme-light) .breadcrumbs,
+.app.fleet-console:is(.theme-dark, .theme-light) .breadcrumbs {
+  font-size: var(--step--1);
+  color: var(--chart-muted);
+}
+.app:is(.theme-dark, .theme-light) .breadcrumbs strong {
+  color: var(--chart-text);
+  font-weight: 600;
+}
+.app:is(.theme-dark, .theme-light) .breadcrumbs .crumb-group {
+  color: var(--chart-muted);
+}
+.app:is(.theme-dark, .theme-light) .breadcrumbs [data-icon] {
+  color: var(--chart-faint);
+}
+.app:is(.theme-dark, .theme-light) .top-actions,
+.app.fleet-console:is(.theme-dark, .theme-light) .top-actions {
+  gap: var(--space-3);
+}
+.app:is(.theme-dark, .theme-light) .connection,
+.app.fleet-console:is(.theme-dark, .theme-light) .connection {
+  font-size: var(--step--1);
+  color: var(--chart-muted);
+  padding: 3px 10px 3px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+}
+.app:is(.theme-dark, .theme-light) .connection i {
+  width: 7px;
+  height: 7px;
+  background: var(--chart-faint);
+}
+.app:is(.theme-dark, .theme-light) .connection.online i {
+  background: var(--starboard);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--starboard) 22%, transparent);
+}
+.app:is(.theme-dark, .theme-light) .connection.offline i {
+  background: var(--port);
+  border-radius: 1px;
+}
+.app:is(.theme-dark, .theme-light) .icon-button {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-s);
+  color: var(--chart-muted);
+}
+.app:is(.theme-dark, .theme-light) .icon-button:hover {
+  background: var(--deck);
+  color: var(--chart-text);
+}
+.app:is(.theme-dark, .theme-light) .operator-button,
+.app.theme-dark .operator-button {
+  height: 32px;
+  background: var(--hull);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--chart-text);
+  font-size: var(--step--1);
+  padding: 0 10px 0 4px;
+}
+.app:is(.theme-dark, .theme-light) .operator-button > span:last-child {
+  color: var(--chart-muted);
+}
+.app:is(.theme-dark, .theme-light) .avatar {
+  background: var(--deck);
+  border-color: var(--rule-strong);
+  color: var(--chart-text);
+  font-family: var(--font-ui);
+}
+
+/* ---------- Page heading ---------- */
+.app:is(.theme-dark, .theme-light) .content {
+  max-width: 1680px;
+  padding: var(--space-5) var(--space-6) var(--space-4);
+}
+.app.fleet-console:is(.theme-dark, .theme-light) .legacy-content {
+  max-width: none;
+  padding: var(--space-4) var(--space-5) var(--space-4);
+}
+.app:is(.theme-dark, .theme-light) .page-heading,
+.app.fleet-console:is(.theme-dark, .theme-light) .page-heading {
+  align-items: flex-end;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--rule);
+}
+.app:is(.theme-dark, .theme-light) .page-heading h1,
+.app.fleet-console:is(.theme-dark, .theme-light) .page-heading h1 {
+  margin: 0 0 var(--space-1);
+  font: 750 var(--step-3) / 1.15 var(--font-ui);
+  letter-spacing: -0.01em;
+  color: var(--chart-text);
+}
+.app:is(.theme-dark, .theme-light) .page-heading p,
+.app.fleet-console:is(.theme-dark, .theme-light) .page-heading p {
+  max-width: 72ch;
+  margin: 0;
+  font-size: var(--step-0);
+  line-height: 1.45;
+  color: var(--chart-muted);
+}
+.app:is(.theme-dark, .theme-light) .eyebrow {
+  font: 600 var(--step--1) / 1.3 var(--font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--chart-muted);
+}
+.app:is(.theme-dark, .theme-light) .mode-pill,
+.app.theme-dark .mode-pill,
+.app.fleet-console:is(.theme-dark, .theme-light) .mode-pill {
+  font: 600 var(--step--1) / 1 var(--font-ui);
+  letter-spacing: 0;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--rule-strong);
+  background: var(--hull);
+  color: var(--chart-text);
+}
+.app:is(.theme-dark, .theme-light) .mode-pill.simulation {
+  border-color: color-mix(in srgb, var(--caution) 60%, var(--rule));
+  background: color-mix(in srgb, var(--caution) 12%, var(--hull));
+  color: var(--chart-text);
+}
+.app:is(.theme-dark, .theme-light) .mode-pill::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--sounding);
+  vertical-align: 1px;
+}
+.app:is(.theme-dark, .theme-light) .mode-pill.simulation::before {
+  border-radius: 1px;
+  transform: rotate(45deg);
+  background: var(--caution);
+}
+.app:is(.theme-dark, .theme-light) .freshness {
+  font-size: var(--step--1);
+  color: var(--chart-muted);
+}
+.app:is(.theme-dark, .theme-light) .freshness i {
+  background: var(--starboard);
+}
+
+/* ---------- Surfaces ---------- */
+.app:is(.theme-dark, .theme-light) .panel,
+.app:is(.theme-dark, .theme-light) .loading-card,
+.app.theme-dark .panel,
+.app.theme-dark .metric-card,
+.app.theme-dark .project-card,
+.app:is(.theme-dark, .theme-light) .metric-card,
+.app:is(.theme-dark, .theme-light) .access-modal,
+.app.theme-dark .access-modal {
+  background: var(--hull);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  box-shadow: none;
+}
+.app.theme-light .panel,
+.app.theme-light .metric-card,
+.app.theme-light .loading-card {
+  box-shadow: 0 1px 2px #0f202b0d, 0 6px 16px -10px #0f202b26;
+}
+.app:is(.theme-dark, .theme-light) .project-card,
+.app.theme-dark .project-card {
+  background: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+}
+.app:is(.theme-dark, .theme-light) .panel-head h2,
+.app:is(.theme-dark, .theme-light) .accounting-panel h2 {
+  font: 650 var(--step-1) / 1.25 var(--font-ui);
+  letter-spacing: 0;
+  color: var(--chart-text);
+}
+.app:is(.theme-dark, .theme-light) .metric-card > strong {
+  font: 750 28px / 1.1 var(--font-ui);
+  letter-spacing: -0.01em;
+}
+.app:is(.theme-dark, .theme-light) .metric-top,
+.app:is(.theme-dark, .theme-light) .metric-card > small,
+.app:is(.theme-dark, .theme-light) .panel-caption,
+.app:is(.theme-dark, .theme-light) .empty-state,
+.app:is(.theme-dark, .theme-light) .loading-card {
+  color: var(--chart-muted);
+}
+.app:is(.theme-dark, .theme-light) .metric-baseline,
+.app:is(.theme-dark, .theme-light) .metric-baseline.blue,
+.app:is(.theme-dark, .theme-light) .metric-baseline.gold {
+  height: 3px;
+  background: var(--rule);
+}
+.app:is(.theme-dark, .theme-light) .metric-baseline.blue {
+  background: var(--sounding);
+}
+.app:is(.theme-dark, .theme-light) .metric-baseline.gold {
+  background: var(--caution);
+}
+.app:is(.theme-dark, .theme-light) .tiny-badge {
+  font: 600 var(--step--2) / 1 var(--font-ui);
+  letter-spacing: 0;
+  border-radius: 999px;
+  border-color: var(--rule-strong);
+  color: var(--chart-muted);
+}
+.app:is(.theme-dark, .theme-light) .simulation-note {
+  border-radius: var(--radius-m);
+}
+.app:is(.theme-dark, .theme-light) .error-banner {
+  border-radius: var(--radius-m);
+  border: 1px solid color-mix(in srgb, var(--port) 55%, var(--rule));
+  border-left-width: 4px;
+  background: color-mix(in srgb, var(--port) 10%, var(--hull));
+  color: var(--chart-text);
+}
+
+/* ---------- Controls ---------- */
+.app:is(.theme-dark, .theme-light) .text-button {
+  color: var(--magenta);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+.app:is(.theme-dark, .theme-light) .text-button:hover {
+  text-decoration: underline;
+}
+.app:is(.theme-dark, .theme-light) .primary-button {
+  border: 1px solid var(--magenta);
+  background: var(--magenta);
+  color: var(--on-magenta);
+  font-weight: 700;
+  border-radius: var(--radius-s);
+}
+.app:is(.theme-dark, .theme-light) .secondary-button {
+  border: 1px solid var(--rule-strong);
+  color: var(--chart-text);
+  border-radius: var(--radius-s);
+}
+.app:is(.theme-dark, .theme-light) .access-modal input,
+.app:is(.theme-dark, .theme-light) .legacy-toolbar select {
+  background: var(--ink);
+  border: 1px solid var(--rule-strong);
+  color: var(--chart-text);
+  border-radius: var(--radius-s);
+}
+.app:is(.theme-dark, .theme-light) .access-modal p,
+.app:is(.theme-dark, .theme-light) .access-modal label {
+  color: var(--chart-muted);
+}
+.app:is(.theme-dark, .theme-light) .access-modal h2 {
+  font: 700 var(--step-2) / 1.2 var(--font-ui);
+}
+.app:is(.theme-dark, .theme-light) .modal-backdrop {
+  background: var(--scrim);
+}
+
+/* Project tabs in Fleet detail read as a chart legend, not as cards. */
+.app:is(.theme-dark, .theme-light) .legacy-project-tabs button,
+.app.fleet-console:is(.theme-dark, .theme-light) .legacy-project-tabs button {
+  background: var(--hull);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  color: var(--chart-text);
+}
+.app:is(.theme-dark, .theme-light) .legacy-project-tabs button[aria-selected='true'] {
+  border-color: var(--magenta);
+  box-shadow: inset 0 -3px 0 var(--magenta);
+}
+.app:is(.theme-dark, .theme-light) .legacy-project-tabs button:hover {
+  border-color: var(--rule-strong);
+}
+
+/* ---------- Live views: labels in the interface face, identifiers stay mono ---------- */
+
+
+.app:is(.theme-dark, .theme-light) .lv-overline,
+.app:is(.theme-dark, .theme-light) .lv-readonly,
+.app:is(.theme-dark, .theme-light) .lv-axis-pill {
+  font-family: var(--font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.app:is(.theme-dark, .theme-light) .lv-overline {
+  /* Same 16px line box as before: the canvas fit math measures this header. */
+  font-size: 10.5px;
+  line-height: 16px;
+  font-weight: 600;
+}
+.app:is(.theme-dark, .theme-light) .lv-readonly,
+.app:is(.theme-dark, .theme-light) .lv-axis-pill {
+  font-size: 10px;
+  border-radius: 999px;
+}
+
+
+/* ---------- Small marks: tracks, icons, avatars ---------- */
+.app:is(.theme-dark, .theme-light) .progress-track,
+.app:is(.theme-dark, .theme-light) .stage-track {
+  background: var(--rule);
+}
+.app:is(.theme-dark, .theme-light) .progress-track > span {
+  background: var(--sounding);
+}
+.app:is(.theme-dark, .theme-light) .metric-icon,
+.app:is(.theme-dark, .theme-light) .stage-icon,
+.app:is(.theme-dark, .theme-light) .coordination-icon {
+  border: 1px solid var(--rule);
+  background: var(--deck);
+  color: var(--chart-muted);
+}
+.app:is(.theme-dark, .theme-light) .metric-icon.blue,
+.app:is(.theme-dark, .theme-light) .stage-icon.running {
+  color: var(--sounding);
+  background: color-mix(in srgb, var(--sounding) 14%, var(--hull));
+  border-color: color-mix(in srgb, var(--sounding) 40%, var(--rule));
+}
+.app:is(.theme-dark, .theme-light) .metric-icon.gold,
+.app:is(.theme-dark, .theme-light) .stage-icon.blocked {
+  color: var(--caution);
+  background: color-mix(in srgb, var(--caution) 14%, var(--hull));
+  border-color: color-mix(in srgb, var(--caution) 40%, var(--rule));
+}
+.app:is(.theme-dark, .theme-light) .stage-icon.accepted {
+  color: var(--starboard);
+  background: color-mix(in srgb, var(--starboard) 14%, var(--hull));
+  border-color: color-mix(in srgb, var(--starboard) 40%, var(--rule));
+}
+.app:is(.theme-dark, .theme-light) .project-avatar {
+  background: var(--deck);
+  border-color: var(--rule-strong);
+  color: var(--chart-text);
+  font-family: var(--font-ui);
+}
+
+/* ---------- Footer ---------- */
+.app:is(.theme-dark, .theme-light) .page-footer {
+  margin-top: var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--rule);
+  font: 400 var(--step--1) / 1.4 var(--font-ui);
+  letter-spacing: 0;
+  color: var(--chart-muted);
+}
+.app:is(.theme-dark, .theme-light) .page-footer b {
+  color: var(--chart-faint);
+}
+
+/* ---------- Narrow screens ---------- */
+@media (max-width: 800px) {
+  .app {
+    --rail: 64px;
+  }
+  .app:is(.theme-dark, .theme-light) .nav-item,
+  .app.fleet-console:is(.theme-dark, .theme-light) .nav-item {
+    min-height: 44px;
+    font-size: 10px;
+  }
+  .app:is(.theme-dark, .theme-light) .content,
+  .app.fleet-console:is(.theme-dark, .theme-light) .legacy-content {
+    padding: var(--space-4) var(--space-3);
+  }
+}
+@media (max-width: 580px) {
+  .app {
+    --rail: 52px;
+  }
+  .app:is(.theme-dark, .theme-light) .sidebar,
+  .app.fleet-console:is(.theme-dark, .theme-light) .sidebar,
+  .app.visual-console:is(.theme-dark, .theme-light) .sidebar {
+    padding: var(--space-2) 4px;
+  }
+  .app:is(.theme-dark, .theme-light) .nav-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .app:is(.theme-dark, .theme-light) .nav-item,
+  .app.fleet-console:is(.theme-dark, .theme-light) .nav-item {
+    min-height: 40px;
+  }
+  .app:is(.theme-dark, .theme-light) .nav-item.active::before {
+    left: -4px;
+  }
+  .app:is(.theme-dark, .theme-light) .topbar {
+    padding: 0 var(--space-3);
+  }
+  .app:is(.theme-dark, .theme-light) .breadcrumbs {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  .app:is(.theme-dark, .theme-light) .breadcrumbs > span {
+    display: none;
+  }
+  .app:is(.theme-dark, .theme-light) .connection {
+    padding: 6px;
+    font-size: 0;
+  }
+  .app:is(.theme-dark, .theme-light) .operator-button > span:not(:first-child) {
+    display: none;
+  }
+  .app:is(.theme-dark, .theme-light) .page-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+@media (prefers-contrast: more) {
+  .app.theme-dark {
+    --rule: #4a6378;
+    --chart-muted: #b6c7d0;
+  }
+  .app.theme-light {
+    --rule: #7d929c;
+    --chart-muted: #2e4350;
+  }
+}

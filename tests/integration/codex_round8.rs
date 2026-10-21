@@ -234,7 +234,13 @@ fn p23_round8_p12_tui_node_telemetry_qualification() {
 #[test]
 fn p26_p31_round8_p12_hitl_cockpit_qualification() {
     let cockpit = include_str!("../../apps/dashboard/src/ui/App.tsx");
-    assert!(cockpit.contains("READ ONLY · SOURCE:"));
+    // The console's sentence-case copy (21 October 2026 redesign) still states
+    // that the cockpit is read-only and names its source.
+    assert!(
+        cockpit.contains(
+            "`Read only. Source: ${legacyView ? 'producer snapshot' : 'native fleet API'}`"
+        )
+    );
     assert!(cockpit.contains("Candidate reports await independent verification"));
     assert!(cockpit.contains("Native execution remains disabled."));
     assert!(cockpit.contains("Sending, replying and changing task state are not available here."));

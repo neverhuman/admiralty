@@ -1,5 +1,5 @@
 import { ApiError, getNativeFleet, type Cursor, type NativeFleet } from './api';
-import { parseCursor, parseDomainRecordV2 } from './validation';
+import { parseCursor } from './jsonBounds';
 
 export type StreamFrame = { event: string; id?: string; data: string };
 const MAX_FRAME_CHARACTERS = 2 * 1024 * 1024;
@@ -97,6 +97,8 @@ export function watchFleet(options: WatchOptions): () => void {
         options.onState(failures ? 'reconnecting' : 'connecting');
         if (!cursor) await refresh();
         if (lifetime.signal.aborted || !cursor) return;
+        // Already resolved by the snapshot request above; keeps guards out of the entry chunk.
+        const { parseDomainRecordV2 } = await import('./validation');
         const currentCursor: Cursor = cursor;
         stream = new AbortController();
         const query = new URLSearchParams({ after: currentCursor.event_seq, generation: currentCursor.recovery_generation });

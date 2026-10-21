@@ -1,5 +1,5 @@
 import { ApiError, readBoundedJson } from './api';
-import { assertBoundedJson } from './validation';
+import { assertBoundedJson } from './jsonBounds';
 import { scheduleVisible } from './visibility';
 
 export type Data = Record<string, unknown>;

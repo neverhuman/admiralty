@@ -2591,7 +2591,7 @@ export function IntakeJourney({
       <section className="panel models-panel" aria-labelledby="intake-form-heading">
         <div className="panel-head">
           <div>
-            <div className="eyebrow">WORK ORDER INTAKE / CONTRACT VALIDATION</div>
+            <div className="eyebrow">Work order intake and contract validation</div>
             <h2 id="intake-form-heading">Author or import TaskContract</h2>
           </div>
           <div className="heading-meta">
@@ -2904,7 +2904,7 @@ export function IntakeJourney({
       <section className="panel models-panel" aria-labelledby="intake-preview-heading">
         <div className="panel-head">
           <div>
-            <div className="eyebrow">ADMISSION PREVIEW & DUPLICATE CHECK</div>
+            <div className="eyebrow">Admission preview and duplicate check</div>
             <h2 id="intake-preview-heading">
               {!preview.valid
                 ? 'Admission blocked by validation errors'
@@ -3084,10 +3084,10 @@ export function TaskDetailEvidenceJourney({
       <section className="panel workplans-panel" data-journey="detail">
         <div className="panel-head">
           <div>
-            <div className="eyebrow">TASK DETAIL & EVIDENCE</div>
+            <div className="eyebrow">Task detail and evidence</div>
             <h2>No tasks in current snapshot</h2>
           </div>
-          <span className="tiny-badge">0 TASKS</span>
+          <span className="tiny-badge">0 tasks</span>
         </div>
         <div className="empty-state">
           <span>⌁</span>The current fleet snapshot contains no task contracts.
@@ -3285,7 +3285,7 @@ export function TaskDetailEvidenceJourney({
       <section className="panel models-panel" aria-labelledby="task-lifecycle-controls-heading">
         <div className="panel-head">
           <div>
-            <div className="eyebrow">PENDING TASK LIFECYCLE COMMANDS · POST /v2/tasks/lifecycle</div>
+            <div className="eyebrow">Pending task lifecycle commands (POST /v2/tasks/lifecycle)</div>
             <h2 id="task-lifecycle-controls-heading">CAS-guarded pending cancellation & +1 contract revision</h2>
           </div>
           <span className={`state-pill ${detail.canCancelPending ? 'ready' : 'blocked'}`}>
@@ -3479,10 +3479,10 @@ export function TaskDetailEvidenceJourney({
       <section className="panel models-panel" aria-labelledby="task-criteria-heading">
         <div className="panel-head">
           <div>
-            <div className="eyebrow">ACCEPTANCE CRITERIA & VERIFICATION CHECKS</div>
+            <div className="eyebrow">Acceptance criteria and verification checks</div>
             <h2 id="task-criteria-heading">Contract verification bindings</h2>
           </div>
-          <span className="tiny-badge">{detail.criteriaWithChecks.length} CRITERIA</span>
+          <span className="tiny-badge">{detail.criteriaWithChecks.length} criteria</span>
         </div>
         <div className="table-scroll">
           <table>
@@ -3534,10 +3534,10 @@ export function TaskDetailEvidenceJourney({
       <section className="panel models-panel" aria-labelledby="task-evidence-heading">
         <div className="panel-head">
           <div>
-            <div className="eyebrow">DURABLE EVENT REPLAY / EVIDENCE TIMELINE</div>
+            <div className="eyebrow">Durable event replay and evidence timeline</div>
             <h2 id="task-evidence-heading">Observed task lifecycle & coordination events</h2>
           </div>
-          <span className="tiny-badge">{detail.timeline.length} EVENTS</span>
+          <span className="tiny-badge">{detail.timeline.length} events</span>
         </div>
         {detail.timeline.length > 0 ? (
           <div className="table-scroll">
@@ -3641,10 +3641,10 @@ export function AttentionCoordinationJourney({
       <section className="panel activity-panel" aria-labelledby="attention-pulse-heading">
         <div className="panel-head">
           <div>
-            <div className="eyebrow">COORDINATION & ATTENTION PULSE</div>
+            <div className="eyebrow">Coordination and attention pulse</div>
             <h2 id="attention-pulse-heading">Durable coordination summary</h2>
           </div>
-          <span className="tiny-badge">{attentionItems.length} ATTENTION ITEMS</span>
+          <span className="tiny-badge">{attentionItems.length} attention items</span>
         </div>
         <div className="coord-stats">
           <div>
@@ -3673,7 +3673,7 @@ export function AttentionCoordinationJourney({
       <section className="panel models-panel" aria-labelledby="attention-queue-heading">
         <div className="panel-head">
           <div>
-            <div className="eyebrow">NEEDS ATTENTION / OPERATOR TRIAGE</div>
+            <div className="eyebrow">Needs attention: operator triage</div>
             <h2 id="attention-queue-heading">Prioritized blockers, verification gates & pending questions</h2>
           </div>
           <div className="heading-meta">
@@ -3778,10 +3778,10 @@ export function AttentionCoordinationJourney({
       <section className="panel models-panel" aria-labelledby="coord-ledger-heading">
         <div className="panel-head">
           <div>
-            <div className="eyebrow">SCOPED COORDINATION LEDGER</div>
+            <div className="eyebrow">Scoped coordination ledger</div>
             <h2 id="coord-ledger-heading">Replayed messages & application acknowledgements</h2>
           </div>
-          <span className="tiny-badge">{ledger.length} MESSAGES</span>
+          <span className="tiny-badge">{ledger.length} messages</span>
         </div>
         {ledger.length > 0 ? (
           <div className="table-scroll">
@@ -3910,7 +3910,7 @@ export function OperatorActionsJourney({
       <section className="panel models-panel" aria-labelledby="actions-health-heading">
         <div className="panel-head">
           <div>
-            <div className="eyebrow">LIVE SERVER HEALTH & SNAPSHOT CURSOR</div>
+            <div className="eyebrow">Live server health and snapshot cursor</div>
             <h2 id="actions-health-heading">Control plane status</h2>
           </div>
           {onRefreshSnapshot && (
@@ -3946,10 +3946,10 @@ export function OperatorActionsJourney({
       <section className="panel models-panel" aria-labelledby="actions-select-heading">
         <div className="panel-head">
           <div>
-            <div className="eyebrow">POST /v1/models/select · DRY-RUN ROUTING PROBE</div>
+            <div className="eyebrow">Dry-run routing probe (POST /v1/models/select)</div>
             <h2 id="actions-select-heading">Evaluate model selection & fallback policy</h2>
           </div>
-          <span className="tiny-badge">PURE POLICY CHECK</span>
+          <span className="tiny-badge">Pure policy check</span>
         </div>
 
         {probeError && (
