@@ -51,8 +51,8 @@ name = "codex_round17_p25_p30"
 path = "tests/integration/codex_round17_p25_p30.rs"
 
 [workspace]
-members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests", "crates/admiralty-observe"]
-default-members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests", "crates/admiralty-observe"]
+members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests", "crates/admiralty-observe", "crates/admiralty-telemetry"]
+default-members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests", "crates/admiralty-observe", "crates/admiralty-telemetry"]
 resolver = "2"
 
 [workspace.package]
@@ -67,6 +67,7 @@ admiralty-core = { path = "crates/admiralty-core" }
 admiralty-store = { path = "crates/admiralty-store" }
 admiralty-runtime = { path = "crates/admiralty-runtime" }
 admiralty-server = { path = "crates/admiralty-server" }
+admiralty-telemetry = { path = "crates/admiralty-telemetry" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["float_roundtrip"] }
 schemars = "1.0"
