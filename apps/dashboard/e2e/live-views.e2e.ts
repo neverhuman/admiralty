@@ -333,7 +333,7 @@ describe("built live views against the real Rust server", () => {
     await browser.setViewportSize(1440, 1000);
     server.writeLegacySnapshot(sourceFixture());
   }, 60_000);
-  it("reveals the short range beside a focused commit on a lower lane", async () => {
+  it("fits the short range above the focused main backbone when the repository is expanded", async () => {
     const source = sourceFixture(), repo = source.git.harbor, template = repo.commits[0];
     const oid = (n: number) => n.toString(16).padStart(8, "0").padEnd(40, "0");
     repo.commits = [{ ...template, oid: oid(1), parents: [], subject: "Shared fork" }];
@@ -349,14 +349,19 @@ describe("built live views against the real Rust server", () => {
     await connect(`git?scope=harbor&project=harbor&focus=${focus}`);
     await browser.waitForSelector('.git-canvas[aria-label*="81 commits"]');
     await browser.waitForSelector(".lv-inspector");
+    await browser.clickButtonByText("Expand project");
+    await browser.waitForSelector('.git-project-stage .git-canvas');
+    await browser.clickButtonByAriaLabel("Fit graph");
     const selector = `.git-commit-range[title^="${first} → ${last}"]`;
-    await browser.waitForSelector(selector);
+    try { await browser.waitForSelector(selector); } catch(error) {
+      writeFileSync(join(evidence,"git-focused-lower-lane-FAIL.json"),JSON.stringify(await browser.evaluate(`(()=>{const e=document.querySelector('.git-scroll');return{hash:location.hash,canvases:[...document.querySelectorAll('.git-canvas')].map(c=>({label:c.getAttribute('aria-label'),rect:c.getBoundingClientRect().toJSON()})),ranges:[...document.querySelectorAll('.git-commit-range')].map(b=>({title:b.title,rect:b.getBoundingClientRect().toJSON()})),scroll:e?{left:e.scrollLeft,top:e.scrollTop,width:e.clientWidth,height:e.clientHeight}:null};})()`),null,2));throw error;
+    }
     const target = await browser.evaluate<{ top: number; visible: boolean; intended: boolean }>(`(() => {
       const b=document.querySelector(${JSON.stringify(selector)}), r=b.getBoundingClientRect();
-      const view=document.querySelector('.git-scroll').getBoundingClientRect();
-      return {top:document.querySelector('.git-scroll').scrollTop,visible:r.top>=view.top && r.bottom<=view.bottom,intended:b.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))};
+      const view=document.querySelector('.git-project-stage').getBoundingClientRect();
+      return {top:view.top,visible:r.top>=view.top && r.bottom<=view.bottom,intended:b.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))};
     })()`);
-    expect(target.top).toBeGreaterThan(400);
+    expect(await browser.evaluate(`(()=>{const range=document.querySelector(${JSON.stringify(selector)}),canvas=document.querySelector('.git-canvas');return canvas.dataset.backboneRef==='refs/heads/main' && Number(range.dataset.worldY)<Number(canvas.dataset.backboneY);})()`)).toBe(true);
     expect(target.visible).toBe(true);
     expect(target.intended).toBe(true);
     expect(await browser.evaluate(`document.querySelector('.lv-inspector').textContent`)).toContain(focus);
@@ -379,7 +384,7 @@ describe("built live views against the real Rust server", () => {
     const fresh=await startIsolatedNativeAdmiraltyServer({legacySnapshot:input});
     const observations:unknown[]=[];
     async function screenshot(name:string){
-      if(capture)await browser.evaluate(`(()=>{const label=document.createElement('aside');label.id='offline-capture-caption';label.textContent=${JSON.stringify("OFFLINE captured-source replay · "+(input.generated_utc??"source time unavailable")+" · not live deployment")};Object.assign(label.style,{position:'fixed',bottom:'0',left:'0',right:'0',padding:'5px 8px',background:'#142030',color:'#fff',font:'10px sans-serif',textAlign:'center',zIndex:'2147483647',pointerEvents:'none'});document.body.append(label);})()`);
+      if(capture)await browser.evaluate(`(()=>{const label=document.createElement('aside');label.id='offline-capture-caption';label.textContent=${JSON.stringify("OFFLINE captured-source replay · "+(input.generated_utc??"source time unavailable")+" · not live deployment")};Object.assign(label.style,{position:'fixed',bottom:'0',left:'0',right:'0',padding:'5px 8px',background:'#142030',color:'#fff',font:'10px sans-serif',textAlign:'center',zIndex:'2147483647',pointerEvents:'auto'});(document.fullscreenElement??document.querySelector('.live-workspace')??document.body).append(label);const r=label.getBoundingClientRect();if(!label.checkVisibility()||r.width<=0||r.height<=0||document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)!==label)throw Error('Offline caption must be visibly painted above capture');label.style.pointerEvents='none';})()`);
       await browser.captureScreenshot(join(evidence,name));
       if(capture)await browser.evaluate(`document.querySelector('#offline-capture-caption')?.remove()`);
     }
@@ -400,7 +405,8 @@ describe("built live views against the real Rust server", () => {
         const map=document.querySelector('.git-project-stage'),v=map.getBoundingClientRect(),world=document.querySelector('.git-project-bounds'),r=world.getBoundingClientRect();
         return {margins:[r.left-v.left,v.right-r.right,r.top-v.top,v.bottom-r.bottom],scaleX:r.width/world.offsetWidth,scaleY:r.height/world.offsetHeight,overflow:map.scrollWidth>map.clientWidth+1||map.scrollHeight>map.clientHeight+1};
       })()`);observations.push({project:id,...bounds});
-      expect(Math.min(...bounds.margins)).toBeGreaterThanOrEqual(23);expect(bounds.scaleX).toBeCloseTo(bounds.scaleY,6);expect(bounds.overflow,JSON.stringify(bounds)).toBe(false);
+      const expectedPadding=await browser.evaluate<number>(`document.querySelector('.git-project-stage').clientWidth>=640?48:16`);
+      expect(Math.min(...bounds.margins)).toBeGreaterThanOrEqual(expectedPadding-1);expect(bounds.scaleX).toBeCloseTo(bounds.scaleY,6);expect(bounds.overflow,JSON.stringify(bounds)).toBe(false);
     }
     try{
       await connect("git",fresh);await browser.waitForSelector('.git-band');
@@ -409,14 +415,15 @@ describe("built live views against the real Rust server", () => {
       for(const id of ids){
         await browser.evaluate(`(()=>{const s=document.querySelector('select[aria-label="Filter Git project"]');s.value=${JSON.stringify(id)};s.dispatchEvent(new Event('change',{bubbles:true}));})()`);
         await browser.waitForSelector('.is-project-focused');await browser.clickButtonByText("Expand project");
-        await browser.waitForSelector('.live-workspace.is-fullscreen .git-project-viewport');
+        await browser.waitForSelector('.live-workspace.is-fullscreen .git-project-viewport button[aria-label="Fit graph"]');
         await browser.clickButtonByText("Fit graph");await fitBounds(id);
         expect(await browser.evaluate(`document.querySelectorAll('.git-project-viewport').length`)).toBe(1);
         expect(await browser.evaluate(`new URLSearchParams(location.hash.split('?')[1]).get('scope')`)).toBe(id);
         await screenshot(`git-project-${capture?"OFFLINE-CAPTURE-":""}${id}-fit.png`);
         await browser.clickButtonByAriaLabel("Zoom project in");
         const zoomed=await browser.evaluate<string>(`document.querySelector('.git-project-camera-controls output').textContent`);
-        await browser.evaluate(`(()=>{const stage=document.querySelector('.git-project-stage'),r=stage.getBoundingClientRect();stage.dispatchEvent(new WheelEvent('wheel',{deltaY:-160,clientX:r.left+r.width/2,clientY:r.top+r.height/2,bubbles:true,cancelable:true}));})()`);
+        const wheelPoint=await browser.evaluate<{x:number;y:number}>(`(()=>{const r=document.querySelector('.git-project-stage').getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2};})()`);
+        await browser.wheelPointer(wheelPoint,{x:0,y:-160},{control:true});
         await browser.evaluate("new Promise(resolve=>requestAnimationFrame(resolve))");
         expect(await browser.evaluate(`document.querySelector('.git-project-camera-controls output').textContent`)).not.toBe(zoomed);
         const stage=await browser.evaluate<{x:number;y:number;cameraX:number}>(`(()=>{const e=document.querySelector('.git-project-stage'),r=e.getBoundingClientRect();for(let dy=0.25;dy<0.8;dy+=0.15)for(let dx=0.2;dx<0.7;dx+=0.15){const x=r.left+r.width*dx,y=r.top+r.height*dy;if(document.elementFromPoint(x,y)?.matches('.git-canvas'))return{x,y,cameraX:Number(e.dataset.cameraX)};}throw Error('No unobstructed graph pan target');})()`);
@@ -426,32 +433,32 @@ describe("built live views against the real Rust server", () => {
         expect(await browser.evaluate(`Boolean(document.querySelector('.lv-inspector'))`)).toBe(false);
         await browser.clickButtonByText("All projects");await browser.waitForSelector('.git-band');
         expect(await browser.evaluate(`document.querySelector('.live-workspace').classList.contains('is-fullscreen')`)).toBe(false);
-        await browser.evaluate(`history.back()`);await browser.waitForSelector('.git-project-viewport');
+        await browser.evaluate(`history.back()`);await browser.waitForSelector('.git-project-viewport button[aria-label="Fit graph"]');
         // Returning restores the manually chosen zoom rather than resetting to fit.
         expect(await browser.evaluate(`document.querySelector('.git-project-camera-controls output').textContent`)).not.toBe(zoomed);
         await browser.clickButtonByText("Fit graph");await fitBounds(id);
         await browser.clickButtonByText("Inventory");await browser.evaluate(`document.querySelector('.git-inventory tbody button').click()`);await browser.waitForSelector('.lv-inspector');
-        await browser.clickButtonByText("Graph");await browser.clickButtonByText("Fit graph");await fitBounds(id);
+        await browser.clickButtonByText("Graph");await browser.waitForSelector('.git-project-viewport button[aria-label="Fit graph"]');await browser.clickButtonByText("Fit graph");await fitBounds(id);
         await browser.setViewportSize(390,844);await fitBounds(id);
         expect(await browser.evaluate(`document.querySelector('.git-project-stage').getBoundingClientRect().bottom<=document.querySelector('.lv-inspector').getBoundingClientRect().top+1`)).toBe(true);
         await controlsWork();await fitBounds(id);
-        await browser.evaluate(`document.querySelector('.git-project-stage .git-chat-toggle').click()`);
-        await browser.waitForSelector('.git-project-stage .git-chat-panel');
+        await browser.evaluate(`document.querySelector('.git-project-chat-dock .git-chat-toggle').click()`);
+        await browser.waitForSelector('.git-project-chat-dock .git-chat-panel');
         await controlsWork();await fitBounds(id);
         await screenshot(`git-project-${capture?"OFFLINE-CAPTURE-":""}${id}-mobile-chat-open.png`);
-        await browser.evaluate(`document.querySelector('.git-project-stage .git-chat-toggle').click()`);
+        await browser.evaluate(`document.querySelector('.git-project-chat-dock .git-chat-toggle').click()`);
         await browser.evaluate("new Promise(resolve=>requestAnimationFrame(resolve))");
         const audit=await browser.runAxeAudit();
         if(audit.violations.length||audit.incomplete.length){
           const debug=await browser.evaluate(`(()=>{const e=document.querySelector('.git-source-totals'),r=e.getBoundingClientRect(),s=getComputedStyle(e),range=document.createRange();range.selectNodeContents(e);const hits=[...range.getClientRects()].map(q=>({rect:q.toJSON(),hits:document.elementsFromPoint(q.x+q.width/2,q.y+q.height/2).map(e=>e.tagName+'.'+e.className)}));return{rect:r.toJSON(),style:{lineHeight:s.lineHeight,font:s.font,padding:s.padding,background:s.background,color:s.color,overflow:s.overflow},parent:e.parentElement.getBoundingClientRect().toJSON(),ruler:e.parentElement.parentElement.getBoundingClientRect().toJSON(),hits,children:[...e.parentElement.children].map(e=>({tag:e.tagName,cls:e.className,rect:e.getBoundingClientRect().toJSON()}))};})()`);
-          writeFileSync(join(evidence,'project-axe-debug.json'),JSON.stringify({id,audit,debug},null,2));await screenshot(`git-project-${id}-AXE-FAILURE.png`);
+          const statusDebug=await browser.evaluate(`(()=>{const e=document.querySelector('.git-graph-status'),range=document.createRange();range.selectNodeContents(e);return{rect:e.getBoundingClientRect().toJSON(),style:getComputedStyle(e).cssText,textRects:[...range.getClientRects()].map(r=>({rect:r.toJSON(),hits:document.elementsFromPoint(r.x+r.width/2,r.y+r.height/2).map(x=>x.tagName+'.'+x.className)})),siblings:[...e.parentElement.children].map(x=>({tag:x.tagName,cls:x.className,rect:x.getBoundingClientRect().toJSON()}))};})()`);const axeDetails=await browser.evaluate(`window.axe.run({include:[['.git-graph-status']]},{runOnly:{type:'rule',values:['color-contrast']}}).then(r=>r.incomplete.map(x=>({id:x.id,nodes:x.nodes.map(n=>({html:n.html,any:n.any,all:n.all,none:n.none}))})))`);writeFileSync(join(evidence,'project-axe-debug.json'),JSON.stringify({id,audit,debug,statusDebug,axeDetails},null,2));await screenshot(`git-project-${id}-AXE-FAILURE.png`);
         }
         expect(audit.violations).toEqual([]);expect(audit.incomplete).toEqual([]);
         await screenshot(`git-project-${capture?"OFFLINE-CAPTURE-":""}${id}-mobile-inspector.png`);
         await browser.clickButtonByAriaLabel("Close inspector");await fitBounds(id);
         await browser.setViewportSize(1440,1000);await browser.clickButtonByText("All projects");await browser.waitForSelector('.git-band');
       }
-      writeFileSync(join(evidence,capture?"offline-project-fit.json":"fixture-project-fit.json"),JSON.stringify({source:capture?"OFFLINE captured public producer; not live deployment":"synthetic test fixture",projectIds:ids,padding:24,observations},null,2));
+      writeFileSync(join(evidence,capture?"offline-project-fit.json":"fixture-project-fit.json"),JSON.stringify({source:capture?"OFFLINE captured public producer; not live deployment":"synthetic test fixture",projectIds:ids,padding:{desktop:48,narrow:16},observations},null,2));
     }finally{await browser.setViewportSize(1440,1000);await fresh.close();}
   },90_000);
   it("fits a fresh graph and follows the visible project instead of a wider offscreen repository", async () => {
@@ -639,7 +646,9 @@ describe("built live views against the real Rust server", () => {
     await browser.setViewportSize(640, 844);
     await browser.clickButtonByText("Fit");
     await browser.waitForSelector('.git-commit-range');
-    expect(await browser.evaluate(`(() => { const r = document.querySelector('.git-commit-range').getBoundingClientRect(); return r.width; })()`)).toBe(304);
+    const rangeWidth=await browser.evaluate<number>(`document.querySelector('.git-commit-range').getBoundingClientRect().width`);
+    expect(rangeWidth).toBeGreaterThanOrEqual(24);expect(rangeWidth).toBeLessThanOrEqual(304);
+    expect(await browser.evaluate(`(()=>{const b=document.querySelector('.git-commit-range'),r=b.getBoundingClientRect();return b.scrollWidth<=b.clientWidth && b.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})()`)).toBe(true);
     await browser.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
     await browser.captureScreenshot(join(evidence, "git-compressed-narrow.png"));
     await browser.setViewportSize(390, 844);

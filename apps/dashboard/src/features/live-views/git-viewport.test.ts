@@ -54,24 +54,25 @@ describe("Git full-content overview fit", () => {
 });
 
 describe("Git viewport anchoring", () => {
-  it("keeps a visible selected OID fixed through zoom-dependent range layout", () => {
+  it("keeps a visible selected OID fixed through camera zoom with stable world layout", () => {
     const repo = repository();
     const oldZoom = 0.2, newZoom = 1;
     const oldLayout = layoutGit(repo, new Set(), oldZoom);
     const newLayout = layoutGit(repo, new Set(), newZoom);
     const selected = { projectId: "one", oid: oid(23) };
     const mark = oldLayout.byOid.get(selected.oid)!;
-    const scroll = { left: mark.x * oldZoom - 280, top: 600 };
+    const scroll = { left: mark.x * oldZoom - 100, top: 650 + 48 + mark.y * oldZoom - 142 };
     const anchor = captureGitAnchor({
       bands: [band("one", oldLayout, 650)], zoom: oldZoom, scroll, viewport, selected,
     });
-    expect(anchor).toMatchObject({ ...selected, screenX: 280, screenY: 142 });
+    expect(anchor).toMatchObject({ ...selected, screenX: 100, screenY: 142 });
     const restored = restoreGitAnchor(anchor, [band("one", newLayout, 810)], newZoom)!;
     const next = newLayout.byOid.get(selected.oid)!;
     expect(next.x * newZoom - restored.left).toBeCloseTo(anchor!.screenX);
     expect(810 + 48 + next.y * newZoom - restored.top).toBeCloseTo(anchor!.screenY);
-    // Scaling the previous world coordinate would lose this commit's position.
-    expect(restored.left).not.toBeCloseTo((scroll.left + 280) / oldZoom * newZoom - 280);
+    // Camera changes preserve the canonical world coordinate.
+    expect(newLayout.byOid.get(selected.oid)!.x).toBe(oldLayout.byOid.get(selected.oid)!.x);
+    expect(restored.left).toBeCloseTo((scroll.left + 100) / oldZoom * newZoom - 100);
   });
 
   it("ignores an offscreen selection and anchors near the current viewport center", () => {
@@ -204,7 +205,7 @@ describe("Git viewport fit", () => {
     expect(measure(zoom + 0.00001).height).toBeGreaterThan(650);
   });
 
-  it("remeasures actual range geometry instead of scaling its current dimensions", () => {
+  it("fits stable world range geometry at the largest usable camera scale", () => {
     const repo = repository(100);
     const measure = (zoom: number) => {
       const layout = layoutGit(repo, new Set(), zoom);
@@ -215,7 +216,7 @@ describe("Git viewport fit", () => {
     expect(zoom).toBeLessThan(1);
     expect(measure(zoom).width).toBeLessThanOrEqual(size.width);
     expect(measure(zoom + 0.00001).width).toBeGreaterThan(size.width);
-    expect(zoom).not.toBeCloseTo(size.width / measure(1).width, 3);
+    expect(zoom).toBeCloseTo(size.width / measure(1).width, 8);
   });
 
   it("returns the minimum when fixed extents cannot fit", () => {

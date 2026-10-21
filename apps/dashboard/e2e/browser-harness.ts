@@ -1448,6 +1448,7 @@ export interface BrowserHarness {
   emulateTouchInput(enabled: boolean): Promise<void>;
   movePointer(x: number, y: number): Promise<void>;
   dragPointer(from: { x: number; y: number }, to: { x: number; y: number }): Promise<void>;
+  wheelPointer(point: { x: number; y: number }, delta: { x: number; y: number }, modifiers?: { control?: boolean; meta?: boolean; shift?: boolean }): Promise<void>;
   evaluate<T>(expression: string, timeoutMs?: number): Promise<T>;
   captureScreenshot(path: string): Promise<void>;
   waitForText(expectedText: string, timeoutMs?: number): Promise<void>;
@@ -2208,6 +2209,11 @@ async function launchBrowserHarnessAttempt(
       } finally {
         await sendCdp('Input.dispatchMouseEvent', { type: 'mouseReleased', ...to, button: 'left', buttons: 0, clickCount: 1, pointerType: 'mouse' }, sessionId);
       }
+    },
+    async wheelPointer(point, delta, modifiers = {}) {
+      if (![point.x, point.y, delta.x, delta.y].every(Number.isFinite)) throw new Error('Wheel coordinates and deltas must be finite');
+      await sendCdp('Input.dispatchMouseEvent', { type: 'mouseWheel', ...point, deltaX: delta.x, deltaY: delta.y,
+        modifiers: (modifiers.shift ? 8 : 0) | (modifiers.control ? 2 : 0) | (modifiers.meta ? 4 : 0), pointerType: 'mouse' }, sessionId);
     },
     evaluate,
     async captureScreenshot(path: string) {

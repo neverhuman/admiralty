@@ -4,31 +4,21 @@ import {
   age,
   isStale,
   type GitCheckout,
-  type ViewProject,
   type ViewsSnapshot,
 } from "./feed";
-import { gitRangeWidth, layoutGit, type CommitRange, type GitLayout } from "./geometry";
+import { layoutGit, type CommitRange } from "./geometry";
 import { useSize, type Selection } from "./LiveViews";
-import { changeParams, palette } from "./FleetAtlas";
+import { changeParams } from "./FleetAtlas";
 import GitChat from "./GitChat";
-import GitProjectViewport from "./GitProjectViewport";
+import ProjectInvestigation from "../git-flow/ProjectInvestigation";
+import { makeCameraMemory } from "../git-flow/camera";
+import GitCanvas from "../git-flow/GraphCanvas";
 import { captureGitAnchor, restoreGitAnchor, fitGitZoom, gitFrontierScroll } from "./git-viewport";
 import { createChatMemory } from "./operator-chat";
 import { useGitHealth, type GitHealthReport } from "./gitHealth";
 
 let viewMemory = { zoom: 1, left: 0, top: 0, follow: false, inventory: false };
 const scopeViews = new Map<string, typeof viewMemory>();
-const colors = [
-  palette.gemini,
-  palette.claude,
-  palette.luna,
-  palette.sol,
-  palette.local,
-  palette.astra,
-];
-function shortRef(ref: string) {
-  return ref.replace(/^refs\/(heads|remotes|tags)\//, "");
-}
 function working(checkout: GitCheckout) {
   const s = checkout.status;
   return !s
@@ -66,314 +56,6 @@ function GitHealthBadge({ report, error, now, onToggle }: { report?: GitHealthRe
     </div>
   </details>;
 }
-function GitCanvas({
-  project,
-  layout,
-  zoom,
-  left,
-  top,
-  width,
-  height,
-  selection,
-  onSelect,
-  onToggleRange,
-  fixed = false,
-}: {
-  project: ViewProject;
-  layout: GitLayout;
-  zoom: number;
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-  selection: Selection | null;
-  onSelect: (s: Selection) => void;
-  onToggleRange: (range: CommitRange) => void;
-  fixed?: boolean;
-}) {
-  const ref = useRef<HTMLCanvasElement>(null),
-    [hover, setHover] = useState("");
-  const selected =
-    selection?.kind === "commit" && selection.project.id === project.id
-      ? selection.commit.oid
-      : selection?.kind === "checkout" && selection.project.id === project.id
-        ? selection.checkout.head
-        : null;
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ratio = Math.min(2, window.devicePixelRatio || 1);
-    canvas.width = Math.ceil(width * ratio);
-    canvas.height = Math.ceil(height * ratio);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.scale(ratio, ratio);
-    ctx.clearRect(0, 0, width, height);
-    const styles = getComputedStyle(canvas),
-      text = styles.getPropertyValue("--lv-text").trim() || "#dce5ef",
-      muted = styles.getPropertyValue("--lv-muted").trim() || "#98a8bb",
-      line = styles.getPropertyValue("--lv-line").trim() || "#273446";
-    ctx.strokeStyle = line;
-    ctx.lineWidth = 0.6;
-    ctx.setLineDash([2, 6]);
-    const gridStep = Math.max(12, 72 * zoom);
-    for (let x = 32 - (left % gridStep); x < width; x += gridStep) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-    ctx.setLineDash([]);
-    const screen = (m: { x: number; y: number }) => ({
-      x: m.x * zoom - left,
-      y: m.y * zoom - top,
-    });
-    for (const m of layout.marks) {
-      const c = screen(m);
-      for (const id of m.commit.parents) {
-        const p = layout.byOid.get(id);
-        if (!p) {
-          if (c.x > -60 && c.x < width + 60 && c.y > -40 && c.y < height + 40) {
-            ctx.strokeStyle = muted;
-            ctx.setLineDash([3, 4]);
-            ctx.beginPath();
-            ctx.moveTo(c.x - 28, c.y);
-            ctx.lineTo(c.x - 8, c.y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.font = "11px ui-monospace,monospace";
-            ctx.fillStyle = muted;
-            ctx.fillText("…", c.x - 40, c.y + 4);
-          }
-          continue;
-        }
-        const a = screen(p);
-        if (
-          Math.max(a.x, c.x) < -50 ||
-          Math.min(a.x, c.x) > width + 50 ||
-          Math.max(a.y, c.y) < -50 ||
-          Math.min(a.y, c.y) > height + 50
-        )
-          continue;
-        ctx.strokeStyle = colors[m.lane % colors.length];
-        ctx.globalAlpha = 0.6;
-        ctx.lineWidth = 1.7;
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        const bend = Math.max(20, (c.x - a.x) / 2);
-        ctx.bezierCurveTo(a.x + bend, a.y, c.x - bend, c.y, c.x, c.y);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-      }
-    }
-    const labels: { x: number; y: number; text: string; color: string; priority: number }[] = [];
-    for (const m of layout.marks) {
-      const c = screen(m);
-      if (c.x < -40 || c.x > width + 40 || c.y < -40 || c.y > height + 40)
-        continue;
-      if (m.range) {
-        if (fixed) {
-          const span = gitRangeWidth(m.range.commits.length, 1) * zoom;
-          ctx.strokeStyle = colors[m.lane % colors.length];
-          ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.moveTo(c.x - span / 2, c.y); ctx.lineTo(c.x + span / 2, c.y); ctx.stroke();
-        }
-        continue;
-      }
-      const color = colors[m.lane % colors.length];
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, m.commit.parents.length > 1 ? 6 : 4, 0, Math.PI * 2);
-      ctx.fill();
-      if (selected === m.commit.oid) {
-        ctx.strokeStyle = text;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, 10, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      if (zoom >= 0.65) {
-        ctx.fillStyle = muted;
-        ctx.font = "11px ui-monospace,monospace";
-        ctx.fillText(m.commit.oid.slice(0, 7), c.x + 11, c.y + 4);
-      }
-      const refs =
-        project.git?.refs.filter((r) => r.commit_oid === m.commit.oid) ?? [];
-      if (refs.length) {
-        const full = refs.map((r) => shortRef(r.name)).join(" · ");
-        labels.push({ x: c.x, y: c.y, text: full.length > 42 ? `${full.slice(0, 41)}…` : full,
-          color, priority: selected === m.commit.oid ? 2 : refs.some((r) => r.name === "refs/heads/main" || r.name === "refs/heads/master") ? 1 : 0 });
-      }
-      const trees =
-        project.git?.checkouts.filter((t) => t.head === m.commit.oid) ?? [];
-      if (trees.length) {
-        ctx.strokeStyle = palette.sol;
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.moveTo(c.x, c.y + 10);
-        ctx.lineTo(c.x + 5, c.y + 16);
-        ctx.lineTo(c.x, c.y + 22);
-        ctx.lineTo(c.x - 5, c.y + 16);
-        ctx.closePath();
-        ctx.stroke();
-        const dirty = trees.some(
-          (t) =>
-            t.status &&
-            t.status.staged + t.status.unstaged + t.status.untracked > 0,
-        );
-        if (dirty) {
-          ctx.setLineDash([3, 3]);
-          ctx.beginPath();
-          ctx.moveTo(c.x + 6, c.y + 16);
-          ctx.lineTo(c.x + 24, c.y + 16);
-          ctx.stroke();
-          ctx.strokeRect(c.x + 24, c.y + 12, 8, 8);
-          ctx.setLineDash([]);
-        }
-      }
-    }
-    const occupied: { x: number; y: number; width: number }[] = [];
-    ctx.font = "600 11px ui-monospace,monospace";
-    for (const label of labels.sort((a, b) => b.priority - a.priority || a.x - b.x)) {
-      if (fixed && zoom < 0.35 && label.priority === 0) continue;
-      const inset = fixed ? Math.min(24, width / 4) : 0;
-      const w = Math.max(0, Math.min(width - 2 * inset, 270, ctx.measureText(label.text).width + 16));
-      const x = Math.max(inset, Math.min(width - inset - w, label.x - 8));
-      const y = fixed ? Math.max(24, Math.min(height - 44, label.y - 30)) : label.y - 30;
-      if (occupied.some((box) => Math.abs(box.y - y) < 24 && x < box.x + box.width + 8 && x + w + 8 > box.x)) continue;
-      occupied.push({ x, y, width: w });
-      ctx.fillStyle = line;
-      ctx.beginPath();
-      ctx.roundRect(x, y, w, 20, 4);
-      ctx.fill();
-      ctx.fillStyle = label.color;
-      if (w > 16) ctx.fillText(label.text, x + 8, y + 14, w - 16);
-    }
-  }, [project, layout, zoom, left, top, width, height, selected, fixed]);
-  const nearest = (x: number, y: number) => {
-    let distance = 24,
-      found: null | (typeof layout.marks)[number] = null;
-    for (const m of layout.marks) {
-      if (m.range && !fixed) continue;
-      const d = Math.hypot(m.x * zoom - left - x, m.y * zoom - top - y);
-      if (d < distance) {
-        distance = d;
-        found = m;
-      }
-    }
-    return found;
-  };
-  return (
-    <>
-      <canvas
-        ref={ref}
-        style={{ left: fixed ? 0 : left, top: fixed ? 0 : top + 48, width, height }}
-        className="git-canvas"
-        tabIndex={0}
-        role="img"
-        aria-label={`${project.name}: ${layout.orderedCommits.length} commits, ${layout.ranges.filter((r) => !r.expanded).length} collapsed ranges. Arrow keys navigate ancestry; Enter inspects. Full details available in Commit inventory.`}
-        onPointerMove={(e) => {
-          const r = e.currentTarget.getBoundingClientRect(),
-            mark = nearest(e.clientX - r.left, e.clientY - r.top);
-          setHover(
-            mark
-              ? `${mark.commit.oid.slice(0, 10)} · ${mark.commit.subject}${project.git?.refs.filter((r) => r.commit_oid === mark.commit.oid).map((r) => ` · ${shortRef(r.name)}`).join("") ?? ""}`
-              : "",
-          );
-        }}
-        onPointerLeave={() => setHover("")}
-        onClick={(e) => {
-          const r = e.currentTarget.getBoundingClientRect(),
-            mark = nearest(e.clientX - r.left, e.clientY - r.top);
-          if (mark?.range) onToggleRange(mark.range);
-          else if (mark) onSelect({ kind: "commit", project, commit: mark.commit });
-        }}
-        onKeyDown={(e) => {
-          if (
-            ![
-              "ArrowLeft",
-              "ArrowRight",
-              "ArrowUp",
-              "ArrowDown",
-              "Enter",
-            ].includes(e.key)
-          )
-            return;
-          e.preventDefault();
-          const current =
-            layout.byOid.get(selected ?? "") ?? layout.marks.at(-1);
-          if (!current) return;
-          let next = current;
-          if (e.key === "ArrowLeft")
-            next = layout.byOid.get(current.commit.parents[0]) ?? current;
-          if (e.key === "ArrowRight")
-            next =
-              layout.marks.find((m) =>
-                m.commit.parents.includes(current.commit.oid),
-              ) ?? current;
-          if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-            const index = layout.marks.indexOf(current);
-            next =
-              layout.marks[
-                Math.max(
-                  0,
-                  Math.min(
-                    layout.marks.length - 1,
-                    index + (e.key === "ArrowUp" ? -1 : 1),
-                  ),
-                )
-              ];
-          }
-          if (next.range) onToggleRange(next.range);
-          else onSelect({ kind: "commit", project, commit: next.commit });
-        }}
-      />
-      {layout.ranges.map((range) => {
-        const x = range.x * zoom - left;
-        const y = range.y * zoom - top;
-        const compactProject = fixed && zoom < 0.65;
-        if (fixed && zoom * 54 < 16) return null; // Canvas retains every range; zoom or keyboard to drill in.
-        const buttonWidth = Math.min(width, compactProject ? Math.max(28, gitRangeWidth(range.commits.length, 1) * zoom) : range.expanded ? 156 : gitRangeWidth(range.commits.length, zoom));
-        const narrow = !range.expanded && buttonWidth < 304;
-        const compact = !range.expanded && buttonWidth < 144;
-        const tiny = compactProject || (!range.expanded && buttonWidth < 68);
-        if (x + buttonWidth / 2 < 0 || x - buttonWidth / 2 > width || y < 0 || y > height)
-          return null;
-        const first = range.commits[0].oid.slice(0, 7);
-        const last = range.commits.at(-1)!.oid.slice(0, 7);
-        return (
-          <button
-            key={range.id}
-            className={`git-commit-range ${range.expanded ? "is-expanded" : ""} ${narrow ? "is-narrow" : ""} ${compact ? "is-compact" : ""} ${tiny ? "is-tiny" : ""}`}
-            style={{ left: (fixed ? 0 : left) + Math.max(0, Math.min(width - buttonWidth, x - buttonWidth / 2)), top: (fixed ? 0 : top + 48) + y - (compactProject ? 7 : range.expanded ? 38 : tiny ? 13 : narrow ? 26 : 19), width: buttonWidth, ...(compactProject ? {height:14,padding:"0 3px",fontSize:9} : {}) }}
-            aria-expanded={range.expanded}
-            aria-label={range.expanded ? `− Collapse ${range.commits.length} commits` : `${first} → ${last} + ${range.commits.length} hidden. Expand commits`}
-            title={`${range.commits[0].oid} → ${range.commits.at(-1)!.oid} · ${range.commits.length} linear commits. ${range.expanded ? "Collapse range" : "Expand range"}.`}
-            onClick={() => onToggleRange(range)}
-          >
-            {compactProject ? <span>{range.expanded ? "−" : "+"}{range.commits.length}</span> : range.expanded ? (
-              <>− Collapse {range.commits.length} commits</>
-            ) : tiny ? (
-              <span>+{range.commits.length}</span>
-            ) : compact ? (
-              <><code><span>{first}</span><span>→ {last}</span></code><span>+ {range.commits.length} hidden</span></>
-            ) : (
-              <><code>{first} → {last}</code><span>+ {range.commits.length} hidden</span></>
-            )}
-          </button>
-        );
-      })}
-      {hover && (
-        <div
-          className="git-hover"
-          style={{ left: (fixed ? 0 : left) + 12, top: (fixed ? 0 : top) + height - 30 }}
-        >
-          {hover}
-        </div>
-      )}
-    </>
-  );
-}
 export default function GitFlow({
   snapshot,
   paused,
@@ -402,7 +84,9 @@ export default function GitFlow({
   onProjectFullscreen: (expanded: boolean) => void;
 }) {
   const chatMemory = useMemo(() => createChatMemory(), [token, chatScopeEpoch, snapshot.simulated]);
+  const projectCameraMemory = useMemo(() => makeCameraMemory(), [token, chatScopeEpoch, snapshot.simulated]);
   const [chatRevision, setChatRevision] = useState(0);
+  const [browseToolsOpen, setBrowseToolsOpen] = useState(false);
   const [healthOpen, setHealthOpen] = useState<ReadonlySet<string>>(new Set());
   const health = useGitHealth(token, chatScopeEpoch, healthEnabled && !paused);
   const route = useRoute(),
@@ -460,10 +144,8 @@ export default function GitFlow({
     selectedOid = selection?.kind === "commit" ? selection.commit.oid : selection?.kind === "checkout" ? selection.checkout.head ?? "" : "",
     selectedProject = selection && selection.kind !== "agent" ? selection.project.id : "";
   const rangeAnchor = useRef<{ projectId: string; oid: string; screenX: number } | null>(null);
-  const buildBands = (scale: number) => {
-    let top = 0;
+  const layouts = useMemo(() => new Map(projects.map((project) => {
     const needle = query.trim().toLowerCase();
-    return projects.map((project) => {
       const revealed = new Set(project.git?.commits.filter((c) => {
         const key = `${project.id}:${c.oid}`;
         return expanded.has(key) || (!collapsed.has(key) && (
@@ -475,7 +157,12 @@ export default function GitFlow({
       const collapsedOids = new Set(project.git?.commits
         .filter((commit) => collapsed.has(`${project.id}:${commit.oid}`))
         .map((commit) => commit.oid));
-      const layout = project.git ? layoutGit(project.git, revealed, scale, collapsedOids) : null;
+      return [project.id, project.git ? layoutGit(project.git, revealed, 1, collapsedOids) : null] as const;
+    })), [projects, expanded, collapsed, focusId, focusProject, selectedOid, selectedProject, query]);
+  const buildBands = (scale: number) => {
+    let top = 0;
+    return projects.map((project) => {
+      const layout = layouts.get(project.id) ?? null;
       const height = Math.max(
         chatMemory.projects.get(project.id)?.open || healthOpen.has(project.id) ? 480 : 180,
         layout ? layout.height * scale + 76 : 180,
@@ -485,8 +172,7 @@ export default function GitFlow({
       return row;
     });
   };
-  const bands = useMemo(() => buildBands(zoom), [projects, zoom, expanded, collapsed, focusId, focusProject, selectedOid, selectedProject, query, chatMemory, chatRevision, healthOpen]);
-  const focusedLayout = useMemo(() => projectExpanded ? buildBands(1)[0]?.layout : null, [projectExpanded, projects, expanded, collapsed, focusId, focusProject, selectedOid, selectedProject, query]);
+  const bands = useMemo(() => buildBands(zoom), [projects, layouts, zoom, chatMemory, chatRevision, healthOpen]);
   const gutter = filter && !details ? 0 : viewport.width < 620 ? 160 : 240;
   // Classic scrollbars and borders occupy space inside the outer surface.
   // ResizeObserver keeps rendering in sync; actions read the live client box.
@@ -713,7 +399,7 @@ export default function GitFlow({
       0,
     );
   return (
-    <section className={`git-view ${filter ? "is-project-focused" : ""}`} aria-label="Git Flow" style={{ "--git-gutter-width": `${gutter}px` } as CSSProperties} onKeyDown={(event) => {
+    <section className={`git-view ${filter ? "is-project-focused" : ""} ${projectExpanded ? "is-investigating" : ""}`} aria-label="Git Flow" style={{ "--git-gutter-width": `${gutter}px` } as CSSProperties} onKeyDown={(event) => {
       const target = event.target as HTMLElement;
       if (event.ctrlKey || event.metaKey || event.altKey || target.closest("input, textarea, select, button, [contenteditable=true]")) return;
       if (event.key === "0" || event.key === "1") {
@@ -722,7 +408,7 @@ export default function GitFlow({
         if (event.key === "0") fitView(); else zoomTo(1);
       }
     }}>
-      <div className="lv-toolbar">
+      <div className={`lv-toolbar ${browseToolsOpen ? "are-tools-open" : ""}`}>
         <label className="lv-search">
           <span aria-hidden="true" data-icon="⌕" />
           <input
@@ -788,7 +474,7 @@ export default function GitFlow({
         >
           {paused ? "▶ Resume live" : "Ⅱ Pause"}
         </button>
-        <button
+        {!projectExpanded && <button
           className={`lv-button ${follow ? "active" : ""}`}
           aria-pressed={follow}
           disabled={projectExpanded}
@@ -797,14 +483,16 @@ export default function GitFlow({
           }}
         >
           Follow latest
-        </button>
+        </button>}
       </div>
       <div className="git-ruler">
         <div className="git-scope-summary">
           {filter && <button className="lv-text-button" onClick={() => changeScope("")}>← All projects</button>}
           {filter && <strong>{frozen.projects.find((p) => p.id === filter)?.name ?? filter}</strong>}
+          {projectExpanded && <button className="lv-text-button git-browse-toggle" aria-expanded={browseToolsOpen} onClick={() => setBrowseToolsOpen(!browseToolsOpen)}>Search & history</button>}
           {filter && !projectExpanded && <button className="lv-button git-expand-project" onClick={() => changeScope(filter, true)}>Expand project ⛶</button>}
           <span className="git-axis-icon" aria-hidden="true" data-icon="⑂" />
+          {projectExpanded && changes > 0 && <button className="lv-text-button git-source-changes" aria-label={`${changes} new observations · ${paused ? "Resume live" : "Acknowledge"}`} title="New observations preserve this camera" onClick={() => { setPaused(null); setChanges(0); }}>{changes} new</button>}
           <span className="git-source-totals">{`${projects.length} ${projects.length === 1 ? "project" : "projects"} / ${allCommits} commits / ${checkouts} checkouts`}</span>
           {filter && !inventory && !projectExpanded && <button className="lv-text-button" aria-pressed={details} onClick={() => setDetails(!details)}>{details ? "Hide" : "Show"} project details</button>}
         </div>
@@ -812,6 +500,18 @@ export default function GitFlow({
           Parents always precede children. Each repository has its own
           coordinates.
         </span>
+      {!projectExpanded && changes > 0 && (
+        <button
+          className="git-new-changes"
+          onClick={() => {
+            setPaused(null);
+            setFollow(true);
+            latest();
+          }}
+        >
+          {changes} new source cuts · Return to latest →
+        </button>
+      )}
         {!inventory && !projectExpanded && <div className="git-zoom" role="group" aria-label="Git viewport controls">
           <button aria-label="Zoom Git out" onClick={() => zoomTo(Math.max(0.05, zoom / 1.2))}>
             <span data-icon="−" aria-hidden="true" />
@@ -834,18 +534,7 @@ export default function GitFlow({
           changes accumulate without moving the view.
         </div>
       )}
-      {changes > 0 && (
-        <button
-          className="git-new-changes"
-          onClick={() => {
-            setPaused(null);
-            setFollow(true);
-            latest();
-          }}
-        >
-          {changes} new source cuts · Return to latest →
-        </button>
-      )}
+
       {inventory ? (
         <div className="git-inventory">
           <div className="git-inventory-checkouts">
@@ -934,21 +623,15 @@ export default function GitFlow({
             </button>
           )}
         </div>
-      ) : projectExpanded && projects[0]?.git && focusedLayout ? (
+      ) : projectExpanded && projects[0]?.git ? (
         <div className="git-surface is-project-expanded">
-          <GitProjectViewport key={`${projects[0].id}:${projects[0].git.instance_id}`}
-            project={projects[0]} layout={focusedLayout}
-            selectionKey={selectedOid}
-            render={(camera, size) => <>
-              <GitCanvas project={projects[0]} layout={focusedLayout}
-                zoom={camera.k} left={-camera.x} top={-camera.y} width={size.width} height={size.height}
-                selection={selection} onSelect={inspect} onToggleRange={(range) => toggleRange(projects[0].id, range)} fixed />
-              <div className="git-chat-overlays"><div className="git-chat-anchor" style={{top:12,maxHeight:"calc(100% - 24px)"}}>
-                <GitChat projectId={projects[0].id} projectName={projects[0].name} token={token} memory={chatMemory}
-                  active={!snapshot.simulated} disabledReason={chatDisabledReason} onAccess={onAccess}
-                  onToggle={() => setChatRevision((revision) => revision + 1)} />
-              </div></div>
-            </>}
+          <ProjectInvestigation key={`${chatScopeEpoch}:${projects[0].id}:${projects[0].git.instance_id}`}
+            project={projects[0]} revision={frozen.revision} accessEpoch={chatScopeEpoch} memory={projectCameraMemory}
+            expanded={expanded} collapsed={collapsed} selection={selection} focusId={focusId} query={query}
+            report={health.reports[projects[0].id]} onSelect={inspect} onToggleRange={(range) => toggleRange(projects[0].id, range)}
+            dock={<GitChat projectId={projects[0].id} projectName={projects[0].name} token={token} memory={chatMemory}
+              active={!snapshot.simulated} disabledReason={chatDisabledReason} onAccess={onAccess}
+              onToggle={() => setChatRevision((revision) => revision + 1)} />}
           />
           <div className="git-project-tools">
             <GitHealthBadge report={health.reports[projects[0].id]?.instance_id === projects[0].git.instance_id ? health.reports[projects[0].id] : undefined}
@@ -1153,7 +836,9 @@ export default function GitFlow({
           </div>
           <div className="git-chat-overlays">
             {bands.map((band) => {
-              const top = Math.max(12, band.top - scroll.top + 52);
+              // A collapsed chat occupies the caption row, above commit hit
+              // targets. Opening it remains an explicit operator action.
+              const top = Math.max(8, band.top - scroll.top + (chatMemory.projects.get(band.project.id)?.open ? 52 : 8));
               const available = Math.min(graphViewport.height - top - 12, band.top + band.height - scroll.top - top - 12);
               const visible = available >= 60 && band.top < scroll.top + graphViewport.height - 60;
               return <div key={`${chatMemory.id}:${band.project.id}`} className="git-chat-anchor" hidden={!visible} style={{ top, maxHeight: Math.max(60, available) }}>
@@ -1178,7 +863,7 @@ export default function GitFlow({
           ◇ Checkout HEAD &nbsp; ▫ Working changes &nbsp; ⋯ Missing ancestry &nbsp; [＋] Linear range
         </span>
         {fitLimited && <span role="status">History is wider than this view at minimum zoom; scroll horizontally.</span>}
-        <span>{projectExpanded ? "Drag to pan · Wheel to zoom · 0 Fit graph" : filter ? "Expand project for full graph navigation" : "Expand a project to inspect split branches and worktrees"} · 1 Actual size · + / − Zoom</span>
+        <span>{projectExpanded ? "Drag / scroll to pan · Ctrl / ⌘ scroll to zoom · 0 / F Fit graph" : filter ? "Expand project for full graph navigation" : "Expand a project to inspect split branches and worktrees"} · 1 Actual size · + / − Zoom</span>
       </div>
     </section>
   );

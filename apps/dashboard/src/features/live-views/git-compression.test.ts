@@ -133,14 +133,18 @@ describe("maximal linear Git compression", () => {
       if (a !== b) expect(a.x).toBeLessThan(b.x);
     }
   });
-  it("reserves readable bubble space at every supported zoom", () => {
+  it("preserves canonical range spacing at every camera zoom", () => {
+    const baseline = layoutGit(chain(100));
     for (const zoom of [0.2, 0.4, 0.9, 1, 2]) {
       const layout = layoutGit(chain(100), new Set(), zoom);
+      expect(layout.marks.map(({ x, y }) => ({ x, y }))).toEqual(baseline.marks.map(({ x, y }) => ({ x, y })));
       const [root, bubble, tip] = layout.marks;
-      expect((bubble.x - root.x) * zoom).toBeGreaterThan(152);
-      expect((tip.x - bubble.x) * zoom).toBeGreaterThan(152);
+      expect(bubble.x - root.x).toBeGreaterThan(152);
+      expect(tip.x - bubble.x).toBeGreaterThan(152);
+      expect(layout.ranges[0].commits).toEqual(baseline.ranges[0].commits);
     }
   });
+
   it("never folds disconnected histories together", () => {
     const repo = chain(20);
     repo.commits[10].parents = [];
