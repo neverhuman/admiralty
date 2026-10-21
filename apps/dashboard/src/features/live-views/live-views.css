@@ -1265,6 +1265,9 @@
   color: inherit;
   text-align: left;
   font: inherit;
+  /* Keep the self-hosted font's glyph bounds inside the clipped title on
+     Linux as well as Darwin; inherited normal metrics differ by platform. */
+  line-height: 20px;
   cursor: pointer;
 }
 .git-chat-toggle > span:nth-child(2) {
@@ -2046,4 +2049,4 @@
 .git-merge-junctions button { text-align:left; white-space:normal; overflow-wrap:anywhere; padding:7px 0; }
 /* A closed conversation gives its horizontal space back to the graph. */
 .git-investigation-body:has(.git-project-chat-dock .git-chat:not(.is-open)) { flex-direction:column; }
-.git-project-chat-dock:has(.git-chat:not(.is-open)) { flex:0 0 41px; min-height:41px; border-left:0; border-top:1px solid var(--lv-line); }
+.git-project-chat-dock:has(.git-chat:not(.is-open)) { flex:0 0 auto; min-height:41px; border-left:0; border-top:1px solid var(--lv-line); }
