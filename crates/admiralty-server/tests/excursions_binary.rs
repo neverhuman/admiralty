@@ -102,7 +102,19 @@ impl Drop for Daemon {
 }
 
 fn start(root: &Path, address: SocketAddr) -> Daemon {
+    // Launch hermetically, like intake_startup.rs: no inherited environment (a
+    // self-hosted runner's variables must not change startup), a private
+    // TMPDIR, and stderr kept so a failed start explains itself.
+    let log_path = root.join("daemon.log");
+    let log = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .expect("daemon log");
+    let stderr_text = || std::fs::read_to_string(&log_path).unwrap_or_default();
     let child = Command::new(env!("CARGO_BIN_EXE_admiraltyd"))
+        .env_clear()
+        .env("TMPDIR", root)
         .arg("--database")
         .arg(root.join("incidents.db"))
         .arg("--listen")
@@ -114,14 +126,17 @@ fn start(root: &Path, address: SocketAddr) -> Daemon {
         .env("ADMIRALTY_LOG", "warn")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(Stdio::from(log))
         .spawn()
         .expect("spawn admiraltyd");
     let mut daemon = Daemon(child);
     let deadline = Instant::now() + Duration::from_secs(20);
     while Instant::now() < deadline {
         if let Ok(Some(status)) = daemon.0.try_wait() {
-            panic!("isolated binary exited before readiness: {status}");
+            panic!(
+                "isolated binary exited before readiness: {status}\n--- admiraltyd stderr ---\n{}",
+                stderr_text()
+            );
         }
         if let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_millis(500)) {
             let _ = stream.set_read_timeout(Some(Duration::from_secs(1)));
@@ -135,7 +150,10 @@ fn start(root: &Path, address: SocketAddr) -> Daemon {
         }
         std::thread::sleep(Duration::from_millis(100));
     }
-    panic!("isolated binary readiness deadline");
+    panic!(
+        "isolated binary readiness deadline\n--- admiraltyd stderr ---\n{}",
+        stderr_text()
+    );
 }
 
 #[cfg(unix)]
