@@ -353,9 +353,49 @@ async fn real_fleet_and_models_require_exact_bearer_and_report_unqualified_reads
     let legacy = request(server.address, "GET", "/v1/legacy", None, None).await;
     assert_eq!(legacy.status, 200);
     assert_eq!(legacy.json()["projects"]["fixture"]["status"], "read-only");
+    let brief = request(server.address, "GET", "/v1/legacy/brief", None, None).await;
+    assert_eq!(brief.status, 200);
+    assert_eq!(brief.json()["totals"]["git_missing"], 1);
+    assert!(brief.body.len() <= admiralty_server::fleet_brief::MAX_BRIEF_BYTES);
     let unknown = request(server.address, "GET", "/v1/not-a-route", Some(TOKEN), None).await;
     assert_eq!(unknown.status, 404);
 
+    server.stop().await;
+}
+
+#[tokio::test]
+async fn private_brief_has_the_same_bearer_boundary_as_its_source() {
+    let fixture = Fixture::new();
+    let mut server = TestServer::start(
+        config(
+            false,
+            Some(TOKEN.to_owned()),
+            None,
+            Some(fixture.legacy_config(false)),
+        ),
+        fixture.store(),
+    )
+    .await;
+    for path in ["/v1/legacy", "/v1/legacy/brief"] {
+        assert_eq!(
+            request(server.address, "GET", path, None, None)
+                .await
+                .status,
+            401
+        );
+        assert_eq!(
+            request(server.address, "GET", path, Some("wrong"), None)
+                .await
+                .status,
+            401
+        );
+        assert_eq!(
+            request(server.address, "GET", path, Some(TOKEN), None)
+                .await
+                .status,
+            200
+        );
+    }
     server.stop().await;
 }
 

@@ -81,3 +81,10 @@
 
 The complete native major release is not yet accepted or published. See
 [release status](docs/operators/release-status.md) for remaining gates.
+
+## 21 October 2026 — PR consolidation
+
+- Retain the integrated Git inspector-fit correction, service/host health and ALOG telemetry, source-bound cached projections, optional logfmt/JSON observer output, producer briefs and Rust live startup.
+- Preserve Fleet operations and expose the byte-bounded producer view separately as Agent brief, with isolated styles and original observation clocks.
+- Use one protected credential initializer and one activation journal/layout. Readiness checks Store/draining state, producer freshness and configured assets together.
+- Remove mandatory independent PR approval under the owner's instruction; keep source review, current-head checks and matched ordinary rebase merges.

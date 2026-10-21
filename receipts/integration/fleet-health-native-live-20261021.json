@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-21T13:06:58.810Z",
+  "scope": "Source-preview fleet health/native live upgrade; no merge or deployment acceptance",
+  "initial_audit_base": "5916726f8c085f2687ec756508914c5a713fa5bc",
+  "integration_base": "2f5b93157c3b0a2194929f08d166d18c1abaad43",
+  "implementation_commit": "99174de692de60f762fd9d0e41a684f45b264189",
+  "qualification_source_digest": {
+    "algorithm": "sha256",
+    "method": "Sorted tracked source path, NUL, file bytes, NUL; paths selected by git ls-files over crates, apps/dashboard/src, the new health browser test and two launch/check scripts",
+    "value": "229a43a397b745b4578b4bd4419291179d2239b8486331647811df65a16193f3"
+  },
+  "environment": {
+    "platform": "Linux x86-64",
+    "node": "v24.19.0",
+    "pnpm": "11.15.1",
+    "rust": "1.95.0",
+    "full_matrix_compiler_jobs": 2,
+    "rust_test_threads": 1,
+    "targeted_compiler_jobs": 1
+  },
+  "results": [
+    {
+      "command": "cargo check -p admiralty-cli -p admiralty-observe --locked --offline",
+      "exit": 0,
+      "scope": "Initial implementation working tree before rebase"
+    },
+    {
+      "command": "pnpm check",
+      "exit": 101,
+      "completed_stages": [
+        "frozen install",
+        "Rust formatting",
+        "strict workspace all-targets Clippy"
+      ],
+      "blocked_stage": "workspace Rust test linking: No space left on device",
+      "later_stages": "not reached"
+    },
+    {
+      "command": "cargo test -p admiralty-server --lib --locked --offline",
+      "exit": 101,
+      "passed": 127,
+      "failed": 1,
+      "ignored": 2,
+      "detail": "All five brief tests and FIFO refusal passed. Existing services::native_executor::tests::inspect_run_journal_fails_closed_on_link_and_oversized_artifact failed creating its Unix-socket fixture: Operation not permitted."
+    },
+    {
+      "command": "cargo test -p admiralty-cli --bin admiralty live::tests --locked --offline",
+      "exit": 0,
+      "passed": 3
+    },
+    {
+      "command": "built access_projection test binary",
+      "exit": 0,
+      "passed": 3,
+      "scope": "Real isolated HTTP auth/public-read tests; pre-rebase Rust source, including the new private brief boundary"
+    },
+    {
+      "command": "rustc --test logging module with verbatim now_utc source and existing serde_json/chrono libraries",
+      "exit": 0,
+      "passed": 1,
+      "detail": "Unmodified logging.rs tests, isolated compilation. Ordinary Cargo observer/shared-feature attempts remained disk-blocked; this is not a complete observer test pass."
+    },
+    {
+      "command": "pnpm --dir apps/dashboard test --run",
+      "exit": 0,
+      "passed": 365,
+      "files": 32,
+      "scope": "Rebased source"
+    },
+    {
+      "command": "pnpm --dir apps/dashboard typecheck",
+      "exit": 0,
+      "scope": "Includes graph worker typecheck on current main"
+    },
+    {
+      "command": "pnpm --dir apps/dashboard exec tsc -p e2e/tsconfig.json --noEmit",
+      "exit": 0
+    },
+    {
+      "command": "pnpm --dir apps/dashboard build",
+      "exit": 0,
+      "scope": "Rebased source; existing uncompressed chunk-size advisory retained"
+    },
+    {
+      "command": "pnpm contracts:check",
+      "exit": 0,
+      "schemas": 28
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked --offline -- -D warnings",
+      "exit": 101,
+      "detail": "Final repeat stopped writing metadata on a full disk; the earlier full-matrix Clippy pass is preserved and is not relabeled as exact final-head approval."
+    },
+    {
+      "command": "Chrome 155.0.8059.84 sandbox prerequisite probe",
+      "exit": 1,
+      "detail": "Running as root without --no-sandbox is not supported. Sandbox was not disabled; browser/axe acceptance not claimed."
+    }
+  ],
+  "native_smoke": {
+    "scope": "Actual isolated Rust CLI and HTTP; synthetic producer; no provider or production deployment",
+    "binary_sha256": "dbd01f16aed3d985c43d35792ad78c12907af9bd99e4a8385246b05623f9bb2f",
+    "cli_brief_bytes": 884,
+    "http_brief_bytes": 884,
+    "private_without_bearer": 401,
+    "private_with_bearer": 200,
+    "assets": 200,
+    "token_bytes": 64,
+    "token_not_logged": true,
+    "child_PATH": "empty",
+    "shutdown": {
+      "code": 0,
+      "signal": null
+    }
+  },
+  "bundle": {
+    "vite_reported_health_js_gzip_kb": 3.52,
+    "vite_reported_health_css_gzip_kb": 1.22,
+    "measurement": "Vite build report, not measured HTTP/browser latency or provider-token savings"
+  },
+  "original_failures": [
+    {
+      "kind": "environment",
+      "detail": "Root filesystem full interrupted formatting; affected new files were repaired before formatting and compilation checks."
+    },
+    {
+      "kind": "environment",
+      "detail": "Initial Rust code generation received SIGKILL under memory pressure; only this lane’s generated artifacts were relocated."
+    },
+    {
+      "kind": "test harness",
+      "detail": "A frontend assertion expected the wrong existing oversized-response wording; corrected to API response too large without changing the byte-bound check."
+    },
+    {
+      "kind": "test harness",
+      "detail": "First native smoke watched stdout; the daemon announces readiness on stderr. Corrected the stream and reran without changing startup/shutdown limits."
+    }
+  ],
+  "material_limits": [
+    "Full local matrix did not pass; several compatibility/canary/browser stages were not reached.",
+    "No actual browser layout/accessibility acceptance on this root/sandbox-restricted runner.",
+    "42 inventoried compatibility/qualification Python files remain; installed live preview no longer needs Python or Node.",
+    "No hosted CI result, independent exact-head approval, merge, signing/publication or production deployment is established by this receipt."
+  ],
+  "evidence": [
+    {
+      "name": "full-check-1.log",
+      "bytes": 4651,
+      "sha256": "8df4d8ae22efc118aa3a9a574a43f8715e01662c255aab87e890b42d3fcd1b5a"
+    },
+    {
+      "name": "brief-tests-built.log",
+      "bytes": 579,
+      "sha256": "1cd0304e78e521e1e0100dfd1a1c73e8af3cd7d845c00ca96ac2bcb5a5fa14bb"
+    },
+    {
+      "name": "access-projection-built.log",
+      "bytes": 342,
+      "sha256": "98b19e180cab4f7191523077a185f4969fa52773db783666d47a0817af70c35f"
+    },
+    {
+      "name": "live-tests-targeted.log",
+      "bytes": 842,
+      "sha256": "4d4c0d7d65777d57512592c025d3e11809f9d96b43265567da9d90f27ba16587"
+    },
+    {
+      "name": "server-unit-final.log",
+      "bytes": 15567,
+      "sha256": "3c7ea468e1246eac33d448a5e3427abd616132bbc37e9bc26d4dbb9a70a2d5e9"
+    },
+    {
+      "name": "observer-log-isolated.log",
+      "bytes": 521,
+      "sha256": "f7f1ff39f2e0a2f7ddfd7b704864867cbaa041b046783ade9def355fdad1306c"
+    },
+    {
+      "name": "observer-log-shared-features.log",
+      "bytes": 2685,
+      "sha256": "e2c9f3d5007f92d990688c1a878aa68be32f148b7ec6a92e040a730baace3df4"
+    },
+    {
+      "name": "ui-tests-rebased.log",
+      "bytes": 438,
+      "sha256": "23dc6c3fece0a4f51e83e053a8f6efe7915fb8136f5c0d3ff2ac510cbd5385a4"
+    },
+    {
+      "name": "typecheck-rebased.log",
+      "bytes": 64,
+      "sha256": "d64704ee0b592f810ee4936cb309cff40b7e7b02718fd9bd8ee02aec22dfe43f"
+    },
+    {
+      "name": "e2e-typecheck-rebased.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "build-final.log",
+      "bytes": 1641,
+      "sha256": "90e7bf70a1704bfa5db7c17fbef188278d50a401a3c1a15503182445cbeed30d"
+    },
+    {
+      "name": "contracts-final.log",
+      "bytes": 124,
+      "sha256": "217a27a6700351aca4cde48752d84901bc7bbd849444577952ab8f4991c1c0c1"
+    },
+    {
+      "name": "clippy-final.log",
+      "bytes": 984,
+      "sha256": "a72015d27fd31d7a3875829c1e13254ca4e5585356ea4d3e38d3766514fe2b5a"
+    },
+    {
+      "name": "browser-probe.log",
+      "bytes": 174,
+      "sha256": "02d36a5b7bdeed4a4ccc9401a953b8284dec10ba40618129a55842a3df457b87"
+    },
+    {
+      "name": "native-live-smoke.json",
+      "bytes": 457,
+      "sha256": "3465eb6bbcfb8978170c74cc63ce5659e78e8e961522c90d5bacc877907218ea"
+    }
+  ]
+}

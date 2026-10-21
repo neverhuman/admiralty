@@ -1,0 +1,58 @@
+.brief-health-report{display:grid;gap:20px}
+.brief-health-source{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:25px 28px;border:1px solid var(--border,#2b3a4f);border-left:4px solid #5cb5b2;border-radius:14px;background:var(--panel,#122132)}
+.brief-health-source h2{margin:8px 0;font-size:24px}
+.brief-health-source p,.brief-health-projects p{margin:5px 0;color:var(--muted,#a5b4c6);font-size:13px}
+.brief-health-source.brief-health-stale,.brief-health-source.brief-health-future,.brief-health-source.brief-health-unknown{border-left-color:#d6aa65}
+.brief-health-payload{display:grid;gap:6px;text-align:right;white-space:nowrap}
+.brief-health-payload strong{font:600 23px ui-monospace,monospace;color:#72c6c3}
+.brief-health-payload span{font-size:12px;color:var(--muted,#a5b4c6)}
+.brief-health-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.brief-health-metric{display:grid;gap:12px;padding:22px;border:1px solid var(--border,#2b3a4f);border-radius:12px;background:var(--panel,#122132)}
+.brief-health-metric>span{font-size:13px}
+.brief-health-metric>strong{font-size:34px;line-height:1;color:#e2b878}
+.brief-health-metric.brief-health-neutral>strong{color:#72c6c3}
+.brief-health-metric>small{color:var(--muted,#a5b4c6);line-height:1.5}
+.brief-health-controls{display:flex;gap:25px;align-items:center;padding:0 24px 20px}
+.brief-health-controls label{display:flex;gap:10px;align-items:center;font-size:13px}
+.brief-health-controls input[type=search]{border:1px solid var(--border,#2b3a4f);border-radius:7px;padding:10px;background:transparent;color:inherit}
+.brief-health-controls input[type=checkbox]{accent-color:#62b9b6}
+.brief-health-table-scroll{overflow:auto}
+.brief-health-projects table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
+.brief-health-projects caption{text-align:left;padding:0 24px 12px;color:var(--muted,#a5b4c6)}
+.brief-health-projects th,.brief-health-projects td{padding:16px 20px;border-top:1px solid var(--border,#2b3a4f);vertical-align:top;line-height:1.5}
+.brief-health-projects thead th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.brief-health-projects tbody th{font-family:ui-monospace,monospace;overflow-wrap:anywhere;min-width:130px}
+.brief-health-projects td small{display:block;color:var(--muted,#a5b4c6);white-space:nowrap}
+.brief-health-tag{display:inline-block;padding:3px 8px;border:1px solid #52647b;border-radius:5px;font-size:11px}
+.brief-health-tag.brief-health-attention{color:#f2c483;border-color:#926d37}
+.brief-health-tag.brief-health-healthy{color:#79d5bb;border-color:#3d8a75}
+.brief-health-code{display:block;font:11px/1.7 ui-monospace,monospace;overflow-wrap:anywhere}
+.brief-health-coverage,.brief-health-empty{padding:12px 24px}
+.brief-health-agent{padding:20px 24px;min-width:0}
+.brief-health-agent summary{cursor:pointer;font-size:13px;font-weight:600}
+.brief-health-agent p{font-size:13px;color:var(--muted,#a5b4c6)}
+.brief-health-agent pre{padding:16px;border-radius:8px;max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1522;color:#c9d8e9;font-size:12px}
+.brief-health-agent small{overflow-wrap:anywhere;display:block;color:var(--muted,#a5b4c6)}
+.brief-health-warning{display:flex;gap:15px;align-items:center;flex-wrap:wrap;padding:16px 20px;border:1px solid #926d37;border-radius:10px;margin-bottom:16px;font-size:13px}
+.brief-health-warning button{padding:8px 12px;border:1px solid currentColor;border-radius:6px;background:transparent;color:inherit}
+.theme-light .brief-health-source,.theme-light .brief-health-metric{background:#fff;border-color:#d4dde5}
+.theme-light .brief-health-metric>strong{color:#885c22}
+.theme-light .brief-health-metric.brief-health-neutral>strong,.theme-light .brief-health-payload strong{color:#206965}
+.theme-light .brief-health-source p,.theme-light .brief-health-projects p,.theme-light .brief-health-metric>small,.theme-light .brief-health-payload span,.theme-light .brief-health-agent p,.theme-light .brief-health-agent small{color:#526174}
+.theme-light .brief-health-tag.brief-health-healthy{color:#1b6b53}
+.theme-light .brief-health-tag.brief-health-attention{color:#80591c}
+@media(max-width:1100px){.brief-health-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+.brief-health-controls{align-items:flex-start;flex-direction:column;gap:15px}
+.brief-health-source{align-items:flex-start;flex-direction:column}
+.brief-health-payload{text-align:left}
+}
+@media(max-width:600px){.brief-health-metrics{grid-template-columns:minmax(0,1fr)}
+.brief-health-source{padding:20px}
+.brief-health-controls label{flex-wrap:wrap}
+}
+
+/* Bound intrinsic table/pre widths within the mobile content track. */
+.brief-health-report{min-width:0;width:100%;grid-template-columns:minmax(0,1fr)}
+.brief-health-report>*{min-width:0}
+.brief-health-source>div{min-width:0;overflow-wrap:anywhere}
+.brief-health-source p,.brief-health-coverage,.brief-health-agent summary{overflow-wrap:anywhere}

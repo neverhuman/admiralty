@@ -11,16 +11,18 @@ import { useProfile } from '../profile';
 import { ProfileAvatar, ProfileSettings } from './Profile';
 import { navigate, useRoute, type RouteName } from '../router';
 
+const Operations = lazy(() => import('../features/operations/Operations'));
+const AgentBrief = lazy(() => import('../features/brief-health/FleetHealth'));
 const LiveViews = lazy(() => import('../features/live-views/LiveViews'));
 const CommandJourneys = lazy(() => import('./CommandJourneys'));
 const Intake = lazy(() => import('./Intake'));
 const Incidents = lazy(() => import('../features/incidents/Incidents'));
 const FleetHealth = lazy(() => import('../features/health/FleetHealth'));
-type View = 'Legacy detailed view' | 'Fleet health' | 'Fleet operations' | 'Overview' | 'Workplans' | 'Coordination' | 'Commands' | 'Intake' | 'Incidents' | 'Models' | 'Git Flow' | 'Fleet Atlas';
-const destinations: Record<RouteName, View> = { detail: 'Legacy detailed view', health: 'Fleet health', operations: 'Fleet operations', overview: 'Overview', workplans: 'Workplans', coordination: 'Coordination', commands: 'Commands', intake: 'Intake', incidents: 'Incidents', models: 'Models', git: 'Git Flow', atlas: 'Fleet Atlas' };
+type View = 'Legacy detailed view' | 'Fleet health' | 'Fleet operations' | 'Agent brief' | 'Overview' | 'Workplans' | 'Coordination' | 'Commands' | 'Intake' | 'Incidents' | 'Models' | 'Git Flow' | 'Fleet Atlas';
+const destinations: Record<RouteName, View> = { detail: 'Legacy detailed view', health: 'Fleet health', operations: 'Fleet operations', brief: 'Agent brief', overview: 'Overview', workplans: 'Workplans', coordination: 'Coordination', commands: 'Commands', intake: 'Intake', incidents: 'Incidents', models: 'Models', git: 'Git Flow', atlas: 'Fleet Atlas' };
 /** Navigation grouped by job: watch the fleet, run the work, configure it. */
 const navGroups: { label: string; items: { view: View; icon: string }[] }[] = [
-  { label: 'OBSERVE', items: [{ view: 'Legacy detailed view', icon: '▦' }, { view: 'Fleet health', icon: '♥' }, { view: 'Fleet operations', icon: '⚑' }, { view: 'Git Flow', icon: '⑂' }, { view: 'Fleet Atlas', icon: '✦' }] },
+  { label: 'OBSERVE', items: [{ view: 'Legacy detailed view', icon: '▦' }, { view: 'Fleet health', icon: '♥' }, { view: 'Fleet operations', icon: '⚑' }, { view: 'Agent brief', icon: '≡' }, { view: 'Git Flow', icon: '⑂' }, { view: 'Fleet Atlas', icon: '✦' }] },
   { label: 'OPERATE', items: [{ view: 'Overview', icon: '◫' }, { view: 'Workplans', icon: '≡' }, { view: 'Coordination', icon: '◉' }, { view: 'Commands', icon: '⌘' }, { view: 'Intake', icon: '↧' }, { view: 'Incidents', icon: '!' }] },
   { label: 'CONFIGURE', items: [{ view: 'Models', icon: '⚙' }] },
 ];
@@ -35,7 +37,7 @@ function App() {
   const view = destinations[route.name];
   const setView = (value: View) => navigate((Object.keys(destinations) as RouteName[]).find(key => destinations[key] === value) ?? 'detail');
   const visualView = route.name === 'git' || route.name === 'atlas';
-  const healthView = route.name === 'health' || route.name === 'operations';
+  const healthView = route.name === 'health' || route.name === 'operations' || route.name === 'brief';
   const [fleet, setFleet] = useState<NativeFleet | null>(null);
   const [error, setError] = useState('');
   const [updated, setUpdated] = useState<Date | null>(null);
@@ -58,7 +60,7 @@ function App() {
   const commandsView = view === 'Commands';
   const intakeView = view === 'Intake';
   const incidentsView = view === 'Incidents';
-  const operationsView = view === 'Fleet operations';
+
   const [hasOpenedIntake, setHasOpenedIntake] = useState(intakeView);
   // Views that never read the native fleet do not hold its event stream open.
   const fleetFree = visualView || intakeView || incidentsView || healthView;
@@ -147,6 +149,7 @@ function App() {
         {route.name === 'health' && <Suspense fallback={<div className="loading-card" role="status">Loading fleet health…</div>}><FleetHealth token={token || undefined} onAccess={() => setShowAccess(true)} /></Suspense>}
         {incidentsView && <Suspense fallback={<div role="status">Loading incident history…</div>}><Incidents token={token} /></Suspense>}
         {route.name === 'operations' && <Suspense fallback={<div className="loading-card" role="status">Loading fleet operations…</div>}><Operations token={token || undefined} /></Suspense>}
+        {route.name === 'brief' && <Suspense fallback={<div className="loading-card" role="status">Loading agent brief…</div>}><AgentBrief token={token || undefined} onAccess={() => setShowAccess(true)} /></Suspense>}
         {legacyView && <LegacyDetailed token={token || undefined} />}
         {!legacyView && !visualView && !intakeView && !incidentsView && !healthView && fleet?.simulated && <div className="simulation-note">Simulation: these synthetic projects and tasks are separate from the real producer fleet.</div>}
         {!legacyView && !visualView && !modelsView && !commandsView && !intakeView && !incidentsView && !healthView && error && <div className="error-banner" role="status"><span>{connection === 'paused' ? 'Updates paused' : 'Connection issue'}</span><span>{error}{connection === 'reconnecting' ? ' · Reconnecting automatically.' : ''}</span><button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry connection</button></div>}
