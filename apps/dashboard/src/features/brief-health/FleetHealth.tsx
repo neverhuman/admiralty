@@ -1,6 +1,18 @@
-import { useEffect, useState } from 'react';
-import { clockState, fetchBrief, HealthAccessError, type FleetBrief } from './api';
+import { useEffect, useState, type ReactNode } from 'react';
+import { clockState, fetchBrief, HealthAccessError, type FleetBrief, type ProjectHealth } from './api';
 import './health.css';
+
+function projectDetails(p: ProjectHealth, now: number, staleAfter: number): Array<[string, ReactNode]> {
+  return [
+    ['Git state', <span className={`brief-health-tag brief-health-${p.git_state}`}>{p.git_state}</span>],
+    ['Git clock', <span title={p.git_clock.observed_utc ?? 'No observation timestamp'}>{clockState(p.git_clock, now, staleAfter)}</span>],
+    ['Done / total', <>{p.done ?? 'unknown'} / {p.total ?? 'unknown'}</>],
+    ['Blocked', p.blocked ?? 'unknown'],
+    ['Diverged branches', <>{p.diverged_branches ?? 'unknown'}<small> of {p.observed_branches ?? 'unknown'} observed</small></>],
+    ['Dirty / conflicts', <>{p.dirty_checkouts ?? 'unknown'} / {p.conflicted_checkouts ?? 'unknown'}</>],
+    ['Issue codes', <>{Object.entries(p.issue_codes).map(([code, count]) => <span className="brief-health-code" key={code}>{code} ×{count}</span>)}{Object.keys(p.issue_codes).length === 0 && <span>{p.git_state === 'healthy' ? 'No reported issues' : 'No issue codes reported'}</span>}</>],
+  ];
+}
 
 export function HealthReport({ brief, now = Date.now() }: { brief: FleetBrief; now?: number }) {
   const [onlyAttention, setOnlyAttention] = useState(false);
@@ -31,9 +43,14 @@ export function HealthReport({ brief, now = Date.now() }: { brief: FleetBrief; n
         <a className="text-button" href="#/git">Open Git Flow →</a></div>
       <div className="brief-health-controls"><label>Find a project<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Project ID" /></label>
         <label className="brief-health-checkbox"><input type="checkbox" checked={onlyAttention} onChange={e => setOnlyAttention(e.target.checked)} />Show review and coverage gaps</label></div>
-      <div className="brief-health-table-scroll"><table><caption>Git coverage and checkout findings</caption><thead><tr><th scope="col">Project</th><th scope="col">Git state</th><th scope="col">Git clock</th><th scope="col">Done / total</th><th scope="col">Blocked</th><th scope="col">Diverged branches</th><th scope="col">Dirty / conflicts</th><th scope="col">Issue codes</th></tr></thead>
-        <tbody>{rows.map(p => <tr key={p.id}><th scope="row">{p.id}</th><td><span className={`brief-health-tag brief-health-${p.git_state}`}>{p.git_state}</span></td><td><span title={p.git_clock.observed_utc ?? 'No observation timestamp'}>{clockState(p.git_clock, now, brief.stale_after_seconds)}</span></td><td>{p.done ?? 'unknown'} / {p.total ?? 'unknown'}</td><td>{p.blocked ?? 'unknown'}</td><td>{p.diverged_branches ?? 'unknown'}<small> of {p.observed_branches ?? 'unknown'} observed</small></td><td>{p.dirty_checkouts ?? 'unknown'} / {p.conflicted_checkouts ?? 'unknown'}</td><td>{Object.entries(p.issue_codes).map(([code, count]) => <span className="brief-health-code" key={code}>{code} ×{count}</span>)}{Object.keys(p.issue_codes).length === 0 && <span>{p.git_state === 'healthy' ? 'No reported issues' : 'No issue codes reported'}</span>}</td></tr>)}</tbody>
+      <div className="brief-health-table-scroll" tabIndex={0} role="region" aria-label="Project health table"><table><caption>Git coverage and checkout findings</caption><thead><tr><th scope="col">Project</th><th scope="col">Git state</th><th scope="col">Git clock</th><th scope="col">Done / total</th><th scope="col">Blocked</th><th scope="col">Diverged branches</th><th scope="col">Dirty / conflicts</th><th scope="col">Issue codes</th></tr></thead>
+        <tbody>{rows.map(p => <tr key={p.id}><th scope="row">{p.id}</th>{projectDetails(p, now, brief.stale_after_seconds).map(([label, value]) => <td key={label}>{value}</td>)}</tr>)}</tbody>
       </table></div>
+      <div className="brief-health-cards" role="list" aria-label="Project health details">
+        {rows.map(p => <article key={p.id} className="brief-health-card" role="listitem"><h3>{p.id}</h3><dl>
+          {projectDetails(p, now, brief.stale_after_seconds).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+        </dl></article>)}
+      </div>
       {rows.length === 0 && <p className="brief-health-empty">No projects match this view.</p>}
       <p className="brief-health-coverage">{brief.projects.length} project rows included · {brief.omitted_projects} omitted by the context budget. Summary counts cover all {totals.projects} source projects.</p>
     </section>
@@ -78,8 +95,8 @@ export default function FleetHealth({ token, onAccess }: { token?: string; onAcc
   // A changed session can never display the previous session's protected data.
   const brief = result?.token === token ? result?.brief : undefined;
   const error = failure?.token === token ? failure?.message : undefined;
-  return <div className="fleet-health">
+  return <div className="agent-brief-view">
     {error && <div className="brief-health-warning" role="status"><span>{error}{brief ? ' Showing the last successful brief; check source clocks.' : ''}</span><button onClick={onAccess}>Session access</button><button onClick={() => setRetry(n => n + 1)}>Retry</button></div>}
-    {brief ? <HealthReport brief={brief} now={now} /> : !error && <div role="status">Loading fleet health…</div>}
+    {brief ? <HealthReport brief={brief} now={now} /> : !error && <div role="status">Loading agent brief…</div>}
   </div>;
 }

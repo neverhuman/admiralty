@@ -56,3 +56,18 @@
 .brief-health-report>*{min-width:0}
 .brief-health-source>div{min-width:0;overflow-wrap:anywhere}
 .brief-health-source p,.brief-health-coverage,.brief-health-agent summary{overflow-wrap:anywhere}
+
+.brief-health-table-scroll:focus-visible{outline:2px solid #72c6c3;outline-offset:2px}
+
+/* Keep every field readable without horizontally clipping narrow layouts. */
+.brief-health-projects{container-type:inline-size}
+.brief-health-cards{display:none}
+.brief-health-card{min-width:0;padding:18px 20px;border-top:1px solid var(--border,#2b3a4f);overflow-wrap:anywhere}
+.brief-health-card h3{margin:0 0 14px;font:600 15px ui-monospace,monospace}
+.brief-health-card dl{margin:0;display:grid;gap:12px}
+.brief-health-card dl>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+.brief-health-card dt{font-size:12px;color:var(--muted,#a5b4c6)}
+.brief-health-card dd{margin:0;min-width:0;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.brief-health-card dd small{display:block}
+.theme-light .brief-health-card dt{color:#526174}
+@container(max-width:1050px){.brief-health-table-scroll{display:none}.brief-health-cards{display:grid}}
