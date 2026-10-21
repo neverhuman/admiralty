@@ -69,20 +69,22 @@ export default function GitCanvas({
     if (visibleOids && !range.commits.some((commit) => visibleOids.has(commit.oid))) return [];
     const x = range.x * zoom - left, y = range.y * zoom - top;
     const laneClearance = zoom * GIT_LANE_SPACING;
-    if (fixed && laneClearance < 16) return []; // Canvas/keyboard retain low-zoom ranges.
-    // A detailed narrow control reaches26px below its lane; an expanded
-    // control reaches38px above. Reserve their combined reach plus a4px gap.
-    const compactProject = fixed && laneClearance < 26 + 38 + 4;
+    if (laneClearance < 16) return []; // Canvas/keyboard retain low-zoom ranges in both views.
+    const normalWidth = Math.min(width, range.expanded ? 156 : Math.max(28, Math.min(304, gitRangeWidth(range.commits.length, 1) * zoom)));
+    // Match the actual control's reach: tiny26px, narrow52px, wide38px;
+    // expanded controls also sit38px above their lane. Keep a4px gap.
+    const requiredClearance = range.expanded ? 68 : normalWidth < 68 ? 30 : normalWidth < 304 ? 56 : 42;
+    const compactControl = laneClearance < requiredClearance;
     const compactHeight = laneClearance < 30 ? 14 : 26;
-    const buttonWidth = Math.min(width, compactProject ? Math.max(28, gitRangeWidth(range.commits.length, 1) * zoom) : range.expanded ? 156 : Math.max(28, Math.min(304, gitRangeWidth(range.commits.length, 1) * zoom)));
+    const buttonWidth = compactControl ? Math.min(width, Math.max(28, gitRangeWidth(range.commits.length, 1) * zoom)) : normalWidth;
     if (x + buttonWidth / 2 < 0 || x - buttonWidth / 2 > width || y < 0 || y > height) return [];
     const narrow = !range.expanded && buttonWidth < 304;
     const compact = !range.expanded && buttonWidth < 144;
-    const tiny = compactProject || (!range.expanded && buttonWidth < 68);
-    const offset = compactProject ? compactHeight / 2 : range.expanded ? 38 : tiny ? 13 : narrow ? 26 : 19;
-    const buttonHeight = compactProject ? compactHeight : range.expanded || tiny ? 26 : narrow ? 52 : 38;
-    return [{ range, compactProject, narrow, compact, tiny, rect: {
-      x: fixed ? x - buttonWidth / 2 : Math.max(0, Math.min(width - buttonWidth, x - buttonWidth / 2)), y: y - offset, width: buttonWidth, height: buttonHeight,
+    const tiny = compactControl || (!range.expanded && buttonWidth < 68);
+    const offset = compactControl ? compactHeight / 2 : range.expanded ? 38 : tiny ? 13 : narrow ? 26 : 19;
+    const buttonHeight = compactControl ? compactHeight : range.expanded || tiny ? 26 : narrow ? 52 : 38;
+    return [{ range, compactControl, narrow, compact, tiny, rect: {
+      x: x - buttonWidth / 2, y: y - offset, width: buttonWidth, height: buttonHeight,
     } }];
   }), [layout, visibleOids, fixed, zoom, left, top, width, height]);
   const markColor = (mark: GitLayout["marks"][number]) => familyColors.get(mark.commit.oid) ?? colors[mark.lane % colors.length];
@@ -167,12 +169,10 @@ export default function GitCanvas({
       const c = screen(m);
       if (!spatial && (c.x < -40 || c.x > width + 40 || c.y < -40 || c.y > height + 40)) continue;
       if (m.range) {
-        if (fixed) {
-          const span = gitRangeWidth(m.range.commits.length, 1) * zoom;
-          ctx.strokeStyle = markColor(m);
-          ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.moveTo(c.x - span / 2, c.y); ctx.lineTo(c.x + span / 2, c.y); ctx.stroke();
-        }
+        const span = gitRangeWidth(m.range.commits.length, 1) * zoom;
+        ctx.strokeStyle = markColor(m);
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(c.x - span / 2, c.y); ctx.lineTo(c.x + span / 2, c.y); ctx.stroke();
         continue;
       }
       const color = graph?.backboneOids.has(m.commit.oid) ? text : markColor(m);
@@ -256,7 +256,6 @@ export default function GitCanvas({
       found: null | (typeof layout.marks)[number] = null;
     for (const m of layout.marks) {
       if (!included(m.commit.oid) && !m.range?.commits.some((commit) => included(commit.oid))) continue;
-      if (m.range && !fixed) continue;
       const d = Math.hypot(m.x * zoom - left - x, m.y * zoom - top - y);
       if (d < distance) {
         distance = d;
@@ -337,7 +336,7 @@ export default function GitCanvas({
           else onSelect({ kind: "commit", project, commit: next.commit });
         }}
       />
-      {rangeControls.map(({ range, compactProject, narrow, compact, tiny, rect }) => {
+      {rangeControls.map(({ range, compactControl, narrow, compact, tiny, rect }) => {
         const first = range.commits[0].oid.slice(0, 7);
         const last = range.commits.at(-1)!.oid.slice(0, 7);
         return (
@@ -347,13 +346,13 @@ export default function GitCanvas({
             data-world-x={layout.byOid.get(range.commits[0].oid)?.x}
             data-world-y={layout.byOid.get(range.commits[0].oid)?.y}
             className={`git-commit-range ${range.expanded ? "is-expanded" : ""} ${narrow ? "is-narrow" : ""} ${compact ? "is-compact" : ""} ${tiny ? "is-tiny" : ""}`}
-            style={{ left: (fixed ? 0 : left) + rect.x, top: (fixed ? 0 : top + 48) + rect.y, width: rect.width, height: rect.height, ...(compactProject ? {padding:"0 3px",fontSize:9} : {}) }}
+            style={{ left: (fixed ? 0 : left) + rect.x, top: (fixed ? 0 : top + 48) + rect.y, width: rect.width, height: rect.height, ...(compactControl ? {padding:"0 3px",fontSize:9} : {}) }}
             aria-expanded={range.expanded}
             aria-label={range.expanded ? `− Collapse ${range.commits.length} commits` : `${first} → ${last} + ${range.commits.length} hidden. Expand commits`}
             title={`${range.commits[0].oid} → ${range.commits.at(-1)!.oid} · ${range.commits.length} linear commits. ${range.expanded ? "Collapse range" : "Expand range"}.`}
             onClick={() => onToggleRange(range)}
           >
-            {compactProject ? <span>{range.expanded ? "−" : "+"}{range.commits.length}</span> : range.expanded ? (
+            {compactControl ? <span>{range.expanded ? "−" : "+"}{range.commits.length}</span> : range.expanded ? (
               <>− Collapse {range.commits.length} commits</>
             ) : tiny ? (
               <span>+{range.commits.length}</span>
