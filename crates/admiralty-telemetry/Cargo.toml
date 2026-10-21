@@ -1,0 +1,14 @@
+[package]
+license.workspace = true
+name = "admiralty-telemetry"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "Compact, agent-ready structured telemetry: filtered levels, burst coalescing, redaction and token-budgeted digests"
+
+[dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

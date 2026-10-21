@@ -147,6 +147,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "admiralty-telemetry"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "admiralty-testkit"
 version = "0.1.0"
 dependencies = [
