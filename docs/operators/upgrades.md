@@ -22,5 +22,8 @@ Current checks establish real online backup/reopen, isolated restore/rebuild,
 artifact verification and fail-closed recovery proposals. The independent
 session daemon retains its child across client reconnects; that proves client
 reconnect continuity only. Ordinary service restart, PTY survival, signed complete
-bundle activation and production rollback remain unqualified. The CLI exposes
-no activation override and performs no service control.
+bundle activation and production rollback for native execution remain
+unqualified. `admiralty release activate`/`rollback` only switch the
+`current` link of installed read-only console bundles (see
+[deployment with systemd](deployment-systemd.md)); they perform no service
+control, fencing or drain and grant no execution authority.

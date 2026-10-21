@@ -1,0 +1,49 @@
+# Admiralty read-only fleet observer (writes status.json and history).
+#
+# Install: copy to /etc/systemd/system/, then
+#   systemctl daemon-reload && systemctl enable --now admiralty-observe
+# The observer runs git, ps, screen, ssh and nvidia-smi read-only; it never
+# launches agents or writes to project repositories. Its configuration lists
+# the projects, repositories and nodes (configs/examples/observe.json).
+
+[Unit]
+Description=Admiralty read-only fleet observer
+Documentation=https://github.com/neverhuman/admiralty/blob/main/docs/operators/native-observer.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admiralty
+Group=admiralty
+UMask=0077
+Environment=ADMIRALTY_LOG=info
+ExecStartPre=/srv/admiralty/releases/current/bin/admiralty-observe \
+    --config /srv/admiralty/observe/config.json --validate
+ExecStart=/srv/admiralty/releases/current/bin/admiralty-observe \
+    --config /srv/admiralty/observe/config.json
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+
+# Repositories and SSH keys are commonly under /home: read-only access.
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/srv/admiralty/observe
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target
