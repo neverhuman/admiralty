@@ -92,7 +92,7 @@ export default function ProjectViewport({ project, layout, accessEpoch, memory, 
     const previous = oldSize.current;
     oldSize.current = { key, width: size.width, height: size.height };
     if (view.key !== key) {
-      pointers.current.clear(); pinch.current = null; drag.current = null; pendingAnchor.current = null;
+      pointers.current.clear(); pinch.current = null; drag.current = null; pendingAnchor.current = null; suppressClick.current = false;
       if (frame.current !== null) cancelAnimationFrame(frame.current);
       frame.current = null; queued.current = null;
       setView({ key, ...(memory.get(key) ?? fallback) });
@@ -142,11 +142,26 @@ export default function ProjectViewport({ project, layout, accessEpoch, memory, 
     return () => element.removeEventListener("wheel", wheel);
   }, [size.element, memory]);
 
-  const finishPointer = (element: HTMLElement, pointerId: number) => {
+  const finishPointer = (element: HTMLElement, pointerId: number, cancelled = false) => {
+    // A release can also emit lostpointercapture. Ignore that second notification
+    // after custody has already moved to the remaining finger.
+    if (!pointers.current.has(pointerId)) return;
+    const wasPinching = pinch.current !== null;
+    suppressClick.current ||= wasPinching || !!drag.current?.moved;
     pointers.current.delete(pointerId);
-    if (element.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
-    if (drag.current?.id === pointerId) { suppressClick.current = drag.current.moved; drag.current = null; }
     pinch.current = null;
+    drag.current = null;
+    const release = [pointerId];
+    if (cancelled) {
+      release.push(...pointers.current.keys());
+      pointers.current.clear();
+    } else if (wasPinching && pointers.current.size === 1) {
+      const [id, point] = pointers.current.entries().next().value!;
+      // Continue from the last pinch camera, including any queued animation frame.
+      drag.current = { id, start: point, camera: latest.current.camera, moved: true };
+      if (!element.hasPointerCapture(id)) element.setPointerCapture(id);
+    }
+    for (const id of release) if (element.hasPointerCapture(id)) element.releasePointerCapture(id);
   };
   const percent = camera.k * 100;
   const label = `${percent >= 1 ? Math.round(percent) : Number(percent.toPrecision(2))}%`;
@@ -174,7 +189,7 @@ export default function ProjectViewport({ project, layout, accessEpoch, memory, 
       <div ref={size.ref} className="git-project-stage" tabIndex={0} role="group" aria-label={`${project.name} Git graph. Drag or scroll to pan; Control or Command scroll to zoom. Press 0 or F to fit, 1 for actual size.`}
         data-selection-key={selectionOid || undefined} data-camera-x={camera.x} data-camera-y={camera.y} data-camera-k={camera.k}
         onPointerDown={(event) => {
-          if (event.button !== 0 || controls(event.target)) return;
+          if (event.button !== 0 || controls(event.target) || pointers.current.size >= 2) return;
           suppressClick.current = false;
           pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
           if (pointers.current.size === 1) drag.current = { id: event.pointerId, start: { x: event.clientX, y: event.clientY }, camera: latest.current.camera, moved: false };
@@ -182,7 +197,8 @@ export default function ProjectViewport({ project, layout, accessEpoch, memory, 
             const [a, b] = [...pointers.current.values()], rect = event.currentTarget.getBoundingClientRect();
             pinch.current = { distance: Math.hypot(a.x - b.x, a.y - b.y), middle: { x: (a.x + b.x) / 2 - rect.left, y: (a.y + b.y) / 2 - rect.top }, camera: latest.current.camera };
             if (drag.current) drag.current.moved = true;
-            event.currentTarget.setPointerCapture(event.pointerId);
+            suppressClick.current = true;
+            for (const id of pointers.current.keys()) event.currentTarget.setPointerCapture(id);
           }
         }}
         onPointerMove={(event) => {
@@ -192,7 +208,7 @@ export default function ProjectViewport({ project, layout, accessEpoch, memory, 
           if (pinching && pointers.current.size === 2) {
             const [a, b] = [...pointers.current.values()], rect = event.currentTarget.getBoundingClientRect();
             const middle = { x: (a.x + b.x) / 2 - rect.left, y: (a.y + b.y) / 2 - rect.top };
-            const scaled = zoomGraphAt(pinching.camera, pinching.middle, Math.hypot(a.x - b.x, a.y - b.y) / pinching.distance, latest.current.fitScale);
+            const scaled = zoomGraphAt(pinching.camera, pinching.middle, pinching.distance > 0 ? Math.hypot(a.x - b.x, a.y - b.y) / pinching.distance : 1, latest.current.fitScale);
             change(panGraph(scaled, middle.x - pinching.middle.x, middle.y - pinching.middle.y));
             suppressClick.current = true; event.preventDefault(); return;
           }
@@ -205,8 +221,8 @@ export default function ProjectViewport({ project, layout, accessEpoch, memory, 
           change(panGraph(start.camera, dx, dy)); event.preventDefault();
         }}
         onPointerUp={(event) => finishPointer(event.currentTarget, event.pointerId)}
-        onPointerCancel={(event) => finishPointer(event.currentTarget, event.pointerId)}
-        onLostPointerCapture={(event) => { pointers.current.delete(event.pointerId); if (drag.current?.id === event.pointerId) drag.current = null; pinch.current = null; }}
+        onPointerCancel={(event) => finishPointer(event.currentTarget, event.pointerId, true)}
+        onLostPointerCapture={(event) => finishPointer(event.currentTarget, event.pointerId, true)}
         onPointerLeave={(event) => { if (!drag.current?.moved && !pinch.current) pointers.current.delete(event.pointerId); }}
         onClickCapture={(event) => { if (suppressClick.current && event.detail > 0) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; } }}
         onKeyDown={(event) => {
