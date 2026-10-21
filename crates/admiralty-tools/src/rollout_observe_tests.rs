@@ -654,6 +654,21 @@ fn test_git_probe_is_fixed_head_only_descriptor_bound_and_output_bounded() {
     );
     assert!(!environment.contains_key(OsStr::new("GIT_DIR")));
 
+    // Descriptor inheritance uses Linux procfs. Other platforms must refuse
+    // before spawning rather than silently falling back to a mutable pathname.
+    if !Path::new("/proc/self/fd").is_dir() {
+        let called = Cell::new(false);
+        let denied_spawn = |_: &[String], _: &BTreeMap<OsString, OsString>| {
+            called.set(true);
+            Err(io::Error::other("must not spawn without descriptor support"))
+        };
+        let error = bounded_git_head_with(root.as_fd(), Duration::from_secs(5), &denied_spawn)
+            .expect_err("unsupported descriptor-bound Git must refuse");
+        assert!(error.to_string().contains("descriptor-bound Git unavailable"));
+        assert!(!called.get());
+        return;
+    }
+
     // The spawned child receives a descriptor-bound target for the same directory.
     let recorded: RefCell<Vec<String>> = RefCell::new(Vec::new());
     let pid = Cell::new(0u32);
