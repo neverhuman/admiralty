@@ -237,6 +237,91 @@ describe("repository Git investigation against isolated native source", () => {
     observations.push({ label: "native pan/modifier zoom/held-button drag and focus guards", after });
   });
 
+  async function pointerSequence(type: string, id: number, point: {x:number;y:number}) {
+    await browser.evaluate(`(() => {
+      const e=document.querySelector('.git-project-stage');
+      if (!e.__testCaptures) {
+        e.__testCaptures=new Set();
+        // Synthetic PointerEvents have no browser-owned pointer ID. Only capture
+        // custody is adapted; React's real handlers and camera renders execute.
+        e.setPointerCapture=id=>e.__testCaptures.add(id);
+        e.hasPointerCapture=id=>e.__testCaptures.has(id);
+        e.releasePointerCapture=id=>{if(e.__testCaptures.delete(id)) e.dispatchEvent(new PointerEvent('lostpointercapture',{pointerId:id,bubbles:true}));};
+      }
+      e.dispatchEvent(new PointerEvent(${JSON.stringify(type)},{pointerId:${id},pointerType:'touch',button:0,buttons:${type === 'pointerup' || type === 'pointercancel' ? 0 : 1},clientX:${point.x},clientY:${point.y},bubbles:true,cancelable:true}));
+    })()`);
+    await settle();
+  }
+
+  it.each([101, 202])("continues an in-browser pinch as a drag when finger %i remains", async (remainingId) => {
+    await connect(); await expand(); await realClick('button[aria-label="Reset project zoom to 100%"]');
+    const point = await canvasPoint(), initial = await camera();
+    const a = { id: 101, x: point.x, y: point.y }, b = { id: 202, x: point.x + 120, y: point.y };
+    await pointerSequence('pointerdown', a.id, a); await pointerSequence('pointerdown', b.id, b);
+    b.x += 80; await pointerSequence('pointermove', b.id, b);
+    const pinched = await camera(); expect(pinched.k).toBeGreaterThan(initial.k);
+    const remaining = remainingId === a.id ? a : b;
+    const liftedPointer = remainingId === a.id ? b : a; await pointerSequence('pointerup', liftedPointer.id, liftedPointer);
+    const lifted = await camera();
+    expect({x:lifted.x,y:lifted.y,k:lifted.k}).toEqual({x:pinched.x,y:pinched.y,k:pinched.k});
+    remaining.x += 36; remaining.y += 24; await pointerSequence('pointermove', remaining.id, remaining);
+    const continued = await camera();
+    expect(continued.k).toBe(pinched.k);
+    expect(continued.x).toBeCloseTo(pinched.x + 36, 1); expect(continued.y).toBeCloseTo(pinched.y + 24, 1);
+    await pointerSequence('pointerup', remaining.id, remaining);
+    expect((await camera()).selection).toBeNull();
+    observations.push({label:'in-browser pointer sequence; adapted capture custody; pinch to one-finger continuation',remainingId,initial,pinched,continued});
+  });
+
+  it.each(['cancel', 'lost capture'])("ends a pinch safely after %s and accepts a fresh drag", async (ending) => {
+    await connect(); await expand(); await realClick('button[aria-label="Reset project zoom to 100%"]');
+    const point = await canvasPoint(), a = {id:101,...point}, b = {id:202,x:point.x+120,y:point.y};
+    await pointerSequence('pointerdown',a.id,a); await pointerSequence('pointerdown',b.id,b);
+    b.x += 80; await pointerSequence('pointermove',b.id,b); const pinched = await camera();
+    if (ending === 'cancel') await pointerSequence('pointercancel',b.id,b);
+    else {
+      expect(await browser.evaluate(`(() => { const e=document.querySelector('.git-project-stage'), id=202; if (!e.hasPointerCapture(id)) return false; e.releasePointerCapture(id); return true; })()`)).toBe(true);
+      b.x += 10; await pointerSequence('pointermove',b.id,b);
+      a.x += 30; await pointerSequence('pointermove',a.id,a);
+      await pointerSequence('pointerup',a.id,a); await pointerSequence('pointerup',b.id,b);
+    }
+    const ended = await camera(); expect({x:ended.x,y:ended.y,k:ended.k}).toEqual({x:pinched.x,y:pinched.y,k:pinched.k});
+    const next = {id:303,x:point.x,y:point.y}; await pointerSequence('pointerdown',next.id,next);
+    next.x += 41; next.y += 27; await pointerSequence('pointermove',next.id,next); await pointerSequence('pointerup',next.id,next);
+    const dragged = await camera(); expect(dragged.k).toBe(pinched.k);
+    expect(dragged.x).toBeCloseTo(pinched.x+41,1); expect(dragged.y).toBeCloseTo(pinched.y+27,1);
+    expect(dragged.selection).toBeNull();
+  });
+
+  it("suppresses a completed pinch click and permits a subsequent deliberate tap", async () => {
+    await connect(); await expand();
+    const point = await canvasPoint(), a = {id:101,...point}, b = {id:202,x:point.x+120,y:point.y};
+    await browser.evaluate(`(() => { window.__gitStageClicks=0; document.addEventListener('click',event=>{if(event.target.matches('.git-project-stage')) window.__gitStageClicks++;}); })()`);
+    await pointerSequence('pointerdown',a.id,a); await pointerSequence('pointerdown',b.id,b);
+    b.x+=80; await pointerSequence('pointermove',b.id,b);
+    await pointerSequence('pointerup',b.id,b); await pointerSequence('pointerup',a.id,a);
+    const click = () => browser.evaluate(`document.querySelector('.git-project-stage').dispatchEvent(new MouseEvent('click',{detail:1,bubbles:true,cancelable:true}))`);
+    await click(); expect(await browser.evaluate('window.__gitStageClicks')).toBe(0);
+    await pointerSequence('pointerdown',303,point); await pointerSequence('pointerup',303,point);
+    await click(); expect(await browser.evaluate('window.__gitStageClicks')).toBe(1);
+  });
+
+  it("discards an active pinch when the repository instance is replaced", async () => {
+    await connect(); await expand();
+    const point=await canvasPoint(), a={id:101,...point}, b={id:202,x:point.x+120,y:point.y};
+    await pointerSequence('pointerdown',a.id,a); await pointerSequence('pointerdown',b.id,b);
+    b.x+=80; await pointerSequence('pointermove',b.id,b);
+    const replacement=structuredClone(source), stamp=new Date().toISOString();
+    replacement.generated_utc=stamp; replacement.git.harbor.observed_utc=stamp; replacement.git.harbor.instance_id='pinch-replacement';
+    replacement.projects.harbor.name='Harbor replaced during pinch'; server.writeLegacySnapshot(replacement);
+    await browser.waitForText('Harbor replaced during pinch'); await browser.waitForSelector('.git-project-viewport[data-fitted="true"]');
+    const before=await camera(); a.x+=36; await pointerSequence('pointermove',a.id,a); await pointerSequence('pointerup',a.id,a);
+    const after=await camera(); expect({x:after.x,y:after.y,k:after.k,intent:after.intent}).toEqual({x:before.x,y:before.y,k:before.k,intent:before.intent});
+    const next={id:303,...point}; await pointerSequence('pointerdown',next.id,next); next.x+=41; next.y+=27;
+    await pointerSequence('pointermove',next.id,next); await pointerSequence('pointerup',next.id,next);
+    const dragged=await camera(); expect(dragged.k).toBe(before.k); expect(dragged.x).toBeCloseTo(before.x+41,1); expect(dragged.y).toBeCloseTo(before.y+27,1);
+  });
+
   it("keeps the exact range anchor fixed during expansion and fits all expanded loaded history", async () => {
     await connect(); await expand(); await fitBounds("before range expansion");
     const collapsed = await browser.evaluate<{ oid: string; x: number; y: number; width: number }>(`(() => {
