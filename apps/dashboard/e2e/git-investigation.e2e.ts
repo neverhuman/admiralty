@@ -68,7 +68,6 @@ describe("repository Git investigation against isolated native source", () => {
     source.projects.harbor.name = `Harbor initial fixture ${sequence}`;
     source.git.harbor.instance_id = `investigation-harbor-fixture-${sequence}`;
     source.git.observatory.instance_id = `investigation-observatory-fixture-${sequence}`;
-    server.writeLegacySnapshot(source);
     await browser.resetPage(); await browser.setViewportSize(1440, 1000);
   });
 
@@ -92,6 +91,8 @@ describe("repository Git investigation against isolated native source", () => {
     await browser.waitForSelector(".lv-feed.is-connected");
   }
   async function connect() {
+    // Publish only the final per-test fixture, including pre-connect changes.
+    server.writeLegacySnapshot(source);
     await browser.goto(`${server.baseUrl}/#/git`); await admitCurrentPage();
     await browser.waitForSelector(".git-band");
     // The native producer polls asynchronously. Do not interact with a cached
@@ -184,8 +185,8 @@ describe("repository Git investigation against isolated native source", () => {
       throw Error('No unobstructed canvas input target');
     })()`);
   }
-  const rangeControlGeometry=()=>browser.evaluate<{count:number;overlaps:unknown[];blocked:unknown[]}>(`(() => {
-      const stage=document.querySelector('.git-project-stage'),v=stage.getBoundingClientRect();
+  const rangeControlGeometry=(selector = ".git-project-stage")=>browser.evaluate<{count:number;overlaps:unknown[];blocked:unknown[]}>(`(() => {
+      const stage=document.querySelector(${JSON.stringify(selector)}),v=stage.getBoundingClientRect();
       const controls=[...stage.querySelectorAll('.git-commit-range')].map(e=>({e,r:e.getBoundingClientRect()}));
       const overlaps=[],blocked=[];
       for(let i=0;i<controls.length;i++) for(let j=i+1;j<controls.length;j++) {
@@ -358,6 +359,60 @@ describe("repository Git investigation against isolated native source", () => {
     const next={id:303,...point}; await pointerSequence('pointerdown',next.id,next); next.x+=41; next.y+=27;
     await pointerSequence('pointermove',next.id,next); await pointerSequence('pointerup',next.id,next);
     const dragged=await camera(); expect(dragged.k).toBe(before.k); expect(dragged.x).toBeCloseTo(before.x+41,1); expect(dragged.y).toBeCloseTo(before.y+27,1);
+  });
+
+  it.each([1, 2, 3])("keeps ordinary-band ranges disjoint after %i native zoom-out steps", async (steps) => {
+    await connect(); await selectByAriaLabel('Filter Git project', 'harbor');
+    expect(await browser.evaluate(`document.querySelector('.git-canvas').getAttribute('aria-label')`)).toContain('92 commits');
+    await realClick('button[aria-label="Reset Git zoom to 100% size"]');
+    for(let i=0;i<steps;i++) await realClick('button[aria-label="Zoom Git out"]');
+    const scale=await browser.evaluate<number>(`Number(document.querySelector('.git-canvas').dataset.zoom)`);
+    expect(scale).toBeCloseTo(1 / 1.2 ** steps, 6);
+    for(const phase of ['collapsed','expanded','panned']) {
+      if(phase==='expanded') {
+        const anchor=await browser.evaluate<string>(`(() => {const e=[...document.querySelectorAll('.git-scroll .git-commit-range[aria-expanded="false"]')].find(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return hit===e||e.contains(hit);});if(!e)throw Error('No hittable ordinary range');return e.dataset.anchorOid;})()`);
+        await realClick(`.git-scroll .git-commit-range[data-anchor-oid="${anchor}"]`);
+      }
+      if(phase==='panned') {
+        const point=await browser.evaluate<{x:number;y:number}>(`(() => {const r=document.querySelector('.git-scroll').getBoundingClientRect();return{x:r.left+r.width/2,y:r.bottom-40};})()`);
+        await browser.wheelPointer(point,{x:180,y:0}); await settle();
+      }
+      const result=await rangeControlGeometry('.git-scroll');
+      observations.push({label:'ordinary-band actual DOM geometry and native zoom',steps,scale,phase,...result});
+      expect(result.count).toBeGreaterThanOrEqual(3); expect(result.overlaps).toEqual([]); expect(result.blocked).toEqual([]);
+    }
+  });
+
+  it.each(["pointer", "keyboard"])("keeps a narrow ordinary-band range below closed chat and accessible by %s at low zoom", async (input) => {
+    const repo=source.git.harbor,template=repo.commits[0];
+    repo.commits=Array.from({length:201},(_,n)=>({...template,oid:oid(n+1),parents:n?[oid(n)]:[],subject:`Caption chain ${n+1}`}));
+    repo.refs=[{name:'refs/heads/main',oid:oid(201),commit_oid:oid(201),kind:'branch'}]; repo.checkouts=[];
+    source.git.observatory.commits=[];source.git.observatory.refs=[];source.git.observatory.checkouts=[];
+    await browser.setViewportSize(640,844);await connect();
+    expect(await browser.evaluate(`document.querySelector('.git-canvas').getAttribute('aria-label')`)).toContain('201 commits');
+    await realClick('button[aria-label="Reset Git zoom to 100% size"]');
+    for(let i=0;i<5;i++) await realClick('button[aria-label="Zoom Git out"]');
+    const result=await rangeControlGeometry('.git-scroll');
+    const caption=await browser.evaluate<{overlaps:unknown[]}>(`(() => {
+      const controls=[...document.querySelectorAll('.git-scroll .git-commit-range')], obstacles=[...document.querySelectorAll('.git-chat-toggle,.git-band-caption')],overlaps=[];
+      for(const e of controls)for(const o of obstacles){const a=e.getBoundingClientRect(),b=o.getBoundingClientRect();if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>.1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>.1)overlaps.push({control:a.toJSON(),obstacle:b.toJSON(),className:o.className});}
+      return {overlaps};
+    })()`);
+    observations.push({label:'ordinary narrow collapsed range versus actual chat and caption',scale:1/1.2**5,...result,caption});
+    expect(result.count).toBe(1);expect(result.overlaps).toEqual([]);expect(result.blocked).toEqual([]);expect(caption.overlaps).toEqual([]);
+    await browser.captureScreenshot(join(evidence,`ordinary-narrow-range-chat-clearance-${input}.png`));
+    const anchor=await browser.evaluate<{x:number;y:number}>(`(() => {const e=document.querySelector('.git-commit-range');return{x:Number(e.dataset.worldX),y:Number(e.dataset.worldY)};})()`);
+    for(let i=0;i<5;i++)await realClick('button[aria-label="Zoom Git out"]');
+    expect(await browser.evaluate(`document.querySelectorAll('.git-commit-range').length`)).toBe(0);
+    expect(await browser.evaluate(`document.querySelector('.git-canvas').getAttribute('aria-label')`)).toContain('1 collapsed ranges');
+    if(input==='keyboard') {
+      await browser.evaluate(`document.querySelector('.git-canvas').focus()`);await browser.pressKey('ArrowLeft');
+    } else {
+      const point=await browser.evaluate<{x:number;y:number;hit:boolean}>(`(() => {const c=document.querySelector('.git-canvas'),r=c.getBoundingClientRect(),scroll=document.querySelector('.git-scroll'),k=Number(c.dataset.zoom),x=r.left+${anchor.x}*k-scroll.scrollLeft,y=r.top+${anchor.y}*k;return{x,y,hit:document.elementFromPoint(x,y)===c};})()`);
+      expect(point.hit).toBe(true);await browser.dragPointer(point,point);
+    }
+    await settle();
+    expect(await browser.evaluate(`document.querySelector('.git-canvas').getAttribute('aria-label')`)).toContain('0 collapsed ranges');
   });
 
   it.each([.65,.69,.9])("keeps actual range controls disjoint and hittable at scale %s", async (scale) => {
