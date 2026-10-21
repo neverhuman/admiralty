@@ -40,9 +40,8 @@ export CARGO_TARGET_DIR="${ADMIRALTY_TARGET_DIR:-$task_root/target}"
 run cargo run -q -p admiralty-cli --locked -- preview-state --dir "$task_state" >/dev/null
 echo "Dashboard access token is in $task_state/dashboard-token (value not displayed)"
 run pnpm --dir apps/dashboard build
-task_args=(--database "$task_state/native.sqlite" --token-file "$task_state/dashboard-token"
-  --listen "${ADMIRALTY_LIVE_LISTEN:-127.0.0.1:18891}" --assets "$task_root/apps/dashboard/dist"
-  --legacy-status-file "$task_status" --legacy-index-file "$task_index" --legacy-public-read)
-if [[ -n "$task_models" ]]; then task_args+=(--models-file "$task_models"); fi
+task_args=(live --state-dir "$task_state" --status "$task_status" --index "$task_index"
+  --listen "${ADMIRALTY_LIVE_LISTEN:-127.0.0.1:18891}" --assets "$task_root/apps/dashboard/dist")
+if [[ -n "$task_models" ]]; then task_args+=(--models "$task_models"); fi
 echo 'Starting real read-only fleet view. Original page remains available at /legacy/.'
-run cargo run -p admiralty-server --bin admiraltyd --locked -- "${task_args[@]}"
+run cargo run -p admiralty-cli --bin admiralty --locked -- "${task_args[@]}"

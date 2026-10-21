@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRoute, routeHref } from "../../router";
 import {
   useViews,
@@ -48,6 +48,14 @@ export function resolveSelection(
 export function useSize<T extends HTMLElement>() {
   const [element, ref] = useState<T | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
+  // React can change sibling height (for example a wrapping graph status)
+  // before ResizeObserver delivers the new stage size. Measure each commit so
+  // the camera adopts that layout before paint, without another observer frame.
+  useLayoutEffect(() => {
+    if (!element) return;
+    const width = element.clientWidth, height = element.clientHeight;
+    setSize((previous) => previous.width === width && previous.height === height ? previous : { width, height });
+  });
   useEffect(() => {
     if (!element) return;
     const observer = new ResizeObserver(() =>

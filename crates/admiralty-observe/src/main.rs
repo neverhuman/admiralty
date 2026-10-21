@@ -34,7 +34,8 @@ struct Cli {
 async fn main() -> std::process::ExitCode {
     admiralty_telemetry::init_from_env("admiralty-observe");
     admiralty_telemetry::spawn_flusher(Duration::from_secs(30));
-    let outcome = execute().await;
+    let cli = Cli::parse();
+    let outcome = execute(&cli).await;
     if let Err(error) = &outcome {
         // Human-readable line kept for existing operators; structured event for agents.
         eprintln!("Native observer failed: {}", io::clean(&error.to_string()));
@@ -48,8 +49,7 @@ async fn main() -> std::process::ExitCode {
         Err(_) => std::process::ExitCode::FAILURE,
     }
 }
-async fn execute() -> Result<()> {
-    let cli = Cli::parse();
+async fn execute(cli: &Cli) -> Result<()> {
     let config = ObserveConfig::load(&cli.config)?;
     if cli.resources {
         let status = io::read_json(&config.output_dir.join("status.json"), 32 * 1024 * 1024)

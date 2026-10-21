@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from "react";
 export type RouteName =
+  | "brief"
   | "detail"
+  | "health"
   | "overview"
   | "operations"
   | "workplans"
@@ -10,10 +12,11 @@ export type RouteName =
   | "incidents"
   | "models"
   | "git"
-  | "atlas"
-  | "health";
+  | "atlas";
 const names = new Set<RouteName>([
+  "brief",
   "detail",
+  "health",
   "overview",
   "operations",
   "workplans",
@@ -24,7 +27,6 @@ const names = new Set<RouteName>([
   "models",
   "git",
   "atlas",
-  "health",
 ]);
 export function parseRoute(hash: string): {
   name: RouteName;

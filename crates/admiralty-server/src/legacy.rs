@@ -22,7 +22,20 @@ const MAX_INDEX_BYTES: u64 = 2 * 1024 * 1024;
 
 pub(crate) fn read_bounded(path: &PathBuf, limit: u64) -> Result<Vec<u8>, String> {
     use std::io::Read;
-    let mut file = fs::File::open(path).map_err(|_| "legacy source is unavailable")?;
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        // Refuse non-regular producers without blocking on a FIFO open first.
+        // Regular-file reads and existing source symlinks retain their behavior.
+        options.custom_flags(
+            (rustix::fs::OFlags::NONBLOCK | rustix::fs::OFlags::CLOEXEC).bits() as i32,
+        );
+    }
+    let mut file = options
+        .open(path)
+        .map_err(|_| "legacy source is unavailable")?;
     let metadata = file
         .metadata()
         .map_err(|_| "legacy source metadata unavailable")?;
@@ -75,6 +88,7 @@ pub(crate) enum SnapshotView {
     Full,
     Detail,
     Initial,
+    Brief,
 }
 
 fn detail_projection(mut value: serde_json::Value, initial: bool) -> serde_json::Value {
@@ -203,6 +217,7 @@ fn view_key(view: SnapshotView) -> u8 {
         SnapshotView::Full => 0,
         SnapshotView::Detail => 1,
         SnapshotView::Initial => 2,
+        SnapshotView::Brief => 3,
     }
 }
 
@@ -213,8 +228,18 @@ fn encode_snapshot(
 ) -> Result<std::sync::Arc<EncodedSnapshot>, String> {
     use sha2::{Digest, Sha256};
     use std::io::Read;
-    let mut file =
-        fs::File::open(&config.status_file).map_err(|_| "legacy source is unavailable")?;
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(
+            (rustix::fs::OFlags::NONBLOCK | rustix::fs::OFlags::CLOEXEC).bits() as i32,
+        );
+    }
+    let mut file = options
+        .open(&config.status_file)
+        .map_err(|_| "legacy source is unavailable")?;
     let metadata = file
         .metadata()
         .map_err(|_| "legacy source metadata unavailable")?;
@@ -223,7 +248,9 @@ fn encode_snapshot(
     }
     let identity = SourceIdentity::of(&metadata);
     let key = (config.status_file.clone(), view_key(view), gzip);
-    if let Ok(cache) = cache().lock()
+    let cacheable = !matches!(view, SnapshotView::Brief);
+    if cacheable
+        && let Ok(cache) = cache().lock()
         && let Some(hit) = cache.get(&key).filter(|hit| hit.identity == identity)
     {
         return Ok(std::sync::Arc::new(EncodedSnapshot {
@@ -252,6 +279,13 @@ fn encode_snapshot(
         return Err("legacy snapshot is missing required source fields".to_string());
     }
     let bytes = match view {
+        SnapshotView::Brief => crate::fleet_brief::compile_value(
+            &value,
+            &bytes,
+            chrono::Utc::now(),
+            crate::fleet_brief::MAX_BRIEF_BYTES,
+        )
+        .map_err(str::to_owned)?,
         SnapshotView::Full => {
             drop(value);
             bytes
@@ -284,7 +318,7 @@ fn encode_snapshot(
         gzip: is_gzip,
         cache_hit: false,
     });
-    if let Ok(mut cache) = cache().lock() {
+    if cacheable && let Ok(mut cache) = cache().lock() {
         cache.insert(key, encoded.clone());
     }
     Ok(encoded)
@@ -348,6 +382,27 @@ pub async fn index(config: LegacyConfig) -> Response {
 mod delivery_tests {
     use super::*;
     use serde_json::json;
+
+    #[cfg(unix)]
+    #[test]
+    fn fifo_source_is_refused_without_waiting_for_a_writer() {
+        let root = tempfile::tempdir().expect("fixture");
+        let fifo = root.path().join("producer");
+        assert!(
+            std::process::Command::new("/usr/bin/mkfifo")
+                .arg(&fifo)
+                .status()
+                .expect("mkfifo")
+                .success()
+        );
+        assert!(read_bounded(&fifo, 1024).is_err());
+        let config = LegacyConfig {
+            status_file: fifo,
+            index_file: root.path().join("index.html"),
+            public_read: false,
+        };
+        assert!(encode_snapshot(&config, false, SnapshotView::Brief).is_err());
+    }
 
     #[test]
     fn projected_source_decimals_round_trip_without_changing_float_bits() {

@@ -1,7 +1,9 @@
 //! Operator operations, bounded authenticated agent tools and an isolated demo.
 mod agent_tools;
+mod brief;
 mod diagnostics;
 mod fleet_ops;
+mod live;
 pub mod native_archive;
 pub mod native_install;
 pub mod native_intake;
@@ -10,6 +12,7 @@ pub mod native_recovery;
 #[cfg(unix)]
 mod node;
 pub mod ops;
+mod preview;
 mod release_evidence;
 pub mod release_ops;
 pub mod work_order_intake;
@@ -180,6 +183,10 @@ enum Command {
     },
     /// Token-budgeted fleet brief from a recorded producer snapshot.
     Brief(fleet_ops::BriefArgs),
+    /// Exact byte-bounded JSON brief with explicit source identity and omissions.
+    BriefJson(brief::BriefArgs),
+    /// Serve an installed read-only console with protected local credentials.
+    Live(live::LiveArgs),
     /// Compatibility alias for protected preview initialization.
     State {
         #[command(subcommand)]
@@ -889,6 +896,8 @@ fn seed_demo(store: &Store) -> CliResult<()> {
 
 async fn run(cli: Cli) -> CliResult<()> {
     match cli.command {
+        Command::Live(args) => live::run(args).await?,
+        Command::BriefJson(args) => brief::run(args)?,
         Command::PreviewInit { state_directory } => {
             print_json(preview::prepare(&state_directory)?)?
         }

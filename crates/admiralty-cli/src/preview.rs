@@ -6,8 +6,10 @@ use std::path::Path;
 pub fn prepare(state: &Path) -> CliResult<serde_json::Value> {
     let created = !state.join("dashboard-token").exists();
     let token_file = crate::ops::init_preview_state(state)?;
-    Ok(serde_json::json!({"schema_version":1,"state_directory":state,
-        "token_file":token_file,"created":created,"service_started":false}))
+    Ok(
+        serde_json::json!({"schema_version":1,"state_directory":state,
+        "token_file":token_file,"created":created,"service_started":false}),
+    )
 }
 
 #[cfg(not(unix))]
