@@ -123,7 +123,9 @@ APPROVAL = re.compile(r'(Allow (this|once)|Do you want to (proceed|run|allow)|\(
 
 def screen_state(text):
     tail = '\n'.join(text.rstrip('\n').split('\n')[-25:])
-    st = {'busy': bool(re.search(r'esc to (?:cancel|interrupt)', tail, re.I)), 'queued_msgs': bool(re.search(r'queued messages', tail, re.I)),
+    # Use the same current-status classifier as the watchdog. Raw scrollback
+    # must not revive busy hints superseded by a newer footer or quoted example.
+    st = {'busy': tail_busy(text), 'queued_msgs': bool(re.search(r'queued messages', tail, re.I)),
           'survey': bool(SURVEY.search(tail)), 'quota': bool(QUOTA.search(tail)), 'approval_prompt': bool(APPROVAL.search(tail))}
     lines = tail.split('\n')
     prompts = [(i, line.strip()) for i, line in enumerate(lines)
@@ -1387,7 +1389,7 @@ def idle_watch(scr, managed, prev, newh, now, hc=None):
         newh[key] = {'hash': h, 'since': since}
         unchanged = (now - datetime.datetime.fromisoformat(since)).total_seconds() / 60
         screen = screen_state(txt)
-        busy = tail_busy(txt) or screen['busy']
+        busy = screen['busy']
         # Share the parser's positive empty-prompt evidence. A pasted draft,
         # queued-message hint or unrecognized composer must not invite input.
         idle_eligible = not busy and screen['idle_prompt']
