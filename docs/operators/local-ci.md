@@ -81,5 +81,9 @@ The inspected LAN pool mixed NVMe and USB rotational storage. Large durable-I/O
 delays accompanied startup-budget failures and a30-minute timeout on unchanged
 source. Repair and qualify the general pool while keeping two compiler jobs,
 serialized Rust tests, real durability operations, individual deadlines and the
-30-minute job limit. Record actual runner placement and exact-source results.
+30-minute job limit. Rust and browser jobs select the reusable `storage-nvme`
+capability within the general pool; other jobs retain their matching general
+selectors. Browser cases emit their results and error stacks immediately so a
+later outer timeout cannot erase an earlier failure's diagnostic. Record actual
+runner placement and exact-source results.
 A fast rerun does not erase the original failure or qualify every fleet host.

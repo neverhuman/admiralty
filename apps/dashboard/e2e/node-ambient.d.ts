@@ -79,6 +79,7 @@ declare module 'node:child_process' {
 }
 
 declare module 'node:fs' {
+  export function writeSync(fd: number, data: string): number;
   export function realpathSync(path: string): string;
   export function chmodSync(path: string, mode: number): void;
   export function existsSync(path: string): boolean;
