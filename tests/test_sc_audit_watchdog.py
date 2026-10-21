@@ -11,6 +11,67 @@ def codes(): return [f['code'] for f in sc.findings]
 
 class Watch(unittest.TestCase):
     def setUp(self): sc.findings.clear()
+    def watch_stale(self, text):
+        prev = {'watch:fixture_worker': {'hash': sc.tail_hash(text), 'since': '2026-10-18T14:32:00+00:00'}}
+        watched = sc.idle_watch({'fixture_worker': 'x'}, {'fixture_worker': 'fixture-project'},
+                                prev, {}, NOW, hc=lambda n, p: text)
+        state = watched['fixture_worker']
+        self.assertEqual(state['busy'], sc.screen_state(text)['busy'])
+        return state
+    def assert_protected_finding(self, code):
+        self.assertEqual(codes(), [code])
+        self.assertTrue(sc.findings[0]['must_act'])
+        self.assertNotRegex(sc.findings[0]['text'], r'(?i)alt\+m|file pointer \+ CR')
+    def test_idle_watch_newer_completed_status_does_not_revive_foreground_history(self):
+        state = self.watch_stale(AGY_BUSY + CLAUDE_IDLE)
+        self.assertFalse(state['busy'])
+        self.assertEqual(state['composer_state'], 'unknown')
+        self.assertFalse(state['idle_eligible'])
+        self.assert_protected_finding('MANAGED_SCREEN_INPUT_UNVERIFIED')
+    def test_idle_watch_quoted_and_fenced_foreground_history_requires_inspection(self):
+        for hint in ['esc to cancel', 'esc to interrupt']:
+            for history in ['> ' + hint, '`' + hint + '`', '"' + hint + '"',
+                            '```text\n' + hint + '\n```', '~~~text\n' + hint + '\n~~~']:
+                with self.subTest(history=history):
+                    sc.findings.clear()
+                    state = self.watch_stale(history + '\n >\n')
+                    self.assertFalse(state['busy'])
+                    self.assertFalse(state['idle_eligible'])
+                    self.assertEqual(state['composer_state'], 'unknown')
+                    self.assert_protected_finding('MANAGED_SCREEN_INPUT_UNVERIFIED')
+    def test_idle_watch_newer_completed_status_preserves_current_draft(self):
+        state = self.watch_stale(AGY_BUSY + CLAUDE_IDLE + '❯ preserve this unsent patch\n ? for shortcuts\n')
+        self.assertFalse(state['busy'])
+        self.assertTrue(state['typed_input'])
+        self.assertEqual(state['composer_state'], 'draft')
+        self.assertFalse(state['idle_eligible'])
+        self.assert_protected_finding('MANAGED_SCREEN_DRAFT_PROTECTED')
+    def test_idle_watch_newer_completed_status_preserves_queued_input(self):
+        state = self.watch_stale(AGY_BUSY + CLAUDE_IDLE + 'queued messages\n >\n ? for shortcuts\n')
+        self.assertFalse(state['busy'])
+        self.assertTrue(state['queued_msgs'])
+        self.assertEqual(state['composer_state'], 'empty_hint')
+        self.assertFalse(state['idle_eligible'])
+        self.assert_protected_finding('MANAGED_SCREEN_INPUT_UNVERIFIED')
+    def test_idle_watch_real_current_foreground_busy_still_reports_frozen(self):
+        for text in [AGY_BUSY, CLAUDE_IDLE + AGY_BUSY]:
+            with self.subTest(text=text):
+                sc.findings.clear()
+                state = self.watch_stale(text)
+                self.assertTrue(state['busy'])
+                self.assertFalse(state['idle_eligible'])
+                self.assert_protected_finding('MANAGED_SCREEN_FROZEN')
+    def test_idle_watch_real_running_background_footer_is_busy_in_both_parsers(self):
+        state = self.watch_stale('Brewed for 39s · done 3:46 PM · 1 monitor still running\n >\n ? for shortcuts\n')
+        self.assertTrue(state['busy'])
+        self.assertFalse(state['idle_eligible'])
+        self.assert_protected_finding('MANAGED_SCREEN_FROZEN')
+    def test_idle_watch_completed_history_requires_positive_current_empty_hint(self):
+        state = self.watch_stale(AGY_BUSY + CLAUDE_IDLE + ' >\n ? for shortcuts\n')
+        self.assertFalse(state['busy'])
+        self.assertEqual(state['composer_state'], 'empty_hint')
+        self.assertTrue(state['idle_eligible'])
+        self.assert_protected_finding('MANAGED_SCREEN_IDLE')
     def test_claude_footer_without_verified_empty_composer_requires_inspection(self):
         prev = {'watch:jopedime_flywheel': {'hash': sc.tail_hash(CLAUDE_IDLE), 'since': '2026-10-18T14:32:00+00:00'}}
         newh = {}

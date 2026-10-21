@@ -14,14 +14,7 @@ TOOLS = ROOT / "tools"
 sys.path.insert(0, str(TOOLS))
 
 def screen_function():
-    source = (TOOLS / "sc_audit.py").read_text()
-    tree = ast.parse(source)
-    node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "screen_state")
-    ns = {"re": re, "hashlib": hashlib,
-          "SURVEY": re.compile("never-match"), "QUOTA": re.compile("never-match"),
-          "APPROVAL": re.compile("never-match")}
-    exec(compile(ast.Module(body=[node], type_ignores=[]), "<screen_state>", "exec"), ns)
-    return ns["screen_state"]
+    return audit_watch_functions()["screen_state"]
 
 class ScreenRegression(unittest.TestCase):
     def test_codex_running_is_not_idle(self):
