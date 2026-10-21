@@ -408,7 +408,9 @@ describe("built live views against the real Rust server", () => {
       await browser.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
       const bounds=await browser.evaluate<{margins:number[];scaleX:number;scaleY:number;overflow:boolean}>(`(()=>{
         const map=document.querySelector('.git-project-stage'),v=map.getBoundingClientRect(),world=document.querySelector('.git-project-bounds'),r=world.getBoundingClientRect();
-        return {margins:[r.left-v.left,v.right-r.right,r.top-v.top,v.bottom-r.bottom],scaleX:r.width/world.offsetWidth,scaleY:r.height/world.offsetHeight,overflow:map.scrollWidth>map.clientWidth+1||map.scrollHeight>map.clientHeight+1};
+        return {margins:[r.left-v.left,v.right-r.right,r.top-v.top,v.bottom-r.bottom],scaleX:r.width/world.offsetWidth,scaleY:r.height/world.offsetHeight,overflow:map.scrollWidth>map.clientWidth+1||map.scrollHeight>map.clientHeight+1,
+          viewport:v.toJSON(),world:r.toJSON(),client:{width:map.clientWidth,height:map.clientHeight},offset:{width:world.offsetWidth,height:world.offsetHeight},camera:{...map.dataset},intent:map.closest('.git-project-viewport').dataset.cameraIntent,hash:location.hash,visible:map.checkVisibility(),fullscreen:!!document.fullscreenElement,status:document.querySelector('.git-graph-status')?.textContent,heading:document.querySelector('.git-investigation-heading')?.getBoundingClientRect().toJSON(),scroll:{x:map.scrollLeft,y:map.scrollTop},
+          ancestors:[...document.querySelectorAll('.live-workspace,.lv-body,.git-view,.git-project-viewport,.git-investigation-body,.git-project-main,.git-project-stage,.lv-inspector')].map(e=>({className:e.className,rect:e.getBoundingClientRect().toJSON(),display:getComputedStyle(e).display,flex:getComputedStyle(e).flex}))};
       })()`);observations.push({project:id,...bounds});
       const expectedPadding=await browser.evaluate<number>(`document.querySelector('.git-project-stage').clientWidth>=640?48:16`);
       expect(Math.min(...bounds.margins)).toBeGreaterThanOrEqual(expectedPadding-1);expect(bounds.scaleX).toBeCloseTo(bounds.scaleY,6);expect(bounds.overflow,JSON.stringify(bounds)).toBe(false);
@@ -417,7 +419,8 @@ describe("built live views against the real Rust server", () => {
       await connect("git",fresh);await browser.waitForSelector('.git-band');
       // The fleet stays a navigable list. Expand opens exactly one repository fullscreen.
       expect(await browser.evaluate(`Boolean(document.querySelector('.git-project-viewport'))`)).toBe(false);
-      for(const id of ids){
+      // Repeat the actual navigation flow to cover worker response / resize ordering.
+      for(const id of Array.from({length:5},()=>ids).flat()){
         await browser.evaluate(`(()=>{const s=document.querySelector('select[aria-label="Filter Git project"]');s.value=${JSON.stringify(id)};s.dispatchEvent(new Event('change',{bubbles:true}));})()`);
         await browser.waitForSelector('.is-project-focused');await browser.clickButtonByText("Expand project");
         await browser.waitForSelector('.live-workspace.is-fullscreen .git-project-viewport button[aria-label="Fit graph"]');
@@ -460,11 +463,47 @@ describe("built live views against the real Rust server", () => {
         }
         expect(audit.violations).toEqual([]);expect(audit.incomplete).toEqual([]);
         await screenshot(`git-project-${capture?"OFFLINE-CAPTURE-":""}${id}-mobile-inspector.png`);
+        // Observe every frame, including the pending → loaded status wrapping
+        // that can shrink the stage before an asynchronous ResizeObserver update.
+        await browser.evaluate(`(()=>{
+          window.__fitCloseFrames=[];
+          window.__fitCloseDone=new Promise(resolve=>{
+            let n=0;
+            function sample(){
+              const map=document.querySelector('.git-project-stage'),world=document.querySelector('.git-project-bounds');
+              const v=map?.getBoundingClientRect(),r=world?.getBoundingClientRect(),canvas=map?.querySelector('canvas');
+              window.__fitCloseFrames.push({n:n++,hash:location.hash,viewport:v?.toJSON(),world:r?.toJSON(),
+                client:map&&{width:map.clientWidth,height:map.clientHeight},scroll:map&&{x:map.scrollLeft,y:map.scrollTop},
+                visible:map?.checkVisibility(),connected:map?.isConnected,style:world?.getAttribute('style'),
+                heading:document.querySelector('.git-investigation-heading')?.getBoundingClientRect().toJSON(),
+                status:document.querySelector('.git-graph-status')?.textContent,canvas:canvas&&{width:canvas.width,height:canvas.height},
+                camera:map&&{...map.dataset},intent:map?.closest('.git-project-viewport')?.dataset.cameraIntent,
+                inspector:!!document.querySelector('.lv-inspector')});
+              if(n<20)requestAnimationFrame(sample);else resolve();
+            }
+            sample();
+          });
+        })()`);
         await browser.clickButtonByAriaLabel("Close inspector");await fitBounds(id);
+        await browser.evaluate(`window.__fitCloseDone`);
+        const closeFrames=await browser.evaluate<Array<{n:number;viewport:{left:number;right:number;top:number;bottom:number};world:{left:number;right:number;top:number;bottom:number};visible:boolean}>>(`window.__fitCloseFrames`);
+        observations.push({project:id,closeFrames});
+        for(const frame of closeFrames){
+          expect(frame.visible,`Visible mobile graph at close frame ${frame.n}`).toBe(true);
+          const v=frame.viewport,r=frame.world;
+          expect(Math.min(r.left-v.left,v.right-r.right,r.top-v.top,v.bottom-r.bottom),`Padded mobile Fit throughout inspector close at frame ${frame.n}`).toBeGreaterThanOrEqual(15);
+        }
         await browser.setViewportSize(1440,1000);await browser.clickButtonByText("All projects");await browser.waitForSelector('.git-band');
       }
       writeFileSync(join(evidence,capture?"offline-project-fit.json":"fixture-project-fit.json"),JSON.stringify({source:capture?"OFFLINE captured public producer; not live deployment":"synthetic test fixture",projectIds:ids,padding:{desktop:48,narrow:16},observations},null,2));
-    }finally{await browser.setViewportSize(1440,1000);await fresh.close();}
+    }catch(error){
+      // CI retains the failing geometry even when no artifact upload is available.
+      observations.push({failureCloseFrames:await browser.evaluate(`window.__fitCloseFrames??[]`).catch(()=>[])});
+      console.error("FIT_INSPECTOR_DIAGNOSTIC",JSON.stringify(observations));throw error;
+    }finally{
+      writeFileSync(join(evidence,"fit-inspector-diagnostic-observations.json"),JSON.stringify({source:capture?"OFFLINE captured public producer; not live deployment":"synthetic fixture; actual browser viewport geometry",observations},null,2));
+      await browser.setViewportSize(1440,1000);await fresh.close();
+    }
   },90_000);
   it("fits a fresh graph and follows the visible project instead of a wider offscreen repository", async () => {
     const source = sourceFixture(), repo = source.git.harbor, template = repo.commits[0];
