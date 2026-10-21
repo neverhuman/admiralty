@@ -8,6 +8,7 @@ pub mod git_health;
 pub mod history;
 pub mod io;
 pub mod logging;
+pub mod operations_telemetry;
 pub mod projects;
 pub mod resources;
 pub mod rollout;
@@ -133,6 +134,14 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
             "git_health":git_health_ms,"usage":usage_ms,"history":history_ms},
         "stages_note":"Fleet+projects and Git scans run concurrently; stage durations overlap."});
     snapshot["collector"]["phases_ms"] = snapshot["collector"]["stages_ms"].clone();
+    let summary = operations_telemetry::published(
+        &snapshot,
+        previous
+            .as_ref()
+            .and_then(|p| p["collector"]["health_digest"].as_str()),
+    );
+    snapshot["collector"]["health_digest"] = summary["health_digest"].clone();
+    snapshot["collector"]["health_changed"] = summary["health_changed"].clone();
     let snapshot = io::public_value(snapshot);
     io::atomic_json(&config.output_dir.join("status.json"), &snapshot)?;
     telemetry::changes(previous.as_ref(), &snapshot);

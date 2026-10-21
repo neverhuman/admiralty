@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 export type RouteName =
   | "detail"
   | "overview"
+  | "operations"
   | "workplans"
   | "coordination"
   | "commands"
@@ -14,6 +15,7 @@ export type RouteName =
 const names = new Set<RouteName>([
   "detail",
   "overview",
+  "operations",
   "workplans",
   "coordination",
   "commands",
