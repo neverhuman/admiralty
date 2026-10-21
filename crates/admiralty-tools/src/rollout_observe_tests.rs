@@ -660,11 +660,17 @@ fn test_git_probe_is_fixed_head_only_descriptor_bound_and_output_bounded() {
         let called = Cell::new(false);
         let denied_spawn = |_: &[String], _: &BTreeMap<OsString, OsString>| {
             called.set(true);
-            Err(io::Error::other("must not spawn without descriptor support"))
+            Err(io::Error::other(
+                "must not spawn without descriptor support",
+            ))
         };
         let error = bounded_git_head_with(root.as_fd(), Duration::from_secs(5), &denied_spawn)
             .expect_err("unsupported descriptor-bound Git must refuse");
-        assert!(error.to_string().contains("descriptor-bound Git unavailable"));
+        assert!(
+            error
+                .to_string()
+                .contains("descriptor-bound Git unavailable")
+        );
         assert!(!called.get());
         return;
     }
