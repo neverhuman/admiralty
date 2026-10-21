@@ -1,0 +1,17 @@
+@@HOST xbabe2
+@@NPROC 32
+@@LOAD 40.5 30.0 20.0
+@@MEM
+MemTotal:       131072000 kB
+MemAvailable:   12000000 kB
+SwapTotal:             0 kB
+SwapFree:              0 kB
+@@DF
+/ 1000000000000 930000000000 70000000000
+/home 1000000000000 860000000000 140000000000
+@@GPU
+@@DSTATE 0
+@@TOP
+ 1 root 1000 0.0 5 systemd
+@@SCREENS
+@@END

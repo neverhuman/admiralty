@@ -11,10 +11,9 @@ itself accept a parent work packet.
 Install Rust 1.95.0 with `rustfmt` and `clippy` (pinned by
 [`rust-toolchain.toml`](rust-toolchain.toml)), Node 24, pnpm 11.15.1 (pinned in
 [`package.json`](package.json)), Bash and a native C build toolchain for
-dependencies that compile native code. The retained compatibility fixture
-checks also use Python 3.12+ (qualified on 3.12 and 3.14); the `pnpm live`
-launcher no longer does.
-Native HTTP serving and ingestion use Rust.
+dependencies that compile native code. Python is not needed: serving,
+ingestion, fleet tools, release qualification and repository automation are
+Rust, and the few Node scripts are TypeScript.
 Install JavaScript dependencies
 from the lockfile without running dependency lifecycle scripts:
 
@@ -30,13 +29,13 @@ pnpm check
 ```
 
 It installs frozen JavaScript dependencies and runs the complete local matrix:
-Rust formatting, strict locked workspace Clippy/tests, retained compatibility and
-audit fixtures, package/canary checks, actual native binaries and smoke checks,
+Rust formatting, strict locked workspace Clippy/tests (including the audit,
+observer and tool parity suites), package/canary checks, actual native binaries and smoke checks,
 Rust/JavaScript contracts, frontend unit tests/typechecks/build, and real
 browser/accessibility journeys. Install Chrome or Chromium first;
 `ADMIRALTY_BROWSER_BINARY` can select an existing browser. It does not invoke
 paid providers. Logs and exact commands are retained in the private directory
-printed by the script. See [local CI](docs/operators/local-ci.md) for prerequisites,
+printed by the command. See [local CI](docs/operators/local-ci.md) for prerequisites,
 resource bounds and cache overrides.
 
 Hosted Linux checks and the pinned Jankurai audit provide independent evidence.
@@ -59,11 +58,12 @@ pnpm --dir apps/dashboard build
 ```
 
 Set `ADMIRALTY_TARGET_DIR` if you need Cargo output in a private scratch path;
-`scripts/check/all.sh` honors it. Keep test data and private runtime files out
+`cargo xtask check` honors it. Keep test data and private runtime files out
 of the checkout. Do not weaken custody checks or replace source-bound fixtures
-with hand-edited output to get a passing run. New runtime and tooling use Rust;
-adding a new Python file requires an explicit maintainer exception under the
-repository's [Python migration policy](PY_TO_RUST_PLAN.md).
+with hand-edited output to get a passing run. Runtime, tooling and automation
+use Rust; UI and browser/contract scripts use TypeScript. The `python_policy`
+test rejects any Python file and any new shell script (see the
+[completed migration](PY_TO_RUST_PLAN.md)).
 
 ## Changes and review
 

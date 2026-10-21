@@ -1,0 +1,4 @@
+--session
+grok_red
+--inject
+Please continue with the plan now

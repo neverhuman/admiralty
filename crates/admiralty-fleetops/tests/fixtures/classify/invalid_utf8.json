@@ -1,0 +1,13 @@
+{
+  "session": "invalid_utf8",
+  "kind": "grok",
+  "state": "idle",
+  "confidence": 0.6,
+  "signals": [
+    "grok_banner"
+  ],
+  "approval_hint": null,
+  "pr_refs": [],
+  "summary": "[grok/idle] PRs: none. Recent: always-approve | ok line that is long enough",
+  "tail": "Grok 4 �� broken � bytes\nalways-approve\nok line that is long enough"
+}

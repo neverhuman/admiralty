@@ -1,0 +1,20 @@
+{
+  "session": "refs",
+  "kind": "unknown",
+  "state": "unknown",
+  "confidence": 0.29,
+  "signals": [],
+  "approval_hint": null,
+  "pr_refs": [
+    "https://github.com/a/b/pull/1",
+    "https://github.com/a/b/pull/2",
+    "pull request 4",
+    "pull request #8",
+    "PR #3",
+    "pr 5",
+    "PR#6",
+    "Pr 7"
+  ],
+  "summary": "[unknown/unknown] PRs: https://github.com/a/b/pull/1, https://github.com/a/b/pull/2, pull request 4. Recent: See https://github.com/a/b/pull/1, https://github.com/a/b/pull/2/files and PR #3. | pull request 4; pr 5) PR#6] Pr 7, pull request #8 PR 9 PR 10 PR 3. | https://github.com/a/b/pull/1 again",
+  "tail": "See https://github.com/a/b/pull/1, https://github.com/a/b/pull/2/files and PR #3.\npull request 4; pr 5) PR#6] Pr 7, pull request #8 PR 9 PR 10 PR 3.\nhttps://github.com/a/b/pull/1 again"
+}

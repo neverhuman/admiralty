@@ -6,7 +6,7 @@
   "type": "module",
   "types": "./index.ts",
   "scripts": {
-    "test": "node --test runtime.test.mjs"
+    "test": "node --test runtime.test.ts"
   },
   "exports": {
     ".": {

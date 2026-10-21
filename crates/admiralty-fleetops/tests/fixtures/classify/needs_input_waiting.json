@@ -1,0 +1,13 @@
+{
+  "session": "plain",
+  "kind": "unknown",
+  "state": "needs_input",
+  "confidence": 0.56,
+  "signals": [
+    "waiting_for_input"
+  ],
+  "approval_hint": null,
+  "pr_refs": [],
+  "summary": "[unknown/needs_input] PRs: none. Recent: scrollback line 37 doing ordinary work output | scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | Done with step 3. Waiting for your input on the schema choice.",
+  "tail": "scrollback line 21 doing ordinary work output\nscrollback line 22 doing ordinary work output\nscrollback line 23 doing ordinary work output\nscrollback line 24 doing ordinary work output\nscrollback line 25 doing ordinary work output\nscrollback line 26 doing ordinary work output\nscrollback line 27 doing ordinary work output\nscrollback line 28 doing ordinary work output\nscrollback line 29 doing ordinary work output\nscrollback line 30 doing ordinary work output\nscrollback line 31 doing ordinary work output\nscrollback line 32 doing ordinary work output\nscrollback line 33 doing ordinary work output\nscrollback line 34 doing ordinary work output\nscrollback line 35 doing ordinary work output\nscrollback line 36 doing ordinary work output\nscrollback line 37 doing ordinary work output\nscrollback line 38 doing ordinary work output\nscrollback line 39 doing ordinary work output\nDone with step 3. Waiting for your input on the schema choice."
+}

@@ -60,16 +60,14 @@ fn codex_round18_p25_p30_release_bundle_schema_parity() {
         );
     }
 
-    let output = std::process::Command::new("python3")
-        .args(["scripts/release/package.py", "--self-test"])
-        .current_dir(workspace)
-        .output()
-        .expect("P30 release bundle smoke starts");
+    let report = admiralty_qualify::source_package::self_test();
     assert!(
-        output.status.success(),
-        "P30 release bundle smoke failed:\n{}\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+        report.failures.is_empty(),
+        "P30 release bundle smoke failed:\n{}",
+        report.failures.join("\n")
     );
-    assert!(String::from_utf8_lossy(&output.stderr).contains("Ran 10 tests"));
+    assert!(
+        report.cases_run == 10,
+        "P30 release bundle smoke did not run all ten package checks"
+    );
 }

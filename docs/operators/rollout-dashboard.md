@@ -1,6 +1,13 @@
-# Rollout progress on the existing dashboard
+# Rollout progress in Fleet detail
 
-The existing dashboard can display a project's implementation rollout alongside
+> **21 October 2026:** the Python collector (`dashboard/collector.py`,
+> `dashboard/rollout.py`) and the static `dashboard/index.html` page were retired.
+> The Rust observer (`crates/admiralty-observe/src/rollout.rs`) loads the
+> manifest and the React **Fleet detail** view renders it. Every regression the
+> Python suite covered has a Rust parity test (`rollout::legacy_parity`). The
+> rules below are unchanged unless noted; "collector" now means the observer.
+
+The console can display a project's implementation rollout alongside
 its current captain cards. This is a read-only bridge: it reads one bounded JSON
 manifest, computes counts, and shows pending packets, execution lanes, receipt
 references, source freshness, and an optional integration PR. Project and node
@@ -15,9 +22,10 @@ or runtime authority planned for the Rust control plane.
 
 ## Configure the source
 
-By default, the collector reads `rollout.json` from its `CDASH_RUNTIME` directory.
-Alternatively, set `ADMIRALTY_ROLLOUT_MANIFEST` in the collector's environment to
-the full path of a manifest produced by the rollout exporter. Keep this file and
+Set `rollout_manifest` (and optionally `rollout_lanes_file`) in the observer's
+private configuration to the full path of a manifest produced by the rollout
+exporter (`admiralty rollout packets`). The observer reports a configured but
+missing or malformed manifest as `invalid` instead of hiding the panel. Keep this file and
 all execution evidence outside Git. Prefer a private runtime directory with
 permissions appropriate for the dashboard's existing exposure.
 
@@ -172,25 +180,26 @@ stays idle. Agent process presence or screen changes do not prove task
 progress or acceptance. Extra observations do not refresh the original
 manifest timestamp or its claims.
 
-`dashboard/index.html` and the React legacy adapter consume the same source
-document. Deployment requires the collector, rollout and extras modules from
-one pinned candidate; loading these files never restarts services itself.
+The React Fleet detail view consumes the observer's `rollout` field. Deploy the
+observer and server from one build (with the single binary, `admiralty observe`
+and `admiralty serve` are the same executable); loading a manifest never
+restarts services.
 
 ## Offline validation
 
 From the repository root:
 
 ```sh
-rtk proxy python3 -m unittest discover -s tests/legacy -p test_rollout_live_workers.py -v
-rtk proxy python3 -m unittest discover -s tests/legacy -v
+cargo test -p admiralty-observe rollout
+cargo test -p admiralty-observe lib::legacy_parity_tests
 ```
 
 Tests cover missing and explicit sources, invalid JSON and schemas, duplicate
 IDs, byte limits and special files, null paths, immutable manifest reads,
 source age, clock skew, claimed/verified/integrated provenance, mismatched
-revisions, self-verification, unsafe URLs, arbitrary node names, and actual
-JavaScript rendering with hostile strings. JavaScript checks use Node when
-installed and are explicitly skipped otherwise. No live collector import,
+revisions, self-verification, unsafe URLs (only credential-free `http(s)` links
+are published), lane aliasing and cross-project screen collisions, and arbitrary
+node names. React rendering is covered by the dashboard unit and browser tests. No live collector import,
 network, Screen access, provider credentials, or remote service is required.
 
 Live roster tests use fake inventories and read-only callbacks. Collector and

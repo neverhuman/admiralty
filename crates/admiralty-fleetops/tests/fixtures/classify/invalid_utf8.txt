@@ -1,0 +1,3 @@
+Grok 4 ÿþ broken â‚ bytes
+always-approve
+ok line that is long enough

@@ -12,6 +12,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[cfg(test)]
+mod legacy_parity;
 const MAX_NODES: usize = 32;
 const MAX_SCREENS: usize = 256;
 const MAX_CAPTURES: usize = 64;

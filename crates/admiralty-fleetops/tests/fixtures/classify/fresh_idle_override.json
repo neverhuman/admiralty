@@ -1,0 +1,13 @@
+{
+  "session": "claude_fresh",
+  "kind": "claude",
+  "state": "idle",
+  "confidence": 0.5,
+  "signals": [
+    "fresh_idle_chrome"
+  ],
+  "approval_hint": null,
+  "pr_refs": [],
+  "summary": "[claude/idle] PRs: none. Recent: output 17 of the job here | output 18 of the job here | output 19 of the job here | > build anything",
+  "tail": "output 1 of the job here\noutput 2 of the job here\noutput 3 of the job here\noutput 4 of the job here\noutput 5 of the job here\noutput 6 of the job here\noutput 7 of the job here\noutput 8 of the job here\noutput 9 of the job here\noutput 10 of the job here\noutput 11 of the job here\noutput 12 of the job here\noutput 13 of the job here\noutput 14 of the job here\noutput 15 of the job here\noutput 16 of the job here\noutput 17 of the job here\noutput 18 of the job here\noutput 19 of the job here\n> build anything"
+}

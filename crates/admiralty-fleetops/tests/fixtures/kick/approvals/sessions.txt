@@ -1,0 +1,12 @@
+claude_appr
+misc_always
+codex_yn
+input_ambig
+grok_input
+pr_cool
+busy
+plain
+grok_idle
+x_claude_in
+claude_grant_ok
+jopedime_codex_training

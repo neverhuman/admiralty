@@ -1,0 +1,11 @@
+kick starting (dry_run=1) sessions: busy
+
+======== busy ========
+  snap: {BASE}/state/snaps/busy.txt
+  kind=codex  state=working  conf=0.79  hint=none
+  pr_refs: none
+  summary: [codex/working] PRs: none. Recent: scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | • Running cargo test -p core | • Working (12s • esc to interrupt)
+  no auto-action for state=working
+  recorded action: none
+
+kick done.

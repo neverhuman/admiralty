@@ -24,6 +24,7 @@ rusqlite.workspace = true
 futures-util.workspace = true
 [dev-dependencies]
 schemars.workspace = true
+admiralty-qualify.workspace = true
 [lints]
 workspace = true
 

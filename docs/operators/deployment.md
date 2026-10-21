@@ -46,7 +46,7 @@ current ownership and the source/build/installed/running identities.
 
 For the local HTTP subset, build the explicit `admiraltyd` and `admiralty`
 binaries in the lane's reusable `target/`, then use the
-[isolated canary smoke harness](canary-smoke.md). It never attaches to the
+[isolated canary smoke harness](canary-smoke.md) (`admiralty-canary`). It never attaches to the
 primary endpoint or launches inference. It cannot qualify the provider,
 restart/fleet/restore/rollback, full invariant/load matrix, 24-hour soak or
 prospective cost/context study. Those gates remain open until their own actual

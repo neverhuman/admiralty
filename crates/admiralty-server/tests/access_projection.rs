@@ -71,7 +71,7 @@ impl Fixture {
             .expect("write owned legacy index fixture");
         LegacyConfig {
             status_file,
-            index_file,
+            index_file: Some(index_file),
             public_read,
         }
     }

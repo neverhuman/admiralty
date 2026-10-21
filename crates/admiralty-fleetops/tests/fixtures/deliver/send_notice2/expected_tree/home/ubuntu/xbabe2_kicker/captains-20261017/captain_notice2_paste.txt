@@ -1,0 +1,2 @@
+PROXY + HYGIENE: use the proxy; clean worktrees.
+ (Also, if you have not yet: the COMPUTE notice in your coord log - xbabe1/xbabe2/xbabe3 available, never xbabe0 - see COMMON.md "Compute"; post COMPUTE ACK.)

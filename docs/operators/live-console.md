@@ -1,11 +1,16 @@
 # Live fleet console
 
-Start the React console against an existing producer snapshot and original page:
+Start the React console against an existing producer snapshot:
 
 ```sh
 pnpm install --frozen-lockfile --ignore-scripts
-pnpm live --status /absolute/path/status.json --index /absolute/path/index.html
+pnpm live --status /absolute/path/status.json
 ```
+
+The producer feed renders in **Fleet detail** (`#/detail`). `--index
+/absolute/path/index.html` is optional and only needed to keep serving a
+retained HTML page at `/legacy/`; without it `/legacy/` redirects to Fleet
+detail under the same access scope.
 
 Open `http://127.0.0.1:18891/`. This reads real producer observations. The separate
 `pnpm demo` launcher uses synthetic data and defaults to port18892. Neither

@@ -1,0 +1,11 @@
+{
+  "session": "uni",
+  "kind": "unknown",
+  "state": "unknown",
+  "confidence": 0.29,
+  "signals": [],
+  "approval_hint": null,
+  "pr_refs": [],
+  "summary": "[unknown/unknown] PRs: none. Recent: Ünïcödé line 2 — ✓ résumé of the work done here ok | Ünïcödé line 3 — ✓ résumé of the work done here ok | Ünïcödé line 4 — ✓ résumé of the work done here ok | Ünïcödé line 5 — ✓ résumé of the work done here ok",
+  "tail": "Ünïcödé line 0 — ✓ résumé of the work done here ok\nÜnïcödé line 1 — ✓ résumé of the work done here ok\nÜnïcödé line 2 — ✓ résumé of the work done here ok\nÜnïcödé line 3 — ✓ résumé of the work done here ok\nÜnïcödé line 4 — ✓ résumé of the work done here ok\nÜnïcödé line 5 — ✓ résumé of the work done here ok"
+}

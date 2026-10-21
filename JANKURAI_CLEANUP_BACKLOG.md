@@ -146,6 +146,7 @@ stale/duplicate rows and incorrect migration line counts. The 40 existing paths
 in `tests/fixtures/python-baseline.txt` form the reviewed ceiling. A new row in
 the exception document cannot approve its own addition. Changing that ceiling
 requires the maintainer's explicit exception and the normal exact-head review.
+(Superseded on 2026-10-21: the ceiling is now zero; see section 9.)
 
 ## 8. SC-DEC-186O Remediation Slice 1 Dispositions (`b958736f36bfc656961c30af5df5499c6c1dd239` Base)
 
@@ -162,3 +163,25 @@ requires the maintainer's explicit exception and the normal exact-head review.
   - `ADM-AUDIT-004` (`HLT-009-GENERATED-SECURITY`), `ADM-AUDIT-005` & `ADM-AUDIT-016` (`HLT-016-SUPPLY-CHAIN-DRIFT`): **RETAINED OPEN.** `.github/workflows/security.yml`, `tools/security-lane.sh`, `scripts/check/security-supply-chain.sh`, and `agent/security-policy.toml` enforce `actionlint -config-file .github/actionlint.yaml`, `gitleaks git --no-banner --redact --log-opts="-1" .`, `cargo metadata --locked`, workflow permission/credential-persistence checks, and SHA-256 supply-chain digest emission in a fresh `0700` non-symlink directory, failing closed when any required tool is missing (`test_security_supply_chain_fails_closed_when_required_scanner_missing_or_tmpdir_is_symlink`). Because `cargo audit`, `pnpm audit`, `pip-audit`, and `grype` are not yet provisioned across all LAN runners (`xbabe1`/`xbabe3`), these findings remain open (`unprovisioned_tools` in `agent/security-policy.toml`).
   - `ADM-AUDIT-073`, `ADM-AUDIT-074`, `ADM-AUDIT-075` (`HLT-033-PYTHON-BAD-BEHAVIOR` on `dashboard/token_yield.py:70,89,102`): **RETAINED AS `source_reviewed_detector_false_positive` (`audit_resolved: false`).** Original `off + cut + 1` and `'claude-' + str(sid)` parameter tuple expressions are preserved without syntax camouflage; `test_token_yield_parameterized_sql_rejects_injection_metacharacters` proves `?` parameter binding against SQL-injection metacharacters in an isolated SQLite database.
   - `ADM-AUDIT-022`, `ADM-AUDIT-024` (`agent/boundaries.toml`, `agent/proof-lanes.toml`): **RETAINED OPEN.** `agent/proof-lanes.toml` documents that `contract-drift` checks TypeScript/Rust schema drift and does not itself prove all boundary manifests.
+
+## 9. 2026-10-21 Python retirement (`claude/admiralty-rust-only-embedded-console`)
+
+Every Python file and logic-bearing shell script was ported to Rust or
+TypeScript and deleted; `PY_TO_RUST_PLAN.md` records where each went.
+`PYTHON_EXCEPTIONS.md` and `tests/fixtures/python-baseline.txt` are retired and
+`python_policy` now rejects any Python file or new shell script.
+`agent/boundaries.toml` declares `rust-ts-vite-react-sqlite` with no Python
+truth paths.
+
+Hard blockers whose source no longer exists: rows 41 (`HLT-000` stack,
+`dashboard/collector.py`), 42-48 (`HLT-001` markers in `dashboard/collector.py`),
+49-51 (`HLT-033`, `dashboard/token_yield.py`), 54 (`HLT-005`, `python/`) and
+55-56 (`HLT-035`, `tools/history_export_cron.sh`, now `admiralty history
+publish`, which keeps the custody and allowlist checks and their tests), plus
+soft row 29 (`Python containment and polyglot hygiene`).
+
+A local read-only run of the pinned auditor (`jankurai 1.7.5`, `audit . --read-only
+--no-badge --no-score-history --mode advisory`) on the working tree reports
+`Python containment and polyglot hygiene` 0 → 100 and no Python caps. These rows
+stay open in this record until the hosted Jankurai job on the merged head
+confirms them; nothing here is marked auditor-resolved.

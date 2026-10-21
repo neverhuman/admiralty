@@ -1,0 +1,20 @@
+{
+  "session": "claude_appr",
+  "updated_epoch": 1792607405,
+  "updated_at": "2026-10-21 18:30:05 UTC",
+  "last_action": "approve:2",
+  "last_pr_nudge_epoch": 0,
+  "classification": {
+    "session": "claude_appr",
+    "kind": "claude",
+    "state": "needs_approval",
+    "confidence": 0.668,
+    "signals": [
+      "approval:do you want to"
+    ],
+    "approval_hint": "2",
+    "pr_refs": [],
+    "summary": "[claude/needs_approval] PRs: none. Recent: Do you want to proceed? | \u276f 1. Yes | 2. Yes, and don't ask again for rm commands | 3. No, and tell Claude what to do differently (esc)",
+    "tail": "scrollback line 26 doing ordinary work output\nscrollback line 27 doing ordinary work output\nscrollback line 28 doing ordinary work output\nscrollback line 29 doing ordinary work output\nscrollback line 30 doing ordinary work output\nscrollback line 31 doing ordinary work output\nscrollback line 32 doing ordinary work output\nscrollback line 33 doing ordinary work output\nscrollback line 34 doing ordinary work output\nscrollback line 35 doing ordinary work output\nscrollback line 36 doing ordinary work output\nscrollback line 37 doing ordinary work output\nscrollback line 38 doing ordinary work output\nscrollback line 39 doing ordinary work output\n Bash command\n   rm -rf build/\n Do you want to proceed?\n \u276f 1. Yes\n   2. Yes, and don't ask again for rm commands\n   3. No, and tell Claude what to do differently (esc)"
+  }
+}

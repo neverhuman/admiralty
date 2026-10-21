@@ -98,12 +98,14 @@ identity. An empty identity set yields unknown, not a match.
 
 ## Explicit one-task probe helper
 
-`tools/probe_opencode.py` is a temporary qualification tool, not a scheduler. It
+`admiralty opencode probe` (Rust port, crate `admiralty-tools`, of the retired
+`tools/probe_opencode.py`; `python3 tools/probe_opencode.py ARGS` →
+`admiralty opencode probe ARGS`) is a temporary qualification tool, not a scheduler. It
 requires explicit `--qualify` and a new local output file in an existing owned
 directory. Choose an already authorized node and remote helper:
 
 ```sh
-rtk proxy python3 tools/probe_opencode.py \
+rtk proxy admiralty opencode probe \
   --node registered-node --remote-parent /registered/qualification-root \
   --remote-helper /registered/bin/coding-helper \
   --opencode /registered/bin/opencode --model provider/model \
@@ -118,6 +120,19 @@ digests, independent verification result, exact observed model metadata, native
 step reports, elapsed time and artifact references. It does not claim process
 continuity, isolated credential protection, concurrent throughput, fleet
 scheduling or restart adoption. Do not rerun it as a monitoring heartbeat.
+
+The qualification workload is part of the task's meaning, so it is unchanged:
+the owner oracle (a Python `unittest` program for the Python `gaps.py` task),
+the task prompt and the remote harness are byte-identical string constants in
+`crates/admiralty-tools/src/opencode_probe/workload.rs`. They are data sent over
+SSH and interpreted by the node's own `/usr/bin/python3`; no Python file exists
+in this repository for them. Their SHA-256 digests are pinned by tests, so
+`oracle_owner_expected_sha256` stays comparable with earlier receipts. The local
+side runs one fixed `ssh -T -o BatchMode=yes -o ConnectTimeout=8 <node> ...`
+with a 180-second deadline (`--ssh-binary` overrides the default
+`/usr/bin/ssh`), never reads credential files and writes the receipt with
+exclusive creation. Exit codes: 0 qualified, 1 failed qualification or local
+error, 2 refused arguments or unresolved SSH outcome.
 
 An explicitly authorized setup correction can use
 `--correct-fixture /registered/qualification-root/admiralty-qualification-<id>`.

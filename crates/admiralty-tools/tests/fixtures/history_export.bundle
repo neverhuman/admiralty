@@ -1,0 +1,185 @@
+# admiralty-tools history_export golden fixture.
+# Inputs and expected outputs produced by the retired tools/export_history.py
+# (HOME=/home/synthetic). Each entry: "--- <path> <byte-length>" then the bytes and "\n".
+--- expected/out/ledger/model_usage.csv 437
+ts,project,task,screen,host,tier,model,effort,outcome,escalated_to,reason,tokens,source_format,class,attempt,minutes
+2026-10-18T00:00:00Z,,,,,,,,,T3,,,legacy_s9,,,
+2026-10-18T01:00:00Z,dope,,,,,,,escalated,T2,legacy note,,legacy_s9,,2,
+2026-10-18T02:50:00Z,joil,T1,s1,xbabe2,T0,gpt-6-luna,medium,pass,,ok ~/x,1234,canonical,,,
+2026-10-18T09:00:00Z,,,,,,,,5,,fallback,,canonical,impl,,4.5
+2026-10-19T00:00:01Z,,,,,,,,true,,,,canonical,,,
+
+--- expected/out/ledger/model_usage_2026-10-18.jsonl 940
+{"effort":null,"escalated_to":"T3","host":null,"model":null,"outcome":null,"project":null,"reason":null,"screen":null,"source_format":"legacy_s9","task":null,"tier":null,"tokens":null,"ts":"2026-10-18T00:00:00Z"}
+{"attempt":2,"effort":null,"escalated_to":"T2","host":null,"model":null,"outcome":"escalated","project":"dope","reason":"legacy note","screen":null,"source_format":"legacy_s9","task":null,"tier":null,"tokens":null,"ts":"2026-10-18T01:00:00Z"}
+{"effort":"medium","escalated_to":null,"host":"xbabe2","model":"gpt-6-luna","outcome":"pass","project":"joil","reason":"ok ~/x","screen":"s1","source_format":"canonical","task":"T1","tier":"T0","tokens":1234,"ts":"2026-10-18T02:50:00Z"}
+{"class":"impl","effort":null,"escalated_to":null,"host":null,"minutes":4.5,"model":null,"outcome":"5","project":null,"reason":"fallback","screen":null,"source_format":"canonical","task":null,"tier":null,"tokens":null,"ts":"2026-10-18T09:00:00Z"}
+
+--- expected/out/ledger/model_usage_2026-10-19.jsonl 215
+{"effort":null,"escalated_to":null,"host":null,"model":null,"outcome":"true","project":null,"reason":null,"screen":null,"source_format":"canonical","task":null,"tier":null,"tokens":null,"ts":"2026-10-19T00:00:01Z"}
+
+--- expected/out/quota/codex_quota.csv 237
+ts_utc,ts,used_pct,credits_balance
+2025-10-18T04:00:00Z,1760760000.0,12.5,1000
+2025-10-18T04:01:00Z,1760760060.1,13,
+2025-10-18T04:02:00Z,1760760120.0,14,
+2026-10-17T00:00:00Z,1760659200.0,1,
+2026-10-18T04:00:00Z,1760760000.0,99,"1,000"
+
+--- expected/out/rates_index.json 732
+{
+ "note": "Rate files live in captains/rates/ (single source of truth). Vendors use different currencies; never compare across files.",
+ "files": [
+  {
+   "file": "captains/rates/claude_rates_2026-10-17.json",
+   "vendor": "anthropic",
+   "as_of": null,
+   "unit": null,
+   "currency": null,
+   "baseline_model": null,
+   "models": 1,
+   "sha256": "3609cda0ce26f4228574f0c1ba32ea6a03b967486ca30cfc2dfb3c139ae6f275"
+  },
+  {
+   "file": "captains/rates/codex_rates_2026-10-17.json",
+   "vendor": "openai",
+   "as_of": "2026-10-17",
+   "unit": "credits per 1M tokens",
+   "currency": "credits",
+   "baseline_model": "gpt-6-luna",
+   "models": 2,
+   "sha256": "61b82b84d001e6379803870ec17d2242e62aae63453706e806bb9483787e772d"
+  }
+ ]
+}
+--- expected/out/resources/disk_used.csv 239
+ts_utc,host,mount,used_bytes
+2025-10-18T04:00:00Z,xbabe1,/,1500000000
+2025-10-18T04:00:00Z,xbabe2,~/data,5
+2025-10-18T04:00:00Z,xbabe3,,7
+2025-10-18T04:01:00Z,xbabe1,/,2000
+2026-10-17T00:00:00Z,xbabe1,/,10
+2026-10-18T04:00:00Z,xbabe1,/,11
+
+--- expected/out/resources/host_snapshots.csv 286
+ts_utc,host,reachable,nproc,load1,mem_total_gb,mem_avail_gb,swap_used_gb,disk_root_pct,disk_root_avail_bytes,gpus,gpu_util_avg
+2026-10-18T04:05:00Z,xbabe1,True,64,3.5,251.3,100,0,71,123456789,3,16.7
+2026-10-18T04:05:00Z,xbabe2,False,,,,,,,,0,
+2026-10-18T04:05:00Z,xbabe3,,,,,,,,,3,33.7
+
+--- expected/out/snapshots/projects_2026-10-18.jsonl 1231
+{"projects":{"dope":{"blocked":3,"ci_state":null,"counts":null,"done":null,"hygiene":null,"needs_jepson":null,"packets_accepted":null,"packets_total":null,"pr_head":"fedcba987654","pr_number":null,"stage_meta":null,"stages":null,"total":null,"workers":0},"jarambit":{"blocked":0,"ci_state":null,"counts":null,"done":null,"hygiene":null,"needs_jepson":null,"packets_accepted":null,"packets_total":null,"pr_head":null,"pr_number":null,"stage_meta":null,"stages":null,"total":null,"workers":0},"joil":{"blocked":2,"ci_state":"success","counts":{"a":1},"done":3,"hygiene":{"grade":"B","lanes_behind":null,"score":88,"stale_merged_worktrees":null,"temp_growth_gb":null,"uncommitted_over_45m":null},"needs_jepson":1,"packets_accepted":2,"packets_total":9,"pr_head":"0123456789ab","pr_number":6,"stage_meta":{"accepted_in_pr":null,"blocked_code_stage":null,"main_ci_green":null,"main_sha":null,"pr_number":6,"pr_open":true},"stages":{"done":3},"total":10,"workers":1},"jopedime":{"blocked":0,"ci_state":null,"counts":null,"done":null,"hygiene":null,"needs_jepson":null,"packets_accepted":null,"packets_total":null,"pr_head":null,"pr_number":null,"stage_meta":null,"stages":null,"total":null,"workers":0}},"ts_utc":"2026-10-18T04:12:34Z"}
+
+--- expected/out/timeseries/history.csv 2265
+ts_utc,ts,cost_index,cost_basis,quota_pct,credits_h,luna_fail_total,luna_fp_rate,tier_luna,tier_sol,tier_astra,tier_claude,tier_agy,tier_other,joil_done,joil_total,joil_in_progress,joil_ci,joil_pr,joil_hygiene,joil_stage_done,joil_stage_on_main,joil_stage_in_pr,joil_stage_implemented,joil_stage_in_progress,joil_stage_blocked,joil_stage_not_started,dope_done,dope_total,dope_in_progress,dope_ci,dope_pr,dope_hygiene,dope_stage_done,dope_stage_on_main,dope_stage_in_pr,dope_stage_implemented,dope_stage_in_progress,dope_stage_blocked,dope_stage_not_started,jopedime_done,jopedime_total,jopedime_in_progress,jopedime_ci,jopedime_pr,jopedime_hygiene,jopedime_stage_done,jopedime_stage_on_main,jopedime_stage_in_pr,jopedime_stage_implemented,jopedime_stage_in_progress,jopedime_stage_blocked,jopedime_stage_not_started,jarambit_done,jarambit_total,jarambit_in_progress,jarambit_ci,jarambit_pr,jarambit_hygiene,jarambit_stage_done,jarambit_stage_on_main,jarambit_stage_in_pr,jarambit_stage_implemented,jarambit_stage_in_progress,jarambit_stage_blocked,jarambit_stage_not_started,xbabe1_load_pct,xbabe1_disk_root_pct,xbabe2_load_pct,xbabe2_disk_root_pct,xbabe3_load_pct,xbabe3_disk_root_pct,ty_tokens,ty_output,ty_credits,ty_integration_tokens,ty_main_tokens,ty_yield_integration_pct,ty_yield_main_pct,ty_coverage_pct,ty_joil_tokens,ty_joil_integration_tokens,ty_joil_main_tokens,ty_joil_credits_per_done_todo,ty_dope_tokens,ty_dope_integration_tokens,ty_dope_main_tokens,ty_dope_credits_per_done_todo,ty_jopedime_tokens,ty_jopedime_integration_tokens,ty_jopedime_main_tokens,ty_jopedime_credits_per_done_todo,ty_jarambit_tokens,ty_jarambit_integration_tokens,ty_jarambit_main_tokens,ty_jarambit_credits_per_done_todo,ty_other_tokens,ty_other_integration_tokens,ty_other_main_tokens,ty_other_credits_per_done_todo
+2025-10-18T04:00:00Z,1760760000.4,,,,,,,0,0,0,0,0,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+2025-10-18T04:02:04Z,1760760123.9999996,,,,,,,0,0,0,0,0,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+2025-10-19T04:00:00Z,1760846400.25,,"agent-count, ""weighted""
+line",nan,,,,0,0,0,2,0,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+--- expected/out/timeseries/history_2025-10-18.jsonl 237
+{"replaced":true,"ts":1760760000.4,"ts_utc":"2025-10-18T04:00:00Z"}
+{"cost_index":null,"hosts":null,"hyg":{},"proj":null,"tiers":{},"ts":"1760760123.9999996","ts_utc":"2025-10-18T04:02:04Z","ty":null,"weird":[1,{"a":"b"},null,true,2.0]}
+
+--- expected/out/timeseries/history_2025-10-19.jsonl 137
+{"cost_basis":"agent-count, \"weighted\"\nline","quota_pct":NaN,"tiers":{"claude":2},"ts":1760846400.25,"ts_utc":"2025-10-19T04:00:00Z"}
+
+--- expected/out/token_yield/token_yield_2026-10-18.jsonl 193
+{"by_tier":{"T0":1},"generated_utc":"2026-10-18T04:10:00Z","hosts_covered":["xbabe2"],"method":"m","not_covered":null,"projects":{"joil":[1,2]},"total":{"path":"~/z","tok":5},"window_hours":6}
+
+--- expected/out/tokens/claude_hourly.csv 243
+hour_utc,project,model,messages,input,cached,output
+2025-10-18T04:00Z,dope,opus,2,15,1,3
+2025-10-18T04:00Z,joil,unknown,1,2.5,0,0
+2025-10-18T05:00Z,jarambit,unknown,1,1,1,1
+2026-10-17T00:00Z,other,x,9,9,9,9
+2026-10-18T04:00Z,dope,opus,1,1,1,1
+
+--- expected/out/tokens/codex_sessions.csv 399
+session,tool,model,effort,project,host,start_utc,end_utc,input,cached,output,reasoning,credits_est
+old,codex,"m,1",,other,h,,,1,2,3,4,0.5
+s2,claude,,,jopedime,xbabe1,,,,,,,
+s0,codex,m,hi,other,xbabe3,2025-10-17T11:20:00Z,,1,2,3,4,2.001
+s1,codex,gpt-6-luna,medium,joil,xbabe2,2025-10-18T04:00:00Z,2025-10-18T05:00:00Z,100,50,20,5,1.235
+s3,codex,m,hi,jopedime,xbabe3,2025-10-18T04:00:00Z,,1,2,3,4,7.0
+
+--- expected/stdout.txt 278
+{"timeseries": [3, "2025-10-18T04:00:00Z", "2025-10-19T04:00:00Z"], "ledger": [5, 4, "2026-10-18T00:00:00Z", "2026-10-19T00:00:01Z"], "quota_rows": 5, "resources": [6, 3], "tokens": [5, 5], "token_yield_snapshots": 1, "project_snapshots": 1, "rate_files": 2}
+secret scan: clean
+
+--- input/capd/model_usage.jsonl 903
+{"ts": "2026-10-18T02:50:00Z", "project": "joil", "task": "T1", "screen": "s1", "host": "xbabe2", "tier": "T0", "model": "gpt-6-luna", "effort": "medium", "outcome": "PASS", "tokens": 1234, "reason": "ok /home/synthetic/x"}
+{"utc": "2026-10-18T03:00:00+02:00", "project": "dope", "to_tier": "T2", "note": "legacy note", "outcome": "Escalated", "attempt": 2}
+{"ts": "2026-10-18T03:00:00-06:00", "class": "impl", "minutes": 4.5, "outcome": 5, "reason": "", "note": "fallback"}
+{"ts": "2026-10-18 00:00+00:00", "outcome": null, "escalated_to": null, "to_tier": "T3"}
+{"ts": "garbage"}
+{"ts": ""}
+{"utc": "2026-10-19T00:00:01.5Z", "ts": null, "outcome": true}
+{"ts": "2026-10-18T02:50:00Z", "project": "joil", "task": "T1", "screen": "s1", "host": "xbabe2", "tier": "T0", "model": "gpt-6-luna", "effort": "medium", "outcome": "PASS", "tokens": 1234, "reason": "ok /home/synthetic/x"}
+"a string"
+{broken
+   
+
+--- input/capd/super_captain_status.json 101
+{"captains": {"joil": {"hygiene": {"score": 88, "grade": "B", "extra": 1}}, "dope": {"hygiene": {}}}}
+--- input/dash/.quota_history.json 125
+[[1760760000, 12.5, 1000], [1760760060.06, 13], ["1760760120", "14", null, "extra"], "abc", {"x": 1}, [null, 1], [1e+300, 1]]
+--- input/dash/.res_history.json 178
+{"xbabe1:/": [[1760760000, 1500000000.0], [1760760060, "2000"]], "xbabe0:/": [[1760760000, 1]], "xbabe2:/home/synthetic/data": [[1760760000.7, 5]], "xbabe3": [[1760760000, 7.9]]}
+--- input/dash/global_resources.json 528
+{"generated_utc": "2026-10-18T04:05:00Z", "hosts": [{"host": "xbabe1", "reachable": true, "nproc": 64, "load": [3.5, 2, 1], "mem": {"total_gb": 251.3, "avail_gb": 100, "swap_used_gb": 0}, "disks": [{"mount": "/data", "pct": 10}, {"mount": "/", "pct": 71, "avail": 123456789}], "gpus": [{"util": 50}, {"util": null}, {}]}, {"host": "xbabe0", "reachable": true}, {"host": "xbabe2", "reachable": false, "load": null, "mem": null, "disks": [], "gpus": []}, {"host": "xbabe3", "gpus": [{"util": 33.3}, {"util": 66.7}, {"util": 1}]}]}
+--- input/dash/history.jsonl 1500
+{"ts": 1760760000, "cost_index": 1.5, "cost_basis": "tokens (last 15 min)", "quota_pct": 12, "credits_h": 3.25e-05, "luna_fail_total": 3, "luna_fp_rate": 91.66666666666667, "tiers": {"luna": 4, "sol": 1}, "proj": {"joil": {"done": 3, "total": 10, "ip": 2, "ci": "success", "pr": 6, "st": {"done": 3, "blocked": 1}}, "dope": {}}, "hyg": {"joil": 88, "dope": null}, "hosts": {"xbabe1": {"load": 55.5, "disk": 71}, "xbabe2": {}}, "ty": {"tok": 123456789, "out": 1e+16, "cr": 0.1, "yi": 57.3, "p": {"joil": [1, 2, 3, 4.5], "other": [9], "unknown": [1, 2], "dope": "notalist"}}, "note": "path /home/synthetic/repo/file and /home/synthetic", "long": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/home/synthetic/tail", "uni": "caf\u00e9 \u2603 \ud83d\ude00"}
+{"ts": "1760760123.9999996", "cost_index": null, "tiers": {}, "proj": null, "hyg": {}, "hosts": null, "ty": null, "weird": [1, {"a": "b"}, null, true, 2.0]}
+{"ts": 1760760000.4, "replaced": true}
+{"ts": 1760846400.25, "cost_basis": "agent-count, \"weighted\"\nline", "quota_pct": NaN, "tiers": {"claude": 2}}
+{"no_ts": 1}
+[1, 2, 3]
+not json
+
+
+--- input/dash/status.json 498
+{"generated_utc": "2026-10-18T04:12:34+00:00", "projects": {"joil": {"done": 3, "total": 10, "counts": {"a": 1}, "stages": {"done": 3}, "stage_meta": {"pr_number": 6, "pr_open": true, "extra": 1}, "packets_accepted": 2, "packets_total": 9, "blocked_ids": ["a", "b"], "workers": [1], "pr": {"number": 6, "head": "0123456789abcdef", "ci": {"state": "success"}}, "needs_jepson": ["x"]}, "dope": {"pr": {"head_sha": "fedcba9876543210"}, "needs_jepson": "nope", "blocked_ids": "abc"}, "jarambit": null}}
+--- input/dash/token_yield.json 227
+{"generated_utc": "2026-10-18T04:10:00Z", "window_hours": 6, "total": {"tok": 5, "path": "/home/synthetic/z"}, "by_tier": {"T0": 1}, "projects": {"joil": [1, 2]}, "method": "m", "hosts_covered": ["xbabe2"], "not_covered": null}
+--- input/out/quota/codex_quota.csv 117
+ts_utc,ts,used_pct,credits_balance
+2026-10-17T00:00:00Z,1760659200.0,1,
+2026-10-18T04:00:00Z,1760760000.0,99,"1,000"
+
+--- input/out/resources/disk_used.csv 95
+ts_utc,host,mount,used_bytes
+2026-10-17T00:00:00Z,xbabe1,/,10
+2026-10-18T04:00:00Z,xbabe1,/,11
+
+--- input/out/tokens/claude_hourly.csv 122
+hour_utc,project,model,messages,input,cached,output
+2026-10-18T04:00Z,dope,opus,1,1,1,1
+2026-10-17T00:00Z,other,x,9,9,9,9
+
+--- input/out/tokens/codex_sessions.csv 193
+session,tool,model,effort,project,host,start_utc,end_utc,input,cached,output,reasoning,credits_est
+old,codex,"m,1",,other,h,,,1,2,3,4,0.5
+s1,codex,stale,,joil,h,2026-10-18T04:00:00Z,,1,1,1,1,1
+
+--- input/repo/captains/rates/claude_rates_2026-10-17.json 76
+{"vendor": "anthropic", "as_of": null, "models": {"x": 1}, "note": "café"}
+
+--- input/repo/captains/rates/codex_rates_2026-10-17.json 219
+{
+  "vendor": "openai",
+  "as_of": "2026-10-17",
+  "unit": "credits per 1M tokens",
+  "currency": "credits",
+  "baseline_model": "gpt-6-luna",
+  "models": [
+    {
+      "id": "a"
+    },
+    {
+      "id": "b"
+    }
+  ]
+}
+--- input/repo/captains/rates/readme_rates.txt 7
+ignored

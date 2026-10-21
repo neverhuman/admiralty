@@ -46,20 +46,14 @@ fn codex_round14_p25_p30() {
     );
 
     // P30 release-package verification is deterministic and offline.
-    let workspace = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .canonicalize()
-        .expect("workspace root resolves");
-    let output = std::process::Command::new("python3")
-        .args(["scripts/release/package.py", "--self-test"])
-        .current_dir(workspace)
-        .output()
-        .expect("P30 offline release evidence checks start");
+    let report = admiralty_qualify::source_package::self_test();
     assert!(
-        output.status.success(),
-        "P30 release evidence self-test failed:\n{}\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+        report.failures.is_empty(),
+        "P30 release evidence self-test failed:\n{}",
+        report.failures.join("\n")
     );
-    assert!(String::from_utf8_lossy(&output.stderr).contains("Ran 10 tests"));
+    assert!(
+        report.cases_run == 10,
+        "P30 release evidence self-test did not run all ten package checks"
+    );
 }

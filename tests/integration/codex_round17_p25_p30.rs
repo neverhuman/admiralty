@@ -49,17 +49,14 @@ fn p25_p30_round17_post_item5_release_audit_cross_packet_invariants() {
     assert!(!unfenced.effects_authorized());
 
     // P30 release audit verifies deterministic package-manifest and tamper checks offline.
-    let workspace = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let output = std::process::Command::new("python3")
-        .args(["scripts/release/package.py", "--self-test"])
-        .current_dir(workspace)
-        .output()
-        .expect("P30 release audit starts");
+    let report = admiralty_qualify::source_package::self_test();
     assert!(
-        output.status.success(),
-        "P30 release audit failed:\n{}\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+        report.failures.is_empty(),
+        "P30 release audit failed:\n{}",
+        report.failures.join("\n")
     );
-    assert!(String::from_utf8_lossy(&output.stderr).contains("Ran 10 tests"));
+    assert!(
+        report.cases_run == 10,
+        "P30 release audit did not run all ten package checks"
+    );
 }

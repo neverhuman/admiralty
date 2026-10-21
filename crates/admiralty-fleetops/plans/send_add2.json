@@ -1,0 +1,48 @@
+{
+  "description": "Addendum 2 (2026-10-17 9:24 PM MDT): paste kick_add2_<key>.txt into the 4 captain screens only when the Claude prompt is idle; 40 passes x 15 s (~10 min); otherwise append a pointer to the captain's coordination log (joil under flock) (was tools/send_add2.sh).",
+  "passes": 40,
+  "interval_secs": 15,
+  "idle": {
+    "hardcopy_prefix": "/tmp/hc_a2_",
+    "require_shortcuts_footer": true,
+    "fresh_hardcopy": false,
+    "settle_ms": 300
+  },
+  "paste_settle_ms": 1000,
+  "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/kick_add2_{key}.txt",
+  "sent_marker": "/tmp/sent_add2_{key}",
+  "sent_echo": "sent {screen} {message_basename} at {denver_hms} MDT",
+  "fallback": {
+    "template": "\n## {utc_iso} - Grok Bot to {screen}: ADDENDUM 2 (Jepson, 9:24 PM MDT) waiting for you\n\nCaptain: your prompt stayed busy for 10 minutes, so this pointer is going in the log instead. {message}\n",
+    "echo": "busy 10m: pointer appended to {coord_log} for {key} at {denver_hms} MDT",
+    "logged_marker": "/tmp/logged_add2_{key}",
+    "lock_wait_secs": 60
+  },
+  "done_echo": "DONE",
+  "targets": [
+    {
+      "key": "joil",
+      "screen": "2708475.captain_joil",
+      "coord_log": "/home/ubuntu/joil/COORD.md",
+      "lock": "/home/ubuntu/joil/.private/v5-workers/coord.lock"
+    },
+    {
+      "key": "dope",
+      "screen": "2716151.captain_dope",
+      "coord_log": "/home/ubuntu/dope/COMMS.md",
+      "lock": ""
+    },
+    {
+      "key": "jopedime",
+      "screen": "2724936.captain_jopedime",
+      "coord_log": "/home/ubuntu/JopeDime/COMMS.md",
+      "lock": ""
+    },
+    {
+      "key": "jarambit",
+      "screen": "2740538.captain_jarambit",
+      "coord_log": "/home/ubuntu/jarambit/COMMS.md",
+      "lock": ""
+    }
+  ]
+}

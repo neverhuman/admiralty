@@ -16,6 +16,8 @@ const MAX_TASKS: usize = 2048;
 const MAX_CASES: usize = 128;
 const MAX_LOG_BYTES: usize = 8 * 1024 * 1024;
 const TOTAL_LOG_BYTES: usize = 64 * 1024 * 1024;
+#[cfg(test)]
+mod legacy_parity;
 const STAGES: [&str; 7] = [
     "done",
     "on_main",
@@ -678,6 +680,105 @@ fn unique_json(bytes: &[u8]) -> crate::Result<Value> {
     d.end()?;
     Ok(value)
 }
+/// Regex-free equivalent of the legacy collector's execution-command pattern
+/// `\b(cargo|nextest|pytest|just|npm|pnpm|make|ctest|uv run|go test|bash\s+\S+\.sh|\./\S+)\b|\bpython3?\s+(-m\s+\w+|[\w/.-]+\.py)\b`
+/// (searched anywhere, case-sensitive).
+fn execution_command(command: &str) -> bool {
+    let chars = command.chars().collect::<Vec<_>>();
+    let n = chars.len();
+    let word = |i: usize| i < n && (chars[i].is_alphanumeric() || chars[i] == '_');
+    let boundary = |i: usize| (i > 0 && word(i - 1)) != word(i);
+    let at = |i: usize, s: &str| {
+        let s = s.chars().collect::<Vec<_>>();
+        i + s.len() <= n && chars[i..i + s.len()] == s[..]
+    };
+    let spaces = |mut i: usize| {
+        while i < n && chars[i].is_whitespace() {
+            i += 1;
+        }
+        i
+    };
+    let run = |mut i: usize, member: &dyn Fn(char) -> bool| {
+        while i < n && member(chars[i]) {
+            i += 1;
+        }
+        i
+    };
+    (0..n).any(|i| {
+        if !boundary(i) {
+            return false;
+        }
+        let literal = [
+            "cargo", "nextest", "pytest", "just", "npm", "pnpm", "make", "ctest", "uv run",
+            "go test",
+        ]
+        .iter()
+        .any(|s| at(i, s) && boundary(i + s.chars().count()));
+        let script = at(i, "bash") && {
+            let start = spaces(i + 4);
+            let end = run(start, &|c| !c.is_whitespace());
+            start > i + 4
+                && (start + 1..end.saturating_sub(2)).any(|m| at(m, ".sh") && !word(m + 3))
+        };
+        let relative = at(i, "./") && {
+            let end = run(i + 2, &|c| !c.is_whitespace());
+            (i + 3..=end).any(&boundary)
+        };
+        let python = at(i, "python") && {
+            let version = if at(i + 6, "3") { i + 7 } else { i + 6 };
+            let start = spaces(version);
+            start > version
+                && ((at(start, "-m") && {
+                    let module = spaces(start + 2);
+                    module > start + 2 && word(module)
+                }) || {
+                    let end = run(start, &|c| {
+                        c.is_alphanumeric() || c == '_' || matches!(c, '/' | '.' | '-')
+                    });
+                    (start + 1..end.saturating_sub(2)).any(|m| at(m, ".py") && !word(m + 3))
+                })
+        };
+        literal || script || relative || python
+    })
+}
+/// A stated verification time must be a timezone-qualified instant, not in the
+/// future, and not earlier than the receipt commit: an older receipt relabeled
+/// to a newer commit was not re-run. An absent time follows the major-release
+/// receipt contract, which does not require one.
+async fn verification_time(
+    repo: &Path,
+    receipt: &Value,
+    sha: &str,
+) -> std::result::Result<(), String> {
+    let Some(stated) = ["verified_at_utc", "verified_at"]
+        .iter()
+        .map(|key| &receipt[*key])
+        .find(|value| !value.is_null())
+    else {
+        return Ok(());
+    };
+    let at = stated
+        .as_str()
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        .ok_or("receipt verification time is not a timezone-qualified instant")?
+        .timestamp();
+    if at > chrono::Utc::now().timestamp() + 30 {
+        return Err("receipt verification time is in the future".into());
+    }
+    let committed = git(
+        repo,
+        vec!["log".into(), "-1".into(), "--format=%ct".into(), sha.into()],
+        256,
+    )
+    .await
+    .ok()
+    .and_then(|s| s.parse::<i64>().ok())
+    .ok_or("receipt commit time unknown")?;
+    if at < committed {
+        return Err("receipt predates its commit; relabeled to a newer commit, not re-run".into());
+    }
+    Ok(())
+}
 fn verify_cases(
     task: &Value,
     receipt: &Value,
@@ -719,6 +820,12 @@ fn verify_cases(
     for case in cases {
         if case["exit_code"].as_i64() != Some(0) || case["passed"] == false {
             return Err("case lacks successful execution".into());
+        }
+        // A stated command must name an executed check, never e.g. `echo PASS`.
+        if let Some(command) = case.get("command").filter(|v| !v.is_null())
+            && !command.as_str().is_some_and(execution_command)
+        {
+            return Err("case command is not an executed check".into());
         }
         if case
             .get("checkout_sha")
@@ -764,6 +871,7 @@ fn verify_cases(
         let header = text.split("--- STDOUT ---").next().unwrap_or("");
         for line in header.lines() {
             if let Some((field, value)) = line.trim().split_once(':') {
+                let field = field.trim_end();
                 if ["head_sha", "checkout_sha"].contains(&field) && value.trim() != sha {
                     return Err("execution header checkout differs".into());
                 }
@@ -1038,6 +1146,10 @@ async fn major_release(
                     };
                     if !on_main {
                         why = "receipt commit not demonstrated on configured main ref".into()
+                    } else if let Err(error) =
+                        verification_time(&project.repository, &receipt, sha).await
+                    {
+                        why = error
                     } else {
                         match verify_cases(task, &receipt, sha, rpath, &mut remaining, &mut logs) {
                             Ok(()) => {

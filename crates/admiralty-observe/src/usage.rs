@@ -11,6 +11,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[cfg(test)]
+mod legacy_parity;
 const FILE_LIMIT: usize = 128;
 const FILE_BYTES: usize = 2 * 1024 * 1024;
 const SCAN_BYTES: usize = 32 * 1024 * 1024;
