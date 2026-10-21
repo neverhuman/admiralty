@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseRoute, routeHref } from "../../router";
-import { pausedSnapshotForToken } from "./LiveViews";
+import { agentTrailerText, pausedSnapshotForToken } from "./LiveViews";
+import { commitSearchText } from "../git-flow/model";
 import {
   age,
   isStale,
@@ -227,6 +228,24 @@ describe("visual truth and deterministic geometry", () => {
     value.projects[0].git = repository();
     value.projects[0].git.commits[0].oid = "fake";
     expect(() => parseViews(value)).toThrow("Git identity");
+  });
+  it("validates commit-reported agent trailers and keeps them a claim, not authorship", () => {
+    const value = fixture();
+    value.projects[0].git = repository();
+    const commit = value.projects[0].git.commits[1];
+    commit.agent_trailers = { session: "s-1", model: "gpt-6-luna", task: "P05" };
+    const parsed = parseViews(value).projects[0].git!.commits[1];
+    expect(parsed.agent_trailers).toEqual({ session: "s-1", model: "gpt-6-luna", task: "P05" });
+    expect(agentTrailerText(parsed.agent_trailers)).toBe(
+      "Agent-Session: s-1\nAgent-Model: gpt-6-luna\nAgent-Task: P05\nReported by the commit message; not proof of which process authored it",
+    );
+    expect(agentTrailerText(undefined)).toBe("None in the commit message");
+    expect(commitSearchText(parsed)).toContain("P05");
+    expect(commitSearchText(value.projects[0].git.commits[0])).toBe(`${oid(4)} merge`);
+    const extra = fixture();
+    extra.projects[0].git = repository();
+    (extra.projects[0].git.commits[0] as unknown as Record<string, unknown>).agent_trailers = { model: "x", author: "guess" };
+    expect(() => parseViews(extra)).toThrow();
   });
   it("distinguishes stale, unknown and future source clocks", () => {
     const now = Date.parse("2026-10-18T12:10:00Z");

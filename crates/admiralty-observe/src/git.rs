@@ -1,5 +1,7 @@
 //! Bounded Git facts from configured repositories. Never fetch, lock an index or write refs.
-use admiralty_core::views::{GitCheckout, GitCommit, GitRef, GitRepository, GitWorkingState};
+use admiralty_core::views::{
+    GitAgentTrailers, GitCheckout, GitCommit, GitRef, GitRepository, GitWorkingState,
+};
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
@@ -133,24 +135,96 @@ fn refs(raw: &str) -> crate::Result<Vec<GitRef>> {
     }
     Ok(result)
 }
+const MAX_TRAILER_CHARS: usize = 128;
+
+/// A trailer line is `Token: value`, where the token is ASCII letters, digits
+/// and hyphens, as `git interpret-trailers` writes it.
+fn trailer_line(text: &str) -> Option<(&str, &str)> {
+    let (key, value) = text.split_once(':')?;
+    (!key.is_empty()
+        && key
+            .bytes()
+            .next()
+            .is_some_and(|b| b.is_ascii_alphanumeric())
+        && key.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-'))
+    .then(|| (key, value.trim()))
+}
+
+/// Fleet attribution trailers from a commit's last message paragraph. The
+/// paragraph counts only when it is not the subject paragraph and every line is
+/// a trailer or an indented continuation, so prose that merely mentions a key
+/// is never read as a trailer. The first value of each key wins.
+fn agent_trailers(paragraphs: usize, last: &[String]) -> Option<GitAgentTrailers> {
+    if paragraphs < 2 || last.is_empty() {
+        return None;
+    }
+    let mut found = GitAgentTrailers::default();
+    for line in last {
+        if line.starts_with([' ', '\t']) {
+            continue;
+        }
+        let (key, value) = trailer_line(line)?;
+        let slot = match key.to_ascii_lowercase().as_str() {
+            "agent-session" => &mut found.session,
+            "agent-model" => &mut found.model,
+            "agent-task" => &mut found.task,
+            _ => continue,
+        };
+        let value: String = crate::io::clean(value)
+            .chars()
+            .take(MAX_TRAILER_CHARS)
+            .collect();
+        if slot.is_none() && !value.is_empty() {
+            *slot = Some(value);
+        }
+    }
+    (found != GitAgentTrailers::default()).then_some(found)
+}
+
 fn commits(raw: &str) -> crate::Result<Vec<GitCommit>> {
     let mut result: Vec<GitCommit> = Vec::new();
     let mut message = false;
     let mut subject = false;
+    // Message paragraphs seen, the latest paragraph's lines, and whether a
+    // blank message line (raw format prints it as four spaces) preceded them.
+    let mut paragraphs = 0usize;
+    let mut last: Vec<String> = Vec::new();
+    let mut gap = false;
     for line in raw.lines() {
         if let Some(id) = line.strip_prefix("commit ") {
             if !oid(id) {
                 return Err("invalid Git commit record".into());
+            }
+            if let Some(previous) = result.last_mut() {
+                previous.agent_trailers = agent_trailers(paragraphs, &last);
             }
             result.push(GitCommit {
                 oid: id.into(),
                 parents: vec![],
                 subject: String::new(),
                 committed_utc: String::new(),
+                agent_trailers: None,
             });
             message = false;
             subject = false;
+            paragraphs = 0;
+            last.clear();
+            gap = false;
         } else if let Some(commit) = result.last_mut() {
+            if message && let Some(text) = line.strip_prefix("    ") {
+                if text.trim().is_empty() {
+                    gap = true;
+                } else {
+                    if gap || paragraphs == 0 {
+                        paragraphs += 1;
+                        last.clear();
+                        gap = false;
+                    }
+                    if last.len() < 64 {
+                        last.push(text.to_owned());
+                    }
+                }
+            }
             if !message {
                 if line.is_empty() {
                     message = true;
@@ -174,6 +248,9 @@ fn commits(raw: &str) -> crate::Result<Vec<GitCommit>> {
                 subject = true;
             }
         }
+    }
+    if let Some(previous) = result.last_mut() {
+        previous.agent_trailers = agent_trailers(paragraphs, &last);
     }
     if result.iter().any(|c| c.committed_utc.is_empty()) {
         return Err("incomplete Git commit metadata".into());
@@ -476,6 +553,115 @@ mod tests {
             (2, 2, 1, 1)
         );
         assert!(working("R  incomplete\0").is_err());
+    }
+    fn raw_commit(n: u8, message: &[&str]) -> String {
+        let mut raw = format!(
+            "commit {}\ntree {}\nauthor A <a@example.invalid> 1700000000 +0000\ncommitter A <a@example.invalid> 1700000000 +0000\n\n",
+            format!("{n:02x}").repeat(20),
+            "ab".repeat(20)
+        );
+        for line in message {
+            raw.push_str(&format!("    {line}\n"));
+        }
+        raw.push('\n');
+        raw
+    }
+    #[test]
+    fn agent_trailers_come_only_from_a_final_trailer_paragraph() {
+        let raw = [
+            raw_commit(
+                1,
+                &[
+                    "Add lane worker",
+                    "",
+                    "Prose naming Agent-Model: not-a-trailer stays prose.",
+                    "",
+                    "Agent-Session: 019a-abc",
+                    "agent-model: gpt-6-luna medium",
+                    "Agent-Model: second value ignored",
+                    "Agent-Task: P12.a",
+                    "Co-Authored-By: Someone <s@example.invalid>",
+                ],
+            ),
+            raw_commit(2, &["Agent-Task: subject is never a trailer"]),
+            raw_commit(
+                3,
+                &["Subject", "", "Agent-Task: P1", "Mixed prose closes it."],
+            ),
+            raw_commit(4, &["Subject", "", "Signed-off-by: S <s@example.invalid>"]),
+            raw_commit(5, &["Subject", "", "Agent-Model:", "Agent-Task: P9"]),
+        ]
+        .concat();
+        let parsed = commits(&raw).expect("commits");
+        assert_eq!(parsed.len(), 5);
+        assert_eq!(parsed[0].subject, "Add lane worker");
+        assert_eq!(
+            parsed[0].agent_trailers,
+            Some(GitAgentTrailers {
+                session: Some("019a-abc".into()),
+                model: Some("gpt-6-luna medium".into()),
+                task: Some("P12.a".into()),
+            })
+        );
+        assert_eq!(parsed[1].agent_trailers, None);
+        assert_eq!(parsed[2].agent_trailers, None);
+        assert_eq!(parsed[3].agent_trailers, None);
+        assert_eq!(
+            parsed[4].agent_trailers,
+            Some(GitAgentTrailers {
+                task: Some("P9".into()),
+                ..GitAgentTrailers::default()
+            })
+        );
+        let long = raw_commit(6, &["S", "", &format!("Agent-Task: {}", "x".repeat(400))]);
+        let task = commits(&long).expect("long")[0]
+            .agent_trailers
+            .clone()
+            .and_then(|t| t.task)
+            .expect("task");
+        assert_eq!(task.chars().count(), MAX_TRAILER_CHARS);
+    }
+    #[tokio::test]
+    async fn real_commit_trailers_are_observed_without_changing_the_repository() {
+        let dir = tempfile::tempdir().expect("fixture");
+        let path = dir.path();
+        git(path, &["init", "-b", "main"]);
+        git(path, &["config", "user.email", "fixture@example.invalid"]);
+        git(path, &["config", "user.name", "Fixture"]);
+        git(path, &["commit", "--allow-empty", "-m", "root"]);
+        git(
+            path,
+            &[
+                "commit",
+                "--allow-empty",
+                "-m",
+                "Worker change",
+                "-m",
+                "Agent-Session: s-1\nAgent-Model: gpt-6-luna\nAgent-Task: P05",
+            ],
+        );
+        let before = git(path, &["show-ref"]);
+        let value = scan(path, "node-a").await.expect("observation");
+        let head = git(path, &["rev-parse", "HEAD"]);
+        let worker = value.commits.iter().find(|c| c.oid == head).expect("head");
+        assert_eq!(
+            worker.agent_trailers,
+            Some(GitAgentTrailers {
+                session: Some("s-1".into()),
+                model: Some("gpt-6-luna".into()),
+                task: Some("P05".into()),
+            })
+        );
+        let root = value.commits.iter().find(|c| c.oid != head).expect("root");
+        assert_eq!(root.agent_trailers, None);
+        assert!(
+            !serde_json::to_value(root)
+                .expect("json")
+                .as_object()
+                .expect("object")
+                .contains_key("agent_trailers")
+        );
+        assert_eq!(git(path, &["show-ref"]), before);
     }
     #[tokio::test]
     async fn real_fork_merge_worktrees_and_observation_do_not_mutate_repository() {

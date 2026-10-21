@@ -2,6 +2,11 @@ export const GIT_LANE_SPACING = 54;
 
 import type { GitCommit, GitRepository } from "../../../../../packages/contracts/generated/views-snapshot";
 export type { GitRepository, GitCommit, GitCheckout } from "../../../../../packages/contracts/generated/views-snapshot";
+/** Search text for a commit: exact OID, subject and any commit-reported `Agent-*` trailer values. */
+export function commitSearchText(commit: GitCommit): string {
+  const trailers = commit.agent_trailers;
+  return [commit.oid, commit.subject, trailers?.session, trailers?.model, trailers?.task].filter(Boolean).join(" ");
+}
 export type CommitRange = { id: string; commits: GitCommit[]; expanded: boolean; x: number; y: number };
 export type CommitMark = { x: number; y: number; commit: GitCommit; lane: number; rank: number; range?: CommitRange };
 export type GitLayout = { marks: CommitMark[]; byOid: Map<string, CommitMark>; width: number; height: number; boundaries: number; ranges: CommitRange[]; orderedCommits: GitCommit[] };

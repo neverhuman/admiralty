@@ -11,6 +11,7 @@ import { useSize, type Selection } from "./LiveViews";
 import { changeParams } from "./FleetAtlas";
 import GitChat from "./GitChat";
 import ProjectInvestigation from "../git-flow/ProjectInvestigation";
+import { commitSearchText } from "../git-flow/model";
 import { makeCameraMemory } from "../git-flow/camera";
 import GitCanvas from "../git-flow/GraphCanvas";
 import { captureGitAnchor, restoreGitAnchor, fitGitZoom, gitFrontierScroll } from "./git-viewport";
@@ -130,7 +131,7 @@ export default function GitFlow({
               p.name,
               p.id,
               ...(p.git?.refs.map((r) => r.name) ?? []),
-              ...(p.git?.commits.map((c) => `${c.oid} ${c.subject}`) ?? []),
+              ...(p.git?.commits.map(commitSearchText) ?? []),
             ]
               .join(" ")
               .toLowerCase()
@@ -151,7 +152,7 @@ export default function GitFlow({
         return expanded.has(key) || (!collapsed.has(key) && (
           (c.oid === focusId && (!focusProject || project.id === focusProject)) ||
           (project.id === selectedProject && c.oid === selectedOid) ||
-          (needle && `${c.oid} ${c.subject}`.toLowerCase().includes(needle))
+          (needle && commitSearchText(c).toLowerCase().includes(needle))
         ));
       }).map((c) => c.oid));
       const collapsedOids = new Set(project.git?.commits

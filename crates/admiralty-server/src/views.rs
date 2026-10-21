@@ -968,6 +968,12 @@ fn seed_demo(snapshot: &mut ViewsSnapshot) {
                     ][n - 1]
                         .into(),
                     committed_utc: stamp.clone(),
+                    // Synthetic Agent-* trailers on three demo commits.
+                    agent_trailers: (5..=7).contains(&n).then(|| GitAgentTrailers {
+                        session: Some(format!("demo-session-{}", p.id)),
+                        model: Some(models[index % models.len()].into()),
+                        task: Some(format!("{}-demo-task", p.id)),
+                    }),
                 })
                 .collect(),
             refs: vec![

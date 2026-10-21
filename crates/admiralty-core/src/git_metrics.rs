@@ -356,6 +356,7 @@ mod tests {
             parents: parents.iter().map(|n| oid(*n)).collect(),
             subject: format!("commit {n}"),
             committed_utc: at.into(),
+            agent_trailers: None,
         }
     }
     fn reference(name: &str, kind: &str, n: usize) -> GitRef {

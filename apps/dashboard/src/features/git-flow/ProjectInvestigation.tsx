@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import type { ViewProject } from "../live-views/feed";
 import type { Selection } from "../live-views/LiveViews";
-import type { CommitRange } from "./model";
+import { commitSearchText, type CommitRange } from "./model";
 import type { GitHealthReport } from "../live-views/gitHealth";
 import type { CameraMemory } from "./camera";
 import GraphCanvas from "./GraphCanvas";
@@ -27,7 +27,7 @@ export default function ProjectInvestigation({ project, revision, accessEpoch, m
     for (const commit of project.git?.commits ?? []) {
       const key = `${project.id}:${commit.oid}`;
       if (collapsed.has(key)) collapsedOids.add(commit.oid);
-      if (expanded.has(key) || (!collapsed.has(key) && (commit.oid === focusId || commit.oid === selectedOid || (needle && `${commit.oid} ${commit.subject}`.toLowerCase().includes(needle))))) expandedOids.add(commit.oid);
+      if (expanded.has(key) || (!collapsed.has(key) && (commit.oid === focusId || commit.oid === selectedOid || (needle && commitSearchText(commit).toLowerCase().includes(needle))))) expandedOids.add(commit.oid);
     }
     // Independent health requests cannot silently move this graph's display
     // trunk. Only a matching instance AND observation cut is compatible.

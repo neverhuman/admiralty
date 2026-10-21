@@ -2,15 +2,15 @@
 // Source SHA-256: {"record-intake-receipt":"97bea61493a09eb65dbcfe8c1fe6b4afd9ebc314719f3e4a27d1202ccfe4f664"}
 // Pure standalone schema guards; Rust retains semantic and acceptance authority.
 "use strict";
-export const validateRecordIntakeReceipt = validate440;
-const schema187 = {"$defs":{"CommandId":{"type":"string"},"SourceSpan":{"additionalProperties":false,"properties":{"end":{"minimum":0,"type":"integer","maximum":4294967295},"start":{"minimum":0,"type":"integer","maximum":4294967295}},"required":["start","end"],"type":"object"},"TaskId":{"type":"string"},"WorkOrderTaskBinding":{"additionalProperties":false,"properties":{"contract_digest":{"type":"string"},"contract_revision":{"minimum":0,"type":"integer","maximum":4294967295},"outcome_digest":{"type":"string"},"outcome_id":{"type":"string"},"request_index":{"maximum":65535,"minimum":0,"type":"integer"},"source_spans":{"items":{"$ref":"#/$defs/SourceSpan"},"type":"array"},"task_id":{"$ref":"#/$defs/TaskId"},"work_order_id":{"type":"string"},"work_order_revision":{"minimum":0,"type":"integer","maximum":4294967295}},"required":["work_order_id","work_order_revision","request_index","outcome_id","outcome_digest","source_spans","task_id","contract_revision","contract_digest"],"type":"object"}},"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false,"properties":{"command_id":{"$ref":"#/$defs/CommandId"},"duplicate":{"description":"True only when the writer returns an earlier identical command receipt.","type":"boolean"},"plan_id":{"type":"string"},"plan_revision":{"minimum":0,"type":"integer","maximum":4294967295},"preview_manifest_digest":{"type":"string"},"request_digest":{"type":"string"},"schema_version":{"minimum":0,"type":"integer","maximum":4294967295,"const":1},"task_bindings":{"items":{"$ref":"#/$defs/WorkOrderTaskBinding"},"type":"array"},"work_order_id":{"type":"string"},"work_order_revision":{"minimum":0,"type":"integer","maximum":4294967295}},"required":["schema_version","command_id","request_digest","work_order_id","work_order_revision","plan_id","plan_revision","preview_manifest_digest","task_bindings","duplicate"],"title":"RecordIntakeReceipt","type":"object"};
+export const validateRecordIntakeReceipt = validate442;
+const schema188 = {"$defs":{"CommandId":{"type":"string"},"SourceSpan":{"additionalProperties":false,"properties":{"end":{"minimum":0,"type":"integer","maximum":4294967295},"start":{"minimum":0,"type":"integer","maximum":4294967295}},"required":["start","end"],"type":"object"},"TaskId":{"type":"string"},"WorkOrderTaskBinding":{"additionalProperties":false,"properties":{"contract_digest":{"type":"string"},"contract_revision":{"minimum":0,"type":"integer","maximum":4294967295},"outcome_digest":{"type":"string"},"outcome_id":{"type":"string"},"request_index":{"maximum":65535,"minimum":0,"type":"integer"},"source_spans":{"items":{"$ref":"#/$defs/SourceSpan"},"type":"array"},"task_id":{"$ref":"#/$defs/TaskId"},"work_order_id":{"type":"string"},"work_order_revision":{"minimum":0,"type":"integer","maximum":4294967295}},"required":["work_order_id","work_order_revision","request_index","outcome_id","outcome_digest","source_spans","task_id","contract_revision","contract_digest"],"type":"object"}},"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false,"properties":{"command_id":{"$ref":"#/$defs/CommandId"},"duplicate":{"description":"True only when the writer returns an earlier identical command receipt.","type":"boolean"},"plan_id":{"type":"string"},"plan_revision":{"minimum":0,"type":"integer","maximum":4294967295},"preview_manifest_digest":{"type":"string"},"request_digest":{"type":"string"},"schema_version":{"minimum":0,"type":"integer","maximum":4294967295,"const":1},"task_bindings":{"items":{"$ref":"#/$defs/WorkOrderTaskBinding"},"type":"array"},"work_order_id":{"type":"string"},"work_order_revision":{"minimum":0,"type":"integer","maximum":4294967295}},"required":["schema_version","command_id","request_digest","work_order_id","work_order_revision","plan_id","plan_revision","preview_manifest_digest","task_bindings","duplicate"],"title":"RecordIntakeReceipt","type":"object"};
 const func0 = Object.prototype.hasOwnProperty;
-const schema188 = {"type":"string"};
+const schema189 = {"type":"string"};
 
-function validate441(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
+function validate443(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
 let vErrors = null;
 let errors = 0;
-const evaluated0 = validate441.evaluated;
+const evaluated0 = validate443.evaluated;
 if(evaluated0.dynamicProps){
 evaluated0.props = undefined;
 }
@@ -18,21 +18,21 @@ if(evaluated0.dynamicItems){
 evaluated0.items = undefined;
 }
 if(typeof data !== "string"){
-validate441.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate443.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
-validate441.errors = vErrors;
+validate443.errors = vErrors;
 return errors === 0;
 }
-validate441.evaluated = {"dynamicProps":false,"dynamicItems":false};
+validate443.evaluated = {"dynamicProps":false,"dynamicItems":false};
 
-const schema189 = {"additionalProperties":false,"properties":{"contract_digest":{"type":"string"},"contract_revision":{"minimum":0,"type":"integer","maximum":4294967295},"outcome_digest":{"type":"string"},"outcome_id":{"type":"string"},"request_index":{"maximum":65535,"minimum":0,"type":"integer"},"source_spans":{"items":{"$ref":"#/$defs/SourceSpan"},"type":"array"},"task_id":{"$ref":"#/$defs/TaskId"},"work_order_id":{"type":"string"},"work_order_revision":{"minimum":0,"type":"integer","maximum":4294967295}},"required":["work_order_id","work_order_revision","request_index","outcome_id","outcome_digest","source_spans","task_id","contract_revision","contract_digest"],"type":"object"};
-const schema190 = {"additionalProperties":false,"properties":{"end":{"minimum":0,"type":"integer","maximum":4294967295},"start":{"minimum":0,"type":"integer","maximum":4294967295}},"required":["start","end"],"type":"object"};
+const schema190 = {"additionalProperties":false,"properties":{"contract_digest":{"type":"string"},"contract_revision":{"minimum":0,"type":"integer","maximum":4294967295},"outcome_digest":{"type":"string"},"outcome_id":{"type":"string"},"request_index":{"maximum":65535,"minimum":0,"type":"integer"},"source_spans":{"items":{"$ref":"#/$defs/SourceSpan"},"type":"array"},"task_id":{"$ref":"#/$defs/TaskId"},"work_order_id":{"type":"string"},"work_order_revision":{"minimum":0,"type":"integer","maximum":4294967295}},"required":["work_order_id","work_order_revision","request_index","outcome_id","outcome_digest","source_spans","task_id","contract_revision","contract_digest"],"type":"object"};
+const schema191 = {"additionalProperties":false,"properties":{"end":{"minimum":0,"type":"integer","maximum":4294967295},"start":{"minimum":0,"type":"integer","maximum":4294967295}},"required":["start","end"],"type":"object"};
 
-function validate444(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
+function validate446(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
 let vErrors = null;
 let errors = 0;
-const evaluated0 = validate444.evaluated;
+const evaluated0 = validate446.evaluated;
 if(evaluated0.dynamicProps){
 evaluated0.props = undefined;
 }
@@ -43,14 +43,14 @@ if(errors === 0){
 if(data && typeof data == "object" && !Array.isArray(data)){
 let missing0;
 if((((data.start === undefined) || (!(func0.call(data, "start")))) && (missing0 = "start")) || (((data.end === undefined) || (!(func0.call(data, "end")))) && (missing0 = "end"))){
-validate444.errors = [{instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: missing0},message:"must have required property '"+missing0+"'"}];
+validate446.errors = [{instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: missing0},message:"must have required property '"+missing0+"'"}];
 return false;
 }
 else {
 const _errs1 = errors;
 for(const key0 of Object.keys(data)){
 if(!((key0 === "end") || (key0 === "start"))){
-validate444.errors = [{instancePath,schemaPath:"#/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key0},message:"must NOT have additional properties"}];
+validate446.errors = [{instancePath,schemaPath:"#/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key0},message:"must NOT have additional properties"}];
 return false;
 break;
 }
@@ -60,18 +60,18 @@ if(data.end !== undefined && func0.call(data, "end")){
 let data0 = data.end;
 const _errs2 = errors;
 if(!(((typeof data0 == "number") && (!(data0 % 1) && !isNaN(data0))) && (isFinite(data0)))){
-validate444.errors = [{instancePath:instancePath+"/end",schemaPath:"#/properties/end/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
+validate446.errors = [{instancePath:instancePath+"/end",schemaPath:"#/properties/end/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
 return false;
 }
 if(errors === _errs2){
 if((typeof data0 == "number") && (isFinite(data0))){
 if(data0 > 4294967295 || isNaN(data0)){
-validate444.errors = [{instancePath:instancePath+"/end",schemaPath:"#/properties/end/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
+validate446.errors = [{instancePath:instancePath+"/end",schemaPath:"#/properties/end/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
 return false;
 }
 else {
 if(data0 < 0 || isNaN(data0)){
-validate444.errors = [{instancePath:instancePath+"/end",schemaPath:"#/properties/end/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
+validate446.errors = [{instancePath:instancePath+"/end",schemaPath:"#/properties/end/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
 return false;
 }
 }
@@ -87,18 +87,18 @@ if(data.start !== undefined && func0.call(data, "start")){
 let data1 = data.start;
 const _errs4 = errors;
 if(!(((typeof data1 == "number") && (!(data1 % 1) && !isNaN(data1))) && (isFinite(data1)))){
-validate444.errors = [{instancePath:instancePath+"/start",schemaPath:"#/properties/start/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
+validate446.errors = [{instancePath:instancePath+"/start",schemaPath:"#/properties/start/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
 return false;
 }
 if(errors === _errs4){
 if((typeof data1 == "number") && (isFinite(data1))){
 if(data1 > 4294967295 || isNaN(data1)){
-validate444.errors = [{instancePath:instancePath+"/start",schemaPath:"#/properties/start/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
+validate446.errors = [{instancePath:instancePath+"/start",schemaPath:"#/properties/start/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
 return false;
 }
 else {
 if(data1 < 0 || isNaN(data1)){
-validate444.errors = [{instancePath:instancePath+"/start",schemaPath:"#/properties/start/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
+validate446.errors = [{instancePath:instancePath+"/start",schemaPath:"#/properties/start/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
 return false;
 }
 }
@@ -114,21 +114,21 @@ var valid0 = true;
 }
 }
 else {
-validate444.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"}];
+validate446.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"}];
 return false;
 }
 }
-validate444.errors = vErrors;
+validate446.errors = vErrors;
 return errors === 0;
 }
-validate444.evaluated = {"props":true,"dynamicProps":false,"dynamicItems":false};
+validate446.evaluated = {"props":true,"dynamicProps":false,"dynamicItems":false};
 
-const schema191 = {"type":"string"};
+const schema192 = {"type":"string"};
 
-function validate446(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
+function validate448(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
 let vErrors = null;
 let errors = 0;
-const evaluated0 = validate446.evaluated;
+const evaluated0 = validate448.evaluated;
 if(evaluated0.dynamicProps){
 evaluated0.props = undefined;
 }
@@ -136,19 +136,19 @@ if(evaluated0.dynamicItems){
 evaluated0.items = undefined;
 }
 if(typeof data !== "string"){
-validate446.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate448.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
-validate446.errors = vErrors;
+validate448.errors = vErrors;
 return errors === 0;
 }
-validate446.evaluated = {"dynamicProps":false,"dynamicItems":false};
+validate448.evaluated = {"dynamicProps":false,"dynamicItems":false};
 
 
-function validate443(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
+function validate445(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
 let vErrors = null;
 let errors = 0;
-const evaluated0 = validate443.evaluated;
+const evaluated0 = validate445.evaluated;
 if(evaluated0.dynamicProps){
 evaluated0.props = undefined;
 }
@@ -159,14 +159,14 @@ if(errors === 0){
 if(data && typeof data == "object" && !Array.isArray(data)){
 let missing0;
 if(((((((((((data.work_order_id === undefined) || (!(func0.call(data, "work_order_id")))) && (missing0 = "work_order_id")) || (((data.work_order_revision === undefined) || (!(func0.call(data, "work_order_revision")))) && (missing0 = "work_order_revision"))) || (((data.request_index === undefined) || (!(func0.call(data, "request_index")))) && (missing0 = "request_index"))) || (((data.outcome_id === undefined) || (!(func0.call(data, "outcome_id")))) && (missing0 = "outcome_id"))) || (((data.outcome_digest === undefined) || (!(func0.call(data, "outcome_digest")))) && (missing0 = "outcome_digest"))) || (((data.source_spans === undefined) || (!(func0.call(data, "source_spans")))) && (missing0 = "source_spans"))) || (((data.task_id === undefined) || (!(func0.call(data, "task_id")))) && (missing0 = "task_id"))) || (((data.contract_revision === undefined) || (!(func0.call(data, "contract_revision")))) && (missing0 = "contract_revision"))) || (((data.contract_digest === undefined) || (!(func0.call(data, "contract_digest")))) && (missing0 = "contract_digest"))){
-validate443.errors = [{instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: missing0},message:"must have required property '"+missing0+"'"}];
+validate445.errors = [{instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: missing0},message:"must have required property '"+missing0+"'"}];
 return false;
 }
 else {
 const _errs1 = errors;
 for(const key0 of Object.keys(data)){
-if(!(func0.call(schema189.properties, key0))){
-validate443.errors = [{instancePath,schemaPath:"#/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key0},message:"must NOT have additional properties"}];
+if(!(func0.call(schema190.properties, key0))){
+validate445.errors = [{instancePath,schemaPath:"#/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key0},message:"must NOT have additional properties"}];
 return false;
 break;
 }
@@ -175,7 +175,7 @@ if(_errs1 === errors){
 if(data.contract_digest !== undefined && func0.call(data, "contract_digest")){
 const _errs2 = errors;
 if(typeof data.contract_digest !== "string"){
-validate443.errors = [{instancePath:instancePath+"/contract_digest",schemaPath:"#/properties/contract_digest/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate445.errors = [{instancePath:instancePath+"/contract_digest",schemaPath:"#/properties/contract_digest/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
 var valid0 = _errs2 === errors;
@@ -188,18 +188,18 @@ if(data.contract_revision !== undefined && func0.call(data, "contract_revision")
 let data1 = data.contract_revision;
 const _errs4 = errors;
 if(!(((typeof data1 == "number") && (!(data1 % 1) && !isNaN(data1))) && (isFinite(data1)))){
-validate443.errors = [{instancePath:instancePath+"/contract_revision",schemaPath:"#/properties/contract_revision/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
+validate445.errors = [{instancePath:instancePath+"/contract_revision",schemaPath:"#/properties/contract_revision/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
 return false;
 }
 if(errors === _errs4){
 if((typeof data1 == "number") && (isFinite(data1))){
 if(data1 > 4294967295 || isNaN(data1)){
-validate443.errors = [{instancePath:instancePath+"/contract_revision",schemaPath:"#/properties/contract_revision/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
+validate445.errors = [{instancePath:instancePath+"/contract_revision",schemaPath:"#/properties/contract_revision/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
 return false;
 }
 else {
 if(data1 < 0 || isNaN(data1)){
-validate443.errors = [{instancePath:instancePath+"/contract_revision",schemaPath:"#/properties/contract_revision/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
+validate445.errors = [{instancePath:instancePath+"/contract_revision",schemaPath:"#/properties/contract_revision/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
 return false;
 }
 }
@@ -214,7 +214,7 @@ if(valid0){
 if(data.outcome_digest !== undefined && func0.call(data, "outcome_digest")){
 const _errs6 = errors;
 if(typeof data.outcome_digest !== "string"){
-validate443.errors = [{instancePath:instancePath+"/outcome_digest",schemaPath:"#/properties/outcome_digest/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate445.errors = [{instancePath:instancePath+"/outcome_digest",schemaPath:"#/properties/outcome_digest/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
 var valid0 = _errs6 === errors;
@@ -226,7 +226,7 @@ if(valid0){
 if(data.outcome_id !== undefined && func0.call(data, "outcome_id")){
 const _errs8 = errors;
 if(typeof data.outcome_id !== "string"){
-validate443.errors = [{instancePath:instancePath+"/outcome_id",schemaPath:"#/properties/outcome_id/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate445.errors = [{instancePath:instancePath+"/outcome_id",schemaPath:"#/properties/outcome_id/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
 var valid0 = _errs8 === errors;
@@ -239,18 +239,18 @@ if(data.request_index !== undefined && func0.call(data, "request_index")){
 let data4 = data.request_index;
 const _errs10 = errors;
 if(!(((typeof data4 == "number") && (!(data4 % 1) && !isNaN(data4))) && (isFinite(data4)))){
-validate443.errors = [{instancePath:instancePath+"/request_index",schemaPath:"#/properties/request_index/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
+validate445.errors = [{instancePath:instancePath+"/request_index",schemaPath:"#/properties/request_index/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
 return false;
 }
 if(errors === _errs10){
 if((typeof data4 == "number") && (isFinite(data4))){
 if(data4 > 65535 || isNaN(data4)){
-validate443.errors = [{instancePath:instancePath+"/request_index",schemaPath:"#/properties/request_index/maximum",keyword:"maximum",params:{comparison: "<=", limit: 65535},message:"must be <= 65535"}];
+validate445.errors = [{instancePath:instancePath+"/request_index",schemaPath:"#/properties/request_index/maximum",keyword:"maximum",params:{comparison: "<=", limit: 65535},message:"must be <= 65535"}];
 return false;
 }
 else {
 if(data4 < 0 || isNaN(data4)){
-validate443.errors = [{instancePath:instancePath+"/request_index",schemaPath:"#/properties/request_index/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
+validate445.errors = [{instancePath:instancePath+"/request_index",schemaPath:"#/properties/request_index/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
 return false;
 }
 }
@@ -271,8 +271,8 @@ var valid1 = true;
 const len0 = data5.length;
 for(let i0=0; i0<len0; i0++){
 const _errs14 = errors;
-if(!(validate444(data5[i0], {instancePath:instancePath+"/source_spans/" + i0,parentData:data5,parentDataProperty:i0,rootData,dynamicAnchors}))){
-vErrors = vErrors === null ? validate444.errors : vErrors.concat(validate444.errors);
+if(!(validate446(data5[i0], {instancePath:instancePath+"/source_spans/" + i0,parentData:data5,parentDataProperty:i0,rootData,dynamicAnchors}))){
+vErrors = vErrors === null ? validate446.errors : vErrors.concat(validate446.errors);
 errors = vErrors.length;
 }
 var valid1 = _errs14 === errors;
@@ -282,7 +282,7 @@ break;
 }
 }
 else {
-validate443.errors = [{instancePath:instancePath+"/source_spans",schemaPath:"#/properties/source_spans/type",keyword:"type",params:{type: "array"},message:"must be array"}];
+validate445.errors = [{instancePath:instancePath+"/source_spans",schemaPath:"#/properties/source_spans/type",keyword:"type",params:{type: "array"},message:"must be array"}];
 return false;
 }
 }
@@ -294,8 +294,8 @@ var valid0 = true;
 if(valid0){
 if(data.task_id !== undefined && func0.call(data, "task_id")){
 const _errs15 = errors;
-if(!(validate446(data.task_id, {instancePath:instancePath+"/task_id",parentData:data,parentDataProperty:"task_id",rootData,dynamicAnchors}))){
-vErrors = vErrors === null ? validate446.errors : vErrors.concat(validate446.errors);
+if(!(validate448(data.task_id, {instancePath:instancePath+"/task_id",parentData:data,parentDataProperty:"task_id",rootData,dynamicAnchors}))){
+vErrors = vErrors === null ? validate448.errors : vErrors.concat(validate448.errors);
 errors = vErrors.length;
 }
 var valid0 = _errs15 === errors;
@@ -307,7 +307,7 @@ if(valid0){
 if(data.work_order_id !== undefined && func0.call(data, "work_order_id")){
 const _errs16 = errors;
 if(typeof data.work_order_id !== "string"){
-validate443.errors = [{instancePath:instancePath+"/work_order_id",schemaPath:"#/properties/work_order_id/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate445.errors = [{instancePath:instancePath+"/work_order_id",schemaPath:"#/properties/work_order_id/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
 var valid0 = _errs16 === errors;
@@ -320,18 +320,18 @@ if(data.work_order_revision !== undefined && func0.call(data, "work_order_revisi
 let data9 = data.work_order_revision;
 const _errs18 = errors;
 if(!(((typeof data9 == "number") && (!(data9 % 1) && !isNaN(data9))) && (isFinite(data9)))){
-validate443.errors = [{instancePath:instancePath+"/work_order_revision",schemaPath:"#/properties/work_order_revision/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
+validate445.errors = [{instancePath:instancePath+"/work_order_revision",schemaPath:"#/properties/work_order_revision/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
 return false;
 }
 if(errors === _errs18){
 if((typeof data9 == "number") && (isFinite(data9))){
 if(data9 > 4294967295 || isNaN(data9)){
-validate443.errors = [{instancePath:instancePath+"/work_order_revision",schemaPath:"#/properties/work_order_revision/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
+validate445.errors = [{instancePath:instancePath+"/work_order_revision",schemaPath:"#/properties/work_order_revision/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
 return false;
 }
 else {
 if(data9 < 0 || isNaN(data9)){
-validate443.errors = [{instancePath:instancePath+"/work_order_revision",schemaPath:"#/properties/work_order_revision/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
+validate445.errors = [{instancePath:instancePath+"/work_order_revision",schemaPath:"#/properties/work_order_revision/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
 return false;
 }
 }
@@ -354,20 +354,20 @@ var valid0 = true;
 }
 }
 else {
-validate443.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"}];
+validate445.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"}];
 return false;
 }
 }
-validate443.errors = vErrors;
+validate445.errors = vErrors;
 return errors === 0;
 }
-validate443.evaluated = {"props":true,"dynamicProps":false,"dynamicItems":false};
+validate445.evaluated = {"props":true,"dynamicProps":false,"dynamicItems":false};
 
 
-function validate440(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
+function validate442(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
 let vErrors = null;
 let errors = 0;
-const evaluated0 = validate440.evaluated;
+const evaluated0 = validate442.evaluated;
 if(evaluated0.dynamicProps){
 evaluated0.props = undefined;
 }
@@ -378,14 +378,14 @@ if(errors === 0){
 if(data && typeof data == "object" && !Array.isArray(data)){
 let missing0;
 if((((((((((((data.schema_version === undefined) || (!(func0.call(data, "schema_version")))) && (missing0 = "schema_version")) || (((data.command_id === undefined) || (!(func0.call(data, "command_id")))) && (missing0 = "command_id"))) || (((data.request_digest === undefined) || (!(func0.call(data, "request_digest")))) && (missing0 = "request_digest"))) || (((data.work_order_id === undefined) || (!(func0.call(data, "work_order_id")))) && (missing0 = "work_order_id"))) || (((data.work_order_revision === undefined) || (!(func0.call(data, "work_order_revision")))) && (missing0 = "work_order_revision"))) || (((data.plan_id === undefined) || (!(func0.call(data, "plan_id")))) && (missing0 = "plan_id"))) || (((data.plan_revision === undefined) || (!(func0.call(data, "plan_revision")))) && (missing0 = "plan_revision"))) || (((data.preview_manifest_digest === undefined) || (!(func0.call(data, "preview_manifest_digest")))) && (missing0 = "preview_manifest_digest"))) || (((data.task_bindings === undefined) || (!(func0.call(data, "task_bindings")))) && (missing0 = "task_bindings"))) || (((data.duplicate === undefined) || (!(func0.call(data, "duplicate")))) && (missing0 = "duplicate"))){
-validate440.errors = [{instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: missing0},message:"must have required property '"+missing0+"'"}];
+validate442.errors = [{instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: missing0},message:"must have required property '"+missing0+"'"}];
 return false;
 }
 else {
 const _errs1 = errors;
 for(const key0 of Object.keys(data)){
-if(!(func0.call(schema187.properties, key0))){
-validate440.errors = [{instancePath,schemaPath:"#/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key0},message:"must NOT have additional properties"}];
+if(!(func0.call(schema188.properties, key0))){
+validate442.errors = [{instancePath,schemaPath:"#/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key0},message:"must NOT have additional properties"}];
 return false;
 break;
 }
@@ -393,8 +393,8 @@ break;
 if(_errs1 === errors){
 if(data.command_id !== undefined && func0.call(data, "command_id")){
 const _errs2 = errors;
-if(!(validate441(data.command_id, {instancePath:instancePath+"/command_id",parentData:data,parentDataProperty:"command_id",rootData,dynamicAnchors}))){
-vErrors = vErrors === null ? validate441.errors : vErrors.concat(validate441.errors);
+if(!(validate443(data.command_id, {instancePath:instancePath+"/command_id",parentData:data,parentDataProperty:"command_id",rootData,dynamicAnchors}))){
+vErrors = vErrors === null ? validate443.errors : vErrors.concat(validate443.errors);
 errors = vErrors.length;
 }
 var valid0 = _errs2 === errors;
@@ -406,7 +406,7 @@ if(valid0){
 if(data.duplicate !== undefined && func0.call(data, "duplicate")){
 const _errs3 = errors;
 if(typeof data.duplicate !== "boolean"){
-validate440.errors = [{instancePath:instancePath+"/duplicate",schemaPath:"#/properties/duplicate/type",keyword:"type",params:{type: "boolean"},message:"must be boolean"}];
+validate442.errors = [{instancePath:instancePath+"/duplicate",schemaPath:"#/properties/duplicate/type",keyword:"type",params:{type: "boolean"},message:"must be boolean"}];
 return false;
 }
 var valid0 = _errs3 === errors;
@@ -418,7 +418,7 @@ if(valid0){
 if(data.plan_id !== undefined && func0.call(data, "plan_id")){
 const _errs5 = errors;
 if(typeof data.plan_id !== "string"){
-validate440.errors = [{instancePath:instancePath+"/plan_id",schemaPath:"#/properties/plan_id/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate442.errors = [{instancePath:instancePath+"/plan_id",schemaPath:"#/properties/plan_id/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
 var valid0 = _errs5 === errors;
@@ -431,18 +431,18 @@ if(data.plan_revision !== undefined && func0.call(data, "plan_revision")){
 let data3 = data.plan_revision;
 const _errs7 = errors;
 if(!(((typeof data3 == "number") && (!(data3 % 1) && !isNaN(data3))) && (isFinite(data3)))){
-validate440.errors = [{instancePath:instancePath+"/plan_revision",schemaPath:"#/properties/plan_revision/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
+validate442.errors = [{instancePath:instancePath+"/plan_revision",schemaPath:"#/properties/plan_revision/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
 return false;
 }
 if(errors === _errs7){
 if((typeof data3 == "number") && (isFinite(data3))){
 if(data3 > 4294967295 || isNaN(data3)){
-validate440.errors = [{instancePath:instancePath+"/plan_revision",schemaPath:"#/properties/plan_revision/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
+validate442.errors = [{instancePath:instancePath+"/plan_revision",schemaPath:"#/properties/plan_revision/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
 return false;
 }
 else {
 if(data3 < 0 || isNaN(data3)){
-validate440.errors = [{instancePath:instancePath+"/plan_revision",schemaPath:"#/properties/plan_revision/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
+validate442.errors = [{instancePath:instancePath+"/plan_revision",schemaPath:"#/properties/plan_revision/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
 return false;
 }
 }
@@ -457,7 +457,7 @@ if(valid0){
 if(data.preview_manifest_digest !== undefined && func0.call(data, "preview_manifest_digest")){
 const _errs9 = errors;
 if(typeof data.preview_manifest_digest !== "string"){
-validate440.errors = [{instancePath:instancePath+"/preview_manifest_digest",schemaPath:"#/properties/preview_manifest_digest/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate442.errors = [{instancePath:instancePath+"/preview_manifest_digest",schemaPath:"#/properties/preview_manifest_digest/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
 var valid0 = _errs9 === errors;
@@ -469,7 +469,7 @@ if(valid0){
 if(data.request_digest !== undefined && func0.call(data, "request_digest")){
 const _errs11 = errors;
 if(typeof data.request_digest !== "string"){
-validate440.errors = [{instancePath:instancePath+"/request_digest",schemaPath:"#/properties/request_digest/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate442.errors = [{instancePath:instancePath+"/request_digest",schemaPath:"#/properties/request_digest/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
 var valid0 = _errs11 === errors;
@@ -482,22 +482,22 @@ if(data.schema_version !== undefined && func0.call(data, "schema_version")){
 let data6 = data.schema_version;
 const _errs13 = errors;
 if(!(((typeof data6 == "number") && (!(data6 % 1) && !isNaN(data6))) && (isFinite(data6)))){
-validate440.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
+validate442.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
 return false;
 }
 if(1 !== data6){
-validate440.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/const",keyword:"const",params:{allowedValue: 1},message:"must be equal to constant"}];
+validate442.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/const",keyword:"const",params:{allowedValue: 1},message:"must be equal to constant"}];
 return false;
 }
 if(errors === _errs13){
 if((typeof data6 == "number") && (isFinite(data6))){
 if(data6 > 4294967295 || isNaN(data6)){
-validate440.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
+validate442.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
 return false;
 }
 else {
 if(data6 < 0 || isNaN(data6)){
-validate440.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
+validate442.errors = [{instancePath:instancePath+"/schema_version",schemaPath:"#/properties/schema_version/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
 return false;
 }
 }
@@ -518,8 +518,8 @@ var valid1 = true;
 const len0 = data7.length;
 for(let i0=0; i0<len0; i0++){
 const _errs17 = errors;
-if(!(validate443(data7[i0], {instancePath:instancePath+"/task_bindings/" + i0,parentData:data7,parentDataProperty:i0,rootData,dynamicAnchors}))){
-vErrors = vErrors === null ? validate443.errors : vErrors.concat(validate443.errors);
+if(!(validate445(data7[i0], {instancePath:instancePath+"/task_bindings/" + i0,parentData:data7,parentDataProperty:i0,rootData,dynamicAnchors}))){
+vErrors = vErrors === null ? validate445.errors : vErrors.concat(validate445.errors);
 errors = vErrors.length;
 }
 var valid1 = _errs17 === errors;
@@ -529,7 +529,7 @@ break;
 }
 }
 else {
-validate440.errors = [{instancePath:instancePath+"/task_bindings",schemaPath:"#/properties/task_bindings/type",keyword:"type",params:{type: "array"},message:"must be array"}];
+validate442.errors = [{instancePath:instancePath+"/task_bindings",schemaPath:"#/properties/task_bindings/type",keyword:"type",params:{type: "array"},message:"must be array"}];
 return false;
 }
 }
@@ -542,7 +542,7 @@ if(valid0){
 if(data.work_order_id !== undefined && func0.call(data, "work_order_id")){
 const _errs18 = errors;
 if(typeof data.work_order_id !== "string"){
-validate440.errors = [{instancePath:instancePath+"/work_order_id",schemaPath:"#/properties/work_order_id/type",keyword:"type",params:{type: "string"},message:"must be string"}];
+validate442.errors = [{instancePath:instancePath+"/work_order_id",schemaPath:"#/properties/work_order_id/type",keyword:"type",params:{type: "string"},message:"must be string"}];
 return false;
 }
 var valid0 = _errs18 === errors;
@@ -555,18 +555,18 @@ if(data.work_order_revision !== undefined && func0.call(data, "work_order_revisi
 let data10 = data.work_order_revision;
 const _errs20 = errors;
 if(!(((typeof data10 == "number") && (!(data10 % 1) && !isNaN(data10))) && (isFinite(data10)))){
-validate440.errors = [{instancePath:instancePath+"/work_order_revision",schemaPath:"#/properties/work_order_revision/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
+validate442.errors = [{instancePath:instancePath+"/work_order_revision",schemaPath:"#/properties/work_order_revision/type",keyword:"type",params:{type: "integer"},message:"must be integer"}];
 return false;
 }
 if(errors === _errs20){
 if((typeof data10 == "number") && (isFinite(data10))){
 if(data10 > 4294967295 || isNaN(data10)){
-validate440.errors = [{instancePath:instancePath+"/work_order_revision",schemaPath:"#/properties/work_order_revision/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
+validate442.errors = [{instancePath:instancePath+"/work_order_revision",schemaPath:"#/properties/work_order_revision/maximum",keyword:"maximum",params:{comparison: "<=", limit: 4294967295},message:"must be <= 4294967295"}];
 return false;
 }
 else {
 if(data10 < 0 || isNaN(data10)){
-validate440.errors = [{instancePath:instancePath+"/work_order_revision",schemaPath:"#/properties/work_order_revision/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
+validate442.errors = [{instancePath:instancePath+"/work_order_revision",schemaPath:"#/properties/work_order_revision/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"}];
 return false;
 }
 }
@@ -590,11 +590,11 @@ var valid0 = true;
 }
 }
 else {
-validate440.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"}];
+validate442.errors = [{instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"}];
 return false;
 }
 }
-validate440.errors = vErrors;
+validate442.errors = vErrors;
 return errors === 0;
 }
-validate440.evaluated = {"props":true,"dynamicProps":false,"dynamicItems":false};
+validate442.evaluated = {"props":true,"dynamicProps":false,"dynamicItems":false};
