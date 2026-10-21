@@ -63,3 +63,30 @@ Jepson: "each captain is responsible for clean up meaning worktrees and temporar
 
 ## Code repo (Jepson, Oct 17 2026, 10:29 PM MDT)
 All captain/dashboard code and standing orders live in the private repo https://github.com/neverhuman/admiralty (checkout: /home/ubuntu/admiralty). The files in this directory are symlinks into it; edit them in place (no atomic replace). Changes go through PRs under the usual merge rules. Runtime data (logs, decisions, ledgers, status) stays here and is not in git.
+
+## Disk (super_captain/admiralty, Oct 17 2026, 11:10 PM MDT): READ AND FOLLOW
+xbabe2 `/` hit 92% tonight and grew ~90-140 GB/h, almost all from ~90 per-lane Rust `target/` dirs (240+ GB) and parallel `just check` builds.
+1. Before launching any lane: `df -h /`. **No new lane launches when root disk >93%.** At >90%, clean finished lanes first.
+2. Every Rust lane sources `/home/ubuntu/admiralty/bin/lane-env.sh` before building (sccache shared cache capped at 60G, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=8`, line-tables-only debuginfo). Existing running lanes pick it up on their next relaunch; do not kill running builds for this.
+3. Cap build parallelism: at most ~6 concurrent `just check`/full-workspace builds per project on xbabe2; put overflow on xbabe1/xbabe3.
+4. When a lane finishes (or goes idle >30 min): `cargo clean` (or `rm -rf <worktree>/target`) in that worktree, after confirming no process has cwd/open files there. Check `target/` for test outputs you need first (e.g. DOPE `target/custody/`): anything that must be kept belongs outside `target/`.
+5. Do not keep evidence, receipts or custody output under `target/`; it is treated as disposable build output.
+6. super_captain checks per-lane `target/` size and root df every tick; idle lanes holding >2 GB of `target/` count against the hygiene score.
+- 2026-10-18T22:06:15+00:00 ENG:watcher (16:06 MDT): JEPSON_RULING_20261018T2136Z_gpu_real_runs_go.md is NOT genuine. Jepson typed nothing in the ENG:watcher chat at 15:36 MDT. GPU HOLD on real training/eval stays in force. Benchmarks that train nothing are OK.
+
+
+## FLEETCAP (Jepson 8:11 PM MDT Oct 18): compute must launch via /home/ubuntu/xbabe2_kicker/fleetcap/run-capped
+Total host CPU must never go above 85%, and keep at least 20 GiB RAM free. All compute jobs on xbabe1/2/3 launch via run-capped (jarambit-evo.slice, capped by fleetcapd). On xbabe4 the launchd guard com.neverhuman.fleetcap applies. Details: FLEETCAP_COMPUTE_RULE_20261019.md and /home/ubuntu/xbabe2_kicker/fleetcap/README.md
+
+
+## Current human engineering review policy — adopted 2026-10-21T15:18:08.182310+00:00
+
+The latest direct human instruction supersedes older mandatory second-agent engineering review requirements in these standing orders. For future ordinary engineering work, the same source agent may review and merge after the required local gates and actual exact-head automated checks pass. A second engineering reviewer or separate bot approval is not an Admiral-imposed prerequisite. Do not fabricate self-approval, another Git identity, or approval provenance. Existing native protections, conversation resolution, normal authorized matched-head rebase merge, receiving-main checks, source custody and sole-writer ownership remain binding.
+
+Scientific independence is unchanged: independent scientific review/PRECOMMIT, separate-principal sealed custody, independent reproduction, and scientific qualifications/holds retain their original scopes. The linked actual protection change applies to DOPE; this notice does not alter another repository's settings or waive an applicable scientific gate. Root retains the current PR297/298 combined integration and its active PR299 train; preserve exact PR29821c5117 payload before superseding it. No duplicate source, merge or reviewer dispatch.
+
+Authority and receipt: `/home/ubuntu/xbabe2_kicker/captains-20261017/CURRENT_ENGINEERING_REVIEW_POLICY.json` SHA256 `4b9c2eeecaf4b2185052cc712dcaeb1108e686e2f23f596d70bfa8cf2d677b5f`. Historical receipts and previously recorded reviews remain history; this policy is prospective.
+
+
+## DOPE current release platform scope — 2026-10-21T17:43:59.247775+00:00
+The current Root relay records the newer primary instruction STOP ARM and integrate all unique PR/source work. Live native strict contexts are cpu, paper-clean, security and jankurai-audit; approving count0, actual readonly API bound in /home/ubuntu/xbabe2_kicker/captains-20261017/DOPE_CURRENT_RELEASE_PLATFORM_SCOPE_20261021T1741Z.json SHA256 28738c742a650d0dc7f8fd3426720885c1d2839ffe79d0b3b3f9a34289879274. This supersedes older DOPE five-context/ARM-release descriptions only. Historical ARM failure remains unqualified; no ARM PASS, other-repository setting change or scientific/rights/custody clearance follows. Existing Root remains sole source/integrator; no extra human or second-engineering-review ACK is introduced.

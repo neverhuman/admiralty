@@ -226,3 +226,32 @@ For each one, in the SAME check:
 4. Next check, verify the plan moved: a done-count increase, a merge, or a launched lane with a live screen. If not, say so plainly in super_captain_LOG.md and escalate one level (re-plan, more lanes, a different model tier).
 
 Status rows report `done (delta since last check)` and `blocked (delta)`. They never report a hygiene grade on its own.
+## PR-QUEUE OWNERSHIP RULE (Jepson 11:34 AM MDT Oct 18, fleet-wide, filed by GB ENG:watcher)
+Jepson: "The individual captains need to manage their own PRs ... this should not happen and I should never be a bottleneck,
+if I'm detected to be one then have super_captain take over."
+1. Each captain owns its repo's PR queue end-to-end: open, rebase, resolve conflicts, get neverhumanbot exact-head approval
+   (/home/ubuntu/.local/bin/gh-role reviewer pr review <n> --approve), merge with gh pr merge <n> --rebase --match-head-commit <sha>,
+   or close superseded/0-value PRs with a one-line comment. Local tests are enough (label "local-CI only"); full final
+   validation before release (JEPSON_RULING_20261018T1658Z_speed_over_ci.md).
+2. No PR stays open more than 45 min without an action logged in COMMS. No PR may wait on Jepson: never request his review,
+   never park a PR for "Jepson to merge". Nothing merges without neverhumanbot's approval on the exact head
+   (a PR opened and merged within seconds with no review breaks this rule).
+3. sc_audit flags STALE_OPEN_PR (45 min) and JEPSON_BOTTLENECK (review requested from jepsontaylor, his changes-requested,
+   "waiting on Jepson" text, protection/CODEOWNERS requiring him). On either, super_captain takes over the PR under
+   JEPSON_DELEGATION_20261018T1158Z_fleet_admiral.md. Only reserved items (xbabe0/Jeryu, outside messages, new paid
+   spend/legal, force-push main, deleting prod data, writing /home/ubuntu/admiralty) may wait for Jepson.
+4. If branch protection itself requires Jepson, super_captain may change it so neverhumanbot approval is enough: back up
+   the protection JSON first and never allow force-push to main.
+
+
+## Current human engineering review policy — adopted 2026-10-21T15:18:08.182310+00:00
+
+The latest direct human instruction supersedes older mandatory second-agent engineering review requirements in these standing orders. For future ordinary engineering work, the same source agent may review and merge after the required local gates and actual exact-head automated checks pass. A second engineering reviewer or separate bot approval is not an Admiral-imposed prerequisite. Do not fabricate self-approval, another Git identity, or approval provenance. Existing native protections, conversation resolution, normal authorized matched-head rebase merge, receiving-main checks, source custody and sole-writer ownership remain binding.
+
+Scientific independence is unchanged: independent scientific review/PRECOMMIT, separate-principal sealed custody, independent reproduction, and scientific qualifications/holds retain their original scopes. The linked actual protection change applies to DOPE; this notice does not alter another repository's settings or waive an applicable scientific gate. Root retains the current PR297/298 combined integration and its active PR299 train; preserve exact PR29821c5117 payload before superseding it. No duplicate source, merge or reviewer dispatch.
+
+Authority and receipt: `/home/ubuntu/xbabe2_kicker/captains-20261017/CURRENT_ENGINEERING_REVIEW_POLICY.json` SHA256 `4b9c2eeecaf4b2185052cc712dcaeb1108e686e2f23f596d70bfa8cf2d677b5f`. Historical receipts and previously recorded reviews remain history; this policy is prospective.
+
+
+## DOPE current release platform scope — 2026-10-21T17:43:59.247775+00:00
+The current Root relay records the newer primary instruction STOP ARM and integrate all unique PR/source work. Live native strict contexts are cpu, paper-clean, security and jankurai-audit; approving count0, actual readonly API bound in /home/ubuntu/xbabe2_kicker/captains-20261017/DOPE_CURRENT_RELEASE_PLATFORM_SCOPE_20261021T1741Z.json SHA256 28738c742a650d0dc7f8fd3426720885c1d2839ffe79d0b3b3f9a34289879274. This supersedes older DOPE five-context/ARM-release descriptions only. Historical ARM failure remains unqualified; no ARM PASS, other-repository setting change or scientific/rights/custody clearance follows. Existing Root remains sole source/integrator; no extra human or second-engineering-review ACK is introduced.
