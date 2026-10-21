@@ -1,0 +1,108 @@
+/* Fleet health: one screen answering "what is degrading and what next".
+   Colors come from the app tokens (--surface, --line, --text, --muted, --blue,
+   --gold, --green, --red) so both themes work without overrides. The one
+   distinctive device is the headroom meter: solid fill is used today, the
+   hatched extension is where the current growth rate puts it in 24 hours. */
+.fleet-health { display: grid; gap: 18px; font-variant-numeric: tabular-nums; }
+.fleet-health .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.health-top-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); gap: 18px; align-items: start; }
+.health-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; min-width: 0; }
+.health-panel h2 { margin: 0 0 12px; font-size: 15px; font-weight: 650; letter-spacing: .1px; color: var(--text); }
+.health-panel-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 16px; margin-bottom: 12px; }
+.health-panel-head h2 { margin: 0; margin-right: auto; }
+.health-panel-head a, .health-finding a { color: var(--blue); font-size: 13px; }
+.health-panel-head label { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.health-panel-head select { font: inherit; font-size: 12px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }
+.health-quiet { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.health-footnote { margin: 12px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.health-tone-ok { --tone: var(--green); }
+.health-tone-amber { --tone: var(--gold); }
+.health-tone-red { --tone: var(--red); }
+.health-tone-muted, .health-tone-off { --tone: var(--muted); }
+
+/* Needs attention: severity is carried by label and shape, never color alone. */
+.health-more { margin-top: 8px; }
+.health-findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.health-finding { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; padding: 9px 10px; border-left: 3px solid var(--tone); background: var(--surface-2); border-radius: 0 6px 6px 0; font-size: 13px; line-height: 1.45; }
+.health-critical { --tone: var(--red); }
+.health-warning { --tone: var(--gold); }
+.health-info { --tone: var(--blue); }
+.health-severity { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; color: var(--tone); }
+.health-severity i { width: 9px; height: 9px; flex: none; background: var(--tone); }
+.health-critical .health-severity i { border-radius: 50%; }
+.health-warning .health-severity i { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.health-info .health-severity i { background: transparent; border: 2px solid var(--tone); border-radius: 50%; width: 8px; height: 8px; }
+.health-finding-body b { color: var(--text); font-weight: 650; }
+.health-finding-body small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+/* Service readiness and routes */
+.health-ready { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 9px; margin: 0 0 12px; font-weight: 650; color: var(--tone); }
+.health-ready i { width: 10px; height: 10px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone) 22%, transparent); }
+.health-ready small { flex-basis: 100%; font-weight: 400; color: var(--muted); font-size: 12px; }
+
+/* Tables */
+.health-table-scroll { overflow-x: auto; margin: 0 -4px; }
+.fleet-health table { width: 100%; min-width: 0; border-collapse: collapse; font-size: 13px; }
+.fleet-health .health-git { min-width: 760px; }
+.fleet-health th, .fleet-health td { text-align: left; padding: 7px 8px; height: auto; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--text); font-size: 13px; }
+.fleet-health th { height: auto; border-top: 0; text-transform: none; letter-spacing: normal; font-family: inherit; }
+.fleet-health thead th { color: var(--muted); font-weight: 550; font-size: 12px; white-space: nowrap; }
+.fleet-health tbody tr:last-child > * { border-bottom: 0; }
+.fleet-health .num { text-align: right; white-space: nowrap; }
+.fleet-health td small, .fleet-health th small { display: block; color: var(--muted); font-family: inherit; font-size: 11.5px; font-weight: 400; margin-top: 2px; }
+.health-git tbody th { font-weight: 600; font-size: 13px; color: var(--text); }
+.health-git tbody th a { color: var(--text); text-decoration: none; white-space: nowrap; border-bottom: 1px solid color-mix(in srgb, var(--blue) 50%, transparent); }
+.health-git tbody th a:hover { color: var(--blue); }
+.health-state { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--tone); background: color-mix(in srgb, var(--tone) 14%, transparent); }
+.health-routes { table-layout: fixed; }
+.health-routes th:first-child, .health-routes td:first-child { width: 44%; }
+.health-routes code { font-size: 12px; color: var(--soft); overflow-wrap: anywhere; }
+
+/* Hosts and headroom meters */
+.health-legend { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+.health-legend i { display: inline-block; width: 16px; height: 8px; border-radius: 2px; }
+.health-legend-used { background: var(--green); }
+.health-legend-projected { background: repeating-linear-gradient(135deg, var(--green) 0 2px, transparent 2px 5px); outline: 1px solid color-mix(in srgb, var(--green) 55%, transparent); margin-left: 8px; }
+.health-hosts { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; align-items: start; }
+.health-host { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; background: var(--surface-2); display: grid; gap: 8px; align-content: start; }
+.health-host h3 { margin: 0 0 2px; font-size: 14px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.health-host h3 small { color: var(--muted); font-weight: 400; font-size: 12px; }
+.health-host-down p { margin: 0; color: var(--muted); font-size: 13px; }
+.health-meter { display: grid; grid-template-columns: minmax(64px, 96px) minmax(0, 1fr); grid-template-areas: "label track" "value value"; gap: 3px 10px; align-items: center; font-size: 12px; }
+.health-meter-label { grid-area: label; color: var(--soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.health-meter-track { grid-area: track; position: relative; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--muted) 18%, transparent); overflow: hidden; }
+.health-meter-fill { position: absolute; inset: 0 auto 0 0; background: var(--tone); border-radius: 4px; }
+.health-meter-projection { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--tone) 0 2px, transparent 2px 5px); opacity: .85; }
+.health-meter-value { grid-area: value; color: var(--muted); }
+.health-tone-red .health-meter-value { color: var(--red); }
+.health-pressure, .health-gpu { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+.health-top summary { cursor: pointer; font-size: 12px; color: var(--blue); }
+.health-top table { margin-top: 6px; font-size: 12px; }
+
+/* Log digest */
+.health-digest-text { margin: 0; max-height: 340px; overflow: auto; padding: 12px 14px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); color: var(--text); font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.health-digest-text:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+@media (max-width: 1050px) {
+  .health-top-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 620px) {
+  .health-panel { padding: 14px 12px; }
+  .health-finding { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .health-hosts { grid-template-columns: minmax(0, 1fr); }
+  /* Phones: each project becomes a labelled card instead of a sideways-scrolling row.
+     Column headers stay available to screen readers; cells carry their own labels. */
+  .fleet-health .health-git { min-width: 0; }
+  .health-git thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .health-git, .health-git tbody { display: block; }
+  .health-git tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; padding: 12px 4px; border-bottom: 1px solid var(--line); }
+  .health-git tbody tr:last-child { border-bottom: 0; }
+  .fleet-health .health-git th, .fleet-health .health-git td { display: block; padding: 0; border: 0; text-align: left; }
+  .health-git tbody th { grid-column: 1 / -1; }
+  .health-git tbody th a { white-space: normal; }
+  .health-git td::before { content: attr(data-label); display: block; margin-bottom: 1px; color: var(--muted); font-size: 11.5px; }
+}
+@media (prefers-contrast: more) {
+  .health-meter-track { outline: 1px solid var(--text); }
+  .health-finding { border-left-width: 5px; }
+}
