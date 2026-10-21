@@ -9,6 +9,7 @@ pub mod native_attention_context;
 pub mod operator_chat;
 pub mod services;
 pub mod startup;
+pub mod telemetry;
 mod views;
 use admiralty_core::{Projection, SchedulingState, TaskView};
 use admiralty_store::{Cursor, Store};
@@ -114,7 +115,8 @@ fn authorized(state: &AppState, headers: &HeaderMap) -> Result<(), ApiError> {
         .get(header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "));
-    if provided != Some(expected) {
+    // Constant-time comparison: response timing must not reveal a prefix.
+    if !provided.is_some_and(|p| telemetry::constant_time_eq(p.as_bytes(), expected.as_bytes())) {
         return Err(error(
             StatusCode::UNAUTHORIZED,
             "bearer authentication required",
@@ -625,6 +627,115 @@ async fn health() -> Json<serde_json::Value> {
     )
 }
 
+/// Readiness, unlike liveness, proves the Store writer answers a bounded
+/// indexed query and the service is not draining. It never needs a token and
+/// returns no task data, so load balancers and `systemd` checks can poll it.
+async fn readiness(State(state): State<AppState>) -> Response {
+    let draining = *state.shutdown.borrow();
+    let store = state.store.clone();
+    let started = std::time::Instant::now();
+    let probe = tokio::time::timeout(
+        Duration::from_secs(2),
+        tokio::task::spawn_blocking(move || store.events_after(i64::MAX as u64, 1).map(|_| ())),
+    )
+    .await;
+    let store_check = match probe {
+        Ok(Ok(Ok(()))) => "ok",
+        Ok(Ok(Err(_))) | Ok(Err(_)) => "error",
+        Err(_) => "timeout",
+    };
+    let ready = store_check == "ok" && !draining;
+    if !ready {
+        admiralty_telemetry::event(admiralty_telemetry::Level::Warn, "srv.ready", "ready.fail")
+            .field("store", store_check)
+            .field("draining", draining)
+            .emit();
+    }
+    let body = serde_json::json!({
+        "status": if ready { "ready" } else { "not_ready" },
+        "version": env!("CARGO_PKG_VERSION"),
+        "checks": {
+            "store": store_check,
+            "store_ms": started.elapsed().as_millis() as u64,
+            "draining": draining,
+            "read_permits_available": state.reads.available_permits(),
+            "event_streams_available": state.streams.available_permits(),
+        },
+        "native_execution_qualified": false,
+    });
+    let status = if ready {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
+    };
+    (status, Json(body)).into_response()
+}
+
+/// Prometheus text exposition. Private deployments require the bearer token;
+/// the synthetic demo exposes it like its other reads.
+async fn prometheus_metrics(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
+    authorized(&state, &headers)?;
+    let text = telemetry::render_prometheus(&telemetry::Gauges {
+        event_streams_active: MAX_EVENT_STREAMS.saturating_sub(state.streams.available_permits()),
+        event_streams_limit: MAX_EVENT_STREAMS,
+        read_permits_available: state.reads.available_permits(),
+        simulated: state.config.simulated,
+    });
+    Ok((
+        [(
+            header::CONTENT_TYPE,
+            "text/plain; version=0.0.4; charset=utf-8",
+        )],
+        text,
+    )
+        .into_response())
+}
+
+#[derive(Deserialize)]
+struct DigestQuery {
+    budget_tokens: Option<usize>,
+    min_level: Option<String>,
+    since_s: Option<u64>,
+}
+
+/// Maximum tokens a single digest request may ask for.
+pub const MAX_DIGEST_TOKENS: usize = 8192;
+
+/// Token-budgeted digest of this process's recent telemetry, for agents.
+async fn log_digest(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<DigestQuery>,
+) -> Result<Response, ApiError> {
+    authorized(&state, &headers)?;
+    let min_level = match query.min_level.as_deref() {
+        None => admiralty_telemetry::Level::Trace,
+        Some(text) => admiralty_telemetry::Level::parse(text)
+            .ok_or_else(|| error(StatusCode::BAD_REQUEST, "invalid min_level"))?,
+    };
+    let options = admiralty_telemetry::digest::Options {
+        budget_tokens: query.budget_tokens.unwrap_or(600).min(MAX_DIGEST_TOKENS),
+        since: query
+            .since_s
+            .map(|s| std::time::SystemTime::now() - Duration::from_secs(s.min(7 * 86_400))),
+        min_level,
+    };
+    let logger = admiralty_telemetry::global();
+    let text =
+        admiralty_telemetry::digest::render(logger.component(), &logger.snapshot(), &options);
+    Ok((
+        [
+            (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
+            (header::CACHE_CONTROL, "no-store"),
+        ],
+        text,
+    )
+        .into_response())
+}
+
 async fn asset(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -802,6 +913,9 @@ fn app_with_work_order_routes_and_shutdown(
     let router = Router::new()
         .merge(model_routes)
         .route("/healthz", get(health))
+        .route("/readyz", get(readiness))
+        .route("/metrics", get(prometheus_metrics))
+        .route("/v1/logs/digest", get(log_digest))
         .route("/v1/fleet", get(fleet))
         .route("/v2/fleet", get(fleet_v2))
         .route("/v2/events", get(events_v2))
@@ -911,6 +1025,9 @@ pub async fn serve_with_operator_chat(
         Some((token, source)) => app.merge(operator_chat::router(token, chat, source)),
         None => app,
     };
+    // Applied last so every merged and nested route is measured; MatchedPath
+    // gives bounded route-template labels instead of raw request paths.
+    let app = app.layer(axum::middleware::from_fn(telemetry::observe));
     let mode = if native_commands {
         "native commands enabled; execution requires admitted controller"
     } else if chat_enabled {
@@ -918,10 +1035,29 @@ pub async fn serve_with_operator_chat(
     } else {
         "read-only; native execution disabled"
     };
-    eprintln!(
-        "Admiralty listening on http://{} ({mode})",
-        listener.local_addr()?
-    );
+    let local = listener.local_addr()?;
+    // Readiness contract for harnesses and operators: keep this exact prefix.
+    eprintln!("Admiralty listening on http://{local} ({mode})");
+    admiralty_telemetry::event(admiralty_telemetry::Level::Info, "srv", "srv.start")
+        .field("listen", local.to_string())
+        .field("mode", mode)
+        .field("version", env!("CARGO_PKG_VERSION"))
+        .volatile("pid", std::process::id())
+        .emit();
+    let summaries = tokio::spawn({
+        let mut stop = shutdown_tx.subscribe();
+        async move {
+            let window = SUMMARY_INTERVAL;
+            let mut tick = tokio::time::interval_at(tokio::time::Instant::now() + window, window);
+            tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            loop {
+                tokio::select! {
+                    _ = tick.tick() => telemetry::emit_summary(window),
+                    changed = stop.changed() => if changed.is_err() || *stop.borrow() { break },
+                }
+            }
+        }
+    });
     let signal_tx = shutdown_tx.clone();
     let outcome = axum::serve(listener, app)
         .with_graceful_shutdown(async move {
@@ -932,10 +1068,20 @@ pub async fn serve_with_operator_chat(
     // A notification is not a join. Release the updater's Store and any
     // in-flight blocking projection before the demo can remove its database.
     shutdown_tx.send_replace(true);
+    let _ = summaries.await;
     views.shutdown().await?;
+    telemetry::emit_summary(SUMMARY_INTERVAL);
+    admiralty_telemetry::event(admiralty_telemetry::Level::Info, "srv", "srv.stop")
+        .field("listen", local.to_string())
+        .field("clean", outcome.is_ok())
+        .emit();
+    admiralty_telemetry::global().flush();
     outcome?;
     Ok(())
 }
+
+/// Interval between `http.summary` lines and log-burst flushes.
+pub const SUMMARY_INTERVAL: Duration = Duration::from_secs(60);
 
 /// Compatibility port implemented by the same native binary. Target and bind
 /// remain loopback-only, and the original path/query is retained.

@@ -10,6 +10,8 @@ struct Args {
     listen: SocketAddr,
     #[arg(long)]
     token_file: PathBuf,
+    /// Built dashboard directory. Defaults to the installed bundle's
+    /// `share/admiralty/dashboard` beside this binary when that exists.
     #[arg(long)]
     assets: Option<PathBuf>,
     #[arg(long, requires = "legacy_index_file")]
@@ -37,6 +39,11 @@ struct Args {
 #[tokio::main(worker_threads = 2)]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let args = Args::parse();
+    admiralty_telemetry::init_from_env("admiraltyd");
+    let assets = admiralty_server::startup::resolve_assets(
+        args.assets,
+        std::env::current_exe().ok().as_deref(),
+    );
     let token = admiralty_server::startup::read_private_token(&args.token_file)?;
     let chat = args
         .operator_chat_config
@@ -85,7 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             listen: args.listen,
             simulated: false,
             token: Some(token),
-            assets: args.assets,
+            assets,
             legacy,
             models_file: args.models_file,
         },

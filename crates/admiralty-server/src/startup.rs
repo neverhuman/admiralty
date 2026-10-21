@@ -395,6 +395,82 @@ pub fn read_private_token(path: &Path) -> Result<String, Error> {
     result
 }
 
+/// Relative location of the dashboard inside an installed release bundle
+/// (see `admiralty release stage`): `<root>/bin/admiraltyd` serves
+/// `<root>/share/admiralty/dashboard`.
+pub const BUNDLED_DASHBOARD: &str = "share/admiralty/dashboard";
+
+/// Choose dashboard assets. An explicit `--assets` always wins. Otherwise an
+/// installed bundle serves its own dashboard, so a release needs no extra
+/// flag. A source build without assets keeps the inline placeholder page.
+pub fn resolve_assets(explicit: Option<PathBuf>, executable: Option<&Path>) -> Option<PathBuf> {
+    use admiralty_telemetry::{Level, event};
+    if let Some(path) = explicit {
+        event(Level::Info, "srv.assets", "assets.selected")
+            .field("source", "flag")
+            .field("path", path.display().to_string())
+            .emit();
+        return Some(path);
+    }
+    let bundled = executable
+        .and_then(Path::parent)
+        .and_then(Path::parent)
+        .map(|root| root.join(BUNDLED_DASHBOARD))
+        .filter(|dir| {
+            // Regular index file only; a symlinked or missing payload is not a bundle.
+            std::fs::symlink_metadata(dir.join("index.html")).is_ok_and(|m| m.file_type().is_file())
+        });
+    match &bundled {
+        Some(path) => event(Level::Info, "srv.assets", "assets.selected")
+            .field("source", "bundle")
+            .field("path", path.display().to_string())
+            .emit(),
+        None => event(Level::Info, "srv.assets", "assets.absent")
+            .field(
+                "detail",
+                "no --assets and no installed bundle dashboard; serving placeholder",
+            )
+            .emit(),
+    }
+    bundled
+}
+
+#[cfg(test)]
+mod asset_tests {
+    use super::*;
+
+    #[test]
+    fn explicit_assets_win_and_bundles_are_found_beside_the_binary() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let bin = root.path().join("bin");
+        let dashboard = root.path().join(BUNDLED_DASHBOARD);
+        std::fs::create_dir_all(&bin).expect("bin");
+        let executable = bin.join("admiraltyd");
+        assert_eq!(
+            resolve_assets(None, Some(&executable)),
+            None,
+            "no payload yet"
+        );
+        std::fs::create_dir_all(&dashboard).expect("dashboard");
+        assert_eq!(
+            resolve_assets(None, Some(&executable)),
+            None,
+            "index required"
+        );
+        std::fs::write(dashboard.join("index.html"), "<!doctype html>").expect("index");
+        assert_eq!(
+            resolve_assets(None, Some(&executable)),
+            Some(dashboard.clone())
+        );
+        let explicit = root.path().join("elsewhere");
+        assert_eq!(
+            resolve_assets(Some(explicit.clone()), Some(&executable)),
+            Some(explicit)
+        );
+        assert_eq!(resolve_assets(None, None), None);
+    }
+}
+
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
