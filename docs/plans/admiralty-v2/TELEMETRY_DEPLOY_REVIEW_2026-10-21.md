@@ -1,4 +1,4 @@
-# Upgrade review, 21 October 2026
+# Telemetry and deployment review, 21 October 2026
 
 Scope: a close review of `main` at `5916726` for four goals: a 100% Rust and
 Vite/TypeScript/React product, a clean deployment, compact logs that agents can
@@ -17,7 +17,7 @@ be scoped as a packet without re-reading the code.
 | Observer | Disk growth and time-to-full, PSI pressure, D-state processes, top memory consumers, per-phase cycle timings, change events, and Git and host series in history | [native observer](../../operators/native-observer.md) |
 | Python | Four Python files (363 lines) and the `dashboard/run.sh` launcher retired; `scripts/dev/live.sh` no longer embeds Python. Rust now provides the release qualifier, the excursions smoke test, preview-state creation and the dashboard server | [legacy inventory](../../operators/legacy-inventory.md) |
 | Deployment | Hardened systemd units, `admiralty release activate` and `rollback` (atomic symlink switch with a 0600 journal), `admiralty ready`, and a rollout script that rolls back automatically when readiness fails | [deployment with systemd](../../operators/deployment-systemd.md) |
-| Dashboard | Fleet health page, grouped navigation, command palette, persisted theme, two new temporal plots, memoized derived data | [live console](../../operators/live-console.md#fleet-health) |
+| Dashboard | Fleet health page (with a browser journey that runs the pinned axe audit in five states), grouped navigation, command palette, persisted theme, two new temporal plots, memoized derived data | [live console](../../operators/live-console.md#fleet-health) |
 
 ## 2. Live data now collected
 
@@ -88,4 +88,5 @@ Each row says where the data comes from and where it should surface.
   columns need the new observer.
 - The observer no longer prints `Rust observation published` on stdout; use
   the `obs.cycle` event (`ADMIRALTY_LOG=info`) instead.
+- The current production host keeps the [`deploy/`](../../../deploy/README.md) runbooks; the systemd path is for new or migrated hosts and does not take the production deployment locks.
 - No services were restarted and nothing was deployed while this was prepared.

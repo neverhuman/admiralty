@@ -131,10 +131,11 @@ For protected task intake and scoped agent access, follow [native startup](docs/
 | Configure per-project Captain/Admiral chat and verify delivery | [Operator chat](docs/operators/operator-chat.md) |
 | Configure Git health policy and captain alerts | [Git health](docs/operators/git-health.md) |
 | Back up, rehearse recovery or install an explicit archive | [Recovery manifests](docs/operators/recovery-manifest.md), [native archive](docs/operators/native-archive.md), [private version installation](docs/operators/native-install.md) |
-| Deploy with systemd, roll out with readiness checks and roll back | [Clean deployment with systemd](docs/operators/deployment-systemd.md) |
+| Deploy to the current production host | [Deploy Admiralty](deploy/README.md): UI-only and full releases, verification and rollback |
+| Set up a new or migrated host with systemd units, readiness-gated rollout and automatic rollback | [Clean deployment with systemd](docs/operators/deployment-systemd.md) |
 | Read compact logs, metrics and agent log digests | [Clean deployment: observe](docs/operators/deployment-systemd.md#4-observe) |
 | Develop and reproduce checks | [Contributing](CONTRIBUTING.md), [local CI](docs/operators/local-ci.md) |
-| Review architecture, evidence and remaining implementation | [Master plan](docs/plans/admiralty-v2/MASTER_PLAN.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [remaining-work audit](docs/plans/admiralty-v2/REMAINING_20261019.md), [21 October upgrade review](docs/plans/admiralty-v2/UPGRADE_2026-10-21.md) |
+| Review architecture, evidence and remaining implementation | [Master plan](docs/plans/admiralty-v2/MASTER_PLAN.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [remaining-work audit](docs/plans/admiralty-v2/REMAINING_20261019.md), [21 October telemetry and deployment review](docs/plans/admiralty-v2/TELEMETRY_DEPLOY_REVIEW_2026-10-21.md) |
 
 The Rust crates contain domain contracts, Store, runtime, server, observer, CLI and integration tests. `apps/dashboard` contains the React application. `schemas` and `packages/contracts` hold the public contract pipeline. `dashboard`, `captains` and `tools` retain documented compatibility and fleet operating utilities.
 

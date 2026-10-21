@@ -17,6 +17,16 @@ This page covers the read-only fleet console (`admiraltyd`) and the observer
 fencing and drain rules remain in [upgrades](upgrades.md). Only the assigned
 deployment owner runs these steps; see [deployment handoff](deployment.md).
 
+**Which guide applies.** The current production host is deployed with the
+runbooks in [`deploy/`](../../deploy/README.md): its existing controller, the
+two deployment locks, and asset-only publication for compatible UI changes.
+This page is the path for a new host, or for migrating a host to systemd
+units once its owner decides to. `rollout.sh` does not take the production
+deployment locks and restarts services, so do not run it on a host that the
+`deploy/` runbooks still govern. The status words (merged, built, staged,
+serving, browser verified, deployed) and the verification steps in
+[`deploy/VERIFY.md`](../../deploy/VERIFY.md) apply to both paths.
+
 ## Layout
 
 | Path | Owner / mode | Contents |
@@ -115,6 +125,14 @@ journalctl -u admiraltyd -u admiralty-observe --since -1h -o cat | admiralty log
 `ADMIRALTY_LOG=off` silences output but keeps the in-memory digest.
 
 ## Limits
+
+Each version serves only its own dashboard assets. A tab opened before a
+switch keeps the old entry, and its next lazily loaded view (for example Fleet
+health or Git Flow) can fail to load until the tab is reloaded. Where open tabs
+must survive a switch, keep one shared, append-only asset directory, pass it
+with `--assets` in a unit drop-in, and publish into it as
+[`deploy/UI_ONLY.md`](../../deploy/UI_ONLY.md) describes, never deleting old
+hashed files.
 
 Activation switches a link and restarting reloads binaries; it is not the
 native-execution upgrade protocol (admission fencing, session drain and effect
