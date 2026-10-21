@@ -1918,6 +1918,3 @@
 .git-scope-summary > strong {
   font-size: 12px;
 }
-.is-project-focused .git-graph-field {
-  background: linear-gradient(180deg, #14223544, transparent 45%);
-}
