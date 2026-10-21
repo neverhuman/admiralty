@@ -7,7 +7,7 @@
 5. Clean up each cycle: remove worktrees, branches and temp folders that are merged into main AND inactive AND clean (no uncommitted/unpushed changes). Use plain `git worktree remove` (no --force). Never delete or follow symlinks. Never remove dirty, private, ignored, custody-held, locked or foreign assets. Never delete unmerged work.
 6. Hard safety rules (these hold even though permission prompts are skipped):
    - No force-push, no `--admin`, no squash merge, no `--merge` merge commits, no history rewrites, no tag pushes unless the plan says so.
-   - Merge rule (where agents may merge at all): neverhumanbot approves the EXACT head, then `gh pr merge <n> --rebase --match-head-commit <sha>`. Push as jepsontaylor over HTTPS.
+   - Merge rule (where agents may merge at all): the owner removed mandatory independent/second-reviewer approval on 21 October 2026. Review source/findings and require passing current-head checks, then `gh pr merge <n> --rebase --match-head-commit <sha>`. Do not wait for or fabricate neverhumanbot approval. Push as jepsontaylor over HTTPS. All other merge and safety rules remain in effect.
    - Never kill another project's processes; never kill by broad name (no pkill/killall by pattern). Only stop a specific PID you have verified belongs to your project and is safe to stop.
    - Never touch xbabe0 or anything Jeryu.
    - No new paid credentials, purchases, bookings, or outside contact. No emails/messages outside the box.
