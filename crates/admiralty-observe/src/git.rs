@@ -223,9 +223,23 @@ impl AgentTrailerParagraph {
             self.append(field, value);
         }
     }
-    fn finish(self, paragraphs: usize) -> Option<GitAgentTrailers> {
-        (paragraphs >= 2 && !self.invalid && self.found != GitAgentTrailers::default())
-            .then_some(self.found)
+    fn finish(mut self, paragraphs: usize) -> Option<GitAgentTrailers> {
+        if paragraphs < 2 || self.invalid {
+            return None;
+        }
+        // Joining continuations can assemble credential syntax that was absent
+        // from each individual line. Reapply the public-observation redaction.
+        for value in [
+            &mut self.found.session,
+            &mut self.found.model,
+            &mut self.found.task,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            *value = crate::io::clean(value);
+        }
+        (self.found != GitAgentTrailers::default()).then_some(self.found)
     }
 }
 
@@ -724,6 +738,21 @@ mod tests {
         assert_eq!(
             trailers.session.as_deref(),
             Some(format!("{} {}", "界".repeat(120), "界".repeat(7)).as_str())
+        );
+    }
+    #[test]
+    fn agent_trailers_redact_credential_syntax_assembled_by_continuations() {
+        let parsed = commits(&raw_commit(
+            11,
+            &["Subject", "", "Agent-Session: pass", " word: fixture"],
+        ))
+        .expect("commits");
+        assert_eq!(
+            parsed[0]
+                .agent_trailers
+                .as_ref()
+                .and_then(|t| t.session.as_deref()),
+            Some("[credential-bearing line withheld]")
         );
     }
     #[tokio::test]
