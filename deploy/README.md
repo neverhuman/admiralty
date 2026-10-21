@@ -12,6 +12,7 @@ running while the user needs it.
 | --- | --- |
 | Dashboard assets only; deployed server and API remain compatible | [UI-only deployment](UI_ONLY.md) |
 | Rust binaries, server behavior, contracts, observer, database or private configuration changes | [Full release](FULL_RELEASE.md) |
+| New host, or migrating a host to systemd units (not used on xbabe2 today) | [Clean deployment with systemd](../docs/operators/deployment-systemd.md) |
 
 Do not rebuild Rust just to publish a compatible dashboard change. The server's
 `--assets` directory is read for each request; publishing a verified UI bundle
