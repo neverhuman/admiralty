@@ -322,6 +322,39 @@ describe("repository Git investigation against isolated native source", () => {
     const dragged=await camera(); expect(dragged.k).toBe(before.k); expect(dragged.x).toBeCloseTo(before.x+41,1); expect(dragged.y).toBeCloseTo(before.y+27,1);
   });
 
+  it.each([.65,.69,.9])("keeps actual range controls disjoint and hittable at scale %s", async (scale) => {
+    await connect(); await expand(); const before=await camera();
+    await browser.wheelPointer(await canvasPoint(),{x:0,y:-Math.log(scale/before.k)/.002},{control:true});
+    expect((await camera()).k).toBeCloseTo(scale,6);
+    const measure=()=>browser.evaluate<{count:number;overlaps:unknown[];blocked:unknown[]}>(`(() => {
+      const stage=document.querySelector('.git-project-stage'),v=stage.getBoundingClientRect();
+      const controls=[...stage.querySelectorAll('.git-commit-range')].map(e=>({e,r:e.getBoundingClientRect()}));
+      const overlaps=[],blocked=[];
+      for(let i=0;i<controls.length;i++) for(let j=i+1;j<controls.length;j++) {
+        const a=controls[i].r,b=controls[j].r;
+        if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>.1 && Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>.1)
+          overlaps.push({a:controls[i].e.title,b:controls[j].e.title,aRect:a.toJSON(),bRect:b.toJSON()});
+      }
+      for(const {e,r} of controls) {
+        const left=Math.max(r.left,v.left)+1,right=Math.min(r.right,v.right)-1,top=Math.max(r.top,v.top)+1,bottom=Math.min(r.bottom,v.bottom)-1;
+        if(left>=right||top>=bottom) continue;
+        for(const [x,y] of [[(left+right)/2,(top+bottom)/2],[left,(top+bottom)/2],[right,(top+bottom)/2],[(left+right)/2,top],[(left+right)/2,bottom]]) {
+          const hit=document.elementFromPoint(x,y);if(hit!==e&&!e.contains(hit)) blocked.push({title:e.title,x,y,hit:hit?.className});
+        }
+      }
+      return {count:controls.length,overlaps,blocked};
+    })()`);
+    for(const phase of ['collapsed','expanded','panned']) {
+      if(phase==='expanded') {
+        const anchor=await browser.evaluate<string>(`(() => {const e=[...document.querySelectorAll('.git-project-stage .git-commit-range[aria-expanded="false"]')].find(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return hit===e||e.contains(hit);});if(!e)throw Error('No hittable collapsed range');return e.dataset.anchorOid;})()`);
+        await realClick(`.git-project-stage .git-commit-range[data-anchor-oid="${anchor}"]`);
+      }
+      if(phase==='panned') await browser.wheelPointer(await canvasPoint(),{x:240,y:0});
+      const result=await measure(); observations.push({label:'actual range-control intersection and hit test',scale,phase,...result});
+      expect(result.count).toBeGreaterThanOrEqual(3); expect(result.overlaps).toEqual([]); expect(result.blocked).toEqual([]);
+    }
+  });
+
   it("keeps the exact range anchor fixed during expansion and fits all expanded loaded history", async () => {
     await connect(); await expand(); await fitBounds("before range expansion");
     const collapsed = await browser.evaluate<{ oid: string; x: number; y: number; width: number }>(`(() => {
@@ -358,9 +391,16 @@ describe("repository Git investigation against isolated native source", () => {
     expect(await browser.evaluate(`document.querySelector('.git-investigation-heading button[aria-pressed]').getAttribute('aria-pressed')`)).toBe("true");
     expect(await browser.evaluate(`document.querySelector('.git-branch-evidence').textContent`)).toContain("Integration status requires separate source-bound evidence");
     await browser.setViewportSize(390, 1000); await fitBounds("mobile inspector closed chat");
+    await browser.evaluate(`(() => { window.__gitMobileInput=[]; for(const type of ['pointerdown','pointerup','click']) document.addEventListener(type,event=>window.__gitMobileInput.push({type,target:event.target.className,x:event.clientX,y:event.clientY,open:document.querySelector('.git-project-chat-dock .git-chat-toggle')?.getAttribute('aria-expanded')}),true); })()`);
     for (const open of [true, false]) {
+      const beforeToggle=await browser.evaluate(`document.querySelector('.git-project-chat-dock .git-chat-toggle').getAttribute('aria-expanded')`);
       await realClick('.git-project-chat-dock .git-chat-toggle');
-      expect(await browser.evaluate(`document.querySelector('.git-project-chat-dock .git-chat-toggle').getAttribute('aria-expanded')`)).toBe(String(open));
+      const afterToggle=await browser.evaluate(`document.querySelector('.git-project-chat-dock .git-chat-toggle').getAttribute('aria-expanded')`);
+      if(afterToggle!==String(open)) {
+        observations.push({label:'FAILED mobile native chat toggle',expected:open,beforeToggle,afterToggle,input:await browser.evaluate('window.__gitMobileInput')});
+        await browser.captureScreenshot(join(evidence,'FAILED-mobile-chat-toggle.png'));
+      }
+      expect(afterToggle).toBe(String(open));
       for (const label of ["Zoom project in", "Zoom project out", "Fit graph", "Reset project zoom to 100%"]) await realClick(`button[aria-label="${label}"]`);
       const fitted = await fitBounds(`mobile inspector chat ${open ? "open" : "closed"}`);
       expect(fitted.padding).toBe(16);

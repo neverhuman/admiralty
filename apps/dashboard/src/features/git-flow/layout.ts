@@ -1,9 +1,10 @@
+import { GIT_LANE_SPACING } from "./model";
 import type { CommitMark, CommitRange, GitCommit, GitGraphLayout, GitPath, GitRepository, GraphBounds, GraphLayoutOptions } from "./model";
 import { resolveBackbone } from "./backbone";
 import { curveBounds, parentCurve } from "./curves";
 
 const COLUMN = 112;
-const LANE = 54;
+const LANE = GIT_LANE_SPACING;
 const CLEARANCE = 1;
 const oidPattern = /^(?:[a-f\d]{40}|[a-f\d]{64})$/i;
 const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;

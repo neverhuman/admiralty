@@ -1,3 +1,5 @@
+export const GIT_LANE_SPACING = 54;
+
 import type { GitCommit, GitRepository } from "../../../../../packages/contracts/generated/views-snapshot";
 export type { GitRepository, GitCommit, GitCheckout } from "../../../../../packages/contracts/generated/views-snapshot";
 export type CommitRange = { id: string; commits: GitCommit[]; expanded: boolean; x: number; y: number };
