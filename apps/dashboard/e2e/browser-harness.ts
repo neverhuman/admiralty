@@ -1447,6 +1447,7 @@ export interface BrowserHarness {
   emulateReducedMotion(reduce: boolean): Promise<void>;
   emulateTouchInput(enabled: boolean): Promise<void>;
   movePointer(x: number, y: number): Promise<void>;
+  dragPointer(from: { x: number; y: number }, to: { x: number; y: number }): Promise<void>;
   evaluate<T>(expression: string, timeoutMs?: number): Promise<T>;
   captureScreenshot(path: string): Promise<void>;
   waitForText(expectedText: string, timeoutMs?: number): Promise<void>;
@@ -2195,6 +2196,18 @@ async function launchBrowserHarnessAttempt(
     async movePointer(x: number, y: number) {
       if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error('Pointer coordinates must be finite');
       await sendCdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, pointerType: 'mouse' }, sessionId);
+    },
+    async dragPointer(from, to) {
+      if (![from.x, from.y, to.x, to.y].every(Number.isFinite)) throw new Error('Pointer coordinates must be finite');
+      await sendCdp('Input.dispatchMouseEvent', { type: 'mouseMoved', ...from, pointerType: 'mouse' }, sessionId);
+      await sendCdp('Input.dispatchMouseEvent', { type: 'mousePressed', ...from, button: 'left', buttons: 1, clickCount: 1, pointerType: 'mouse' }, sessionId);
+      try {
+        for (let step = 1; step <= 5; step++) {
+          await sendCdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x: from.x + (to.x - from.x) * step / 5, y: from.y + (to.y - from.y) * step / 5, button: 'left', buttons: 1, pointerType: 'mouse' }, sessionId);
+        }
+      } finally {
+        await sendCdp('Input.dispatchMouseEvent', { type: 'mouseReleased', ...to, button: 'left', buttons: 0, clickCount: 1, pointerType: 'mouse' }, sessionId);
+      }
     },
     evaluate,
     async captureScreenshot(path: string) {

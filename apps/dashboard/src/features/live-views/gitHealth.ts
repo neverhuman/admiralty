@@ -7,6 +7,7 @@ export type GitHealthReport = {
   instance_id: string;
   observed_utc: string;
   integration_ref: string | null;
+  integration_oid: string | null;
   state: "disabled" | "healthy" | "attention" | "unknown";
   actionable: boolean;
   observed_commits: number;
@@ -63,7 +64,7 @@ export function parseGitHealth(value: unknown): { reports: Record<string, GitHea
       return { ref_name: text(branch.ref_name), relation: branch.relation as GitHealthReport["branches"][number]["relation"], ahead: bound(branch.ahead), behind: bound(branch.behind) };
     });
     result[id] = {
-      schema_version: 1, instance_id: text(report.instance_id), observed_utc: observed, integration_ref: nullableText(report.integration_ref),
+      schema_version: 1, instance_id: text(report.instance_id), observed_utc: observed, integration_ref: nullableText(report.integration_ref), integration_oid: report.integration_oid === undefined ? null : nullableText(report.integration_oid),
       state: report.state as GitHealthReport["state"], actionable: report.actionable,
       observed_commits: count(report.observed_commits), observed_refs: count(report.observed_refs), observed_checkouts: count(report.observed_checkouts),
       missing_parent_oids: report.missing_parent_oids.map(text), shallow: report.shallow, truncated: report.truncated, observation_error: report.observation_error,
