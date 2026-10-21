@@ -89,6 +89,11 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Create or validate private preview credentials; never starts a service.
+    PreviewInit {
+        #[arg(long)]
+        state_directory: PathBuf,
+    },
     /// Narrow authenticated agent tools, CLI JSON fallback and MCP stdio.
     AgentTools(agent_tools::AgentToolsArgs),
     /// Enroll nodes, deliver authenticated observations and transfer artifacts.
@@ -884,6 +889,9 @@ fn seed_demo(store: &Store) -> CliResult<()> {
 
 async fn run(cli: Cli) -> CliResult<()> {
     match cli.command {
+        Command::PreviewInit { state_directory } => {
+            print_json(preview::prepare(&state_directory)?)?
+        }
         #[cfg(unix)]
         Command::Node(args) => node::run(args)?,
         Command::Demo {
