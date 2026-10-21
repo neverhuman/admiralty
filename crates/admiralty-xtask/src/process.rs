@@ -289,11 +289,25 @@ mod tests {
                 .output()
                 .expect("run bash printf %q");
             assert!(output.status.success());
+            // Linux CI uses modern Bash; Darwin ships Bash 3, whose %q
+            // spelling differs for otherwise equivalent tilde escapes.
+            #[cfg(target_os = "linux")]
             assert_eq!(
                 bash_quote(OsStr::new(input)),
                 String::from_utf8_lossy(&output.stdout),
                 "input {input:?}"
             );
+            let script = format!(
+                "set -- {}; test \"$#\" -eq 1 && printf '%s' \"$1\"",
+                bash_quote(OsStr::new(input))
+            );
+            let decoded = Command::new(bash)
+                .args(["-c", &script])
+                .env("LC_ALL", "C")
+                .output()
+                .expect("round-trip quoted argument through host bash");
+            assert!(decoded.status.success());
+            assert_eq!(decoded.stdout, input.as_bytes(), "round-trip {input:?}");
         }
     }
 
