@@ -511,6 +511,11 @@ describe("built live views against the real Rust server", () => {
     await browser.waitForSelector('.is-project-focused .git-canvas');
     expect(await browser.evaluate(`document.querySelector('[aria-label="Current Git zoom"]').textContent`)).toBe(before.zoom);
   });
+  async function occupyScrollportEdges() {
+    await browser.evaluate(`(()=>{const s=document.createElement('style');s.textContent='.git-scroll { border-right:17px solid var(--lv-line); border-bottom:11px solid var(--lv-line); }';document.head.append(s);})()`);
+    await browser.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+    expect(await browser.evaluate(`(()=>{const e=document.querySelector('.git-scroll');return e.offsetWidth-e.clientWidth;})()`)).toBeGreaterThanOrEqual(17);
+  }
   it("resets actual size and drills into a project without losing selection or overview", async () => {
     const source = sourceFixture(), repo = source.git.harbor, template = repo.commits[0];
     const oid = (n: number) => ((n * 2654435761) >>> 0).toString(16).padStart(8, "0").padEnd(40, "0");
@@ -530,6 +535,7 @@ describe("built live views against the real Rust server", () => {
     await browser.waitForSelector('.git-canvas[aria-label*="161 commits"]');
     await browser.clickButtonByText("Expand all");
     await browser.waitForText("Collapse linear");
+    await occupyScrollportEdges();
     await browser.clickButtonByText("Fit width");
     await browser.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
     await browser.waitForSelector('.git-canvas');
@@ -814,6 +820,7 @@ describe("built live views against the real Rust server", () => {
     )
       await browser.clickButtonByText("Graph");
     await browser.waitForSelector(".git-scroll");
+    await occupyScrollportEdges();
     await browser.clickButtonByAriaLabel("Reset Git zoom to 100%");
     await browser.waitForText("100%");
     await browser.clickButtonByText("Expand all");
