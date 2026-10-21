@@ -9,16 +9,21 @@ dashboard, not a runtime server or a requirement for the installed offline demo.
 cargo build --locked -p admiralty-cli
 pnpm install --frozen-lockfile
 pnpm --filter @admiralty/dashboard build
-python3 scripts/release/qualify_native.py \
-  --binary target/debug/admiralty --assets apps/dashboard/dist \
+target/debug/admiralty release qualify \
+  --assets "$PWD/apps/dashboard/dist" --repository "$PWD" \
   --output /owned/private/new-install-proof \
   --source-commit FULL_SOURCE_COMMIT --target x86_64-unknown-linux-gnu
 ```
 
+`admiralty release qualify` (Rust, `crates/admiralty-cli/src/release_ops.rs`)
+replaced the retired `qualify_native.py` with the same steps and evidence;
+`--binary` defaults to the running executable. The receipt records the
+qualifier binary hash instead of a script hash.
+
 The output must be a new directory beneath protected ancestors. Group-writable
 checkout parents can be used to build, but the private installer rejects them
 as installation ancestors. Choose a protected evidence directory instead of
-changing shared permissions. The script keeps all inputs, archive bytes, command
+changing shared permissions. The command keeps all inputs, archive bytes, command
 captures and `qualification.json`; do not clear a previous run to reuse its path.
 
 The qualification stages the actual CLI executable, built dashboard, generated
@@ -33,7 +38,7 @@ refused without replacement; temporary demo state must be removed on exit.
 This is a current-host private installation journey, not a clean OS image,
 global installation, service deployment or public release. A debug executable
 is a real payload but does not qualify an optimized release build. The source
-commit is a label retained alongside binary and archive hashes; the script does
+commit is a label retained alongside binary and archive hashes; the command does
 not authenticate that source label, publisher identity or build provenance.
 
 | Surface | Qualification boundary |

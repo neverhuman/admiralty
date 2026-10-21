@@ -7,6 +7,12 @@ Source statements below are leads for an operator to verify; they are not a
 deployment manifest or new authority grants. Record private addresses, resolved
 paths, environment and credentials only in private inventory outside Git.
 
+Source removal, 21 October 2026: `dashboard/run.sh`, `dashboard/serve.py` and
+`dashboard/make_snapshot.py` were deleted from the repository (Rust `admiraltyd`
+already serves production). Rows that cite them describe the pinned source
+above. Before deploying a checkout without them, confirm no `captains_dash`
+Screen session or symlinked launcher still starts them.
+
 | Item | Source-backed lead | Actual value / evidence still required |
 | --- | --- | --- |
 | Source checkout | README declares `~/admiralty` on deployment host | UNKNOWN deployed Git SHA, branch, dirty status and Git common-dir identity |

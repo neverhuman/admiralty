@@ -8,6 +8,8 @@ pub mod native_package;
 pub mod native_recovery;
 #[cfg(unix)]
 mod node;
+pub mod ops;
+pub mod release_ops;
 pub mod work_order_intake;
 mod workplans;
 use admiralty_core::{
@@ -164,10 +166,46 @@ enum Command {
     },
     /// Create-only backups, isolated restore rehearsals and non-authorizing recovery proposals.
     Recover(native_recovery::RecoveryArgs),
-    /// Stage, archive or privately install explicit release inputs; this does not sign, publish or activate a release.
+    /// Stage, archive, privately install, qualify or activate explicit release inputs; never signs, publishes or restarts services.
     Release {
         #[command(subcommand)]
         command: ReleaseCommand,
+    },
+    /// Token-budgeted digests of Admiralty (ALOG/JSON) or arbitrary logs, for agents.
+    Logs {
+        #[command(subcommand)]
+        command: LogsCommand,
+    },
+    /// Create or verify private local state for `pnpm live`: an owner-only
+    /// directory and dashboard token. The token value is never printed.
+    PreviewState {
+        #[arg(long, value_parser = bounded_absolute_path)]
+        dir: PathBuf,
+    },
+    /// Wait until an admiraltyd answers GET /readyz with 200 (deployment checks).
+    Ready {
+        #[arg(long, default_value = "127.0.0.1:18891")]
+        listen: SocketAddr,
+        #[arg(long, default_value_t = 30, value_parser = clap::value_parser!(u64).range(0..=3600))]
+        timeout_seconds: u64,
+    },
+}
+
+#[derive(Subcommand)]
+enum LogsCommand {
+    /// Group events by code, summarize fields as ranges/sets and stop at a token budget.
+    Digest {
+        /// Log file; omit or pass - to read stdin. Only the newest 64 MiB are read.
+        #[arg(long)]
+        file: Option<PathBuf>,
+        #[arg(long, default_value_t = 600, value_parser = clap::value_parser!(u64).range(96..=65536))]
+        budget_tokens: u64,
+        /// Drop events less severe than this (error, warn, info, debug, trace).
+        #[arg(long)]
+        min_level: Option<String>,
+        /// Label recorded in the digest header.
+        #[arg(long, default_value = "logs")]
+        component: String,
     },
 }
 
@@ -311,6 +349,41 @@ fn bounded_absolute_path(value: &str) -> Result<PathBuf, String> {
 
 #[derive(Subcommand)]
 enum ReleaseCommand {
+    /// Rehearse stage → archive twice (byte-identical) → private install →
+    /// installed doctor and demo, offline with an empty PATH; retain all
+    /// evidence in a new directory. Replaces scripts/release/qualify_native.py.
+    Qualify {
+        /// Binary under qualification; defaults to this executable.
+        #[arg(long, value_parser = bounded_absolute_path)]
+        binary: Option<PathBuf>,
+        /// Built dashboard directory containing index.html.
+        #[arg(long, value_parser = bounded_absolute_path)]
+        assets: PathBuf,
+        /// Repository providing schemas, guards and documents.
+        #[arg(long, value_parser = bounded_absolute_path)]
+        repository: PathBuf,
+        /// New evidence directory; it must not exist.
+        #[arg(long, value_parser = bounded_absolute_path)]
+        output: PathBuf,
+        #[arg(long)]
+        source_commit: String,
+        #[arg(long)]
+        target: String,
+    },
+    /// Atomically point <releases-root>/current at an installed version
+    /// directory and journal the change. Does not restart services.
+    Activate {
+        #[arg(long, value_parser = bounded_absolute_path)]
+        releases_root: PathBuf,
+        /// Directory name directly under the releases root.
+        #[arg(long)]
+        version: String,
+    },
+    /// Undo the latest switch: re-point current at the version it replaced.
+    Rollback {
+        #[arg(long, value_parser = bounded_absolute_path)]
+        releases_root: PathBuf,
+    },
     /// Install integrity-pinned bytes into one new private version directory; no services or activation.
     Install {
         #[arg(long, value_parser = bounded_absolute_path)]
@@ -1160,6 +1233,81 @@ async fn run(cli: Cli) -> CliResult<()> {
                 "execution_granted":false,"acceptance_granted":false,"native_execution_qualified":false,"activated":false}),
             )?;
         }
+        Command::Release {
+            command:
+                ReleaseCommand::Qualify {
+                    binary,
+                    assets,
+                    repository,
+                    output,
+                    source_commit,
+                    target,
+                },
+        } => {
+            let binary = match binary {
+                Some(path) => path,
+                None => std::env::current_exe()?,
+            };
+            print_json(release_ops::qualify(&release_ops::QualifyRequest {
+                binary: &binary,
+                assets: &assets,
+                repository: &repository,
+                output: &output,
+                source_commit: &source_commit,
+                target: &target,
+            })?)?;
+        }
+        Command::Release {
+            command:
+                ReleaseCommand::Activate {
+                    releases_root,
+                    version,
+                },
+        } => print_json(serde_json::to_value(release_ops::activate(
+            &releases_root,
+            &version,
+        )?)?)?,
+        Command::Release {
+            command: ReleaseCommand::Rollback { releases_root },
+        } => print_json(serde_json::to_value(release_ops::rollback(
+            &releases_root,
+        )?)?)?,
+        Command::Logs {
+            command:
+                LogsCommand::Digest {
+                    file,
+                    budget_tokens,
+                    min_level,
+                    component,
+                },
+        } => {
+            let digest = ops::digest_logs(
+                file.as_deref(),
+                usize::try_from(budget_tokens).unwrap_or(usize::MAX),
+                min_level.as_deref(),
+                &component,
+            )?;
+            let mut stdout = io::stdout().lock();
+            writeln!(stdout, "{digest}")?;
+        }
+        Command::PreviewState { dir } => {
+            let token = ops::init_preview_state(&dir)?;
+            print_json(json!({"state_dir":dir,"token_file":token,"token_value_displayed":false}))?;
+        }
+        Command::Ready {
+            listen,
+            timeout_seconds,
+        } => {
+            let result = tokio::task::spawn_blocking(move || {
+                ops::wait_ready(listen, std::time::Duration::from_secs(timeout_seconds))
+            })
+            .await?;
+            let ready = result.ready;
+            print_json(serde_json::to_value(result)?)?;
+            if !ready {
+                return Err(invalid(format!("{listen} did not report ready")));
+            }
+        }
     }
     Ok(())
 }
@@ -1167,6 +1315,7 @@ async fn run(cli: Cli) -> CliResult<()> {
 // Keep even short CLI operations independent of the fleet host's CPU count.
 #[tokio::main(worker_threads = 2)]
 async fn main() -> ExitCode {
+    admiralty_telemetry::init_from_env("admiralty");
     match run(Cli::parse()).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {

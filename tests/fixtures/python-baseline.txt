@@ -1,20 +1,17 @@
 # Scoped amendment: exactly two retained-audit paths approved 2026-10-21, PR166 comment6307405031.
+# Ceiling lowered 2026-10-21: four files retired with Rust replacements (see PY_TO_RUST_PLAN.md "Retired").
 # Existing 40-file exception ceiling, SC-DEC-186J (2026-10-19).
 # Source d858a9a292a9e458d5851531e1e548f817908520.
 # Adding a path requires explicit maintainer review; documenting a new path alone cannot authorize it.
 dashboard/collector.py
 dashboard/extras.py
 dashboard/globalres.py
-dashboard/make_snapshot.py
 dashboard/rollout.py
-dashboard/serve.py
 dashboard/token_yield.py
 scripts/check/canary-smoke.py
-scripts/check/excursions-smoke.py
 scripts/demos/encode.py
 scripts/demos/verify.py
 scripts/release/package.py
-scripts/release/qualify_native.py
 tests/fixtures/legacy/verify.py
 tests/legacy/test_rollout.py
 tests/legacy/test_rollout_live_workers.py
