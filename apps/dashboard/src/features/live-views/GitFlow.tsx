@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { routeHref, useRoute } from "../../router";
 import {
   age,
@@ -428,9 +428,14 @@ export default function GitFlow({
   const frozen = paused ?? snapshot,
     viewport = useSize<HTMLDivElement>(),
     scrollRef = useRef<HTMLDivElement>(null),
+    scrollport = useSize<HTMLDivElement>(),
     manual = useRef(false),
     previous = useRef(snapshot.revision),
     [changes, setChanges] = useState(0);
+  const attachScrollport = useCallback((element: HTMLDivElement | null) => {
+    scrollRef.current = element;
+    scrollport.ref(element);
+  }, [scrollport.ref]);
   const projects = useMemo(
     () =>
       frozen.projects.filter(
@@ -483,7 +488,16 @@ export default function GitFlow({
   const bands = useMemo(() => buildBands(zoom), [projects, zoom, expanded, collapsed, focusId, focusProject, selectedOid, selectedProject, query, chatMemory, chatRevision, healthOpen]);
   const focusedLayout = useMemo(() => projectExpanded ? buildBands(1)[0]?.layout : null, [projectExpanded, projects, expanded, collapsed, focusId, focusProject, selectedOid, selectedProject, query]);
   const gutter = filter && !details ? 0 : viewport.width < 620 ? 160 : 240;
-  const graphViewport = { width: Math.max(1, viewport.width - gutter), height: viewport.height };
+  // Classic scrollbars and borders occupy space inside the outer surface.
+  // ResizeObserver keeps rendering in sync; actions read the live client box.
+  const currentGraphViewport = () => ({
+    width: Math.max(1, (scrollRef.current?.clientWidth ?? viewport.width) - gutter),
+    height: Math.max(1, scrollRef.current?.clientHeight ?? viewport.height),
+  });
+  const graphViewport = {
+    width: Math.max(1, (scrollport.element ? scrollport.width : viewport.width) - gutter),
+    height: Math.max(1, scrollport.element ? scrollport.height : viewport.height),
+  };
   const pendingCamera = useRef<{ zoom: number; left: number; top: number } | null>(null);
   const lastView = useRef({ filter, zoom, left: scroll.left, top: scroll.top, follow, inventory });
   const applyCamera = (camera: { zoom: number; left: number; top: number }, following = false) => {
@@ -496,25 +510,27 @@ export default function GitFlow({
     setCameraRevision((n) => n + 1);
   };
   const fitView = (enterScope = false) => {
+    const available = currentGraphViewport();
     const next = fitGitZoom((scale) => {
       const measured = buildBands(scale);
       return {
         width: Math.max(0, ...measured.map((b) => (b.layout?.width ?? 0) * scale)),
         height: 0,
       };
-    }, { width: Math.max(1, graphViewport.width - 24), height: Number.MAX_SAFE_INTEGER });
-    const anchor = captureGitAnchor({ bands, zoom, scroll, viewport: graphViewport,
+    }, { width: Math.max(1, available.width - 24), height: Number.MAX_SAFE_INTEGER });
+    const anchor = captureGitAnchor({ bands, zoom, scroll, viewport: available,
       selected: selectedProject && selectedOid ? { projectId: selectedProject, oid: selectedOid } : undefined });
     const measured = buildBands(next);
     const restored = anchor && restoreGitAnchor(anchor, measured, next);
     const selectedBand = measured.find((band) => band.projectId === selectedProject);
     const selectedMark = selectedBand?.layout?.byOid.get(selectedOid);
-    const entryTop = selectedBand && selectedMark ? Math.max(0, selectedBand.top + 48 + selectedMark.y * next - graphViewport.height / 2) : 0;
+    const entryTop = selectedBand && selectedMark ? Math.max(0, selectedBand.top + 48 + selectedMark.y * next - available.height / 2) : 0;
     applyCamera({ zoom: next, left: 0, top: enterScope ? entryTop : restored?.top ?? scroll.top });
-    setFitLimited(measured.some((band) => (band.layout?.width ?? 0) * next > graphViewport.width - 24));
+    setFitLimited(measured.some((band) => (band.layout?.width ?? 0) * next > available.width - 24));
   };
   const zoomTo = (next: number) => {
-    const anchor = captureGitAnchor({ bands, zoom, scroll, viewport: graphViewport,
+    const available = currentGraphViewport();
+    const anchor = captureGitAnchor({ bands, zoom, scroll, viewport: available,
       selected: selectedProject && selectedOid ? { projectId: selectedProject, oid: selectedOid } : undefined });
     const restored = anchor && restoreGitAnchor(anchor, buildBands(next), next);
     applyCamera({ zoom: next, left: restored?.left ?? scroll.left * next / zoom, top: restored?.top ?? scroll.top });
@@ -634,7 +650,7 @@ export default function GitFlow({
   const latest = () => {
     const el = scrollRef.current;
     if (el) {
-      const frontier = gitFrontierScroll({ bands, zoom, scroll: { left: el.scrollLeft, top: el.scrollTop }, viewport: graphViewport, projectId: filter || undefined });
+      const frontier = gitFrontierScroll({ bands, zoom, scroll: { left: el.scrollLeft, top: el.scrollTop }, viewport: { width: Math.max(1, el.clientWidth - gutter), height: el.clientHeight }, projectId: filter || undefined });
       if (frontier) {
         el.scrollLeft = frontier.left;
         el.scrollTop = frontier.top;
@@ -645,7 +661,7 @@ export default function GitFlow({
   };
   useEffect(() => {
     if (!inventory && !projectExpanded && follow && !paused && !pendingCamera.current) latest();
-  }, [bands, follow, paused, inventory, projectExpanded]);
+  }, [bands, follow, paused, inventory, projectExpanded, graphViewport.width, graphViewport.height]);
   useEffect(() => {
     if (previous.current !== snapshot.revision) {
       if (!follow || paused) setChanges((n) => n + 1);
@@ -957,7 +973,7 @@ export default function GitFlow({
         }}>
           <div
             className="git-scroll"
-            ref={scrollRef}
+            ref={attachScrollport}
             onWheel={(e) => {
               if (e.deltaX || e.shiftKey) manual.current = true;
             }}
@@ -977,18 +993,18 @@ export default function GitFlow({
               className="git-world"
               style={{
                 width: width + gutter,
-                height: Math.max(height, viewport.height),
+                height: Math.max(height, graphViewport.height),
               }}
             >
               {bands.map((b) => {
                 const localTop = Math.max(0, scroll.top - b.top - 64),
                   visibleHeight = Math.max(
                     1,
-                    Math.min(b.height - 64 - localTop, viewport.height),
+                    Math.min(b.height - 64 - localTop, graphViewport.height),
                   );
                 const inViewport =
                   b.top + b.height >= scroll.top - 200 &&
-                  b.top <= scroll.top + viewport.height + 200;
+                  b.top <= scroll.top + graphViewport.height + 200;
                 return (
                   <section
                     key={b.project.id}
@@ -1138,8 +1154,8 @@ export default function GitFlow({
           <div className="git-chat-overlays">
             {bands.map((band) => {
               const top = Math.max(12, band.top - scroll.top + 52);
-              const available = Math.min(viewport.height - top - 12, band.top + band.height - scroll.top - top - 12);
-              const visible = available >= 60 && band.top < scroll.top + viewport.height - 60;
+              const available = Math.min(graphViewport.height - top - 12, band.top + band.height - scroll.top - top - 12);
+              const visible = available >= 60 && band.top < scroll.top + graphViewport.height - 60;
               return <div key={`${chatMemory.id}:${band.project.id}`} className="git-chat-anchor" hidden={!visible} style={{ top, maxHeight: Math.max(60, available) }}>
                 <GitChat
                   projectId={band.project.id}
