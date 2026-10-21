@@ -56,19 +56,21 @@ Jepson: "each captain is responsible for clean up meaning worktrees and temporar
 3. **Rebase frequently.** Each lane rebases onto the current integration head at least once per cycle and before handing to integration, so the super-merge stays cheap. Never force-push shared branches (a lane branch only one writer owns may be updated with `--force-with-lease` only if your project rules allow it; otherwise merge-free rebase locally and push a new branch). Never rewrite the integration PR's history.
 4. **super_captain audits this every 30 min** (stale merged worktrees, temp/scratch growth, uncommitted work >45 min, lanes far behind integration) and scores each captain A-D on the dashboard. Repeat offenders get escalated.
 
-## PR-QUEUE OWNERSHIP RULE (Jepson 11:34 AM MDT Oct 18, fleet-wide, filed by GB ENG:watcher)
-Jepson: "The individual captains need to manage their own PRs ... this should not happen and I should never be a bottleneck,
-if I'm detected to be one then have super_captain take over."
-1. Each captain owns its repo's PR queue end-to-end: open, rebase, resolve conflicts, get neverhumanbot exact-head approval
-   (/home/ubuntu/.local/bin/gh-role reviewer pr review <n> --approve), merge with gh pr merge <n> --rebase --match-head-commit <sha>,
-   or close superseded/0-value PRs with a one-line comment. Local tests are enough (label "local-CI only"); full final
-   validation before release (JEPSON_RULING_20261018T1658Z_speed_over_ci.md).
-2. No PR stays open more than 45 min without an action logged in COMMS. No PR may wait on Jepson: never request his review,
-   never park a PR for "Jepson to merge". Nothing merges without neverhumanbot's approval on the exact head
-   (a PR opened and merged within seconds with no review breaks this rule).
-3. sc_audit flags STALE_OPEN_PR (45 min) and JEPSON_BOTTLENECK (review requested from jepsontaylor, his changes-requested,
-   "waiting on Jepson" text, protection/CODEOWNERS requiring him). On either, super_captain takes over the PR under
-   JEPSON_DELEGATION_20261018T1158Z_fleet_admiral.md. Only reserved items (xbabe0/Jeryu, outside messages, new paid
-   spend/legal, force-push main, deleting prod data, writing /home/ubuntu/admiralty) may wait for Jepson.
-4. If branch protection itself requires Jepson, super_captain may change it so neverhumanbot approval is enough: back up
-   the protection JSON first and never allow force-push to main.
+## Current PR-queue ownership rule — 2026-10-21
+
+Each captain owns its repository's PR queue end-to-end. The current direct human
+engineering-review instruction supersedes the 18 October bot-approval rule:
+
+1. Review the exact source and findings, pass the required local gates and actual
+   current-head automated checks. A second engineering reviewer or separate
+   neverhumanbot approval is not mandatory. Never fabricate approval or switch
+   Git identities to manufacture one.
+2. Merge only with ordinary `gh pr merge <n> --rebase --match-head-commit <sha>`.
+   Preserve other protections and conversation resolution; no admin bypass,
+   force-push, squash or merge commits. Verify receiving-main checks afterwards.
+3. Log a concrete action or blocker in COMMS before an open PR becomes stale
+   (45 minutes). Do not park already-authorized work for an unnecessary owner
+   or bot approval. Preserve another active integrator's source ownership.
+4. Apply each repository's current actual protections and explicit human scope.
+   This document does not authorize changing another repository's settings or
+   waive independent scientific review, sealed custody or scientific holds.

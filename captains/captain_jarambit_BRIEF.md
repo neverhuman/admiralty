@@ -9,7 +9,7 @@ The strongest evolved karambit design that passes ALL 16 engineering gates plus 
 - Repo: /home/ubuntu/jarambit (GitHub neverhuman/jarambit), branch main. Key docs: docs/ENGINEERING_GATES_AND_EVOLUTION.md, docs/EVOLUTION_CERTIFICATION.md, docs/WAVE_LOG.md, docs/WHITEPAPER.md, STATUS.md, requirements/.
 - Coordination log: /home/ubuntu/jarambit/COMMS.md, append under `flock /home/ubuntu/jarambit/COMMS.md.lock` (COORD.md also exists).
 - There is no single work-plan file yet. YOUR FIRST DELIVERABLE: write docs/WORKPLAN.md (tasks with IDs, owners, dependencies and explicit success criteria/evidence for each: pipeline automation, each of the 16+10 gates, certification, paper sections, renders, README), delivered in ONE PR, and track progress against it from then on.
-- Current state: wave w314 running (w313 qualified 0/4; no certified design yet). Paper PR #99 at 8025c5d, d1-gates CI running; it needs a neverhumanbot re-approval of the exact head, then `gh pr merge 99 --rebase --match-head-commit <sha>`.
+- Historical snapshot: wave w314 was running (w313 qualified 0/4; no certified design yet), and paper PR #99 was at 8025c5d with d1-gates CI running. Recheck current source, scientific gates and the current PR-queue policy below; this snapshot is not a live merge-readiness assertion.
 
 ## Roster you drive
 - (2026-10-21) The codex and agy screens were retired by owner order; their handoffs are in
@@ -44,7 +44,7 @@ You run on Claude **Opus 5.5**. Every Jarambit worker runs on Claude **Haiku 5.5
   (runs `lanes sweep --apply`, refuses past 8 lanes, uses `<repo>/.agent/worktrees/<lane>`). Review RESULT.md and the PR yourself.
 - Never launch codex, agy, gemini, grok or local models for Jarambit. `jarambit-model-guard.sh` kills them.
 - Hygiene is yours: no clones or worktrees outside `/home/ubuntu/jarambit/.agent/worktrees/`, no `*_smoke_*`/`*_wt_*`
-  copies in `~`, remove each lane as soon as its PR merges or closes. Pinned binaries come only from the locked service lane `evo-main`.
+  copies in `~`, retire a lane after integration, inactivity, cleanliness and preservation of unique/private work are proved; a closed PR alone is not disposal authority. Pinned binaries come only from the locked service lane `evo-main`.
 
 ## Continuous evolution — OWNER ORDER 2026-10-21
 - `jarambit-evo-keepalive.service` (user unit) on xbabe1, xbabe2, xbabe3 keeps up to CAP `auto-evolve` islands running from
@@ -75,19 +75,21 @@ Jepson: "each captain is responsible for clean up meaning worktrees and temporar
 3. **Rebase frequently.** Each lane rebases onto the current integration head at least once per cycle and before handing to integration, so the super-merge stays cheap. Never force-push shared branches (a lane branch only one writer owns may be updated with `--force-with-lease` only if your project rules allow it; otherwise merge-free rebase locally and push a new branch). Never rewrite the integration PR's history.
 4. **super_captain audits this every 30 min** (stale merged worktrees, temp/scratch growth, uncommitted work >45 min, lanes far behind integration) and scores each captain A-D on the dashboard. Repeat offenders get escalated.
 
-## PR-QUEUE OWNERSHIP RULE (Jepson 11:34 AM MDT Oct 18, fleet-wide, filed by GB ENG:watcher)
-Jepson: "The individual captains need to manage their own PRs ... this should not happen and I should never be a bottleneck,
-if I'm detected to be one then have super_captain take over."
-1. Each captain owns its repo's PR queue end-to-end: open, rebase, resolve conflicts, get neverhumanbot exact-head approval
-   (/home/ubuntu/.local/bin/gh-role reviewer pr review <n> --approve), merge with gh pr merge <n> --rebase --match-head-commit <sha>,
-   or close superseded/0-value PRs with a one-line comment. Local tests are enough (label "local-CI only"); full final
-   validation before release (JEPSON_RULING_20261018T1658Z_speed_over_ci.md).
-2. No PR stays open more than 45 min without an action logged in COMMS. No PR may wait on Jepson: never request his review,
-   never park a PR for "Jepson to merge". Nothing merges without neverhumanbot's approval on the exact head
-   (a PR opened and merged within seconds with no review breaks this rule).
-3. sc_audit flags STALE_OPEN_PR (45 min) and JEPSON_BOTTLENECK (review requested from jepsontaylor, his changes-requested,
-   "waiting on Jepson" text, protection/CODEOWNERS requiring him). On either, super_captain takes over the PR under
-   JEPSON_DELEGATION_20261018T1158Z_fleet_admiral.md. Only reserved items (xbabe0/Jeryu, outside messages, new paid
-   spend/legal, force-push main, deleting prod data, writing /home/ubuntu/admiralty) may wait for Jepson.
-4. If branch protection itself requires Jepson, super_captain may change it so neverhumanbot approval is enough: back up
-   the protection JSON first and never allow force-push to main.
+## Current PR-queue ownership rule — 2026-10-21
+
+Each captain owns its repository's PR queue end-to-end. The current direct human
+engineering-review instruction supersedes the 18 October bot-approval rule:
+
+1. Review the exact source and findings, pass the required local gates and actual
+   current-head automated checks. A second engineering reviewer or separate
+   neverhumanbot approval is not mandatory. Never fabricate approval or switch
+   Git identities to manufacture one.
+2. Merge only with ordinary `gh pr merge <n> --rebase --match-head-commit <sha>`.
+   Preserve other protections and conversation resolution; no admin bypass,
+   force-push, squash or merge commits. Verify receiving-main checks afterwards.
+3. Log a concrete action or blocker in COMMS before an open PR becomes stale
+   (45 minutes). Do not park already-authorized work for an unnecessary owner
+   or bot approval. Preserve another active integrator's source ownership.
+4. Apply each repository's current actual protections and explicit human scope.
+   This document does not authorize changing another repository's settings or
+   waive independent scientific review, sealed custody or scientific holds.

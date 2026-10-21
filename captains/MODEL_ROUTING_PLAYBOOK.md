@@ -16,7 +16,7 @@ Other projects keep their current routing below.
 
 **This replaces the Oct 1 default of "every Codex screen on gpt-6.1-sol xhigh".** From now on, start each task on the cheapest model that can pass its success criteria, and move up only on objective failure. Throughput rules from Addendum 1 and 2 stay in force: Jepson wants MANY lanes, all code work in flight, and the current Codex quota used up. The point is to buy more lanes with the same quota: **prefer more Luna lanes over fewer Sol lanes.**
 
-Safety and merge rules are unchanged: neverhumanbot approves the EXACT head, then `gh pr merge <n> --rebase --match-head-commit <sha>`. No squash, no `--admin`, no `--merge`, no force-push. Joil PR #6 is merged only by Jepson. Done still needs real evidence.
+Current engineering merge policy (owner, 21 October 2026): review the exact source and findings, require the local gates and actual current-head checks, then `gh pr merge <n> --rebase --match-head-commit <sha>`. Mandatory second-reviewer/neverhumanbot approval is removed; never manufacture approval or switch identities to simulate it. No squash, `--admin`, `--merge`, force-push or bypass of other protections. Joil PR #6 remains Jepson-only. Repository-specific reserved actions, scientific gates and source custody remain binding. Done still needs real evidence.
 
 ---
 
