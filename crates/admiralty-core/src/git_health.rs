@@ -95,12 +95,12 @@ pub struct GitHealthReport {
     pub checkouts: Vec<GitHealthCheckout>,
 }
 
-struct Ancestry<'a> {
-    seen: BTreeSet<&'a str>,
-    complete: bool,
+pub(crate) struct Ancestry<'a> {
+    pub(crate) seen: BTreeSet<&'a str>,
+    pub(crate) complete: bool,
 }
 
-fn ancestry<'a>(tip: &'a str, graph: &BTreeMap<&'a str, &'a GitCommit>) -> Ancestry<'a> {
+pub(crate) fn ancestry<'a>(tip: &'a str, graph: &BTreeMap<&'a str, &'a GitCommit>) -> Ancestry<'a> {
     let mut seen = BTreeSet::new();
     let mut pending = vec![tip];
     let mut complete = true;
