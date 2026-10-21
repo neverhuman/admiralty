@@ -1,0 +1,26 @@
+# Admiralty read-only fleet observer (systemd user unit). Never launches agents,
+# never mutates repositories. Logs one compact logfmt event per changed cycle;
+# identical cycles collapse into one `repeat=N` line per rollup window.
+# See docs/operators/deployment-systemd.md. `$$` passes a literal `$` to the
+# shell, which reads the EnvironmentFile variables at start.
+[Unit]
+Description=Admiralty fleet observer (admiralty-observe)
+Documentation=https://github.com/neverhuman/admiralty/blob/main/docs/operators/native-observer.md
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/admiralty/admiralty.env
+ExecStart=/bin/sh -ec 'exec "$$ADMIRALTY_ROOT/current/bin/admiralty-observe" \
+  --config "$$ADMIRALTY_OBSERVE_CONFIG" \
+  --log-format "$$ADMIRALTY_LOG_FORMAT" \
+  --log-rollup-seconds "$$ADMIRALTY_LOG_ROLLUP_SECONDS"'
+UMask=0077
+NoNewPrivileges=yes
+Restart=on-failure
+RestartSec=10
+# The observer finishes and atomically publishes its current cycle on SIGTERM.
+KillSignal=SIGTERM
+TimeoutStopSec=60
+
+[Install]
+WantedBy=default.target
