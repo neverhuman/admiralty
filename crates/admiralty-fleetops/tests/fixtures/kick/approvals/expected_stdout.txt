@@ -1,0 +1,99 @@
+kick starting (dry_run=0) sessions: claude_appr misc_always codex_yn input_ambig grok_input pr_cool busy plain grok_idle x_claude_in claude_grant_ok jopedime_codex_training
+
+======== claude_appr ========
+  snap: {BASE}/state/snaps/claude_appr.txt
+  kind=claude  state=needs_approval  conf=0.668  hint=2
+  pr_refs: none
+  summary: [claude/needs_approval] PRs: none. Recent: Do you want to proceed? | ❯ 1. Yes | 2. Yes, and don't ask again for rm commands | 3. No, and tell Claude what to do differently (esc)
+  action: claude_approve:2
+  recorded action: approve:2
+
+======== misc_always ========
+  snap: {BASE}/state/snaps/misc_always.txt
+  kind=unknown  state=needs_approval  conf=0.608  hint=always
+  pr_refs: none
+  summary: [unknown/needs_approval] PRs: none. Recent: scrollback line 37 doing ordinary work output | scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | The tool asks: always allow this domain?
+  action: unknown_approve:y
+  recorded action: approve:always
+
+======== codex_yn ========
+  snap: {BASE}/state/snaps/codex_yn.txt
+  kind=codex  state=needs_approval  conf=0.668  hint=y
+  pr_refs: none
+  summary: [codex/needs_approval] PRs: none. Recent: scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | Allow command? (y/n) | $ git push origin main
+  action: codex_approve:y+always
+  recorded action: approve:y
+
+======== input_ambig ========
+  snap: {BASE}/state/snaps/input_ambig.txt
+  kind=unknown  state=needs_input  conf=0.56  hint=none
+  pr_refs: none
+  summary: [unknown/needs_input] PRs: none. Recent: scrollback line 37 doing ordinary work output | scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | Done with step 3. Waiting for your input on the schema choice.
+  needs_input but no clear yes/approve cue — not auto-clicking
+  recorded action: needs_input_ambiguous
+
+======== grok_input ========
+  snap: {BASE}/state/snaps/grok_input.txt
+  kind=grok  state=needs_input  conf=0.86  hint=none
+  pr_refs: none
+  summary: [grok/needs_input] PRs: none. Recent: scrollback line 37 doing ordinary work output | scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | Should I proceed with the refactor? Waiting for your input.
+  action: grok_approve:a+y
+  recorded action: input_yes
+
+======== pr_cool ========
+  snap: {BASE}/state/snaps/pr_cool.txt
+  kind=unknown  state=pr_blocked  conf=0.512  hint=none
+  pr_refs: https://github.com/neverhuman/jankurai/pull/42
+  summary: [unknown/pr_blocked] PRs: https://github.com/neverhuman/jankurai/pull/42. Recent: scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | Opened https://github.com/neverhuman/jankurai/pull/42. | CI is queued; hosted run 1234 is queued behind others.
+  skip pr_nudge (cooldown 840s remaining)
+  recorded action: pr_nudge_cooldown
+
+======== busy ========
+  snap: {BASE}/state/snaps/busy.txt
+  kind=codex  state=working  conf=0.79  hint=none
+  pr_refs: none
+  summary: [codex/working] PRs: none. Recent: scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | • Running cargo test -p core | • Working (12s • esc to interrupt)
+  no auto-action for state=working
+  recorded action: none
+
+======== plain ========
+  snap: {BASE}/state/snaps/plain.txt
+  kind=unknown  state=unknown  conf=0.29  hint=none
+  pr_refs: none
+  summary: [unknown/unknown] PRs: none. Recent: scrollback line 37 doing ordinary work output | scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | hello world
+  no auto-action for state=unknown
+  recorded action: none
+
+======== grok_idle ========
+  snap: {BASE}/state/snaps/grok_idle.txt
+  kind=grok  state=idle  conf=0.74  hint=none
+  pr_refs: none
+  summary: [grok/idle] PRs: none. Recent: scrollback line 36 doing ordinary work output | scrollback line 37 doing ordinary work output | scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output
+  idle — no action
+  recorded action: none
+
+======== x_claude_in ========
+  snap: {BASE}/state/snaps/x_claude_in.txt
+  kind=claude  state=needs_input  conf=0.84  hint=none
+  pr_refs: none
+  summary: [claude/needs_input] PRs: none. Recent: scrollback line 37 doing ordinary work output | scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | waiting for your input to allow edits to src/
+  action: claude_approve:2+always
+  recorded action: input_yes
+
+======== claude_grant_ok ========
+  snap: {BASE}/state/snaps/claude_grant_ok.txt
+  kind=claude  state=idle  conf=0.78  hint=none
+  pr_refs: none
+  summary: [claude/idle] PRs: none. Recent: scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | Still no grant from Codex for xbabe3 ledger slot. | waiting on a CPU grant
+  action: claude_grant_nudge (226 chars)
+  recorded action: claude_grant_nudge
+
+======== jopedime_codex_training ========
+  snap: {BASE}/state/snaps/jopedime_codex_training.txt
+  kind=codex  state=needs_input  conf=0.72  hint=none
+  pr_refs: none
+  summary: [codex/needs_input] PRs: none. Recent: scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | Shall I approve the migration and continue? | ? 1 question queued — alt+↑ to answer
+  action: input_yes (128 chars)
+  recorded action: input_yes
+
+kick done.

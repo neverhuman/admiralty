@@ -1,0 +1,11 @@
+{
+  "session": "jopeDime_cleanup_claude",
+  "kind": "claude",
+  "state": "unknown",
+  "confidence": 0.35,
+  "signals": [],
+  "approval_hint": null,
+  "pr_refs": [],
+  "summary": "[claude/unknown] PRs: none. Recent: scrollback line 39 doing ordinary work output | ● How is Claude doing this session? (optional) | 1: Bad    2: Fine   3: Good   0: Dismiss | ? for shortcuts",
+  "tail": "scrollback line 24 doing ordinary work output\nscrollback line 25 doing ordinary work output\nscrollback line 26 doing ordinary work output\nscrollback line 27 doing ordinary work output\nscrollback line 28 doing ordinary work output\nscrollback line 29 doing ordinary work output\nscrollback line 30 doing ordinary work output\nscrollback line 31 doing ordinary work output\nscrollback line 32 doing ordinary work output\nscrollback line 33 doing ordinary work output\nscrollback line 34 doing ordinary work output\nscrollback line 35 doing ordinary work output\nscrollback line 36 doing ordinary work output\nscrollback line 37 doing ordinary work output\nscrollback line 38 doing ordinary work output\nscrollback line 39 doing ordinary work output\n● How is Claude doing this session? (optional)\n  1: Bad    2: Fine   3: Good   0: Dismiss\n>\n  ? for shortcuts"
+}

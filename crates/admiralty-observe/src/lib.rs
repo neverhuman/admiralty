@@ -1,11 +1,14 @@
 //! Native read-only fleet ingestion. No agent turns, Python, provider launches,
 //! source checkout mutations or acceptance authority are part of observation.
+pub mod cli;
 pub mod config;
 pub mod fleet;
 pub mod git;
 pub mod git_health;
 pub mod history;
 pub mod io;
+#[cfg(test)]
+mod legacy_cases;
 pub mod projects;
 pub mod rollout;
 pub mod usage;
@@ -188,6 +191,86 @@ mod hierarchy_tests {
         assert_eq!(release["counts"]["verified"], 32);
         assert!(release["done"].is_null());
         assert!(release["workers"][0]["model"].is_null());
+    }
+}
+
+#[cfg(test)]
+mod legacy_parity_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn config(projects: serde_json::Value) -> config::ObserveConfig {
+        serde_json::from_value(
+            json!({"schema_version":1,"node_id":"local","output_dir":"/owned","projects":projects}),
+        )
+        .expect("observer configuration fixture")
+    }
+
+    /// Parity with tests/legacy/test_rollout_live_workers.py::test_extras_merge_keeps_producer_records_and_actual_worker_state
+    /// (adapted): a rollout manifest sharing a producer project's id never
+    /// replaces the producer's manager, workers or counts. The worker_state
+    /// half does not apply: the Rust observer publishes `state: "unknown"`
+    /// instead of inferring active/idle/finished from screen changes.
+    #[test]
+    fn extras_merge_keeps_producer_records_and_actual_worker_state() {
+        let config = config(
+            json!([{"id":"custom-build","name":"Custom build","repository":"/repo","tracker":{}}]),
+        );
+        let mut snapshot = json!({"projects":{"custom-build":{"captain":{"id":"10.captain_custom","name":"captain_custom","agent_running":true},
+                "counts":{"done":32},"total":40,"done":32,"workers":[{"id":"11.worker","name":"worker"}]}},
+            "rollout":{"project":{"id":"custom-build"},"counts":{"claimed":1},"total":1,
+                "live_observation":{"captain":{"id":"201.custom_captain","agent_running":true}},
+                "lanes":[{"id":"worker-one","screen":"custom_worker"}]}});
+        let producer = snapshot["projects"].clone();
+        attach_hierarchy(&config, &mut snapshot);
+        let captain = &snapshot["hierarchy"]["captains"][0];
+        assert_eq!(captain["screen"], "10.captain_custom");
+        assert_eq!(captain["state"], "active");
+        assert_eq!(captain["counts"]["done"], 32);
+        assert_eq!(
+            captain["workers"],
+            json!([{"id":"11.worker","name":"worker"}])
+        );
+        assert_eq!(snapshot["projects"], producer);
+    }
+
+    /// Parity with tests/legacy/test_rollout_live_workers.py::test_cycle_loads_manifest_and_joins_before_extras_without_adding_projects
+    /// (adapted): joining the manifest adds a hierarchy entry for its configured
+    /// project but never adds or rewrites producer projects or their counts.
+    #[test]
+    fn cycle_loads_manifest_and_joins_before_extras_without_adding_projects() {
+        let mut projects = ["alpha", "beta", "gamma", "delta"]
+            .iter()
+            .map(|id| json!({"id":id,"name":id,"repository":"/repo","tracker":{}}))
+            .collect::<Vec<_>>();
+        projects.push(json!({"id":"custom-build","name":"Custom build","repository":"/repo","tracker":{"kind":"rollout"}}));
+        let config = config(json!(projects));
+        let producers = ["alpha", "beta", "gamma", "delta"]
+            .iter()
+            .enumerate()
+            .map(|(index, id)| {
+                (
+                    (*id).to_owned(),
+                    json!({"captain":{"id":format!("{}.captain_{id}", index + 10)},"counts":{"done":32}}),
+                )
+            })
+            .collect::<serde_json::Map<_, _>>();
+        let rollout_counts = json!({"claimed":1,"verified":0});
+        let mut snapshot = json!({"projects":producers,"rollout":{"project":{"id":"custom-build"},
+            "counts":rollout_counts,"total":1,"live_observation":{"captain":null},"lanes":[]}});
+        let before = snapshot["projects"].clone();
+        attach_hierarchy(&config, &mut snapshot);
+        assert_eq!(snapshot["projects"], before);
+        let captains = snapshot["hierarchy"]["captains"]
+            .as_array()
+            .expect("hierarchy captains");
+        assert_eq!(captains.len(), 5);
+        for captain in &captains[..4] {
+            assert_eq!(captain["counts"]["done"], 32);
+        }
+        assert_eq!(captains[4]["key"], "custom-build");
+        assert_eq!(captains[4]["counts"], rollout_counts);
+        assert_eq!(captains[4]["state"], "unknown");
     }
 }
 

@@ -1,8 +1,11 @@
 # Prepare Admiralty implementation missions
 
-`tools/rollout_packets.py` converts the installed P00–P31 plan into one bounded
-worker capsule per packet and a dashboard manifest. It uses Python's standard
-library. It prepares local artifacts; it does not open SSH connections, launch
+`admiralty rollout packets` converts the installed P00–P31 plan into one bounded
+worker capsule per packet and a dashboard manifest. It is the Rust port (crate
+`admiralty-tools`, module `rollout_packets`) of the retired
+`tools/rollout_packets.py`; subcommands, flags, manifest/capsule bytes and exit
+codes are unchanged (`python3 tools/rollout_packets.py ARGS` →
+`admiralty rollout packets ARGS`). It prepares local artifacts; it does not open SSH connections, launch
 providers, paste into Screen sessions, create worktrees, publish code or merge.
 
 Run from the Admiralty checkout. Choose a dedicated directory outside that
@@ -10,9 +13,9 @@ checkout, owned by the current user. The examples use `/tmp/admiralty-rollout`;
 operators should use durable private runtime storage for actual handoffs.
 
 ```sh
-rtk proxy python3 tools/rollout_packets.py export \
+rtk proxy admiralty rollout packets export \
   --out /tmp/admiralty-rollout --base-ref HEAD
-rtk proxy python3 tools/rollout_packets.py check --out /tmp/admiralty-rollout
+rtk proxy admiralty rollout packets check --out /tmp/admiralty-rollout
 ```
 
 Export resolves `HEAD` to its full actual commit ID. It reads only the local plan
@@ -34,7 +37,8 @@ The output directory is private runtime state, not a network-shared database.
 
 The default project ID is `admiralty-v2`; `--project-id` and `--repository-url`
 set deployment metadata. No node names or fleet size are built into the tool.
-`--repo /absolute/checkout` before the subcommand selects another checkout.
+`--repo /absolute/checkout` before the subcommand selects another checkout; it
+defaults to the current directory (the Python tool defaulted to its own checkout).
 
 ## Dashboard connection
 
@@ -68,7 +72,7 @@ those packets into separately reviewed contracts before starting partial work.
 Assign a ready packet locally before handing its capsule to an existing captain:
 
 ```sh
-rtk proxy python3 tools/rollout_packets.py claim \
+rtk proxy admiralty rollout packets claim \
   --out /tmp/admiralty-rollout --packet P00 \
   --owner evidence-worker --lane evidence-1 --node enrolled-node \
   --branch codex/admiralty-p00
@@ -124,7 +128,7 @@ commands as well as repairs. An empty artifact list explicitly means no external
 artifact evidence was supplied; it never proves acceptance.
 
 ```sh
-rtk proxy python3 tools/rollout_packets.py reconcile \
+rtk proxy admiralty rollout packets reconcile \
   --out /tmp/admiralty-rollout --receipt /path/to/candidate-receipt.json
 ```
 
@@ -148,8 +152,8 @@ and explicit reconciliation of outstanding claims; they never silently reset wor
 ## Validation and failure handling
 
 ```sh
-rtk proxy python3 -m unittest discover -s tests/legacy -p test_rollout_packets.py -v
-rtk proxy python3 -m py_compile tools/rollout_packets.py
+rtk cargo test -p admiralty-tools rollout_packets
+rtk cargo clippy -p admiralty-tools --all-targets -- -D warnings
 ```
 
 Exit 0 prints a compact JSON summary. Exit 2 reports invalid plans, DAG cycles,

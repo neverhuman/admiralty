@@ -1,0 +1,33 @@
+import random, sys, unittest
+sys.path.insert(0, sys.argv.pop(1))
+from gaps import uncovered_ranges
+class Oracle(unittest.TestCase):
+    def test_empty(self): self.assertEqual(uncovered_ranges(0, 10, []), [(0, 10)])
+    def test_empty_window(self): self.assertEqual(uncovered_ranges(3, 3, [(1, 9)]), [])
+    def test_clips_sorts_merges(self): self.assertEqual(uncovered_ranges(0, 20, [(8, 12), (-4, 2), (2, 5), (10, 15), (18, 30)]), [(5, 8), (15, 18)])
+    def test_zero_width_and_duplicates(self): self.assertEqual(uncovered_ranges(-5, 5, [(-5, 0), (0, 0), (-5, 0), (2, 5)]), [(0, 2)])
+    def test_no_mutation(self):
+        source = [[5, 8], [1, 3]]; before = [x[:] for x in source]
+        self.assertEqual(uncovered_ranges(0, 10, source), [(0, 1), (3, 5), (8, 10)])
+        self.assertEqual(source, before)
+    def test_invalid_window(self):
+        for start, end in [(5, 2), (True, 8), (1, False), (0.5, 3)]:
+            with self.subTest(start=start, end=end), self.assertRaises((TypeError, ValueError)): uncovered_ranges(start, end, [])
+    def test_invalid_coverage(self):
+        for source in [[(4, 2)], [(True, 4)], [(1, 2, 3)], [(0, 2.5)], [1]]:
+            with self.subTest(source=source), self.assertRaises((TypeError, ValueError)): uncovered_ranges(0, 10, source)
+    def test_seeded_reference(self):
+        rng = random.Random(882)
+        for _ in range(80):
+            start = rng.randint(-20, 5); end = rng.randint(start, 25)
+            covered = []
+            for _ in range(rng.randrange(10)):
+                a = rng.randint(-25, 25); covered.append((a, rng.randint(a, 30)))
+            expected = []; begin = None
+            for point in range(start, end):
+                free = not any(a <= point < b for a, b in covered)
+                if free and begin is None: begin = point
+                if not free and begin is not None: expected.append((begin, point)); begin = None
+            if begin is not None: expected.append((begin, end))
+            self.assertEqual(uncovered_ranges(start, end, covered), expected)
+if __name__ == '__main__': unittest.main()

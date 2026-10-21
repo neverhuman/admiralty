@@ -1,0 +1,10 @@
+kick starting (dry_run=0) sessions: grok_red
+
+======== grok_red ========
+  snap: {BASE}/state/snaps/grok_red.txt
+  kind=grok  state=needs_approval  conf=0.928  hint=a
+  pr_refs: none
+  summary: [grok/needs_approval] PRs: none. Recent: 1. edit file | 2. run tests | Waiting on plan approval | a:approve  r:reject  e:edit
+  action: manual_inject (33 chars)
+
+kick done.

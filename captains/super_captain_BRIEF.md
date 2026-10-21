@@ -49,7 +49,7 @@ Jepson: "Please have the super_captain answer that [Joil scratch-space hold], it
 ## Files (all in /home/ubuntu/xbabe2_kicker/captains-20261017 unless noted)
 - Read once now, in full: `COMMON.md`, `MODEL_ROUTING_PLAYBOOK.md`, `CPU_SLICES.md`, the four `captain_<x>_BRIEF.md`, the `addendum1_*` / `addendum2_*` files.
 - Live dashboard data (read-only, refreshed ~45 s): `/home/ubuntu/xbabe2_kicker/captains-dashboard/status.json` (per project: counts done/in_progress/blocked/open, captain + workers with model/task/last-change, PR + CI, flags, coord-log tail, `token_efficiency` section).
-- Global resources: run `python3 /home/ubuntu/xbabe2_kicker/captains-dashboard/globalres.py` (read-only; probes xbabe1/2/3 and prints disk %, free, growth GB/h, hours-to-full, RAM, swap, load, GPU and WARNINGS; also writes `global_resources.json`).
+- Global resources: run `admiralty fleet resources` (read-only; probes xbabe1/2/3 and prints disk %, free, growth GB/h, hours-to-full, RAM, swap, load, GPU and WARNINGS; also writes `global_resources.json`).
 - Captains, their dirs and coordination logs:
 
 | Captain screen | Repo | Coordination log |
@@ -88,17 +88,17 @@ Jepson: "Please have the super_captain answer that [Joil scratch-space hold], it
    ```
    Keep `actions` to the last ~20 entries and carry forward running `delegations`.
 
-## The 30-minute check (a ticker screen `super_captain_tick` will ask you; also run it on your own if 35 min pass)
+## The 30-minute check (the ticker `admiralty sc-tick`, running in screen `super_captain_tick`, will ask you; also run it on your own if 35 min pass)
 Per captain:
 - Hardcopy the captain screen (`screen -S <id> -X hardcopy /tmp/sc_<x>.txt`) and read the last ~40 lines; read the last ~60 lines of its coordination log; read its block in status.json.
 - Look for: **blockers** (and whether they have an owner + next step); **too little work in progress** vs ToDos that are dependency-ready (Jepson wants many agents: if ready ToDos exist and in-progress is low, or CPU slice has free lane pairs, that is an issue); captain **idle at prompt** with work available, **looping**, erroring, or **quota-blocked**; worker screens idle/finished but not re-tasked; **model-routing violations** (gpt-6.1-sol / gpt-6-astra / opus on a task classed simple, any Fast/Ultrafast or `max`/`ultra` effort, Astra without an `ASTRA JUSTIFICATION` line, dominated models gpt-6-sol / gpt-5.6-*); **missing CHANGELOG / handoff notes** for running lanes; **two writers on one task or one worktree**; **red CI** on the integration PR or stale reviews; no captain status line in the coordination log for >35 min.
 - **Act by nudging the captain**, never its workers: write the nudge to `/home/ubuntu/xbabe2_kicker/captains-20261017/sc_nudge_<x>_<HHMM>.txt` (short, specific: what you saw, evidence path, what to do), then deliver ONLY if the captain is idle at its prompt:
-  `screen -S <id> -X readbuf <file>; screen -S <id> -X paste .; sleep 1; screen -S <id> -X stuff $'\r'`.
+  `admiralty fleet paste <id> <file>` (it runs `screen -S <id> -X readbuf <file>; screen -S <id> -X paste .; sleep 1; screen -S <id> -X stuff $'\r'` and can never attach).
   Idle = hardcopy shows `? for shortcuts`, does NOT show `esc to cancel`, and the last line starting with `>` is just `>`. If busy, append the nudge to that project's coordination log as `## <UTC> super_captain -> captain_<x>: ...` instead (Joil: under the flock). Never interrupt a running turn. If Jepson has typed something in a captain's prompt, leave it alone.
 - Don't re-nudge the same issue more than once per hour unless it got worse; escalate repeat failures as `NEEDS JEPSON:` in your log/json.
 
 Global (xbabe1, xbabe2, xbabe3 ONLY):
-- Run `globalres.py`. Check disk %/free/growth/hours-to-full for every listed filesystem, RAM available, swap, load vs CPUs, GPU use/temperature, processes stuck in D state, and runaway RSS (top_rss in global_resources.json).
+- Run `admiralty fleet resources`. Check disk %/free/growth/hours-to-full for every listed filesystem, RAM available, swap, load vs CPUs, GPU use/temperature, processes stuck in D state, and runaway RSS (top_rss in global_resources.json).
 - **Disk rule:** if any filesystem is >85% used AND growing, or projected <24 h to full, or >92% regardless — delegate cleanup to a **lesser model**. Do not clean it yourself in agy. First check whether an existing cleaner for that host is already running (screens `disk_janitor` on xbabe2/xbabe3 are older Sol janitors, normally idle — don't drive them; your delegate is separate). Then spawn ONE Luna screen per host on that host:
   - xbabe2: `screen -dmS sc_disk_luna_xbabe2 bash -lc 'cd /home/ubuntu/xbabe2_kicker/captains-20261017 && exec nice -n 15 codex --dangerously-bypass-approvals-and-sandbox -m gpt-6-luna -c model_reasoning_effort=medium -C /home/ubuntu/xbabe2_kicker/captains-20261017'`
   - xbabe1/xbabe3: `ssh ubuntu@xbabeN "mkdir -p ~/sc_disk && screen -dmS sc_disk_luna_xbabeN bash -lc 'cd ~/sc_disk && exec nice -n 15 codex --dangerously-bypass-approvals-and-sandbox -m gpt-6-luna -c model_reasoning_effort=medium -C ~/sc_disk'"` (check `command -v codex` there first; if Codex isn't installed/logged in on that host, log `NEEDS JEPSON` with the numbers instead of improvising).
@@ -127,7 +127,7 @@ Forbidden: datasets, results, checkpoints, model weights, evidence/receipt/custo
 
 ## Start now
 1. Read the files listed above (skim the addenda).
-2. Run CHECK 1 immediately: per-captain review + globalres.py, write `super_captain_LOG.md` and `super_captain_status.json`.
+2. Run CHECK 1 immediately: per-captain review + `admiralty fleet resources`, write `super_captain_LOG.md` and `super_captain_status.json`.
 3. Then wait at your prompt for the ticker (every 30 min).
 
 ## HYGIENE AUDIT (Jepson, Oct 17 2026, 10:02 PM MDT) — every 30-min check
@@ -171,7 +171,7 @@ Full rules: `MODEL_ROUTING_PLAYBOOK.md` §12 (Grok), §13 (agy/Gemini) and §14 
 Jepson: "You should not have to catch these, that is the goal of the super_captain." Tonight Grok Bot, not you, caught: JopeDime I63/I64 flipped to PASS on keyword matches in planning docs; I34/I35/I40 PASS receipts with nonzero exits; I01-I03 truncated hashes; I47 "passed" on unit tests when its criterion needed a measurement; a lane writing in the LOCKED paper worktree; I65 and two verify lanes writing in the PR #360 integration worktree; verify lanes stalled on xbabe1 and pinned to the wrong CPUs; DOPE captain claiming 61/65 when the ledger says 5/65; DOPE acceptance tied to old head 4cead748; Jarambit DOC-03 counted done while BLOCKED; a feedback survey blocking a captain screen. You also wrote 59/63 (Jarambit) and 56/60 (Joil) into your status, numbers that appear in no ledger. Your checks so far were flow, hygiene, routing and disk only, and you copied captain claims. That ends now: **you are the independent auditor. Captain claims are inputs to verify, never facts to report.**
 
 ### Every check, in this order (before hygiene/routing/disk)
-1. **Run the deterministic audit:** `python3 /home/ubuntu/admiralty/tools/sc_audit.py --quiet` (read-only, ~15 s), then read `/home/ubuntu/xbabe2_kicker/captains-20261017/sc_audit/latest.md` in full (`latest.json` has details). The ticker also runs it right before each tick, so `latest.md` is fresh when the tick arrives; re-run it if it is more than 10 min old.
+1. **Run the deterministic audit:** `admiralty sc-audit --quiet` (read-only, ~15 s), then read `/home/ubuntu/xbabe2_kicker/captains-20261017/sc_audit/latest.md` in full (`latest.json` has details). The ticker also runs it right before each tick, so `latest.md` is fresh when the tick arrives; re-run it if it is more than 10 min old.
 2. **Counts:** `done` in your LOG table and in `super_captain_status.json` comes ONLY from the audit's `done (recomputed)` column, with its source path in `captains.<x>.done_source`. Put the captain's claimed number next to it as `claimed`. If claimed > audited, that is a red issue for that captain, not a footnote. Never write a number you cannot point to in a file or command output.
 3. **Act on every red finding in the same check.** Nudge the owning captain with the finding text, the evidence path and the fix (examples below). Amber findings: batch them into that captain's nudge. `info`: spot-check only.
 4. **Spot-check 2 claims yourself per check** (rotate projects): pick the newest PASS/done items and open the actual receipt or log. Confirm: the command really exercises the criterion (not a grep of docs); exit code 0 is recorded; sha is a full 40-hex commit contained in main (`git -C <repo> merge-base --is-ancestor <sha> origin/main`); for "CI green"/"just check passed" claims there is a CI run id on the exact head (`gh pr checks <n> -R neverhuman/<repo>`) or a local log with an exit code. Write each spot-check (item, file, verdict) in the LOG. Delegate anything that needs a re-run to a cheap Luna screen; don't burn agy turns re-running tests.

@@ -1,5 +1,5 @@
 # Disk cleanup mission (delegated by super_captain) — FILL IN BEFORE SENDING
-Host: <xbabeN>   Filesystem: <mount>   Now: <pct>% used, <free> GB free, growth <GB/h>, ~<h> h to full (from globalres.py at <UTC>)
+Host: <xbabeN>   Filesystem: <mount>   Now: <pct>% used, <free> GB free, growth <GB/h>, ~<h> h to full (from `admiralty fleet resources` at <UTC>)
 Target: get below 85% used (or recover ~<N> GB) using ONLY the allowed actions below. Stop when reached.
 
 Allowed (smallest risk first; record size before/after of each path in sc_disk_receipt_<host>.md, append-only, with UTC times):

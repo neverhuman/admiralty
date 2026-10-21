@@ -9,17 +9,27 @@ dashboard, not a runtime server or a requirement for the installed offline demo.
 cargo build --locked -p admiralty-cli
 pnpm install --frozen-lockfile
 pnpm --filter @admiralty/dashboard build
-python3 scripts/release/qualify_native.py \
+admiralty release qualify-native \
   --binary target/debug/admiralty --assets apps/dashboard/dist \
   --output /owned/private/new-install-proof \
   --source-commit FULL_SOURCE_COMMIT --target x86_64-unknown-linux-gnu
 ```
+
+This is the Rust port (`admiralty_qualify::native_qualify`, also available as
+`admiralty-canary qualify-native`) of the retired
+`python3 scripts/release/qualify_native.py` with the same flags, steps and
+evidence files. `--repo-root` selects the checkout that supplies the schema,
+validators and documentation (default: the checkout the harness was built
+from, matching the script's own location). `qualification_script_sha256` now
+records the SHA-256 of the running harness executable instead of the script.
 
 The output must be a new directory beneath protected ancestors. Group-writable
 checkout parents can be used to build, but the private installer rejects them
 as installation ancestors. Choose a protected evidence directory instead of
 changing shared permissions. The script keeps all inputs, archive bytes, command
 captures and `qualification.json`; do not clear a previous run to reuse its path.
+Failures are reported on stderr with exit 1 and leave the partial evidence in
+place.
 
 The qualification stages the actual CLI executable, built dashboard, generated
 validator closure, v2 event schema, MIT license and operator/contributor/security
@@ -33,12 +43,12 @@ refused without replacement; temporary demo state must be removed on exit.
 This is a current-host private installation journey, not a clean OS image,
 global installation, service deployment or public release. A debug executable
 is a real payload but does not qualify an optimized release build. The source
-commit is a label retained alongside binary and archive hashes; the script does
+commit is a label retained alongside binary and archive hashes; the harness does
 not authenticate that source label, publisher identity or build provenance.
 
 | Surface | Qualification boundary |
 | --- | --- |
-| Linux x86_64 private archive/install | Run this script on the target host; retain its actual result and hashes. |
+| Linux x86_64 private archive/install | Run this qualification on the target host; retain its actual result and hashes. |
 | macOS/private installer | Existing component checks are separate; no result on one OS qualifies another. |
 | Offline doctor and demo | No account, external tools on PATH, Node server or live provider needed. |
 | Provider execution and fleet enrollment | Unqualified by installation/demo checks. |

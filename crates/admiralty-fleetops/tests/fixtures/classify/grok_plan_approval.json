@@ -1,0 +1,15 @@
+{
+  "session": "grok_red",
+  "kind": "grok",
+  "state": "needs_approval",
+  "confidence": 0.928,
+  "signals": [
+    "grok_banner",
+    "grok_plan_approval_ui",
+    "approval:waiting on plan approval"
+  ],
+  "approval_hint": "a",
+  "pr_refs": [],
+  "summary": "[grok/needs_approval] PRs: none. Recent: 1. edit file | 2. run tests | Waiting on plan approval | a:approve  r:reject  e:edit",
+  "tail": "scrollback line 25 doing ordinary work output\nscrollback line 26 doing ordinary work output\nscrollback line 27 doing ordinary work output\nscrollback line 28 doing ordinary work output\nscrollback line 29 doing ordinary work output\nscrollback line 30 doing ordinary work output\nscrollback line 31 doing ordinary work output\nscrollback line 32 doing ordinary work output\nscrollback line 33 doing ordinary work output\nscrollback line 34 doing ordinary work output\nscrollback line 35 doing ordinary work output\nscrollback line 36 doing ordinary work output\nscrollback line 37 doing ordinary work output\nscrollback line 38 doing ordinary work output\nscrollback line 39 doing ordinary work output\nPlan:\n 1. edit file\n 2. run tests\nWaiting on plan approval\n a:approve  r:reject  e:edit"
+}

@@ -1,63 +1,104 @@
-# Python-to-Rust Migration Plan (`JEPSON_RULING_20261018T1940Z`)
+# Python-to-Rust Migration (`JEPSON_RULING_20261018T1940Z`) — completed
 
-Per Jepson's 2026-10-18 stack ruling (`JEPSON_RULING_20261018T1940Z_stack_rust_jankurai.md`), Admiralty's target language stack is **Rust** (backend, CLI, tools, compute, smoke/release harnesses) and **Vite + TypeScript + React** (UI). All existing Python files are inventoried below with line counts, purpose, disposition, and assigned porting tasks. The owned production Python collector, server and observer have already been retired in favor of Rust; retained compatibility source is not authorization to restart them. Remaining ports preserve actual behavior and tests before source deletion.
+Per Jepson's 2026-10-18 stack ruling (`JEPSON_RULING_20261018T1940Z_stack_rust_jankurai.md`),
+Admiralty's stack is **Rust** (backend, CLI, tools, compute, smoke and release
+harnesses, repository automation) and **Vite + TypeScript + React** (UI and
+the few Node scripts that drive the browser or generate contracts).
 
-## 1. Complete Inventory of Existing Python Files (`42` files, `11,746` LOC)
+The migration finished on 21 October 2026. The repository contains no Python
+and no logic-bearing shell scripts. The only executable script left is the fake
+provider binary `tests/qualification/codex/P08Q_fake_codex.sh`, which
+qualification tests run in place of a real CLI.
 
-| Path | LOC | Purpose | Disposition | Tracker Task |
-| :--- | ---: | :--- | :--- | :--- |
-| `dashboard/collector.py` | 1,223 | Legacy `18890` status.json collector | Port to Rust (`admiralty-server` / `admiralty-observe`) & delete after cutover | `ADM-PY01` |
-| `dashboard/extras.py` | 582 | Legacy hierarchy, resources & token efficiency collector | Port to Rust (`admiralty-server` / `admiralty-core::economics`) & delete | `ADM-PY01` |
-| `dashboard/globalres.py` | 113 | Host CPU/RAM/GPU/disk snapshot helper | Port to Rust (`admiralty-runtime::reservations`) & delete | `ADM-PY01` |
-| `dashboard/make_snapshot.py` | 10 | Static HTML snapshot generator | Replace with Rust CLI / React build & delete | `ADM-PY01` |
-| `dashboard/rollout.py` | 425 | Legacy rollout manifest loader & live worker joiner | Replace with Rust `admiralty-server` projection & delete | `ADM-PY01` |
-| `dashboard/serve.py` | 22 | Legacy `18890` static HTTP server | Replace with `admiralty-server` (`admiraltyd`) & delete | `ADM-PY01` |
-| `dashboard/token_yield.py` | 214 | Legacy `tokens.db` yield aggregator | Replace with `admiralty-core::economics` & delete | `ADM-PY01` |
-| `scripts/check/canary-smoke.py` | 1,124 | Isolated HTTP/CLI canary smoke test runner | Port to Rust binary/test in `admiralty-testkit` & delete | `ADM-PY02` |
-| `scripts/check/excursions-smoke.py` | 143 | Isolated excursions CLI/HTTP smoke test runner | Port to Rust test in `admiralty-testkit` & delete | `ADM-PY02` |
-| `scripts/demos/encode.py` | 177 | Actual production PNG-capture WebP/GIF encoder | Port to Rust subcommand in `admiralty-cli` & delete | `ADM-PY02` |
-| `scripts/demos/verify.py` | 71 | Actual capture/encoded-media integrity verifier | Port to Rust subcommand in `admiralty-cli` & delete | `ADM-PY02` |
-| `scripts/release/package.py` | 609 | Deterministic release tarball & manifest builder | Port to Rust `admiralty-cli release package` & delete | `ADM-PY02` |
-| `scripts/release/qualify_native.py` | 188 | Native release qualification runner | Port to Rust `admiralty-cli release qualify` & delete | `ADM-PY02` |
-| `tools/sc_audit.py` | 1,828 | Fleet-wide Super-Captain watchdog & stall/PR/GPU auditor | Port to Rust `admiralty-cli sc-audit` binary with parity tests & delete | `ADM-PY03` |
-| `tools/rollout_observe.py` | 521 | Bounded screen/worktree metadata observer | Port to Rust `admiralty-observe` / `admiralty-runtime::workspace::registry` & delete | `ADM-PY04` |
-| `tools/rollout_packets.py` | 559 | Rollout packet manifest & capsule exporter | Port to Rust `admiralty-cli workplans` & delete | `ADM-PY04` |
-| `tools/bin/classify_screen.py` | 357 | Screen process tree classifier | Port to Rust `admiralty-runtime::providers::observation` & delete | `ADM-PY04` |
-| `tools/export_history.py` | 316 | Historical status JSONL exporter | Port to Rust `admiralty-store` export command & delete | `ADM-PY04` |
-| `tools/probe_opencode.py` | 175 | OpenCode SSH capability probe | Port to Rust `admiralty-runtime::providers::opencode_ssh` & delete | `ADM-PY04` |
-| `tests/fixtures/legacy/verify.py` | 135 | Legacy fixture verifier | Port to Rust integration test in `admiralty-testkit` & delete | `ADM-PY05` |
-| `tests/legacy/test_rollout.py` | 363 | Unit tests for `dashboard/rollout.py` | Retire with `dashboard/rollout.py` after Rust parity (`ADM-PY01`) | `ADM-PY05` |
-| `tests/legacy/test_rollout_live_workers.py` | 213 | Unit tests for `dashboard/rollout.py` live workers | Retire with `dashboard/rollout.py` after Rust parity (`ADM-PY01`) | `ADM-PY05` |
-| `tests/legacy/test_rollout_observe.py` | 301 | Unit tests for `tools/rollout_observe.py` | Port to Rust tests with `ADM-PY04` & delete | `ADM-PY05` |
-| `tests/legacy/test_rollout_packets.py` | 239 | Unit tests for `tools/rollout_packets.py` | Port to Rust tests with `ADM-PY04` & delete | `ADM-PY05` |
-| `tests/legacy/test_stage_evidence_regressions.py` | 239 | Unit tests for `dashboard/collector.py` stage evidence | Port to Rust tests with `ADM-PY01` & delete | `ADM-PY05` |
-| `tests/qualification/release_evidence.py` | 155 | Release qualification evidence verifier | Port to Rust integration test in `admiralty-testkit` & delete | `ADM-PY05` |
-| `tests/qualification/test_release_evidence.py` | 92 | Unit tests for `tests/qualification/release_evidence.py` | Port to Rust integration test in `admiralty-testkit` & delete | `ADM-PY05` |
-| `tests/test_sc_audit_ci_queue.py` | 20 | Unit tests for `tools/sc_audit.py` CI queue | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
-| `tests/test_sc_audit_dope.py` | 246 | Unit tests for `tools/sc_audit.py` DOPE adapter | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
-| `tests/test_sc_audit_gpu.py` | 37 | Unit tests for `tools/sc_audit.py` GPU checks | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
-| `tests/test_sc_audit_integrity.py` | 194 | Unit tests for `tools/sc_audit.py` integrity | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
-| `tests/test_sc_audit_jepson.py` | 32 | Unit tests for `tools/sc_audit.py` Jepson rules | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
-| `tests/test_sc_audit_joil_flip.py` | 99 | Unit tests for `tools/sc_audit.py` JOIL flip | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
-| `tests/test_sc_audit_jopedime_mr.py` | 108 | Unit tests for `tools/sc_audit.py` JopeDime MR | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
-| `tests/test_sc_audit_stale_pr.py` | 34 | Unit tests for `tools/sc_audit.py` stale PRs | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
-| `tests/test_sc_audit_stall.py` | 41 | Unit tests for `tools/sc_audit.py` stall clock | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
-| `tests/test_sc_audit_stall_rollback.py` | 43 | Unit tests for `tools/sc_audit.py` stall rollback | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
-| `tests/test_sc_audit_stdin.py` | 24 | Unit tests for `tools/sc_audit.py` stdin hygiene | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
-| `tests/test_sc_audit_survey.py` | 17 | Unit tests for `tools/sc_audit.py` survey | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
-| `tests/test_sc_audit_watchdog.py` | 201 | Unit tests for `tools/sc_audit.py` watchdog | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
-| `tools/native_queue_health.py` | 77 | Bounded read-only native queue metadata / endpoint preconditions for retained audit | Fleet Admiral owner; port to Rust `admiralty-cli sc-audit` and delete; no transport enforcement | `ADM-PY03` |
-| `tests/test_native_queue_health.py` | 235 | Synthetic/mocked draft, queue and endpoint regression controls | Fleet Admiral owner; port with Rust audit tests and delete | `ADM-PY06` |
+`cargo test -p admiralty-testkit --test python_policy --locked` keeps it that
+way: any `*.py`/`*.pyi`/`*.pyw`/`*.ipynb` file, any Python shebang and any new
+shell script fails the workspace tests, and `PYTHON_EXCEPTIONS.md` and
+`tests/fixtures/python-baseline.txt` may not come back. There is no exception
+list to extend; changing the stack means changing that test in review.
 
-Approved narrowly by the [21 October 2026 Admiral decision](https://github.com/neverhuman/admiralty/pull/166#issuecomment-6307405031), receipt SHA256 `cf32cfd9ec8fa87af6326f78bc7f9c11e33150bc81f4a730f64158f8413e0daf`. Owner for these two additions is the existing sole Fleet Admiral; PR166’s source writer owns this repair integration. Retirement requires Rust parity for unknown/multiline drafts, read-only bounded queue metadata, missing/corrupt/WAL data, and endpoint preconditions before deleting both compatibility files. The helper remains unwired and does not establish queue consumption or delivery authority.
+This file was the inventory of the 42 retained Python files (11,746 lines) and
+tasks `ADM-PY01` to `ADM-PY06`. It is now the record of where each one went.
+Earlier revisions of this file and `PYTHON_EXCEPTIONS.md` remain in history.
 
-## 2. Tracker Tasks for Remaining Parity and Source Retirement
+## How behaviour was preserved
 
-| Task ID | Scope | Assigned Owner | Target |
-| :--- | :--- | :--- | :--- |
-| **`ADM-PY01`** | Retire `dashboard/*.py` (2,589 LOC) after remaining compatibility/parity criteria close; native production cutover is already complete | `2062267.agy_captain_admiralty` | Delete compatibility sources only after remaining parity/fixture/consumer retirement is proven |
-| **`ADM-PY02`** | Port `scripts/check/*.py`, `scripts/demos/*.py`, and `scripts/release/*.py` (2,312 LOC) to Rust in `admiralty-cli` / `admiralty-testkit` | `2062267.agy_captain_admiralty` | Parity-tested Rust subcommands + delete `scripts/**/*.py` |
-| **`ADM-PY03`** | Port `tools/sc_audit.py` (1,776 LOC) to Rust `admiralty-cli sc-audit` | `2062267.agy_captain_admiralty` | Parity-tested Rust binary + delete `tools/sc_audit.py` |
-| **`ADM-PY04`** | Port `tools/{rollout_observe,rollout_packets,export_history,probe_opencode}.py` + `tools/bin/classify_screen.py` (1,928 LOC) to Rust | `2062267.agy_captain_admiralty` | Parity-tested Rust modules + delete `tools/**/*.py` |
-| **`ADM-PY05`** | Retire `tests/legacy/*.py`, `tests/fixtures/legacy/verify.py`, and `tests/qualification/*.py` (1,737 LOC) into Rust integration tests | `2062267.agy_captain_admiralty` | Delete `tests/legacy/*.py` and `tests/qualification/*.py` with `ADM-PY01`/`ADM-PY04` |
-| **`ADM-PY06`** | Port `tests/test_sc_audit_*.py` (1,028 LOC) to Rust integration tests alongside `ADM-PY03` | `2062267.agy_captain_admiralty` | Delete `tests/test_sc_audit_*.py` with `ADM-PY03` |
+Every port was checked against the original before the original was deleted:
+
+- **Differential runs.** The audit, observer, tool and qualification ports were
+  run side by side with the Python originals on the same inputs. Their outputs
+  were byte-identical, apart from the differences listed in each crate's
+  documentation. Fixtures captured from those runs are now ordinary Rust tests.
+- **Ported test suites.** Every Python test case has a Rust counterpart in the
+  same crate. The file names below say where.
+- **No weakened assertions.** Where a port exposed a real bug in the original
+  (a crash on unexpected JSON, a non-object panic, an unsafe URL accepted), the
+  Rust version fixes it and the test asserts the fixed behaviour.
+
+## Where each file went
+
+### `ADM-PY01` — legacy dashboard (`dashboard/*.py`)
+
+| Retired | Replacement | Tests |
+| :--- | :--- | :--- |
+| `dashboard/collector.py`, `extras.py`, `rollout.py`, `token_yield.py`, `make_snapshot.py` | `admiralty-observe` (already the production producer); legacy-only cases ported into `src/legacy_cases.rs` | `crates/admiralty-observe/src/{fleet,projects,rollout,usage}/legacy_parity.rs` |
+| `dashboard/serve.py`, `dashboard/run.sh`, `dashboard/index.html` | `admiraltyd` / `admiralty serve`; the React **Fleet detail** view replaces the static page and `/legacy/` redirects to it when no page is configured | `tests/integration/api_stream.rs`, `crates/admiralty-server/tests/access_projection.rs` |
+| `dashboard/globalres.py` | `admiralty fleet resources` (`admiralty-fleetops::resources`) | `crates/admiralty-fleetops/src/resources/tests.rs` |
+
+### `ADM-PY02` — check, demo and release scripts
+
+| Retired | Replacement | Tests |
+| :--- | :--- | :--- |
+| `scripts/check/canary-smoke.py` | `admiralty-canary` (`admiralty-qualify::canary`) | `crates/admiralty-qualify/src/canary_tests.rs` |
+| `scripts/check/excursions-smoke.py` | `admiralty-canary excursions` | `crates/admiralty-qualify/src/excursions.rs` |
+| `scripts/release/package.py` | `admiralty release source-package` (`admiralty-qualify::source_package`) | `src/source_package_self_tests.rs`, `tests/python_parity.rs` |
+| `scripts/release/qualify_native.py` | `admiralty release qualify-native` | `crates/admiralty-qualify/src/native_qualify.rs` |
+| `scripts/demos/encode.py`, `verify.py`, `requirements.txt` | `scripts/demos/{encode,verify,media,png,gif,webp}.ts` (no Pillow) | `scripts/demos/media.test.ts` |
+| `scripts/check/all.sh`, `security-supply-chain.sh`, `tools/security-lane.sh`, `scripts/dev/{demo,live}.sh` | `cargo xtask check`, `cargo xtask security`, `cargo xtask demo`, `cargo xtask live` (`admiralty-xtask`) | `crates/admiralty-xtask/tests/{cli,scratch,security}.rs` |
+
+### `ADM-PY03` — super-captain audit
+
+| Retired | Replacement | Tests |
+| :--- | :--- | :--- |
+| `tools/sc_audit.py` | `admiralty sc-audit` (`admiralty-audit`) | `crates/admiralty-audit/tests/parity/*.rs` |
+| `tools/native_queue_health.py` | `admiralty queue-health` | `tests/parity/native_queue_health.rs` |
+| `captains/super_captain_tick.sh` | `admiralty sc-tick` | `tests/parity/ticker.rs` |
+
+### `ADM-PY04` — operator tools
+
+| Retired | Replacement | Tests |
+| :--- | :--- | :--- |
+| `tools/rollout_observe.py` | `admiralty rollout observe` (`admiralty-tools`) | `src/rollout_observe_tests.rs` |
+| `tools/rollout_packets.py` | `admiralty rollout packets` | `src/rollout_packets_tests.rs` |
+| `tools/export_history.py`, `tools/history_export_cron.sh` | `admiralty history export`, `admiralty history publish` | `src/history_export_tests.rs`, `tests/history_{export,publish}.rs` |
+| `tools/probe_opencode.py` | `admiralty opencode probe` (the remote workload it ships is kept byte-identical) | `src/opencode_probe_tests.rs` |
+| `tools/bin/classify_screen.py`, `tools/bin/{kick,screen_send,screen_snap,status}` | `admiralty fleet classify|kick|send|snap|status` (`admiralty-fleetops`) | `crates/admiralty-fleetops/src/**/tests.rs` |
+| `tools/{owner_peek,peek_all,owner_send,mr_probe,codex-luna}.sh` | `admiralty fleet peek|paste|probe-models|codex-luna` | same |
+| `tools/send_{add1,add2,add2b,compute,notice2,sc}.sh` | `admiralty fleet deliver --plan crates/admiralty-fleetops/plans/<name>.json` | `src/deliver/tests.rs` |
+| `tools/sweep.sh` | `admiralty fleet sweep` | `src/sweep/tests.rs` |
+
+### `ADM-PY05` and `ADM-PY06` — Python test suites
+
+| Retired | Rust counterpart |
+| :--- | :--- |
+| `tests/legacy/test_rollout.py`, `test_rollout_live_workers.py`, `test_stage_evidence_regressions.py`, `tests/fixtures/legacy/verify.py` | `crates/admiralty-observe/src/*/legacy_parity.rs`, `src/legacy_cases.rs` |
+| `tests/legacy/test_rollout_observe.py`, `test_rollout_packets.py` | `crates/admiralty-tools/src/rollout_{observe,packets}_tests.rs` |
+| `tests/qualification/release_evidence.py`, `test_release_evidence.py` | `admiralty release evidence`, `crates/admiralty-qualify/src/release_evidence_tests.rs` |
+| `tests/test_sc_audit_*.py` (13 files), `tests/test_native_queue_health.py` | `crates/admiralty-audit/tests/parity/*.rs` (one module per original file) |
+
+### Repository scripts moved to TypeScript
+
+`scripts/contracts/generate.mjs`, `packages/contracts/runtime.test.mjs` and
+`scripts/demos/{browser,browser.test,capture}.mjs` became `.ts` files run by
+Node 24's type stripping and checked by `pnpm scripts:check`. The generated
+contracts are byte-identical (their header still names `generate.mjs` so the
+checked-in output does not change).
+
+## Running the replacements on a host
+
+Install the single `admiralty` binary (see `docs/operators/single-binary.md`),
+then switch callers:
+
+- crontab: `23 * * * * /ABS/PATH/admiralty history publish`
+- super-captain ticker: `screen -dmS super_captain_tick admiralty sc-tick`
+- copies of the old scripts under `/home/ubuntu/xbabe2_kicker/bin` are replaced
+  by `admiralty fleet …` (`docs/operators/fleet-ops.md`).

@@ -1,5 +1,3 @@
-use std::{path::PathBuf, process::Command};
-
 #[test]
 fn p25_p30_round13_wo_timezone_schedule_intake() {
     use admiralty_core::workplans::preview_workplan;
@@ -22,20 +20,14 @@ fn p25_p30_round13_wo_timezone_schedule_intake() {
 
     // P30 release evidence remains digest checked and does not grant acceptance
     // or execution authority merely because package self-tests pass.
-    let workspace = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .canonicalize()
-        .expect("workspace root resolves");
-    let output = Command::new("python3")
-        .args(["scripts/release/package.py", "--self-test"])
-        .current_dir(workspace)
-        .output()
-        .expect("P30 offline release-evidence checks start");
+    let report = admiralty_qualify::source_package::self_test();
     assert!(
-        output.status.success(),
-        "P30 release-evidence self-test failed:\n{}\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+        report.failures.is_empty(),
+        "P30 release-evidence self-test failed:\n{}",
+        report.failures.join("\n")
     );
-    assert!(String::from_utf8_lossy(&output.stderr).contains("Ran 10 tests"));
+    assert!(
+        report.cases_run == 10,
+        "P30 release-evidence self-test did not run all ten package checks"
+    );
 }

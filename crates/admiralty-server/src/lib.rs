@@ -1,4 +1,6 @@
 //! Fleet projection, durable replay and explicitly configured native command services.
+pub mod daemon;
+pub mod embedded;
 mod http_bytes;
 pub mod intake_configuration;
 pub mod legacy;
@@ -640,6 +642,14 @@ async fn asset(
         return StatusCode::NOT_FOUND.into_response();
     }
     let Some(root) = state.config.assets else {
+        // An explicit --assets directory always wins; otherwise serve the
+        // dashboard compiled into this binary (release builds), if any.
+        if let Some(response) = embedded::respond(&requested, &headers, gzip) {
+            return http_bytes::timed(response, "asset", started.elapsed());
+        }
+        if embedded::embedded_dashboard().is_some() {
+            return StatusCode::NOT_FOUND.into_response();
+        }
         return (StatusCode::OK,[(header::CONTENT_TYPE,"text/html; charset=utf-8")],"<!doctype html><title>Admiralty</title><h1>Admiralty Rust foundation</h1><p>Static dashboard not built yet. Read-only JSON: <a href='/v1/fleet'>fleet</a>. Native execution remains disabled.</p>").into_response();
     };
     let data = tokio::task::spawn_blocking(move || {
@@ -664,27 +674,14 @@ async fn asset(
             Some("png") => "image/png",
             Some("webp") => "image/webp",
             Some("json") => "application/json",
+            Some("woff2") => "font/woff2",
+            Some("ico") => "image/x-icon",
             _ => "application/octet-stream",
         };
         let bytes = legacy::read_bounded(&path, 16 * 1024 * 1024).ok()?;
         let mut response = http_bytes::response(mime, bytes, gzip).ok()?;
-        let hashed_asset = requested.starts_with("assets/")
-            && matches!(
-                path.extension().and_then(|v| v.to_str()),
-                Some("js" | "css" | "webp")
-            )
-            && path
-                .file_stem()
-                .and_then(|v| v.to_str())
-                .is_some_and(|stem| {
-                    // Vite's eight-character URL-safe hash can itself contain '-'.
-                    let bytes = stem.as_bytes();
-                    bytes.len() > 9
-                        && bytes[bytes.len() - 9] == b'-'
-                        && bytes[bytes.len() - 8..]
-                            .iter()
-                            .all(|c| c.is_ascii_alphanumeric() || *c == b'_' || *c == b'-')
-                });
+        // Vite's eight-character URL-safe hash can itself contain '-'.
+        let hashed_asset = embedded::is_hashed_asset(&requested);
         response.headers_mut().insert(
             header::CACHE_CONTROL,
             if hashed_asset {

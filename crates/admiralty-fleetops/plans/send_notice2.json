@@ -1,0 +1,62 @@
+{
+  "description": "Proxy + hygiene notice (2026-10-17 10:01/10:02 PM MDT): append the notice to every coordination log now (under flock), then paste notice + compute pointer into each captain only when idle (fresh hardcopy); 100 passes x 15 s (~25 min) (was tools/send_notice2.sh).",
+  "passes": 100,
+  "interval_secs": 15,
+  "idle": {
+    "hardcopy_prefix": "/tmp/hc_n2_",
+    "require_shortcuts_footer": true,
+    "fresh_hardcopy": true,
+    "settle_ms": 400
+  },
+  "paste_settle_ms": 1000,
+  "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/captain_notice2_paste.txt",
+  "sent_marker": "/tmp/sent_n2_{key}",
+  "sent_echo": "pasted {key} at {denver_hms} MDT",
+  "pre_log": {
+    "template": "\n## {utc_iso} - Grok Bot to {screen}: PROXY + HYGIENE ORDERS (Jepson 10:01/10:02 PM MDT)\n\n{message}\n",
+    "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/captain_notice2.txt",
+    "echo": "logged {key} {utc_hms}Z",
+    "lock_wait_secs": 60
+  },
+  "prepare": [
+    {
+      "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/captain_notice2_paste.txt",
+      "parts": [
+        {
+          "file": "/home/ubuntu/xbabe2_kicker/captains-20261017/captain_notice2.txt"
+        },
+        {
+          "text": " (Also, if you have not yet: the COMPUTE notice in your coord log - xbabe1/xbabe2/xbabe3 available, never xbabe0 - see COMMON.md \"Compute\"; post COMPUTE ACK.)"
+        }
+      ]
+    }
+  ],
+  "reset_sent_markers": true,
+  "done_echo": "DONE",
+  "targets": [
+    {
+      "key": "joil",
+      "screen": "2708475.captain_joil",
+      "coord_log": "/home/ubuntu/joil/COORD.md",
+      "lock": "/home/ubuntu/joil/.private/v5-workers/coord.lock"
+    },
+    {
+      "key": "dope",
+      "screen": "2716151.captain_dope",
+      "coord_log": "/home/ubuntu/dope/COMMS.md",
+      "lock": "/home/ubuntu/dope/COMMS.md.lock"
+    },
+    {
+      "key": "jopedime",
+      "screen": "2724936.captain_jopedime",
+      "coord_log": "/home/ubuntu/JopeDime/COMMS.md",
+      "lock": "/home/ubuntu/JopeDime/COMMS.md.lock"
+    },
+    {
+      "key": "jarambit",
+      "screen": "2740538.captain_jarambit",
+      "coord_log": "/home/ubuntu/jarambit/COMMS.md",
+      "lock": "/home/ubuntu/jarambit/COMMS.md.lock"
+    }
+  ]
+}

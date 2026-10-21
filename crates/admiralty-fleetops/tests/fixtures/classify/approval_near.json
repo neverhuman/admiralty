@@ -1,0 +1,13 @@
+{
+  "session": "codex_near",
+  "kind": "codex",
+  "state": "needs_approval",
+  "confidence": 0.668,
+  "signals": [
+    "approval_near:waiting on plan approval"
+  ],
+  "approval_hint": "y",
+  "pr_refs": [],
+  "summary": "[codex/needs_approval] PRs: none. Recent: detail line 14 with more text | detail line 15 with more text | detail line 16 with more text | detail line 17 with more text",
+  "tail": "scrollback line 39 doing ordinary work output\nWaiting on plan approval\ndetail line 0 with more text\ndetail line 1 with more text\ndetail line 2 with more text\ndetail line 3 with more text\ndetail line 4 with more text\ndetail line 5 with more text\ndetail line 6 with more text\ndetail line 7 with more text\ndetail line 8 with more text\ndetail line 9 with more text\ndetail line 10 with more text\ndetail line 11 with more text\ndetail line 12 with more text\ndetail line 13 with more text\ndetail line 14 with more text\ndetail line 15 with more text\ndetail line 16 with more text\ndetail line 17 with more text"
+}

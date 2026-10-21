@@ -1,0 +1,24 @@
+@@HOST xbabe1
+@@NPROC 64
+@@LOAD 55.20 40.10 30.00
+@@MEM
+MemTotal:       263842716 kB
+MemAvailable:   30000000 kB
+SwapTotal:       8388604 kB
+SwapFree:         100000 kB
+@@DF
+/ 1967317618688 1800000000000 67317618688
+/data 7999999999999 1000000000000 6999999999999
+/mnt/fast-scratch 3999999999999 3300000000000 699999999999
+/mnt/shrinking 2000000000000 500000000000 1500000000000
+@@GPU
+0, NVIDIA RTX 6000 Ada Generation, 97, 40000, 49140, 86
+1, NVIDIA RTX 6000 Ada Generation, [N/A], 1, 49140, 40
+@@DSTATE 2
+@@TOP
+ 123456 ubuntu 52428800 350.5 86400 python3
+    777 root     1048576  1.0 999999 my comm with spaces and a very long name indeed  
+@@SCREENS
+2708475.captain_joil
+12.jankurai
+@@END

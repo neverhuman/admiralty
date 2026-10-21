@@ -1,0 +1,13 @@
+{
+  "session": "tags",
+  "kind": "unknown",
+  "state": "working",
+  "confidence": 0.59,
+  "signals": [
+    "actively_working"
+  ],
+  "approval_hint": null,
+  "pr_refs": [],
+  "summary": "[unknown/working] PRs: none. Recent: Working (4s[0m | null line",
+  "tail": "Working (4s[0m\nline\nwith\nbreaks\nand\nmore\nend\nnull line"
+}

@@ -20,6 +20,11 @@ pub fn read_json(path: &Path, max: u64) -> Result<Value> {
     let bytes = read_file(path, max)?;
     Ok(serde_json::from_slice(&bytes)?)
 }
+/// The same bounded, no-follow, regular-file read as `read_json`, returning the
+/// exact observed bytes so callers can record a content digest.
+pub fn read_bytes(path: &Path, max: u64) -> Result<Vec<u8>> {
+    read_file(path, max)
+}
 fn read_file(path: &Path, max: u64) -> Result<Vec<u8>> {
     let mut file = open_regular(path)?;
     let before = file.metadata()?;

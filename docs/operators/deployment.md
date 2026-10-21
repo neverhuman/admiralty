@@ -8,11 +8,18 @@ a local smoke result and an installed/running revision are separate facts.
 Run the read-only release evidence preflight from the source checkout:
 
 ```sh
-python3 tests/qualification/release_evidence.py \
+admiralty release evidence \
   --manifest /absolute/evidence/release.json \
   --evidence-root /absolute/evidence \
   --expected-revision FULL_SOURCE_GIT_SHA
 ```
+
+This is the Rust port (`admiralty_qualify::release_evidence`, also available as
+`admiralty-canary release-evidence`) of the retired
+`python3 tests/qualification/release_evidence.py`; its unit tests run under
+`cargo test -p admiralty-qualify release_evidence`. Inputs, gates, output JSON
+and exit codes are unchanged; JSON syntax-error wording in the `invalid` report
+now comes from the Rust parser.
 
 The bounded JSON manifest contains `schema_version: 1`, `source_revision`, and
 up to 64 `checks`. Each check names one gate below and has `status` (`passed`,
@@ -41,7 +48,7 @@ current ownership and the source/build/installed/running identities.
 
 For the local HTTP subset, build the explicit `admiraltyd` and `admiralty`
 binaries in the lane's reusable `target/`, then use the
-[isolated canary smoke harness](canary-smoke.md). It never attaches to the
+[isolated canary smoke harness](canary-smoke.md) (`admiralty-canary`). It never attaches to the
 primary endpoint or launches inference. It cannot qualify the provider,
 restart/fleet/restore/rollback, full invariant/load matrix, 24-hour soak or
 prospective cost/context study. Those gates remain open until their own actual

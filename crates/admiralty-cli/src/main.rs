@@ -103,6 +103,34 @@ enum Command {
     },
     /// Report this binary's capabilities and remaining qualification limits.
     Doctor,
+    /// Run the coordinator and dashboard exactly like `admiraltyd`. Without
+    /// `--assets`, serves the console embedded at build time (if any).
+    Serve(admiralty_server::daemon::DaemonArgs),
+    /// Run the read-only fleet observer exactly like `admiralty-observe`.
+    Observe(admiralty_observe::cli::ObserveArgs),
+    /// Fleet operator tools: screen snapshots, idle-gated delivery, kicks, model probes and host resources.
+    Fleet(admiralty_fleetops::FleetArgs),
+    /// Read-only super-captain audit: recompute progress from ledgers and receipts, check screens and CI.
+    ScAudit(admiralty_audit::ScAuditArgs),
+    /// Super-captain ticker: run the audit, then deliver the tick prompt when the screen is idle.
+    ScTick(admiralty_audit::ScTickArgs),
+    /// Read-only native message queue health (pending is never assumed consumed).
+    QueueHealth(admiralty_audit::QueueHealthArgs),
+    /// Rollout lane observation and implementation packet manifests.
+    Rollout {
+        #[command(subcommand)]
+        command: admiralty_tools::RolloutCommand,
+    },
+    /// Sanitized history dataset export and the hourly data-only publisher.
+    History {
+        #[command(subcommand)]
+        command: admiralty_tools::HistoryCommand,
+    },
+    /// Explicit, bounded OpenCode SSH qualification.
+    Opencode {
+        #[command(subcommand)]
+        command: admiralty_tools::OpencodeCommand,
+    },
     /// Read a protected role inbox or publish an immutable reply. Never runs its commands.
     Chat {
         #[command(subcommand)]
@@ -311,6 +339,12 @@ fn bounded_absolute_path(value: &str) -> Result<PathBuf, String> {
 
 #[derive(Subcommand)]
 enum ReleaseCommand {
+    /// Deterministic `.tar.gz` from an explicit file list (formerly `scripts/release/package.py`).
+    SourcePackage(admiralty_qualify::source_package::PackageArgs),
+    /// Install a private native archive and exercise the real CLI and dashboard payloads offline.
+    QualifyNative(admiralty_qualify::native_qualify::QualifyArgs),
+    /// Read-only P31 release evidence preflight; never deploys or grants acceptance.
+    Evidence(admiralty_qualify::release_evidence::EvidenceArgs),
     /// Install integrity-pinned bytes into one new private version directory; no services or activation.
     Install {
         #[arg(long, value_parser = bounded_absolute_path)]
@@ -778,6 +812,17 @@ fn seed_demo(store: &Store) -> CliResult<()> {
     Ok(())
 }
 
+/// Subcommands ported from operator scripts keep their documented exit codes
+/// (for example 2 for usage, 64/127 for launcher refusals).
+fn exit_with(code: i32) {
+    if code != 0 {
+        use std::io::Write;
+        let _ = std::io::stdout().flush();
+        let _ = std::io::stderr().flush();
+        std::process::exit(code);
+    }
+}
+
 async fn run(cli: Cli) -> CliResult<()> {
     match cli.command {
         #[cfg(unix)]
@@ -856,6 +901,9 @@ async fn run(cli: Cli) -> CliResult<()> {
                     "sqlite_online_backup": true, "json_schema_export_and_drift_check": true
                 },
                 "native_execution_qualified": false, "runtime_enabled": false,
+                "embedded_dashboard": admiralty_server::embedded::embedded_dashboard().map(|d| json!({
+                    "files": d.files, "bytes": d.bytes, "tree_sha256": d.tree_sha256
+                })),
                 "limits": [
                     "No provider adapter, managed session, scheduling, fleet enrollment or publication is qualified",
                     "Offline database commands require exclusive ownership; stop its server before opening that same database",
@@ -864,6 +912,15 @@ async fn run(cli: Cli) -> CliResult<()> {
                 ]
             }))?;
         }
+        Command::Serve(args) => admiralty_server::daemon::run(args).await?,
+        Command::Observe(args) => admiralty_observe::cli::run(args).await?,
+        Command::Fleet(args) => exit_with(admiralty_fleetops::run(args)?),
+        Command::ScAudit(args) => exit_with(admiralty_audit::run_sc_audit(&args)?),
+        Command::ScTick(args) => exit_with(admiralty_audit::run_sc_tick(&args)?),
+        Command::QueueHealth(args) => exit_with(admiralty_audit::run_queue_health(&args)?),
+        Command::Rollout { command } => exit_with(admiralty_tools::run_rollout(command)?),
+        Command::History { command } => exit_with(admiralty_tools::run_history(command)?),
+        Command::Opencode { command } => exit_with(admiralty_tools::run_opencode(command)?),
         Command::Explain { file } => {
             eprintln!(
                 "Recorded-only diagnostic: no live refresh, execution or acceptance authority."
@@ -1081,6 +1138,15 @@ async fn run(cli: Cli) -> CliResult<()> {
             )?;
         }
         Command::Recover(args) => print_json(native_recovery::run(args)?)?,
+        Command::Release {
+            command: ReleaseCommand::SourcePackage(args),
+        } => exit_with(admiralty_qualify::source_package::run_package(args)?),
+        Command::Release {
+            command: ReleaseCommand::QualifyNative(args),
+        } => exit_with(admiralty_qualify::native_qualify::run_qualify(args)?),
+        Command::Release {
+            command: ReleaseCommand::Evidence(args),
+        } => exit_with(admiralty_qualify::release_evidence::run_evidence(args)?),
         Command::Release {
             command:
                 ReleaseCommand::Install {

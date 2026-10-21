@@ -1,0 +1,75 @@
+
+import hashlib,json,os,re,resource,signal,subprocess,sys,time
+from pathlib import Path
+p=json.load(sys.stdin);fixture=Path(p['root']);corrected=p.get('corrected',False)
+if corrected:
+    if not fixture.is_dir() or not fixture.name.startswith('admiralty-qualification-'):raise RuntimeError('unknown qualification fixture')
+    root=fixture/'attempt-1';root.mkdir(mode=0o700)
+else:
+    root=fixture;root.mkdir(mode=0o700)
+candidate=fixture/'candidate';oracle=fixture/'owner-oracle.py'
+if not corrected:
+    candidate.mkdir();oracle.write_text(p['oracle']);oracle.chmod(0o444)
+    target=candidate/'gaps.py';target.write_text('def uncovered_ranges(start, end, covered):\n    raise NotImplementedError("qualification stub")\n')
+    git=subprocess.run(['/usr/bin/git','init',str(candidate)],capture_output=True,text=True,timeout=15)
+    if git.returncode: raise RuntimeError('private checkout initialization failed')
+else:target=candidate/'gaps.py'
+(candidate/'README.md').write_text(p['prompt']+'\n')
+(candidate/'test_gaps.py').write_text(p['oracle']);(candidate/'test_gaps.py').chmod(0o444)
+for a in [['add','gaps.py','README.md','test_gaps.py'],['-c','user.name=Admiralty Qualification','-c','user.email=qualification@localhost','commit','-m','Pin owner qualification fixture and visible tests']]:
+    r=subprocess.run(['/usr/bin/git','-C',str(candidate),*a],capture_output=True,text=True,timeout=15)
+    if r.returncode:raise RuntimeError('fixture-only baseline commit failed')
+sha=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
+baseline=sha(target);oracle_before=sha(oracle)
+protected_before={name:sha(candidate/name) for name in ['README.md','test_gaps.py']}
+head_before=subprocess.run(['/usr/bin/git','-C',str(candidate),'rev-parse','HEAD'],capture_output=True,text=True,timeout=10).stdout.strip()
+before=subprocess.run(['/usr/bin/python3',str(oracle),str(candidate)],capture_output=True,text=True,timeout=10)
+argv=[p['helper'],'--dir',str(candidate),'--json',p['prompt']]
+events=root/'events.ndjson';errors=root/'helper.stderr';started=time.monotonic();timed_out=False
+def limits(): resource.setrlimit(resource.RLIMIT_FSIZE,(8*1024*1024,8*1024*1024))
+with events.open('wb') as out,errors.open('wb') as err:
+    proc=subprocess.Popen(argv,stdout=out,stderr=err,start_new_session=True,preexec_fn=limits)
+    try:code=proc.wait(timeout=120)
+    except subprocess.TimeoutExpired:
+        timed_out=True
+        # No poll/reap between these signals: the direct child's PID remains held.
+        os.killpg(proc.pid,signal.SIGTERM);time.sleep(0.2)
+        try:os.killpg(proc.pid,signal.SIGKILL)
+        except ProcessLookupError:pass
+        code=proc.wait(timeout=5)
+elapsed=time.monotonic()-started
+after=subprocess.run(['/usr/bin/python3',str(oracle),str(candidate)],capture_output=True,text=True,timeout=10)
+(root/'verifier.stdout').write_text(after.stdout);(root/'verifier.stderr').write_text(after.stderr)
+oracle_after=sha(oracle)
+shapes={};sessions=set();usage=[];invalid=0;tool_count=0
+for raw in events.read_bytes().splitlines():
+    if len(raw)>262144:invalid+=1;continue
+    try:event=json.loads(raw)
+    except Exception:invalid+=1;continue
+    if not isinstance(event,dict):invalid+=1;continue
+    kind=event.get('type','unknown');part=event.get('part',{})
+    shapes.setdefault(kind,{'event_keys':sorted(event),'part_keys':sorted(part) if isinstance(part,dict) else []})
+    if isinstance(event.get('sessionID'),str):sessions.add(event['sessionID'])
+    if kind=='tool_use':tool_count+=1
+    if kind=='step_finish' and isinstance(part,dict):
+        tokens=part.get('tokens');usage.append({'tokens':tokens if isinstance(tokens,dict) else None,'reason':part.get('reason'),'cost_reported':part.get('cost') if isinstance(part.get('cost'),(int,float)) else None})
+identities=[]
+for session in sorted(sessions):
+    if not re.fullmatch(r'[A-Za-z0-9_-]{1,160}',session):continue
+    exported=subprocess.run([p['opencode'],'export','--sanitize',session],capture_output=True,text=True,timeout=15)
+    if exported.returncode or len(exported.stdout)>8*1024*1024:continue
+    try:data=json.loads(exported.stdout)
+    except Exception:continue
+    for message in data.get('messages',[]):
+        info=message.get('info',{})
+        if info.get('role')=='assistant':
+            identity={k:info[k] for k in ['providerID','modelID'] if isinstance(info.get(k),str)}
+            if identity and identity not in identities:identities.append(identity)
+changes=subprocess.run(['/usr/bin/git','-C',str(candidate),'status','--porcelain','--untracked-files=all'],capture_output=True,text=True,timeout=10)
+files=sorted(str(path.relative_to(candidate)) for path in candidate.rglob('*') if path.is_file() and '.git' not in path.relative_to(candidate).parts and '__pycache__' not in path.relative_to(candidate).parts)
+protected_after={name:sha(candidate/name) for name in protected_before}
+head_after=subprocess.run(['/usr/bin/git','-C',str(candidate),'rev-parse','HEAD'],capture_output=True,text=True,timeout=10).stdout.strip()
+expected=['README.md','gaps.py','test_gaps.py']
+receipt={'schema_version':1,'qualification_id':fixture.name,'attempt':1 if corrected else 0,'remote_root':str(root),'candidate':str(candidate),'model_requested':p['model'],'model_observed':identities,'helper_exit':code,'timed_out':timed_out,'elapsed_s':round(elapsed,3),'baseline_verifier_exit':before.returncode,'verifier_exit':after.returncode,'oracle_sha256_before':oracle_before,'oracle_sha256_after':oracle_after,'oracle_unchanged':oracle_before==oracle_after,'baseline_source_sha256':baseline,'candidate_source_sha256':sha(target),'candidate_files':files,'scope_valid':files==expected and protected_before==protected_after and head_before==head_after,'protected_files_before':protected_before,'protected_files_after':protected_after,'baseline_head':head_before,'candidate_head':head_after,'event_shapes':shapes,'event_sha256':sha(events),'event_bytes':events.stat().st_size,'malformed_events':invalid,'tool_events':tool_count,'sessions':sorted(sessions),'usage_step_reports':usage,'usage_assurance':'provider-reported step values; aggregation and billing semantics unqualified','artifacts':{name:{'path':str(root/name),'sha256':sha(root/name)} for name in ['events.ndjson','helper.stderr','verifier.stdout','verifier.stderr']},'oracle_artifact':{'path':str(oracle),'sha256':sha(oracle)},'runtime_managed':False,'restart_adoption_qualified':False}
+(root/'qualification.json').write_text(json.dumps(receipt,indent=2)+'\n')
+print(json.dumps(receipt))

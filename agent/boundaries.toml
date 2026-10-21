@@ -1,7 +1,7 @@
 # Authoritative Admiralty persistence uses SQLite in crates/admiralty-store.
 [stack]
-id = "rust-ts-vite-react-sqlite-bounded-python"
-version = "0.4.0"
+id = "rust-ts-vite-react-sqlite"
+version = "0.5.0"
 
 [rust]
 domain_paths = ["crates/admiralty-core"]
@@ -17,8 +17,9 @@ web_paths = ["apps/dashboard"]
 forbidden_web_imports = ["sqlx", "pg", "postgres", "mysql", "better-sqlite3", "@aws-sdk/client-s3"]
 generated_contract_paths = ["packages/contracts/generated"]
 
+# No Python remains (see PY_TO_RUST_PLAN.md); python_policy rejects new files.
 [python]
-allowed_truth_paths = ["dashboard", "tools", "tests", "scripts/check", "scripts/contracts"]
+allowed_truth_paths = []
 
 [db]
 root_paths = ["crates/admiralty-store"]

@@ -1,0 +1,20 @@
+{
+  "session": "grok_idle",
+  "updated_epoch": 1792607405,
+  "updated_at": "2026-10-21 18:30:05 UTC",
+  "last_action": "none",
+  "last_pr_nudge_epoch": 0,
+  "classification": {
+    "session": "grok_idle",
+    "kind": "grok",
+    "state": "idle",
+    "confidence": 0.74,
+    "signals": [
+      "grok_banner"
+    ],
+    "approval_hint": null,
+    "pr_refs": [],
+    "summary": "[grok/idle] PRs: none. Recent: scrollback line 36 doing ordinary work output | scrollback line 37 doing ordinary work output | scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output",
+    "tail": "scrollback line 22 doing ordinary work output\nscrollback line 23 doing ordinary work output\nscrollback line 24 doing ordinary work output\nscrollback line 25 doing ordinary work output\nscrollback line 26 doing ordinary work output\nscrollback line 27 doing ordinary work output\nscrollback line 28 doing ordinary work output\nscrollback line 29 doing ordinary work output\nscrollback line 30 doing ordinary work output\nscrollback line 31 doing ordinary work output\nscrollback line 32 doing ordinary work output\nscrollback line 33 doing ordinary work output\nscrollback line 34 doing ordinary work output\nscrollback line 35 doing ordinary work output\nscrollback line 36 doing ordinary work output\nscrollback line 37 doing ordinary work output\nscrollback line 38 doing ordinary work output\nscrollback line 39 doing ordinary work output\n>\n always-approve  \u00b7  shift+tab to cycle"
+  }
+}

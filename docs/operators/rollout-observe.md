@@ -1,14 +1,17 @@
 # Temporary legacy rollout observer
 
-`tools/rollout_observe.py` joins the integration owner's rollout template with
-captain-written lane reports. It refreshes the existing dashboard without new
+`admiralty rollout observe` joins the integration owner's rollout template with
+captain-written lane reports. It is the Rust port (crate `admiralty-tools`,
+module `rollout_observe`) of the retired `tools/rollout_observe.py`; flags,
+JSON output, exit codes and safety bounds are unchanged
+(`python3 tools/rollout_observe.py ARGS` → `admiralty rollout observe ARGS`). It refreshes the existing dashboard without new
 model turns. It never launches agents, sends terminal input, changes tasks,
 executes JSON content, verifies code or performs publication.
 
 Use an existing private runtime directory owned by the observer's Unix user:
 
 ```sh
-rtk proxy python3 tools/rollout_observe.py \
+rtk proxy admiralty rollout observe \
   --source /home/ubuntu/admiralty-v2-build/rollout.json \
   --lanes /home/ubuntu/admiralty-v2-build/live-lanes.json \
   --output /home/ubuntu/xbabe2_kicker/captains-dashboard/rollout.json \
@@ -89,7 +92,7 @@ coordination system.
 Validate offline:
 
 ```sh
-rtk proxy python3 -m unittest discover -s tests/legacy -p test_rollout_observe.py -v
+rtk cargo test -p admiralty-tools rollout_observe
 ```
 
 This is a transient bootstrap bridge. Retire its process and legacy manifest

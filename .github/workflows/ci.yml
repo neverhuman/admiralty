@@ -67,17 +67,14 @@ jobs:
       - run: cargo test --workspace --locked
         env:
           RUST_TEST_THREADS: 1
-      - run: python3 -m unittest discover -s tests/legacy -v
-      - run: python3 -m unittest discover -s tests -p 'test_sc_audit*.py' -v
-      - run: python3 -m unittest discover -s tests -p 'test_native_queue_health.py' -v
-      - run: python3 tests/fixtures/legacy/verify.py
-      - run: python3 scripts/release/package.py --self-test
-      - run: python3 scripts/check/canary-smoke.py --self-test
-      - run: cargo build -p admiralty-server -p admiralty-cli --locked
+      # The former Python suites (legacy collector, super-captain audit, queue
+      # health, package and canary self-tests) are Rust tests in the workspace
+      # run above; python_policy keeps the repository free of Python.
+      - run: cargo build -p admiralty-server -p admiralty-cli -p admiralty-qualify --locked
       - name: Smoke actual isolated binaries
         run: |
           install -d -m 700 "$TMPDIR/canary"
-          python3 scripts/check/canary-smoke.py --admiraltyd-binary "$GITHUB_WORKSPACE/target/debug/admiraltyd" --admiralty-binary "$GITHUB_WORKSPACE/target/debug/admiralty" --scratch-root "$TMPDIR/canary"
+          "$GITHUB_WORKSPACE/target/debug/admiralty-canary" --admiraltyd-binary "$GITHUB_WORKSPACE/target/debug/admiraltyd" --admiralty-binary "$GITHUB_WORKSPACE/target/debug/admiralty" --scratch-root "$TMPDIR/canary"
       - run: cargo run -p admiralty-cli --locked -- contracts check
   contracts:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -102,6 +99,7 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm contracts:check
       - run: pnpm --dir packages/contracts test
+      - run: pnpm scripts:check
       - run: pnpm --dir apps/dashboard typecheck
       - run: pnpm --dir apps/dashboard test --run
       - run: pnpm --dir apps/dashboard build

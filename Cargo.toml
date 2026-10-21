@@ -16,6 +16,7 @@ rusqlite.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 tempfile.workspace = true
+admiralty-qualify.workspace = true
 
 [[test]]
 name = "codex_round16_p05_p15"
@@ -51,8 +52,8 @@ name = "codex_round17_p25_p30"
 path = "tests/integration/codex_round17_p25_p30.rs"
 
 [workspace]
-members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests", "crates/admiralty-observe"]
-default-members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests", "crates/admiralty-observe"]
+members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests", "crates/admiralty-observe", "crates/admiralty-audit", "crates/admiralty-fleetops", "crates/admiralty-qualify", "crates/admiralty-tools", "crates/admiralty-xtask"]
+default-members = [".", "crates/admiralty-core", "crates/admiralty-store", "crates/admiralty-runtime", "crates/admiralty-server", "crates/admiralty-cli", "crates/admiralty-testkit", "crates/admiralty-integration-tests", "crates/admiralty-observe", "crates/admiralty-audit", "crates/admiralty-fleetops", "crates/admiralty-qualify", "crates/admiralty-tools", "crates/admiralty-xtask"]
 resolver = "2"
 
 [workspace.package]
@@ -67,6 +68,11 @@ admiralty-core = { path = "crates/admiralty-core" }
 admiralty-store = { path = "crates/admiralty-store" }
 admiralty-runtime = { path = "crates/admiralty-runtime" }
 admiralty-server = { path = "crates/admiralty-server" }
+admiralty-audit = { path = "crates/admiralty-audit" }
+admiralty-fleetops = { path = "crates/admiralty-fleetops" }
+admiralty-qualify = { path = "crates/admiralty-qualify" }
+admiralty-tools = { path = "crates/admiralty-tools" }
+admiralty-observe = { path = "crates/admiralty-observe" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["float_roundtrip"] }
 schemars = "1.0"
@@ -85,6 +91,7 @@ tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "signal", "s
 axum = "0.8.9"
 futures-util = "0.3"
 clap = { version = "4.5", features = ["derive"] }
+regex = "1"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

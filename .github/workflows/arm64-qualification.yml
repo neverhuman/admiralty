@@ -17,7 +17,14 @@ jobs:
     runs-on:
       group: neverhuman-lan
       labels: [self-hosted, Linux, ARM64, lan-ci]
-    timeout-minutes: 5
+    # The offline harnesses are Rust crates now (the Python originals were
+    # retired); compiling them on a fresh toolchain needs more than 5 minutes.
+    timeout-minutes: 30
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_INCREMENTAL: '0'
     steps:
       - name: Verify runner platform and installed tools
         run: |
@@ -28,7 +35,7 @@ jobs:
           printf 'runner=%s os=%s arch=%s\n' "$RUNNER_NAME" "$RUNNER_OS" "$RUNNER_ARCH"
           uname -srmo
           git --version
-          python3 --version
+          cc --version | head -n 1
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
@@ -38,19 +45,34 @@ jobs:
           printf 'checkout=%s event_sha=%s\n' "$(git rev-parse HEAD)" "$GITHUB_SHA"
           install -d -m 700 "$RUNNER_TEMP/admiralty-arm64-tests"
           printf 'TMPDIR=%s\n' "$RUNNER_TEMP/admiralty-arm64-tests" >> "$GITHUB_ENV"
-      - name: Run offline legacy regressions
-        timeout-minutes: 2
-        run: python3 -m unittest discover -s tests/legacy -v
-      - name: Run offline audit regressions
-        timeout-minutes: 2
-        run: python3 -m unittest discover -s tests -p 'test_sc_audit*.py' -v
-      - name: Run native queue and composer audit regressions
-        timeout-minutes: 1
-        run: python3 -m unittest discover -s tests -p 'test_native_queue_health.py' -v
-      - name: Verify retained source fixtures
-        timeout-minutes: 1
-        run: python3 tests/fixtures/legacy/verify.py
+      - name: Install pinned Rust
+        run: |
+          export CARGO_HOME="$RUNNER_TEMP/admiralty-cargo"
+          export RUSTUP_HOME="$RUNNER_TEMP/admiralty-rustup"
+          installer_dir="$RUNNER_TEMP/admiralty-rustup-bootstrap"
+          install -d -m 700 "$CARGO_HOME" "$RUSTUP_HOME" "$installer_dir"
+          printf 'CARGO_HOME=%s\nRUSTUP_HOME=%s\n' "$CARGO_HOME" "$RUSTUP_HOME" >> "$GITHUB_ENV"
+          printf '%s\n' "$CARGO_HOME/bin" >> "$GITHUB_PATH"
+          installer="$installer_dir/rustup-init"
+          # Official versioned Rust archive and its published SHA-256 metadata:
+          # https://static.rust-lang.org/rustup/archive/1.29.0/aarch64-unknown-linux-gnu/rustup-init.sha256
+          curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --silent --show-error --location \
+            --retry 3 --retry-delay 2 --retry-max-time 120 --connect-timeout 10 --max-time 90 --max-filesize 33554432 \
+            --output "$installer" https://static.rust-lang.org/rustup/archive/1.29.0/aarch64-unknown-linux-gnu/rustup-init
+          printf '%s  %s\n' 9732d6c5e2a098d3521fca8145d826ae0aaa067ef2385ead08e6feac88fa5792 "$installer" | sha256sum --check --status
+          chmod u+x "$installer"
+          "$installer" -y --no-modify-path --profile minimal --default-toolchain none
+          export PATH="$CARGO_HOME/bin:$PATH"
+          rustup toolchain install 1.95.0 --profile minimal
+      - name: Run offline audit and observer regressions (former Python suites)
+        timeout-minutes: 20
+        env:
+          RUST_TEST_THREADS: 2
+        run: cargo test --locked -p admiralty-audit -p admiralty-observe -p admiralty-tools -p admiralty-fleetops
 
-# This proves placement and the named offline harnesses on Linux ARM64.
-# Rust/provider execution, host-egress isolation and full native fleet
+# This proves placement and the named offline harnesses on Linux ARM64:
+# the super-captain audit and queue health (formerly tools/*.py and
+# tests/test_sc_audit_*.py), the observer's legacy parity suites (formerly
+# tests/legacy and tests/fixtures/legacy/verify.py), and the ported operator
+# tools. Provider execution, host-egress isolation and full native fleet
 # qualification require separate evidence. The existing X64 CI is unchanged.

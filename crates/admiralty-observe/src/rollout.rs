@@ -1,7 +1,11 @@
 //! Observe packet manifests without turning receipt strings into authority.
 use crate::{config::ObserveConfig, io, now_utc};
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
+#[cfg(test)]
+mod legacy_parity;
+const MAX_BYTES: u64 = 1024 * 1024;
 const STAGES: [&str; 8] = [
     "planned",
     "ready",
@@ -27,6 +31,38 @@ fn reference(value: &Value, keys: &[&str]) -> bool {
             .as_str()
             .is_some_and(|s| chrono::DateTime::parse_from_rfc3339(s).is_ok())
 }
+/// Only absolute http(s) links with a host and no embedded credentials are
+/// published; anything else (script/data URLs, scheme-relative or userinfo
+/// links) becomes empty text rather than a clickable or credential-bearing URL.
+fn safe_url(value: &Value) -> String {
+    let url = text(value, 2048);
+    let lower = url.to_ascii_lowercase();
+    let Some(rest) = lower
+        .strip_prefix("https://")
+        .or_else(|| lower.strip_prefix("http://"))
+    else {
+        return String::new();
+    };
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
+    let host = match authority.rsplit_once(':') {
+        Some((host, port)) if port.bytes().all(|b| b.is_ascii_digit()) => host,
+        _ => authority,
+    };
+    if host.is_empty()
+        || authority.contains('@')
+        || url.chars().any(|c| c.is_whitespace() || c.is_control())
+    {
+        return String::new();
+    }
+    url
+}
+/// A screen the fleet observer already attributed to another configured
+/// project cannot be adopted by manifest text.
+fn foreign_project(screen: &Value, project: &str) -> bool {
+    screen["project"]
+        .as_str()
+        .is_some_and(|owner| owner != "unassigned" && owner != project)
+}
 fn identity_pins_match(value: &Value, keys: &[&str], observed: Option<u64>) -> bool {
     observed.is_some_and(|pid| {
         pid > 1
@@ -39,26 +75,50 @@ fn identity_pins_match(value: &Value, keys: &[&str], observed: Option<u64>) -> b
 }
 pub fn collect(config: &ObserveConfig, screens: &Value) -> Option<Value> {
     let path = config.rollout_manifest.as_ref()?;
-    let source = json!({"filename":path.file_name().and_then(|s|s.to_str()),"loaded_utc":now_utc(),"mtime_utc":io::mtime_utc(path)});
+    let mut source = json!({"filename":path.file_name().and_then(|s|s.to_str()),"loaded_utc":now_utc(),"mtime_utc":io::mtime_utc(path)});
     let result = (|| -> crate::Result<Value> {
-        let mut raw = io::read_json(path, 1024 * 1024)?;
+        let bytes = io::read_bytes(path, MAX_BYTES)?;
+        source["sha256"] = json!(format!("{:x}", Sha256::digest(&bytes)));
+        let mut raw: Value = serde_json::from_slice(&bytes)?;
+        // Assigning a field on a non-object JSON value would panic.
+        if !raw.is_object() {
+            return Err("rollout manifest must be a JSON object".into());
+        }
         if let Some(lanes_file) = &config.rollout_lanes_file {
-            let lanes = io::read_json(lanes_file, 1024 * 1024)?;
+            let lanes = io::read_json(lanes_file, MAX_BYTES)?;
             if !lanes["lanes"].is_array() {
                 return Err("configured lane assignments are invalid".into());
             }
             raw["lanes"] = lanes["lanes"].clone();
         }
-        normalize(raw, source.clone(), screens, &config.node_id)
+        normalize(
+            raw,
+            source.clone(),
+            screens,
+            &config.node_id,
+            chrono::Utc::now(),
+        )
     })();
     Some(result.unwrap_or_else(|_|json!({"state":"invalid","read_only":true,"source":source,"error":"Configured rollout manifest is unavailable or invalid; no packet state inferred."})))
 }
-fn normalize(raw: Value, source: Value, screens: &Value, node: &str) -> crate::Result<Value> {
+fn normalize(
+    raw: Value,
+    source: Value,
+    screens: &Value,
+    node: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> crate::Result<Value> {
     if raw["schema_version"] != 1 || text(&raw["project"]["id"], 100).is_empty() {
         return Err("invalid manifest identity".into());
     }
+    let project_id = text(&raw["project"]["id"], 100);
     let packets = raw["packets"].as_array().ok_or("missing packets")?;
-    let lanes = raw["lanes"].as_array().cloned().unwrap_or_default();
+    // Absent lanes are optional; a present non-list value is a type error.
+    let lanes = match raw.get("lanes") {
+        None => Vec::new(),
+        Some(Value::Array(lanes)) => lanes.clone(),
+        Some(_) => return Err("lanes must be a list".into()),
+    };
     if packets.len() > 2000 || lanes.len() > 200 {
         return Err("manifest bounds exceeded".into());
     }
@@ -67,10 +127,12 @@ fn normalize(raw: Value, source: Value, screens: &Value, node: &str) -> crate::R
             .as_str()
             .ok_or("missing observation timestamp")?,
     )?;
-    let age = chrono::Utc::now()
-        .signed_duration_since(updated)
-        .num_seconds();
-    let threshold = raw["stale_after_s"].as_i64().unwrap_or(300);
+    let age = now.signed_duration_since(updated).num_seconds();
+    // Booleans, floats and strings are type errors, never the default.
+    let threshold = match raw.get("stale_after_s") {
+        None => 300,
+        Some(value) => value.as_i64().ok_or("invalid stale threshold")?,
+    };
     if !(30..=86400).contains(&threshold) {
         return Err("invalid stale threshold".into());
     }
@@ -165,6 +227,7 @@ fn normalize(raw: Value, source: Value, screens: &Value, node: &str) -> crate::R
     }
     let inventory = screens.as_array().cloned().unwrap_or_default();
     let mut observed_lanes = Vec::new();
+    let mut adopted = BTreeMap::<String, usize>::new();
     let mut lane_ids = BTreeSet::new();
     for lane in &lanes {
         let id = text(&lane["id"], 200);
@@ -181,12 +244,23 @@ fn normalize(raw: Value, source: Value, screens: &Value, node: &str) -> crate::R
                     && (s["id"] == screen || s["name"] == screen)
             })
             .collect::<Vec<_>>();
-        let mut result = json!({"id":id,"screen":screen,"node":host,"branch":text(&lane["branch"],200),"packet_id":text(&lane["packet_id"],200),"source_updated_utc":lane["updated_utc"],
+        // Raw lane reports carry `updated_utc`; observer-merged manifests carry
+        // `source_updated_utc`. Either is reported source time, as text only.
+        let source_time = ["updated_utc", "source_updated_utc"]
+            .iter()
+            .map(|key| text(&lane[*key], 200))
+            .find(|value| !value.is_empty())
+            .map_or(Value::Null, Value::from);
+        let base = json!({"id":id,"screen":screen,"node":host,"branch":text(&lane["branch"],200),"packet_id":text(&lane["packet_id"],200),"source_updated_utc":source_time,
             "status":"unknown","reported_status":text(&lane["status"],40),"model":"unknown","effort":null,"tier":null,"identity_state":"not_observed","progress_observed":false});
+        let mut result = base.clone();
+        let mut adopted_id = None;
         if candidates.len() == 1 {
             let found = candidates[0];
             let pid = found["pid"].as_u64();
-            if identity_pins_match(lane, &["screen_pid", "reported_screen_pid"], pid) {
+            if foreign_project(found, &project_id) {
+                result["identity_state"] = json!("producer_collision");
+            } else if identity_pins_match(lane, &["screen_pid", "reported_screen_pid"], pid) {
                 result["screen"] = found["name"].clone();
                 result["screen_id"] = found["id"].clone();
                 result["screen_pid"] = found["pid"].clone();
@@ -194,12 +268,27 @@ fn normalize(raw: Value, source: Value, screens: &Value, node: &str) -> crate::R
                 for key in ["model", "effort", "model_observed_utc", "agent_running"] {
                     result[key] = found[key].clone();
                 }
+                let screen_id = found["id"].to_string();
+                *adopted.entry(screen_id.clone()).or_default() += 1;
+                adopted_id = Some(screen_id);
             } else {
                 result["identity_state"] = json!("identity_mismatch");
             }
         }
-        observed_lanes.push(result);
+        observed_lanes.push((base, adopted_id, result));
     }
+    // One observed screen cannot be two lanes: aliases adopt nothing.
+    let observed_lanes = observed_lanes
+        .into_iter()
+        .map(|(mut base, adopted_id, result)| {
+            if adopted_id.is_some_and(|id| adopted.get(&id).is_some_and(|n| *n > 1)) {
+                base["identity_state"] = json!("aliased");
+                base
+            } else {
+                result
+            }
+        })
+        .collect::<Vec<_>>();
     let manager = text(&raw["project"]["captain_screen"], 200);
     let matches = inventory
         .iter()
@@ -209,19 +298,31 @@ fn normalize(raw: Value, source: Value, screens: &Value, node: &str) -> crate::R
     if matches.len() == 1 {
         let observed = matches[0];
         let pid = observed["pid"].as_u64();
-        if identity_pins_match(
-            &raw["project"],
-            &["captain_screen_pid", "reported_captain_screen_pid"],
-            pid,
-        ) {
+        if !foreign_project(observed, &project_id)
+            && identity_pins_match(
+                &raw["project"],
+                &["captain_screen_pid", "reported_captain_screen_pid"],
+                pid,
+            )
+        {
             captain = observed.clone();
             captain["identity_state"] = json!("observed");
         }
     }
+    let mut project = raw["project"].clone();
+    if project.get("repository_url").is_some() {
+        project["repository_url"] = json!(safe_url(&project["repository_url"]));
+    }
+    let mut pr = raw["pr"].clone();
+    if let Some(fields) = pr.as_object_mut()
+        && let Some(url) = fields.get_mut("url")
+    {
+        *url = json!(safe_url(url));
+    }
     Ok(
-        json!({"schema_version":1,"state":"ready","read_only":true,"project":raw["project"],"updated_utc":raw["updated_utc"],"producer":raw["producer"],"source":source,
+        json!({"schema_version":1,"state":"ready","read_only":true,"project":project,"updated_utc":raw["updated_utc"],"producer":raw["producer"],"source":source,
         "freshness":{"state":if age < -30{"future"}else if age>threshold{"stale"}else{"fresh"},"age_s":age,"stale_after_s":threshold},
-        "packets":normalized,"lanes":observed_lanes,"counts":counts,"total":packets.len(),"pr":raw["pr"],
+        "packets":normalized,"lanes":observed_lanes,"counts":counts,"total":packets.len(),"pr":pr,
         "live_observation":{"source":"rust_screen_process_observation/v1","captain":captain,"observed_utc":now_utc()},
         "assurance":"Manifest observation only. Receipt references are not independently validated by this collector."}),
     )
@@ -232,7 +333,8 @@ mod tests {
     #[test]
     fn integration_claims_require_actual_provenance_and_never_become_accepted() {
         let raw = json!({"schema_version":1,"project":{"id":"example"},"updated_utc":now_utc(),"packets":[{"id":"P0","status":"integrated","verification":{"receipt":"path","revision":"a","verifier":"reviewer","observed_utc":now_utc()}}]});
-        let v = normalize(raw, json!({}), &json!([]), "node").expect("normalize");
+        let v =
+            normalize(raw, json!({}), &json!([]), "node", chrono::Utc::now()).expect("normalize");
         assert_eq!(v["counts"]["verified"], 1);
         assert_eq!(v["counts"]["integrated"], 0);
         assert_eq!(
@@ -246,7 +348,8 @@ mod tests {
     #[test]
     fn source_time_and_unknown_captain_are_preserved() {
         let raw = json!({"schema_version":1,"project":{"id":"example","captain_screen":"manager"},"updated_utc":"2020-01-01T00:00:00Z","packets":[]});
-        let v = normalize(raw, json!({}), &json!([]), "node").expect("normalize");
+        let v =
+            normalize(raw, json!({}), &json!([]), "node", chrono::Utc::now()).expect("normalize");
         assert_eq!(v["freshness"]["state"], "stale");
         assert_eq!(v["updated_utc"], "2020-01-01T00:00:00Z");
         assert!(v["live_observation"]["captain"].is_null());
@@ -256,20 +359,22 @@ mod tests {
         let mut raw = json!({"schema_version":1,"project":{"id":"example"},"updated_utc":now_utc(),"packets":[],
             "lanes":[{"id":"worker","screen":"worker","node":"node","screen_pid":123,"model":"claimed-model","status":"done"}]});
         let screens = json!([{"host":"node","id":"123.worker","name":"worker","pid":123,"model":"observed-model","agent_running":true,"model_observed_utc":"2026-10-18T22:00:00Z"}]);
-        let observed = normalize(raw.clone(), json!({}), &screens, "node").expect("valid fixture");
+        let observed = normalize(raw.clone(), json!({}), &screens, "node", chrono::Utc::now())
+            .expect("valid fixture");
         assert_eq!(observed["lanes"][0]["model"], "observed-model");
         assert_eq!(observed["lanes"][0]["status"], "unknown");
         assert_eq!(observed["lanes"][0]["progress_observed"], false);
         raw["lanes"][0]["screen_pid"] = json!(122);
-        let reused = normalize(raw.clone(), json!({}), &screens, "node").expect("valid fixture");
+        let reused = normalize(raw.clone(), json!({}), &screens, "node", chrono::Utc::now())
+            .expect("valid fixture");
         assert_eq!(reused["lanes"][0]["identity_state"], "identity_mismatch");
         assert_eq!(reused["lanes"][0]["model"], "unknown");
         raw["project"]["captain_screen"] = json!("worker");
         for pin in [json!("123"), json!(-1), json!(123.5), json!({"pid":123})] {
             raw["lanes"][0]["screen_pid"] = pin.clone();
             raw["project"]["captain_screen_pid"] = pin;
-            let malformed =
-                normalize(raw.clone(), json!({}), &screens, "node").expect("valid fixture");
+            let malformed = normalize(raw.clone(), json!({}), &screens, "node", chrono::Utc::now())
+                .expect("valid fixture");
             assert_eq!(malformed["lanes"][0]["identity_state"], "identity_mismatch");
             assert_eq!(malformed["lanes"][0]["model"], "unknown");
             assert!(malformed["live_observation"]["captain"].is_null());

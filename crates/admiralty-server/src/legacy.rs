@@ -9,7 +9,9 @@ use std::{fs, path::PathBuf};
 #[derive(Clone, Debug)]
 pub struct LegacyConfig {
     pub status_file: PathBuf,
-    pub index_file: PathBuf,
+    /// Retained static detailed page for `/legacy/`. `None` redirects that
+    /// route to the React detailed view, which reads the same producer facts.
+    pub index_file: Option<PathBuf>,
     /// Explicitly preserve the existing loopback dashboard's public read scope.
     /// This flag never bypasses native task or model mutation authentication.
     pub public_read: bool,
@@ -173,10 +175,14 @@ pub(crate) async fn snapshot_encoded(
     }
 }
 
+/// React route that renders the same producer snapshot as the retired page.
+pub const REACT_DETAILED_VIEW: &str = "/#/detail";
+
 pub async fn index(config: LegacyConfig) -> Response {
-    match tokio::task::spawn_blocking(move || read_bounded(&config.index_file, MAX_INDEX_BYTES))
-        .await
-    {
+    let Some(index_file) = config.index_file else {
+        return axum::response::Redirect::temporary(REACT_DETAILED_VIEW).into_response();
+    };
+    match tokio::task::spawn_blocking(move || read_bounded(&index_file, MAX_INDEX_BYTES)).await {
         Ok(Ok(bytes)) => (
             [
                 (header::CONTENT_TYPE, "text/html; charset=utf-8"),

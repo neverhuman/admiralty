@@ -1,7 +1,7 @@
 # Codex model routing for development
 
 New simple or precisely specified development tasks start with `gpt-6-luna`
-at `medium` reasoning effort. The local `tools/codex-luna.sh DIR` launcher
+at `medium` reasoning effort. The local `admiralty fleet codex-luna DIR` launcher
 accepts one existing working directory and pins those settings for a fresh
 interactive Codex session. It does not change user configuration or provide
 an escalation bypass. Provider permissions continue to come from the user's

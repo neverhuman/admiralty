@@ -19,7 +19,7 @@
 ## Model routing (Jepson, Oct 17 2026, 9:45 PM MDT): READ AND FOLLOW
 Read /home/ubuntu/xbabe2_kicker/captains-20261017/MODEL_ROUTING_PLAYBOOK.md on every captain start or restart. It supersedes the Oct 1 "all Codex on gpt-6.1-sol xhigh" default. Cheapest model first (gpt-6-luna medium), escalate on objective failure, astra last resort with justification, agy plans and routes only, CHANGELOG + handoff + MODEL ledger logging on every lane.
 
-For a fresh Codex development session, use `tools/codex-luna.sh EXISTING_WORKTREE`
+For a fresh Codex development session, use `admiralty fleet codex-luna EXISTING_WORKTREE`
 from this repository, including inside an already-budgeted Screen launcher. It
 pins Luna medium without changing shared configuration or accepting model
 override arguments. Before sending the next task to an existing session, check
@@ -34,7 +34,7 @@ Captains may place lanes and jobs on **xbabe1, xbabe2 and xbabe3**. **Never xbab
 
 - **How to reach them from xbabe2:** `ssh ubuntu@xbabe1` and `ssh ubuntu@xbabe3` (names from /etc/hosts; key ~/.ssh/id_ed25519; BatchMode works). The `~/.ssh/config` alias `xbabe2` points at a Mac — xbabe2 is the box you're on.
 - **Hardware (03:45Z snapshot):** xbabe1: 102 CPUs, 62 GB RAM, RTX 4090, / 76% used (~460 GB free), swap full (8 GB). xbabe2: 102 CPUs, 125 GB RAM, RTX 3090, / ~90% used. xbabe3: 102 CPUs, 125 GB RAM, RTX 3090, / ~94% used (~60 GB free) and RAM tight (big non-captain FEA jobs) — treat xbabe3 as **low priority / small jobs only** until it frees up. xbabe1 is currently the most idle host.
-- **Check before you place anything:** `python3 /home/ubuntu/xbabe2_kicker/captains-dashboard/globalres.py` (disk/RAM/swap/load/GPU for all three), or on the host: `nproc; uptime; free -g; df -h /; nvidia-smi`. Launch guard on every host: 1-min load ≤ 85% of CPUs and MemAvailable ≥ 25 GB (Joil: its lease guard is stricter and still binding; Joil may not use other hosts unless its lease allows it). Stagger launches ~60 s.
+- **Check before you place anything:** `admiralty fleet resources` (disk/RAM/swap/load/GPU for all three), or on the host: `nproc; uptime; free -g; df -h /; nvidia-smi`. Launch guard on every host: 1-min load ≤ 85% of CPUs and MemAvailable ≥ 25 GB (Joil: its lease guard is stricter and still binding; Joil may not use other hosts unless its lease allows it). Stagger launches ~60 s.
 - **xbabe2 CPU rules still apply** (CPU_SLICES.md): stay in your slice; **never use CPUs 68-77 on xbabe2**; claim overflow pairs before using them.
 - **Don't disturb anything else:** no Jeryu, no CI runners (runner/buildkitd/docker), no other services or other users' jobs; never kill by pattern; never touch a process you didn't start.
 - **One worktree per lane on the host where it runs.** Clone/fetch the repo on that host (e.g. `~/lanes/<project>/<task>`), its own branch, push the lane branch to origin (as jepsontaylor over HTTPS) so the integrator on xbabe2 can merge it. Don't write to xbabe2 repos over NFS/sshfs. Codex/claude on remote hosts: check `command -v codex` and that it's logged in before relying on it; use the same model flags as the routing playbook.
