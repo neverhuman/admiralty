@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Operations source preview — 21 October 2026
+
+- Add a lazy Fleet operations view with cached Git-health triage, source clocks,
+  host pressure, bounded tables and an explicit compact JSON agent brief.
+- Add allowlisted observer JSON publication/failure logs and per-stage timings;
+  `--log-format text` retains the original publication console format.
+- Replace inline Python credential preparation in `pnpm live` with Rust
+  `preview-init`, preserving existing tokens and daemon custody checks.
+- Record deployment, remaining Python migration, metrics and performance work in
+  the operations upgrade review. No production services or execution grants change.
+
 - Compress linear Git history into expandable ranges while preserving topology
   anchors and the complete commit inventory. Add project Captain/Admiral chat
   with durable inbox delivery/replies and Rust Git health findings over cached

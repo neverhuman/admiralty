@@ -91,6 +91,7 @@ The newer Git Flow features below are source-preview capabilities. The 19 Octobe
 - **Git Flow and Fleet Atlas:** ancestry, branches, linked/detached checkouts, command relationships, searchable inventories and evidence inspectors. Git Flow reversibly compresses linear interiors of two or more commits, using compact controls for short stretches while keeping forks, merges, roots, tips, refs/tags, checkout HEADs and missing-parent boundaries visible. See [Git Flow controls](docs/operators/live-views.md#git-flow). Requested model names, configured roles and observed processes retain distinct meanings.
 - **Project Git chat:** a Captain/Admiral bubble floats within each project's viewport, slightly translucent at rest and opaque on hover or focus; touch devices keep it opaque. Sending messages or commands requires protected role configuration and owner session access. Delivery confirms durable inbox receipt, separately from a role's acknowledgment, execution or task acceptance. See [operator chat](docs/operators/operator-chat.md).
 - **Rust Git health:** evaluates the already collected graph, refs and checkouts without running Git commands; the dashboard reads cached reports. Coverage gaps remain explicitly unknown; configured alerts notify the project Captain's inbox. Reports never change repositories or establish merge safety. See [Git health](docs/operators/git-health.md).
+- **Fleet operations:** a searchable fleet-wide Git health table, source-clock/coverage diagnostics, host pressure, observer stage timings and an explicit compact JSON brief for agents. Open `#/operations`; see [operations and logs](docs/operators/fleet-operations.md). This is a source-preview addition, not a production deployment claim.
 - **Scoped native coordination:** durable typed captain–admiral messages, exact retries, own-inbox application receipts, task contracts and compact context through authenticated CLI/MCP and HTTP adapters.
 - **Offline tools:** workplan previews and immutable revision registration, contract validation, backups and restore rehearsals. Release tools stage explicit inputs, create archives and install a new private version directory.
 
@@ -108,7 +109,7 @@ pnpm live \
   --index "$PWD/dashboard/index.html"
 ```
 
-Open [http://127.0.0.1:18891/](http://127.0.0.1:18891/). The original detailed HTML remains at `/legacy/`; **Git Flow** and **Fleet Atlas** use `#/git` and `#/atlas`. This launcher also needs **Python 3** to create protected preview state. Native HTTP serving and observation ingestion run in Rust.
+Open [http://127.0.0.1:18891/](http://127.0.0.1:18891/). The original detailed HTML remains at `/legacy/`; **Git Flow**, **Fleet Atlas** and **Fleet operations** use `#/git`, `#/atlas` and `#/operations`. Protected preview state is prepared by the Rust `admiralty preview-init` command; this launcher no longer needs Python. Native HTTP serving and observation ingestion run in Rust. Retained compatibility and qualification utilities still include Python.
 
 The launcher prints the private access-token **file path**, never the token value. Use **Session access** for authenticated native data and model settings. This convenience mode explicitly enables public loopback reads of the existing detailed feed. Keep the listener on loopback and use an authenticated SSH tunnel for remote access.
 
@@ -128,6 +129,7 @@ For protected task intake and scoped agent access, follow [native startup](docs/
 | Understand Git and agent views | [Live views](docs/operators/live-views.md) |
 | Configure per-project Captain/Admiral chat and verify delivery | [Operator chat](docs/operators/operator-chat.md) |
 | Configure Git health policy and captain alerts | [Git health](docs/operators/git-health.md) |
+| Inspect fleet-wide health, source clocks and compact observer logs | [Fleet operations](docs/operators/fleet-operations.md), [upgrade review](docs/plans/admiralty-v2/OPERATIONS_UPGRADE_2026-10-21.md) |
 | Back up, rehearse recovery or install an explicit archive | [Recovery manifests](docs/operators/recovery-manifest.md), [native archive](docs/operators/native-archive.md), [private version installation](docs/operators/native-install.md) |
 | Develop and reproduce checks | [Contributing](CONTRIBUTING.md), [local CI](docs/operators/local-ci.md) |
 | Review architecture, evidence and remaining implementation | [Master plan](docs/plans/admiralty-v2/MASTER_PLAN.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [remaining-work audit](docs/plans/admiralty-v2/REMAINING_20261019.md) |

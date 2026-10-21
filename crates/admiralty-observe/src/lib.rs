@@ -8,6 +8,7 @@ pub mod history;
 pub mod io;
 pub mod projects;
 pub mod rollout;
+pub mod telemetry;
 pub mod usage;
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -18,7 +19,14 @@ pub fn now_utc() -> String {
 pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> {
     use serde_json::json;
     let started = std::time::Instant::now();
+    let mut stage = started;
+    let mut stages_ms = serde_json::Map::new();
     let observed = fleet::collect(config).await?;
+    stages_ms.insert(
+        "fleet".into(),
+        serde_json::json!(stage.elapsed().as_millis()),
+    );
+    stage = std::time::Instant::now();
     let screens = observed
         .get("screens")
         .cloned()
@@ -28,6 +36,10 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
     // manufacturing a second task ledger from their assignment metadata.
     feeds.projects.retain(|p| p.tracker["kind"] != "rollout");
     let producer_projects = projects::collect(&feeds, &screens).await?;
+    stages_ms.insert(
+        "projects".into(),
+        serde_json::json!(stage.elapsed().as_millis()),
+    );
     let mut snapshot = json!({"generated_utc":now_utc(),"interval_s":config.interval_seconds,
         "host":config.node_id,"projects":producer_projects,
         "order":config.projects.iter().map(|p|p.id.clone()).collect::<Vec<_>>()});
@@ -50,12 +62,15 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
             .collect::<Vec<_>>()
     );
     let previous = io::read_json(&config.output_dir.join("status.json"), 32 * 1024 * 1024).ok();
+    stage = std::time::Instant::now();
     let repositories = git::collect(config).await;
     let (git_health, git_health_alerts) =
         git_health::collect(config, &repositories, previous.as_ref());
     snapshot["git"] = serde_json::to_value(repositories)?;
     snapshot["git_health"] = serde_json::to_value(git_health)?;
     snapshot["git_health_alerts"] = serde_json::to_value(git_health_alerts)?;
+    stages_ms.insert("git".into(), serde_json::json!(stage.elapsed().as_millis()));
+    stage = std::time::Instant::now();
     match usage::collect(config, &snapshot).await {
         Ok(fields) => {
             if let Some(fields) = fields.as_object() {
@@ -69,6 +84,11 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
                 json!("Native usage observation unavailable; no measurements inferred.")
         }
     }
+    stages_ms.insert(
+        "usage".into(),
+        serde_json::json!(stage.elapsed().as_millis()),
+    );
+    stage = std::time::Instant::now();
     match history::update(config, &snapshot) {
         Ok(value) => snapshot["history"] = value,
         Err(_) => {
@@ -76,7 +96,11 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
                 json!("Native history observation unavailable; prior history preserved.")
         }
     }
-    snapshot["collector"] = json!({"implementation":"rust","version":env!("CARGO_PKG_VERSION"),
+    stages_ms.insert(
+        "history".into(),
+        serde_json::json!(stage.elapsed().as_millis()),
+    );
+    snapshot["collector"] = json!({"implementation":"rust","version":env!("CARGO_PKG_VERSION"),"stages_ms":stages_ms,
         "observed_utc":now_utc(),"duration_ms":started.elapsed().as_millis(),"read_only_sources":true,
         "model_turns":0,"acceptance_authority":false});
     let snapshot = io::public_value(snapshot);
