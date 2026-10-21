@@ -27,8 +27,6 @@ Per Jepson's 2026-10-18 stack ruling (`JEPSON_RULING_20261018T1940Z_stack_rust_j
 | `tests/legacy/test_rollout_observe.py` | 301 | Unit tests for `tools/rollout_observe.py` | Port to Rust tests with `ADM-PY04` & delete | `ADM-PY05` |
 | `tests/legacy/test_rollout_packets.py` | 239 | Unit tests for `tools/rollout_packets.py` | Port to Rust tests with `ADM-PY04` & delete | `ADM-PY05` |
 | `tests/legacy/test_stage_evidence_regressions.py` | 239 | Unit tests for `dashboard/collector.py` stage evidence | Port to Rust tests with `ADM-PY01` & delete | `ADM-PY05` |
-| `tests/qualification/release_evidence.py` | 155 | Release qualification evidence verifier | Port to Rust integration test in `admiralty-testkit` & delete | `ADM-PY05` |
-| `tests/qualification/test_release_evidence.py` | 92 | Unit tests for `tests/qualification/release_evidence.py` | Port to Rust integration test in `admiralty-testkit` & delete | `ADM-PY05` |
 | `tests/test_sc_audit_ci_queue.py` | 20 | Unit tests for `tools/sc_audit.py` CI queue | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
 | `tests/test_sc_audit_dope.py` | 246 | Unit tests for `tools/sc_audit.py` DOPE adapter | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
 | `tests/test_sc_audit_gpu.py` | 37 | Unit tests for `tools/sc_audit.py` GPU checks | Port to Rust tests with `ADM-PY03` & delete | `ADM-PY06` |
@@ -46,6 +44,19 @@ Per Jepson's 2026-10-18 stack ruling (`JEPSON_RULING_20261018T1940Z_stack_rust_j
 | `tests/test_native_queue_health.py` | 235 | Synthetic/mocked draft, queue and endpoint regression controls | Fleet Admiral owner; port with Rust audit tests and delete | `ADM-PY06` |
 
 Approved narrowly by the [21 October 2026 Admiral decision](https://github.com/neverhuman/admiralty/pull/166#issuecomment-6307405031), receipt SHA256 `cf32cfd9ec8fa87af6326f78bc7f9c11e33150bc81f4a730f64158f8413e0daf`. Owner for these two additions is the existing sole Fleet Admiral; PR166’s source writer owns this repair integration. Retirement requires Rust parity for unknown/multiline drafts, read-only bounded queue metadata, missing/corrupt/WAL data, and endpoint preconditions before deleting both compatibility files. The helper remains unwired and does not establish queue consumption or delivery authority.
+
+### Retired on 21 October 2026
+
+| Retired | Former path | LOC | Replacement |
+| :--- | :--- | ---: | :--- |
+| 2026-10-21 | `tests/qualification/release_evidence.py` | 155 | Rust `admiralty release evidence` (`crates/admiralty-cli/src/release_evidence.rs`), same gates, bounds, duplicate-key rejection, no-follow hashing and 0/1/2 exit codes |
+| 2026-10-21 | `tests/qualification/test_release_evidence.py` | 92 | Ported regression cases in the same Rust module, plus missing/symlinked evidence and CLI exit-status cases |
+| 2026-10-21 | `dashboard/serve.py` | 22 | `admiraltyd` (already the production server); the retired `dashboard/run.sh` launcher was removed with it |
+| 2026-10-21 | `dashboard/make_snapshot.py` | 10 | Unreferenced static snapshot helper; the React build and `admiralty brief` replace it |
+
+Rust parity for `dashboard/globalres.py` disk-growth/time-to-full estimates now
+lives in `admiralty-observe` (`disk_rates.rs`); the file itself is retained until
+the captain instructions and `dashboard/extras.py` stop invoking it.
 
 ## 2. Tracker Tasks for Remaining Parity and Source Retirement
 

@@ -249,6 +249,12 @@ pub async fn collect(config: &ObserveConfig) -> crate::Result<Value> {
             "state":"unknown","task":null,"flags":[],"tier":null})
     }).collect::<Vec<_>>();
     let super_captain = admiral_observation(config, &screens).await;
+    // Growth needs this observer's own earlier samples; see disk_rates.
+    let now_s = chrono::Utc::now().timestamp_millis() as f64 / 1000.0;
+    if !crate::disk_rates::apply(&config.output_dir, &mut hosts, now_s) {
+        warnings
+            .push("Disk growth samples were not persisted; the next projection may be delayed.");
+    }
     let resource_warnings = hosts
         .iter()
         .flat_map(|h| h["warnings"].as_array().into_iter().flatten().cloned())
@@ -444,7 +450,7 @@ fn parse_resources(node: &NodeConfig, text: &str) -> Value {
     let mut warnings = Vec::new();
     for disk in &disks {
         if disk["level"] != "ok" {
-            warnings.push(json!({"level":disk["level"],"text":format!("{} disk {} {:.1}% used",node.id,disk["mount"].as_str().unwrap_or("unknown"),disk["pct"].as_f64().unwrap_or_default())}));
+            warnings.push(json!({"level":disk["level"],"kind":"disk","text":format!("{} disk {} {:.1}% used",node.id,disk["mount"].as_str().unwrap_or("unknown"),disk["pct"].as_f64().unwrap_or_default())}));
         }
     }
     if mem["level"].as_str().is_some_and(|s| s != "ok") {

@@ -10,7 +10,7 @@ export function rankCommands(commands: PaletteCommand[], query: string): Palette
     const label = command.label.toLowerCase(), haystack = `${label} ${command.group.toLowerCase()} ${command.keywords?.toLowerCase() ?? ''}`;
     if (label.startsWith(q)) return 0;
     if (label.split(/\s+/).some(word => word.startsWith(q))) return 1;
-    if (haystack.includes(q)) return 2;
+    if (q.split(/\s+/).every(word => haystack.includes(word))) return 2;
     return -1;
   };
   return commands.map(command => ({ command, rank: score(command) }))

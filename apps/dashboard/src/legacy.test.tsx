@@ -284,3 +284,37 @@ describe('read-only detailed snapshot transport', () => {
     stop();
   });
 });
+
+describe('conditional detailed snapshot polling', () => {
+  afterEach(() => vi.useRealTimers());
+  it('revalidates with the last entity tag and skips parse and re-render on 304', async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json(snapshot(), { headers: { ETag: '"rev-1-gz"' } }))
+      .mockResolvedValueOnce(new Response(null, { status: 304, headers: { ETag: '"rev-1-gz"' } }))
+      .mockResolvedValue(Response.json({ ...snapshot(), generated_utc: '2026-10-21T00:00:15Z' }, { headers: { ETag: '"rev-2-gz"' } }));
+    const onSnapshot = vi.fn(), onError = vi.fn();
+    const stop = watchLegacy({ fetcher, onSnapshot, onError });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onSnapshot).toHaveBeenCalledTimes(1);
+    expect(new Headers(fetcher.mock.calls[0][1]?.headers).get('If-None-Match')).toBeNull();
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(new Headers(fetcher.mock.calls[1][1]?.headers).get('If-None-Match')).toBe('"rev-1-gz"');
+    expect(onSnapshot).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenLastCalledWith('');
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(onSnapshot).toHaveBeenCalledTimes(2);
+    expect(onSnapshot.mock.calls[1][0]).toMatchObject({ generated_utc: '2026-10-21T00:00:15Z' });
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(new Headers(fetcher.mock.calls[3][1]?.headers).get('If-None-Match')).toBe('"rev-2-gz"');
+    stop();
+  });
+  it('can stay on the small initial projection for summary views', async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => Response.json({ ...snapshot(), admiralty_delivery: 'initial' }));
+    const stop = watchLegacy({ fetcher, view: 'detail', initialOnly: true, onSnapshot: vi.fn(), onError: vi.fn() });
+    await vi.advanceTimersByTimeAsync(15_001);
+    expect(fetcher.mock.calls.map(call => call[0])).toEqual(['/v1/legacy/detail/initial', '/v1/legacy/detail/initial']);
+    stop();
+  });
+});

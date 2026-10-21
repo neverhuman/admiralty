@@ -4,7 +4,14 @@ Per Jepson's 2026-10-18 stack ruling, Admiralty's allowed language stack is **Ru
 
 `cargo test -p admiralty-testkit --test python_policy --locked` enforces the
 reviewed ceiling in `tests/fixtures/python-baseline.txt` and exact exception/plan
-coverage. It runs inside `pnpm check` and hosted workspace tests. A new exception
+coverage. It runs inside `pnpm check` and hosted workspace tests.
+
+On 21 October 2026 four paths were retired without replacement Python:
+`tests/qualification/release_evidence.py` and its tests became the Rust
+`admiralty release evidence` preflight (same gates, bounds and exit codes, with
+ported regression cases), and the retired `dashboard/serve.py`,
+`dashboard/make_snapshot.py` and `dashboard/run.sh` launcher were removed because
+`admiraltyd` serves production and the React build replaces the static snapshot. A new exception
 row cannot approve a new Python file; expanding the ceiling requires the
 maintainer's explicit exception and ordinary exact-head review.
 
@@ -31,8 +38,6 @@ maintainer's explicit exception and ordinary exact-head review.
 | `tests/legacy/test_rollout_observe.py` | Regression suite for `tools/rollout_observe.py`; retired when `tools/*.py` is ported to Rust (`ADM-PY05`). |
 | `tests/legacy/test_rollout_packets.py` | Regression suite for `tools/rollout_packets.py`; retired when `tools/*.py` is ported to Rust (`ADM-PY05`). |
 | `tests/legacy/test_stage_evidence_regressions.py` | Regression suite for `dashboard/collector.py`; retired when `dashboard/*.py` is replaced by Rust (`ADM-PY05`). |
-| `tests/qualification/release_evidence.py` | Release qualification evidence verifier retained until ported to Rust integration tests (`ADM-PY05`). |
-| `tests/qualification/test_release_evidence.py` | Unit tests for `tests/qualification/release_evidence.py`; ported to Rust integration tests (`ADM-PY05`). |
 | `tests/test_sc_audit_ci_queue.py` | Parity test for `tools/sc_audit.py`; ported to Rust test suite with `ADM-PY03` (`ADM-PY06`). |
 | `tests/test_sc_audit_dope.py` | Parity test for `tools/sc_audit.py`; ported to Rust test suite with `ADM-PY03` (`ADM-PY06`). |
 | `tests/test_sc_audit_gpu.py` | Parity test for `tools/sc_audit.py`; ported to Rust test suite with `ADM-PY03` (`ADM-PY06`). |

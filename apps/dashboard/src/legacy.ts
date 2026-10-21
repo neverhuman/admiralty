@@ -1,5 +1,6 @@
 import { ApiError, readBoundedJson } from './api';
 import { assertBoundedJson } from './validation';
+import { scheduleVisible } from './visibility';
 
 export type Data = Record<string, unknown>;
 export type LegacySnapshot = Data & { generated_utc: string; projects: Record<string, Data>; order?: string[] };
@@ -30,36 +31,60 @@ export function parseLegacy(value: unknown): LegacySnapshot {
   for (const project of Object.values(snapshot.projects)) if (!project || typeof project !== 'object' || Array.isArray(project)) throw new Error('Invalid detailed project source');
   return snapshot as LegacySnapshot;
 }
-type LegacyView = 'full' | 'detail' | 'initial';
+export type LegacyView = 'full' | 'detail' | 'initial';
 const legacyPaths: Record<LegacyView, string> = { full: '/v1/legacy', detail: '/v1/legacy/detail', initial: '/v1/legacy/detail/initial' };
-export async function getLegacy(token?: string, signal?: AbortSignal, fetcher: typeof fetch = fetch, view: LegacyView = 'full'): Promise<LegacySnapshot | null> {
-  const response = await fetcher(legacyPaths[view], { headers: token ? { Authorization: `Bearer ${token}` } : undefined, signal, cache: 'no-store' });
-  if (response.status === 404) return null;
+export type LegacyFetch = { snapshot: LegacySnapshot | null; etag: string | null; notModified: boolean };
+/**
+ * One conditional read. With a previous entity tag the server may answer 304,
+ * which skips the transfer and the multi-megabyte parse; `snapshot` is then
+ * null and the caller keeps what it already rendered.
+ */
+export async function fetchLegacy(token: string | undefined, signal: AbortSignal | undefined, fetcher: typeof fetch = fetch, view: LegacyView = 'full', etag?: string): Promise<LegacyFetch> {
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (etag) headers['If-None-Match'] = etag;
+  const response = await fetcher(legacyPaths[view], { headers: Object.keys(headers).length ? headers : undefined, signal, cache: 'no-store' });
+  if (response.status === 304 && etag) return { snapshot: null, etag, notModified: true };
+  if (response.status === 404) return { snapshot: null, etag: null, notModified: false };
   if (!response.ok) throw new ApiError(`Detailed snapshot request failed (${response.status})`, response.status);
-  return parseLegacy(await readBoundedJson(response));
+  return { snapshot: parseLegacy(await readBoundedJson(response)), etag: response.headers.get('ETag'), notModified: false };
 }
-export function watchLegacy(options: { token?: string; onSnapshot: (value: LegacySnapshot | null) => void; onError: (value: string) => void; fetcher?: typeof fetch; view?: 'full' | 'detail'; progressive?: boolean }): () => void {
-  let stopped = false, timer: ReturnType<typeof setTimeout> | undefined;
-  let phase: LegacyView = options.progressive ? 'initial' : options.view ?? 'full';
+export async function getLegacy(token?: string, signal?: AbortSignal, fetcher: typeof fetch = fetch, view: LegacyView = 'full'): Promise<LegacySnapshot | null> {
+  return (await fetchLegacy(token, signal, fetcher, view)).snapshot;
+}
+export function watchLegacy(options: { token?: string; onSnapshot: (value: LegacySnapshot | null) => void; onError: (value: string) => void; fetcher?: typeof fetch; view?: 'full' | 'detail'; progressive?: boolean; initialOnly?: boolean; intervalMs?: number }): () => void {
+  let stopped = false, cancelNext: (() => void) | undefined;
+  let phase: LegacyView = options.initialOnly ? 'initial' : options.progressive ? 'initial' : options.view ?? 'full';
   let request: AbortController | undefined;
+  // Entity tags are content hashes per projection: an unchanged revision
+  // answers 304 and keeps the current render without a transfer or parse.
+  const etags: Partial<Record<LegacyView, string>> = {};
+  const interval = options.intervalMs ?? 15_000;
   async function poll() {
     const controller = new AbortController();
     request = controller;
     let timedOut = false;
     const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 12_000);
     let repeat = true;
-    let nextDelay = 15_000;
+    let nextDelay = interval;
     try {
-      const snapshot = await getLegacy(options.token, controller.signal, options.fetcher, phase);
+      const result = await fetchLegacy(options.token, controller.signal, options.fetcher, phase, etags[phase]);
+      const snapshot = result.snapshot;
+      if (result.notModified) {
+        // Unchanged producer revision: nothing to parse or re-render.
+        if (!stopped) options.onError('');
+        return;
+      }
       if (snapshot === null && phase !== 'full') {
         // Compatibility with older and synthetic servers. Keep any rendered
         // initial view while falling back to the original full source.
         phase = 'full'; nextDelay = 0;
         return;
       }
+      if (result.etag) etags[phase] = result.etag;
       if (!stopped) { options.onSnapshot(snapshot); options.onError(''); }
       if (snapshot === null) repeat = false;
-      else if (phase === 'initial') { phase = options.view ?? 'full'; nextDelay = 0; }
+      else if (phase === 'initial' && !options.initialOnly) { phase = options.view ?? 'full'; nextDelay = 0; }
     } catch (error) {
       if (!stopped) options.onError(timedOut
         ? 'The live snapshot did not arrive within 12 seconds. Retrying automatically; check the dashboard connection.'
@@ -67,11 +92,17 @@ export function watchLegacy(options: { token?: string; onSnapshot: (value: Legac
       if (error instanceof ApiError && [401, 403].includes(error.status)) repeat = false;
     } finally {
       clearTimeout(timeout);
-      if (!stopped && repeat) timer = setTimeout(() => void poll(), nextDelay);
+      // Background tabs wait until visible instead of polling every interval.
+      if (!stopped && repeat) {
+        if (nextDelay === 0) {
+          const immediate = setTimeout(() => void poll(), 0);
+          cancelNext = () => clearTimeout(immediate);
+        } else cancelNext = scheduleVisible(() => void poll(), nextDelay);
+      }
     }
   }
   void poll();
-  return () => { stopped = true; request?.abort(); clearTimeout(timer); };
+  return () => { stopped = true; request?.abort(); cancelNext?.(); };
 }
 
 const sections: Array<[string, string]> = [

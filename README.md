@@ -130,6 +130,8 @@ For protected task intake and scoped agent access, follow [native startup](docs/
 | Understand Git and agent views | [Live views](docs/operators/live-views.md) |
 | Configure per-project Captain/Admiral chat and verify delivery | [Operator chat](docs/operators/operator-chat.md) |
 | Configure Git health policy and captain alerts | [Git health](docs/operators/git-health.md) |
+| Give agents a compact fleet brief and read compact logs | [Agent brief and compact logs](docs/operators/agent-brief.md) |
+| Deploy with versions, systemd units, readiness and rollback | [Clean deployment](docs/operators/deployment-systemd.md) |
 | Back up, rehearse recovery or install an explicit archive | [Recovery manifests](docs/operators/recovery-manifest.md), [native archive](docs/operators/native-archive.md), [private version installation](docs/operators/native-install.md) |
 | Deploy to the current production host | [Deploy Admiralty](deploy/README.md): UI-only and full releases, verification and rollback |
 | Set up a new or migrated host with systemd units, readiness-gated rollout and automatic rollback | [Clean deployment with systemd](docs/operators/deployment-systemd.md) |

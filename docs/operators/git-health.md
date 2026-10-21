@@ -114,6 +114,7 @@ Validation:
 
 ```sh
 rtk cargo test -p admiralty-core git_health --locked
+rtk cargo test -p admiralty-core git_metrics --locked
 rtk cargo test -p admiralty-observe git_health --locked
 rtk cargo test -p admiralty-core --release git_health::tests::benchmark_64_checkouts_512_commits --locked -- --ignored --nocapture
 ```

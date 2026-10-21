@@ -14,7 +14,10 @@ pub struct LegacyConfig {
     /// This flag never bypasses native task or model mutation authentication.
     pub public_read: bool,
 }
-const MAX_STATUS_BYTES: u64 = 8 * 1024 * 1024;
+/// Same bound as the native observer's atomic `status.json` writer. A smaller
+/// reader bound made every legacy route fail once a valid producer snapshot
+/// passed 8 MiB.
+pub(crate) const MAX_STATUS_BYTES: u64 = 32 * 1024 * 1024;
 const MAX_INDEX_BYTES: u64 = 2 * 1024 * 1024;
 
 pub(crate) fn read_bounded(path: &PathBuf, limit: u64) -> Result<Vec<u8>, String> {
@@ -135,35 +138,182 @@ fn detail_projection(mut value: serde_json::Value, initial: bool) -> serde_json:
     value
 }
 
+/// File identity of the bounded status source. The observer publishes with an
+/// atomic rename, so a new snapshot is always a new inode or modification.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct SourceIdentity {
+    len: u64,
+    modified: Option<std::time::SystemTime>,
+    #[cfg(unix)]
+    inode: (u64, u64, i64, i64),
+}
+
+impl SourceIdentity {
+    pub(crate) fn of(metadata: &fs::Metadata) -> Self {
+        #[cfg(unix)]
+        use std::os::unix::fs::MetadataExt;
+        Self {
+            len: metadata.len(),
+            modified: metadata.modified().ok(),
+            #[cfg(unix)]
+            inode: (
+                metadata.dev(),
+                metadata.ino(),
+                metadata.ctime(),
+                metadata.ctime_nsec(),
+            ),
+        }
+    }
+}
+
+/// Identity of the configured source without reading its contents.
+pub(crate) fn source_identity(path: &std::path::Path) -> Option<SourceIdentity> {
+    fs::metadata(path)
+        .ok()
+        .filter(|m| m.is_file())
+        .map(|m| SourceIdentity::of(&m))
+}
+
+/// One encoded projection of one source revision.
+#[derive(Debug)]
+pub(crate) struct EncodedSnapshot {
+    identity: SourceIdentity,
+    pub(crate) etag: String,
+    pub(crate) body: axum::body::Bytes,
+    pub(crate) gzip: bool,
+    pub(crate) cache_hit: bool,
+}
+
+type CacheKey = (PathBuf, u8, bool);
+
+/// Projection cache shared by every viewer. Each key keeps only the latest
+/// source revision, so memory is bounded by (views × encodings) per source.
+/// Every request still opens and stats the source; only unchanged files skip
+/// the parse, projection, serialization and compression work.
+fn cache()
+-> &'static std::sync::Mutex<std::collections::HashMap<CacheKey, std::sync::Arc<EncodedSnapshot>>> {
+    static CACHE: std::sync::OnceLock<
+        std::sync::Mutex<std::collections::HashMap<CacheKey, std::sync::Arc<EncodedSnapshot>>>,
+    > = std::sync::OnceLock::new();
+    CACHE.get_or_init(Default::default)
+}
+
+fn view_key(view: SnapshotView) -> u8 {
+    match view {
+        SnapshotView::Full => 0,
+        SnapshotView::Detail => 1,
+        SnapshotView::Initial => 2,
+    }
+}
+
+fn encode_snapshot(
+    config: &LegacyConfig,
+    gzip: bool,
+    view: SnapshotView,
+) -> Result<std::sync::Arc<EncodedSnapshot>, String> {
+    use sha2::{Digest, Sha256};
+    use std::io::Read;
+    let mut file =
+        fs::File::open(&config.status_file).map_err(|_| "legacy source is unavailable")?;
+    let metadata = file
+        .metadata()
+        .map_err(|_| "legacy source metadata unavailable")?;
+    if !metadata.is_file() || metadata.len() > MAX_STATUS_BYTES {
+        return Err("legacy source exceeds its bounded regular file limit".into());
+    }
+    let identity = SourceIdentity::of(&metadata);
+    let key = (config.status_file.clone(), view_key(view), gzip);
+    if let Ok(cache) = cache().lock()
+        && let Some(hit) = cache.get(&key).filter(|hit| hit.identity == identity)
+    {
+        return Ok(std::sync::Arc::new(EncodedSnapshot {
+            identity: hit.identity.clone(),
+            etag: hit.etag.clone(),
+            body: hit.body.clone(),
+            gzip: hit.gzip,
+            cache_hit: true,
+        }));
+    }
+    let mut bytes = Vec::new();
+    file.by_ref()
+        .take(MAX_STATUS_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "legacy source read failed")?;
+    if bytes.len() as u64 > MAX_STATUS_BYTES {
+        return Err("legacy source exceeds its byte limit".into());
+    }
+    let value: serde_json::Value =
+        serde_json::from_slice(&bytes).map_err(|_| "legacy source is not valid JSON")?;
+    if !value.is_object()
+        || !value["projects"].is_object()
+        || !value["order"].is_array()
+        || !value["generated_utc"].is_string()
+    {
+        return Err("legacy snapshot is missing required source fields".to_string());
+    }
+    let bytes = match view {
+        SnapshotView::Full => {
+            drop(value);
+            bytes
+        }
+        SnapshotView::Detail | SnapshotView::Initial => {
+            drop(bytes);
+            serde_json::to_vec(&detail_projection(
+                value,
+                matches!(view, SnapshotView::Initial),
+            ))
+            .map_err(|_| "legacy projection encoding failed".to_owned())?
+        }
+    };
+    let digest = Sha256::digest(&bytes);
+    let hex = digest
+        .iter()
+        .take(16)
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>();
+    // Preserve the source bytes and validation bounds; compression changes
+    // transport only, never trims history or manufactures fresher data.
+    let (body, is_gzip) = crate::http_bytes::encode("application/json", bytes, gzip)
+        .map_err(|_| "legacy response encoding failed".to_owned())?;
+    // Strong tags must differ per content-coding of the same projection.
+    let etag = format!("\"{hex}{}\"", if is_gzip { "-gz" } else { "" });
+    let encoded = std::sync::Arc::new(EncodedSnapshot {
+        identity,
+        etag,
+        body: axum::body::Bytes::from(body),
+        gzip: is_gzip,
+        cache_hit: false,
+    });
+    if let Ok(mut cache) = cache().lock() {
+        cache.insert(key, encoded.clone());
+    }
+    Ok(encoded)
+}
+
 pub(crate) async fn snapshot_encoded(
     config: LegacyConfig,
     gzip: bool,
     view: SnapshotView,
-) -> Result<Response, (StatusCode, Json<serde_json::Value>)> {
-    let result = tokio::task::spawn_blocking(move || {
-        let (value, bytes) = read_snapshot(&config)?;
-        let bytes = match view {
-            SnapshotView::Full => {
-                drop(value);
-                bytes
-            }
-            SnapshotView::Detail | SnapshotView::Initial => {
-                drop(bytes);
-                serde_json::to_vec(&detail_projection(
-                    value,
-                    matches!(view, SnapshotView::Initial),
-                ))
-                .map_err(|_| "legacy projection encoding failed".to_owned())?
-            }
-        };
-        // Preserve the source bytes and validation bounds; compression changes
-        // transport only, never trims history or manufactures fresher data.
-        crate::http_bytes::response("application/json", bytes, gzip)
-            .map_err(|_| "legacy response encoding failed".to_owned())
-    })
-    .await;
+) -> Result<std::sync::Arc<EncodedSnapshot>, (StatusCode, Json<serde_json::Value>)> {
+    let result = tokio::task::spawn_blocking(move || encode_snapshot(&config, gzip, view)).await;
     match result {
-        Ok(Ok(response)) => Ok(response),
+        Ok(Ok(encoded)) => Ok(encoded),
+        _ => Err((
+            StatusCode::BAD_GATEWAY,
+            Json(serde_json::json!({
+                "error":"Legacy snapshot unavailable, malformed or outside bounds; source facts were not fabricated."
+            })),
+        )),
+    }
+}
+
+/// Parsed snapshot for server-side summaries such as the agent brief.
+pub(crate) async fn snapshot_value(
+    config: LegacyConfig,
+) -> Result<serde_json::Value, (StatusCode, Json<serde_json::Value>)> {
+    match tokio::task::spawn_blocking(move || read_snapshot(&config).map(|(value, _)| value)).await
+    {
+        Ok(Ok(value)) => Ok(value),
         _ => Err((
             StatusCode::BAD_GATEWAY,
             Json(serde_json::json!({

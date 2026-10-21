@@ -1,0 +1,38 @@
+# Admiralty HTTP service and React console (systemd user unit).
+#
+# Install: copy to ~/.config/systemd/user/, create ~/.config/admiralty/admiralty.env
+# from admiralty.env.example, then `systemctl --user daemon-reload` and
+# `systemctl --user enable --now admiralty-observe.service admiraltyd.service`.
+# The unit only runs binaries from $ADMIRALTY_ROOT/current; `admiralty release
+# activate` switches that link atomically and a restart picks up the new version.
+# See docs/operators/deployment-systemd.md. `$$` passes a literal `$` to the
+# shell, which reads the EnvironmentFile variables at start.
+[Unit]
+Description=Admiralty fleet console (admiraltyd)
+Documentation=https://github.com/neverhuman/admiralty/blob/main/docs/operators/deployment-systemd.md
+After=admiralty-observe.service
+Wants=admiralty-observe.service
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/admiralty/admiralty.env
+ExecStart=/bin/sh -ec 'exec "$$ADMIRALTY_ROOT/current/bin/admiraltyd" \
+  --listen "$$ADMIRALTY_LISTEN" \
+  --database "$$ADMIRALTY_STATE/native.sqlite" \
+  --token-file "$$ADMIRALTY_STATE/dashboard-token" \
+  --assets "$$ADMIRALTY_ROOT/current/share/admiralty/dashboard" \
+  --legacy-status-file "$$ADMIRALTY_OBSERVE_DIR/status.json" \
+  --legacy-index-file "$$ADMIRALTY_LEGACY_INDEX" \
+  $$ADMIRALTYD_EXTRA_ARGS'
+# Problem requests (5xx or >= 1 s) as compact logfmt lines on stderr; "all" or "off".
+Environment=ADMIRALTY_ACCESS_LOG=problems
+UMask=0077
+NoNewPrivileges=yes
+Restart=on-failure
+RestartSec=5
+# admiraltyd drains open event streams on SIGTERM.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

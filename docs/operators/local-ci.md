@@ -42,7 +42,7 @@ missing-report errors still fail. The original standard-policy score39 and
 [owned cleanup backlog](../../JANKURAI_CLEANUP_BACKLOG.md); an advisory pass is
 not strict conformance. The Rust `python_policy` integration target runs in both
 this local matrix and hosted Rust CI, rejecting net-new Python, missing/stale or
-duplicate exceptions and incorrect migration counts. Its reviewed 40-path
+duplicate exceptions and incorrect migration counts. Its reviewed 38-path
 ceiling requires an explicit maintainer exception before expansion. The
 source-bound
 [85-finding triage tracker](../../receipts/integration/jankurai-triage-20261019.json)

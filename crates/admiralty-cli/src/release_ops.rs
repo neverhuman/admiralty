@@ -666,6 +666,32 @@ pub fn rollback(root: &Path) -> Result<Activation> {
     record(root, "rollback", Some(current), &previous, manifest)
 }
 
+/// Inspect installed versions and the current link without modifying the journal.
+pub fn status(root: &Path) -> Result<Value> {
+    check_root(root)?;
+    let current = current_target(root)?;
+    if let Some(name) = current.as_deref() {
+        check_version(root, name)?;
+    }
+    let mut versions = Vec::new();
+    for entry in fs::read_dir(root)? {
+        let entry = entry?;
+        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+        if entry.file_type()?.is_dir()
+            && valid_version_name(&name)
+            && check_version(root, &name).is_ok()
+        {
+            versions.push(name);
+        }
+    }
+    versions.sort();
+    Ok(
+        json!({"releases_root":root,"current":current,"versions":versions,"read_only":true,"services_restarted":false}),
+    )
+}
+
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;

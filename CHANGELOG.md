@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- Add a token-budgeted agent brief (`admiralty brief`, `GET /v1/brief`, and the
+  new **Fleet health** view) and compact `logfmt`/NDJSON log events: one
+  observer event per changed cycle with counted rollups, plus a problem-request
+  access log in `admiraltyd`. Unknown facts render as `?`, never zero.
+- Publish descriptive `git_metrics` (branch relations and merged candidates,
+  unintegrated commits, unmerged tip ages, worktree state, integration
+  activity) next to `git_health` without changing health fingerprints.
+- Observer: run Git scans concurrently with fleet collection, read the previous
+  snapshot once per cycle, publish stage timings, stop cleanly on SIGTERM,
+  estimate disk growth/time to full natively, and emit the per-project
+  `credits_per_done_todo` that history already expected.
+- Server: cache encoded snapshot projections per source revision with strong
+  ETags and 304 revalidation; skip re-parsing unchanged producer files in the
+  views and Git health loops; align the producer read bound with the 32 MiB
+  writer bound (snapshots over 8 MiB previously returned 502); add `/readyz`;
+  compare bearer tokens in constant time.
+- Clean deployment: `admiralty release activate|rollback|status` atomic version
+  links, systemd user units, `admiralty state init`, and the Rust
+  `admiralty release evidence` preflight. Four Python files are retired
+  (inventory 42 → 38) and `pnpm live` no longer needs Python.
+- Dashboard: grouped navigation, Ctrl/Cmd+K palette, remembered theme, hidden-tab
+  polling pause, conditional snapshot revalidation and memoized trend metrics.
+
 - Compress linear Git history into expandable ranges while preserving topology
   anchors and the complete commit inventory. Add project Captain/Admiral chat
   with durable inbox delivery/replies and Rust Git health findings over cached
