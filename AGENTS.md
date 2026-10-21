@@ -39,7 +39,9 @@ Never invent receipts or acceptance. Production has one deployment/configuration
 writer; reviews and local tests do not authorize another service controller.
 Do not reuse consumed provider grants or install request-issued authority.
 
-Merge only after `neverhumanbot` approves the exact head, using ordinary
-`gh pr merge --rebase --match-head-commit`. No force pushes, admin bypass,
-squash merges or merge commits. Follow explicit maintainer authorization;
-do not add a new user approval step for already-authorized reversible work.
+The owner removed mandatory independent/second-reviewer approval on 21 October
+2026. Review the source and findings, require passing current-head checks, then
+use ordinary `gh pr merge --rebase --match-head-commit`. Do not wait for a
+`neverhumanbot` approval or fabricate one. No force pushes, admin bypass, squash
+merges or merge commits. Follow explicit maintainer authorization; do not add a
+new user approval step for already-authorized reversible work.

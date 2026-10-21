@@ -87,15 +87,14 @@ Retire merged branches/worktrees only after confirming their work is integrated,
 no process uses them, and unique/private state is preserved.
 
 Open a pull request against the intended base and describe the behavior changed,
-the exact source tested, validation, and remaining limits. Repository automation
-may require an approval attached to the exact PR head; an approval for an older
-head does not review later commits. That review gate is separate from merge
-authority: only the maintainer or other person authorized by repository policy
-should merge. Do not bypass required checks, force-push shared branches, or
-assume that a bot approval authorizes a worker to merge. The project has used
-`neverhumanbot` approval bound to an exact head; follow the current required
-checks and maintainer process for the PR you are working on. Follow any stricter
-instructions in the assigned work packet.
+the exact source tested, validation, and remaining limits. On 21 October 2026,
+the owner removed the mandatory independent/second-reviewer approval requirement.
+Source review and findings still need attention, and current-head checks must
+pass. Only a maintainer or another explicitly authorized person or agent should
+merge, using an ordinary rebase merge with an expected head SHA. Do not wait for
+or fabricate `neverhumanbot` approval, bypass other protection, force-push shared
+branches, or treat a green check as deployment or release acceptance. Historical
+receipts retain the approval policy that applied when they were recorded.
 
 ## Credentials and fixtures
 
