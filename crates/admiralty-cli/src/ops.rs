@@ -69,6 +69,18 @@ pub fn digest_logs(
 /// tokens contain 48 random bytes encoded as 64 URL-safe characters.
 #[cfg(unix)]
 pub fn init_preview_state(directory: &Path) -> Result<PathBuf> {
+    Ok(prepare_preview_state(directory)?.token_file)
+}
+
+#[cfg(unix)]
+pub struct PreparedPreviewState {
+    pub token_file: PathBuf,
+    pub created: bool,
+}
+
+/// Report creation only when this invocation won the create-only token open.
+#[cfg(unix)]
+pub fn prepare_preview_state(directory: &Path) -> Result<PreparedPreviewState> {
     use rustix::fs::{Mode, OFlags, fstat, mkdirat, open, openat};
     use std::path::Component;
 
@@ -102,7 +114,7 @@ pub fn init_preview_state(directory: &Path) -> Result<PathBuf> {
         return Err("existing preview state directory must be owned and mode 0700".into());
     }
     let token = directory.join("dashboard-token");
-    match openat(
+    let created = match openat(
         &parent,
         "dashboard-token",
         OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::NOFOLLOW | OFlags::CLOEXEC,
@@ -118,13 +130,17 @@ pub fn init_preview_state(directory: &Path) -> Result<PathBuf> {
             wipe(&mut secret);
             written?;
             fs::File::from(parent).sync_all()?;
+            true
         }
-        Err(rustix::io::Errno::EXIST) => {}
+        Err(rustix::io::Errno::EXIST) => false,
         Err(error) => return Err(error.into()),
-    }
+    };
     let mut credential = admiralty_server::startup::read_private_token(&token)?;
     wipe(&mut credential);
-    Ok(token)
+    Ok(PreparedPreviewState {
+        token_file: token,
+        created,
+    })
 }
 
 #[cfg(not(unix))]

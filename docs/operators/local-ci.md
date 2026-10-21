@@ -68,3 +68,15 @@ creates its own private subdirectory and retains every stage/log and the same
 concurrency limits and assertions. For example, use an adequately sized local
 tmpfs on a disposable Linux test host; this does not qualify physical-disk
 crash behavior or change the separate `/dev/shm` capture-fixture requirement.
+
+## Rust runner storage
+
+The hosted Rust/legacy qualification job uses the standard GitHub-hosted
+`ubuntu-24.04` runner. The generic LAN pool mixed NVMe and USB rotational storage,
+which caused large fsync delays, startup-budget failures and a30-minute timeout
+on unchanged source. This public repository uses GitHub's free standard runner;
+other job routing remains unchanged. Keep the two compiler jobs, serialized
+Rust tests, real durability operations, individual deadlines and30-minute job
+limit. A fast rerun is evidence for its exact source, not erasure of the original
+failure. Reintroducing a LAN Rust lane requires demonstrated durable I/O
+performance and an actual corresponding runner label.
