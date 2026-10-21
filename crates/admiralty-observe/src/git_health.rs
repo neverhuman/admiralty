@@ -1,5 +1,6 @@
 //! Git health publication reuses the single Git observation for this cycle.
 use admiralty_core::git_health::{GitHealthReport, GitHealthState, evaluate};
+use admiralty_core::git_metrics::{GitMetricsReport, summarize};
 use admiralty_core::views::GitRepository;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -57,6 +58,23 @@ pub fn collect(
     }
     alerts.sort_by(|a, b| a.project_id.cmp(&b.project_id));
     (reports, alerts)
+}
+
+/// Descriptive metrics for every evaluated project, from the same cut as its
+/// health report. Published under a separate key so health fingerprints and
+/// alert deduplication are unaffected.
+pub fn metrics(
+    repositories: &BTreeMap<String, GitRepository>,
+    reports: &BTreeMap<String, GitHealthReport>,
+) -> BTreeMap<String, GitMetricsReport> {
+    reports
+        .iter()
+        .filter_map(|(id, report)| {
+            repositories
+                .get(id)
+                .map(|repository| (id.clone(), summarize(repository, report)))
+        })
+        .collect()
 }
 
 #[cfg(test)]

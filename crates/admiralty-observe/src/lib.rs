@@ -1,11 +1,13 @@
 //! Native read-only fleet ingestion. No agent turns, Python, provider launches,
 //! source checkout mutations or acceptance authority are part of observation.
 pub mod config;
+pub mod disk_rates;
 pub mod fleet;
 pub mod git;
 pub mod git_health;
 pub mod history;
 pub mod io;
+pub mod logging;
 pub mod projects;
 pub mod rollout;
 pub mod usage;
@@ -17,17 +19,43 @@ pub fn now_utc() -> String {
 
 pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> {
     use serde_json::json;
-    let started = std::time::Instant::now();
-    let observed = fleet::collect(config).await?;
-    let screens = observed
-        .get("screens")
-        .cloned()
-        .unwrap_or_else(|| json!([]));
-    let mut feeds = config.clone();
-    // Rollout project entries classify actual workers/managers without
-    // manufacturing a second task ledger from their assignment metadata.
-    feeds.projects.retain(|p| p.tracker["kind"] != "rollout");
-    let producer_projects = projects::collect(&feeds, &screens).await?;
+    use std::time::Instant;
+    let started = Instant::now();
+    // Read the last published snapshot once: Git uses it to retain the last
+    // successful facts and health uses it for alert deduplication.
+    let previous = io::read_json(&config.output_dir.join("status.json"), 32 * 1024 * 1024).ok();
+    // Git scans do not depend on Screen/fleet observation, so both run
+    // concurrently; the cycle now costs roughly the slower branch, not the sum.
+    let fleet_and_projects = async {
+        let at = Instant::now();
+        let observed = fleet::collect(config).await?;
+        let fleet_ms = at.elapsed().as_millis();
+        let screens = observed
+            .get("screens")
+            .cloned()
+            .unwrap_or_else(|| json!([]));
+        let mut feeds = config.clone();
+        // Rollout project entries classify actual workers/managers without
+        // manufacturing a second task ledger from their assignment metadata.
+        feeds.projects.retain(|p| p.tracker["kind"] != "rollout");
+        let at = Instant::now();
+        let producer_projects =
+            projects::collect_with_previous(&feeds, &screens, previous.as_ref()).await?;
+        Ok::<_, Box<dyn std::error::Error + Send + Sync>>((
+            observed,
+            screens,
+            producer_projects,
+            fleet_ms,
+            at.elapsed().as_millis(),
+        ))
+    };
+    let git_scan = async {
+        let at = Instant::now();
+        let repositories = git::collect_with_previous(config, previous.as_ref()).await;
+        (repositories, at.elapsed().as_millis())
+    };
+    let (fleet_and_projects, (repositories, git_ms)) = tokio::join!(fleet_and_projects, git_scan);
+    let (observed, screens, producer_projects, fleet_ms, projects_ms) = fleet_and_projects?;
     let mut snapshot = json!({"generated_utc":now_utc(),"interval_s":config.interval_seconds,
         "host":config.node_id,"projects":producer_projects,
         "order":config.projects.iter().map(|p|p.id.clone()).collect::<Vec<_>>()});
@@ -49,13 +77,16 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
             .map(|p| json!({"id":p.id,"name":p.name}))
             .collect::<Vec<_>>()
     );
-    let previous = io::read_json(&config.output_dir.join("status.json"), 32 * 1024 * 1024).ok();
-    let repositories = git::collect(config).await;
+    let at = Instant::now();
     let (git_health, git_health_alerts) =
         git_health::collect(config, &repositories, previous.as_ref());
+    let git_metrics = git_health::metrics(&repositories, &git_health);
+    let git_health_ms = at.elapsed().as_millis();
     snapshot["git"] = serde_json::to_value(repositories)?;
     snapshot["git_health"] = serde_json::to_value(git_health)?;
+    snapshot["git_metrics"] = serde_json::to_value(git_metrics)?;
     snapshot["git_health_alerts"] = serde_json::to_value(git_health_alerts)?;
+    let at = Instant::now();
     match usage::collect(config, &snapshot).await {
         Ok(fields) => {
             if let Some(fields) = fields.as_object() {
@@ -69,6 +100,8 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
                 json!("Native usage observation unavailable; no measurements inferred.")
         }
     }
+    let usage_ms = at.elapsed().as_millis();
+    let at = Instant::now();
     match history::update(config, &snapshot) {
         Ok(value) => snapshot["history"] = value,
         Err(_) => {
@@ -76,9 +109,14 @@ pub async fn cycle(config: &config::ObserveConfig) -> Result<serde_json::Value> 
                 json!("Native history observation unavailable; prior history preserved.")
         }
     }
+    let history_ms = at.elapsed().as_millis();
+    // Fleet/projects and Git overlap, so stage times can sum past duration_ms.
     snapshot["collector"] = json!({"implementation":"rust","version":env!("CARGO_PKG_VERSION"),
         "observed_utc":now_utc(),"duration_ms":started.elapsed().as_millis(),"read_only_sources":true,
-        "model_turns":0,"acceptance_authority":false});
+        "model_turns":0,"acceptance_authority":false,
+        "stages_ms":{"fleet":fleet_ms,"projects":projects_ms,"git":git_ms,
+            "git_health":git_health_ms,"usage":usage_ms,"history":history_ms},
+        "stages_note":"Fleet+projects and Git scans run concurrently; stage durations overlap."});
     let snapshot = io::public_value(snapshot);
     io::atomic_json(&config.output_dir.join("status.json"), &snapshot)?;
     Ok(snapshot)

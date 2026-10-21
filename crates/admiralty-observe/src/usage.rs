@@ -1347,7 +1347,19 @@ async fn yield_metrics(
     }
     let projects = totals
         .into_iter()
-        .map(|(id, a)| (id, a.value()))
+        .map(|(id, a)| {
+            let mut value = a.value();
+            // Heuristic retained from the legacy feed (see the legacy metric
+            // dictionary): window credits over the current mutable done count.
+            // History already reads this key; it was never emitted natively.
+            let done = snapshot["projects"][&id]["done"]
+                .as_u64()
+                .filter(|done| *done > 0);
+            if let (Some(credits), Some(done)) = (value["credits"].as_f64(), done) {
+                value["credits_per_done_todo"] = json!(credits / done as f64);
+            }
+            (id, value)
+        })
         .collect::<Map<_, _>>();
     json!({"generated_utc":crate::now_utc(),"window_hours":48,"projects":projects,"total":if total.sessions==0{Value::Null}else{total.value()},"hosts_covered":[config.node_id],"method":"Bounded actual JSONL token deltas; project by configured repository/cwd. Yield is an ESTIMATE: a session receives token attribution if a commit in its observed activity window is reachable from that worktree HEAD; exact Agent-Session trailers take precedence. Main/integration require successful git merge-base --is-ancestor against local origin refs (never fetched). Missing or exhausted Git coverage is unattributed, not accepted completion. No patch-id equivalence or remote usage inferred.","attribution_command_budget":32,"attribution_budget_remaining":git_budget,"not_covered":["Unconfigured/remote session files","Providers without measured usage","Worktrees outside configured repository paths","Patch-equivalent rebases without ancestry"]})
 }
@@ -1381,6 +1393,7 @@ fn apply_yield_coverage(
         }
         if !complete {
             for key in [
+                "credits_per_done_todo",
                 "coverage_pct",
                 "yield_main_pct",
                 "yield_integration_pct",
@@ -1939,12 +1952,20 @@ mod tests {
         )]);
         let value = yield_metrics(
             &c,
-            &json!({"projects":{"p":{}}}),
+            &json!({"projects":{"p":{"done":4}}}),
             std::slice::from_ref(&session),
             &rates,
             now,
         )
         .await;
+        let credits = value["projects"]["p"]["credits"]
+            .as_f64()
+            .expect("priced project credits");
+        assert_eq!(
+            value["projects"]["p"]["credits_per_done_todo"].as_f64(),
+            Some(credits / 4.0),
+            "history reads this legacy heuristic; it must be emitted natively"
+        );
         assert_eq!(value["total"]["main_tokens"], 110);
         assert_eq!(value["total"]["integration_tokens"], 110);
         assert_eq!(value["total"]["coverage_pct"], 100.0);
@@ -1964,5 +1985,11 @@ mod tests {
             yield_metrics(&c, &json!({"projects":{"p":{}}}), &[session], &rates, now).await;
         assert_eq!(unknown["total"]["coverage_pct"], 0.0);
         assert_eq!(unknown["total"]["main_tokens"], 0);
+        // No reported done count: the ratio stays absent, never divided by zero.
+        assert!(
+            unknown["projects"]["p"]
+                .get("credits_per_done_todo")
+                .is_none()
+        );
     }
 }

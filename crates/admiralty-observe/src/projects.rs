@@ -1185,6 +1185,17 @@ fn attach_recent(record: &mut Value, previous: &Value) {
 /// Every configured project gets a record, including a truthful unknown record
 /// on missing/malformed inputs. No failure becomes an empty successful ledger.
 pub async fn collect(config: &ObserveConfig, screens: &Value) -> crate::Result<Value> {
+    let previous = read_json(&config.output_dir.join("status.json"), 32 * 1024 * 1024).ok();
+    collect_with_previous(config, screens, previous.as_ref()).await
+}
+
+/// Collect project trackers using an already loaded previous snapshot for
+/// transition history, so one cycle parses the last `status.json` once.
+pub async fn collect_with_previous(
+    config: &ObserveConfig,
+    screens: &Value,
+    previous: Option<&Value>,
+) -> crate::Result<Value> {
     if config.projects.len() > 128 {
         return Err("configured project count exceeds bound".into());
     }
@@ -1200,8 +1211,8 @@ pub async fn collect(config: &ObserveConfig, screens: &Value) -> crate::Result<V
         .map(Vec::as_slice)
         .unwrap_or_default();
     let mut projects = Map::new();
-    let previous =
-        read_json(&config.output_dir.join("status.json"), 32 * 1024 * 1024).unwrap_or(Value::Null);
+    let null = Value::Null;
+    let previous = previous.unwrap_or(&null);
     for project in config.projects.iter().take(128) {
         let prs = pull_requests(config, project).await;
         let result = match project.tracker["kind"].as_str().unwrap_or("snapshot") {
