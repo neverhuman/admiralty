@@ -116,7 +116,11 @@ fn unready_release_is_rolled_back_and_ready_release_stays_active() {
         "{}",
         String::from_utf8_lossy(&failed.stderr)
     );
-    assert!(String::from_utf8_lossy(&failed.stderr).contains("rolling back"));
+    assert!(
+        String::from_utf8_lossy(&failed.stderr).contains("rolling back"),
+        "{}",
+        String::from_utf8_lossy(&failed.stderr)
+    );
     assert_eq!(current(&fixture.root), Path::new("v1"));
     let calls = fs::read_to_string(&fixture.calls).expect("calls");
     assert_eq!(

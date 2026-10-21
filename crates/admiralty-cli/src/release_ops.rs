@@ -679,9 +679,16 @@ mod tests {
     }
 
     fn private_root() -> tempfile::TempDir {
-        let root = tempfile::tempdir().expect("tempdir");
-        fs::set_permissions(root.path(), fs::Permissions::from_mode(0o700)).expect("chmod");
-        root
+        // Exercise the input's symlinks, not macOS's /var temporary-directory alias.
+        tempfile::Builder::new()
+            .prefix("adm-release-")
+            .permissions(fs::Permissions::from_mode(0o700))
+            .tempdir_in(
+                std::env::temp_dir()
+                    .canonicalize()
+                    .expect("canonical scratch"),
+            )
+            .expect("private scratch")
     }
 
     #[test]
