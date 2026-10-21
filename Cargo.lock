@@ -113,6 +113,7 @@ dependencies = [
  "admiralty-core",
  "admiralty-runtime",
  "admiralty-store",
+ "admiralty-telemetry",
  "axum",
  "chrono",
  "clap",
