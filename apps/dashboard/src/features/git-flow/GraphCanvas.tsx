@@ -67,16 +67,27 @@ export default function GitCanvas({
   } : graph) : null, [graph, visibleOids]);
   const rangeControls = useMemo(() => layout.ranges.flatMap((range) => {
     if (visibleOids && !range.commits.some((commit) => visibleOids.has(commit.oid))) return [];
-    const x = range.x * zoom - left, y = range.y * zoom - top;
+    let x = range.x * zoom - left;
+    const y = range.y * zoom - top;
     const laneClearance = zoom * GIT_LANE_SPACING;
     if (laneClearance < 16) return []; // Canvas/keyboard retain low-zoom ranges in both views.
     const normalWidth = Math.min(width, range.expanded ? 156 : Math.max(28, Math.min(304, gitRangeWidth(range.commits.length, 1) * zoom)));
-    // Match the actual control's reach: tiny26px, narrow52px, wide38px;
-    // expanded controls also sit38px above their lane. Keep a4px gap.
+    // Match the actual control's reach: tiny 26 px, narrow 52 px, wide 38 px;
+    // expanded controls also sit 38 px above their lane. Keep a 4 px gap.
     const requiredClearance = range.expanded ? 68 : normalWidth < 68 ? 30 : normalWidth < 304 ? 56 : 42;
     const compactControl = laneClearance < requiredClearance;
     const compactHeight = laneClearance < 30 ? 14 : 26;
-    const buttonWidth = compactControl ? Math.min(width, Math.max(28, gitRangeWidth(range.commits.length, 1) * zoom)) : normalWidth;
+    let buttonWidth = compactControl ? Math.min(width, Math.max(28, gitRangeWidth(range.commits.length, 1) * zoom)) : normalWidth;
+    if (range.expanded && compactControl) {
+      // Keep both revealed commits' 24 px pick radii clear. This control lives
+      // between actual marks, never on a commit or in an adjacent lane.
+      const next = layout.byOid.get(range.commits[1]?.oid ?? "");
+      const gap = next ? (next.x - range.x) * zoom : 0;
+      const available = gap - 48;
+      if (available < 28) return []; // Global Collapse linear remains available.
+      x += gap / 2;
+      buttonWidth = Math.min(width, available, Math.max(28, String(range.commits.length).length * 6 + 12));
+    }
     if (x + buttonWidth / 2 < 0 || x - buttonWidth / 2 > width || y < 0 || y > height) return [];
     const narrow = !range.expanded && buttonWidth < 304;
     const compact = !range.expanded && buttonWidth < 144;
@@ -352,7 +363,7 @@ export default function GitCanvas({
             title={`${range.commits[0].oid} → ${range.commits.at(-1)!.oid} · ${range.commits.length} linear commits. ${range.expanded ? "Collapse range" : "Expand range"}.`}
             onClick={() => onToggleRange(range)}
           >
-            {compactControl ? <span>{range.expanded ? "−" : "+"}{range.commits.length}</span> : range.expanded ? (
+            {compactControl ? <span>{range.expanded ? "−" : "+"}{!range.expanded || rect.width >= String(range.commits.length).length * 6 + 12 ? range.commits.length : ""}</span> : range.expanded ? (
               <>− Collapse {range.commits.length} commits</>
             ) : tiny ? (
               <span>+{range.commits.length}</span>

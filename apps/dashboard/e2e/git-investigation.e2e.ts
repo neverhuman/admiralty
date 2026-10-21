@@ -197,9 +197,17 @@ describe("repository Git investigation against isolated native source", () => {
       for(const {e,r} of controls) {
         const left=Math.max(r.left,v.left)+1,right=Math.min(r.right,v.right)-1,top=Math.max(r.top,v.top)+1,bottom=Math.min(r.bottom,v.bottom)-1;
         if(left>=right||top>=bottom) continue;
+        const radius=Math.min(parseFloat(getComputedStyle(e).borderTopLeftRadius)||0,r.width/2,r.height/2);
+        let probes=0;
         for(const [x,y] of [[(left+right)/2,(top+bottom)/2],[left,(top+bottom)/2],[right,(top+bottom)/2],[(left+right)/2,top],[(left+right)/2,bottom]]) {
+          // Clipping a rounded end can put a bounding-box axis outside paint.
+          // Probe only the actual rounded rectangle; require a visible probe.
+          const cx=Math.max(r.left+radius,Math.min(r.right-radius,x)),cy=Math.max(r.top+radius,Math.min(r.bottom-radius,y));
+          if((x-cx)**2+(y-cy)**2>radius**2)continue;
+          probes++;
           const hit=document.elementFromPoint(x,y);if(hit!==e&&!e.contains(hit)) blocked.push({title:e.title,x,y,hit:hit?.className});
         }
+        if(!probes)blocked.push({title:e.title,error:'No visible painted hit probe'});
       }
       return {count:controls.length,overlaps,blocked};
     })()`);
@@ -415,6 +423,41 @@ describe("repository Git investigation against isolated native source", () => {
     expect(await browser.evaluate(`document.querySelector('.git-canvas').getAttribute('aria-label')`)).toContain('0 collapsed ranges');
   });
 
+  it.each([
+    {view:'ordinary',scale:1,steps:0}, {view:'ordinary',scale:1/1.2**2,steps:2},
+    {view:'expanded',scale:1,steps:0}, {view:'expanded',scale:.69,steps:0},
+  ])("inspects revealed commits without the collapse control intercepting clicks: $view at $scale", async ({view,scale,steps}) => {
+    const repo=source.git.harbor,template=repo.commits[0];
+    repo.commits=Array.from({length:15},(_,n)=>({...template,oid:oid(n+1),parents:n?[oid(n)]:[],subject:`Revealed chain ${n+1}`}));
+    repo.refs=[{name:'refs/heads/main',oid:oid(15),commit_oid:oid(15),kind:'branch'}];repo.checkouts=[];
+    await connect();
+    if(view==='expanded')await expand();else await selectByAriaLabel('Filter Git project','harbor');
+    await realClick(`button[aria-label="${view==='expanded'?'Reset project zoom to 100%':'Reset Git zoom to 100% size'}"]`);
+    const selector=`.git-commit-range[data-anchor-oid="${oid(2)}"]`;
+    await realClick(selector);await browser.waitForSelector(`${selector}[aria-expanded="true"]`);
+    if(view==='expanded'&&scale!==1)await browser.wheelPointer(await canvasPoint(),{x:0,y:-Math.log(scale/(await camera()).k)/.002},{control:true});
+    for(let i=0;i<steps;i++)await realClick('button[aria-label="Zoom Git out"]');
+    expect(await browser.evaluate(`Number(document.querySelector('.git-canvas').dataset.zoom)`)).toBeCloseTo(scale,6);
+    for(const n of [2,3]) {
+      const point=await browser.evaluate<{x:number;y:number;hit:boolean;hitClass:string}>(`(() => {
+        const c=document.querySelector('.git-canvas'),r=c.getBoundingClientRect(),b=document.querySelector(${JSON.stringify(selector)}),k=Number(c.dataset.zoom),stage=document.querySelector('.git-project-stage'),scroll=document.querySelector('.git-scroll');
+        const x=r.left+(Number(b.dataset.worldX)+${(n-2)*112})*k+(stage?Number(stage.dataset.cameraX):-scroll.scrollLeft),y=r.top+Number(b.dataset.worldY)*k+(stage?Number(stage.dataset.cameraY):0),hit=document.elementFromPoint(x,y);
+        return{x,y,hit:hit===c,hitClass:hit?.className??''};
+      })()`);
+      observations.push({label:'actual revealed commit native pick versus collapse control',view,scale,oid:oid(n),point});
+      await browser.dragPointer(point,point);await settle();
+      expect(await browser.evaluate(`document.querySelector('.git-canvas').getAttribute('aria-label')`)).toContain('0 collapsed ranges');
+      expect(point.hit,JSON.stringify({view,scale,n,point})).toBe(true);
+      await browser.waitForSelector('.lv-inspector');
+      expect(await browser.evaluate(`document.querySelector('.lv-inspector').textContent`)).toContain(oid(n));
+      expect(await browser.evaluate(`new URLSearchParams(location.hash.split('?')[1]).get('focus')`)).toBe(oid(n));
+      expect(await browser.evaluate(`document.querySelector('.git-canvas').getAttribute('aria-label')`)).toContain('0 collapsed ranges');
+    }
+    const geometry=await rangeControlGeometry(view==='expanded'?'.git-project-stage':'.git-scroll');expect(geometry.overlaps).toEqual([]);expect(geometry.blocked).toEqual([]);
+    await realClick(selector);await browser.waitForSelector(`${selector}[aria-expanded="false"]`);
+    expect(await browser.evaluate(`document.querySelector('.git-canvas').getAttribute('aria-label')`)).toContain('1 collapsed ranges');
+  });
+
   it.each([.65,.69,.9])("keeps actual range controls disjoint and hittable at scale %s", async (scale) => {
     await connect(); await expand(); const before=await camera();
     await browser.wheelPointer(await canvasPoint(),{x:0,y:-Math.log(scale/before.k)/.002},{control:true});
@@ -444,10 +487,13 @@ describe("repository Git investigation against isolated native source", () => {
         await realClick(`.git-project-stage .git-commit-range[data-anchor-oid="${anchor}"]`);
         const fitted=await camera(); await browser.wheelPointer(await canvasPoint(),{x:0,y:-Math.log(.69/fitted.k)/.002},{control:true});
       }
-      const world=await browser.evaluate<number[]>(`[...document.querySelectorAll('.git-project-stage .git-commit-range')].map(e=>Number(e.dataset.worldX)).sort((a,b)=>a-b)`);
-      expect(world).toHaveLength(2); const current=await camera();
-      const desired=(edge==='left'?-80:current.width+80)-world[edge==='left'?0:1]*current.k;
+      const positions=await browser.evaluate<{oid:string;center:number}[]>(`(() => {const stage=document.querySelector('.git-project-stage'),v=stage.getBoundingClientRect();return[...stage.querySelectorAll('.git-commit-range')].sort((a,b)=>Number(a.dataset.worldX)-Number(b.dataset.worldX)).map(e=>{const r=e.getBoundingClientRect();return{oid:e.dataset.anchorOid,center:r.left+r.width/2-v.left-stage.clientLeft};});})()`);
+      expect(positions).toHaveLength(2); const current=await camera(), clipped=positions[edge==='left'?0:1];
+      // Place the actual control partly across the edge. Compact expanded
+      // controls intentionally sit between commits, not at data-world-x.
+      const desired=current.x+(edge==='left'?-5:current.width+5)-clipped.center;
       await browser.wheelPointer(await canvasPoint(),{x:current.x-desired,y:0});
+      expect(await browser.evaluate(`(() => {const stage=document.querySelector('.git-project-stage'),v=stage.getBoundingClientRect(),r=document.querySelector('.git-commit-range[data-anchor-oid="${clipped.oid}"]').getBoundingClientRect(),edge=${JSON.stringify(edge==='left')}?v.left+stage.clientLeft:v.left+stage.clientLeft+stage.clientWidth;return r.left<edge&&r.right>edge;})()`)).toBe(true);
       const result=await rangeControlGeometry(); observations.push({label:'same-lane clipped control geometry',edge,phase,...result});
       expect(result.count).toBe(2); expect(result.overlaps).toEqual([]); expect(result.blocked).toEqual([]);
     }
