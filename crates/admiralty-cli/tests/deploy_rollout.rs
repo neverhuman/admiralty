@@ -67,8 +67,12 @@ fn fixture() -> Fixture {
 
 fn rollout(fixture: &Fixture, listen: &str, extra: &[&str]) -> std::process::Output {
     let path = format!(
-        "{}:{}",
+        "{}:{}:{}",
         fixture.stub_bin.display(),
+        Path::new(env!("CARGO_BIN_EXE_admiralty"))
+            .parent()
+            .expect("binary dir")
+            .display(),
         std::env::var("PATH").unwrap_or_default()
     );
     Command::new("bash")
@@ -174,7 +178,6 @@ fn dry_run_and_invalid_arguments_change_nothing() {
     let dry = rollout(&fixture, "127.0.0.1:9", &["--dry-run"]);
     assert!(dry.status.success());
     assert!(fs::symlink_metadata(fixture.root.join("current")).is_err());
-    let script = repository().join("scripts/deploy/rollout.sh");
     for args in [
         vec!["--releases-root", "relative", "--version", "v2"],
         vec!["--releases-root", "/abs", "--version", "a/b"],
@@ -188,15 +191,15 @@ fn dry_run_and_invalid_arguments_change_nothing() {
             "soon",
         ],
     ] {
-        let output = Command::new("bash")
-            .arg(&script)
+        let output = Command::new(env!("CARGO_BIN_EXE_admiralty"))
+            .args(["release", "rollout"])
             .args(&args)
             .output()
             .expect("run");
         assert_eq!(output.status.code(), Some(2), "{args:?}");
     }
-    let missing = Command::new("bash")
-        .arg(&script)
+    let missing = Command::new(env!("CARGO_BIN_EXE_admiralty"))
+        .args(["release", "rollout"])
         .arg("--releases-root")
         .arg(&fixture.root)
         .args(["--version", "v9"])

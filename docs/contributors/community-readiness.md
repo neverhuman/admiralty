@@ -41,10 +41,9 @@ remain separately evidenced.
 ## Start from source
 
 Install Rust **1.95.0** with rustfmt and Clippy, Node **24**, pnpm **11.15.1**,
-Bash and a native C build toolchain. Use the root Rust and pnpm pins. Use Python
-3.12+ for retained compatibility checks (3.12/Linux and 3.14/macOS are qualified).
-The convenience `pnpm live` launcher also uses Python 3 for its
-bootstrap; observation ingestion and the native HTTP runtime use Rust.
+Bash and a native C build toolchain. Use the root Rust and pnpm pins. Python is
+not used: the launchers (`pnpm demo`, `pnpm live`), observation ingestion, the
+native HTTP runtime, fleet tools and the local check matrix are Rust.
 
 Follow the [README quickstart](../../README.md#quickstart). The first build may
 fetch dependencies. The running demo uses synthetic data and does not contact a

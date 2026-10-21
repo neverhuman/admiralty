@@ -1,0 +1,39 @@
+kick starting (dry_run=1) sessions: grok_red jopedime_codex_cleanup jopeDime_cleanup_claude jopedime_codex_training jankurai
+
+======== grok_red ========
+  snap: {BASE}/state/snaps/grok_red.txt
+  kind=grok  state=needs_approval  conf=0.928  hint=a
+  pr_refs: none
+  summary: [grok/needs_approval] PRs: none. Recent: 1. edit file | 2. run tests | Waiting on plan approval | a:approve  r:reject  e:edit
+  [dry-run] would approve kind=grok hint=a
+  recorded action: approve:a
+
+======== jopedime_codex_cleanup ========
+  snap: {BASE}/state/snaps/jopedime_codex_cleanup.txt
+  kind=codex  state=pr_blocked  conf=0.572  hint=none
+  pr_refs: https://github.com/neverhuman/jankurai/pull/42
+  summary: [codex/pr_blocked] PRs: https://github.com/neverhuman/jankurai/pull/42. Recent: scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | Opened https://github.com/neverhuman/jankurai/pull/42. | CI is queued; hosted run 1234 is queued behind others.
+  [dry-run] would inject (pr_nudge): Continue. If anything is blocked on an open PR (CI, review, merge conflict), fix...
+  recorded action: pr_nudge
+
+======== jopeDime_cleanup_claude ========
+  snap: {BASE}/state/snaps/jopeDime_cleanup_claude.txt
+  kind=claude  state=idle  conf=0.78  hint=none
+  pr_refs: none
+  summary: [claude/idle] PRs: none. Recent: scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | Still no grant from Codex for xbabe3 ledger slot. | waiting on a CPU grant
+  [dry-run] would inject (claude_grant_nudge): Keep going. Ping Codex again for the CPU grant / ledger slot if there is still n...
+  recorded action: claude_grant_nudge
+
+======== jopedime_codex_training ========
+  snap: {BASE}/state/snaps/jopedime_codex_training.txt
+  kind=codex  state=needs_input  conf=0.72  hint=none
+  pr_refs: none
+  summary: [codex/needs_input] PRs: none. Recent: scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | Shall I approve the migration and continue? | ? 1 question queued — alt+↑ to answer
+  [dry-run] would inject (input_yes): Yes — full permission / YOLO. Always approve. Proceed and keep going; if a PR ...
+  recorded action: input_yes
+
+======== jankurai ========
+  ERROR: snap failed: No screen session found.
+No screen session found.
+error: screen session not found or hardcopy failed: jankurai
+kick done.

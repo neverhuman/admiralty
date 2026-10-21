@@ -1,0 +1,22 @@
+== xbabe1 reachable=True load=55.2/64 RAM avail 28.6/251.6 GB swap 7.9/8.0 GB
+   /                                         96.4% used,     67 GB free  growth 100.0 GB/h  to-full 0.7 h  [red]
+   /data                                     12.5% used,   7000 GB free  growth None GB/h  to-full None h  [ok]
+   /mnt/fast-scratch                         82.5% used,    700 GB free  growth 100.0 GB/h  to-full 7.0 h  [red]
+   /mnt/shrinking                            25.0% used,   1500 GB free  growth -119.98 GB/h  to-full None h  [ok]
+   GPU0 NVIDIA RTX 6000 Ada Generation util 97.0% mem 40000.0/49140.0 MiB 86.0 C
+== xbabe2 reachable=True load=40.5/32 RAM avail 11.4/125.0 GB swap 0.0/0.0 GB
+   /                                         93.0% used,     70 GB free  growth 30.0 GB/h  to-full 2.3 h  [red]
+   /home                                     86.0% used,    140 GB free  growth None GB/h  to-full None h  [amber]
+== xbabe3 reachable=False load=1.0/16 RAM avail None/None GB swap None/None GB
+WARNINGS:
+  [red] xbabe1 / 96.4% used, 67 GB free, ~0.7 h to full at 100.0 GB/h
+  [red] xbabe1 /mnt/fast-scratch 82.5% used, 700 GB free, ~7.0 h to full at 100.0 GB/h
+  [amber] xbabe1 RAM low: 28.6 GB available of 252 GB
+  [red] xbabe1 swap full (8/8 GB)
+  [amber] xbabe1 load 55.2 on 64 CPUs
+  [amber] xbabe1 GPU0 86°C
+  [red] xbabe2 / 93.0% used, 70 GB free, ~2.3 h to full at 30.0 GB/h
+  [amber] xbabe2 /home 86.0% used, 140 GB free
+  [amber] xbabe2 RAM low: 11.4 GB available of 125 GB
+  [red] xbabe2 load 40.5 on 32 CPUs
+  [amber] xbabe3 unreachable: ssh: connect to host xbabe3 port 22: Connection timed out

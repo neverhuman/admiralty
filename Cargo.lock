@@ -9,14 +9,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
+name = "admiralty-audit"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "regex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
 name = "admiralty-cli"
 version = "0.1.0"
 dependencies = [
+ "admiralty-audit",
  "admiralty-core",
+ "admiralty-fleetops",
+ "admiralty-observe",
+ "admiralty-qualify",
  "admiralty-runtime",
  "admiralty-server",
  "admiralty-store",
  "admiralty-telemetry",
+ "admiralty-tools",
  "chrono",
  "clap",
  "flate2",
@@ -46,10 +65,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "admiralty-fleetops"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "regex",
+ "rustix",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
 name = "admiralty-integration-tests"
 version = "0.1.0"
 dependencies = [
  "admiralty-core",
+ "admiralty-qualify",
  "admiralty-runtime",
  "admiralty-store",
  "admiralty-testkit",
@@ -76,10 +110,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "admiralty-qualify"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "flate2",
+ "rustix",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tar",
+ "tempfile",
+]
+
+[[package]]
 name = "admiralty-round16-qualification"
 version = "0.1.0"
 dependencies = [
  "admiralty-core",
+ "admiralty-qualify",
  "admiralty-runtime",
  "admiralty-store",
  "rusqlite",
@@ -161,6 +211,7 @@ name = "admiralty-testkit"
 version = "0.1.0"
 dependencies = [
  "admiralty-core",
+ "admiralty-qualify",
  "admiralty-runtime",
  "admiralty-server",
  "admiralty-store",
@@ -175,6 +226,42 @@ dependencies = [
  "tokio",
  "tower",
  "uuid",
+]
+
+[[package]]
+name = "admiralty-tools"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "regex",
+ "rusqlite",
+ "rustix",
+ "sha2",
+ "tempfile",
+ "uuid",
+]
+
+[[package]]
+name = "admiralty-xtask"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "rustix",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
+name = "aho-corasick"
+version = "1.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c982642fa9e8606056828ee9a8505737230110bb1099153c79efe865c59d12ba"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
@@ -1180,6 +1267,35 @@ dependencies = [
  "quote",
  "syn 3.0.9",
 ]
+
+[[package]]
+name = "regex"
+version = "1.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f020237b6c8eed93db2e2cb53c00c60a8e1bc73da7d073199a1180401450218d"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-automata",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-automata"
+version = "0.4.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad8553b9b26413251cbf30e620595c7a41b3887f03da04579c0e6b0d6a06b4b2"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-syntax"
+version = "0.8.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "ring"

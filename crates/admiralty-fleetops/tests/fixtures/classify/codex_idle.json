@@ -1,0 +1,14 @@
+{
+  "session": "jopedime_codex_cleanup",
+  "kind": "codex",
+  "state": "idle",
+  "confidence": 0.76,
+  "signals": [
+    "codex_prompt",
+    "fresh_idle_chrome"
+  ],
+  "approval_hint": null,
+  "pr_refs": [],
+  "summary": "[codex/idle] PRs: none. Recent: scrollback line 39 doing ordinary work output | ▌ Implement the parser | › Explain this codebase | ⏎ send   ⌃J newline   ⌃T transcript   ⌃C quit",
+  "tail": "scrollback line 25 doing ordinary work output\nscrollback line 26 doing ordinary work output\nscrollback line 27 doing ordinary work output\nscrollback line 28 doing ordinary work output\nscrollback line 29 doing ordinary work output\nscrollback line 30 doing ordinary work output\nscrollback line 31 doing ordinary work output\nscrollback line 32 doing ordinary work output\nscrollback line 33 doing ordinary work output\nscrollback line 34 doing ordinary work output\nscrollback line 35 doing ordinary work output\nscrollback line 36 doing ordinary work output\nscrollback line 37 doing ordinary work output\nscrollback line 38 doing ordinary work output\nscrollback line 39 doing ordinary work output\n▌ Implement the parser\n› Explain this codebase\n  gpt-6-luna medium · 82% context left · ~/JopeDime\n  ⏎ send   ⌃J newline   ⌃T transcript   ⌃C quit\n  : Ask Codex to do anything"
+}

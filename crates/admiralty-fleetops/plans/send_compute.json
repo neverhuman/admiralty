@@ -1,0 +1,48 @@
+{
+  "description": "Compute notice: paste compute_notice.txt into the 4 captains only when idle (fresh hardcopy); 60 passes x 15 s (~15 min); otherwise append a pointer to the coordination log (joil under flock) (was tools/send_compute.sh).",
+  "passes": 60,
+  "interval_secs": 15,
+  "idle": {
+    "hardcopy_prefix": "/tmp/hc_cn_",
+    "require_shortcuts_footer": true,
+    "fresh_hardcopy": true,
+    "settle_ms": 400
+  },
+  "paste_settle_ms": 1000,
+  "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/compute_notice.txt",
+  "sent_marker": "/tmp/sent_compute_{key}",
+  "sent_echo": "sent {key} at {denver_hms} MDT",
+  "fallback": {
+    "template": "\n## {utc_iso} - Grok Bot to {screen}: COMPUTE NOTICE (prompt stayed busy 15 min, so posting here)\n\n{message}\n",
+    "echo": "busy 15m: pointer appended to {coord_log} for {key} at {denver_hms} MDT",
+    "logged_marker": "/tmp/logged_compute_{key}",
+    "lock_wait_secs": 60
+  },
+  "done_echo": "DONE",
+  "targets": [
+    {
+      "key": "joil",
+      "screen": "2708475.captain_joil",
+      "coord_log": "/home/ubuntu/joil/COORD.md",
+      "lock": "/home/ubuntu/joil/.private/v5-workers/coord.lock"
+    },
+    {
+      "key": "dope",
+      "screen": "2716151.captain_dope",
+      "coord_log": "/home/ubuntu/dope/COMMS.md",
+      "lock": ""
+    },
+    {
+      "key": "jopedime",
+      "screen": "2724936.captain_jopedime",
+      "coord_log": "/home/ubuntu/JopeDime/COMMS.md",
+      "lock": ""
+    },
+    {
+      "key": "jarambit",
+      "screen": "2740538.captain_jarambit",
+      "coord_log": "/home/ubuntu/jarambit/COMMS.md",
+      "lock": ""
+    }
+  ]
+}

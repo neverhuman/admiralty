@@ -7,9 +7,11 @@ Read these before changing source:
 3. `docs/operators/release-status.md` — demonstrated behavior and remaining gates.
 4. `captains/COMMON.md` — coordination, resource, review and merge rules.
 
-Runtime/CLI/tools use Rust. The UI uses Vite, TypeScript and React. New Python
-requires the maintainer's exception; existing retained sources and retirement
-tasks are inventoried in `PYTHON_EXCEPTIONS.md` and `PY_TO_RUST_PLAN.md`.
+Runtime/CLI/tools/automation use Rust. The UI uses Vite, TypeScript and React;
+the few Node scripts are TypeScript. The repository has no Python and no
+logic-bearing shell scripts (`python_policy` enforces it; `PY_TO_RUST_PLAN.md`
+records where each retired file went). Operator tools are `admiralty`
+subcommands; repository automation is `cargo xtask`.
 
 Use one writer per checkout and one active integration PR. Inspect status first;
 preserve foreign, dirty, unmerged, ignored and custody-held work. Reuse an
@@ -23,8 +25,8 @@ shared application wiring; obtain an explicit source scope before overlapping.
 `pnpm contracts:generate`, then `pnpm contracts:check`; do not patch generated
 outputs by hand. Preserve historical receipts and original failures.
 
-Run `pnpm check` before pushing. It invokes `scripts/check/all.sh` with the full
-local application matrix; see `docs/operators/local-ci.md` for Node24,
+Run `pnpm check` before pushing. It invokes `cargo xtask check` with the full
+local application matrix (`--list` shows the stages); see `docs/operators/local-ci.md` for Node24,
 pnpm11.15.1, native/browser prerequisites and retained logs. Use RTK when
 available. Compiler/test concurrency and private scratch are bounded by the
 script; do not remove assertions or weaken limits to make a run pass.

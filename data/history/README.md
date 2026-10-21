@@ -2,8 +2,8 @@
 
 A sanitized, git-friendly export of the captains dashboard's history. It's here so external agents can study the cost index over time, Luna failures and escalations, in-progress and done work per project, agents by tier, quota burn, host load and disk, CI state, hygiene, and token yield.
 
-- **Producer:** `tools/export_history.py`, which only reads the live runtime files.
-- **Schedule:** hourly, via `tools/history_export_cron.sh` (cron on xbabe2, minute 23).
+- **Producer:** `admiralty history export` (Rust port of the retired `tools/export_history.py`; same files, columns, row order and bytes), which only reads the live runtime files.
+- **Schedule:** hourly, via `admiralty history publish` (cron on xbabe2, minute 23; replaces the retired `tools/history_export_cron.sh`).
 - **Time zone:** every timestamp is **UTC** (`...Z`). Integer `ts` fields are Unix epoch seconds. Jepson's local time is America/Denver (MDT = UTC-6).
 
 ## Layout
@@ -81,13 +81,17 @@ Optional fields when present: `class`, `attempt`, `minutes`. Exact duplicate lin
 - Every run ends with a secret-pattern scan (GitHub, OpenAI, AWS, Slack and Google keys, private keys, JWTs, password/secret assignments, absolute home paths). Any hit aborts the run and nothing is committed. `gitleaks` isn't installed on xbabe2; the built-in scan plus an `rg` pass were used for the initial snapshot.
 
 ## Updates, and the data-commit exception
-- `tools/history_export_cron.sh` runs **hourly at minute 23** from cron on xbabe2, in its own clone (`~/.admiralty-history`), never in the live checkout.
+- `admiralty history publish` runs **hourly at minute 23** from cron on xbabe2, in its own clone (`~/.admiralty-history`), never in the live checkout. Crontab line: `23 * * * * admiralty history publish` (use the installed binary's absolute path). `ADMIRALTY_HISTORY_CLONE`, `ADMIRALTY_HISTORY_LOG` and `ADMIRALTY_HISTORY_LOCK` override the clone, log and lock paths.
 - It commits **only files under `data/history/`**. If anything else is staged, it refuses.
 - **Exception to the PR rule:** these data-only commits are pushed **directly to `main` as jepsontaylor**, with no PR or review. All code (including the exporter itself) still goes through the normal PR flow: neverhumanbot approves the exact head, then `gh pr merge --rebase --match-head-commit`.
 - Log: `~/xbabe2_kicker/captains-dashboard/history_export.log` (not in git).
-- To stop it, remove the `history_export_cron.sh` line from `crontab -e`.
+- To stop it, remove the `admiralty history publish` line from `crontab -e`.
 
-The automated `tools/history_export_cron.sh` publisher is a Linux cron utility.
-It requires `flock`, `ionice`, `nice`, Git and Python 3 and refuses unsupported
-hosts or missing tools before acquiring a lock or modifying a checkout. A
-contended lock is a successful no-op only after the locking tool is available.
+The automated `admiralty history publish` publisher is a Linux cron utility.
+It requires Linux, Git and `ionice` and refuses unsupported hosts or missing
+tools before acquiring a lock or modifying a checkout. It takes a non-blocking
+`flock(2)` on the lock file itself; a contended lock is a logged, successful
+no-op. The exporter runs in-process at `nice` 15 and idle I/O class; no Python
+is needed. To export or scan by hand: `admiralty history export [--out DIR]
+[--dash DIR] [--capd DIR] [--check]` (`--repo DIR`, default the current
+directory, locates `captains/rates/`).

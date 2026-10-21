@@ -1,0 +1,24 @@
+[package]
+license.workspace = true
+name = "admiralty-fleetops"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "Fleet operator tools: GNU screen snapshots, idle-gated delivery, classification, kicks and host resources"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+regex.workspace = true
+sha2.workspace = true
+chrono.workspace = true
+clap.workspace = true
+rustix.workspace = true
+tempfile.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

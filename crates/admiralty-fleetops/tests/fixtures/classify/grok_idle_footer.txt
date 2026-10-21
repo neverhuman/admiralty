@@ -1,0 +1,43 @@
+Grok 4
+scrollback line 0 doing ordinary work output
+scrollback line 1 doing ordinary work output
+scrollback line 2 doing ordinary work output
+scrollback line 3 doing ordinary work output
+scrollback line 4 doing ordinary work output
+scrollback line 5 doing ordinary work output
+scrollback line 6 doing ordinary work output
+scrollback line 7 doing ordinary work output
+scrollback line 8 doing ordinary work output
+scrollback line 9 doing ordinary work output
+scrollback line 10 doing ordinary work output
+scrollback line 11 doing ordinary work output
+scrollback line 12 doing ordinary work output
+scrollback line 13 doing ordinary work output
+scrollback line 14 doing ordinary work output
+scrollback line 15 doing ordinary work output
+scrollback line 16 doing ordinary work output
+scrollback line 17 doing ordinary work output
+scrollback line 18 doing ordinary work output
+scrollback line 19 doing ordinary work output
+scrollback line 20 doing ordinary work output
+scrollback line 21 doing ordinary work output
+scrollback line 22 doing ordinary work output
+scrollback line 23 doing ordinary work output
+scrollback line 24 doing ordinary work output
+scrollback line 25 doing ordinary work output
+scrollback line 26 doing ordinary work output
+scrollback line 27 doing ordinary work output
+scrollback line 28 doing ordinary work output
+scrollback line 29 doing ordinary work output
+scrollback line 30 doing ordinary work output
+scrollback line 31 doing ordinary work output
+scrollback line 32 doing ordinary work output
+scrollback line 33 doing ordinary work output
+scrollback line 34 doing ordinary work output
+scrollback line 35 doing ordinary work output
+scrollback line 36 doing ordinary work output
+scrollback line 37 doing ordinary work output
+scrollback line 38 doing ordinary work output
+scrollback line 39 doing ordinary work output
+> 
+ always-approve  ·  shift+tab to cycle

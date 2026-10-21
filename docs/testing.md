@@ -3,8 +3,9 @@
 Run `pnpm check` from the repository root with Node24 and pnpm11.15.1. It invokes
 the complete [local application CI command](operators/local-ci.md), retaining
 source/tool metadata, commands and per-stage logs in short private scratch.
-Use `ADMIRALTY_TARGET_DIR` for an absolute private warm target. The script bounds
-compiler jobs to two and Rust test threads to one.
+Use `ADMIRALTY_TARGET_DIR` for an absolute private warm target. `cargo xtask
+check` bounds compiler jobs to two and Rust test threads to one; `--list` shows
+its stages and `--from`/`--only`/`--skip-browser` select them.
 
 For a source change, first run the smallest affected registered target, then the
 required wider matrix. Typical commands are `cargo test -p admiralty-server

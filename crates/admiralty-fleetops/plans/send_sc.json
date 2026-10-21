@@ -1,0 +1,23 @@
+{
+  "description": "Super-captain orders: paste sc_paste_orders.txt into the super captain only when its prompt is idle (fresh hardcopy); 120 passes x 10 s (~20 min); report when it stayed busy (was tools/send_sc.sh).",
+  "passes": 120,
+  "interval_secs": 10,
+  "idle": {
+    "hardcopy_prefix": "/tmp/hc_sc_",
+    "require_shortcuts_footer": true,
+    "fresh_hardcopy": true,
+    "settle_ms": 500
+  },
+  "paste_settle_ms": 1000,
+  "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/sc_paste_orders.txt",
+  "sent_marker": "/tmp/sent_sc_orders",
+  "reset_sent_markers": true,
+  "sent_echo": "SC orders pasted {denver_hms} MDT",
+  "unsent_echo": "SC busy 20 min; not pasted",
+  "targets": [
+    {
+      "key": "super_captain",
+      "screen": "4060655.super_captain"
+    }
+  ]
+}

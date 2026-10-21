@@ -5,14 +5,16 @@
   "private": true,
   "packageManager": "pnpm@11.15.1",
   "scripts": {
-    "check": "bash scripts/check/all.sh",
-    "contracts:generate": "node scripts/contracts/generate.mjs",
-    "contracts:check": "node scripts/contracts/generate.mjs --check",
-    "demo": "bash scripts/dev/demo.sh",
-    "live": "bash scripts/dev/live.sh",
-    "demo:capture": "node scripts/demos/capture.mjs",
-    "demo:encode": "python3 scripts/demos/encode.py",
-    "demo:verify": "python3 scripts/demos/verify.py"
+    "check": "cargo xtask check",
+    "contracts:generate": "node scripts/contracts/generate.ts",
+    "contracts:check": "node scripts/contracts/generate.ts --check",
+    "demo": "cargo xtask demo",
+    "live": "cargo xtask live",
+    "demo:capture": "node scripts/demos/capture.ts",
+    "demo:encode": "node scripts/demos/encode.ts",
+    "demo:verify": "node scripts/demos/verify.ts",
+    "scripts:typecheck": "pnpm --dir apps/dashboard exec tsc -p ../../scripts/tsconfig.json --pretty false",
+    "scripts:check": "pnpm scripts:typecheck && node --test scripts/demos/media.test.ts"
   },
   "devDependencies": {
     "ajv": "8.20.0",

@@ -757,7 +757,7 @@ async fn legacy_bridge_keeps_real_facts_out_of_demo_and_preserves_native_auth() 
     let mut configured = config(false, None);
     configured.legacy = Some(admiralty_server::legacy::LegacyConfig {
         status_file: status.clone(),
-        index_file: index,
+        index_file: Some(index),
         public_read: true,
     });
     let router = app(store.clone(), configured.clone()).expect("explicit public legacy scope");
@@ -813,6 +813,45 @@ async fn legacy_bridge_keeps_real_facts_out_of_demo_and_preserves_native_auth() 
 }
 
 #[tokio::test]
+async fn legacy_route_without_retained_page_redirects_to_react_detail_view_under_same_scope() {
+    let directory = store_directory();
+    let status = directory.path().join("status.json");
+    std::fs::write(
+        &status,
+        br#"{"generated_utc":"2026-10-18T12:00:00Z","order":[],"projects":{}}"#,
+    )
+    .expect("legacy facts");
+    let store = Store::open(directory.path().join("native.sqlite")).expect("store");
+    let mut configured = config(false, None);
+    configured.legacy = Some(admiralty_server::legacy::LegacyConfig {
+        status_file: status,
+        index_file: None,
+        public_read: false,
+    });
+    let router = app(store, configured).expect("status-only legacy bridge");
+    // The redirect never leaks private facts and keeps the same access scope.
+    assert_eq!(
+        request(&router, "GET", "/legacy/", None).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    let response = request(&router, "GET", "/legacy/", Some(TOKEN)).await;
+    assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
+    assert_eq!(
+        response
+            .headers()
+            .get(axum::http::header::LOCATION)
+            .and_then(|v| v.to_str().ok()),
+        Some(admiralty_server::legacy::REACT_DETAILED_VIEW)
+    );
+    assert_eq!(
+        request(&router, "GET", "/v1/legacy", Some(TOKEN))
+            .await
+            .status(),
+        StatusCode::OK
+    );
+}
+
+#[tokio::test]
 async fn dashboard_compression_is_negotiated_without_bypassing_auth_or_source_validation() {
     let directory = store_directory();
     let status = directory.path().join("status.json");
@@ -833,7 +872,7 @@ async fn dashboard_compression_is_negotiated_without_bypassing_auth_or_source_va
     let mut settings = config(false, Some(assets));
     settings.legacy = Some(admiralty_server::legacy::LegacyConfig {
         status_file: status.clone(),
-        index_file: directory.path().join("original.html"),
+        index_file: Some(directory.path().join("original.html")),
         public_read: true,
     });
     let router = app(store.clone(), settings.clone()).expect("router");
@@ -1078,7 +1117,7 @@ async fn visual_producer_failure_keeps_last_known_inventory_and_public_legacy_fl
     let mut settings = config(false, None);
     settings.legacy = Some(admiralty_server::legacy::LegacyConfig {
         status_file: status.clone(),
-        index_file: directory.path().join("index.html"),
+        index_file: Some(directory.path().join("index.html")),
         public_read: true,
     });
     let router = app(store, settings).expect("router");
@@ -1151,7 +1190,7 @@ async fn snapshot_projection_cache_revalidates_with_etag_and_tracks_source_repla
     let mut settings = config(false, None);
     settings.legacy = Some(admiralty_server::legacy::LegacyConfig {
         status_file: status.clone(),
-        index_file: directory.path().join("original.html"),
+        index_file: Some(directory.path().join("original.html")),
         public_read: true,
     });
     let router = app(store, settings).expect("router");
@@ -1254,7 +1293,7 @@ async fn agent_brief_and_readiness_use_the_bounded_producer_feed_without_leaking
     let mut settings = config(false, Some(assets.clone()));
     settings.legacy = Some(admiralty_server::legacy::LegacyConfig {
         status_file: status.clone(),
-        index_file: directory.path().join("original.html"),
+        index_file: Some(directory.path().join("original.html")),
         public_read: true,
     });
     let router = app(store.clone(), settings.clone()).expect("router");

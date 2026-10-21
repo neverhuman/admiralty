@@ -46,7 +46,7 @@ pub async fn run(args: LiveArgs) -> CliResult<()> {
             assets: Some(args.assets),
             legacy: Some(LegacyConfig {
                 status_file: args.status,
-                index_file: args.index,
+                index_file: Some(args.index),
                 public_read: true,
             }),
             models_file: args.models,

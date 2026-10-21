@@ -3,7 +3,6 @@ use admiralty_runtime::recovery::{
 };
 use std::{
     io::{self, Read},
-    path::PathBuf,
     process::{Command, Output, Stdio},
     sync::mpsc::{self, Receiver, TryRecvError},
     thread,
@@ -213,33 +212,23 @@ fn unresolved_effects_and_unknown_session_custody_jointly_block_resume() {
 
 #[test]
 fn p30_package_builder_runs_its_real_offline_self_test() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .canonicalize()
-        .expect("workspace root resolves");
-    let mut command = Command::new("python3");
-    command
-        .args(["scripts/release/package.py", "--self-test"])
-        .current_dir(root);
-    let output = bounded_output(command, CHILD_TIMEOUT, OUTPUT_LIMIT)
-        .expect("package self-test completes within owned child and capture limits");
+    let report = admiralty_qualify::source_package::self_test();
     assert!(
-        output.status.success(),
-        "package builder self-test failed:\n{}\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+        report.failures.is_empty(),
+        "package builder self-test failed:\n{}",
+        report.failures.join("\n")
     );
-    let report = String::from_utf8_lossy(&output.stderr);
     assert!(
-        report.contains("Ran 10 tests"),
-        "unexpected self-test report: {report}"
+        report.cases_run == 10,
+        "unexpected self-test report: {report:?}"
     );
 }
 
 #[test]
 fn offline_child_timeout_kills_and_reaps_only_the_owned_child() {
-    let mut command = Command::new("python3");
-    command.args(["-c", "import time; time.sleep(10)"]);
+    // POSIX fixtures: the owned child is the sleeping process itself.
+    let mut command = Command::new("sleep");
+    command.arg("10");
     let started = Instant::now();
     let error = bounded_output(command, Duration::from_millis(100), 128)
         .expect_err("sleeping owned fixture exceeds its deadline");
@@ -250,11 +239,8 @@ fn offline_child_timeout_kills_and_reaps_only_the_owned_child() {
 
 #[test]
 fn offline_child_output_cap_fails_with_retained_bounded_diagnostic() {
-    let mut command = Command::new("python3");
-    command.args([
-        "-c",
-        "import sys; sys.stdout.write('x' * 4096); sys.stdout.flush()",
-    ]);
+    let mut command = Command::new("sh");
+    command.args(["-c", "head -c 4096 /dev/zero | tr '\\000' x"]);
     let error = bounded_output(command, Duration::from_secs(5), 128)
         .expect_err("oversized owned output fails before unbounded capture");
     assert!(error.contains("output bound exceeded"), "{error}");
@@ -271,11 +257,8 @@ fn offline_child_output_cap_fails_with_retained_bounded_diagnostic() {
 
 #[test]
 fn offline_child_output_at_exact_limit_is_retained_without_bound_failure() {
-    let mut command = Command::new("python3");
-    command.args([
-        "-c",
-        "import sys; sys.stdout.write('x' * 128); sys.stdout.flush()",
-    ]);
+    let mut command = Command::new("sh");
+    command.args(["-c", "head -c 128 /dev/zero | tr '\\000' x"]);
     let output = bounded_output(command, Duration::from_secs(5), 128)
         .expect("output exactly at the configured bound is accepted");
 
@@ -285,11 +268,8 @@ fn offline_child_output_at_exact_limit_is_retained_without_bound_failure() {
 
 #[test]
 fn offline_nonzero_child_exit_preserves_its_diagnostic_and_status() {
-    let mut command = Command::new("python3");
-    command.args([
-        "-c",
-        "import sys; sys.stderr.write('retained failure marker\\n'); sys.exit(7)",
-    ]);
+    let mut command = Command::new("sh");
+    command.args(["-c", "printf 'retained failure marker\\n' >&2; exit 7"]);
     let output = bounded_output(command, Duration::from_secs(5), 128)
         .expect("finite failed child still yields its bounded evidence");
     assert_eq!(output.status.code(), Some(7));

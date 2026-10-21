@@ -12,7 +12,7 @@ use admiralty_runtime::{
     recovery::{Reconciliation, plan_recovery},
     workspace::registry::{Custody, NodeRef, WorkspaceSpec},
 };
-use std::{fs, path::PathBuf, process::Command};
+use std::{fs, path::PathBuf};
 
 #[test]
 fn p25_p30_round8_p09_webhook_orchestrator_qualification() {
@@ -86,23 +86,14 @@ fn p25_p30_round10_item3_workspace_gate_audit() {
     assert!(!blocked.restore_authorized());
     assert!(!blocked.effects_authorized());
 
-    let workspace = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .canonicalize()
-        .expect("workspace root resolves");
-    let output = Command::new("python3")
-        .args(["scripts/release/package.py", "--self-test"])
-        .current_dir(workspace)
-        .output()
-        .expect("offline P30 package self-test starts");
+    let report = admiralty_qualify::source_package::self_test();
     assert!(
-        output.status.success(),
-        "P30 package self-test failed:\n{}\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+        report.failures.is_empty(),
+        "P30 package self-test failed:\n{}",
+        report.failures.join("\n")
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("Ran 10 tests"),
+        report.cases_run == 10,
         "P30 package self-test did not report its expected deterministic suite"
     );
 }
@@ -145,23 +136,14 @@ fn p25_p30_round11_item4_final_validation_gate() {
     assert!(!unfenced.restore_authorized());
     assert!(!unfenced.effects_authorized());
 
-    let workspace = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .canonicalize()
-        .expect("workspace root resolves");
-    let package_check = Command::new("python3")
-        .args(["scripts/release/package.py", "--self-test"])
-        .current_dir(workspace)
-        .output()
-        .expect("P30 offline package gate starts");
+    let report = admiralty_qualify::source_package::self_test();
     assert!(
-        package_check.status.success(),
-        "P30 package gate failed:\n{}\n{}",
-        String::from_utf8_lossy(&package_check.stdout),
-        String::from_utf8_lossy(&package_check.stderr)
+        report.failures.is_empty(),
+        "P30 package gate failed:\n{}",
+        report.failures.join("\n")
     );
     assert!(
-        String::from_utf8_lossy(&package_check.stderr).contains("Ran 10 tests"),
+        report.cases_run == 10,
         "P30 final gate must report all ten package-builder checks"
     );
 }
@@ -192,21 +174,14 @@ fn p25_p30_round12_item5_redteam_audit_gate() {
     );
 
     // P30's deterministic package audit checks manifest digests and rejects tampering.
-    let workspace = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .canonicalize()
-        .expect("workspace root resolves");
-    let output = Command::new("python3")
-        .args(["scripts/release/package.py", "--self-test"])
-        .current_dir(workspace)
-        .output()
-        .expect("P30 offline receipt-integrity audit starts");
+    let report = admiralty_qualify::source_package::self_test();
     assert!(
-        output.status.success(),
-        "P30 receipt-integrity audit failed:\n{}\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+        report.failures.is_empty(),
+        "P30 receipt-integrity audit failed:\n{}",
+        report.failures.join("\n")
     );
-    let report = String::from_utf8_lossy(&output.stderr);
-    assert!(report.contains("Ran 10 tests"));
+    assert!(
+        report.cases_run == 10,
+        "P30 receipt-integrity audit did not run all ten package checks"
+    );
 }

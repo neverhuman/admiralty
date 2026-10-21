@@ -38,17 +38,14 @@ fn codex_round20_p25_p30_post_pr57_release_qualification() {
     assert!(!ambiguous.effects_authorized());
 
     // P30 release smoke keeps package integrity checks deterministic and offline.
-    let workspace = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let output = std::process::Command::new("python3")
-        .args(["scripts/release/package.py", "--self-test"])
-        .current_dir(workspace)
-        .output()
-        .expect("P30 package self-test starts");
+    let report = admiralty_qualify::source_package::self_test();
     assert!(
-        output.status.success(),
-        "P30 package self-test failed:\n{}\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+        report.failures.is_empty(),
+        "P30 package self-test failed:\n{}",
+        report.failures.join("\n")
     );
-    assert!(String::from_utf8_lossy(&output.stderr).contains("Ran 10 tests"));
+    assert!(
+        report.cases_run == 10,
+        "P30 package self-test did not run all ten package checks"
+    );
 }

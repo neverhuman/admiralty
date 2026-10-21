@@ -1,0 +1,26 @@
+{
+  "description": "Second idle-only delivery pass of Addendum 2 for joil + jarambit; 40 passes x 15 s; no fallback (was tools/send_add2b.sh).",
+  "passes": 40,
+  "interval_secs": 15,
+  "idle": {
+    "hardcopy_prefix": "/tmp/hc_a2_",
+    "require_shortcuts_footer": true,
+    "fresh_hardcopy": false,
+    "settle_ms": 300
+  },
+  "paste_settle_ms": 1000,
+  "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/kick_add2_{key}.txt",
+  "sent_marker": "/tmp/sent_add2_{key}",
+  "sent_echo": "sent {screen} {message_basename} at {denver_hms} MDT",
+  "done_echo": "DONE2",
+  "targets": [
+    {
+      "key": "joil",
+      "screen": "2708475.captain_joil"
+    },
+    {
+      "key": "jarambit",
+      "screen": "2740538.captain_jarambit"
+    }
+  ]
+}

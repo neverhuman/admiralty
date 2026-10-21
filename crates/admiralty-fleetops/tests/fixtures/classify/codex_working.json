@@ -1,0 +1,14 @@
+{
+  "session": "jopedime_codex_training",
+  "kind": "codex",
+  "state": "working",
+  "confidence": 0.91,
+  "signals": [
+    "codex_prompt",
+    "actively_working"
+  ],
+  "approval_hint": null,
+  "pr_refs": [],
+  "summary": "[codex/working] PRs: none. Recent: scrollback line 38 doing ordinary work output | scrollback line 39 doing ordinary work output | • Running cargo test -p core | • Working (12s • esc to interrupt)",
+  "tail": "scrollback line 24 doing ordinary work output\nscrollback line 25 doing ordinary work output\nscrollback line 26 doing ordinary work output\nscrollback line 27 doing ordinary work output\nscrollback line 28 doing ordinary work output\nscrollback line 29 doing ordinary work output\nscrollback line 30 doing ordinary work output\nscrollback line 31 doing ordinary work output\nscrollback line 32 doing ordinary work output\nscrollback line 33 doing ordinary work output\nscrollback line 34 doing ordinary work output\nscrollback line 35 doing ordinary work output\nscrollback line 36 doing ordinary work output\nscrollback line 37 doing ordinary work output\nscrollback line 38 doing ordinary work output\nscrollback line 39 doing ordinary work output\n• Running cargo test -p core\n• Working (12s • esc to interrupt)\n▌ Ask Codex to do anything\n  GPT-6 high · 70% left"
+}

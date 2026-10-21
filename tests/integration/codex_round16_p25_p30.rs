@@ -56,17 +56,14 @@ fn p25_p30_round16_end_to_end_cutover_fault_containment() {
     );
 
     // P30 smoke checks release manifest hashing and tamper rejection offline.
-    let workspace = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let output = std::process::Command::new("python3")
-        .args(["scripts/release/package.py", "--self-test"])
-        .current_dir(workspace)
-        .output()
-        .expect("P30 release smoke starts");
+    let report = admiralty_qualify::source_package::self_test();
     assert!(
-        output.status.success(),
-        "P30 release smoke failed:\n{}\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+        report.failures.is_empty(),
+        "P30 release smoke failed:\n{}",
+        report.failures.join("\n")
     );
-    assert!(String::from_utf8_lossy(&output.stderr).contains("Ran 10 tests"));
+    assert!(
+        report.cases_run == 10,
+        "P30 release smoke did not run all ten package checks"
+    );
 }

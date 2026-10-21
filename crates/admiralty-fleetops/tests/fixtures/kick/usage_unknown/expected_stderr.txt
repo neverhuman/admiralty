@@ -1,0 +1,3 @@
+unknown arg: --bogus
+usage: kick [--dry-run] [--session NAME] [--once] [--inject 'text']
+       kick --inject SESSION 'free text'

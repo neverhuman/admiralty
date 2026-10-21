@@ -1,0 +1,11 @@
+{
+  "session": "jankurai",
+  "updated_epoch": 1792607405,
+  "updated_at": "2026-10-21 18:30:05 UTC",
+  "last_action": "snap_failed",
+  "last_pr_nudge_epoch": 0,
+  "classification": {
+    "state": "error",
+    "summary": "snap failed"
+  }
+}

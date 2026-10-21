@@ -66,7 +66,7 @@ no task, work-order, plan or outbox rows. Unverified artifact claims remain deni
 The existing contract exporter includes nine intake roots, originally bringing
 the public inventory to22; the additive v2 coordination header brings it to23.
 Run `admiralty contracts
-check` and `node scripts/contracts/generate.mjs --check` to detect drift. The
+check` and `pnpm contracts:check` to detect drift. The
 native packager explicitly includes every generated validator sibling and tests
 the staged entry with actual Node imports. Original public schemas and leaf
 validators retain their bytes. Structural guards do not authenticate scope,

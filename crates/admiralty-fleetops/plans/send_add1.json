@@ -1,0 +1,74 @@
+{
+  "description": "Addendum 1 (2026-10-17): write the four kick texts, then paste each into its captain screen only when the Claude prompt is idle; 45 passes x 15 s; no fallback; finally list the sent markers (was tools/send_add1.sh).",
+  "passes": 45,
+  "interval_secs": 15,
+  "idle": {
+    "hardcopy_prefix": "/tmp/hc_a_",
+    "require_shortcuts_footer": true,
+    "fresh_hardcopy": false,
+    "settle_ms": 300
+  },
+  "paste_settle_ms": 1000,
+  "sent_echo": "sent {screen} {message_basename} at {denver_hms}",
+  "prepare": [
+    {
+      "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/kick_add1b_dope.txt",
+      "parts": [
+        {
+          "text": "ADDENDUM 1 UPDATE from Jepson (8:52 PM MDT): \"I have more Codex quota I can bring on, so please run out the current.\" Do NOT conserve Codex quota: use Sol/Luna screens freely until it is gone (still within the load cap and safety rules). When Codex hits its limit, log NEEDS JEPSON: Codex quota exhausted, and fall back to Claude/agy lanes. Updated text is in /home/ubuntu/xbabe2_kicker/captains-20261017/addendum1_dope.txt."
+        }
+      ]
+    },
+    {
+      "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/kick_add1b_jopedime.txt",
+      "parts": [
+        {
+          "text": "ADDENDUM 1 UPDATE from Jepson (8:52 PM MDT): \"I have more Codex quota I can bring on, so please run out the current.\" Do NOT conserve Codex quota: use Sol/Luna screens freely until it is gone (still within the load cap and safety rules). When Codex hits its limit, log NEEDS JEPSON: Codex quota exhausted, and fall back to Claude/agy lanes. Updated text is in /home/ubuntu/xbabe2_kicker/captains-20261017/addendum1_jopedime.txt."
+        }
+      ]
+    },
+    {
+      "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/kick_add1_joil.txt",
+      "parts": [
+        {
+          "text": "ADDENDUM 1 from Jepson (Oct 17 2026, 8:51 PM MDT, updated 8:52 PM): keep this going strong all night with no stopping, and add Codex Sol/Luna screens where it speeds things up (use Codex quota freely, do not conserve it). Read /home/ubuntu/xbabe2_kicker/captains-20261017/addendum1_joil.txt in full now and follow it alongside your brief. Acknowledge in the coordination log, then act."
+        }
+      ]
+    },
+    {
+      "path": "/home/ubuntu/xbabe2_kicker/captains-20261017/kick_add1_jarambit.txt",
+      "parts": [
+        {
+          "text": "ADDENDUM 1 from Jepson (Oct 17 2026, 8:51 PM MDT, updated 8:52 PM): keep this going strong all night with no stopping, and add Codex Sol/Luna screens where it speeds things up (use Codex quota freely, do not conserve it). Read /home/ubuntu/xbabe2_kicker/captains-20261017/addendum1_jarambit.txt in full now and follow it alongside your brief. Acknowledge in the coordination log, then act."
+        }
+      ]
+    }
+  ],
+  "list_sent_markers": true,
+  "targets": [
+    {
+      "key": "dope",
+      "screen": "captain_dope",
+      "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/kick_add1b_dope.txt",
+      "sent_marker": "/tmp/sent_add1b_dope"
+    },
+    {
+      "key": "jopedime",
+      "screen": "captain_jopedime",
+      "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/kick_add1b_jopedime.txt",
+      "sent_marker": "/tmp/sent_add1b_jopedime"
+    },
+    {
+      "key": "joil",
+      "screen": "captain_joil",
+      "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/kick_add1_joil.txt",
+      "sent_marker": "/tmp/sent_add1_joil"
+    },
+    {
+      "key": "jarambit",
+      "screen": "captain_jarambit",
+      "message_file": "/home/ubuntu/xbabe2_kicker/captains-20261017/kick_add1_jarambit.txt",
+      "sent_marker": "/tmp/sent_add1_jarambit"
+    }
+  ]
+}

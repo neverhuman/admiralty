@@ -25,6 +25,8 @@ checkout parents can be used to build, but the private installer rejects them
 as installation ancestors. Choose a protected evidence directory instead of
 changing shared permissions. The command keeps all inputs, archive bytes, command
 captures and `qualification.json`; do not clear a previous run to reuse its path.
+Failures are reported on stderr with exit 1 and leave the partial evidence in
+place.
 
 The qualification stages the actual CLI executable, built dashboard, generated
 validator closure, v2 event schema, MIT license and operator/contributor/security
@@ -43,7 +45,7 @@ not authenticate that source label, publisher identity or build provenance.
 
 | Surface | Qualification boundary |
 | --- | --- |
-| Linux x86_64 private archive/install | Run this script on the target host; retain its actual result and hashes. |
+| Linux x86_64 private archive/install | Run this qualification on the target host; retain its actual result and hashes. |
 | macOS/private installer | Existing component checks are separate; no result on one OS qualifies another. |
 | Offline doctor and demo | No account, external tools on PATH, Node server or live provider needed. |
 | Provider execution and fleet enrollment | Unqualified by installation/demo checks. |

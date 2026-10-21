@@ -1,73 +1,88 @@
-//! Enforce the maintainer's bounded legacy-Python exception during onboarding.
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    fs,
-    path::Path,
-    process::Command,
-};
+//! Repository language policy.
+//!
+//! Admiralty's stack is Rust (services, CLI, tools, automation) and
+//! Vite + TypeScript + React (console, repository scripts). The last Python
+//! files and logic-bearing shell scripts were ported to Rust and TypeScript on
+//! 21 October 2026 (see `PY_TO_RUST_PLAN.md`). This guard keeps it that way:
+//! a new Python file, or a new executable script outside the reviewed test
+//! doubles and fixed-path entry points, fails the workspace tests. There is no exception list to extend;
+//! changing the stack requires changing this test in review.
+use std::{fs, io::Read, path::Path, process::Command};
 
-fn rows(document: &str) -> Vec<Vec<&str>> {
-    document
-        .lines()
-        .filter_map(|line| {
-            let cells: Vec<_> = line.split('|').map(str::trim).collect();
-            (cells.len() > 3 && cells[1].starts_with('`') && cells[1].ends_with(".py`"))
-                .then(|| cells[1..cells.len() - 1].to_vec())
-        })
-        .collect()
+/// Executable scripts that remain on purpose: fake provider binaries that
+/// qualification tests execute in place of a real CLI. They contain no
+/// repository logic.
+const REVIEWED_SCRIPT_TEST_DOUBLES: &[&str] = &["tests/qualification/codex/P08Q_fake_codex.sh"];
+
+/// Entry points that external tools look for at a fixed path. Each must stay
+/// exactly this content: one `exec` of the Rust implementation, no logic.
+const REVIEWED_ENTRY_POINTS: &[(&str, &str)] = &[
+    (
+        "scripts/deploy/rollout.sh",
+        "#!/usr/bin/env bash\nexec admiralty release rollout \"$@\"\n",
+    ),
+    (
+        "tools/security-lane.sh",
+        "#!/usr/bin/env bash\n\
+     # Jankurai security-lane entry point (the `jankurai security run` default path).\n\
+     # The lane itself is Rust: crates/admiralty-xtask/src/security.rs.\n\
+     exec cargo xtask security \"$@\"\n",
+    ),
+];
+
+#[derive(Debug, PartialEq, Eq)]
+enum Finding {
+    Python,
+    Script,
 }
 
-fn validate(
-    actual: &BTreeMap<String, usize>,
-    allowed: &BTreeSet<String>,
-    exceptions: &str,
-    plan: &str,
-) -> Result<(), String> {
-    let mut justifications = BTreeMap::new();
-    for row in rows(exceptions) {
-        let path = row[0].trim_matches('`').to_owned();
-        if row[1].is_empty() || justifications.insert(path.clone(), row[1]).is_some() {
-            return Err(format!("missing or duplicate Python exception: {path}"));
-        }
+/// Classify one tracked path by extension and, for extensionless or script
+/// files, by its first bytes. `#![…]` (a Rust inner attribute) is not a shebang,
+/// and a Node shebang marks an in-stack TypeScript entry point
+/// (`scripts/contracts/generate.ts`), not a shell script.
+fn classify(path: &str, head: &[u8]) -> Option<Finding> {
+    let lower = path.to_ascii_lowercase();
+    if [".py", ".pyi", ".pyw", ".ipynb"]
+        .iter()
+        .any(|ext| lower.ends_with(ext))
+    {
+        return Some(Finding::Python);
     }
-    let mut inventory = BTreeMap::new();
-    for row in rows(plan) {
-        let path = row[0].trim_matches('`').to_owned();
-        let count = row[1]
-            .replace(',', "")
-            .parse::<usize>()
-            .map_err(|_| format!("invalid Python line count: {path}"))?;
-        if row.len() != 5
-            || row[2..].iter().any(|cell| cell.is_empty())
-            || inventory.insert(path.clone(), count).is_some()
+    let shebang = head.starts_with(b"#!/") || head.starts_with(b"#! /");
+    if shebang {
+        let line = head.split(|b| *b == b'\n').next().unwrap_or_default();
+        let line = String::from_utf8_lossy(line);
+        if line.contains("python") {
+            return Some(Finding::Python);
+        }
+        let interpreter = line
+            .trim_start_matches("#!")
+            .split_whitespace()
+            .collect::<Vec<_>>();
+        let node = match interpreter.as_slice() {
+            [env, program, ..] if env.ends_with("/env") => *program == "node",
+            [program, ..] => program.ends_with("/node"),
+            [] => false,
+        };
+        if node
+            && [".ts", ".mts", ".js", ".mjs"]
+                .iter()
+                .any(|ext| lower.ends_with(ext))
         {
-            return Err(format!(
-                "incomplete or duplicate Python migration row: {path}"
-            ));
+            return None;
         }
+        return Some(Finding::Script);
     }
-    for path in actual.keys() {
-        if !allowed.contains(path) {
-            return Err(format!(
-                "net-new Python requires explicit maintainer exception: {path}"
-            ));
-        }
+    if [".sh", ".bash", ".zsh", ".ksh"]
+        .iter()
+        .any(|ext| lower.ends_with(ext))
+    {
+        return Some(Finding::Script);
     }
-    if actual.keys().collect::<Vec<_>>() != justifications.keys().collect::<Vec<_>>() {
-        return Err(
-            "Python exceptions must match existing files exactly (no missing or stale rows)".into(),
-        );
-    }
-    if actual != &inventory {
-        return Err(
-            "Python migration inventory must match existing paths and physical line counts".into(),
-        );
-    }
-    Ok(())
+    None
 }
 
-#[test]
-fn existing_python_has_complete_exceptions_and_no_unapproved_growth() {
+fn repository_files() -> (std::path::PathBuf, Vec<String>) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let output = Command::new("git")
         .current_dir(&root)
@@ -77,500 +92,130 @@ fn existing_python_has_complete_exceptions_and_no_unapproved_growth() {
             "--others",
             "--exclude-standard",
             "-z",
-            "--",
-            ":(icase)*.py",
-            ":(icase)*.pyi",
-            ":(icase)*.pyw",
         ])
         .output()
-        .expect("enumerate Python without a shell");
+        .expect("enumerate repository files without a shell");
     assert!(output.status.success(), "git file inventory failed");
-    let mut actual = BTreeMap::new();
-    for bytes in output
+    let files = output
         .stdout
         .split(|byte| *byte == 0)
         .filter(|path| !path.is_empty())
-    {
-        let path = std::str::from_utf8(bytes).expect("UTF-8 source path");
-        let file = root.join(path);
-        assert!(
-            fs::symlink_metadata(&file)
-                .expect("source metadata")
-                .file_type()
-                .is_file(),
-            "Python source must be a regular file: {path}"
-        );
-        let count = fs::read_to_string(file)
-            .expect("UTF-8 Python source")
-            .lines()
-            .count();
-        actual.insert(path.to_owned(), count);
-    }
-    let allowed: BTreeSet<_> = include_str!("../fixtures/python-baseline.txt")
-        .lines()
-        .filter(|line| !line.is_empty() && !line.starts_with('#'))
-        .map(str::to_owned)
+        .map(|path| String::from_utf8(path.to_vec()).expect("UTF-8 repository path"))
         .collect();
-    validate(
-        &actual,
-        &allowed,
-        &fs::read_to_string(root.join("PYTHON_EXCEPTIONS.md")).expect("exception policy"),
-        &fs::read_to_string(root.join("PY_TO_RUST_PLAN.md")).expect("migration policy"),
-    )
-    .expect("maintainer Python policy must remain enforced");
+    (root, files)
 }
 
-#[test]
-fn guard_rejects_new_python_even_if_it_adds_its_own_exception() {
-    let actual = BTreeMap::from([("new.py".into(), 1)]);
-    assert!(
-        validate(
-            &actual,
-            &BTreeSet::new(),
-            "| `new.py` | self-approved |",
-            "| `new.py` | 1 | tool | retire | ADM-PY02 |"
-        )
-        .expect_err("a new Python file cannot approve itself")
-        .contains("net-new Python")
-    );
-}
-
-#[test]
-fn guard_rejects_missing_stale_blank_duplicate_and_wrong_count_rows() {
-    let actual = BTreeMap::from([("old.py".into(), 2)]);
-    let allowed = BTreeSet::from(["old.py".into()]);
-    let exception = "| `old.py` | retained for parity |";
-    let plan = "| `old.py` | 2 | tool | retire | ADM-PY02 |";
-    assert!(validate(&actual, &allowed, exception, plan).is_ok());
-    for bad in [
-        "".to_owned(),
-        "| `old.py` | |".into(),
-        format!("{exception}\n{exception}"),
-        format!("{exception}\n| `gone.py` | stale |"),
-    ] {
-        assert!(validate(&actual, &allowed, &bad, plan).is_err());
+fn head(root: &Path, path: &str) -> Vec<u8> {
+    let full = root.join(path);
+    // Deleted-but-tracked files (a staged removal in a working tree) have no head.
+    let Ok(metadata) = fs::symlink_metadata(&full) else {
+        return Vec::new();
+    };
+    if !metadata.is_file() {
+        return Vec::new();
     }
-    for bad in [
-        "".to_owned(),
-        plan.replace("| 2 |", "| 3 |"),
-        format!("{plan}\n{plan}"),
-    ] {
-        assert!(validate(&actual, &allowed, exception, &bad).is_err());
-    }
-    // Retiring source is allowed only when both inventories drop the same row.
-    assert!(validate(&BTreeMap::new(), &allowed, "", "").is_ok());
+    let mut bytes = [0_u8; 128];
+    let read = fs::File::open(&full)
+        .and_then(|mut file| file.read(&mut bytes))
+        .unwrap_or(0);
+    bytes[..read].to_vec()
 }
 
 #[test]
-fn sc186o_token_yield_parameterized_sql_rejects_injection_metacharacters() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let source = fs::read_to_string(root.join("dashboard/token_yield.py")).expect("token_yield.py");
-    for line in source.lines() {
-        if line.contains("db.execute(") && (line.contains("INSERT") || line.contains("WHERE")) {
-            assert!(
-                line.contains('?'),
-                "expected parameterized SQL placeholder on line: {line}"
-            );
+fn repository_contains_no_python_and_only_reviewed_script_test_doubles() {
+    let (root, files) = repository_files();
+    assert!(!files.is_empty(), "repository inventory must not be empty");
+    let mut python = Vec::new();
+    let mut scripts = Vec::new();
+    for path in &files {
+        if !root.join(path).exists() {
+            continue;
         }
-    }
-    let dir = tempfile::Builder::new()
-        .prefix("adm-ty-")
-        .tempdir_in("/var/tmp")
-        .expect("tempdir");
-    let home = dir.path();
-    let runtime_dir = home.join("xbabe2_kicker/captains-dashboard");
-    fs::create_dir_all(&runtime_dir).expect("runtime_dir");
-    fs::create_dir_all(home.join("xbabe2_kicker/captains-20261017")).expect("captains_dir");
-    let sess_dir = home.join(".codex/sessions/2026/10/19");
-    fs::create_dir_all(&sess_dir).expect("sess_dir");
-    let evil_sid = "sid'; DROP TABLE sessions; --";
-    let evil_cwd = "/tmp/cwd'; DROP TABLE files; --";
-    let record = serde_json::json!({
-        "timestamp": "2099-01-01T00:00:00Z",
-        "type": "session_meta",
-        "payload": { "id": evil_sid, "cwd": evil_cwd }
-    });
-    let evil_file = sess_dir.join("rollout-evil'; DROP TABLE sessions; --.jsonl");
-    fs::write(&evil_file, format!("{record}\n")).expect("write rollout jsonl");
-
-    let run = Command::new("python3")
-        .arg(root.join("dashboard/token_yield.py"))
-        .env("ADMIRALTY_TY_HOME", home)
-        .env("CDASH_RUNTIME", &runtime_dir)
-        .output()
-        .expect("run token_yield.py");
-    assert!(
-        run.status.success(),
-        "token_yield failed: {}",
-        String::from_utf8_lossy(&run.stderr)
-    );
-    let conn = rusqlite::Connection::open(runtime_dir.join("tokens.db")).expect("open tokens.db");
-    let mut stmt = conn
-        .prepare("SELECT id, cwd FROM sessions WHERE cwd = ?1")
-        .expect("prepare query");
-    let rows: Vec<(String, String)> = stmt
-        .query_map([evil_cwd], |row| Ok((row.get(0)?, row.get(1)?)))
-        .expect("query sessions")
-        .collect::<Result<Vec<_>, _>>()
-        .expect("collect rows");
-    assert_eq!(
-        rows,
-        vec![(
-            "rollout-evil'; DROP TABLE sessions; --".to_owned(),
-            evil_cwd.to_owned()
-        )]
-    );
-    let (off, size): (i64, i64) = conn
-        .query_row("SELECT off, size FROM files", [], |row| {
-            Ok((row.get(0)?, row.get(1)?))
-        })
-        .expect("query files");
-    assert!(off > 0 && size > 0);
-}
-
-#[cfg(target_os = "linux")]
-#[test]
-fn sc186o_history_export_cron_custody_and_allowlist_against_local_bare_remote() {
-    use std::os::unix::fs::PermissionsExt;
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let script_path = root.join("tools/history_export_cron.sh");
-    let script = fs::read_to_string(&script_path).expect("history_export_cron.sh");
-    assert!(!script.contains("git clean"));
-    assert!(!script.contains("git add -A"));
-    assert!(!script.contains("git reset"));
-
-    let dir = tempfile::Builder::new()
-        .prefix("adm-hist-")
-        .tempdir_in("/var/tmp")
-        .expect("tempdir");
-    let base = dir.path();
-    fs::set_permissions(base, fs::Permissions::from_mode(0o700)).expect("chmod 0700");
-    let remote = base.join("remote.git");
-    let clone = base.join("clone");
-    let log_file = base.join("history_export.log");
-    let lock_file = base.join("history_export.lock");
-
-    assert!(
-        Command::new("git")
-            .args(["init", "--bare", "-b", "main"])
-            .arg(&remote)
-            .status()
-            .expect("git init bare")
-            .success()
-    );
-    assert!(
-        Command::new("git")
-            .arg("clone")
-            .arg(&remote)
-            .arg(&clone)
-            .status()
-            .expect("git clone")
-            .success()
-    );
-    for (k, v) in [("user.name", "Test"), ("user.email", "test@example.com")] {
-        assert!(
-            Command::new("git")
-                .arg("-C")
-                .arg(&clone)
-                .args(["config", k, v])
-                .status()
-                .expect("git config")
-                .success()
-        );
-    }
-    fs::create_dir_all(clone.join("data/history/timeseries")).expect("mkdir timeseries");
-    fs::create_dir_all(clone.join("tools")).expect("mkdir tools");
-    fs::write(clone.join("README.md"), "root\n").expect("write README");
-    fs::write(clone.join("data/history/README.md"), "hist\n").expect("write hist README");
-    fs::write(clone.join("data/history/status.jsonl"), "{}\n").expect("write status");
-    fs::write(clone.join("data/history/summary.json"), "{}\n").expect("write summary");
-    fs::write(
-        clone.join("data/history/rates_index.json"),
-        "{\"files\":[]}\n",
-    )
-    .expect("write rates");
-    fs::write(
-        clone.join("tools/export_history.py"),
-        concat!(
-            "import os, pathlib, sys\n",
-            "out = pathlib.Path(sys.argv[sys.argv.index('--out') + 1])\n",
-            "mode = os.environ.get('TEST_EXPORT_MODE', 'ok')\n",
-            "if mode == 'fail':\n",
-            "    (out / 'status.jsonl').write_text('corrupted\\n')\n",
-            "    (out / 'status.jsonl.tmp').write_text('scratch\\n')\n",
-            "    sys.exit(2)\n",
-            "(out / 'status.jsonl').write_text('{\"exported\":true}\\n')\n",
-            "(out / 'timeseries/history_2026-10-19.jsonl').write_text('{\"ts_utc\":\"2026-10-19T23:00:00Z\"}\\n')\n",
-        ),
-    )
-    .expect("write synthetic exporter");
-    assert!(
-        Command::new("git")
-            .arg("-C")
-            .arg(&clone)
-            .args(["add", "."])
-            .status()
-            .expect("git add")
-            .success()
-    );
-    assert!(
-        Command::new("git")
-            .arg("-C")
-            .arg(&clone)
-            .args(["commit", "-m", "init"])
-            .status()
-            .expect("git commit")
-            .success()
-    );
-    assert!(
-        Command::new("git")
-            .arg("-C")
-            .arg(&clone)
-            .args(["push", "-u", "origin", "main"])
-            .status()
-            .expect("git push")
-            .success()
-    );
-
-    let remote_head = || -> String {
-        let out = Command::new("git")
-            .arg("--git-dir")
-            .arg(&remote)
-            .args(["rev-parse", "refs/heads/main"])
-            .output()
-            .expect("rev-parse remote");
-        String::from_utf8(out.stdout)
-            .expect("utf8")
-            .trim()
-            .to_owned()
-    };
-    let run_wrapper = |mode: &str| {
-        Command::new("bash")
-            .arg(&script_path)
-            .env("ADMIRALTY_HISTORY_CLONE", &clone)
-            .env("ADMIRALTY_HISTORY_LOG", &log_file)
-            .env("ADMIRALTY_HISTORY_LOCK", &lock_file)
-            .env("TEST_EXPORT_MODE", mode)
-            .output()
-            .expect("run history_export_cron.sh")
-    };
-    let head0 = remote_head();
-
-    // Case 1: Unrelated pre-existing staged data/history file -> refuses without resetting index/worktree/remote
-    let unrelated = clone.join("data/history/unrelated-private-synthetic.json");
-    fs::write(&unrelated, "{\"private\":true}\n").expect("write unrelated");
-    assert!(
-        Command::new("git")
-            .arg("-C")
-            .arg(&clone)
-            .args(["add", "data/history/unrelated-private-synthetic.json"])
-            .status()
-            .expect("stage unrelated")
-            .success()
-    );
-    assert!(!run_wrapper("ok").status.success());
-    assert_eq!(remote_head(), head0);
-    let staged = Command::new("git")
-        .arg("-C")
-        .arg(&clone)
-        .args(["diff", "--cached", "--name-only"])
-        .output()
-        .expect("diff cached");
-    assert_eq!(
-        String::from_utf8_lossy(&staged.stdout).trim(),
-        "data/history/unrelated-private-synthetic.json"
-    );
-    assert_eq!(
-        fs::read_to_string(&unrelated).expect("read unrelated"),
-        "{\"private\":true}\n"
-    );
-    assert!(
-        Command::new("git")
-            .arg("-C")
-            .arg(&clone)
-            .args([
-                "rm",
-                "-f",
-                "-q",
-                "data/history/unrelated-private-synthetic.json"
-            ])
-            .status()
-            .expect("cleanup unrelated")
-            .success()
-    );
-
-    // Case 2: Pre-existing staged file outside data/history -> refuses without resetting index/worktree/remote
-    fs::write(clone.join("README.md"), "staged-outside\n").expect("write README");
-    assert!(
-        Command::new("git")
-            .arg("-C")
-            .arg(&clone)
-            .args(["add", "README.md"])
-            .status()
-            .expect("stage README")
-            .success()
-    );
-    assert!(!run_wrapper("ok").status.success());
-    assert_eq!(remote_head(), head0);
-    let staged = Command::new("git")
-        .arg("-C")
-        .arg(&clone)
-        .args(["diff", "--cached", "--name-only"])
-        .output()
-        .expect("diff cached");
-    assert_eq!(String::from_utf8_lossy(&staged.stdout).trim(), "README.md");
-    assert_eq!(
-        fs::read_to_string(clone.join("README.md")).expect("read README"),
-        "staged-outside\n"
-    );
-    assert!(
-        Command::new("git")
-            .arg("-C")
-            .arg(&clone)
-            .args(["checkout", "HEAD", "--", "README.md"])
-            .status()
-            .expect("restore README")
-            .success()
-    );
-
-    // Case 3: Pre-existing dirty output file under data/history -> refuses and preserves dirty worktree
-    fs::write(
-        clone.join("data/history/status.jsonl"),
-        "{\"dirty_local\":true}\n",
-    )
-    .expect("dirty status");
-    assert!(!run_wrapper("ok").status.success());
-    assert_eq!(remote_head(), head0);
-    assert_eq!(
-        fs::read_to_string(clone.join("data/history/status.jsonl")).expect("read status"),
-        "{\"dirty_local\":true}\n"
-    );
-    assert!(
-        Command::new("git")
-            .arg("-C")
-            .arg(&clone)
-            .args(["checkout", "HEAD", "--", "data/history/status.jsonl"])
-            .status()
-            .expect("restore status")
-            .success()
-    );
-
-    // Case 4: Exporter failure -> exits nonzero, restores tracked data/history to HEAD, removes .tmp, leaves remote untouched
-    assert!(!run_wrapper("fail").status.success());
-    assert_eq!(remote_head(), head0);
-    assert_eq!(
-        fs::read_to_string(clone.join("data/history/status.jsonl")).expect("read status"),
-        "{}\n"
-    );
-    assert!(!clone.join("data/history/status.jsonl.tmp").exists());
-
-    // Case 5: Clean positive export -> commits and pushes only allowlisted data/history files to local bare remote
-    assert!(run_wrapper("ok").status.success());
-    let head1 = remote_head();
-    assert_ne!(head1, head0);
-    let committed = Command::new("git")
-        .arg("--git-dir")
-        .arg(&remote)
-        .args(["diff-tree", "--no-commit-id", "--name-only", "-r", &head1])
-        .output()
-        .expect("diff-tree");
-    let mut files: Vec<_> = String::from_utf8_lossy(&committed.stdout)
-        .lines()
-        .map(str::to_owned)
-        .collect();
-    files.sort();
-    assert_eq!(
-        files,
-        vec![
-            "data/history/status.jsonl".to_owned(),
-            "data/history/timeseries/history_2026-10-19.jsonl".to_owned()
-        ]
-    );
-}
-
-#[cfg(not(target_os = "linux"))]
-#[test]
-fn linux_history_export_refuses_unsupported_host_before_any_git_or_lock_effect() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let directory = tempfile::tempdir().expect("private history fixture");
-    let log = directory.path().join("history.log");
-    let lock = directory.path().join("history.lock");
-    let clone = directory.path().join("must-not-be-created");
-    let result = Command::new("bash")
-        .arg(root.join("tools/history_export_cron.sh"))
-        .env("ADMIRALTY_HISTORY_CLONE", &clone)
-        .env("ADMIRALTY_HISTORY_LOG", &log)
-        .env("ADMIRALTY_HISTORY_LOCK", &lock)
-        .output()
-        .expect("run Linux-only history wrapper");
-    assert!(!result.status.success());
-    assert!(String::from_utf8_lossy(&result.stderr).contains("requires Linux"));
-    assert!(!clone.exists());
-    assert!(!log.exists());
-    assert!(!lock.exists());
-}
-
-#[test]
-fn sc186o_security_supply_chain_fails_closed_on_missing_scanner_or_symlink_tmpdir() {
-    use std::os::unix::fs::{PermissionsExt, symlink};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let script_path = root.join("scripts/check/security-supply-chain.sh");
-    let dir = tempfile::Builder::new()
-        .prefix("adm-sec-")
-        .tempdir_in("/var/tmp")
-        .expect("tempdir");
-    let base = dir.path();
-    let empty_bin = base.join("empty_bin");
-    fs::create_dir_all(&empty_bin).expect("mkdir empty_bin");
-    for util in [
-        "bash",
-        "dirname",
-        "pwd",
-        "cd",
-        "test",
-        "stat",
-        "mktemp",
-        "sha256sum",
-        "grep",
-    ] {
-        for candidate in [format!("/usr/bin/{util}"), format!("/bin/{util}")] {
-            let p = Path::new(&candidate);
-            if p.exists() {
-                let _ = symlink(p, empty_bin.join(util));
-                break;
+        match classify(path, &head(&root, path)) {
+            Some(Finding::Python) => python.push(path.clone()),
+            Some(Finding::Script)
+                if !REVIEWED_SCRIPT_TEST_DOUBLES.contains(&path.as_str())
+                    && !REVIEWED_ENTRY_POINTS.iter().any(|(p, _)| p == path) =>
+            {
+                scripts.push(path.clone())
             }
+            _ => {}
         }
     }
-    let missing = Command::new("/bin/bash")
-        .arg(&script_path)
-        .env("ADMIRALTY_SECURITY_NO_DEFAULT_PATH", "1")
-        .env("PATH", &empty_bin)
-        .output()
-        .expect("run security-supply-chain with missing scanners");
-    assert!(!missing.status.success());
     assert!(
-        String::from_utf8_lossy(&missing.stderr).contains("no missing-tool skip allowed"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&missing.stderr)
+        python.is_empty(),
+        "Python is not part of Admiralty's stack (Rust + Vite/TypeScript/React); port these: {python:?}"
     );
+    assert!(
+        scripts.is_empty(),
+        "repository logic belongs in Rust (`cargo xtask`, `admiralty …`) or TypeScript, not shell: {scripts:?}"
+    );
+    for allowed in REVIEWED_SCRIPT_TEST_DOUBLES {
+        assert!(
+            files.iter().any(|path| path == allowed),
+            "stale reviewed test double entry: {allowed}"
+        );
+    }
+    for (path, expected) in REVIEWED_ENTRY_POINTS {
+        let actual = fs::read_to_string(root.join(path)).expect("reviewed entry point exists");
+        assert_eq!(
+            &actual, expected,
+            "{path} must stay a one-line exec of the Rust implementation"
+        );
+    }
+}
 
-    let real_tmp = base.join("real_tmp");
-    fs::create_dir_all(&real_tmp).expect("mkdir real_tmp");
-    fs::set_permissions(&real_tmp, fs::Permissions::from_mode(0o700)).expect("chmod 0700");
-    let sym_tmp = base.join("sym_tmp");
-    symlink(&real_tmp, &sym_tmp).expect("symlink sym_tmp");
-    let sym_res = Command::new("/bin/bash")
-        .arg(&script_path)
-        .env("TMPDIR", &sym_tmp)
-        // Scratch validation must not depend on installed scanner availability.
-        .env("ADMIRALTY_SECURITY_NO_DEFAULT_PATH", "1")
-        .env("PATH", &empty_bin)
-        .output()
-        .expect("run security-supply-chain with symlink TMPDIR");
-    assert!(!sym_res.status.success());
-    assert!(
-        String::from_utf8_lossy(&sym_res.stderr).contains("must not be a symlink"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&sym_res.stderr)
+#[test]
+fn retired_python_exception_inventory_is_not_reintroduced() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    for retired in ["PYTHON_EXCEPTIONS.md", "tests/fixtures/python-baseline.txt"] {
+        assert!(
+            !root.join(retired).exists(),
+            "{retired} was retired with the last Python file; do not restore an exception list"
+        );
+    }
+}
+
+#[test]
+fn classifier_finds_python_and_scripts_by_extension_and_shebang() {
+    assert_eq!(classify("tools/x.py", b""), Some(Finding::Python));
+    assert_eq!(classify("Notebook.IPYNB", b"{}"), Some(Finding::Python));
+    assert_eq!(
+        classify("tools/bin/kick", b"#!/usr/bin/env python3\nprint(1)\n"),
+        Some(Finding::Python)
     );
+    assert_eq!(
+        classify("tools/bin/kick", b"#!/usr/bin/env bash\nset -e\n"),
+        Some(Finding::Script)
+    );
+    assert_eq!(
+        classify("scripts/x.sh", b"echo hi\n"),
+        Some(Finding::Script)
+    );
+    assert_eq!(classify("hook", b"#! /bin/sh\n"), Some(Finding::Script));
+    // Node entry points in the TypeScript tree are in stack; a Node shebang on
+    // an extensionless or shell file is still an executable script.
+    assert_eq!(
+        classify("scripts/demos/capture.ts", b"#!/usr/bin/env node\n"),
+        None
+    );
+    assert_eq!(
+        classify("tools/run", b"#!/usr/bin/env node\n"),
+        Some(Finding::Script)
+    );
+    assert_eq!(
+        classify("tools/x.sh", b"#!/usr/bin/env node\n"),
+        Some(Finding::Script)
+    );
+    assert_eq!(
+        classify("tools/x.ts", b"#!/usr/bin/env bash\n"),
+        Some(Finding::Script)
+    );
+    // Rust inner attributes and ordinary sources are not scripts.
+    assert_eq!(classify("tests/integration/a.rs", b"#![cfg(unix)]\n"), None);
+    assert_eq!(
+        classify("scripts/contracts/generate.ts", b"import x from 'y';\n"),
+        None
+    );
+    assert_eq!(classify("README.md", b"# Admiralty\n"), None);
 }

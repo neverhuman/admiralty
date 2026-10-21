@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
-umask 077
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "${ROOT_DIR}"
-exec bash scripts/check/security-supply-chain.sh
+# Jankurai security-lane entry point (the `jankurai security run` default path).
+# The lane itself is Rust: crates/admiralty-xtask/src/security.rs.
+exec cargo xtask security "$@"
