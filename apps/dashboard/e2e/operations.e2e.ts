@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { launchBrowserHarness, startIsolatedNativeAdmiraltyServer, REPO_ROOT,
   type BrowserHarness, type IsolatedNativeAdmiraltyServer } from './browser-harness';
@@ -70,10 +70,16 @@ describe('fleet operations on the built Rust service', () => {
     await connect();
     for (const width of [1440, 390]) {
       await browser.setViewportSize(width, 1000);
+      expect(await browser.evaluate<number>(`document.querySelector('.operations').scrollWidth - document.querySelector('.operations').clientWidth`), `${width} operations overflow`).toBeLessThanOrEqual(1);
       for (const theme of ['dark', 'light']) {
         const current = await browser.evaluate<string>(`document.querySelector('.app').className`);
         if (!current.includes(`theme-${theme}`)) await browser.clickButtonByAriaLabel(`Switch to ${theme} theme`);
         const report = await browser.runAxeAudit();
+        if (report.violations.length || report.incomplete.length) {
+          const layout = await browser.evaluate(`({viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth,sections:[...document.querySelectorAll('.operations, .ops-table-scroll, .ops-bottom > .panel, .ops-brief')].map(el=>({className:el.className,rect:el.getBoundingClientRect().toJSON(),scrollWidth:el.scrollWidth,clientWidth:el.clientWidth}))})`);
+          writeFileSync(join(evidence, `operations-${width}-${theme}-axe.json`), JSON.stringify({ report, layout }, null, 2));
+          await browser.captureScreenshot(join(evidence, `operations-${width}-${theme}-axe.png`));
+        }
         expect(report.violations, `${width}/${theme}`).toEqual([]);
         expect(report.incomplete, `${width}/${theme} incomplete`).toEqual([]);
       }

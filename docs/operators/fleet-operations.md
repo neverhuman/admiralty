@@ -25,8 +25,10 @@ separately. Fresh publication does not refresh an old Git report.
 
 Search and filters affect the table only. It renders 50 projects per page, ordered
 with actionable and incomplete evidence first; **Open Git** retrieves the existing
-project investigation view. Capacity shows observed reachability, one-minute load,
-CPU count and available GiB. Missing measurements/warnings remain unknown. At most
+project investigation view. On phones, project records stack with visible field
+labels and retained table headers for assistive technology. Capacity shows
+observed reachability, one-minute load, CPU count and available GiB.
+Missing measurements/warnings remain unknown. At most
 64 host summaries render, with the omitted count visible.
 
 The page polls every 15 seconds after the preceding bounded request finishes.

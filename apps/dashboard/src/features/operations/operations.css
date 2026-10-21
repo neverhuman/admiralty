@@ -1,4 +1,5 @@
-.operations { display: grid; gap: 20px; }
+.operations { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 20px; }
+.operations .panel { min-width: 0; padding: 20px; }
 .ops-source { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; }
 .ops-source time, .ops-source > span { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 .operations .metric-card { display: grid; gap: 8px; }
@@ -7,10 +8,10 @@
 .ops-filters { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
 .ops-filters label { display: grid; gap: 6px; font-size: 12px; }
 .ops-filters input, .ops-filters select { background: var(--surface); color: var(--text); border: 1px solid var(--line); padding: 9px 12px; border-radius: 7px; min-height: 40px; }
-.ops-table-scroll { overflow-x: auto; }
-.ops-table-scroll table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+.ops-table-scroll { min-width: 0; overflow-x: auto; }
+.ops-table-scroll table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 13px; text-align: left; }
 .ops-table-scroll caption { text-align: left; padding-bottom: 12px; color: var(--muted); }
-.ops-table-scroll td, .ops-table-scroll th { padding: 14px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ops-table-scroll td, .ops-table-scroll th { height: auto; padding: 14px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .ops-table-scroll small { display: block; max-width: 330px; color: var(--muted); font-weight: normal; margin-top: 5px; overflow-wrap: anywhere; }
 .ops-table-scroll a { color: var(--blue); white-space: nowrap; }
 .ops-state { display: inline-block; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; text-transform: capitalize; }
@@ -21,13 +22,29 @@
 .operations button { padding: 9px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 7px; min-height: 40px; cursor: pointer; }
 .operations button:disabled { opacity: .55; cursor: default; }
 .operations :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
-.ops-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.ops-bottom { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-width: 0; gap: 20px; }
 .ops-timings { margin: 0; }
 .ops-timings > div { display: flex; justify-content: space-between; gap: 20px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .ops-timings dd { margin: 0; font-variant-numeric: tabular-nums; }
 .ops-host { display: grid; gap: 7px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-.ops-host small, .ops-host span { color: var(--muted); }
+.ops-host small, .ops-host span { color: var(--muted); overflow-wrap: anywhere; }
+.operations p { line-height: 1.5; overflow-wrap: anywhere; }
 .ops-brief pre { max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
 .ops-brief summary { cursor: pointer; padding: 8px 0; }
 .ops-empty { padding: 16px 0; }
-@media (max-width: 900px) { .ops-bottom { grid-template-columns: 1fr; } .ops-filters label { flex: 1; } .ops-filters input { width: 100%; min-width: 0; } .ops-health .panel-head { flex-wrap: wrap; gap: 8px; } }
+@media (max-width: 900px) { .ops-bottom { grid-template-columns: minmax(0, 1fr); } .ops-filters label { flex: 1; min-width: 0; } .ops-filters input { width: 100%; min-width: 0; } .ops-health .panel-head { flex-wrap: wrap; gap: 8px; } }
+@media (max-width: 600px) {
+  .operations .panel { padding: 14px; }
+  .ops-filters { flex-direction: column; }
+  .ops-filters select { width: 100%; min-width: 0; }
+  .ops-table-scroll { overflow: visible; }
+  .ops-table-scroll table, .ops-table-scroll tbody, .ops-table-scroll caption { display: block; width: 100%; min-width: 0; }
+  /* Keep column headers available to assistive technology while presenting
+     each record vertically; no horizontal clipping of evidence on phones. */
+  .ops-table-scroll thead { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
+  .ops-table-scroll tr { display: grid; grid-template-columns: minmax(0, 1fr); margin-bottom: 14px; border: 1px solid var(--line); border-radius: 8px; }
+  .ops-table-scroll td, .ops-table-scroll th { display: block; min-width: 0; overflow-wrap: anywhere; }
+  .ops-table-scroll td::before { content: attr(data-label); display: block; color: var(--muted); font-size: 11px; margin-bottom: 6px; }
+  .ops-table-scroll small { max-width: none; }
+  .ops-table-scroll td:last-child { border-bottom: 0; }
+}
