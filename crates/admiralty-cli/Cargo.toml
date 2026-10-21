@@ -13,6 +13,7 @@ admiralty-core.workspace = true
 admiralty-runtime.workspace = true
 admiralty-store.workspace = true
 admiralty-server.workspace = true
+admiralty-telemetry.workspace = true
 serde.workspace = true
 rustix.workspace = true
 serde_json.workspace = true

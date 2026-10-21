@@ -16,6 +16,7 @@ dependencies = [
  "admiralty-runtime",
  "admiralty-server",
  "admiralty-store",
+ "admiralty-telemetry",
  "chrono",
  "clap",
  "flate2",

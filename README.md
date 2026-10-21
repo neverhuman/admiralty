@@ -108,7 +108,7 @@ pnpm live \
   --index "$PWD/dashboard/index.html"
 ```
 
-Open [http://127.0.0.1:18891/](http://127.0.0.1:18891/). The original detailed HTML remains at `/legacy/`; **Git Flow** and **Fleet Atlas** use `#/git` and `#/atlas`. This launcher also needs **Python 3** to create protected preview state. Native HTTP serving and observation ingestion run in Rust.
+Open [http://127.0.0.1:18891/](http://127.0.0.1:18891/). The original detailed HTML remains at `/legacy/`; **Git Flow** and **Fleet Atlas** use `#/git` and `#/atlas`. Protected preview state (an owner-only directory and token) is created by `admiralty preview-state` in Rust; the launcher needs no Python.
 
 The launcher prints the private access-token **file path**, never the token value. Use **Session access** for authenticated native data and model settings. This convenience mode explicitly enables public loopback reads of the existing detailed feed. Keep the listener on loopback and use an authenticated SSH tunnel for remote access.
 
@@ -129,6 +129,8 @@ For protected task intake and scoped agent access, follow [native startup](docs/
 | Configure per-project Captain/Admiral chat and verify delivery | [Operator chat](docs/operators/operator-chat.md) |
 | Configure Git health policy and captain alerts | [Git health](docs/operators/git-health.md) |
 | Back up, rehearse recovery or install an explicit archive | [Recovery manifests](docs/operators/recovery-manifest.md), [native archive](docs/operators/native-archive.md), [private version installation](docs/operators/native-install.md) |
+| Deploy with systemd, roll out with readiness checks and roll back | [Clean deployment with systemd](docs/operators/deployment-systemd.md) |
+| Read compact logs, metrics and agent log digests | [Clean deployment: observe](docs/operators/deployment-systemd.md#4-observe) |
 | Develop and reproduce checks | [Contributing](CONTRIBUTING.md), [local CI](docs/operators/local-ci.md) |
 | Review architecture, evidence and remaining implementation | [Master plan](docs/plans/admiralty-v2/MASTER_PLAN.md), [execution ledger](docs/plans/admiralty-v2/EXECUTION.md), [remaining-work audit](docs/plans/admiralty-v2/REMAINING_20261019.md) |
 
