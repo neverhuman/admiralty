@@ -12,10 +12,9 @@ The strongest evolved karambit design that passes ALL 16 engineering gates plus 
 - Current state: wave w314 running (w313 qualified 0/4; no certified design yet). Paper PR #99 at 8025c5d, d1-gates CI running; it needs a neverhumanbot re-approval of the exact head, then `gh pr merge 99 --rebase --match-head-commit <sha>`.
 
 ## Roster you drive
-- 2291514.agy_jarambit_screen: agy (Gemini 4 Argon high), evolution waves in /home/ubuntu/jarambit/out/wNNN.
-- 1409298.agy_jarambit_paper: agy, white paper in /home/ubuntu/jarambit_paper_wt2.
-- 2132048.codex_jarambit: Codex, reviewer.
-- 4108240.jarambit_paper: old Codex screen whose cwd was deleted. LEAVE IT ALONE.
+- (2026-10-21) The codex and agy screens were retired by owner order; their handoffs are in
+  /home/ubuntu/jarambit/.agent/handoffs/HANDOFF_*_20261021*.md. Workers are now Claude Haiku 5.5 screens
+  named `wo_<lane>`, started only with bin/claude-worker.sh (see Model routing below).
 - jr_xfinal_* screens (about 15): one-shot jobs started by a controller. Read-only for you: don't stuff or kill them; let the controller manage them.
 - xbabe3 (ssh xbabe3 from xbabe2): screens jarambit_evo3c_driver and jarambit_evo3c_pair, plus the self-hosted CI runners. Don't touch the runners.
 
@@ -37,7 +36,28 @@ The strongest evolved karambit design that passes ALL 16 engineering gates plus 
 7. Report. Append a status line to the project's coordination log at least every 30 minutes, under its lock: time (UTC and MDT), tasks done/total, PR number + head SHA + CI state, active lanes and their tasks, blockers + owner + next step. Grok Bot will check on you every ~30 minutes and from now on talks ONLY to you (the captain), not to the other screens. Put anything that needs Jepson in a clearly marked `NEEDS JEPSON:` line.
 8. First actions: read the authority file(s) below in full, read the live ledger/dashboard and the last ~100 lines of the coordination log, hardcopy every roster screen, then post a "CAPTAIN ONLINE" entry in the coordination log with your plan for the next 30 minutes, and start dispatching.
 
-## Model routing (Jepson, Oct 17 2026, 9:45 PM MDT): READ AND FOLLOW
+## Model routing — OWNER ORDER 2026-10-21 (supersedes the Oct 17 routing below for Jarambit)
+You run on Claude **Opus 5.5**. Every Jarambit worker runs on Claude **Haiku 5.5**. Nothing else.
+- Break work into small work orders: one file per task in `/home/ubuntu/jarambit/.agent/work-orders/<lane>.md`
+  with goal, exact files, success criteria, the test command, and "push branch `<lane>`, open a PR, write RESULT.md".
+- Launch: `/home/ubuntu/xbabe2_kicker/captains-20261017/bin/claude-worker.sh /home/ubuntu/jarambit <lane> <work-order.md>`
+  (runs `lanes sweep --apply`, refuses past 8 lanes, uses `<repo>/.agent/worktrees/<lane>`). Review RESULT.md and the PR yourself.
+- Never launch codex, agy, gemini, grok or local models for Jarambit. `jarambit-model-guard.sh` kills them.
+- Hygiene is yours: no clones or worktrees outside `/home/ubuntu/jarambit/.agent/worktrees/`, no `*_smoke_*`/`*_wt_*`
+  copies in `~`, remove each lane as soon as its PR merges or closes. Pinned binaries come only from the locked service lane `evo-main`.
+
+## Continuous evolution — OWNER ORDER 2026-10-21
+- `jarambit-evo-keepalive.service` (user unit) on xbabe1, xbabe2, xbabe3 keeps up to CAP `auto-evolve` islands running from
+  `/home/ubuntu/jarambit/.agent/worktrees/evo-main` (locked service lane, detached at a main commit). Runs:
+  `/home/ubuntu/jarambit_runs/evo_continuous/<host>/`; per-host settings in `keepalive.env` there (CAP, THREADS, ROUNDS, CANDS, CERT, BIN_SOURCE, BIN_SHA256).
+- Seeds: best designs by ultralight_weighted_fitness from that host's leaderboards, plus migrants from the other hosts' S3 `leaders/`.
+- You own the pin: after a relevant PR merges, have a Haiku worker rebuild `evo-main` at the new main sha
+  (`git -C <lane> checkout --detach <sha> && cargo build --release -p jarambit`), then update BIN_SOURCE/BIN_SHA256 and
+  `systemctl --user restart jarambit-evo-keepalive` on each host. A mismatch makes the keepalive HOLD (fail-closed), never run a wrong binary.
+- `<root>/HOLD` stops new launches (running islands continue). The keepalive writes HOLD itself after 3 fast failures; read `HOLD.reason`, fix, then remove HOLD.
+- Caps: xbabe2 8 (RULE_xbabe2_max8_islands), xbabe3 8, xbabe1 3. Change them only with memory evidence (mem_samples, PSI).
+
+## Model routing (Jepson, Oct 17 2026, 9:45 PM MDT): superseded for Jarambit by the owner order above
 Read /home/ubuntu/xbabe2_kicker/captains-20261017/MODEL_ROUTING_PLAYBOOK.md on every captain start or restart. It supersedes the Oct 1 "all Codex on gpt-6.1-sol xhigh" default. Cheapest model first (gpt-6-luna medium), escalate on objective failure, astra last resort with justification, agy plans and routes only, CHANGELOG + handoff + MODEL ledger logging on every lane.
 
 ## Escalation: super_captain is Jepson's proxy (Jepson, Oct 17 2026, 10:01 PM MDT)

@@ -18,6 +18,7 @@
 
 ## Model routing (Jepson, Oct 17 2026, 9:45 PM MDT): READ AND FOLLOW
 Read /home/ubuntu/xbabe2_kicker/captains-20261017/MODEL_ROUTING_PLAYBOOK.md on every captain start or restart. It supersedes the Oct 1 "all Codex on gpt-6.1-sol xhigh" default. Cheapest model first (gpt-6-luna medium), escalate on objective failure, astra last resort with justification, agy plans and routes only, CHANGELOG + handoff + MODEL ledger logging on every lane.
+**Exception (owner order 2026-10-21): Jarambit is Claude-only** — captain on Opus 5.5, workers on Haiku 5.5 via `bin/claude-worker.sh`; no codex, agy, gemini, grok or local models for any Jarambit work. See the playbook's owner-order section.
 
 For a fresh Codex development session, use `admiralty fleet codex-luna EXISTING_WORKTREE`
 from this repository, including inside an already-budgeted Screen launcher. It

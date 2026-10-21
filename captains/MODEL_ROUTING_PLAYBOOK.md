@@ -2,6 +2,18 @@
 
 Issued: Oct 17 2026, ~9:45 PM MDT, by Grok Bot for Jepson. Applies to captain_joil, captain_dope, captain_jopedime, captain_jarambit and every worker they own.
 
+## OWNER ORDER 2026-10-21: Jarambit is Claude-only
+For all Jarambit work (any repo, host, lane or evolution task):
+- Admiral (`super_captain`) and `captain_jarambit`: Claude **Opus 5.5** (`claude --model claude-opus-5-5`).
+- Jarambit workers: Claude **Haiku 5.5** (`claude-haiku-5-5`), one small work order each, launched only with
+  `/home/ubuntu/xbabe2_kicker/captains-20261017/bin/claude-worker.sh <repo> <lane> <work-order.md>`.
+- Banned for Jarambit: codex/gpt-* (OpenAI), agy/gemini-* (Google), grok (xAI), local models (Ornith, ollama).
+  `jarambit-model-guard.sh` terminates any of them working in a Jarambit checkout on xbabe1/2/3 and logs it to
+  `/home/ubuntu/jarambit/COMMS.md`. Escalate within Claude (Haiku 5.5 -> Opus 5.5), never to another provider.
+- Evolution runs continuously from `jarambit-evo-keepalive.service` on xbabe1/2/3
+  (`/home/ubuntu/jarambit_runs/evo_continuous/tools/keepalive.sh`); see the captain brief.
+Other projects keep their current routing below.
+
 **This replaces the Oct 1 default of "every Codex screen on gpt-6.1-sol xhigh".** From now on, start each task on the cheapest model that can pass its success criteria, and move up only on objective failure. Throughput rules from Addendum 1 and 2 stay in force: Jepson wants MANY lanes, all code work in flight, and the current Codex quota used up. The point is to buy more lanes with the same quota: **prefer more Luna lanes over fewer Sol lanes.**
 
 Safety and merge rules are unchanged: neverhumanbot approves the EXACT head, then `gh pr merge <n> --rebase --match-head-commit <sha>`. No squash, no `--admin`, no `--merge`, no force-push. Joil PR #6 is merged only by Jepson. Done still needs real evidence.
