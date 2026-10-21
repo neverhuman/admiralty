@@ -1,6 +1,8 @@
 //! Fleet projection, durable replay and explicitly configured native command services.
 pub mod daemon;
 pub mod embedded;
+#[cfg(test)]
+mod embedded_input;
 pub mod fleet_brief;
 mod http_bytes;
 pub mod intake_configuration;

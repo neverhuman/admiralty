@@ -121,7 +121,7 @@ fn assert_matches_bash(name: &str) {
     assert_eq!(got.stderr, exp_err, "{name}: stderr");
     assert_eq!(
         got.log,
-        read_opt(&sc.join("expected_kick.log")),
+        read_opt(&sc.join("expected_kick.txt")),
         "{name}: kick.log"
     );
     assert_eq!(

@@ -1,0 +1,19 @@
+[2026-10-21 18:30:05 UTC] claude_appr ACTION claude_approve:2
+[2026-10-21 18:30:05 UTC] claude_appr state=needs_approval kind=claude action=approve:2 conf=0.668
+[2026-10-21 18:30:05 UTC] misc_always ACTION unknown_approve:y
+[2026-10-21 18:30:05 UTC] misc_always state=needs_approval kind=unknown action=approve:always conf=0.608
+[2026-10-21 18:30:05 UTC] codex_yn ACTION codex_approve:y+always
+[2026-10-21 18:30:05 UTC] codex_yn state=needs_approval kind=codex action=approve:y conf=0.668
+[2026-10-21 18:30:05 UTC] input_ambig state=needs_input kind=unknown action=needs_input_ambiguous conf=0.56
+[2026-10-21 18:30:05 UTC] grok_input ACTION grok_approve:a+y
+[2026-10-21 18:30:05 UTC] grok_input state=needs_input kind=grok action=input_yes conf=0.86
+[2026-10-21 18:30:05 UTC] pr_cool state=pr_blocked kind=unknown action=pr_nudge_cooldown conf=0.512
+[2026-10-21 18:30:05 UTC] busy state=working kind=codex action=none conf=0.79
+[2026-10-21 18:30:05 UTC] plain state=unknown kind=unknown action=none conf=0.29
+[2026-10-21 18:30:05 UTC] grok_idle state=idle kind=grok action=none conf=0.74
+[2026-10-21 18:30:05 UTC] x_claude_in ACTION claude_approve:2+always
+[2026-10-21 18:30:05 UTC] x_claude_in state=needs_input kind=claude action=input_yes conf=0.84
+[2026-10-21 18:30:05 UTC] claude_grant_ok ACTION claude_grant_nudge
+[2026-10-21 18:30:05 UTC] claude_grant_ok state=idle kind=claude action=claude_grant_nudge conf=0.78
+[2026-10-21 18:30:05 UTC] jopedime_codex_training ACTION input_yes
+[2026-10-21 18:30:05 UTC] jopedime_codex_training state=needs_input kind=codex action=input_yes conf=0.72

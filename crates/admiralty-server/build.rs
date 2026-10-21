@@ -21,6 +21,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[path = "src/embedded_input.rs"]
+mod embedded_input;
+
+const MAX_ENTRIES: usize = 8192;
 const MAX_FILES: usize = 1024;
 const MAX_FILE_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_TOTAL_BYTES: u64 = 64 * 1024 * 1024;
@@ -40,13 +44,32 @@ fn portable(component: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'@' | b'+'))
 }
 
-fn walk(root: &Path, directory: &Path, entries: &mut Vec<Entry>, total: &mut u64) {
+fn walk(
+    root: &Path,
+    directory: &Path,
+    entries: &mut Vec<Entry>,
+    total: &mut u64,
+    visited: &mut usize,
+) {
+    assert!(
+        directory
+            .strip_prefix(root)
+            .expect("under root")
+            .components()
+            .count()
+            <= 32,
+        "dashboard directory is too deep"
+    );
     let mut children: Vec<_> = fs::read_dir(directory)
         .unwrap_or_else(|error| panic!("cannot read {}: {error}", directory.display()))
+        .take(MAX_ENTRIES + 1)
         .map(|entry| entry.expect("dashboard directory entry"))
         .collect();
+    assert!(children.len() <= MAX_ENTRIES, "too many dashboard entries");
     children.sort_by_key(|entry| entry.file_name());
     for child in children {
+        *visited += 1;
+        assert!(*visited <= MAX_ENTRIES, "too many dashboard entries");
         let name = child.file_name();
         let name = name
             .to_str()
@@ -65,7 +88,7 @@ fn walk(root: &Path, directory: &Path, entries: &mut Vec<Entry>, total: &mut u64
             path.display()
         );
         if file_type.is_dir() {
-            walk(root, &path, entries, total);
+            walk(root, &path, entries, total, visited);
             continue;
         }
         assert!(
@@ -126,6 +149,7 @@ fn main() {
     fs::create_dir_all(&payload).expect("create embedded dashboard payload");
 
     let mut entries = Vec::new();
+    let mut asset_root = None;
     if let Some(root) = env::var_os("ADMIRALTY_EMBED_DASHBOARD").filter(|v| !v.is_empty()) {
         let root = PathBuf::from(root);
         assert!(
@@ -144,7 +168,9 @@ fn main() {
         );
         println!("cargo:rerun-if-changed={}", root.display());
         let mut total = 0;
-        walk(&root, &root, &mut entries, &mut total);
+        let mut visited = 0;
+        walk(&root, &root, &mut entries, &mut total, &mut visited);
+        asset_root = Some(root);
         assert!(
             entries.iter().any(|e| e.relative == "index.html"),
             "ADMIRALTY_EMBED_DASHBOARD has no index.html; run the dashboard build first"
@@ -154,9 +180,20 @@ fn main() {
 
     let mut table = String::new();
     let mut tree = Sha256::new();
+    let mut embedded_bytes = 0u64;
     for (index, entry) in entries.iter().enumerate() {
         println!("cargo:rerun-if-changed={}", entry.source.display());
-        let bytes = fs::read(&entry.source).expect("read dashboard file");
+        let bytes = embedded_input::read_asset(
+            asset_root.as_deref().expect("nonempty embedded root"),
+            Path::new(&entry.relative),
+            MAX_FILE_BYTES,
+        )
+        .expect("read pinned bounded dashboard file");
+        embedded_bytes += bytes.len() as u64;
+        assert!(
+            embedded_bytes <= MAX_TOTAL_BYTES,
+            "dashboard bytes exceed 64 MiB"
+        );
         let digest = format!("{:x}", Sha256::digest(&bytes));
         tree.update(entry.relative.as_bytes());
         tree.update([0]);

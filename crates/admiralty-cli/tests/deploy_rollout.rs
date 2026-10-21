@@ -208,3 +208,39 @@ fn dry_run_and_invalid_arguments_change_nothing() {
     assert_eq!(missing.status.code(), Some(2));
     assert!(!fixture.calls.exists(), "systemctl never ran");
 }
+
+#[test]
+fn a_failed_restart_rolls_back_without_leaving_the_candidate_active() {
+    let fixture = fixture();
+    let activated = Command::new(env!("CARGO_BIN_EXE_admiralty"))
+        .args(["release", "activate", "--releases-root"])
+        .arg(&fixture.root)
+        .args(["--version", "v1"])
+        .output()
+        .expect("activate");
+    assert!(activated.status.success());
+    fs::write(
+        fixture.stub_bin.join("systemctl"),
+        format!(
+            "#!/bin/sh\necho \"$@\" >> '{}'\nif [ \"$(wc -l < '{}')\" -eq 1 ]; then exit 7; fi\n",
+            fixture.calls.display(),
+            fixture.calls.display()
+        ),
+    )
+    .expect("fail first restart");
+    let closed = TcpListener::bind("127.0.0.1:0")
+        .and_then(|l| l.local_addr())
+        .expect("closed")
+        .to_string();
+    let result = rollout(&fixture, &closed, &[]);
+    assert_eq!(result.status.code(), Some(1));
+    assert_eq!(current(&fixture.root), Path::new("v1"));
+    assert_eq!(
+        fs::read_to_string(&fixture.calls)
+            .expect("calls")
+            .lines()
+            .count(),
+        2
+    );
+    assert!(String::from_utf8_lossy(&result.stderr).contains("restart exited 7"));
+}

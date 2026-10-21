@@ -2026,7 +2026,10 @@
   .git-view.is-investigating > .lv-toolbar:not(.are-tools-open) { display:none; }
   .git-browse-toggle { display:inline-block; margin-left:auto; }
   .git-view.is-investigating > .lv-view-note { display:none; }
-  .git-project-chat-dock:has(.git-chat.is-open) { min-height:160px; max-height:40%; }
+  /* A normal window can be shorter than native fullscreen. Chat must leave
+     room for the graph's real padding instead of forcing a tiny stage. */
+  .git-project-main { min-height:96px; }
+  .git-project-chat-dock:has(.git-chat.is-open) { flex:0 1 160px; min-height:41px; max-height:calc(100% - 96px); }
   .git-project-chat-dock .git-chat.is-open { height:100%; }
 }
 .git-investigation-heading > .git-graph-status { min-width:0; overflow-wrap:anywhere; line-height:16px; background:var(--lv-panel); margin:0; display:block; }

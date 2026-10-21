@@ -72,6 +72,20 @@ fn ready(args: &RolloutArgs, current: &Path) -> CliResult<i32> {
     )
 }
 
+fn succeeded(label: &str, outcome: CliResult<i32>) -> bool {
+    match outcome {
+        Ok(0) => true,
+        Ok(code) => {
+            eprintln!("rollout: {label} exited {code}");
+            false
+        }
+        Err(error) => {
+            eprintln!("rollout: {label} failed: {error}");
+            false
+        }
+    }
+}
+
 pub fn run(args: RolloutArgs) -> CliResult<i32> {
     let units: Vec<_> = args.units.split_whitespace().collect();
     let version_is_component =
@@ -123,7 +137,9 @@ pub fn run(args: RolloutArgs) -> CliResult<i32> {
         return Ok(activated);
     }
     let current = args.releases_root.join("current/bin/admiralty");
-    if restart(&args, &units).unwrap_or(1) == 0 && ready(&args, &current).unwrap_or(1) == 0 {
+    if succeeded("restart", restart(&args, &units))
+        && succeeded("readiness", ready(&args, &current))
+    {
         println!("rollout: {} is active and ready", args.version);
         return Ok(0);
     }
@@ -138,7 +154,9 @@ pub fn run(args: RolloutArgs) -> CliResult<i32> {
         Duration::from_secs(30),
     )?;
     if rollback == 0 {
-        if restart(&args, &units).unwrap_or(1) != 0 || ready(&args, &current).unwrap_or(1) != 0 {
+        if !succeeded("restored restart", restart(&args, &units))
+            || !succeeded("restored readiness", ready(&args, &current))
+        {
             eprintln!(
                 "rollout: the restored version is not ready either; inspect journalctl and admiralty logs digest"
             );

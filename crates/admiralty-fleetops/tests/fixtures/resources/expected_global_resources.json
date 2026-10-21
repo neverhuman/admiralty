@@ -1,0 +1,278 @@
+{
+ "generated_utc": "2026-10-21T12:00:00Z",
+ "hosts": [
+  {
+   "host": "xbabe1",
+   "reachable": true,
+   "error": null,
+   "disks": [
+    {
+     "mount": "/",
+     "size": 1967317618688,
+     "used": 1800000000000,
+     "avail": 67317618688,
+     "pct": 96.4,
+     "growth_gb_per_h": 100.0,
+     "hours_to_full": 0.7,
+     "rate_window_min": 120,
+     "level": "red"
+    },
+    {
+     "mount": "/data",
+     "size": 7999999999999,
+     "used": 1000000000000,
+     "avail": 6999999999999,
+     "pct": 12.5,
+     "growth_gb_per_h": null,
+     "hours_to_full": null,
+     "rate_window_min": null,
+     "level": "ok"
+    },
+    {
+     "mount": "/mnt/fast-scratch",
+     "size": 3999999999999,
+     "used": 3300000000000,
+     "avail": 699999999999,
+     "pct": 82.5,
+     "growth_gb_per_h": 100.0,
+     "hours_to_full": 7.0,
+     "rate_window_min": 60,
+     "level": "red"
+    },
+    {
+     "mount": "/mnt/shrinking",
+     "size": 2000000000000,
+     "used": 500000000000,
+     "avail": 1500000000000,
+     "pct": 25.0,
+     "growth_gb_per_h": -119.98,
+     "hours_to_full": null,
+     "rate_window_min": 50,
+     "level": "ok"
+    }
+   ],
+   "gpus": [
+    {
+     "idx": 0,
+     "name": "NVIDIA RTX 6000 Ada Generation",
+     "util": 97.0,
+     "mem_used_mib": 40000.0,
+     "mem_total_mib": 49140.0,
+     "temp_c": 86.0
+    }
+   ],
+   "top_rss": [
+    {
+     "pid": 123456,
+     "user": "ubuntu",
+     "rss_gb": 50.0,
+     "pcpu": 350.5,
+     "etime_s": 86400,
+     "comm": "python3"
+    },
+    {
+     "pid": 777,
+     "user": "root",
+     "rss_gb": 1.0,
+     "pcpu": 1.0,
+     "etime_s": 999999,
+     "comm": "my comm with spaces and a very long name"
+    }
+   ],
+   "screens": [
+    "2708475.captain_joil",
+    "12.jankurai"
+   ],
+   "hostname": "xbabe1",
+   "nproc": 64,
+   "load": [
+    55.2,
+    40.1,
+    30.0
+   ],
+   "d_state_procs": 2,
+   "mem": {
+    "total_gb": 251.6,
+    "avail_gb": 28.6,
+    "swap_total_gb": 8.0,
+    "swap_used_gb": 7.9,
+    "avail_pct": 11.4,
+    "level": "amber"
+   },
+   "load_level": "amber",
+   "warnings": [
+    {
+     "level": "red",
+     "text": "xbabe1 / 96.4% used, 67 GB free, ~0.7 h to full at 100.0 GB/h"
+    },
+    {
+     "level": "red",
+     "text": "xbabe1 /mnt/fast-scratch 82.5% used, 700 GB free, ~7.0 h to full at 100.0 GB/h"
+    },
+    {
+     "level": "amber",
+     "text": "xbabe1 RAM low: 28.6 GB available of 252 GB"
+    },
+    {
+     "level": "red",
+     "text": "xbabe1 swap full (8/8 GB)"
+    },
+    {
+     "level": "amber",
+     "text": "xbabe1 load 55.2 on 64 CPUs"
+    },
+    {
+     "level": "amber",
+     "text": "xbabe1 GPU0 86\u00b0C"
+    }
+   ]
+  },
+  {
+   "host": "xbabe2",
+   "reachable": true,
+   "error": null,
+   "disks": [
+    {
+     "mount": "/",
+     "size": 1000000000000,
+     "used": 930000000000,
+     "avail": 70000000000,
+     "pct": 93.0,
+     "growth_gb_per_h": 30.0,
+     "hours_to_full": 2.3,
+     "rate_window_min": 20,
+     "level": "red"
+    },
+    {
+     "mount": "/home",
+     "size": 1000000000000,
+     "used": 860000000000,
+     "avail": 140000000000,
+     "pct": 86.0,
+     "growth_gb_per_h": null,
+     "hours_to_full": null,
+     "rate_window_min": null,
+     "level": "amber"
+    }
+   ],
+   "gpus": [],
+   "top_rss": [
+    {
+     "pid": 1,
+     "user": "root",
+     "rss_gb": 0.0,
+     "pcpu": 0.0,
+     "etime_s": 5,
+     "comm": "systemd"
+    }
+   ],
+   "screens": [],
+   "hostname": "xbabe2",
+   "nproc": 32,
+   "load": [
+    40.5,
+    30.0,
+    20.0
+   ],
+   "d_state_procs": 0,
+   "mem": {
+    "total_gb": 125.0,
+    "avail_gb": 11.4,
+    "swap_total_gb": 0.0,
+    "swap_used_gb": 0.0,
+    "avail_pct": 9.1,
+    "level": "amber"
+   },
+   "load_level": "red",
+   "warnings": [
+    {
+     "level": "red",
+     "text": "xbabe2 / 93.0% used, 70 GB free, ~2.3 h to full at 30.0 GB/h"
+    },
+    {
+     "level": "amber",
+     "text": "xbabe2 /home 86.0% used, 140 GB free"
+    },
+    {
+     "level": "amber",
+     "text": "xbabe2 RAM low: 11.4 GB available of 125 GB"
+    },
+    {
+     "level": "red",
+     "text": "xbabe2 load 40.5 on 32 CPUs"
+    }
+   ]
+  },
+  {
+   "host": "xbabe3",
+   "reachable": false,
+   "error": "ssh: connect to host xbabe3 port 22: Connection timed out",
+   "disks": [],
+   "gpus": [],
+   "top_rss": [],
+   "screens": [],
+   "hostname": "xbabe3",
+   "nproc": 16,
+   "load": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "load_level": "ok",
+   "warnings": [
+    {
+     "level": "amber",
+     "text": "xbabe3 unreachable: ssh: connect to host xbabe3 port 22: Connection timed out"
+    }
+   ]
+  }
+ ],
+ "thresholds": "disk red >=92% or <12h to full; amber >=85% or <24h; RAM red <8% avail, amber <15%; growth from samples 20min-3h old",
+ "warnings": [
+  {
+   "level": "red",
+   "text": "xbabe1 / 96.4% used, 67 GB free, ~0.7 h to full at 100.0 GB/h"
+  },
+  {
+   "level": "red",
+   "text": "xbabe1 /mnt/fast-scratch 82.5% used, 700 GB free, ~7.0 h to full at 100.0 GB/h"
+  },
+  {
+   "level": "amber",
+   "text": "xbabe1 RAM low: 28.6 GB available of 252 GB"
+  },
+  {
+   "level": "red",
+   "text": "xbabe1 swap full (8/8 GB)"
+  },
+  {
+   "level": "amber",
+   "text": "xbabe1 load 55.2 on 64 CPUs"
+  },
+  {
+   "level": "amber",
+   "text": "xbabe1 GPU0 86\u00b0C"
+  },
+  {
+   "level": "red",
+   "text": "xbabe2 / 93.0% used, 70 GB free, ~2.3 h to full at 30.0 GB/h"
+  },
+  {
+   "level": "amber",
+   "text": "xbabe2 /home 86.0% used, 140 GB free"
+  },
+  {
+   "level": "amber",
+   "text": "xbabe2 RAM low: 11.4 GB available of 125 GB"
+  },
+  {
+   "level": "red",
+   "text": "xbabe2 load 40.5 on 32 CPUs"
+  },
+  {
+   "level": "amber",
+   "text": "xbabe3 unreachable: ssh: connect to host xbabe3 port 22: Connection timed out"
+  }
+ ],
+ "note": "xbabe0 is deliberately never probed"
+}

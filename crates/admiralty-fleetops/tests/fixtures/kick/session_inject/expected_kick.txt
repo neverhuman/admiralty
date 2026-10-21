@@ -1,0 +1,2 @@
+[2026-10-21 18:30:05 UTC] grok_red ACTION manual_inject
+[2026-10-21 18:30:05 UTC] grok_red state=needs_approval action=manual_inject

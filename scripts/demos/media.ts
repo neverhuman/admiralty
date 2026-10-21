@@ -222,4 +222,3 @@ export function verifyGifOptimization(before: string, after: string): number {
   }
   return optimized.frameCount;
 }
-
