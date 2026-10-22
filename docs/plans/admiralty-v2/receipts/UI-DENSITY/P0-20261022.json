@@ -5,7 +5,7 @@
   "worker_base": "00a16244f15bb54203e9bceb3f82cfea9ef02f79",
   "reviewed_worker_head": "783e368468640523f172b57f76fa5f8e995bfbd2",
   "integration_base": "5523daeb948b4aecbc64a8718cdd0a0bc416800b",
-  "integration_product_head_before_receipt": "fac5dcd0",
+  "integration_product_head_before_receipt": "fac5dcd0252b0ec05e905997f17dbf9ac54b40a1",
   "source_postimages_equal_reviewed_worker": true,
   "source_sha256": {
     "apps/dashboard/src/ui/CommandJourneys.tsx": "0f81798df4c1c7af8d1b82f390696cc7450c0a2e1947e4c1a8d860ea34538d3e",
