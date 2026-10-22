@@ -1,0 +1,34 @@
+{
+  "schema": "admiralty.security-runner-capability.v1",
+  "recorded_at_utc": "2026-10-22T01:59:04.530441+00:00",
+  "packet": "CI-SECURITY-STORAGE",
+  "previous_candidate": "f928214a954874a2212aa33ccf0a70c1c7ccb1d7",
+  "previous_candidate_local_validation": "16 stages PASS; 399 dashboard unit tests; 89 browser cases",
+  "observed_job": "https://github.com/neverhuman/admiralty/actions/runs/39707202120/job/119589922378",
+  "runner": "xbabe3-lan-3-20261022004250-18140",
+  "observation": "Pinned Rust provisioning before security checks; rustup thread blocked at jbd2_log_wait_commit for nearly11min, guest full I/O PSI avg10 97.46%, USB-backed state image",
+  "private_diagnostic_sha256": "b9e173738265051a3b6ce1c0b43f234756aa20c3b10f66546ce72d8645e2e78e",
+  "diagnostic_limits": "Demonstrates guest journal I/O stall during setup; does not isolate the device/filesystem/encryption/QEMU/competing workload contributions. This is not an observed security assertion failure.",
+  "change": {
+    "path": ".github/workflows/security.yml",
+    "group": "neverhuman-lan",
+    "shared_required_capability": "storage-nvme",
+    "reason": "Apply the same existing general-fleet storage capability already used by Rust qualification to the security toolchain installation workload."
+  },
+  "preserved": [
+    "self-hosted Linux X64 lan-ci runner labels and shared runner group",
+    "15-minute job deadline",
+    "pinned Rust/actionlint/gitleaks versions and checksums",
+    "all security assertions and scripts",
+    "compiler/test concurrency and Rust job deadline",
+    "no hosted cloud or dedicated Admiralty runners"
+  ],
+  "at_recording": "Updated source still requires complete local matrix and all current-head CI checks before merge. No runner, runtime, deployment or process mutation.",
+  "previous_head_ci_outcome": {
+    "job_conclusion": "cancelled",
+    "completed_utc": "2026-10-22T01:58:39Z",
+    "check_annotation": "The job has exceeded the maximum execution time of 15m0s",
+    "security_assertions": "not reached",
+    "retained_job_log_sha256": "32e73a7843ba6ed3b80a4447865d60d37a5a081d36dff8b4d5b9ecbe2fccaef4"
+  }
+}
