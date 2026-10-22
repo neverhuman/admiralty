@@ -19,7 +19,8 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on:
       group: neverhuman-lan
-      labels: [self-hosted, Linux, X64, lan-ci]
+      # Toolchain extraction requires the fleet's shared NVMe storage capability.
+      labels: [self-hosted, Linux, X64, lan-ci, storage-nvme]
     timeout-minutes: 15
     steps:
       - name: Record selected runner
