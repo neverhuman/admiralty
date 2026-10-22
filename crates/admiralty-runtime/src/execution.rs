@@ -869,7 +869,8 @@ mod tests {
                     reason: "capture failed"
                 }
             ),
-            "observed capture failure must remain Unknown with the capture-failed reason"
+            "observed capture failure must remain Unknown with the capture-failed reason: {:?}",
+            capture.outcome()
         );
         let unavailable = adapter
             .finish_until_observing(
@@ -889,7 +890,8 @@ mod tests {
                     reason: "session status is unavailable"
                 }
             ),
-            "unavailable status must remain Unknown without inventing an outcome"
+            "unavailable status must remain Unknown without inventing an outcome: {:?}",
+            unavailable.outcome()
         );
         release_and_reap(&adapter, &fixture);
     }
