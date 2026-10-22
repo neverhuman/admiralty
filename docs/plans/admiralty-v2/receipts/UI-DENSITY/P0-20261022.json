@@ -1,0 +1,64 @@
+{
+  "schema": "admiralty.ui-density-packet-review.v1",
+  "packet": "UI-DENSITY-P0",
+  "recorded_at_utc": "2026-10-22T00:27:36.272608+00:00",
+  "worker_base": "00a16244f15bb54203e9bceb3f82cfea9ef02f79",
+  "reviewed_worker_head": "783e368468640523f172b57f76fa5f8e995bfbd2",
+  "integration_base": "5523daeb948b4aecbc64a8718cdd0a0bc416800b",
+  "integration_product_head_before_receipt": "fac5dcd0",
+  "source_postimages_equal_reviewed_worker": true,
+  "source_sha256": {
+    "apps/dashboard/src/ui/CommandJourneys.tsx": "0f81798df4c1c7af8d1b82f390696cc7450c0a2e1947e4c1a8d860ea34538d3e",
+    "apps/dashboard/src/command-journeys.test.tsx": "0b1c9f767cd0dd6ad2520ae57c166e78b7c7d334d3c6c95e7fbc4515f17a9b77",
+    "apps/dashboard/e2e/evidence-states.e2e.ts": "e8eab67fd8fd19f6113c5c7722e323b94c02e3350a3a3d518934b3532195672e"
+  },
+  "behavior": [
+    "Absent fleet evidence is unavailable rather than zero duplicate coverage or ready to submit.",
+    "Successful empty snapshots retain observed 0/0 coverage.",
+    "Failed refresh retains the observed source cursor and labels data stale; new submission is blocked in UI and handler.",
+    "Previously retained exact request retries preserve their existing path.",
+    "Unknown diagnostic totals and native qualification remain unavailable."
+  ],
+  "focused_checks": {
+    "dashboard_typecheck": "passed",
+    "command_journeys_unit_tests": {
+      "passed": 16,
+      "failed": 0
+    },
+    "e2e_typecheck": "passed",
+    "dashboard_build": "passed",
+    "browser_without_private_screenshot_env": {
+      "passed": 1,
+      "failed": 0
+    },
+    "browser_with_optional_private_screenshots": {
+      "passed": 1,
+      "failed": 0
+    }
+  },
+  "review_findings": [
+    {
+      "issue": "Initial test required private screenshot environment and broke standard browser suite",
+      "original_outcome": "beforeAll failed; one browser test skipped",
+      "repair": "Optional screenshot capture; behavioral assertions always run",
+      "status": "fixed; failing and passing evidence retained"
+    },
+    {
+      "issue": "Coverage requirement needed handler guard as well as disabled control",
+      "repair": "Reject new submission unless coverage available; retained request retry remains permitted",
+      "status": "fixed"
+    }
+  ],
+  "private_log_sha256": {
+    "followup-typecheck.log": "d64704ee0b592f810ee4936cb309cff40b7e7b02718fd9bd8ee02aec22dfe43f",
+    "followup-unit-test.log": "e21bc0beb597cd2b874f9e611f7884b671e033787140cbbe8f913ee5cbf091fe",
+    "followup-e2e-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "followup-build.log": "3e907ccce8ea90eaf38b3c1ab38664e4cf7f301eb633668eb926ccc4c8e35255",
+    "env-unset-before-fix.log": "3eda50a635f60b9d9e613e7b1e9eb60cfd803dd9191553761d7518a9aaf2ca00",
+    "env-unset-after-fix.log": "0c1522ec9f478b620f5706a4a2ee6afd01dc5184e7fe9d4d474c3619491ac01c",
+    "evidence-states-followup-with-evidence.log": "c48f75c079401aec1b30d0c8b22574cf42218dafc4ac301be9c65cf5efd600ae"
+  },
+  "final_gates_at_recording": "Complete local matrix and current-head self-hosted CI remain pending for the integration candidate. This receipt records source review/focused checks, not merge or deployment.",
+  "remaining_ui_packets": "P1-P8 remain dependency-gated; this packet does not qualify the complete UI redesign.",
+  "cleanup": "Root owns integration and post-merge managed checkout/scratch closure; original worker branch and private evidence remain preserved until verified integration."
+}
