@@ -839,11 +839,17 @@ mod tests {
         adapter
             .launch(&fixture.command, &fixture.workspace, &fixture.reservation)
             .expect("launch owned child");
+        adapter
+            .host
+            .close_input(fixture.command.run_id())
+            .expect("prepare durable EOF outside observation deadlines");
+        let mut capture_observations = 0;
         let capture = adapter
             .finish_until_observing(
                 fixture.command.run_id(),
                 Instant::now() + Duration::from_secs(1),
                 || {
+                    capture_observations += 1;
                     let mut status = adapter.host.status(fixture.command.run_id())?;
                     status.capture_failed = true;
                     status.capture_state = CaptureState::Failed;
@@ -851,12 +857,20 @@ mod tests {
                 },
             )
             .expect("capture failure evidence");
-        assert!(matches!(
-            capture.outcome(),
-            ExecutionOutcome::Unknown {
-                reason: "capture failed"
-            }
-        ));
+        assert!(
+            capture_observations > 0,
+            "capture observer must run within its deadline; outcome was {:?}",
+            capture.outcome()
+        );
+        assert!(
+            matches!(
+                capture.outcome(),
+                ExecutionOutcome::Unknown {
+                    reason: "capture failed"
+                }
+            ),
+            "observed capture failure must remain Unknown with the capture-failed reason"
+        );
         let unavailable = adapter
             .finish_until_observing(
                 fixture.command.run_id(),
@@ -868,12 +882,15 @@ mod tests {
                 },
             )
             .expect("observation error evidence");
-        assert!(matches!(
-            unavailable.outcome(),
-            ExecutionOutcome::Unknown {
-                reason: "session status is unavailable"
-            }
-        ));
+        assert!(
+            matches!(
+                unavailable.outcome(),
+                ExecutionOutcome::Unknown {
+                    reason: "session status is unavailable"
+                }
+            ),
+            "unavailable status must remain Unknown without inventing an outcome"
+        );
         release_and_reap(&adapter, &fixture);
     }
 
