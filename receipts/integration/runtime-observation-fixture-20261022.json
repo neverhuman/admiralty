@@ -1,0 +1,46 @@
+{
+  "schema": "admiralty.runtime-observation-fixture.v1",
+  "recorded_at_utc": "2026-10-22T01:33:27.568469+00:00",
+  "packet": "CI-FAULT-OBSERVATION",
+  "failed_main": "5523daeb948b4aecbc64a8718cdd0a0bc416800b",
+  "failed_job": "https://github.com/neverhuman/admiralty/actions/runs/39699541311/job/119565144072",
+  "original_failure": "capture_and_observation_errors_leave_live_child_unknown expected exact capture-failed Unknown; original assertion did not print the observed outcome",
+  "initial_ui_candidate": "092a0dc9c3eca2afec97483fed3e8f6b6b4b8d72",
+  "initial_ui_qualification": {
+    "local_stages": 16,
+    "dashboard_unit_tests": 399,
+    "browser_tests": 89,
+    "exact_head_ci": "all five passed"
+  },
+  "worker_fixture_candidate": "959801ca3ae2fe320e5056a0151d78b7be042fe9",
+  "committed_scope": "cfg(test) fixture in execution.rs only; root adds actual-outcome diagnostics to unchanged exact assertions",
+  "production_prefix_sha256": "27ec92ce74508981bd0231ac0a1fa40c1462dd0d53500d2eda8ae82e5f6fc429",
+  "production_prefix_equal_initial_ui": true,
+  "restored_session_source_sha256": "7bb5c9dc890c3031daf8a4375ea0c1e336ea83b154e6f4d19f7339d3d7274ed5",
+  "controlled_probe": {
+    "delay_ms": 1100,
+    "location": "private cfg(test) first EOF path, after already-closed return and before durable reservation",
+    "old_fixture": "observer count0; Unknown execution observation deadline exceeded; expected failure",
+    "repaired_fixture": "same probe passed; EOF prepared before unchanged one-second budgets",
+    "limitation": "Controlled probe proves the fixture boundary, not exact original runner latency/cause.",
+    "private_log_sha256": {
+      "observation-before-repair-diagnostic.log": "eccbaecc2dae14291b97a55b895110b4ace06f9166db457711b4bda012709175",
+      "observation-after-repair-final-probe.log": "d6db82e69c638ee1bc1ea2ae946ac353cfdc6c781df813bf64c785d8a60cab3c",
+      "execution-tests-clean-source-postfmt.log": "d3cc0dcaf8e0afa592b601c4662714a407e7efce5c34b1a98e2beaddd186daca"
+    }
+  },
+  "restored_source_focused_tests": {
+    "passed": 10,
+    "failed": 0,
+    "ignored": 1,
+    "filtered": 203
+  },
+  "preserved_constraints": [
+    "one-second observation deadlines",
+    "exact capture-failed and status-unavailable Unknown reasons",
+    "real durable EOF operations",
+    "compiler concurrency2/test threads1",
+    "job deadlines and full current-head qualification"
+  ],
+  "final_gates_at_recording": "Combined source still needs complete local16 and current-head self-hosted checks; no merge, deployment or parent release qualification inferred."
+}
